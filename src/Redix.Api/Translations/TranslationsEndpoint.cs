@@ -8,7 +8,7 @@ namespace Redix.Api.Translations;
 public static class TranslationsEndpoint
 {
     /// <summary>Maps <c>GET /translations/{language}</c>, open without sign-in because the sign-in screen needs its words.</summary>
-    public static void MapTranslations(this WebApplication app) => app.MapGet("/translations/{language}", GetBundle);
+    public static void MapTranslations(this WebApplication app) => app.MapGet("/translations/{language}", GetBundle).AllowAnonymous();
 
     /// <summary>Returns every word of a language as one bundle, keyed by word key, with an ETag; answers 304 while the bundle is unchanged and 404 for a language with no words.</summary>
     /// <param name="language">The two-letter language code, <c>ar</c> or <c>en</c>.</param>

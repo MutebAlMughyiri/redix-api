@@ -11,6 +11,9 @@ public class User
     /// <summary>How long a locked account stays locked (AC-01.2).</summary>
     public static readonly TimeSpan LockDuration = TimeSpan.FromMinutes(15);
 
+    /// <summary>The shortest password accepted when a password is changed (UC-003); the BRS sets no rule, so this is a recorded decision.</summary>
+    public const int MinimumPasswordLength = 8;
+
     /// <summary>The <see cref="LockedUntil"/> of an account that is not locked.</summary>
     public static readonly DateTime NeverLocked = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -43,6 +46,10 @@ public class User
 
     /// <summary>Replaces the password; only its hash is kept.</summary>
     public void SetPassword(string password, IPasswordHasher<User> hasher) => PasswordHash = hasher.HashPassword(this, password);
+
+    /// <summary>Whether <paramref name="newPassword"/> may replace <paramref name="currentPassword"/>: at least <see cref="MinimumPasswordLength"/> characters, and different.</summary>
+    public static bool IsAcceptableNewPassword(string newPassword, string currentPassword) =>
+        newPassword.Length >= MinimumPasswordLength && newPassword != currentPassword;
 
     /// <summary>
     /// Checks <paramref name="password"/> at <paramref name="now"/>. A disabled user is refused like a wrong password, so the answer never tells which.

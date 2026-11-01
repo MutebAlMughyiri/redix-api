@@ -19,6 +19,17 @@ public static class TranslationSeed
         ("signIn.accountLocked", "Too many wrong tries. Try again later.", "محاولات خاطئة كثيرة. حاول مرة أخرى لاحقاً."),
         ("signIn.sessionExpired", "Your session ended. Sign in again.", "انتهت الجلسة. سجّل الدخول مرة أخرى."),
         ("signIn.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
+        ("changePassword.title", "Change your password", "غيّر كلمة المرور"),
+        ("changePassword.hint", "Choose a new password of at least 8 characters before you start.", "اختر كلمة مرور جديدة من 8 أحرف على الأقل قبل أن تبدأ."),
+        ("changePassword.current", "Current password", "كلمة المرور الحالية"),
+        ("changePassword.new", "New password", "كلمة المرور الجديدة"),
+        ("changePassword.confirm", "New password again", "أعد كتابة كلمة المرور الجديدة"),
+        ("changePassword.submit", "Save", "حفظ"),
+        ("changePassword.mismatch", "The new passwords do not match.", "كلمتا المرور الجديدتان غير متطابقتين."),
+        ("changePassword.invalidCredentials", "The current password is wrong.", "كلمة المرور الحالية غير صحيحة."),
+        ("changePassword.accountLocked", "Too many wrong tries. Try again later.", "محاولات خاطئة كثيرة. حاول مرة أخرى لاحقاً."),
+        ("changePassword.weakPassword", "Use at least 8 characters, different from the current password.", "استخدم 8 أحرف على الأقل، مختلفة عن كلمة المرور الحالية."),
+        ("changePassword.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
     ];
 
     /// <summary>One key per seeded word, with an id derived from the key so every migration and database agree on it.</summary>

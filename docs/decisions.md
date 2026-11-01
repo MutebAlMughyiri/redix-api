@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-01 | A new password has at least 8 characters and differs from the current one | The BRS sets no rule; awaiting confirmation in the findings issue |
+| 2026-11-01 | Every endpoint is closed by default (a fallback policy) and opened explicitly | A new endpoint cannot be left open by mistake; an unknown address answers 401 to an anonymous caller, revealing nothing |
+| 2026-11-01 | A wrong current password on the change screen answers 400, not 401 | 401 means the session ended; the app renews and retries on 401, which must not happen for a typing mistake |
 | 2026-11-01 | Sign-in uses ASP.NET Core's `PasswordHasher`, a 15-minute JWT access token, and a refresh token stored as its hash, replaced at each renewal and expired after 12 hours unused | The framework's own pieces; the idle period answers NFR-09, which gives no number |
 | 2026-11-01 | The first owner is created by EF Core's seeding from the `REDIX_Owner__*` environment variables, with a password that must be changed | No password or hash ever sits in the repo or a migration |
 | 2026-11-01 | Tests run on their own database, `RedixTests`, rebuilt each run | Tests never touch the developer's data and start from a known state |

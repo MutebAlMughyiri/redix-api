@@ -300,6 +300,160 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("0769b8e3-4101-6c97-8929-de379be41ff6"),
                             Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("4cab34f1-8cee-3437-bb76-36922a8569a6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7aa4cb9c-361f-c384-b305-c794d843c08b"),
+                            Value = "Change your password"
+                        },
+                        new
+                        {
+                            Id = new Guid("dcd0b709-c7c4-92bc-a383-0184ef386d3b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7aa4cb9c-361f-c384-b305-c794d843c08b"),
+                            Value = "غيّر كلمة المرور"
+                        },
+                        new
+                        {
+                            Id = new Guid("f6f0000d-cdaf-e0c3-ecb0-1fcca7ef1aff"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("286ab6fb-1ba7-10e5-ff3d-51ee5270f71a"),
+                            Value = "Choose a new password of at least 8 characters before you start."
+                        },
+                        new
+                        {
+                            Id = new Guid("5155c37f-54a1-18cc-606f-89fcbfd53f03"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("286ab6fb-1ba7-10e5-ff3d-51ee5270f71a"),
+                            Value = "اختر كلمة مرور جديدة من 8 أحرف على الأقل قبل أن تبدأ."
+                        },
+                        new
+                        {
+                            Id = new Guid("b82762a3-5c4f-7acf-8286-1cac80a17553"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("87e50af1-6ea7-1755-99f0-e54063095107"),
+                            Value = "Current password"
+                        },
+                        new
+                        {
+                            Id = new Guid("beefe2bf-5d6c-1d75-ffff-880119124f02"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("87e50af1-6ea7-1755-99f0-e54063095107"),
+                            Value = "كلمة المرور الحالية"
+                        },
+                        new
+                        {
+                            Id = new Guid("8806813a-6bd7-0912-fc60-2a0fc87bffb6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("531379ae-8cde-2467-8484-33a498b15916"),
+                            Value = "New password"
+                        },
+                        new
+                        {
+                            Id = new Guid("2b67fe74-5528-3992-bcd0-3e7a1021f46b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("531379ae-8cde-2467-8484-33a498b15916"),
+                            Value = "كلمة المرور الجديدة"
+                        },
+                        new
+                        {
+                            Id = new Guid("50e985a8-3305-7a16-931c-9c25ff2c7fa0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("775c8654-e05d-95d2-4473-3d29e9f0c8cb"),
+                            Value = "New password again"
+                        },
+                        new
+                        {
+                            Id = new Guid("f794e624-9cf8-c21a-b718-7aac4f727c68"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("775c8654-e05d-95d2-4473-3d29e9f0c8cb"),
+                            Value = "أعد كتابة كلمة المرور الجديدة"
+                        },
+                        new
+                        {
+                            Id = new Guid("f6983ba5-47fd-5dfc-eaad-bb8f51b06be7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("75a3a9fb-3e2f-2886-82f8-f321ab100de4"),
+                            Value = "Save"
+                        },
+                        new
+                        {
+                            Id = new Guid("a85c3058-afec-c7fc-4c92-4db6589fd659"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("75a3a9fb-3e2f-2886-82f8-f321ab100de4"),
+                            Value = "حفظ"
+                        },
+                        new
+                        {
+                            Id = new Guid("d892dc31-36a4-2be8-747b-cb26dba2bffd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("204b1daa-eaae-c1eb-c979-646389e17604"),
+                            Value = "The new passwords do not match."
+                        },
+                        new
+                        {
+                            Id = new Guid("d266db2b-6ac5-0e45-62a9-27104b44cbfc"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("204b1daa-eaae-c1eb-c979-646389e17604"),
+                            Value = "كلمتا المرور الجديدتان غير متطابقتين."
+                        },
+                        new
+                        {
+                            Id = new Guid("f6d020f1-7439-a0f5-c5c3-2134260f96e1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1e2aa6c1-4b5a-cad5-eaec-4d372a0931bf"),
+                            Value = "The current password is wrong."
+                        },
+                        new
+                        {
+                            Id = new Guid("85d8e46b-f92d-477e-f068-b357c4577eaa"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1e2aa6c1-4b5a-cad5-eaec-4d372a0931bf"),
+                            Value = "كلمة المرور الحالية غير صحيحة."
+                        },
+                        new
+                        {
+                            Id = new Guid("0ec63acf-9f28-8066-4b9b-5fdf973cac8e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0510a2b0-1a69-9340-a9ff-336ab0317b22"),
+                            Value = "Too many wrong tries. Try again later."
+                        },
+                        new
+                        {
+                            Id = new Guid("eb521ae0-de5c-7bc9-87e2-080781de3586"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0510a2b0-1a69-9340-a9ff-336ab0317b22"),
+                            Value = "محاولات خاطئة كثيرة. حاول مرة أخرى لاحقاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("b4e4d543-fa12-5ad4-302a-cb1db1520ac1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6e6f2043-3714-fbfe-aaa6-8274f5ff1098"),
+                            Value = "Use at least 8 characters, different from the current password."
+                        },
+                        new
+                        {
+                            Id = new Guid("669900fc-707d-4455-33c3-9dce46e0c16b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6e6f2043-3714-fbfe-aaa6-8274f5ff1098"),
+                            Value = "استخدم 8 أحرف على الأقل، مختلفة عن كلمة المرور الحالية."
+                        },
+                        new
+                        {
+                            Id = new Guid("62f4cc21-86b1-0826-244e-85914e951e0a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fe97eb8a-3e48-8aa5-c0a2-e05c4a486950"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("80d2c9f2-d915-2c8f-8466-16d22da29919"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fe97eb8a-3e48-8aa5-c0a2-e05c4a486950"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
                         });
                 });
 
@@ -399,6 +553,72 @@ namespace Redix.Api.Migrations
                             Id = new Guid("0769b8e3-4101-6c97-8929-de379be41ff6"),
                             Description = "",
                             Key = "signIn.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("7aa4cb9c-361f-c384-b305-c794d843c08b"),
+                            Description = "",
+                            Key = "changePassword.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("286ab6fb-1ba7-10e5-ff3d-51ee5270f71a"),
+                            Description = "",
+                            Key = "changePassword.hint"
+                        },
+                        new
+                        {
+                            Id = new Guid("87e50af1-6ea7-1755-99f0-e54063095107"),
+                            Description = "",
+                            Key = "changePassword.current"
+                        },
+                        new
+                        {
+                            Id = new Guid("531379ae-8cde-2467-8484-33a498b15916"),
+                            Description = "",
+                            Key = "changePassword.new"
+                        },
+                        new
+                        {
+                            Id = new Guid("775c8654-e05d-95d2-4473-3d29e9f0c8cb"),
+                            Description = "",
+                            Key = "changePassword.confirm"
+                        },
+                        new
+                        {
+                            Id = new Guid("75a3a9fb-3e2f-2886-82f8-f321ab100de4"),
+                            Description = "",
+                            Key = "changePassword.submit"
+                        },
+                        new
+                        {
+                            Id = new Guid("204b1daa-eaae-c1eb-c979-646389e17604"),
+                            Description = "",
+                            Key = "changePassword.mismatch"
+                        },
+                        new
+                        {
+                            Id = new Guid("1e2aa6c1-4b5a-cad5-eaec-4d372a0931bf"),
+                            Description = "",
+                            Key = "changePassword.invalidCredentials"
+                        },
+                        new
+                        {
+                            Id = new Guid("0510a2b0-1a69-9340-a9ff-336ab0317b22"),
+                            Description = "",
+                            Key = "changePassword.accountLocked"
+                        },
+                        new
+                        {
+                            Id = new Guid("6e6f2043-3714-fbfe-aaa6-8274f5ff1098"),
+                            Description = "",
+                            Key = "changePassword.weakPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("fe97eb8a-3e48-8aa5-c0a2-e05c4a486950"),
+                            Description = "",
+                            Key = "changePassword.noConnection"
                         });
                 });
 

@@ -43,11 +43,11 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await database.MigrateAsync();
     }
 
-    public async Task<User> AddUserAsync(string password, bool isActive = true)
+    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
-        var user = new User { Username = $"user-{Guid.NewGuid():N}", IsActive = isActive, CreatedAt = Time.GetUtcNow().UtcDateTime };
+        var user = new User { Username = $"user-{Guid.NewGuid():N}", IsActive = isActive, MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime };
         user.SetPassword(password, scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>());
         db.Users.Add(user);
         await db.SaveChangesAsync();
