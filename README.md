@@ -2,6 +2,7 @@
 
 The server of REDIX (Real Estate Development Intelligence): ASP.NET Core on .NET 10 with SQL Server.
 What it does, use case by use case, is in this repo's issues; the database follows the pinned **Database design** issue.
+How it works is in the [documentation](docs/README.md).
 
 ## Run it locally
 

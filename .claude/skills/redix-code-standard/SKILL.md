@@ -26,6 +26,13 @@ description: How REDIX API code is written - best practice of ASP.NET Core and E
 - Names come from the translations glossary (redix-app issue "Translations: English terms and their Arabic"). Its "In code" column is the C# name.
 - No NULL. No nullable column or property: an optional value is an empty value of its own type (`""`, `0`, `1900-01-01`, an `Empty` enum constant) or a row in a link table.
 
+## Documented
+
+- Every public type and member has an XML doc comment saying what it is for, in one or two sentences, never how it does it. A missing one is a build warning (CS1591), and a warning is fixed.
+- An endpoint is a named static method, so its doc comment becomes its Swagger summary.
+- A use case is done only when `docs/use-cases/UC-NNN-<name>.md` exists: its purpose, who may use it, its endpoints and tables, and each rule with the class that enforces it and the test that proves it. It is listed in `docs/README.md`.
+- A decision goes into `docs/decisions.md`; a change to the structure goes into `docs/ARCHITECTURE.md`.
+
 ## Structured well
 
 - One folder per feature under `src/Redix.Api`, holding its entities, seed and endpoint (for example `Translations/`). Tests mirror it.
