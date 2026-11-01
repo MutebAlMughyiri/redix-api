@@ -1,10 +1,10 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Redix.Api.Tests;
 
-public class SwaggerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection(DatabaseCollection.Name)]
+public class SwaggerTests(MigratedApiFactory factory)
 {
     [Theory]
     [InlineData("Development", HttpStatusCode.OK)]

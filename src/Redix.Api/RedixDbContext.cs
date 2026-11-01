@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Auth;
 using Redix.Api.Translations;
 
 namespace Redix.Api;
@@ -8,6 +9,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 {
     /// <summary>Every word the app shows, with its value in each language.</summary>
     public DbSet<TranslationKey> TranslationKeys => Set<TranslationKey>();
+
+    /// <summary>Everyone who signs in to REDIX.</summary>
+    public DbSet<User> Users => Set<User>();
+
+    /// <summary>The phones signed in, one per sign-in, each with its refresh token's hash.</summary>
+    public DbSet<Device> Devices => Set<Device>();
 
     /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -33,6 +40,19 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             translation.Property(t => t.Value).HasMaxLength(1000);
             translation.HasIndex(t => new { t.TranslationKeyId, t.Language }).IsUnique();
             translation.HasData(TranslationSeed.Values);
+        });
+
+        modelBuilder.Entity<User>(user =>
+        {
+            user.Property(u => u.Username).HasMaxLength(50);
+            user.HasIndex(u => u.Username).IsUnique();
+            user.Property(u => u.PasswordHash).HasMaxLength(200).IsUnicode(false);
+        });
+        modelBuilder.Entity<Device>(device =>
+        {
+            device.Property(d => d.RefreshTokenHash).HasMaxLength(64).IsUnicode(false).IsFixedLength();
+            device.HasIndex(d => d.RefreshTokenHash).IsUnique();
+            device.HasOne<User>().WithMany().HasForeignKey(d => d.UserId);
         });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

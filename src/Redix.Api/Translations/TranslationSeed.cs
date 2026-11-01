@@ -10,6 +10,15 @@ public static class TranslationSeed
     [
         ("app.title", "REDIX", "REDIX"),
         ("app.subtitle", "Project expenses", "مصروفات المشاريع"),
+        ("signIn.username", "Username", "اسم المستخدم"),
+        ("signIn.password", "Password", "كلمة المرور"),
+        ("signIn.hint", "Sign in to follow your projects' expenses", "سجّل الدخول لمتابعة مصروفات مشاريعك"),
+        ("signIn.submit", "Sign in", "دخول"),
+        ("signIn.forgotPassword", "Forgot your password? Contact the financial supervisor.", "نسيت كلمة المرور؟ تواصل مع المشرف المالي."),
+        ("signIn.invalidCredentials", "The username or password is wrong.", "اسم المستخدم أو كلمة المرور غير صحيحة."),
+        ("signIn.accountLocked", "Too many wrong tries. Try again later.", "محاولات خاطئة كثيرة. حاول مرة أخرى لاحقاً."),
+        ("signIn.sessionExpired", "Your session ended. Sign in again.", "انتهت الجلسة. سجّل الدخول مرة أخرى."),
+        ("signIn.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
     ];
 
     /// <summary>One key per seeded word, with an id derived from the key so every migration and database agree on it.</summary>

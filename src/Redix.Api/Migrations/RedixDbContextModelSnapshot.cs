@@ -22,6 +22,96 @@ namespace Redix.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Redix.Api.Auth.Device", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("RefreshExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RefreshTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RefreshTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Devices");
+                });
+
+            modelBuilder.Entity("Redix.Api.Auth.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedSignIns")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOwner")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LockedUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -84,6 +174,132 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("27b76d7a-c620-546c-ce3a-fb1a42f47534"),
                             Value = "مصروفات المشاريع"
+                        },
+                        new
+                        {
+                            Id = new Guid("6a3837c1-fc33-e41f-c8ad-86cac17ed328"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("02b967e1-ed23-df48-6e82-1ee35eace98f"),
+                            Value = "Username"
+                        },
+                        new
+                        {
+                            Id = new Guid("b34ac086-f169-703d-ad3d-48bb542f5be4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("02b967e1-ed23-df48-6e82-1ee35eace98f"),
+                            Value = "اسم المستخدم"
+                        },
+                        new
+                        {
+                            Id = new Guid("61aeab36-2741-caf4-712f-b9ee7ced5772"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("13989443-8496-3325-85a0-79bccd168cfa"),
+                            Value = "Password"
+                        },
+                        new
+                        {
+                            Id = new Guid("0aa2162e-3d6b-8b42-8300-a302de0fd0b7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("13989443-8496-3325-85a0-79bccd168cfa"),
+                            Value = "كلمة المرور"
+                        },
+                        new
+                        {
+                            Id = new Guid("15c5b681-8dd9-1ff5-0189-06a4e7aef403"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("52ce80ec-4e4f-307c-9bae-d5d35a50efaa"),
+                            Value = "Sign in to follow your projects' expenses"
+                        },
+                        new
+                        {
+                            Id = new Guid("97d500dd-a11d-076d-f290-06b7dd34604b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("52ce80ec-4e4f-307c-9bae-d5d35a50efaa"),
+                            Value = "سجّل الدخول لمتابعة مصروفات مشاريعك"
+                        },
+                        new
+                        {
+                            Id = new Guid("22391e2d-43d6-2517-ddca-a5241abfc811"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("51c49503-a627-70d1-dfb4-89178f387607"),
+                            Value = "Sign in"
+                        },
+                        new
+                        {
+                            Id = new Guid("02d6f999-9388-217e-daf8-563539c673e2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("51c49503-a627-70d1-dfb4-89178f387607"),
+                            Value = "دخول"
+                        },
+                        new
+                        {
+                            Id = new Guid("ba99d72f-8250-4216-d6f6-5f3fdc6b4e4b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
+                            Value = "Forgot your password? Contact the financial supervisor."
+                        },
+                        new
+                        {
+                            Id = new Guid("148f90b2-75cf-925a-961a-a2899215aded"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
+                            Value = "نسيت كلمة المرور؟ تواصل مع المشرف المالي."
+                        },
+                        new
+                        {
+                            Id = new Guid("18714d75-c699-01e4-11e5-d15d8de353c6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c0673ea9-19aa-de67-77df-005a90751bb4"),
+                            Value = "The username or password is wrong."
+                        },
+                        new
+                        {
+                            Id = new Guid("7d30e2ff-930c-063b-52cf-8bef179bc274"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c0673ea9-19aa-de67-77df-005a90751bb4"),
+                            Value = "اسم المستخدم أو كلمة المرور غير صحيحة."
+                        },
+                        new
+                        {
+                            Id = new Guid("dc07afa9-eda1-de49-25de-a215d4f96d02"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("eb50f295-45c5-9ef0-5656-66f32cc12c21"),
+                            Value = "Too many wrong tries. Try again later."
+                        },
+                        new
+                        {
+                            Id = new Guid("84d6d2ba-ce62-325e-310c-430c9a86e30e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("eb50f295-45c5-9ef0-5656-66f32cc12c21"),
+                            Value = "محاولات خاطئة كثيرة. حاول مرة أخرى لاحقاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("328a90cd-7775-101d-2339-ecebd31005b2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d1ea0ec5-55a3-250e-99b2-13dd222079ac"),
+                            Value = "Your session ended. Sign in again."
+                        },
+                        new
+                        {
+                            Id = new Guid("1ab2159c-07c7-fb5d-20a0-3db8ed883882"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d1ea0ec5-55a3-250e-99b2-13dd222079ac"),
+                            Value = "انتهت الجلسة. سجّل الدخول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("b6ff2b8f-e772-604e-3c3c-87062810560d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0769b8e3-4101-6c97-8929-de379be41ff6"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("dc7066b8-452a-d89d-5dd4-8a06c9e4c22d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0769b8e3-4101-6c97-8929-de379be41ff6"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
                         });
                 });
 
@@ -129,7 +345,70 @@ namespace Redix.Api.Migrations
                             Id = new Guid("27b76d7a-c620-546c-ce3a-fb1a42f47534"),
                             Description = "",
                             Key = "app.subtitle"
+                        },
+                        new
+                        {
+                            Id = new Guid("02b967e1-ed23-df48-6e82-1ee35eace98f"),
+                            Description = "",
+                            Key = "signIn.username"
+                        },
+                        new
+                        {
+                            Id = new Guid("13989443-8496-3325-85a0-79bccd168cfa"),
+                            Description = "",
+                            Key = "signIn.password"
+                        },
+                        new
+                        {
+                            Id = new Guid("52ce80ec-4e4f-307c-9bae-d5d35a50efaa"),
+                            Description = "",
+                            Key = "signIn.hint"
+                        },
+                        new
+                        {
+                            Id = new Guid("51c49503-a627-70d1-dfb4-89178f387607"),
+                            Description = "",
+                            Key = "signIn.submit"
+                        },
+                        new
+                        {
+                            Id = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
+                            Description = "",
+                            Key = "signIn.forgotPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0673ea9-19aa-de67-77df-005a90751bb4"),
+                            Description = "",
+                            Key = "signIn.invalidCredentials"
+                        },
+                        new
+                        {
+                            Id = new Guid("eb50f295-45c5-9ef0-5656-66f32cc12c21"),
+                            Description = "",
+                            Key = "signIn.accountLocked"
+                        },
+                        new
+                        {
+                            Id = new Guid("d1ea0ec5-55a3-250e-99b2-13dd222079ac"),
+                            Description = "",
+                            Key = "signIn.sessionExpired"
+                        },
+                        new
+                        {
+                            Id = new Guid("0769b8e3-4101-6c97-8929-de379be41ff6"),
+                            Description = "",
+                            Key = "signIn.noConnection"
                         });
+                });
+
+            modelBuilder.Entity("Redix.Api.Auth.Device", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>
