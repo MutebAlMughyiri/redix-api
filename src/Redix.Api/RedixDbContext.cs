@@ -1,11 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Projects;
 using Redix.Api.Translations;
 
 namespace Redix.Api;
 
-/// <summary>The REDIX database. It owns the rules every table shares: money as <c>decimal(19,4)</c> (BR-13) and a required rowversion on every table.</summary>
+/// <summary>
+/// The REDIX database. It owns the rules every table shares: money as <c>decimal(19,4)</c> (BR-13), a required rowversion on every table, and
+/// GUID ids made in code (<c>Guid.CreateVersion7</c>), never by the database, so a new record added through a navigation is inserted.
+/// </summary>
 public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContext(options)
 {
     /// <summary>Every word the app shows, with its value in each language.</summary>
@@ -19,6 +23,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>Who did what to which record, and when (FR-21); append-only, guarded by the database's <c>AuditTrailIsAppendOnly</c> trigger (AC-21.1).</summary>
     public DbSet<AuditRecord> AuditTrail => Set<AuditRecord>();
+
+    /// <summary>The real-estate development projects, each with its units.</summary>
+    public DbSet<Project> Projects => Set<Project>();
 
     /// <summary>
     /// Records <paramref name="action"/>, done by <paramref name="userId"/> at <paramref name="at"/>, to the tracked <paramref name="record"/>. Call it after the change
@@ -64,6 +71,16 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             device.HasIndex(d => d.RefreshTokenHash).IsUnique();
             device.HasOne<User>().WithMany().HasForeignKey(d => d.UserId);
         });
+        modelBuilder.Entity<Project>(project =>
+        {
+            project.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
+            project.HasMany(p => p.Units).WithOne().HasForeignKey(u => u.ProjectId);
+        });
+        modelBuilder.Entity<Unit>(unit =>
+        {
+            unit.ToTable("Units");
+            unit.Property(u => u.Name).HasMaxLength(Project.NameMaxLength);
+        });
         modelBuilder.Entity<AuditRecord>(audit =>
         {
             audit.ToTable(nameof(AuditTrail), table => table.HasTrigger("AuditTrailIsAppendOnly"));
@@ -76,7 +93,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            modelBuilder.Entity(entityType.ClrType).Property<byte[]>("RowVersion").IsRowVersion().IsRequired();
+            var entity = modelBuilder.Entity(entityType.ClrType);
+            entity.Property<byte[]>("RowVersion").IsRowVersion().IsRequired();
+            if (entityType.FindPrimaryKey()?.Properties is [{ ClrType: var keyType }] && keyType == typeof(Guid))
+            {
+                entity.Property("Id").ValueGeneratedNever();
+            }
         }
     }
 }

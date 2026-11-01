@@ -6,6 +6,10 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-01 | Projects are managed by owners only until UC-008 brings project roles; the access token says whether its user is an owner | BR-29 makes an owner a financial supervisor in every project, and no other user has a project role yet |
+| 2026-11-01 | GUID ids are made in code for every table, declared once in `RedixDbContext` | A record added through a navigation, such as a project's unit, is inserted; without it EF Core takes a set GUID for an existing row |
+| 2026-11-01 | Project and unit names need not be unique | The BRS sets no rule; whether to refuse a repeated name waits in the findings issue (row 24) |
+| 2026-11-01 | A refusal is built by one owner, `Refusal.Of`, for every feature | Every refused request answers the same shape, with a `code` the app translates |
 | 2026-11-01 | The audit trail is append-only by a database trigger that refuses every update and delete | One guard for every path: the API, a bulk query, or a tool connected to the database |
 | 2026-11-01 | A trail record is built from EF Core's change tracker and saved by the same `SaveChanges` as its change | The values come from the change itself, and a change is never kept without its record |
 | 2026-11-01 | The table is named `AuditTrail`, the glossary's code name, not `AuditLog` | One name for one thing; the database design issue follows the glossary |

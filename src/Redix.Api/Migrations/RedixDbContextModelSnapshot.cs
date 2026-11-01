@@ -80,7 +80,6 @@ namespace Redix.Api.Migrations
             modelBuilder.Entity("Redix.Api.Auth.Device", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsRevoked")
@@ -121,7 +120,6 @@ namespace Redix.Api.Migrations
             modelBuilder.Entity("Redix.Api.Auth.User", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -167,10 +165,65 @@ namespace Redix.Api.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Redix.Api.Projects.Project", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Projects");
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.Unit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("Units", (string)null);
+                });
+
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Language")
@@ -599,7 +652,6 @@ namespace Redix.Api.Migrations
             modelBuilder.Entity("Redix.Api.Translations.TranslationKey", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
@@ -815,6 +867,15 @@ namespace Redix.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Redix.Api.Projects.Unit", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany("Units")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>
                 {
                     b.HasOne("Redix.Api.Translations.TranslationKey", null)
@@ -822,6 +883,11 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("TranslationKeyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.Project", b =>
+                {
+                    b.Navigation("Units");
                 });
 
             modelBuilder.Entity("Redix.Api.Translations.TranslationKey", b =>

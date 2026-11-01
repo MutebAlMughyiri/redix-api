@@ -12,6 +12,8 @@ src/Redix.Api/
   Translations/         a feature: its entities, seed and endpoint together
   Auth/                 sign-in: users, devices, access tokens, the first owner's seed
   Audit/                the audit trail: its records, its actions, and the mark that keeps a secret out of it
+  Projects/             projects and their units
+  Refusal.cs            the answer to a refused request: problem details with a code
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database
 docs/                   these pages
 ```
@@ -30,9 +32,10 @@ docs/                   these pages
 | --- | --- |
 | Money is `decimal(19,4)`; VAT per row, rounding only in totals (BR-13) | `RedixDbContext.ConfigureConventions` |
 | Every table has a required `rowversion`, for sync and concurrency | `RedixDbContext.OnModelCreating` |
-| Ids are time-ordered GUIDs (`Guid.CreateVersion7`) | Each entity's `Id` |
+| Ids are time-ordered GUIDs (`Guid.CreateVersion7`) made in code, never by the database | Each entity's `Id`; `RedixDbContext.OnModelCreating` |
 | No NULL column: an optional value is an empty value of its own type or a row in a link table | Each entity |
-| The API sends codes, never words; the app shows the word for the code | Problem details `code`, and the words in `Translations` |
+| The API sends codes, never words; the app shows the word for the code | `Refusal.Of`, and the words in `Translations` |
+| Enums travel as camelCase names, such as `running` | `ConfigureHttpJsonOptions` in `Program.cs` |
 | Secrets come from Windows user environment variables prefixed `REDIX_` | `Program.cs` |
 | Every action a use case names is recorded in the audit trail, saved with the change itself; a secret is marked `[NotAudited]` | `RedixDbContext.Audit`, `AuditRecord` |
 

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
@@ -32,14 +31,14 @@ public static class AuthEndpoints
         var user = await db.Users.SingleOrDefaultAsync(user => user.Username == request.Username);
         if (user is null)
         {
-            return Refused(StatusCodes.Status401Unauthorized, nameof(SignInOutcome.InvalidCredentials));
+            return Refusal.Of(StatusCodes.Status401Unauthorized, nameof(SignInOutcome.InvalidCredentials));
         }
 
         var outcome = user.SignIn(request.Password, hasher, now);
         if (outcome != SignInOutcome.Success)
         {
             await db.SaveChangesAsync();
-            return Refused(StatusCodes.Status401Unauthorized, outcome.ToString());
+            return Refusal.Of(StatusCodes.Status401Unauthorized, outcome.ToString());
         }
 
         var device = new Device { UserId = user.Id };
@@ -68,7 +67,7 @@ public static class AuthEndpoints
             .SingleOrDefaultAsync();
         if (signedIn is null || !signedIn.Device.CanRefresh(now) || !signedIn.User.IsActive)
         {
-            return Refused(StatusCodes.Status401Unauthorized, "SessionExpired");
+            return Refusal.Of(StatusCodes.Status401Unauthorized, "SessionExpired");
         }
 
         var refreshToken = signedIn.Device.RenewRefreshToken(now);
@@ -100,11 +99,11 @@ public static class AuthEndpoints
         if (outcome != SignInOutcome.Success)
         {
             await db.SaveChangesAsync();
-            return Refused(StatusCodes.Status400BadRequest, outcome.ToString());
+            return Refusal.Of(StatusCodes.Status400BadRequest, outcome.ToString());
         }
         if (!User.IsAcceptableNewPassword(request.NewPassword, request.CurrentPassword))
         {
-            return Refused(StatusCodes.Status400BadRequest, "WeakPassword");
+            return Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword");
         }
 
         user.SetPassword(request.NewPassword, hasher);
@@ -116,10 +115,6 @@ public static class AuthEndpoints
         await db.SaveChangesAsync();
         return Results.Ok(new Session(accessTokens.Create(user, thisDevice.Id), refreshToken, user.MustChangePassword));
     }
-
-    private static IResult Refused(int status, string reason) => Results.Problem(
-        statusCode: status,
-        extensions: new Dictionary<string, object?> { ["code"] = JsonNamingPolicy.CamelCase.ConvertName(reason) });
 }
 
 /// <summary>What the sign-in screen sends.</summary>

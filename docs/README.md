@@ -22,3 +22,4 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-003](use-cases/UC-003-change-password.md) | Change the password, and secure every request | Every signed-in user |
 | UC-004 | Switching the app language is the app's use case; the API's part is the words of My account, added with the `LanguageSwitch` migration | Every signed-in user |
 | [UC-005](use-cases/UC-005-audit-trail.md) | The audit trail: who did what to which record, when, with the values before and after; never changed or deleted | The API, on its own |
+| [UC-006](use-cases/UC-006-projects.md) | Create a project with its units, and close it when finished | The financial supervisor (an owner, until UC-008) |

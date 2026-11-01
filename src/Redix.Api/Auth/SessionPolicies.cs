@@ -10,6 +10,9 @@ public static class SessionPolicies
     /// <summary>The name of the policy that lets a session with a temporary password through: changing it is all such a session may do.</summary>
     public const string MayChangePassword = nameof(MayChangePassword);
 
+    /// <summary>The name of the policy for what only an owner may do: <see cref="Working"/>, by a user who is an owner (BR-29).</summary>
+    public const string Owner = nameof(Owner);
+
     /// <summary>The fallback for every endpoint not open to all: signed in, with no temporary password left to change (AC-02.1).</summary>
     public static readonly AuthorizationPolicy Working = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()

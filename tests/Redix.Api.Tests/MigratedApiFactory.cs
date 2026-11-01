@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -44,15 +46,27 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await database.MigrateAsync();
     }
 
-    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false)
+    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false, bool isOwner = false)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
-        var user = new User { Username = $"user-{Guid.NewGuid():N}", IsActive = isActive, MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime };
+        var user = new User
+        {
+            Username = $"user-{Guid.NewGuid():N}", IsActive = isActive, MustChangePassword = mustChangePassword, IsOwner = isOwner, CreatedAt = Time.GetUtcNow().UtcDateTime,
+        };
         user.SetPassword(password, scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>());
         db.Users.Add(user);
         await db.SaveChangesAsync();
         return user;
+    }
+
+    public async Task<HttpClient> ClientSignedInAsAsync(User user, string password)
+    {
+        var client = CreateClient();
+        var signIn = await client.PostAsJsonAsync("/auth/sign-in", new SignInRequest(user.Username, password));
+        var session = await signIn.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<Session>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session!.AccessToken);
+        return client;
     }
 
     public async Task DisableAsync(User user)

@@ -1,9 +1,12 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api;
 using Redix.Api.Auth;
+using Redix.Api.Projects;
 using Redix.Api.Translations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,12 +27,14 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 });
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(SessionPolicies.Working)
-    .AddPolicy(SessionPolicies.MayChangePassword, policy => policy.RequireAuthenticatedUser());
+    .AddPolicy(SessionPolicies.MayChangePassword, policy => policy.RequireAuthenticatedUser())
+    .AddPolicy(SessionPolicies.Owner, policy => policy.Combine(SessionPolicies.Working).RequireClaim(AccessTokens.OwnerClaim, "true"));
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(services.GetRequiredService<IConfiguration>().GetConnectionString("Redix"))
     .UseSeeding((context, _) => OwnerSeed.Seed(context, services))
     .UseAsyncSeeding((context, _, cancellation) => OwnerSeed.SeedAsync(context, services, cancellation)));
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks().AddDbContextCheck<RedixDbContext>();
 
@@ -50,5 +55,6 @@ app.UseAuthorization();
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapTranslations();
 app.MapAuth();
+app.MapProjects();
 
 app.Run();
