@@ -2,7 +2,8 @@ using System.Net;
 
 namespace Redix.Api.Tests;
 
-public class HealthTests(MigratedApiFactory factory) : IClassFixture<MigratedApiFactory>
+[Collection(DatabaseCollection.Name)]
+public class HealthTests(MigratedApiFactory factory)
 {
     [Fact]
     public async Task HealthAnswersAgainstMigratedDatabase()

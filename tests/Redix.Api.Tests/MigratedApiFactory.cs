@@ -14,3 +14,9 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
+
+[CollectionDefinition(Name)]
+public class DatabaseCollection : ICollectionFixture<MigratedApiFactory>
+{
+    public const string Name = "Database";
+}

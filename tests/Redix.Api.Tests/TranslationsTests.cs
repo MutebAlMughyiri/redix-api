@@ -3,7 +3,8 @@ using System.Net.Http.Json;
 
 namespace Redix.Api.Tests;
 
-public class TranslationsTests(MigratedApiFactory factory) : IClassFixture<MigratedApiFactory>
+[Collection(DatabaseCollection.Name)]
+public class TranslationsTests(MigratedApiFactory factory)
 {
     [Theory]
     [InlineData("ar", "مصروفات المشاريع")]
