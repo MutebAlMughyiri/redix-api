@@ -37,7 +37,8 @@ A session is a JWT access token valid 15 minutes, a refresh token, and whether t
 | A refresh token unused for 12 hours expires (NFR-09) | `Device.CanRefresh` | `AuthTests.ASessionUsedWithin12HoursStaysOpenAndOneUnusedFor12HoursEnds` |
 | Only the refresh token's hash is stored | `Device.HashOf` | Enforced by the model |
 | The first owner comes from configuration and must change the password (BR-29) | `OwnerSeed`, run by EF Core's seeding | `AuthTests.TheFirstOwnerIsSeededFromConfigurationAndMustChangeThePassword` |
+| A sign-in is in the audit trail with the user and the time (UC-005) | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheAuditTrailWithTheUserAndTheTime` |
 
 ## Left to later use cases
 
-The user's projects in the session (UC-010), the audit record of each sign-in (UC-005), and the forced password change with token checks on every request (UC-003).
+The user's projects in the session (UC-010). The audit record of each sign-in came with UC-005, and the forced password change with token checks on every request with UC-003.

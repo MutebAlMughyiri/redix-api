@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Redix.Api.Audit;
 
 namespace Redix.Api.Auth;
 
@@ -24,6 +25,7 @@ public class User
     public required string Username { get; init; }
 
     /// <summary>The password, hashed by ASP.NET Core's <see cref="PasswordHasher{TUser}"/>; never the password itself.</summary>
+    [NotAudited]
     public string PasswordHash { get; private set; } = "";
 
     /// <summary>True while the password is a temporary one the user must change before anything else.</summary>

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.IdentityModel.JsonWebTokens;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 
 namespace Redix.Api.Tests;
@@ -50,6 +51,20 @@ public class AuthTests(MigratedApiFactory factory)
         Assert.Equal(AccessTokens.Lifetime, accessToken.ValidTo - accessToken.IssuedAt);
         Assert.NotEmpty(session.RefreshToken);
         Assert.False(session.MustChangePassword);
+    }
+
+    [Fact]
+    public async Task ASignInIsInTheAuditTrailWithTheUserAndTheTime()
+    {
+        var user = await factory.AddUserAsync(Password);
+
+        await SessionOf(await SignInAsync(user.Username, Password));
+
+        var record = Assert.Single(await factory.AuditTrailOfAsync(user.Id));
+        Assert.Equal(AuditAction.SignIn, record.Action);
+        Assert.Equal(user.Id, record.UserId);
+        Assert.Equal("Users", record.TableName);
+        Assert.Equal(factory.Time.GetUtcNow().UtcDateTime, record.At);
     }
 
     [Fact]

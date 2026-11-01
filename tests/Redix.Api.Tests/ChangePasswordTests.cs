@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 
 namespace Redix.Api.Tests;
@@ -89,6 +91,21 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.Unauthorized, otherRefresh.StatusCode);
         Assert.Equal(HttpStatusCode.OK, thisRefresh.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await ChangePasswordAsync(otherPhone.AccessToken, NewPassword, "Another-pass-3")).StatusCode);
+    }
+
+    [Fact]
+    public async Task APasswordChangeIsInTheAuditTrailWithTheValuesBeforeAndAfterButNeverThePasswordHash()
+    {
+        var user = await factory.AddUserAsync(Password, mustChangePassword: true);
+        var session = await SignInAsync(user.Username, Password);
+
+        await ChangePasswordAsync(session.AccessToken, Password, NewPassword);
+
+        var record = (await factory.AuditTrailOfAsync(user.Id)).Last();
+        Assert.Equal(AuditAction.ChangePassword, record.Action);
+        Assert.Equal(user.Id, record.UserId);
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse("""{"MustChangePassword": true}"""), JsonNode.Parse(record.Before)));
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse("""{"MustChangePassword": false}"""), JsonNode.Parse(record.After)));
     }
 
     [Fact]

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 
 namespace Redix.Api.Tests;
@@ -60,6 +61,12 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
         (await db.Users.SingleAsync(stored => stored.Id == user.Id)).IsActive = false;
         await db.SaveChangesAsync();
+    }
+
+    public async Task<List<AuditRecord>> AuditTrailOfAsync(Guid recordId)
+    {
+        using var scope = Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<RedixDbContext>().AuditTrail.Where(record => record.RecordId == recordId).OrderBy(record => record.Id).ToListAsync();
     }
 
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;

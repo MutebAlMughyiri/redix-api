@@ -6,6 +6,10 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-01 | The audit trail is append-only by a database trigger that refuses every update and delete | One guard for every path: the API, a bulk query, or a tool connected to the database |
+| 2026-11-01 | A trail record is built from EF Core's change tracker and saved by the same `SaveChanges` as its change | The values come from the change itself, and a change is never kept without its record |
+| 2026-11-01 | The table is named `AuditTrail`, the glossary's code name, not `AuditLog` | One name for one thing; the database design issue follows the glossary |
+| 2026-11-01 | Only a successful sign-in is recorded; wrong passwords are not | UC-002 records the sign-in; whether failed attempts and lockouts belong in the trail waits in the findings issue (row 22) |
 | 2026-11-01 | A new password has at least 8 characters and differs from the current one | The BRS sets no rule; awaiting confirmation in the findings issue |
 | 2026-11-01 | Every endpoint is closed by default (a fallback policy) and opened explicitly | A new endpoint cannot be left open by mistake; an unknown address answers 401 to an anonymous caller, revealing nothing |
 | 2026-11-01 | A wrong current password on the change screen answers 400, not 401 | 401 means the session ended; the app renews and retries on 401, which must not happen for a typing mistake |

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Audit;
 
 namespace Redix.Api.Auth;
 
@@ -17,8 +18,8 @@ public static class AuthEndpoints
     }
 
     /// <summary>
-    /// Signs a user in and opens a session on a new device (FR-01, AC-01.1). A wrong username, a wrong password and a disabled user all answer
-    /// <c>invalidCredentials</c>; a locked account answers <c>accountLocked</c> (AC-01.2).
+    /// Signs a user in, opens a session on a new device (FR-01, AC-01.1) and records the sign-in in the audit trail (UC-005). A wrong username, a wrong
+    /// password and a disabled user all answer <c>invalidCredentials</c>; a locked account answers <c>accountLocked</c> (AC-01.2).
     /// </summary>
     /// <param name="request">The username and password typed on the sign-in screen.</param>
     /// <param name="db">The database the user and the new device live in.</param>
@@ -44,6 +45,7 @@ public static class AuthEndpoints
         var device = new Device { UserId = user.Id };
         var refreshToken = device.RenewRefreshToken(now);
         db.Devices.Add(device);
+        db.Audit(user, AuditAction.SignIn, user.Id, now);
         await db.SaveChangesAsync();
         return Results.Ok(new Session(accessTokens.Create(user, device.Id), refreshToken, user.MustChangePassword));
     }
@@ -75,7 +77,8 @@ public static class AuthEndpoints
     }
 
     /// <summary>
-    /// Replaces the signed-in user's password (UC-003, AC-02.1) and signs out the user's other devices; this device stays signed in with a renewed session.
+    /// Replaces the signed-in user's password (UC-003, AC-02.1), records it in the audit trail (UC-005), and signs out the user's other devices; this device
+    /// stays signed in with a renewed session.
     /// A wrong current password answers <c>invalidCredentials</c> and counts toward the lockout (<c>accountLocked</c>); a new password shorter than
     /// <see cref="User.MinimumPasswordLength"/> or equal to the current one answers <c>weakPassword</c>.
     /// </summary>
@@ -109,6 +112,7 @@ public static class AuthEndpoints
         await db.Devices.Where(device => device.UserId == userId && device.Id != deviceId).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
         var thisDevice = await db.Devices.SingleAsync(device => device.Id == deviceId);
         var refreshToken = thisDevice.RenewRefreshToken(now);
+        db.Audit(user, AuditAction.ChangePassword, user.Id, now);
         await db.SaveChangesAsync();
         return Results.Ok(new Session(accessTokens.Create(user, thisDevice.Id), refreshToken, user.MustChangePassword));
     }
