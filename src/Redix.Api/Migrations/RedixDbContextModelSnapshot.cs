@@ -454,6 +454,90 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("fe97eb8a-3e48-8aa5-c0a2-e05c4a486950"),
                             Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("8fed7ed6-0863-202e-42c8-660b835b2271"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("79732691-82a9-94d8-1e77-1e2e61f11150"),
+                            Value = "My account"
+                        },
+                        new
+                        {
+                            Id = new Guid("c33dd6a2-b653-f564-0dfc-7c5be9117567"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("79732691-82a9-94d8-1e77-1e2e61f11150"),
+                            Value = "حسابي"
+                        },
+                        new
+                        {
+                            Id = new Guid("0b5ef6da-d918-2900-a478-7a86826e0386"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9c8312c3-f598-8eb6-6361-5600dbbf8781"),
+                            Value = "Language"
+                        },
+                        new
+                        {
+                            Id = new Guid("5a97c78e-f491-6297-cb10-c5289e0bc149"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9c8312c3-f598-8eb6-6361-5600dbbf8781"),
+                            Value = "اللغة"
+                        },
+                        new
+                        {
+                            Id = new Guid("027ac94c-989d-d5e0-6f51-f61e965e007c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("84edc898-3c27-78b5-2adf-ff16a9c9537c"),
+                            Value = "العربية"
+                        },
+                        new
+                        {
+                            Id = new Guid("a904eb69-401c-27a9-c536-528d86269314"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("84edc898-3c27-78b5-2adf-ff16a9c9537c"),
+                            Value = "العربية"
+                        },
+                        new
+                        {
+                            Id = new Guid("206878f7-b25b-3829-67aa-b5b21bd45fb9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("abda6c4e-9ecd-7db1-5a4e-4e275466da2d"),
+                            Value = "English"
+                        },
+                        new
+                        {
+                            Id = new Guid("ed09774d-483c-6953-ee99-c08ad6da3024"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("abda6c4e-9ecd-7db1-5a4e-4e275466da2d"),
+                            Value = "English"
+                        },
+                        new
+                        {
+                            Id = new Guid("a4fbb7ad-15f5-6f16-b848-c5986c260232"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9e1b31b8-41db-595f-6003-71a6d6da807d"),
+                            Value = "Switching the language needs a network."
+                        },
+                        new
+                        {
+                            Id = new Guid("174383bb-088c-aada-edec-7ebab2952741"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9e1b31b8-41db-595f-6003-71a6d6da807d"),
+                            Value = "تغيير اللغة يحتاج إلى شبكة."
+                        },
+                        new
+                        {
+                            Id = new Guid("eff07d2b-a70d-ca41-d55f-c958e3438efa"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d456f83d-2a7c-2428-8b6e-ac98a52a64cb"),
+                            Value = "Change password"
+                        },
+                        new
+                        {
+                            Id = new Guid("db328cd6-399b-da9d-2bde-b64c7cbf076f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d456f83d-2a7c-2428-8b6e-ac98a52a64cb"),
+                            Value = "تغيير كلمة المرور"
                         });
                 });
 
@@ -619,6 +703,42 @@ namespace Redix.Api.Migrations
                             Id = new Guid("fe97eb8a-3e48-8aa5-c0a2-e05c4a486950"),
                             Description = "",
                             Key = "changePassword.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("79732691-82a9-94d8-1e77-1e2e61f11150"),
+                            Description = "",
+                            Key = "myAccount.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("9c8312c3-f598-8eb6-6361-5600dbbf8781"),
+                            Description = "",
+                            Key = "myAccount.language"
+                        },
+                        new
+                        {
+                            Id = new Guid("84edc898-3c27-78b5-2adf-ff16a9c9537c"),
+                            Description = "",
+                            Key = "myAccount.arabic"
+                        },
+                        new
+                        {
+                            Id = new Guid("abda6c4e-9ecd-7db1-5a4e-4e275466da2d"),
+                            Description = "",
+                            Key = "myAccount.english"
+                        },
+                        new
+                        {
+                            Id = new Guid("9e1b31b8-41db-595f-6003-71a6d6da807d"),
+                            Description = "",
+                            Key = "myAccount.languageNeedsNetwork"
+                        },
+                        new
+                        {
+                            Id = new Guid("d456f83d-2a7c-2428-8b6e-ac98a52a64cb"),
+                            Description = "",
+                            Key = "myAccount.changePassword"
                         });
                 });
 

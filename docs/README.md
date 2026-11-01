@@ -20,3 +20,4 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-001](use-cases/UC-001-setup.md) | The base: the database, health check, Swagger, and the words the app shows | Everyone |
 | [UC-002](use-cases/UC-002-sign-in.md) | Sign in with a username and password, and keep the session alive | Every user |
 | [UC-003](use-cases/UC-003-change-password.md) | Change the password, and secure every request | Every signed-in user |
+| UC-004 | Switching the app language is the app's use case; the API's part is the words of My account, added with the `LanguageSwitch` migration | Every signed-in user |
