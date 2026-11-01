@@ -1,0 +1,5 @@
+@Redix.Api_HostAddress = http://localhost:5010
+
+GET {{Redix.Api_HostAddress}}/health
+
+###
