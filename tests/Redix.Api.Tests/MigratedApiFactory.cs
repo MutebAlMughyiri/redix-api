@@ -1,6 +1,8 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,13 +14,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Projects;
 
 namespace Redix.Api.Tests;
 
 public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    public const string OwnerUsername = "owner";
-    public const string OwnerPassword = "Owner-test-password";
+    public const string SystemAdminUsername = "system-admin";
+    public const string SystemAdminPassword = "System-admin-test-password";
+
+    public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
 
     public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
 
@@ -32,8 +37,8 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             ["ConnectionStrings:Redix"] = testDatabase.ConnectionString,
             ["Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-            ["Owner:Username"] = OwnerUsername,
-            ["Owner:Password"] = OwnerPassword,
+            ["SystemAdmin:Username"] = SystemAdminUsername,
+            ["SystemAdmin:Password"] = SystemAdminPassword,
         }));
         builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time));
     }
@@ -46,16 +51,20 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await database.MigrateAsync();
     }
 
-    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false, bool isOwner = false)
+    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false, bool isSystemAdmin = false)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
         var user = new User
         {
-            Username = $"user-{Guid.NewGuid():N}", IsActive = isActive, MustChangePassword = mustChangePassword, IsOwner = isOwner, CreatedAt = Time.GetUtcNow().UtcDateTime,
+            Username = $"user-{Guid.NewGuid():N}", IsActive = isActive, MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime,
         };
         user.SetPassword(password, scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>());
         db.Users.Add(user);
+        if (isSystemAdmin)
+        {
+            db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.SystemAdminId });
+        }
         await db.SaveChangesAsync();
         return user;
     }
@@ -64,7 +73,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         var client = CreateClient();
         var signIn = await client.PostAsJsonAsync("/auth/sign-in", new SignInRequest(user.Username, password));
-        var session = await signIn.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<Session>();
+        var session = await signIn.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<Session>(Json);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session!.AccessToken);
         return client;
     }
@@ -83,11 +92,26 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return await scope.ServiceProvider.GetRequiredService<RedixDbContext>().AuditTrail.Where(record => record.RecordId == recordId).OrderBy(record => record.Id).ToListAsync();
     }
 
-    public async Task<Guid> ProjectMemberIdAsync(Guid userId, Guid projectId)
+    public async Task<Guid> ProjectMemberIdAsync(Guid userId, Guid projectId, Guid roleId)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
-        return await db.ProjectMembers.Where(member => member.UserId == userId && member.ProjectId == projectId).Select(member => member.Id).SingleAsync();
+        return await db.ProjectMembers.Where(member => member.UserId == userId && member.ProjectId == projectId && member.RoleId == roleId).Select(member => member.Id).SingleAsync();
+    }
+
+    /// <summary>Gives a role straight in the database, for a test whose subject is something else.</summary>
+    public Task GiveRoleAsync(Guid userId, Guid projectId, string wordKey) =>
+        WithDatabaseAsync(db =>
+        {
+            db.ProjectMembers.Add(new ProjectMember { UserId = userId, ProjectId = projectId, RoleId = RoleSeed.IdOf(wordKey) });
+            return db.SaveChangesAsync();
+        });
+
+    /// <summary>Works on the database directly, as someone configuring roles does (BR-32).</summary>
+    public async Task WithDatabaseAsync(Func<RedixDbContext, Task> work)
+    {
+        using var scope = Services.CreateScope();
+        await work(scope.ServiceProvider.GetRequiredService<RedixDbContext>());
     }
 
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;

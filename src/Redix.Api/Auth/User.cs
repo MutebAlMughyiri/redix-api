@@ -46,10 +46,7 @@ public class User
     /// <summary>True while the password is a temporary one the user must change before anything else.</summary>
     public bool MustChangePassword { get; set; }
 
-    /// <summary>An owner is a financial supervisor in every project and manages the global settings (BR-29).</summary>
-    public bool IsOwner { get; init; }
-
-    /// <summary>False once a financial supervisor disables the user, who can then no longer sign in (AC-01.3).</summary>
+    /// <summary>False once the user is disabled, and can no longer sign in (AC-01.3).</summary>
     public bool IsActive { get; set; } = true;
 
     /// <summary>Wrong passwords in a row since the last correct one or the last lock.</summary>
@@ -97,17 +94,6 @@ public class User
         MustChangePassword = true;
         FailedSignIns = 0;
         LockedUntil = NeverLocked;
-    }
-
-    /// <summary>Disables the user, unless an owner, of whom at least one must stay (BR-29). Returns the refusal as its code; empty once disabled.</summary>
-    public string Disable()
-    {
-        if (IsOwner)
-        {
-            return "OwnerCannotBeDisabled";
-        }
-        IsActive = false;
-        return "";
     }
 
     /// <summary>

@@ -1,9 +1,6 @@
 namespace Redix.Api.Projects;
 
-/// <summary>
-/// A user's place in one project (FR-36). An owner has none: being a financial supervisor in every project is what being an owner means (BR-29),
-/// so an owner's role cannot be lost and a new project needs nothing added for owners.
-/// </summary>
+/// <summary>One role a user holds in one project (FR-36). A role counts only in its project (BR-33), and having no row is not being in the project.</summary>
 public class ProjectMember
 {
     /// <summary>The row's id, time-ordered.</summary>
@@ -16,5 +13,5 @@ public class ProjectMember
     public Guid UserId { get; init; }
 
     /// <summary>What the user is in this project.</summary>
-    public ProjectRole Role { get; set; }
+    public Guid RoleId { get; init; }
 }

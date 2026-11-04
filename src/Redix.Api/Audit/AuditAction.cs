@@ -12,24 +12,24 @@ public enum AuditAction
     /// <summary>A user replaced their password (UC-003); the password's hash never enters the trail.</summary>
     ChangePassword,
 
-    /// <summary>An owner created a user (UC-007).</summary>
+    /// <summary>A project manager created a user (UC-007, UC-009).</summary>
     Create,
 
-    /// <summary>An owner changed a user's name or mobile (UC-007).</summary>
+    /// <summary>A user's name or mobile was changed (UC-007).</summary>
     Update,
 
-    /// <summary>An owner set a new temporary password for a user (UC-007).</summary>
+    /// <summary>A user was given a new temporary password (UC-007).</summary>
     ResetPassword,
 
-    /// <summary>An owner disabled a user (UC-007).</summary>
+    /// <summary>A user was disabled (UC-007).</summary>
     Disable,
 
-    /// <summary>An owner enabled a disabled user (UC-007).</summary>
+    /// <summary>A disabled user was enabled (UC-007).</summary>
     Enable,
 
-    /// <summary>An owner gave a user a project, or changed their role in it (UC-008).</summary>
+    /// <summary>A user was given a role in a project (UC-008, UC-009).</summary>
     AssignProject,
 
-    /// <summary>An owner took a project away from a user (UC-008).</summary>
+    /// <summary>A user's role in a project was taken away (UC-008, UC-009).</summary>
     RemoveProject,
 }

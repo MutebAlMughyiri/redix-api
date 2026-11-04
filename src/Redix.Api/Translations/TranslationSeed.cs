@@ -1,6 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
-
 namespace Redix.Api.Translations;
 
 /// <summary>The words every database starts with; a migration carries each new word to the database.</summary>
@@ -14,7 +11,7 @@ public static class TranslationSeed
         ("signIn.password", "Password", "كلمة المرور"),
         ("signIn.hint", "Sign in to follow your projects' expenses", "سجّل الدخول لمتابعة مصروفات مشاريعك"),
         ("signIn.submit", "Sign in", "دخول"),
-        ("signIn.forgotPassword", "Forgot your password? Contact the financial supervisor.", "نسيت كلمة المرور؟ تواصل مع المشرف المالي."),
+        ("signIn.forgotPassword", "Forgot your password? Contact your project manager.", "نسيت كلمة المرور؟ تواصل مع مدير مشروعك."),
         ("signIn.invalidCredentials", "The username or password is wrong.", "اسم المستخدم أو كلمة المرور غير صحيحة."),
         ("signIn.accountLocked", "Too many wrong tries. Try again later.", "محاولات خاطئة كثيرة. حاول مرة أخرى لاحقاً."),
         ("signIn.sessionExpired", "Your session ended. Sign in again.", "انتهت الجلسة. سجّل الدخول مرة أخرى."),
@@ -42,7 +39,7 @@ public static class TranslationSeed
         ("settings.title", "Settings", "الإعدادات"),
         ("projects.title", "Projects", "المشاريع"),
         ("projects.new", "New project", "مشروع جديد"),
-        ("projects.empty", "No projects yet. Create the first one.", "لا توجد مشاريع بعد. أنشئ أول مشروع."),
+        ("projects.empty", "No projects yet.", "لا مشاريع بعد."),
         ("projects.loadFailed", "Could not load the projects. Check the network and try again.", "تعذّر تحميل المشاريع. تحقق من الشبكة وحاول مرة أخرى."),
         ("common.retry", "Try again", "حاول مرة أخرى"),
         ("projects.running", "Running", "جارٍ"),
@@ -67,7 +64,6 @@ public static class TranslationSeed
         ("users.title", "Users", "المستخدمون"),
         ("users.new", "New user", "مستخدم جديد"),
         ("users.loadFailed", "Could not load the users. Check the network and try again.", "تعذّر تحميل المستخدمين. تحقق من الشبكة وحاول مرة أخرى."),
-        ("users.owner", "Owner", "مالك"),
         ("users.disabled", "Disabled", "معطّل"),
         ("users.edit", "Edit", "تعديل"),
         ("users.resetPassword", "Reset password", "إعادة تعيين كلمة المرور"),
@@ -89,28 +85,30 @@ public static class TranslationSeed
         ("users.invalidMobile", "Enter a mobile of up to 20 characters.", "اكتب رقم جوال من 20 حرفاً على الأكثر."),
         ("users.usernameTaken", "This username is taken. Choose another.", "اسم المستخدم هذا مستخدم. اختر غيره."),
         ("users.weakPassword", "Use at least 8 characters.", "استخدم 8 أحرف على الأقل."),
-        ("users.ownerCannotBeDisabled", "An owner cannot be disabled.", "لا يمكن تعطيل المالك."),
         ("users.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
         ("users.refused", "The server refused this change.", "رفض الخادم هذا التغيير."),
-        ("users.projects", "Projects and roles", "المشاريع والأدوار"),
         ("users.roleFinance", "Finance", "مالي"),
         ("users.roleField", "Field", "ميداني"),
         ("users.roleReader", "Reader", "قارئ"),
-        ("users.everyProject", "Financial supervisor in every project", "مشرف مالي في كل المشاريع"),
         ("users.noProjects", "No projects yet", "لا مشاريع بعد"),
-        ("users.projectsHint", "Tick a project and choose the role. The user sees only these projects.", "حدد المشروع واختر الدور. لا يرى المستخدم غير هذه المشاريع."),
-        ("users.ownerIsInEveryProject", "An owner is already in every project.", "المالك موجود في كل المشاريع."),
+        ("users.roleSystem", "System admin", "مسؤول النظام"),
+        ("users.roleManager", "Project manager", "مدير المشروع"),
+        ("users.roles", "Roles", "الأدوار"),
+        ("users.rolesHint", "Tick what this person does in this project. Removing every role takes them out of it.", "حدد ما يقوم به هذا الشخص في هذا المشروع. إلغاء كل الأدوار يخرجه منه."),
+        ("users.addExisting", "Add an existing user", "إضافة مستخدم موجود"),
+        ("users.unknownUser", "No user has this username.", "لا يوجد مستخدم بهذا الاسم."),
+        ("users.invalidRole", "That role cannot be given here.", "لا يمكن إسناد هذا الدور هنا."),
+        ("users.lastManager", "A project needs at least one project manager.", "يحتاج المشروع إلى مدير مشروع واحد على الأقل."),
+        ("users.otherProject", "This person also works in another project, so the system admin does this.", "يعمل هذا الشخص في مشروع آخر أيضاً، لذا يتولى ذلك مسؤول النظام."),
     ];
 
     /// <summary>One key per seeded word, with an id derived from the key so every migration and database agree on it.</summary>
-    public static IEnumerable<TranslationKey> Keys => Words.Select(word => new TranslationKey { Id = StableId(word.Key), Key = word.Key });
+    public static IEnumerable<TranslationKey> Keys => Words.Select(word => new TranslationKey { Id = StableIds.Of(word.Key), Key = word.Key });
 
     /// <summary>Each seeded word in English and Arabic, with ids derived from the key and the language.</summary>
     public static IEnumerable<Translation> Values => Words.SelectMany(word => new[]
     {
-        new Translation { Id = StableId($"{word.Key}:en"), TranslationKeyId = StableId(word.Key), Language = "en", Value = word.English },
-        new Translation { Id = StableId($"{word.Key}:ar"), TranslationKeyId = StableId(word.Key), Language = "ar", Value = word.Arabic },
+        new Translation { Id = StableIds.Of($"{word.Key}:en"), TranslationKeyId = StableIds.Of(word.Key), Language = "en", Value = word.English },
+        new Translation { Id = StableIds.Of($"{word.Key}:ar"), TranslationKeyId = StableIds.Of(word.Key), Language = "ar", Value = word.Arabic },
     });
-
-    private static Guid StableId(string name) => new(SHA256.HashData(Encoding.UTF8.GetBytes(name)).AsSpan(0, 16));
 }

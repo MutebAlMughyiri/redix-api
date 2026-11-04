@@ -22,7 +22,7 @@ public class AuthTests(MigratedApiFactory factory)
     private static async Task<Session> SessionOf(HttpResponseMessage response)
     {
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return (await response.Content.ReadFromJsonAsync<Session>())!;
+        return (await response.Content.ReadFromJsonAsync<Session>(MigratedApiFactory.Json))!;
     }
 
     private static async Task<string> RefusalCodeOf(HttpResponseMessage response)
@@ -32,9 +32,9 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task TheFirstOwnerIsSeededFromConfigurationAndMustChangeThePassword()
+    public async Task TheFirstUserIsTheSystemAdminFromConfigurationAndMustChangeThePassword()
     {
-        var session = await SessionOf(await SignInAsync(MigratedApiFactory.OwnerUsername, MigratedApiFactory.OwnerPassword));
+        var session = await SessionOf(await SignInAsync(MigratedApiFactory.SystemAdminUsername, MigratedApiFactory.SystemAdminPassword));
 
         Assert.True(session.MustChangePassword);
         Assert.True(new JsonWebTokenHandler().ReadJsonWebToken(session.AccessToken).GetPayloadValue<bool>("mustChangePassword"));
@@ -55,18 +55,18 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ASessionSaysWhetherItsUserIsAnOwner()
+    public async Task ASessionSaysWhatItsUserHoldsEverywhere()
     {
-        var owner = await factory.AddUserAsync(Password, isOwner: true);
+        var systemAdmin = await factory.AddUserAsync(Password, isSystemAdmin: true);
         var user = await factory.AddUserAsync(Password);
 
-        var ownerSession = await SessionOf(await SignInAsync(owner.Username, Password));
+        var systemAdminSession = await SessionOf(await SignInAsync(systemAdmin.Username, Password));
         var userSession = await SessionOf(await SignInAsync(user.Username, Password));
-        var renewedOwnerSession = await SessionOf(await RefreshAsync(ownerSession.RefreshToken));
+        var renewed = await SessionOf(await RefreshAsync(systemAdminSession.RefreshToken));
 
-        Assert.True(ownerSession.IsOwner);
-        Assert.False(userSession.IsOwner);
-        Assert.True(renewedOwnerSession.IsOwner);
+        Assert.Equal([Permission.StartProject, Permission.ManageLogins], systemAdminSession.Permissions.Order());
+        Assert.Empty(userSession.Permissions);
+        Assert.Equal([Permission.StartProject, Permission.ManageLogins], renewed.Permissions.Order());
     }
 
     private async Task<HttpResponseMessage> SignOutAsync(Session session)

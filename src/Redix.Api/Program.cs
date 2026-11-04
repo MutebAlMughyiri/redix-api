@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
@@ -25,14 +26,18 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
     bearer.TimeProvider = time;
     bearer.Events = new JwtBearerEvents { OnTokenValidated = SessionPolicies.CheckSessionIsOpen };
 });
-builder.Services.AddAuthorizationBuilder()
+var authorization = builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(SessionPolicies.Working)
-    .AddPolicy(SessionPolicies.MayChangePassword, policy => policy.RequireAuthenticatedUser())
-    .AddPolicy(SessionPolicies.Owner, policy => policy.Combine(SessionPolicies.Working).RequireClaim(AccessTokens.OwnerClaim, "true"));
+    .AddPolicy(SessionPolicies.MayChangePassword, policy => policy.RequireAuthenticatedUser());
+foreach (var permission in Enum.GetValues<Permission>())
+{
+    authorization.AddPolicy(permission.ToString(), policy => policy.Combine(SessionPolicies.Working).AddRequirements(new PermissionRequirement(permission)));
+}
+builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(services.GetRequiredService<IConfiguration>().GetConnectionString("Redix"))
-    .UseSeeding((context, _) => OwnerSeed.Seed(context, services))
-    .UseAsyncSeeding((context, _, cancellation) => OwnerSeed.SeedAsync(context, services, cancellation)));
+    .UseSeeding((context, _) => SystemAdminSeed.Seed(context, services))
+    .UseAsyncSeeding((context, _, cancellation) => SystemAdminSeed.SeedAsync(context, services, cancellation)));
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -62,6 +67,7 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.MapTranslations();
 app.MapAuth();
 app.MapProjects();
+app.MapProjectUsers();
 app.MapUsers();
 
 app.Run();

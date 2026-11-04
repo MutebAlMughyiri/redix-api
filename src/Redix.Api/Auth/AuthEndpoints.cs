@@ -47,7 +47,7 @@ public static class AuthEndpoints
         db.Devices.Add(device);
         db.Audit(user, AuditAction.SignIn, user.Id, now);
         await db.SaveChangesAsync();
-        return Results.Ok(Session.Of(user, accessTokens.Create(user, device.Id), refreshToken));
+        return Results.Ok(await Session.OfAsync(user, accessTokens.Create(user, device.Id), refreshToken, db));
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public static class AuthEndpoints
 
         var refreshToken = signedIn.Device.RenewRefreshToken(now);
         await db.SaveChangesAsync();
-        return Results.Ok(Session.Of(signedIn.User, accessTokens.Create(signedIn.User, signedIn.Device.Id), refreshToken));
+        return Results.Ok(await Session.OfAsync(signedIn.User, accessTokens.Create(signedIn.User, signedIn.Device.Id), refreshToken, db));
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public static class AuthEndpoints
         var refreshToken = thisDevice.RenewRefreshToken(now);
         db.Audit(user, AuditAction.ChangePassword, user.Id, now);
         await db.SaveChangesAsync();
-        return Results.Ok(Session.Of(user, accessTokens.Create(user, thisDevice.Id), refreshToken));
+        return Results.Ok(await Session.OfAsync(user, accessTokens.Create(user, thisDevice.Id), refreshToken, db));
     }
 
     /// <summary>Ends the session on this device, and only this one (UC-062), and records it in the audit trail.</summary>
@@ -150,9 +150,10 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 /// <param name="AccessToken">Sent with each request; valid for 15 minutes.</param>
 /// <param name="RefreshToken">Renews the session; replaced at each renewal and expired after 12 hours unused.</param>
 /// <param name="MustChangePassword">True while the password is temporary and must be changed before anything else.</param>
-/// <param name="IsOwner">True for an owner, a financial supervisor in every project (BR-29); the app shows what only an owner may do.</param>
-public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, bool IsOwner)
+/// <param name="Permissions">What the user holds everywhere; the app shows what they allow. What they hold in a project comes with the project.</param>
+public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions)
 {
     /// <summary>The session of <paramref name="user"/> with these tokens.</summary>
-    public static Session Of(User user, string accessToken, string refreshToken) => new(accessToken, refreshToken, user.MustChangePassword, user.IsOwner);
+    public static async Task<Session> OfAsync(User user, string accessToken, string refreshToken, RedixDbContext db) =>
+        new(accessToken, refreshToken, user.MustChangePassword, (await UserAccess.OfAsync(user.Id, db)).Everywhere.ToList());
 }

@@ -20,14 +20,12 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
     /// <summary>The claim that says the password is temporary and must be changed before anything else.</summary>
     public const string MustChangePasswordClaim = "mustChangePassword";
 
-    /// <summary>The claim that says the user is an owner: a financial supervisor in every project, who manages the global settings (BR-29).</summary>
-    public const string OwnerClaim = "isOwner";
 
     private readonly SigningCredentials signingCredentials = new(KeyOf(options.Value), SecurityAlgorithms.HmacSha256);
 
     /// <summary>
-    /// A signed access token for <paramref name="user"/> on the device <paramref name="deviceId"/>, carrying whether the password must be changed first
-    /// and whether the user is an owner.
+    /// A signed access token for <paramref name="user"/> on the device <paramref name="deviceId"/>, carrying whether the password must be changed first.
+    /// Nothing about roles is in it: they are read on each request, so a change counts at once.
     /// </summary>
     public string Create(User user, Guid deviceId)
     {
@@ -45,7 +43,6 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
                 [JwtRegisteredClaimNames.Name] = user.Username,
                 [DeviceClaim] = deviceId.ToString(),
                 [MustChangePasswordClaim] = user.MustChangePassword,
-                [OwnerClaim] = user.IsOwner,
             },
             SigningCredentials = signingCredentials,
         });
@@ -62,9 +59,6 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
 
     /// <summary>The user a validated access token belongs to.</summary>
     public static Guid UserIdOf(ClaimsPrincipal principal) => ClaimOf(principal, JwtRegisteredClaimNames.Sub);
-
-    /// <summary>Whether a validated access token belongs to an owner.</summary>
-    public static bool IsOwner(ClaimsPrincipal principal) => principal.HasClaim(OwnerClaim, "true");
 
     /// <summary>The device a validated access token was issued to.</summary>
     public static Guid DeviceIdOf(ClaimsPrincipal principal) => ClaimOf(principal, DeviceClaim);

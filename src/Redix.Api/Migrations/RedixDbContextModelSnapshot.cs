@@ -117,6 +117,172 @@ namespace Redix.Api.Migrations
                     b.ToTable("Devices");
                 });
 
+            modelBuilder.Entity("Redix.Api.Auth.Role", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WordKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WordKey");
+
+                    b.ToTable("Roles", t =>
+                        {
+                            t.HasCheckConstraint("CK_Roles_Scope", "[Scope] IN ('System', 'Project')");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("e5c8a57b-dca1-df52-59f4-a0520caa9080"),
+                            Scope = "System",
+                            SortOrder = 1,
+                            WordKey = "users.roleSystem"
+                        },
+                        new
+                        {
+                            Id = new Guid("e469cf77-7a5b-a1a5-425b-4a42e26c96bd"),
+                            Scope = "Project",
+                            SortOrder = 1,
+                            WordKey = "users.roleManager"
+                        },
+                        new
+                        {
+                            Id = new Guid("8a930250-60d5-b402-464a-0545e0253004"),
+                            Scope = "Project",
+                            SortOrder = 2,
+                            WordKey = "users.roleFinance"
+                        },
+                        new
+                        {
+                            Id = new Guid("f50f9eae-0001-8d5d-c4b1-e47737eac451"),
+                            Scope = "Project",
+                            SortOrder = 3,
+                            WordKey = "users.roleField"
+                        },
+                        new
+                        {
+                            Id = new Guid("3fee0350-b8df-dbb4-9bcc-b0039085dccd"),
+                            Scope = "Project",
+                            SortOrder = 4,
+                            WordKey = "users.roleReader"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Auth.RolePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId", "Permission")
+                        .IsUnique();
+
+                    b.ToTable("RolePermissions", t =>
+                        {
+                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('StartProject', 'ManageLogins', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject')");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("5d9e61be-da59-a993-55f5-c5013028c46f"),
+                            Permission = "StartProject",
+                            RoleId = new Guid("e5c8a57b-dca1-df52-59f4-a0520caa9080")
+                        },
+                        new
+                        {
+                            Id = new Guid("578f9580-4389-dee4-365c-a6d94e78b230"),
+                            Permission = "ManageLogins",
+                            RoleId = new Guid("e5c8a57b-dca1-df52-59f4-a0520caa9080")
+                        },
+                        new
+                        {
+                            Id = new Guid("43bca88f-c711-0d3e-7fc4-ba5d36094bb7"),
+                            Permission = "ManageUsers",
+                            RoleId = new Guid("e469cf77-7a5b-a1a5-425b-4a42e26c96bd")
+                        },
+                        new
+                        {
+                            Id = new Guid("dae8d6db-6f49-9c82-c97b-bab24a781600"),
+                            Permission = "ReadProject",
+                            RoleId = new Guid("e469cf77-7a5b-a1a5-425b-4a42e26c96bd")
+                        },
+                        new
+                        {
+                            Id = new Guid("6d013eea-b4b2-27df-4b1c-fbf617b5794a"),
+                            Permission = "SeeAllCapital",
+                            RoleId = new Guid("e469cf77-7a5b-a1a5-425b-4a42e26c96bd")
+                        },
+                        new
+                        {
+                            Id = new Guid("6a214907-1cf8-f706-4228-eef3d5373001"),
+                            Permission = "ManageProject",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
+                        },
+                        new
+                        {
+                            Id = new Guid("3c35a012-dd63-53fb-9008-d3fc0de2de8c"),
+                            Permission = "ReadProject",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0b2030-6690-e681-2973-197db92c573a"),
+                            Permission = "SeeAllCapital",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
+                        },
+                        new
+                        {
+                            Id = new Guid("ef858e4c-4540-dc8b-794e-05d851b32885"),
+                            Permission = "ReadProject",
+                            RoleId = new Guid("f50f9eae-0001-8d5d-c4b1-e47737eac451")
+                        },
+                        new
+                        {
+                            Id = new Guid("7663b4e6-3671-1d36-3bec-3a25d84330d4"),
+                            Permission = "ReadProject",
+                            RoleId = new Guid("3fee0350-b8df-dbb4-9bcc-b0039085dccd")
+                        });
+                });
+
             modelBuilder.Entity("Redix.Api.Auth.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -134,9 +300,6 @@ namespace Redix.Api.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsOwner")
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("LockedUntil")
@@ -176,6 +339,33 @@ namespace Redix.Api.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Redix.Api.Auth.UserRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId", "RoleId")
+                        .IsUnique();
+
+                    b.ToTable("UserRoles");
+                });
+
             modelBuilder.Entity("Redix.Api.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -211,8 +401,8 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<byte>("Role")
-                        .HasColumnType("tinyint");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -225,9 +415,11 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RoleId");
+
                     b.HasIndex("UserId");
 
-                    b.HasIndex("ProjectId", "UserId")
+                    b.HasIndex("ProjectId", "UserId", "RoleId")
                         .IsUnique();
 
                     b.ToTable("ProjectMembers");
@@ -385,14 +577,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("ba99d72f-8250-4216-d6f6-5f3fdc6b4e4b"),
                             Language = "en",
                             TranslationKeyId = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
-                            Value = "Forgot your password? Contact the financial supervisor."
+                            Value = "Forgot your password? Contact your project manager."
                         },
                         new
                         {
                             Id = new Guid("148f90b2-75cf-925a-961a-a2899215aded"),
                             Language = "ar",
                             TranslationKeyId = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
-                            Value = "نسيت كلمة المرور؟ تواصل مع المشرف المالي."
+                            Value = "نسيت كلمة المرور؟ تواصل مع مدير مشروعك."
                         },
                         new
                         {
@@ -777,14 +969,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d34b8d94-c323-e735-45e5-b4840f194257"),
                             Language = "en",
                             TranslationKeyId = new Guid("a7f9b2fb-31d2-5a13-54bd-14811b2392a8"),
-                            Value = "No projects yet. Create the first one."
+                            Value = "No projects yet."
                         },
                         new
                         {
                             Id = new Guid("0721816f-e32a-820f-bb96-5c63fd7521c7"),
                             Language = "ar",
                             TranslationKeyId = new Guid("a7f9b2fb-31d2-5a13-54bd-14811b2392a8"),
-                            Value = "لا توجد مشاريع بعد. أنشئ أول مشروع."
+                            Value = "لا مشاريع بعد."
                         },
                         new
                         {
@@ -1124,20 +1316,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("70316694-acfe-d92c-0563-160a0dac969e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("1cfee5a9-d209-2e9d-94ef-0cb498c59a66"),
-                            Value = "Owner"
-                        },
-                        new
-                        {
-                            Id = new Guid("1683a75e-e83b-46b6-c8f0-c2aa8454a355"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("1cfee5a9-d209-2e9d-94ef-0cb498c59a66"),
-                            Value = "مالك"
-                        },
-                        new
-                        {
                             Id = new Guid("467aa725-2bac-e2f2-44d0-10e6dfdb3734"),
                             Language = "en",
                             TranslationKeyId = new Guid("de94612c-7a2b-ecec-f3db-2f5c5668a6fd"),
@@ -1432,20 +1610,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("fc16c245-10f9-3042-8c9c-7086d476a790"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("330531e9-4e44-a81e-24b5-2570e74d8624"),
-                            Value = "An owner cannot be disabled."
-                        },
-                        new
-                        {
-                            Id = new Guid("387924af-6253-0256-9ea8-c17696668154"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("330531e9-4e44-a81e-24b5-2570e74d8624"),
-                            Value = "لا يمكن تعطيل المالك."
-                        },
-                        new
-                        {
                             Id = new Guid("063f734c-da60-f010-7745-3fa11ed3b50b"),
                             Language = "en",
                             TranslationKeyId = new Guid("ffb71c12-ea7d-ca20-dec5-a15d0b18e64b"),
@@ -1471,20 +1635,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("b5b5508b-37fd-41f3-b79c-9d7d3a186860"),
                             Value = "رفض الخادم هذا التغيير."
-                        },
-                        new
-                        {
-                            Id = new Guid("ae5f116d-805c-ae24-0210-1e211da86d98"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b1c16daf-471f-19d3-bd2f-d991ff5983dd"),
-                            Value = "Projects and roles"
-                        },
-                        new
-                        {
-                            Id = new Guid("9a402a51-ff39-2ef1-99cc-f0c53b9020c0"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b1c16daf-471f-19d3-bd2f-d991ff5983dd"),
-                            Value = "المشاريع والأدوار"
                         },
                         new
                         {
@@ -1530,20 +1680,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a0e2e8bd-ae2d-429b-dce4-2499861ebcb4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("24c9a50b-452a-095c-fd8c-109f226a3d2e"),
-                            Value = "Financial supervisor in every project"
-                        },
-                        new
-                        {
-                            Id = new Guid("44898532-cbd5-b0b4-00ca-be6ee30e7984"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("24c9a50b-452a-095c-fd8c-109f226a3d2e"),
-                            Value = "مشرف مالي في كل المشاريع"
-                        },
-                        new
-                        {
                             Id = new Guid("93b4a40b-4efb-7496-4ab1-0ded8b7c25ba"),
                             Language = "en",
                             TranslationKeyId = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
@@ -1558,31 +1694,129 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("803d6961-e6f7-3611-f0b9-775459859f95"),
+                            Id = new Guid("3d54d177-caa7-2cf9-b250-a7faf032fa4e"),
                             Language = "en",
-                            TranslationKeyId = new Guid("138d9838-1214-18c4-353a-e046867ef1c6"),
-                            Value = "Tick a project and choose the role. The user sees only these projects."
+                            TranslationKeyId = new Guid("1d0bfe7c-785a-3170-264f-a825aa706b7a"),
+                            Value = "System admin"
                         },
                         new
                         {
-                            Id = new Guid("3d5743b9-fc24-6245-e2d3-253f8d5a85df"),
+                            Id = new Guid("1beea644-8d14-203f-7bfc-a76c377ad475"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("138d9838-1214-18c4-353a-e046867ef1c6"),
-                            Value = "حدد المشروع واختر الدور. لا يرى المستخدم غير هذه المشاريع."
+                            TranslationKeyId = new Guid("1d0bfe7c-785a-3170-264f-a825aa706b7a"),
+                            Value = "مسؤول النظام"
                         },
                         new
                         {
-                            Id = new Guid("79810273-c3f0-a7b6-089a-74cf4883a743"),
+                            Id = new Guid("750cb2f0-6200-d700-0def-3711392692f3"),
                             Language = "en",
-                            TranslationKeyId = new Guid("52aecb0e-293c-99d7-e301-7c1170f69229"),
-                            Value = "An owner is already in every project."
+                            TranslationKeyId = new Guid("a62c2d72-be90-19d8-a03f-098a766b52c3"),
+                            Value = "Project manager"
                         },
                         new
                         {
-                            Id = new Guid("2bf2f2ea-36c7-2a81-296b-604fd037bf81"),
+                            Id = new Guid("6207a112-1d6b-b0f0-a4c9-4e0f0f04cd07"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("52aecb0e-293c-99d7-e301-7c1170f69229"),
-                            Value = "المالك موجود في كل المشاريع."
+                            TranslationKeyId = new Guid("a62c2d72-be90-19d8-a03f-098a766b52c3"),
+                            Value = "مدير المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("82a7f452-d9bd-c965-b0db-090a461692ce"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e9c66f3b-3cb8-b275-e894-07f9ba54567e"),
+                            Value = "Roles"
+                        },
+                        new
+                        {
+                            Id = new Guid("aa310a01-1201-bc09-43ea-51d727a91762"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e9c66f3b-3cb8-b275-e894-07f9ba54567e"),
+                            Value = "الأدوار"
+                        },
+                        new
+                        {
+                            Id = new Guid("c6027d46-ab5d-17cd-0a22-8c9721382d00"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6fa63112-1d37-fb77-60d9-ac7be94f2cfa"),
+                            Value = "Tick what this person does in this project. Removing every role takes them out of it."
+                        },
+                        new
+                        {
+                            Id = new Guid("6a39a281-3d2c-31bc-3e66-f2d958f44601"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6fa63112-1d37-fb77-60d9-ac7be94f2cfa"),
+                            Value = "حدد ما يقوم به هذا الشخص في هذا المشروع. إلغاء كل الأدوار يخرجه منه."
+                        },
+                        new
+                        {
+                            Id = new Guid("a55a378b-9ecb-380f-5c8f-9188ea84affe"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5e7d1bc6-ced1-d4b3-ab2b-8e082f3acd7d"),
+                            Value = "Add an existing user"
+                        },
+                        new
+                        {
+                            Id = new Guid("1d40d7e9-9b93-793a-26f0-2da01ec0a8ec"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5e7d1bc6-ced1-d4b3-ab2b-8e082f3acd7d"),
+                            Value = "إضافة مستخدم موجود"
+                        },
+                        new
+                        {
+                            Id = new Guid("4b06f579-83c0-eb52-d25f-2f106c47ca1d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("47056225-e027-6aca-b0b6-2e8fa5e643f1"),
+                            Value = "No user has this username."
+                        },
+                        new
+                        {
+                            Id = new Guid("efbd0bc2-fa6c-4e87-6cfe-8878bc5284f3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("47056225-e027-6aca-b0b6-2e8fa5e643f1"),
+                            Value = "لا يوجد مستخدم بهذا الاسم."
+                        },
+                        new
+                        {
+                            Id = new Guid("65355d35-f035-39ad-0ba2-8c0840226745"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("40570779-c6e2-c38a-39f2-f3e822f57c3f"),
+                            Value = "That role cannot be given here."
+                        },
+                        new
+                        {
+                            Id = new Guid("d167311b-e9b1-4918-045b-fcea8aba6486"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("40570779-c6e2-c38a-39f2-f3e822f57c3f"),
+                            Value = "لا يمكن إسناد هذا الدور هنا."
+                        },
+                        new
+                        {
+                            Id = new Guid("6ddf9830-c72a-17ae-6149-02b6b5e4a47a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6cf5e100-bffd-f471-d6c8-ad244a4b6944"),
+                            Value = "A project needs at least one project manager."
+                        },
+                        new
+                        {
+                            Id = new Guid("0e1d056a-dfe5-3769-8ef4-3d6fc8536a23"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6cf5e100-bffd-f471-d6c8-ad244a4b6944"),
+                            Value = "يحتاج المشروع إلى مدير مشروع واحد على الأقل."
+                        },
+                        new
+                        {
+                            Id = new Guid("1d99d4ff-c3a1-f931-b2b5-eb0f28664540"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("39457e5d-d993-e945-7e48-548736d938d2"),
+                            Value = "This person also works in another project, so the system admin does this."
+                        },
+                        new
+                        {
+                            Id = new Guid("4decc0a4-2985-7259-41a7-955a02ace1b5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("39457e5d-d993-e945-7e48-548736d938d2"),
+                            Value = "يعمل هذا الشخص في مشروع آخر أيضاً، لذا يتولى ذلك مسؤول النظام."
                         });
                 });
 
@@ -1972,12 +2206,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("1cfee5a9-d209-2e9d-94ef-0cb498c59a66"),
-                            Description = "",
-                            Key = "users.owner"
-                        },
-                        new
-                        {
                             Id = new Guid("de94612c-7a2b-ecec-f3db-2f5c5668a6fd"),
                             Description = "",
                             Key = "users.disabled"
@@ -2104,12 +2332,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("330531e9-4e44-a81e-24b5-2570e74d8624"),
-                            Description = "",
-                            Key = "users.ownerCannotBeDisabled"
-                        },
-                        new
-                        {
                             Id = new Guid("ffb71c12-ea7d-ca20-dec5-a15d0b18e64b"),
                             Description = "",
                             Key = "users.noConnection"
@@ -2119,12 +2341,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b5b5508b-37fd-41f3-b79c-9d7d3a186860"),
                             Description = "",
                             Key = "users.refused"
-                        },
-                        new
-                        {
-                            Id = new Guid("b1c16daf-471f-19d3-bd2f-d991ff5983dd"),
-                            Description = "",
-                            Key = "users.projects"
                         },
                         new
                         {
@@ -2146,27 +2362,63 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("24c9a50b-452a-095c-fd8c-109f226a3d2e"),
-                            Description = "",
-                            Key = "users.everyProject"
-                        },
-                        new
-                        {
                             Id = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
                             Description = "",
                             Key = "users.noProjects"
                         },
                         new
                         {
-                            Id = new Guid("138d9838-1214-18c4-353a-e046867ef1c6"),
+                            Id = new Guid("1d0bfe7c-785a-3170-264f-a825aa706b7a"),
                             Description = "",
-                            Key = "users.projectsHint"
+                            Key = "users.roleSystem"
                         },
                         new
                         {
-                            Id = new Guid("52aecb0e-293c-99d7-e301-7c1170f69229"),
+                            Id = new Guid("a62c2d72-be90-19d8-a03f-098a766b52c3"),
                             Description = "",
-                            Key = "users.ownerIsInEveryProject"
+                            Key = "users.roleManager"
+                        },
+                        new
+                        {
+                            Id = new Guid("e9c66f3b-3cb8-b275-e894-07f9ba54567e"),
+                            Description = "",
+                            Key = "users.roles"
+                        },
+                        new
+                        {
+                            Id = new Guid("6fa63112-1d37-fb77-60d9-ac7be94f2cfa"),
+                            Description = "",
+                            Key = "users.rolesHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("5e7d1bc6-ced1-d4b3-ab2b-8e082f3acd7d"),
+                            Description = "",
+                            Key = "users.addExisting"
+                        },
+                        new
+                        {
+                            Id = new Guid("47056225-e027-6aca-b0b6-2e8fa5e643f1"),
+                            Description = "",
+                            Key = "users.unknownUser"
+                        },
+                        new
+                        {
+                            Id = new Guid("40570779-c6e2-c38a-39f2-f3e822f57c3f"),
+                            Description = "",
+                            Key = "users.invalidRole"
+                        },
+                        new
+                        {
+                            Id = new Guid("6cf5e100-bffd-f471-d6c8-ad244a4b6944"),
+                            Description = "",
+                            Key = "users.lastManager"
+                        },
+                        new
+                        {
+                            Id = new Guid("39457e5d-d993-e945-7e48-548736d938d2"),
+                            Description = "",
+                            Key = "users.otherProject"
                         });
                 });
 
@@ -2188,11 +2440,51 @@ namespace Redix.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Redix.Api.Auth.Role", b =>
+                {
+                    b.HasOne("Redix.Api.Translations.TranslationKey", null)
+                        .WithMany()
+                        .HasForeignKey("WordKey")
+                        .HasPrincipalKey("Key")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Auth.RolePermission", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Auth.UserRole", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Redix.Api.Projects.ProjectMember", b =>
                 {
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

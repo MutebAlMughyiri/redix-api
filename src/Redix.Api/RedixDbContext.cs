@@ -27,8 +27,17 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The real-estate development projects, each with its units.</summary>
     public DbSet<Project> Projects => Set<Project>();
 
-    /// <summary>Who works on which project, and as what; an owner has no rows, being a financial supervisor in every project.</summary>
+    /// <summary>Who works on which project, and as what: one row per role (FR-36).</summary>
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+
+    /// <summary>The roles, which are data (BR-32).</summary>
+    public DbSet<Role> Roles => Set<Role>();
+
+    /// <summary>What each role may do (BR-32).</summary>
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    /// <summary>The system-wide roles users hold.</summary>
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     /// <summary>
     /// Records <paramref name="action"/>, done by <paramref name="userId"/> at <paramref name="at"/>, to the tracked <paramref name="record"/>. Call it after the change
@@ -88,9 +97,32 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {
-            member.HasIndex(m => new { m.ProjectId, m.UserId }).IsUnique();
+            member.HasIndex(m => new { m.ProjectId, m.UserId, m.RoleId }).IsUnique();
             member.HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
             member.HasOne<User>().WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Restrict);
+            member.HasOne<Role>().WithMany().HasForeignKey(m => m.RoleId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Role>(role =>
+        {
+            role.ToTable(table => table.HasCheckConstraint("CK_Roles_Scope", $"[Scope] IN ({NamesOf<RoleScope>()})"));
+            role.Property(r => r.Scope).HasConversion<string>().HasMaxLength(10).IsUnicode(false);
+            role.Property(r => r.WordKey).HasMaxLength(100).IsUnicode(false);
+            role.HasOne<TranslationKey>().WithMany().HasForeignKey(r => r.WordKey).HasPrincipalKey(key => key.Key).OnDelete(DeleteBehavior.Restrict);
+            role.HasData(RoleSeed.Roles);
+        });
+        modelBuilder.Entity<RolePermission>(held =>
+        {
+            held.ToTable(table => table.HasCheckConstraint("CK_RolePermissions_Permission", $"[Permission] IN ({NamesOf<Permission>()})"));
+            held.Property(h => h.Permission).HasConversion<string>().HasMaxLength(30).IsUnicode(false);
+            held.HasIndex(h => new { h.RoleId, h.Permission }).IsUnique();
+            held.HasOne<Role>().WithMany().HasForeignKey(h => h.RoleId).OnDelete(DeleteBehavior.Restrict);
+            held.HasData(RoleSeed.RolePermissions);
+        });
+        modelBuilder.Entity<UserRole>(row =>
+        {
+            row.HasIndex(r => new { r.UserId, r.RoleId }).IsUnique();
+            row.HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
+            row.HasOne<Role>().WithMany().HasForeignKey(r => r.RoleId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<AuditRecord>(audit =>
         {
@@ -112,4 +144,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             }
         }
     }
+
+    private static string NamesOf<TEnum>() where TEnum : struct, Enum => string.Join(", ", Enum.GetNames<TEnum>().Select(name => $"'{name}'"));
 }

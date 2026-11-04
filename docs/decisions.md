@@ -6,6 +6,13 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | Owner is gone. Each project has its own Project manager, and one System admin role starts projects and manages logins | Muteb: "each real estate project should has separate admin. each project is separate completely from other projects". Rows below that name an owner are history |
+| 2026-11-05 | One login across projects, with a role per project and a project list after sign-in | Muteb, and FR-37. A login is the only thing projects share |
+| 2026-11-05 | A login is changed with `ManageLogins`, or with `ManageUsers` in every project it is in | A login is shared, so otherwise one project's manager could reset a password and sign in to another project |
+| 2026-11-05 | Roles and their permissions are rows; which permissions exist is code | Muteb: "make all of roles to be configurable from data base". A permission means something only when a route names it |
+| 2026-11-05 | One ASP.NET Core policy per permission, answered by one `AuthorizationHandler`, read from the database on each request | Muteb: "no work arounds or customizations". A change counts at the next request, and nothing about roles is in the token |
+| 2026-11-05 | One table holds user, project and role | With a user-role table and a user-project table, nothing says which role goes with which project |
+| 2026-11-05 | Only the permissions a route uses exist, plus `SeeAllCapital`; each later use case adds its own | A permission with no route is dead code; the BRS matrix already says who gets each |
 | 2026-11-05 | An owner has no `ProjectMembers` rows: being a financial supervisor in every project is what being an owner means | The wrong state cannot be stored: an owner's role cannot be lost, and a new project needs nothing added for owners |
 | 2026-11-05 | Three roles: `FinanceSupervisor`, `FieldSupervisor`, and `Reader`, which Muteb added | Reader is the least a user can be given; what it may do arrives with UC-009 |
 | 2026-11-05 | `ProjectMembers` has its own `Id`, with project and user unique together | The audit trail names one record by one id |
@@ -28,7 +35,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 | 2026-11-01 | Every endpoint is closed by default (a fallback policy) and opened explicitly | A new endpoint cannot be left open by mistake; an unknown address answers 401 to an anonymous caller, revealing nothing |
 | 2026-11-01 | A wrong current password on the change screen answers 400, not 401 | 401 means the session ended; the app renews and retries on 401, which must not happen for a typing mistake |
 | 2026-11-01 | Sign-in uses ASP.NET Core's `PasswordHasher`, a 15-minute JWT access token, and a refresh token stored as its hash, replaced at each renewal and expired after 12 hours unused | The framework's own pieces; the idle period answers NFR-09, which gives no number |
-| 2026-11-01 | The first owner is created by EF Core's seeding from the `REDIX_Owner__*` environment variables, with a password that must be changed | No password or hash ever sits in the repo or a migration |
+| 2026-11-01 | The first owner, now the system admin (`REDIX_SystemAdmin__*`), is created by EF Core's seeding from the `REDIX_Owner__*` environment variables, with a password that must be changed | No password or hash ever sits in the repo or a migration |
 | 2026-11-01 | Tests run on their own database, `RedixTests`, rebuilt each run | Tests never touch the developer's data and start from a known state |
 | 2026-11-01 | Every gap, bug and finding goes into the pinned issue "Findings: open gaps, bugs and decisions" | One list, so nothing is lost between sessions |
 | 2026-11-01 | Secrets live in Windows user environment variables prefixed `REDIX_` | Never in the repo, readable only by the developer's account, and no other .NET project picks them up |

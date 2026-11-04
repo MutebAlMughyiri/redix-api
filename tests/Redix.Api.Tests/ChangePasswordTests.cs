@@ -20,7 +20,7 @@ public class ChangePasswordTests(MigratedApiFactory factory)
     {
         var response = await factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, password));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return (await response.Content.ReadFromJsonAsync<Session>())!;
+        return (await response.Content.ReadFromJsonAsync<Session>(MigratedApiFactory.Json))!;
     }
 
     private Task<HttpResponseMessage> ChangePasswordAsync(string accessToken, string currentPassword, string newPassword)
@@ -42,7 +42,7 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         var response = await ChangePasswordAsync(session.AccessToken, Password, NewPassword);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.False((await response.Content.ReadFromJsonAsync<Session>())!.MustChangePassword);
+        Assert.False((await response.Content.ReadFromJsonAsync<Session>(MigratedApiFactory.Json))!.MustChangePassword);
         Assert.False((await SignInAsync(user.Username, NewPassword)).MustChangePassword);
     }
 
@@ -84,7 +84,7 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         var thisPhone = await SignInAsync(user.Username, Password);
         var otherPhone = await SignInAsync(user.Username, Password);
 
-        var changed = await (await ChangePasswordAsync(thisPhone.AccessToken, Password, NewPassword)).Content.ReadFromJsonAsync<Session>();
+        var changed = await (await ChangePasswordAsync(thisPhone.AccessToken, Password, NewPassword)).Content.ReadFromJsonAsync<Session>(MigratedApiFactory.Json);
 
         var otherRefresh = await factory.CreateClient().PostAsJsonAsync("/auth/refresh", new RefreshRequest(otherPhone.RefreshToken));
         var thisRefresh = await factory.CreateClient().PostAsJsonAsync("/auth/refresh", new RefreshRequest(changed!.RefreshToken));
