@@ -16,7 +16,7 @@ public static class ProjectsEndpoints
         projects.MapPost("/{projectId:guid}/close", Close);
     }
 
-    /// <summary>Every project, running ones first and then the newest, each with its units; a closed project stays listed, with its reports (AC-04.1).</summary>
+    /// <summary>Every project, running ones first and then the newest, each with its units; a finished project stays listed, with its reports (AC-04.1).</summary>
     /// <param name="db">The database the projects live in.</param>
     public static async Task<List<ProjectView>> List(RedixDbContext db)
     {
@@ -26,8 +26,11 @@ public static class ProjectsEndpoints
         return projects.Select(ProjectView.Of).ToList();
     }
 
-    /// <summary>Creates a running project with no units yet. An empty name, or one longer than <see cref="Project.NameMaxLength"/>, answers <c>invalidName</c>.</summary>
-    /// <param name="request">The project's name and start date.</param>
+    /// <summary>
+    /// Creates a running project with its units, all or nothing. An empty name, or one longer than <see cref="Project.NameMaxLength"/>, for the project or any
+    /// unit, answers <c>invalidName</c> and saves nothing.
+    /// </summary>
+    /// <param name="request">The project's name, start date and units.</param>
     /// <param name="db">The database the project is added to.</param>
     public static async Task<IResult> Create(CreateProjectRequest request, RedixDbContext db)
     {
@@ -38,19 +41,27 @@ public static class ProjectsEndpoints
         }
 
         var project = new Project { Name = name, StartDate = request.StartDate };
+        foreach (var unitName in request.Units)
+        {
+            if (project.AddUnit(unitName.Trim()) != ProjectChangeOutcome.Done)
+            {
+                return Refusal.Of(StatusCodes.Status400BadRequest, nameof(ProjectChangeOutcome.InvalidName));
+            }
+        }
+
         db.Projects.Add(project);
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{project.Id}", ProjectView.Of(project));
     }
 
-    /// <summary>Adds a unit at the end of the project's list. A closed project answers <c>projectClosed</c>; an unacceptable name, <c>invalidName</c>.</summary>
+    /// <summary>Adds a unit at the end of the project's list. A finished project answers <c>projectFinished</c>; an unacceptable name, <c>invalidName</c>.</summary>
     /// <param name="projectId">The project the unit belongs to.</param>
     /// <param name="request">The unit's name.</param>
     /// <param name="db">The database the project lives in.</param>
     public static Task<IResult> AddUnit(Guid projectId, AddUnitRequest request, RedixDbContext db) =>
         ChangeAsync(projectId, db, project => project.AddUnit(request.Name.Trim()));
 
-    /// <summary>Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A closed project answers <c>projectClosed</c>.</summary>
+    /// <summary>Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>.</summary>
     /// <param name="projectId">The project to close.</param>
     /// <param name="db">The database the project lives in.</param>
     public static Task<IResult> Close(Guid projectId, RedixDbContext db) => ChangeAsync(projectId, db, project => project.Close());
@@ -77,7 +88,8 @@ public static class ProjectsEndpoints
 /// <summary>What the app sends to create a project.</summary>
 /// <param name="Name">The project's name.</param>
 /// <param name="StartDate">The day the project started.</param>
-public record CreateProjectRequest(string Name, DateOnly StartDate);
+/// <param name="Units">The names of the project's units, in order; may be empty.</param>
+public record CreateProjectRequest(string Name, DateOnly StartDate, List<string> Units);
 
 /// <summary>What the app sends to add a unit.</summary>
 /// <param name="Name">The unit's name.</param>
@@ -87,7 +99,7 @@ public record AddUnitRequest(string Name);
 /// <param name="Id">The project's id.</param>
 /// <param name="Name">The project's name.</param>
 /// <param name="StartDate">The day the project started.</param>
-/// <param name="Status"><c>running</c>, or <c>closed</c> once read-only.</param>
+/// <param name="Status"><c>running</c>, or <c>finished</c> once read-only.</param>
 /// <param name="Units">The project's units, in order.</param>
 public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, List<UnitView> Units)
 {

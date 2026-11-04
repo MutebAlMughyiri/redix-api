@@ -6,6 +6,10 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | A new project and its units are one request, saved together | A lost network cannot leave half a project |
+| 2026-11-05 | The status is `Finished` (منتهٍ), and the refusal `projectFinished`; closing stays the action | The glossary owns code names; the status is stored as a number, so no data changed |
+| 2026-11-05 | A request with a missing or null field answers 400, through two serializer settings | One rule for every request record, instead of a check on each field |
+| 2026-11-05 | The session says whether its user is an owner | The app shows what only an owner may do; UC-009 replaces it when project roles decide |
 | 2026-11-01 | Projects are managed by owners only until UC-008 brings project roles; the access token says whether its user is an owner | BR-29 makes an owner a financial supervisor in every project, and no other user has a project role yet |
 | 2026-11-01 | GUID ids are made in code for every table, declared once in `RedixDbContext` | A record added through a navigation, such as a project's unit, is inserted; without it EF Core takes a set GUID for an existing row |
 | 2026-11-01 | Project and unit names need not be unique | The BRS sets no rule; whether to refuse a repeated name waits in the findings issue (row 24) |

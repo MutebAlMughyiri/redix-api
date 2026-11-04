@@ -46,7 +46,7 @@ public static class AuthEndpoints
         db.Devices.Add(device);
         db.Audit(user, AuditAction.SignIn, user.Id, now);
         await db.SaveChangesAsync();
-        return Results.Ok(new Session(accessTokens.Create(user, device.Id), refreshToken, user.MustChangePassword));
+        return Results.Ok(Session.Of(user, accessTokens.Create(user, device.Id), refreshToken));
     }
 
     /// <summary>
@@ -72,7 +72,7 @@ public static class AuthEndpoints
 
         var refreshToken = signedIn.Device.RenewRefreshToken(now);
         await db.SaveChangesAsync();
-        return Results.Ok(new Session(accessTokens.Create(signedIn.User, signedIn.Device.Id), refreshToken, signedIn.User.MustChangePassword));
+        return Results.Ok(Session.Of(signedIn.User, accessTokens.Create(signedIn.User, signedIn.Device.Id), refreshToken));
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public static class AuthEndpoints
         var refreshToken = thisDevice.RenewRefreshToken(now);
         db.Audit(user, AuditAction.ChangePassword, user.Id, now);
         await db.SaveChangesAsync();
-        return Results.Ok(new Session(accessTokens.Create(user, thisDevice.Id), refreshToken, user.MustChangePassword));
+        return Results.Ok(Session.Of(user, accessTokens.Create(user, thisDevice.Id), refreshToken));
     }
 }
 
@@ -135,4 +135,9 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 /// <param name="AccessToken">Sent with each request; valid for 15 minutes.</param>
 /// <param name="RefreshToken">Renews the session; replaced at each renewal and expired after 12 hours unused.</param>
 /// <param name="MustChangePassword">True while the password is temporary and must be changed before anything else.</param>
-public record Session(string AccessToken, string RefreshToken, bool MustChangePassword);
+/// <param name="IsOwner">True for an owner, a financial supervisor in every project (BR-29); the app shows what only an owner may do.</param>
+public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, bool IsOwner)
+{
+    /// <summary>The session of <paramref name="user"/> with these tokens.</summary>
+    public static Session Of(User user, string accessToken, string refreshToken) => new(accessToken, refreshToken, user.MustChangePassword, user.IsOwner);
+}

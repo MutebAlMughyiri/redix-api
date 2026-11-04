@@ -7,5 +7,5 @@ public enum ProjectStatus : byte
     Running,
 
     /// <summary>Finished: read-only, with its reports still available (AC-04.1).</summary>
-    Closed,
+    Finished,
 }

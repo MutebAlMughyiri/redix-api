@@ -1,7 +1,7 @@
 namespace Redix.Api.Projects;
 
 /// <summary>
-/// A real-estate development project (FR-04): its name, its start date and its units. It owns the rule that a closed project is read-only,
+/// A real-estate development project (FR-04): its name, its start date and its units. It owns the rule that a finished project is read-only,
 /// while its reports stay available (AC-04.1).
 /// </summary>
 public class Project
@@ -18,24 +18,24 @@ public class Project
     /// <summary>The day the project started.</summary>
     public DateOnly StartDate { get; init; }
 
-    /// <summary>Running, or closed once finished.</summary>
+    /// <summary>Running, or finished once closed.</summary>
     public ProjectStatus Status { get; private set; } = ProjectStatus.Running;
 
     /// <summary>The project's units, in the order they were added.</summary>
     public List<Unit> Units { get; } = [];
 
-    /// <summary>True once the project is closed: nothing in it changes any more (AC-04.1).</summary>
-    public bool IsReadOnly => Status == ProjectStatus.Closed;
+    /// <summary>True once the project is finished: nothing in it changes any more (AC-04.1).</summary>
+    public bool IsReadOnly => Status == ProjectStatus.Finished;
 
     /// <summary>Whether <paramref name="name"/>, already trimmed, may name a project or a unit: not empty, and at most <see cref="NameMaxLength"/> characters.</summary>
     public static bool IsAcceptableName(string name) => name.Length is > 0 and <= NameMaxLength;
 
-    /// <summary>Adds a unit named <paramref name="name"/> at the end of the list, unless the project is closed or the name is not acceptable.</summary>
+    /// <summary>Adds a unit named <paramref name="name"/> at the end of the list, unless the project is finished or the name is not acceptable.</summary>
     public ProjectChangeOutcome AddUnit(string name)
     {
         if (IsReadOnly)
         {
-            return ProjectChangeOutcome.ProjectClosed;
+            return ProjectChangeOutcome.ProjectFinished;
         }
         if (!IsAcceptableName(name))
         {
@@ -45,14 +45,14 @@ public class Project
         return ProjectChangeOutcome.Done;
     }
 
-    /// <summary>Closes the finished project, which is read-only from then on (AC-04.1); a closed project cannot be closed again.</summary>
+    /// <summary>Closes the finished project, which is read-only from then on (AC-04.1); a finished project cannot be closed again.</summary>
     public ProjectChangeOutcome Close()
     {
         if (IsReadOnly)
         {
-            return ProjectChangeOutcome.ProjectClosed;
+            return ProjectChangeOutcome.ProjectFinished;
         }
-        Status = ProjectStatus.Closed;
+        Status = ProjectStatus.Finished;
         return ProjectChangeOutcome.Done;
     }
 }

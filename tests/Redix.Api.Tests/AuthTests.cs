@@ -54,6 +54,21 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task ASessionSaysWhetherItsUserIsAnOwner()
+    {
+        var owner = await factory.AddUserAsync(Password, isOwner: true);
+        var user = await factory.AddUserAsync(Password);
+
+        var ownerSession = await SessionOf(await SignInAsync(owner.Username, Password));
+        var userSession = await SessionOf(await SignInAsync(user.Username, Password));
+        var renewedOwnerSession = await SessionOf(await RefreshAsync(ownerSession.RefreshToken));
+
+        Assert.True(ownerSession.IsOwner);
+        Assert.False(userSession.IsOwner);
+        Assert.True(renewedOwnerSession.IsOwner);
+    }
+
+    [Fact]
     public async Task ASignInIsInTheAuditTrailWithTheUserAndTheTime()
     {
         var user = await factory.AddUserAsync(Password);

@@ -6,8 +6,8 @@ public enum ProjectChangeOutcome
     /// <summary>The change is made.</summary>
     Done,
 
-    /// <summary>The project is closed, so it is read-only (AC-04.1).</summary>
-    ProjectClosed,
+    /// <summary>The project is finished, so it is read-only (AC-04.1).</summary>
+    ProjectFinished,
 
     /// <summary>The name is empty or longer than <see cref="Project.NameMaxLength"/> characters.</summary>
     InvalidName,

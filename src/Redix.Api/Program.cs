@@ -34,7 +34,13 @@ builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSeeding((context, _) => OwnerSeed.Seed(context, services))
     .UseAsyncSeeding((context, _, cancellation) => OwnerSeed.SeedAsync(context, services, cancellation)));
 builder.Services.AddProblemDetails();
-builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.RespectRequiredConstructorParameters = true;
+    options.SerializerOptions.RespectNullableAnnotations = true;
+});
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = false);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks().AddDbContextCheck<RedixDbContext>();
 

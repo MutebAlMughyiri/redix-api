@@ -38,6 +38,7 @@ A session is a JWT access token valid 15 minutes, a refresh token, and whether t
 | Only the refresh token's hash is stored | `Device.HashOf` | Enforced by the model |
 | The first owner comes from configuration and must change the password (BR-29) | `OwnerSeed`, run by EF Core's seeding | `AuthTests.TheFirstOwnerIsSeededFromConfigurationAndMustChangeThePassword` |
 | A sign-in is in the audit trail with the user and the time (UC-005) | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheAuditTrailWithTheUserAndTheTime` |
+| Every session says whether its user is an owner (UC-006) | `Session.Of` | `AuthTests.ASessionSaysWhetherItsUserIsAnOwner` |
 
 ## Left to later use cases
 
