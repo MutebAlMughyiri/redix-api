@@ -61,7 +61,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
         modelBuilder.Entity<User>(user =>
         {
-            user.Property(u => u.Username).HasMaxLength(50);
+            user.Property(u => u.Username).HasMaxLength(User.UsernameMaxLength);
+            user.Property(u => u.DisplayName).HasMaxLength(User.NameMaxLength);
+            user.Property(u => u.Mobile).HasMaxLength(User.MobileMaxLength).IsUnicode(false);
             user.HasIndex(u => u.Username).IsUnique();
             user.Property(u => u.PasswordHash).HasMaxLength(200).IsUnicode(false);
         });

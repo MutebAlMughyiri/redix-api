@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | Users are managed by owners only, and an owner cannot be disabled | BR-29 names users as an owner's and keeps at least one owner |
+| 2026-11-05 | The owner types a temporary password and passes it on; a reset also ends the lock and signs out every device | As the canvas draws it; a locked user could not use the new password, and a forgotten password may mean a lost phone |
+| 2026-11-05 | Each change to a user has its own audit action | The trail then says what was done, as it does with `SignIn` |
 | 2026-11-05 | A new project and its units are one request, saved together | A lost network cannot leave half a project |
 | 2026-11-05 | The status is `Finished` (منتهٍ), and the refusal `projectFinished`; closing stays the action | The glossary owns code names; the status is stored as a number, so no data changed |
 | 2026-11-05 | A request with a missing or null field answers 400, through two serializer settings | One rule for every request record, instead of a check on each field |

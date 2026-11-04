@@ -62,5 +62,6 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.MapTranslations();
 app.MapAuth();
 app.MapProjects();
+app.MapUsers();
 
 app.Run();

@@ -125,6 +125,11 @@ namespace Redix.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int>("FailedSignIns")
                         .HasColumnType("int");
 
@@ -136,6 +141,12 @@ namespace Redix.Api.Migrations
 
                     b.Property<DateTime>("LockedUntil")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("bit");
@@ -719,16 +730,16 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("5ce294ad-7754-003c-589e-13241db904ac"),
+                            Id = new Guid("1cad9dfd-1dff-8acf-d4b7-af03de63d8ba"),
                             Language = "en",
-                            TranslationKeyId = new Guid("aca7de3b-4f59-66c5-96f6-ec752a6213b0"),
+                            TranslationKeyId = new Guid("b00962cf-aa2b-7a27-ff57-2a5eebbcf125"),
                             Value = "Try again"
                         },
                         new
                         {
-                            Id = new Guid("ebb8cac9-5da0-39b8-4540-43a5a99fc371"),
+                            Id = new Guid("a791b7b6-01c0-611a-fa72-142e915ae419"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("aca7de3b-4f59-66c5-96f6-ec752a6213b0"),
+                            TranslationKeyId = new Guid("b00962cf-aa2b-7a27-ff57-2a5eebbcf125"),
                             Value = "حاول مرة أخرى"
                         },
                         new
@@ -887,16 +898,16 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("4eb76426-4b41-58e7-8875-205425073ad0"),
+                            Id = new Guid("40334390-4fa3-9236-1fa2-098fbe4d0e41"),
                             Language = "en",
-                            TranslationKeyId = new Guid("4825b12b-ea0e-a90e-b30f-27310529ae46"),
+                            TranslationKeyId = new Guid("d6dd0fc7-b558-91bd-9b9f-bf48c8e2cde9"),
                             Value = "Cancel"
                         },
                         new
                         {
-                            Id = new Guid("08adf53e-6994-bfcc-5fa9-c8d334f74fd8"),
+                            Id = new Guid("3042eff0-ba9f-2cb5-8bde-09ff6a02d391"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("4825b12b-ea0e-a90e-b30f-27310529ae46"),
+                            TranslationKeyId = new Guid("d6dd0fc7-b558-91bd-9b9f-bf48c8e2cde9"),
                             Value = "إلغاء"
                         },
                         new
@@ -995,6 +1006,398 @@ namespace Redix.Api.Migrations
                             Id = new Guid("98ad487b-af55-b8eb-5d3e-e4724c6aaf3e"),
                             Language = "ar",
                             TranslationKeyId = new Guid("10db82b0-b441-b891-b34f-2c0877e937a5"),
+                            Value = "رفض الخادم هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("824ddda2-086c-0620-f7f9-1d01831345e8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a4113921-35de-ca8a-a341-140a9fb13728"),
+                            Value = "Users"
+                        },
+                        new
+                        {
+                            Id = new Guid("8adcd323-1366-adc4-cd92-5bc04d3aa8f2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a4113921-35de-ca8a-a341-140a9fb13728"),
+                            Value = "المستخدمون"
+                        },
+                        new
+                        {
+                            Id = new Guid("1c11b7d7-e069-0b2b-2ef4-a67430835f22"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("47245a21-fa0d-0f99-b5fe-c01ba2f395f1"),
+                            Value = "New user"
+                        },
+                        new
+                        {
+                            Id = new Guid("7898a82b-821a-556b-1853-a79e5c7944b2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("47245a21-fa0d-0f99-b5fe-c01ba2f395f1"),
+                            Value = "مستخدم جديد"
+                        },
+                        new
+                        {
+                            Id = new Guid("d34f2b37-d8e2-af17-a407-cfb54eee8f9c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8a75bd17-549c-a12f-2cbf-bae1881dfcaf"),
+                            Value = "Could not load the users. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("b85b59c8-a2cb-53a1-0a6e-4543545e9872"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8a75bd17-549c-a12f-2cbf-bae1881dfcaf"),
+                            Value = "تعذّر تحميل المستخدمين. تحقق من الشبكة وحاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("70316694-acfe-d92c-0563-160a0dac969e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1cfee5a9-d209-2e9d-94ef-0cb498c59a66"),
+                            Value = "Owner"
+                        },
+                        new
+                        {
+                            Id = new Guid("1683a75e-e83b-46b6-c8f0-c2aa8454a355"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1cfee5a9-d209-2e9d-94ef-0cb498c59a66"),
+                            Value = "مالك"
+                        },
+                        new
+                        {
+                            Id = new Guid("467aa725-2bac-e2f2-44d0-10e6dfdb3734"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("de94612c-7a2b-ecec-f3db-2f5c5668a6fd"),
+                            Value = "Disabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("f2897876-7a7e-6d7c-37eb-ff9c14a73c31"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("de94612c-7a2b-ecec-f3db-2f5c5668a6fd"),
+                            Value = "معطّل"
+                        },
+                        new
+                        {
+                            Id = new Guid("8baa24c5-a100-2237-c76f-1ad966f9f9b4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0b1a31ce-eb65-a16c-5c69-50e215cbaa39"),
+                            Value = "Edit"
+                        },
+                        new
+                        {
+                            Id = new Guid("15c5dddc-fd5b-d50c-9eca-fda7d18221c9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0b1a31ce-eb65-a16c-5c69-50e215cbaa39"),
+                            Value = "تعديل"
+                        },
+                        new
+                        {
+                            Id = new Guid("f56cf8ff-87f7-d8a4-a5f6-3ca02ec209fc"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("972d0715-2cc6-7472-abcd-adb29f039c1e"),
+                            Value = "Reset password"
+                        },
+                        new
+                        {
+                            Id = new Guid("63d12455-aeed-2107-bf58-856365e611fd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("972d0715-2cc6-7472-abcd-adb29f039c1e"),
+                            Value = "إعادة تعيين كلمة المرور"
+                        },
+                        new
+                        {
+                            Id = new Guid("33cec58f-f17f-ec8b-196f-200d1e78db83"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3480e79d-9b47-988e-38f4-103a9e372d40"),
+                            Value = "Disable"
+                        },
+                        new
+                        {
+                            Id = new Guid("76acd042-4716-fdee-de80-d419292e9604"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3480e79d-9b47-988e-38f4-103a9e372d40"),
+                            Value = "تعطيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0bd8ac0-7611-d6ea-4225-70813262f85d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("671d1d80-10e0-c2be-de3d-3a3361cf496b"),
+                            Value = "Enable"
+                        },
+                        new
+                        {
+                            Id = new Guid("76e19e53-274c-bdd5-57cf-73e421bcc386"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("671d1d80-10e0-c2be-de3d-3a3361cf496b"),
+                            Value = "تفعيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("23ad0c7a-5843-e59f-7422-d8df769f75c0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f58e0ce6-f8d0-df50-fbd6-c38656f3d36a"),
+                            Value = "Name"
+                        },
+                        new
+                        {
+                            Id = new Guid("763474b4-80bd-24cd-b736-1e61d551dd3c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f58e0ce6-f8d0-df50-fbd6-c38656f3d36a"),
+                            Value = "الاسم"
+                        },
+                        new
+                        {
+                            Id = new Guid("ee253398-1340-6bd6-c74c-055af47c8aa2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1468ab7b-9abc-30b7-2414-7358c4ee6567"),
+                            Value = "The name as it shows on entries"
+                        },
+                        new
+                        {
+                            Id = new Guid("bd07f295-e1fe-244d-c14c-8db6968c80ab"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1468ab7b-9abc-30b7-2414-7358c4ee6567"),
+                            Value = "الاسم كما يظهر في القيود"
+                        },
+                        new
+                        {
+                            Id = new Guid("d90f5917-14c9-b5ec-bbb4-daf7ee1bc8b7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("da549b6c-99ef-56a4-0cae-1691856311f8"),
+                            Value = "Username"
+                        },
+                        new
+                        {
+                            Id = new Guid("f09e94cd-299b-32b9-e872-f062bff0c962"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("da549b6c-99ef-56a4-0cae-1691856311f8"),
+                            Value = "اسم المستخدم"
+                        },
+                        new
+                        {
+                            Id = new Guid("7dc0dba1-da42-fba6-46a2-adcf62ec1493"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a60f5052-361e-e04f-d287-c7a05df71feb"),
+                            Value = "Mobile"
+                        },
+                        new
+                        {
+                            Id = new Guid("59543b95-d796-b41a-fbe1-d2085e9d87af"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a60f5052-361e-e04f-d287-c7a05df71feb"),
+                            Value = "الجوال"
+                        },
+                        new
+                        {
+                            Id = new Guid("1951c2e7-f090-4df1-5aee-5f8f05986cd2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5e05bf11-75f0-72c2-a100-c3f1f4569848"),
+                            Value = "Temporary password"
+                        },
+                        new
+                        {
+                            Id = new Guid("c91218ab-8fe6-4e4f-19f3-41ee196eecae"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5e05bf11-75f0-72c2-a100-c3f1f4569848"),
+                            Value = "كلمة مرور مؤقتة"
+                        },
+                        new
+                        {
+                            Id = new Guid("b32b53f8-6ae7-5b8a-4d87-e1924588dfb5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1a928387-fb91-5a82-e042-9b39ad419467"),
+                            Value = "Changed at first sign-in"
+                        },
+                        new
+                        {
+                            Id = new Guid("5d8b19f0-31ee-0468-e90c-0c17a6cae0f0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1a928387-fb91-5a82-e042-9b39ad419467"),
+                            Value = "تُغيَّر عند أول دخول"
+                        },
+                        new
+                        {
+                            Id = new Guid("8728059e-aa91-1f07-1cc4-550ffdcc7787"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4d59cc79-fba1-0d84-cbce-f1075f701ce9"),
+                            Value = "Add user"
+                        },
+                        new
+                        {
+                            Id = new Guid("40eff482-ba9e-dfc4-5d89-2e2c87694911"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4d59cc79-fba1-0d84-cbce-f1075f701ce9"),
+                            Value = "إضافة المستخدم"
+                        },
+                        new
+                        {
+                            Id = new Guid("225734b9-d03f-0039-6ab9-f13027c19c5d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a2d5cbb9-4863-2ef9-3685-ccbcbd18f8c0"),
+                            Value = "Save"
+                        },
+                        new
+                        {
+                            Id = new Guid("5fb7173c-f1be-c1e4-e8d2-df3e2ebf7a94"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a2d5cbb9-4863-2ef9-3685-ccbcbd18f8c0"),
+                            Value = "حفظ"
+                        },
+                        new
+                        {
+                            Id = new Guid("a68e5578-e7f1-59ca-104b-a58c554d208c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1fe446b5-0aae-679c-1a2b-e689d8fc61ff"),
+                            Value = "Disable this user?"
+                        },
+                        new
+                        {
+                            Id = new Guid("bc73d6f9-aa26-0808-a87b-6ae8fcdcf2a6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1fe446b5-0aae-679c-1a2b-e689d8fc61ff"),
+                            Value = "تعطيل هذا المستخدم؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("51428f67-c525-7ce4-c883-d52a40432206"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e713af45-a01a-1dd8-c532-07221dd9d129"),
+                            Value = "They are signed out at their next action, and cannot sign in until enabled."
+                        },
+                        new
+                        {
+                            Id = new Guid("bd567479-be43-96a7-14ff-495c1c53b137"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e713af45-a01a-1dd8-c532-07221dd9d129"),
+                            Value = "يُسجَّل خروجه عند أول إجراء تالٍ، ولا يستطيع الدخول حتى يُفعَّل."
+                        },
+                        new
+                        {
+                            Id = new Guid("9c3a7252-4527-c446-ab4f-ef96b47b9bc6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("18868db1-2bd7-13d2-3ec2-89c757f56775"),
+                            Value = "They are signed out, and must choose a new password at their next sign-in."
+                        },
+                        new
+                        {
+                            Id = new Guid("154467ea-dd73-094d-112a-d6a4252d5034"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("18868db1-2bd7-13d2-3ec2-89c757f56775"),
+                            Value = "يُسجَّل خروجه، ويجب أن يختار كلمة مرور جديدة عند دخوله التالي."
+                        },
+                        new
+                        {
+                            Id = new Guid("528d2dd3-7f1a-20fe-8a40-55ac99701dd0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8337a03e-1096-507f-c92d-0e6cde9f22f2"),
+                            Value = "Enter a name of 1 to 100 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0564a0-4f59-daac-217c-202925930cf3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8337a03e-1096-507f-c92d-0e6cde9f22f2"),
+                            Value = "اكتب اسماً من 1 إلى 100 حرف."
+                        },
+                        new
+                        {
+                            Id = new Guid("465e2404-09f6-8303-578a-c669cf18aa29"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("84411198-0da1-63ee-0dff-15f9ebe1da55"),
+                            Value = "Enter a username of 1 to 50 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("50256a83-ee73-f9bd-8abc-1426bdcfc3a8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("84411198-0da1-63ee-0dff-15f9ebe1da55"),
+                            Value = "اكتب اسم مستخدم من 1 إلى 50 حرفاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("6316b8e7-2f05-0e2b-341e-98ae3e9e2a5b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("54aa5f3c-f52e-21c8-3edd-77b7485d1b95"),
+                            Value = "Enter a mobile of up to 20 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("09091696-ccfc-2c4b-2fb6-30a990acc27b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("54aa5f3c-f52e-21c8-3edd-77b7485d1b95"),
+                            Value = "اكتب رقم جوال من 20 حرفاً على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("e34d1ae3-d6c8-96c7-2629-cc1d38e22b70"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bd8e32e1-ea45-cc38-b532-6d9b116ce501"),
+                            Value = "This username is taken. Choose another."
+                        },
+                        new
+                        {
+                            Id = new Guid("ecb7fbf3-ee85-8368-44c7-7e094c1cb98f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bd8e32e1-ea45-cc38-b532-6d9b116ce501"),
+                            Value = "اسم المستخدم هذا مستخدم. اختر غيره."
+                        },
+                        new
+                        {
+                            Id = new Guid("7f1c7913-3212-6c3d-8bc6-938f059a033e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1a09023f-e56b-1467-f632-099aef723ce3"),
+                            Value = "Use at least 8 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("a8fd20c5-eedd-da6a-7a8a-dd5e35e7c419"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1a09023f-e56b-1467-f632-099aef723ce3"),
+                            Value = "استخدم 8 أحرف على الأقل."
+                        },
+                        new
+                        {
+                            Id = new Guid("fc16c245-10f9-3042-8c9c-7086d476a790"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("330531e9-4e44-a81e-24b5-2570e74d8624"),
+                            Value = "An owner cannot be disabled."
+                        },
+                        new
+                        {
+                            Id = new Guid("387924af-6253-0256-9ea8-c17696668154"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("330531e9-4e44-a81e-24b5-2570e74d8624"),
+                            Value = "لا يمكن تعطيل المالك."
+                        },
+                        new
+                        {
+                            Id = new Guid("063f734c-da60-f010-7745-3fa11ed3b50b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ffb71c12-ea7d-ca20-dec5-a15d0b18e64b"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("bc4dd455-c1c0-c109-0c10-cb19970e85c8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ffb71c12-ea7d-ca20-dec5-a15d0b18e64b"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("86a308aa-bd62-a572-52c0-513e73e9b87e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b5b5508b-37fd-41f3-b79c-9d7d3a186860"),
+                            Value = "The server refused this change."
+                        },
+                        new
+                        {
+                            Id = new Guid("509149e7-bae6-f85b-cfab-ce48ad7efd41"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b5b5508b-37fd-41f3-b79c-9d7d3a186860"),
                             Value = "رفض الخادم هذا التغيير."
                         });
                 });
@@ -1229,9 +1632,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("aca7de3b-4f59-66c5-96f6-ec752a6213b0"),
+                            Id = new Guid("b00962cf-aa2b-7a27-ff57-2a5eebbcf125"),
                             Description = "",
-                            Key = "projects.retry"
+                            Key = "common.retry"
                         },
                         new
                         {
@@ -1301,9 +1704,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("4825b12b-ea0e-a90e-b30f-27310529ae46"),
+                            Id = new Guid("d6dd0fc7-b558-91bd-9b9f-bf48c8e2cde9"),
                             Description = "",
-                            Key = "projects.cancel"
+                            Key = "common.cancel"
                         },
                         new
                         {
@@ -1346,6 +1749,174 @@ namespace Redix.Api.Migrations
                             Id = new Guid("10db82b0-b441-b891-b34f-2c0877e937a5"),
                             Description = "",
                             Key = "projects.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("a4113921-35de-ca8a-a341-140a9fb13728"),
+                            Description = "",
+                            Key = "users.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("47245a21-fa0d-0f99-b5fe-c01ba2f395f1"),
+                            Description = "",
+                            Key = "users.new"
+                        },
+                        new
+                        {
+                            Id = new Guid("8a75bd17-549c-a12f-2cbf-bae1881dfcaf"),
+                            Description = "",
+                            Key = "users.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("1cfee5a9-d209-2e9d-94ef-0cb498c59a66"),
+                            Description = "",
+                            Key = "users.owner"
+                        },
+                        new
+                        {
+                            Id = new Guid("de94612c-7a2b-ecec-f3db-2f5c5668a6fd"),
+                            Description = "",
+                            Key = "users.disabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("0b1a31ce-eb65-a16c-5c69-50e215cbaa39"),
+                            Description = "",
+                            Key = "users.edit"
+                        },
+                        new
+                        {
+                            Id = new Guid("972d0715-2cc6-7472-abcd-adb29f039c1e"),
+                            Description = "",
+                            Key = "users.resetPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("3480e79d-9b47-988e-38f4-103a9e372d40"),
+                            Description = "",
+                            Key = "users.disable"
+                        },
+                        new
+                        {
+                            Id = new Guid("671d1d80-10e0-c2be-de3d-3a3361cf496b"),
+                            Description = "",
+                            Key = "users.enable"
+                        },
+                        new
+                        {
+                            Id = new Guid("f58e0ce6-f8d0-df50-fbd6-c38656f3d36a"),
+                            Description = "",
+                            Key = "users.name"
+                        },
+                        new
+                        {
+                            Id = new Guid("1468ab7b-9abc-30b7-2414-7358c4ee6567"),
+                            Description = "",
+                            Key = "users.nameHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("da549b6c-99ef-56a4-0cae-1691856311f8"),
+                            Description = "",
+                            Key = "users.username"
+                        },
+                        new
+                        {
+                            Id = new Guid("a60f5052-361e-e04f-d287-c7a05df71feb"),
+                            Description = "",
+                            Key = "users.mobile"
+                        },
+                        new
+                        {
+                            Id = new Guid("5e05bf11-75f0-72c2-a100-c3f1f4569848"),
+                            Description = "",
+                            Key = "users.temporaryPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("1a928387-fb91-5a82-e042-9b39ad419467"),
+                            Description = "",
+                            Key = "users.temporaryPasswordHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("4d59cc79-fba1-0d84-cbce-f1075f701ce9"),
+                            Description = "",
+                            Key = "users.add"
+                        },
+                        new
+                        {
+                            Id = new Guid("a2d5cbb9-4863-2ef9-3685-ccbcbd18f8c0"),
+                            Description = "",
+                            Key = "users.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("1fe446b5-0aae-679c-1a2b-e689d8fc61ff"),
+                            Description = "",
+                            Key = "users.disableQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("e713af45-a01a-1dd8-c532-07221dd9d129"),
+                            Description = "",
+                            Key = "users.disableExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("18868db1-2bd7-13d2-3ec2-89c757f56775"),
+                            Description = "",
+                            Key = "users.resetExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("8337a03e-1096-507f-c92d-0e6cde9f22f2"),
+                            Description = "",
+                            Key = "users.invalidName"
+                        },
+                        new
+                        {
+                            Id = new Guid("84411198-0da1-63ee-0dff-15f9ebe1da55"),
+                            Description = "",
+                            Key = "users.invalidUsername"
+                        },
+                        new
+                        {
+                            Id = new Guid("54aa5f3c-f52e-21c8-3edd-77b7485d1b95"),
+                            Description = "",
+                            Key = "users.invalidMobile"
+                        },
+                        new
+                        {
+                            Id = new Guid("bd8e32e1-ea45-cc38-b532-6d9b116ce501"),
+                            Description = "",
+                            Key = "users.usernameTaken"
+                        },
+                        new
+                        {
+                            Id = new Guid("1a09023f-e56b-1467-f632-099aef723ce3"),
+                            Description = "",
+                            Key = "users.weakPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("330531e9-4e44-a81e-24b5-2570e74d8624"),
+                            Description = "",
+                            Key = "users.ownerCannotBeDisabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("ffb71c12-ea7d-ca20-dec5-a15d0b18e64b"),
+                            Description = "",
+                            Key = "users.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("b5b5508b-37fd-41f3-b79c-9d7d3a186860"),
+                            Description = "",
+                            Key = "users.refused"
                         });
                 });
 

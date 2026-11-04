@@ -43,6 +43,7 @@ public static class OwnerSeed
         var owner = new User
         {
             Username = settings.Username,
+            DisplayName = settings.Username,
             IsOwner = true,
             MustChangePassword = true,
             CreatedAt = services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime,

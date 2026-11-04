@@ -15,6 +15,15 @@ public class User
     /// <summary>The shortest password accepted when a password is changed (UC-003); the BRS sets no rule, so this is a recorded decision.</summary>
     public const int MinimumPasswordLength = 8;
 
+    /// <summary>The longest name a user may have.</summary>
+    public const int NameMaxLength = 100;
+
+    /// <summary>The longest username a user may have.</summary>
+    public const int UsernameMaxLength = 50;
+
+    /// <summary>The longest mobile a user may have.</summary>
+    public const int MobileMaxLength = 20;
+
     /// <summary>The <see cref="LockedUntil"/> of an account that is not locked.</summary>
     public static readonly DateTime NeverLocked = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -23,6 +32,12 @@ public class User
 
     /// <summary>The name the user signs in with; unique.</summary>
     public required string Username { get; init; }
+
+    /// <summary>The name as it shows on entries.</summary>
+    public string DisplayName { get; set; } = "";
+
+    /// <summary>The user's mobile; empty when none.</summary>
+    public string Mobile { get; set; } = "";
 
     /// <summary>The password, hashed by ASP.NET Core's <see cref="PasswordHasher{TUser}"/>; never the password itself.</summary>
     [NotAudited]
@@ -49,9 +64,51 @@ public class User
     /// <summary>Replaces the password; only its hash is kept.</summary>
     public void SetPassword(string password, IPasswordHasher<User> hasher) => PasswordHash = hasher.HashPassword(this, password);
 
-    /// <summary>Whether <paramref name="newPassword"/> may replace <paramref name="currentPassword"/>: at least <see cref="MinimumPasswordLength"/> characters, and different.</summary>
-    public static bool IsAcceptableNewPassword(string newPassword, string currentPassword) =>
-        newPassword.Length >= MinimumPasswordLength && newPassword != currentPassword;
+    /// <summary>Whether <paramref name="password"/> has at least <see cref="MinimumPasswordLength"/> characters.</summary>
+    public static bool IsLongEnough(string password) => password.Length >= MinimumPasswordLength;
+
+    /// <summary>Whether <paramref name="newPassword"/> may replace <paramref name="currentPassword"/>: long enough, and different.</summary>
+    public static bool IsAcceptableNewPassword(string newPassword, string currentPassword) => IsLongEnough(newPassword) && newPassword != currentPassword;
+
+    /// <summary>The refusal of a name and a mobile, already trimmed, as its code; empty when both are acceptable.</summary>
+    public static string RefusalOfDetails(string displayName, string mobile)
+    {
+        if (displayName.Length is 0 or > NameMaxLength)
+        {
+            return "InvalidName";
+        }
+        return mobile.Length > MobileMaxLength ? "InvalidMobile" : "";
+    }
+
+    /// <summary>The refusal of a new user's fields, already trimmed, as its code; empty when all are acceptable.</summary>
+    public static string RefusalOfNew(string displayName, string username, string mobile, string temporaryPassword)
+    {
+        if (username.Length is 0 or > UsernameMaxLength)
+        {
+            return "InvalidUsername";
+        }
+        return IsLongEnough(temporaryPassword) ? RefusalOfDetails(displayName, mobile) : "WeakPassword";
+    }
+
+    /// <summary>Replaces the password with a temporary one: the user must change it, and a lock from wrong passwords ends.</summary>
+    public void ResetPassword(string temporaryPassword, IPasswordHasher<User> hasher)
+    {
+        SetPassword(temporaryPassword, hasher);
+        MustChangePassword = true;
+        FailedSignIns = 0;
+        LockedUntil = NeverLocked;
+    }
+
+    /// <summary>Disables the user, unless an owner, of whom at least one must stay (BR-29). Returns the refusal as its code; empty once disabled.</summary>
+    public string Disable()
+    {
+        if (IsOwner)
+        {
+            return "OwnerCannotBeDisabled";
+        }
+        IsActive = false;
+        return "";
+    }
 
     /// <summary>
     /// Checks <paramref name="password"/> at <paramref name="now"/>. A disabled user is refused like a wrong password, so the answer never tells which.

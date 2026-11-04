@@ -8,4 +8,19 @@ public enum AuditAction
 
     /// <summary>A user replaced their password (UC-003); the password's hash never enters the trail.</summary>
     ChangePassword,
+
+    /// <summary>An owner created a user (UC-007).</summary>
+    Create,
+
+    /// <summary>An owner changed a user's name or mobile (UC-007).</summary>
+    Update,
+
+    /// <summary>An owner set a new temporary password for a user (UC-007).</summary>
+    ResetPassword,
+
+    /// <summary>An owner disabled a user (UC-007).</summary>
+    Disable,
+
+    /// <summary>An owner enabled a disabled user (UC-007).</summary>
+    Enable,
 }
