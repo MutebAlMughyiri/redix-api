@@ -21,7 +21,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme).Configure<IOptions<JwtOptions>, TimeProvider>((bearer, jwt, time) =>
 {
     bearer.MapInboundClaims = false;
-    bearer.TokenValidationParameters = AccessTokens.ValidationParameters(jwt.Value);
+    bearer.TokenValidationParameters = AccessTokens.ValidationParameters(jwt.Value, time);
     bearer.TimeProvider = time;
     bearer.Events = new JwtBearerEvents { OnTokenValidated = SessionPolicies.CheckSessionIsOpen };
 });

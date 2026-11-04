@@ -5,15 +5,16 @@ using Redix.Api.Audit;
 
 namespace Redix.Api.Auth;
 
-/// <summary>Opens, renews and secures sessions: sign-in (UC-002), renewal with a device's refresh token, and changing the password (UC-003).</summary>
+/// <summary>Opens, renews, secures and ends sessions: sign-in (UC-002), renewal with a device's refresh token, changing the password (UC-003), and sign-out (UC-062).</summary>
 public static class AuthEndpoints
 {
-    /// <summary>Maps <c>POST /auth/sign-in</c> and <c>POST /auth/refresh</c>, open without a session, and <c>POST /auth/change-password</c>, open to any session.</summary>
+    /// <summary>Maps <c>POST /auth/sign-in</c> and <c>POST /auth/refresh</c>, open without a session, and <c>POST /auth/change-password</c> and <c>POST /auth/sign-out</c>, open to any session.</summary>
     public static void MapAuth(this WebApplication app)
     {
         app.MapPost("/auth/sign-in", SignIn).AllowAnonymous();
         app.MapPost("/auth/refresh", Refresh).AllowAnonymous();
         app.MapPost("/auth/change-password", ChangePassword).RequireAuthorization(SessionPolicies.MayChangePassword);
+        app.MapPost("/auth/sign-out", SignOut).RequireAuthorization(SessionPolicies.MayChangePassword);
     }
 
     /// <summary>
@@ -114,6 +115,20 @@ public static class AuthEndpoints
         db.Audit(user, AuditAction.ChangePassword, user.Id, now);
         await db.SaveChangesAsync();
         return Results.Ok(Session.Of(user, accessTokens.Create(user, thisDevice.Id), refreshToken));
+    }
+
+    /// <summary>Ends the session on this device, and only this one (UC-062), and records it in the audit trail.</summary>
+    /// <param name="principal">The session to end: its user and device.</param>
+    /// <param name="db">The database the user and device live in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static async Task<IResult> SignOut(ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var userId = AccessTokens.UserIdOf(principal);
+        var deviceId = AccessTokens.DeviceIdOf(principal);
+        (await db.Devices.SingleAsync(device => device.Id == deviceId)).IsRevoked = true;
+        db.Audit(await db.Users.SingleAsync(user => user.Id == userId), AuditAction.SignOut, userId, time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
     }
 }
 

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -66,6 +67,62 @@ public class AuthTests(MigratedApiFactory factory)
         Assert.True(ownerSession.IsOwner);
         Assert.False(userSession.IsOwner);
         Assert.True(renewedOwnerSession.IsOwner);
+    }
+
+    private async Task<HttpResponseMessage> SignOutAsync(Session session)
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+        return await client.PostAsync("/auth/sign-out", null);
+    }
+
+    [Fact]
+    public async Task AnAccessTokenWorksFor15MinutesByTheServersClock()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var session = await SessionOf(await SignInAsync(user.Username, Password));
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/projects")).StatusCode);
+        factory.Time.Advance(AccessTokens.Lifetime);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/projects")).StatusCode);
+    }
+
+    [Fact]
+    public async Task ASignOutEndsThisDeviceOnly()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var thisPhone = await SessionOf(await SignInAsync(user.Username, Password));
+        var otherPhone = await SessionOf(await SignInAsync(user.Username, Password));
+
+        var signedOut = await SignOutAsync(thisPhone);
+
+        Assert.Equal(HttpStatusCode.NoContent, signedOut.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SignOutAsync(thisPhone)).StatusCode);
+        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(thisPhone.RefreshToken)));
+        await SessionOf(await RefreshAsync(otherPhone.RefreshToken));
+    }
+
+    [Fact]
+    public async Task ASignOutIsInTheAuditTrail()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var session = await SessionOf(await SignInAsync(user.Username, Password));
+
+        await SignOutAsync(session);
+
+        var record = (await factory.AuditTrailOfAsync(user.Id)).Last();
+        Assert.Equal(AuditAction.SignOut, record.Action);
+        Assert.Equal(user.Id, record.UserId);
+    }
+
+    [Fact]
+    public async Task SigningOutNeedsASession()
+    {
+        var response = await factory.CreateClient().PostAsync("/auth/sign-out", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]

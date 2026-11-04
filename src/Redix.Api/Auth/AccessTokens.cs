@@ -51,12 +51,13 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
         });
     }
 
-    /// <summary>How the API checks an access token: the same key, issuer and audience it was signed with.</summary>
-    public static TokenValidationParameters ValidationParameters(JwtOptions options) => new()
+    /// <summary>How the API checks an access token: the same key, issuer and audience it was signed with, and the same clock.</summary>
+    public static TokenValidationParameters ValidationParameters(JwtOptions options, TimeProvider time) => new()
     {
         ValidIssuer = Issuer,
         ValidAudience = Issuer,
         IssuerSigningKey = KeyOf(options),
+        LifetimeValidator = (notBefore, expires, _, _) => notBefore <= time.GetUtcNow().UtcDateTime && time.GetUtcNow().UtcDateTime < expires,
     };
 
     /// <summary>The user a validated access token belongs to.</summary>

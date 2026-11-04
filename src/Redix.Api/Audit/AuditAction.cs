@@ -6,6 +6,9 @@ public enum AuditAction
     /// <summary>A user signed in on a new device (UC-002).</summary>
     SignIn,
 
+    /// <summary>A user signed out of a device (UC-062).</summary>
+    SignOut,
+
     /// <summary>A user replaced their password (UC-003); the password's hash never enters the trail.</summary>
     ChangePassword,
 

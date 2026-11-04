@@ -33,6 +33,7 @@ A session is a JWT access token valid 15 minutes, a refresh token, and whether t
 | The right password clears the count of wrong ones | `User.SignIn` | `AuthTests.TheRightPasswordClearsTheCountOfWrongOnes` |
 | A disabled user cannot sign in (AC-01.3) | `User.SignIn` | `AuthTests.ADisabledUserCannotSignIn` |
 | A disabled user's open session ends at its next request (AC-01.3) | `AuthEndpoints.Refresh` | `AuthTests.ADisabledUsersOpenSessionEndsAtItsNextRequest` |
+| An access token works for 15 minutes, by the server's clock | `AccessTokens.ValidationParameters` | `AuthTests.AnAccessTokenWorksFor15MinutesByTheServersClock` |
 | A refresh replaces the refresh token; the old one stops working | `Device.RenewRefreshToken` | `AuthTests.ARefreshReplacesTheRefreshToken` |
 | A refresh token unused for 12 hours expires (NFR-09) | `Device.CanRefresh` | `AuthTests.ASessionUsedWithin12HoursStaysOpenAndOneUnusedFor12HoursEnds` |
 | Only the refresh token's hash is stored | `Device.HashOf` | Enforced by the model |

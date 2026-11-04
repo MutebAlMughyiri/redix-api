@@ -660,6 +660,48 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("c1507bb1-74bd-4279-ebf2-90f4220fd276"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0cc52ca2-6354-2dca-d283-5d68fd64b6fd"),
+                            Value = "Sign out"
+                        },
+                        new
+                        {
+                            Id = new Guid("6843f540-24f0-3f19-4b3c-73fca46ea856"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0cc52ca2-6354-2dca-d283-5d68fd64b6fd"),
+                            Value = "تسجيل الخروج"
+                        },
+                        new
+                        {
+                            Id = new Guid("0f4b495b-6989-2d80-15e2-9a25233f6292"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("758286d7-52bb-c6f4-6a80-0c1aadcdf2c4"),
+                            Value = "Sign out of this phone?"
+                        },
+                        new
+                        {
+                            Id = new Guid("951a7c24-cdd1-025b-d06c-182c2035dd5a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("758286d7-52bb-c6f4-6a80-0c1aadcdf2c4"),
+                            Value = "تسجيل الخروج من هذا الجوال؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("38060b25-7a69-e435-2f93-c4e0dcb4a2b1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aa61ccff-4503-4423-7299-9244e9807aba"),
+                            Value = "You will need your username and password to sign in again."
+                        },
+                        new
+                        {
+                            Id = new Guid("d9244a6a-d6a1-eb5e-3350-9d37c89cf15e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aa61ccff-4503-4423-7299-9244e9807aba"),
+                            Value = "ستحتاج إلى اسم المستخدم وكلمة المرور للدخول مرة أخرى."
+                        },
+                        new
+                        {
                             Id = new Guid("63780978-6ece-9380-8ede-8e57b671d82c"),
                             Language = "en",
                             TranslationKeyId = new Guid("e4b6fd5b-c018-8a6f-cfb9-eb702bc257f8"),
@@ -1599,6 +1641,24 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d456f83d-2a7c-2428-8b6e-ac98a52a64cb"),
                             Description = "",
                             Key = "myAccount.changePassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("0cc52ca2-6354-2dca-d283-5d68fd64b6fd"),
+                            Description = "",
+                            Key = "myAccount.signOut"
+                        },
+                        new
+                        {
+                            Id = new Guid("758286d7-52bb-c6f4-6a80-0c1aadcdf2c4"),
+                            Description = "",
+                            Key = "myAccount.signOutQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("aa61ccff-4503-4423-7299-9244e9807aba"),
+                            Description = "",
+                            Key = "myAccount.signOutExplain"
                         },
                         new
                         {
