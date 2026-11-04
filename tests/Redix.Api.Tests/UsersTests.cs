@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Projects;
 
 namespace Redix.Api.Tests;
 
@@ -20,7 +22,7 @@ public class UsersTests(MigratedApiFactory factory)
     private static async Task<UserView> ViewOf(HttpResponseMessage response)
     {
         Assert.True(response.IsSuccessStatusCode, response.StatusCode.ToString());
-        return (await response.Content.ReadFromJsonAsync<UserView>())!;
+        return (await response.Content.ReadFromJsonAsync<UserView>(Json))!;
     }
 
     private static async Task<string> CodeOf(HttpResponseMessage response) =>
@@ -95,7 +97,7 @@ public class UsersTests(MigratedApiFactory factory)
         var edited = await ViewOf(await owner.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111")));
 
         Assert.Equal((username, "نواف الأول", "0511111111"), (edited.Username, edited.DisplayName, edited.Mobile));
-        var listed = (await owner.GetFromJsonAsync<List<UserView>>("/users"))!.Single(listed => listed.Id == user.Id);
+        var listed = (await owner.GetFromJsonAsync<List<UserView>>("/users", Json))!.Single(listed => listed.Id == user.Id);
         Assert.Equal("نواف الأول", listed.DisplayName);
         Assert.Equal("invalidName", await CodeOf(await owner.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", ""))));
     }
@@ -129,12 +131,12 @@ public class UsersTests(MigratedApiFactory factory)
         var owner = await OwnerAsync();
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/projects")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/users")).StatusCode);
 
         var disabled = await ViewOf(await owner.PostAsync($"/users/{user.Id}/disable", null));
 
         Assert.False(disabled.IsActive);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/projects")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/users")).StatusCode);
         Assert.Equal("invalidCredentials", await CodeOf(await SignInAsync(user.Username, Password)));
     }
 
@@ -161,7 +163,7 @@ public class UsersTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Equal("ownerCannotBeDisabled", await CodeOf(refused));
-        Assert.True((await client.GetFromJsonAsync<List<UserView>>("/users"))!.Single(listed => listed.Id == owner.Id).IsActive);
+        Assert.True((await client.GetFromJsonAsync<List<UserView>>("/users", Json))!.Single(listed => listed.Id == owner.Id).IsActive);
     }
 
     [Fact]
@@ -172,7 +174,7 @@ public class UsersTests(MigratedApiFactory factory)
         var second = await ViewOf(await CreateAsync(owner, NewUsername(), "ب"));
         await owner.PostAsync($"/users/{first.Id}/disable", null);
 
-        var users = (await owner.GetFromJsonAsync<List<UserView>>("/users"))!;
+        var users = (await owner.GetFromJsonAsync<List<UserView>>("/users", Json))!;
 
         Assert.True(users.First().IsOwner);
         Assert.True(users.FindIndex(user => user.Id == second.Id) < users.FindIndex(user => user.Id == first.Id));
@@ -193,6 +195,139 @@ public class UsersTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/users")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await CreateAsync(user, NewUsername())).StatusCode);
+    }
+
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
+
+    private async Task<Guid> ProjectAsync(HttpClient owner)
+    {
+        var created = await owner.PostAsJsonAsync("/projects", new CreateProjectRequest($"project-{Guid.CreateVersion7()}", new DateOnly(2026, 11, 1), []));
+        return (await created.Content.ReadFromJsonAsync<ProjectView>(Json))!.Id;
+    }
+
+    private static Task<HttpResponseMessage> AssignAsync(HttpClient owner, Guid userId, Guid projectId, ProjectRole role) =>
+        owner.PostAsJsonAsync($"/users/{userId}/projects/{projectId}", new AssignProjectRequest(role), Json);
+
+    private static async Task<UserView> AnswerOf(HttpResponseMessage response)
+    {
+        Assert.True(response.IsSuccessStatusCode, response.StatusCode.ToString());
+        return (await response.Content.ReadFromJsonAsync<UserView>(Json))!;
+    }
+
+    [Theory]
+    [InlineData(ProjectRole.FinanceSupervisor)]
+    [InlineData(ProjectRole.FieldSupervisor)]
+    [InlineData(ProjectRole.Reader)]
+    public async Task AnOwnerGivesAProjectWithEachRole(ProjectRole role)
+    {
+        var owner = await OwnerAsync();
+        var projectId = await ProjectAsync(owner);
+        var user = await factory.AddUserAsync(Password);
+
+        var answer = await AnswerOf(await AssignAsync(owner, user.Id, projectId, role));
+
+        var project = Assert.Single(answer.Projects);
+        Assert.Equal((projectId, role), (project.ProjectId, project.Role));
+        var listed = (await owner.GetFromJsonAsync<List<UserView>>("/users", Json))!.Single(listed => listed.Id == user.Id);
+        Assert.Equal(role, Assert.Single(listed.Projects).Role);
+    }
+
+    [Fact]
+    public async Task AssigningAgainChangesTheRole()
+    {
+        var owner = await OwnerAsync();
+        var projectId = await ProjectAsync(owner);
+        var user = await factory.AddUserAsync(Password);
+        await AssignAsync(owner, user.Id, projectId, ProjectRole.Reader);
+
+        var answer = await AnswerOf(await AssignAsync(owner, user.Id, projectId, ProjectRole.FieldSupervisor));
+
+        Assert.Equal(ProjectRole.FieldSupervisor, Assert.Single(answer.Projects).Role);
+    }
+
+    [Fact]
+    public async Task RemovingTakesTheProjectAway()
+    {
+        var owner = await OwnerAsync();
+        var projectId = await ProjectAsync(owner);
+        var user = await factory.AddUserAsync(Password);
+        await AssignAsync(owner, user.Id, projectId, ProjectRole.Reader);
+
+        var answer = await AnswerOf(await owner.PostAsync($"/users/{user.Id}/projects/{projectId}/remove", null));
+        var again = await AnswerOf(await owner.PostAsync($"/users/{user.Id}/projects/{projectId}/remove", null));
+
+        Assert.Empty(answer.Projects);
+        Assert.Empty(again.Projects);
+    }
+
+    [Fact]
+    public async Task AFinishedProjectCanBeGiven()
+    {
+        var owner = await OwnerAsync();
+        var projectId = await ProjectAsync(owner);
+        await owner.PostAsync($"/projects/{projectId}/close", null);
+        var user = await factory.AddUserAsync(Password);
+
+        var answer = await AnswerOf(await AssignAsync(owner, user.Id, projectId, ProjectRole.Reader));
+
+        Assert.Single(answer.Projects);
+    }
+
+    [Fact]
+    public async Task AnOwnerIsAlreadyInEveryProject()
+    {
+        var owner = await factory.AddUserAsync(Password, isOwner: true);
+        var client = await factory.ClientSignedInAsAsync(owner, Password);
+        var projectId = await ProjectAsync(client);
+
+        var refused = await AssignAsync(client, owner.Id, projectId, ProjectRole.Reader);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("ownerIsInEveryProject", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task OnlyAnOwnerAssigns()
+    {
+        var owner = await OwnerAsync();
+        var projectId = await ProjectAsync(owner);
+        var user = await factory.AddUserAsync(Password);
+        var client = await factory.ClientSignedInAsAsync(user, Password);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await AssignAsync(client, user.Id, projectId, ProjectRole.FinanceSupervisor)).StatusCode);
+    }
+
+    [Fact]
+    public async Task AssigningAnUnknownProjectOrUserIsNotFound()
+    {
+        var owner = await OwnerAsync();
+        var projectId = await ProjectAsync(owner);
+        var user = await factory.AddUserAsync(Password);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await AssignAsync(owner, user.Id, Guid.CreateVersion7(), ProjectRole.Reader)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await AssignAsync(owner, Guid.CreateVersion7(), projectId, ProjectRole.Reader)).StatusCode);
+    }
+
+    [Fact]
+    public async Task EveryAssignmentIsInTheAuditTrail()
+    {
+        var owner = await factory.AddUserAsync(Password, isOwner: true);
+        var client = await factory.ClientSignedInAsAsync(owner, Password);
+        var projectId = await ProjectAsync(client);
+        var user = await factory.AddUserAsync(Password);
+        await AssignAsync(client, user.Id, projectId, ProjectRole.Reader);
+        var memberId = await factory.ProjectMemberIdAsync(user.Id, projectId);
+        await AssignAsync(client, user.Id, projectId, ProjectRole.FieldSupervisor);
+        await client.PostAsync($"/users/{user.Id}/projects/{projectId}/remove", null);
+
+        var trail = await factory.AuditTrailOfAsync(memberId);
+
+        Assert.Equal([AuditAction.AssignProject, AuditAction.AssignProject, AuditAction.RemoveProject], trail.Select(record => record.Action));
+        Assert.All(trail, record => Assert.Equal(owner.Id, record.UserId));
+        Assert.Equal((int)ProjectRole.Reader, JsonNode.Parse(trail[1].Before)!["Role"]!.GetValue<int>());
+        Assert.Equal((int)ProjectRole.FieldSupervisor, JsonNode.Parse(trail[1].After)!["Role"]!.GetValue<int>());
+        Assert.Equal((int)ProjectRole.FieldSupervisor, JsonNode.Parse(trail[2].Before)!["Role"]!.GetValue<int>());
+        Assert.Equal("{}", trail[2].After.Replace(" ", ""));
     }
 
     [Fact]

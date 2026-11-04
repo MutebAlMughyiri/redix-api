@@ -92,6 +92,14 @@ public static class TranslationSeed
         ("users.ownerCannotBeDisabled", "An owner cannot be disabled.", "لا يمكن تعطيل المالك."),
         ("users.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
         ("users.refused", "The server refused this change.", "رفض الخادم هذا التغيير."),
+        ("users.projects", "Projects and roles", "المشاريع والأدوار"),
+        ("users.roleFinance", "Finance", "مالي"),
+        ("users.roleField", "Field", "ميداني"),
+        ("users.roleReader", "Reader", "قارئ"),
+        ("users.everyProject", "Financial supervisor in every project", "مشرف مالي في كل المشاريع"),
+        ("users.noProjects", "No projects yet", "لا مشاريع بعد"),
+        ("users.projectsHint", "Tick a project and choose the role. The user sees only these projects.", "حدد المشروع واختر الدور. لا يرى المستخدم غير هذه المشاريع."),
+        ("users.ownerIsInEveryProject", "An owner is already in every project.", "المالك موجود في كل المشاريع."),
     ];
 
     /// <summary>One key per seeded word, with an id derived from the key so every migration and database agree on it.</summary>

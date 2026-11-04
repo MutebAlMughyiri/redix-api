@@ -32,18 +32,19 @@ public class AuditRecord
     /// <summary>The values it changed, as they were: a JSON object of column names and values; <c>{}</c> for a new record.</summary>
     public string Before { get; private init; } = "{}";
 
-    /// <summary>The same values as they became: a JSON object of column names and values.</summary>
+    /// <summary>The same values as they became: a JSON object of column names and values; <c>{}</c> for a removed record.</summary>
     public string After { get; private init; } = "{}";
 
     /// <summary>
     /// The record of <paramref name="action"/> done by <paramref name="userId"/> at <paramref name="at"/> to the tracked <paramref name="entry"/>, with the values
-    /// the coming save changes: every value of a new record, the modified ones otherwise. Neither the key, the rowversion, nor a value marked
+    /// the coming save changes: every value of a new or a removed record, the modified ones otherwise. Neither the key, the rowversion, nor a value marked
     /// <see cref="NotAuditedAttribute"/> enters it.
     /// </summary>
     public static AuditRecord Of(EntityEntry entry, AuditAction action, Guid userId, DateTime at)
     {
         var isNew = entry.State == EntityState.Added;
-        var changed = entry.Properties.Where(property => (isNew || property.IsModified) && IsAudited(property)).ToList();
+        var isRemoved = entry.State == EntityState.Deleted;
+        var changed = entry.Properties.Where(property => (isNew || isRemoved || property.IsModified) && IsAudited(property)).ToList();
         return new AuditRecord
         {
             At = at,
@@ -52,7 +53,7 @@ public class AuditRecord
             TableName = entry.Metadata.GetTableName() ?? "",
             RecordId = (Guid)entry.Property("Id").CurrentValue!,
             Before = isNew ? "{}" : JsonSerializer.Serialize(changed.ToDictionary(property => property.Metadata.Name, property => property.OriginalValue)),
-            After = JsonSerializer.Serialize(changed.ToDictionary(property => property.Metadata.Name, property => property.CurrentValue)),
+            After = isRemoved ? "{}" : JsonSerializer.Serialize(changed.ToDictionary(property => property.Metadata.Name, property => property.CurrentValue)),
         };
     }
 

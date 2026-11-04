@@ -29,6 +29,7 @@ Each use case adds its own actions; entries, users and attachments join the trai
 | `ChangePassword` | A user changes their password (UC-003) | The user | `MustChangePassword`, when a temporary password ends; never the password's hash |
 | `SignOut` | A user signs out of a device (UC-062) | The user | None: the record itself says it happened |
 | `Create`, `Update`, `ResetPassword`, `Disable`, `Enable` | An owner manages a user (UC-007) | The user | What the action changed; never the password's hash |
+| `AssignProject`, `RemoveProject` | An owner gives a project, changes its role, or takes it away (UC-008) | The `ProjectMembers` row | The role before and after; every value of a removed row in `Before` |
 
 ## How a use case records an action
 

@@ -203,6 +203,36 @@ namespace Redix.Api.Migrations
                     b.ToTable("Projects");
                 });
 
+            modelBuilder.Entity("Redix.Api.Projects.ProjectMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Role")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ProjectMembers");
+                });
+
             modelBuilder.Entity("Redix.Api.Projects.Unit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1441,6 +1471,118 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("b5b5508b-37fd-41f3-b79c-9d7d3a186860"),
                             Value = "رفض الخادم هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("ae5f116d-805c-ae24-0210-1e211da86d98"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b1c16daf-471f-19d3-bd2f-d991ff5983dd"),
+                            Value = "Projects and roles"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a402a51-ff39-2ef1-99cc-f0c53b9020c0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b1c16daf-471f-19d3-bd2f-d991ff5983dd"),
+                            Value = "المشاريع والأدوار"
+                        },
+                        new
+                        {
+                            Id = new Guid("15d4c430-9bd7-87da-10f5-2c89fb534713"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("77960312-298e-1e22-7acd-02337306d3f1"),
+                            Value = "Finance"
+                        },
+                        new
+                        {
+                            Id = new Guid("d84474b3-01de-e50d-54ce-a9218d6d0f5f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("77960312-298e-1e22-7acd-02337306d3f1"),
+                            Value = "مالي"
+                        },
+                        new
+                        {
+                            Id = new Guid("fbccd63d-445f-9f7c-3b7b-76b5fdb18e76"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("81ceb8c8-23db-23c3-759e-aacc9e6977ea"),
+                            Value = "Field"
+                        },
+                        new
+                        {
+                            Id = new Guid("91dc02b3-d294-7b9d-f490-b85bae163d15"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("81ceb8c8-23db-23c3-759e-aacc9e6977ea"),
+                            Value = "ميداني"
+                        },
+                        new
+                        {
+                            Id = new Guid("68bf8eb8-f805-3c39-a6dc-b91e072ab147"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e8a2d7ac-0888-b318-e628-f592d98abaad"),
+                            Value = "Reader"
+                        },
+                        new
+                        {
+                            Id = new Guid("ea35d520-82a3-9934-c95d-228d3191a681"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e8a2d7ac-0888-b318-e628-f592d98abaad"),
+                            Value = "قارئ"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0e2e8bd-ae2d-429b-dce4-2499861ebcb4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("24c9a50b-452a-095c-fd8c-109f226a3d2e"),
+                            Value = "Financial supervisor in every project"
+                        },
+                        new
+                        {
+                            Id = new Guid("44898532-cbd5-b0b4-00ca-be6ee30e7984"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("24c9a50b-452a-095c-fd8c-109f226a3d2e"),
+                            Value = "مشرف مالي في كل المشاريع"
+                        },
+                        new
+                        {
+                            Id = new Guid("93b4a40b-4efb-7496-4ab1-0ded8b7c25ba"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
+                            Value = "No projects yet"
+                        },
+                        new
+                        {
+                            Id = new Guid("86018635-2aad-43d7-91e2-9af58611ae3d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
+                            Value = "لا مشاريع بعد"
+                        },
+                        new
+                        {
+                            Id = new Guid("803d6961-e6f7-3611-f0b9-775459859f95"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("138d9838-1214-18c4-353a-e046867ef1c6"),
+                            Value = "Tick a project and choose the role. The user sees only these projects."
+                        },
+                        new
+                        {
+                            Id = new Guid("3d5743b9-fc24-6245-e2d3-253f8d5a85df"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("138d9838-1214-18c4-353a-e046867ef1c6"),
+                            Value = "حدد المشروع واختر الدور. لا يرى المستخدم غير هذه المشاريع."
+                        },
+                        new
+                        {
+                            Id = new Guid("79810273-c3f0-a7b6-089a-74cf4883a743"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("52aecb0e-293c-99d7-e301-7c1170f69229"),
+                            Value = "An owner is already in every project."
+                        },
+                        new
+                        {
+                            Id = new Guid("2bf2f2ea-36c7-2a81-296b-604fd037bf81"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("52aecb0e-293c-99d7-e301-7c1170f69229"),
+                            Value = "المالك موجود في كل المشاريع."
                         });
                 });
 
@@ -1977,6 +2119,54 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b5b5508b-37fd-41f3-b79c-9d7d3a186860"),
                             Description = "",
                             Key = "users.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1c16daf-471f-19d3-bd2f-d991ff5983dd"),
+                            Description = "",
+                            Key = "users.projects"
+                        },
+                        new
+                        {
+                            Id = new Guid("77960312-298e-1e22-7acd-02337306d3f1"),
+                            Description = "",
+                            Key = "users.roleFinance"
+                        },
+                        new
+                        {
+                            Id = new Guid("81ceb8c8-23db-23c3-759e-aacc9e6977ea"),
+                            Description = "",
+                            Key = "users.roleField"
+                        },
+                        new
+                        {
+                            Id = new Guid("e8a2d7ac-0888-b318-e628-f592d98abaad"),
+                            Description = "",
+                            Key = "users.roleReader"
+                        },
+                        new
+                        {
+                            Id = new Guid("24c9a50b-452a-095c-fd8c-109f226a3d2e"),
+                            Description = "",
+                            Key = "users.everyProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
+                            Description = "",
+                            Key = "users.noProjects"
+                        },
+                        new
+                        {
+                            Id = new Guid("138d9838-1214-18c4-353a-e046867ef1c6"),
+                            Description = "",
+                            Key = "users.projectsHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("52aecb0e-293c-99d7-e301-7c1170f69229"),
+                            Description = "",
+                            Key = "users.ownerIsInEveryProject"
                         });
                 });
 
@@ -1995,6 +2185,21 @@ namespace Redix.Api.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.ProjectMember", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

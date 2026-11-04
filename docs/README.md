@@ -24,4 +24,5 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-005](use-cases/UC-005-audit-trail.md) | The audit trail: who did what to which record, when, with the values before and after; never changed or deleted | The API, on its own |
 | [UC-006](use-cases/UC-006-projects.md) | Create a project with its units, and close it when finished | The financial supervisor (an owner, until UC-008) |
 | [UC-007](use-cases/UC-007-users.md) | Create, correct, disable and reset the users | Owners |
+| [UC-008](use-cases/UC-008-project-roles.md) | Give users projects as finance, field or reader, and show each only their projects | Owners assign; everyone reads |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

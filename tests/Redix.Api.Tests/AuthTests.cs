@@ -84,9 +84,9 @@ public class AuthTests(MigratedApiFactory factory)
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/projects")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/users")).StatusCode);
         factory.Time.Advance(AccessTokens.Lifetime);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/projects")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/users")).StatusCode);
     }
 
     [Fact]

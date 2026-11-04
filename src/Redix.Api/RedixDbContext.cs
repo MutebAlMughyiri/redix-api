@@ -27,6 +27,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The real-estate development projects, each with its units.</summary>
     public DbSet<Project> Projects => Set<Project>();
 
+    /// <summary>Who works on which project, and as what; an owner has no rows, being a financial supervisor in every project.</summary>
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+
     /// <summary>
     /// Records <paramref name="action"/>, done by <paramref name="userId"/> at <paramref name="at"/>, to the tracked <paramref name="record"/>. Call it after the change
     /// and before <c>SaveChanges</c>, which saves the record and the change together.
@@ -82,6 +85,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             unit.ToTable("Units");
             unit.Property(u => u.Name).HasMaxLength(Project.NameMaxLength);
+        });
+        modelBuilder.Entity<ProjectMember>(member =>
+        {
+            member.HasIndex(m => new { m.ProjectId, m.UserId }).IsUnique();
+            member.HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            member.HasOne<User>().WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<AuditRecord>(audit =>
         {

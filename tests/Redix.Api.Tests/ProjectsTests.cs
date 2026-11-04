@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Redix.Api.Auth;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Tests;
@@ -30,6 +31,14 @@ public class ProjectsTests(MigratedApiFactory factory)
 
     private static Task<HttpResponseMessage> CreateAsync(HttpClient client, string name, params List<string> units) =>
         client.PostAsJsonAsync("/projects", new CreateProjectRequest(name, new DateOnly(2026, 11, 1), units));
+
+    [Fact]
+    public async Task ANewUserHasNoProjects()
+    {
+        var user = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
+
+        Assert.Empty((await ListAsync(user))!);
+    }
 
     [Fact]
     public async Task AnOwnerCreatesAProjectWithItsUnitsInOrder()
@@ -143,7 +152,57 @@ public class ProjectsTests(MigratedApiFactory factory)
     {
         var user = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/projects")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await CreateAsync(user, "غصون 2")).StatusCode);
+    }
+
+    private async Task AssignAsync(HttpClient owner, Guid userId, Guid projectId, ProjectRole role)
+    {
+        var assigned = await owner.PostAsJsonAsync($"/users/{userId}/projects/{projectId}", new AssignProjectRequest(role), Json);
+        Assert.True(assigned.IsSuccessStatusCode, assigned.StatusCode.ToString());
+    }
+
+    [Fact]
+    public async Task AUserSeesOnlyTheirProjects()
+    {
+        var owner = await OwnerAsync();
+        var theirs = await ProjectOf(await CreateAsync(owner, "غصون 6"));
+        var other = await ProjectOf(await CreateAsync(owner, "غصون 5"));
+        var user = await factory.AddUserAsync(Password);
+        await AssignAsync(owner, user.Id, theirs.Id, ProjectRole.FieldSupervisor);
+
+        var listed = await ListAsync(await factory.ClientSignedInAsAsync(user, Password));
+
+        Assert.Equal([theirs.Id], listed!.Select(project => project.Id));
+        Assert.DoesNotContain(listed!, project => project.Id == other.Id);
+    }
+
+    [Fact]
+    public async Task EachProjectCarriesTheRoleInIt()
+    {
+        var owner = await OwnerAsync();
+        var finance = await ProjectOf(await CreateAsync(owner, "غصون 6"));
+        var field = await ProjectOf(await CreateAsync(owner, "غصون 7"));
+        var reader = await ProjectOf(await CreateAsync(owner, "غصون 8"));
+        var user = await factory.AddUserAsync(Password);
+        await AssignAsync(owner, user.Id, finance.Id, ProjectRole.FinanceSupervisor);
+        await AssignAsync(owner, user.Id, field.Id, ProjectRole.FieldSupervisor);
+        await AssignAsync(owner, user.Id, reader.Id, ProjectRole.Reader);
+
+        var listed = (await ListAsync(await factory.ClientSignedInAsAsync(user, Password)))!;
+
+        Assert.Equal(ProjectRole.FinanceSupervisor, listed.Single(project => project.Id == finance.Id).Role);
+        Assert.Equal(ProjectRole.FieldSupervisor, listed.Single(project => project.Id == field.Id).Role);
+        Assert.Equal(ProjectRole.Reader, listed.Single(project => project.Id == reader.Id).Role);
+    }
+
+    [Fact]
+    public async Task AnOwnerSeesEveryProjectAsAFinancialSupervisor()
+    {
+        var owner = await OwnerAsync();
+        var project = await ProjectOf(await CreateAsync(owner, "غصون 6"));
+
+        var listed = (await ListAsync(owner))!.Single(listed => listed.Id == project.Id);
+
+        Assert.Equal(ProjectRole.FinanceSupervisor, listed.Role);
     }
 }

@@ -63,6 +63,9 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
     /// <summary>The user a validated access token belongs to.</summary>
     public static Guid UserIdOf(ClaimsPrincipal principal) => ClaimOf(principal, JwtRegisteredClaimNames.Sub);
 
+    /// <summary>Whether a validated access token belongs to an owner.</summary>
+    public static bool IsOwner(ClaimsPrincipal principal) => principal.HasClaim(OwnerClaim, "true");
+
     /// <summary>The device a validated access token was issued to.</summary>
     public static Guid DeviceIdOf(ClaimsPrincipal principal) => ClaimOf(principal, DeviceClaim);
 

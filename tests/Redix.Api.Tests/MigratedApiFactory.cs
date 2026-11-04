@@ -83,6 +83,13 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return await scope.ServiceProvider.GetRequiredService<RedixDbContext>().AuditTrail.Where(record => record.RecordId == recordId).OrderBy(record => record.Id).ToListAsync();
     }
 
+    public async Task<Guid> ProjectMemberIdAsync(Guid userId, Guid projectId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
+        return await db.ProjectMembers.Where(member => member.UserId == userId && member.ProjectId == projectId).Select(member => member.Id).SingleAsync();
+    }
+
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
 

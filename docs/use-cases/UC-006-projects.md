@@ -10,7 +10,7 @@
 
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
-| `GET /projects` | Every project with its units, running ones first, then the newest | `200` the projects; `403` for a user who is not an owner |
+| `GET /projects` | The caller's projects with their units, running ones first, then the newest (UC-008) | `200` the projects |
 | `POST /projects` | Creates a running project from a name, a start date and its units, all or nothing | `201` the project; `400` `invalidName`; `400` for a missing field |
 | `POST /projects/{projectId}/units` | Adds a unit at the end of the project's list | `200` the project; `400` `invalidName`; `409` `projectFinished`; `404` for an unknown project |
 | `POST /projects/{projectId}/close` | Closes a finished project | `200` the project; `409` `projectFinished` when already closed; `404` for an unknown project |

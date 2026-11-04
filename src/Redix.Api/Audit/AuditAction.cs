@@ -26,4 +26,10 @@ public enum AuditAction
 
     /// <summary>An owner enabled a disabled user (UC-007).</summary>
     Enable,
+
+    /// <summary>An owner gave a user a project, or changed their role in it (UC-008).</summary>
+    AssignProject,
+
+    /// <summary>An owner took a project away from a user (UC-008).</summary>
+    RemoveProject,
 }

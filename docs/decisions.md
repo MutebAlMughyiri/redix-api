@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | An owner has no `ProjectMembers` rows: being a financial supervisor in every project is what being an owner means | The wrong state cannot be stored: an owner's role cannot be lost, and a new project needs nothing added for owners |
+| 2026-11-05 | Three roles: `FinanceSupervisor`, `FieldSupervisor`, and `Reader`, which Muteb added | Reader is the least a user can be given; what it may do arrives with UC-009 |
+| 2026-11-05 | `ProjectMembers` has its own `Id`, with project and user unique together | The audit trail names one record by one id |
 | 2026-11-05 | Users are managed by owners only, and an owner cannot be disabled | BR-29 names users as an owner's and keeps at least one owner |
 | 2026-11-05 | The owner types a temporary password and passes it on; a reset also ends the lock and signs out every device | As the canvas draws it; a locked user could not use the new password, and a forgotten password may mean a lost phone |
 | 2026-11-05 | Each change to a user has its own audit action | The trail then says what was done, as it does with `SignIn` |
