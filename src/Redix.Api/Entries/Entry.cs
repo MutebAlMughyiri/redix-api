@@ -24,16 +24,16 @@ public class Entry
     public EntryStatus Status { get; set; }
 
     /// <summary>The day the money moved, which the periodic report goes by (BR-24).</summary>
-    public DateOnly EntryDate { get; init; }
+    public DateOnly EntryDate { get; set; }
 
     /// <summary>What was paid, which the periodic report goes by (BR-24); negative for a credit note or a deduction (FR-14).</summary>
-    public decimal Amount { get; init; }
+    public decimal Amount { get; set; }
 
     /// <summary>The account it was paid from or into.</summary>
-    public Guid AccountId { get; init; }
+    public Guid AccountId { get; set; }
 
     /// <summary>Notes on it; empty when none.</summary>
-    public string Notes { get; init; } = "";
+    public string Notes { get; set; } = "";
 
     /// <summary>The user who entered it.</summary>
     public Guid CreatedByUserId { get; init; }

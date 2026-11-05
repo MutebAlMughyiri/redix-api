@@ -15,7 +15,9 @@ public static class ExpensesEndpoints
     {
         app.MapGet("/projects/{projectId:guid}/expenses/exceptions", Exceptions).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapGet("/projects/{projectId:guid}/expenses/creditable", Creditable).RequireAuthorization(nameof(Permission.ReadProject));
-        app.MapProjectChanges(Permission.RecordEntries).MapPost("/expenses", Record);
+        var changes = app.MapProjectChanges(Permission.RecordEntries);
+        changes.MapPost("/expenses", Record);
+        changes.MapPost("/expenses/{entryId:guid}", Edit);
     }
 
     /// <summary>The exceptions list (AC-09.1): the expenses sent or approved with no invoice, each saying why, in the order they were entered. UC-056 "Build the VAT statement for a period" adds what else it holds.</summary>
@@ -33,7 +35,9 @@ public static class ExpensesEndpoints
     /// <param name="projectId">The project.</param>
     /// <param name="supplierId">The supplier.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static async Task<List<CreditableInvoiceView>> Creditable(Guid projectId, Guid supplierId, RedixDbContext db)
+    public static Task<List<CreditableInvoiceView>> Creditable(Guid projectId, Guid supplierId, RedixDbContext db) => CreditableExceptAsync(projectId, supplierId, db, Guid.Empty);
+
+    private static async Task<List<CreditableInvoiceView>> CreditableExceptAsync(Guid projectId, Guid supplierId, RedixDbContext db, Guid editing)
     {
         var invoices = await (
             from invoice in db.Invoices
@@ -45,7 +49,7 @@ public static class ExpensesEndpoints
             from link in db.EntryLinks
             join note in db.Invoices on link.EntryId equals note.EntryId
             join entry in db.Entries on link.EntryId equals entry.Id
-            where link.Type == EntryLinkType.CreditNoteOf && entry.ProjectId == projectId && entry.Status != EntryStatus.Rejected
+            where link.Type == EntryLinkType.CreditNoteOf && entry.ProjectId == projectId && entry.Status != EntryStatus.Rejected && entry.Id != editing
             group note.Total by link.LinkedEntryId into notes
             select new { EntryId = notes.Key, Total = notes.Sum() }).ToDictionaryAsync(row => row.EntryId, row => row.Total);
         return invoices.OrderBy(invoice => invoice.EntryId).Select(invoice => new CreditableInvoiceView(invoice.EntryId, invoice.Number, invoice.InvoiceDate, invoice.Total + returned.GetValueOrDefault(invoice.EntryId), InvoiceFigures.RateOf(invoice.AmountAfterDiscount, invoice.Vat))).ToList();
@@ -73,11 +77,31 @@ public static class ExpensesEndpoints
         }
 
         var (status, idRefusal) = await EntryRecording.RefusalOfIdAsync(request.Id, db);
-        if (idRefusal.Length > 0)
-        {
-            return Refusal.Of(status, idRefusal);
-        }
+        return idRefusal.Length > 0 ? Refusal.Of(status, idRefusal) : await SaveAsync(projectId, request, principal, db, time, null);
+    }
 
+    /// <summary>Changes a purchase before it is approved (UC-033), through every check a new one passes. What is approved answers <c>entryApproved</c> (BR-11, AC-16.2); someone else's <c>notYourEntry</c>; one waiting for a decision, to whoever may not change it then, <c>entryWaitingForDecision</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="entryId">The entry.</param>
+    /// <param name="request">What it holds now.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="time">The current time.</param>
+    public static async Task<IResult> Edit(Guid projectId, Guid entryId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId && row.Kind == EntryKind.Purchase);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        var userId = AccessTokens.UserIdOf(principal);
+        var (status, refusal) = EntryChanges.RefusalOf(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId));
+        return refusal.Length > 0 ? Refusal.Of(status, refusal) : await SaveAsync(projectId, request with { Id = entryId }, principal, db, time, entry);
+    }
+
+    private static async Task<IResult> SaveAsync(Guid projectId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, Entry? existing)
+    {
+        var editing = existing?.Id ?? Guid.Empty;
         var userId = AccessTokens.UserIdOf(principal);
         var access = await UserAccess.OfAsync(userId, db);
         var held = access.In(projectId);
@@ -108,7 +132,7 @@ public static class ExpensesEndpoints
         }
 
         var vatRate = request.IsNotTaxable || request.IsWithoutInvoice() || supplier.VatNumber.Length == 0 ? 0 : project.VatRate;
-        var original = request.OriginalEntryId == Guid.Empty ? CreditableInvoiceView.None(vatRate) : (await Creditable(projectId, request.SupplierId, db)).SingleOrDefault(row => row.EntryId == request.OriginalEntryId);
+        var original = request.OriginalEntryId == Guid.Empty ? CreditableInvoiceView.None(vatRate) : (await CreditableExceptAsync(projectId, request.SupplierId, db, editing)).SingleOrDefault(row => row.EntryId == request.OriginalEntryId);
         if (original is null)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownOriginalInvoice");
@@ -134,13 +158,13 @@ public static class ExpensesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvoiceRequired");
         }
 
-        if (request.AttachmentId != Guid.Empty && await EntryRecording.IsFileOnAnEntryAsync(projectId, request.AttachmentId, db))
+        if (request.AttachmentId != Guid.Empty && await EntryRecording.IsFileOnAnEntryAsync(projectId, request.AttachmentId, db, editing))
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
         }
         if (!request.ConfirmDuplicate && !request.IsWithoutInvoice())
         {
-            var earlier = await EntryRecording.EarlierEntryAsync(supplier, request.InvoiceNumber.Trim(), access, db);
+            var earlier = await EntryRecording.EarlierEntryAsync(supplier, request.InvoiceNumber.Trim(), access, db, editing);
             if (earlier is not null)
             {
                 return Refusal.Of(StatusCodes.Status409Conflict, "DuplicateInvoice", "earlier", earlier);
@@ -148,7 +172,13 @@ public static class ExpensesEndpoints
         }
 
         var kept = request.IsCreditNote ? figures.Negated() : figures;
-        var (entry, details) = Build(request, projectId, subgroup.Id, kept, userId, time.GetUtcNow().UtcDateTime);
+        var at = time.GetUtcNow().UtcDateTime;
+        var (entry, details) = Build(request, projectId, subgroup.Id, kept, userId, at);
+        if (existing is not null)
+        {
+            await EntryChanges.ReplaceAsync(existing, entry, details, userId, at, db);
+            return Results.Ok(new ExpenseView(existing.Id, existing.Status, kept.AmountBeforeDiscount, kept.Discount, kept.AmountAfterDiscount, kept.Vat, kept.Total, existing.Amount));
+        }
         await EntryRecording.SaveAsync(entry, details, userId, db);
         return Results.Created($"/projects/{projectId}/expenses/{entry.Id}", new ExpenseView(entry.Id, entry.Status, kept.AmountBeforeDiscount, kept.Discount, kept.AmountAfterDiscount, kept.Vat, kept.Total, entry.Amount));
     }

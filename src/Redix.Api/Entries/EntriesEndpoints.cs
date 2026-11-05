@@ -18,7 +18,11 @@ public static class EntriesEndpoints
     {
         app.MapGet("/projects/{projectId:guid}/entries/{entryId:guid}", Read).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapGet("/projects/{projectId:guid}/entries/mine", Mine).RequireAuthorization(nameof(Permission.ReadProject));
-        app.MapProjectChanges(Permission.RecordEntries).MapPost("/entries/{entryId:guid}/submit", Submit);
+        var changes = app.MapProjectChanges(Permission.RecordEntries);
+        changes.MapPost("/entries/{entryId:guid}/submit", Submit);
+        changes.MapPost("/entries/{entryId:guid}/delete", Delete);
+        changes.MapPost("/entries/{entryId:guid}/notes", ChangeNotes);
+        app.MapProjectChanges(Permission.ApproveEntries).MapPost("/entries/{entryId:guid}/reverse", Reverse);
     }
 
     /// <summary>Where the caller's own entries stand in the project, newest first.</summary>
@@ -80,6 +84,138 @@ public static class EntriesEndpoints
         return Results.Ok(await ViewOfAsync(entry, db));
     }
 
+    /// <summary>Removes an entry never approved (UC-033), with the refusals of <see cref="EntryChanges.RefusalOf"/>. One a credit note names answers <c>entryHasCreditNote</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="entryId">The entry.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="time">The current time.</param>
+    public static async Task<IResult> Delete(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        var userId = AccessTokens.UserIdOf(principal);
+        var (status, refusal) = EntryChanges.RefusalOf(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId));
+        if (refusal.Length > 0)
+        {
+            return Refusal.Of(status, refusal);
+        }
+        if (await db.EntryLinks.AnyAsync(link => link.LinkedEntryId == entryId))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "EntryHasCreditNote");
+        }
+        await EntryChanges.DeleteAsync(entry, userId, time.GetUtcNow().UtcDateTime, db);
+        return Results.Ok();
+    }
+
+    /// <summary>Changes an entry's notes, which is allowed even once it is approved (AC-50.2, BR-11), for who entered it or whoever holds <see cref="Permission.ManageAnyEntry"/>; anyone else gets <c>notYourEntry</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="entryId">The entry.</param>
+    /// <param name="request">The notes.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="time">The current time.</param>
+    public static async Task<IResult> ChangeNotes(Guid projectId, Guid entryId, ChangeNotesRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        var userId = AccessTokens.UserIdOf(principal);
+        if (entry.CreatedByUserId != userId && !(await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.ManageAnyEntry))
+        {
+            return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
+        }
+        entry.Notes = request.Notes.Trim();
+        db.Audit(entry, AuditAction.Update, userId, time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
+
+    /// <summary>
+    /// Reverses an approved entry (UC-035, FR-50): an opposite entry of the same amount, tied to the original and approved at once, so both show in the reports and the net effect is zero. The original does not change.
+    /// No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; one already reversed, or itself a reversal, <c>alreadyReversed</c>.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="entryId">The entry.</param>
+    /// <param name="request">Why.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="time">The current time.</param>
+    public static async Task<IResult> Reverse(Guid projectId, Guid entryId, RejectEntryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        var reason = request.Reason.Trim();
+        if (reason.Length is 0 or > ApprovalsEndpoints.ReasonMaxLength)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "ReasonRequired");
+        }
+        if (entry.Status != EntryStatus.Approved)
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "EntryNotApproved");
+        }
+        if (await db.EntryLinks.AnyAsync(link => link.Type == EntryLinkType.Reversal && (link.LinkedEntryId == entryId || link.EntryId == entryId)))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "AlreadyReversed");
+        }
+
+        var userId = AccessTokens.UserIdOf(principal);
+        var at = time.GetUtcNow().UtcDateTime;
+        var reversal = new Entry
+        {
+            Id = Guid.CreateVersion7(),
+            ProjectId = projectId,
+            Kind = entry.Kind,
+            Status = EntryStatus.Approved,
+            EntryDate = Entry.Today(time),
+            Amount = -entry.Amount,
+            AccountId = entry.AccountId,
+            Notes = reason,
+            CreatedByUserId = userId,
+            CreatedAt = at,
+            ApprovedAt = at,
+        };
+        db.Add(reversal);
+        db.Audit(reversal, AuditAction.Create, userId, at);
+        List<object> details = [new EntryLink { EntryId = reversal.Id, Type = EntryLinkType.Reversal, LinkedEntryId = entryId, Reason = reason }];
+        var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entryId);
+        if (expense is not null)
+        {
+            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, UnitId = expense.UnitId, PaymentMethodId = expense.PaymentMethodId, BankFees = -expense.BankFees, WithoutInvoiceReason = reason, CustomValues = expense.CustomValues });
+        }
+        var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entryId);
+        if (purchase is not null)
+        {
+            details.Add(new PurchaseDetails { EntryId = reversal.Id, SupplierId = purchase.SupplierId, Product = purchase.Product, UnitPrice = purchase.UnitPrice, Quantity = purchase.Quantity });
+        }
+        var payment = await db.ContractorPaymentDetails.SingleOrDefaultAsync(row => row.EntryId == entryId);
+        if (payment is not null)
+        {
+            details.Add(new ContractorPaymentDetails { EntryId = reversal.Id, ContractId = payment.ContractId, IsOutsideContract = payment.IsOutsideContract });
+        }
+        var invoice = await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entryId);
+        if (invoice is not null)
+        {
+            details.Add(new Invoice { EntryId = reversal.Id, Number = invoice.Number, InvoiceDate = invoice.InvoiceDate, AmountBeforeDiscount = -invoice.AmountBeforeDiscount, Discount = -invoice.Discount, AmountAfterDiscount = -invoice.AmountAfterDiscount, Vat = -invoice.Vat, Total = -invoice.Total, IsCreditNote = invoice.IsCreditNote, VatPeriodStart = Invoice.QuarterStartOf(reversal.EntryDate) });
+        }
+        foreach (var detail in details)
+        {
+            db.Add(detail);
+            db.Audit(detail, AuditAction.Create, userId, at);
+        }
+        db.EntryDecisions.Add(new EntryDecision { EntryId = reversal.Id, Action = EntryDecisionAction.Approve, UserId = userId, At = at, Reason = reason });
+        await db.SaveChangesAsync();
+        return Results.Created($"/projects/{projectId}/entries/{reversal.Id}", new EntryStatusView(reversal.Id, reversal.Status, ""));
+    }
+
     private static async Task<List<string>> MissingOfAsync(Entry entry, RedixDbContext db)
     {
         var expense = await db.ExpenseDetails.SingleAsync(row => row.EntryId == entry.Id);
@@ -99,6 +235,10 @@ public static class EntriesEndpoints
         await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync(),
         await db.EntryLinks.Where(row => row.EntryId == entry.Id).ToListAsync());
 }
+
+/// <summary>An entry's notes.</summary>
+/// <param name="Notes">The notes; may be empty.</param>
+public record ChangeNotesRequest(string Notes);
 
 /// <summary>An entry and everything its kind has. What it does not have is empty, with an empty <c>entryId</c>, so a reader asks nothing but that.</summary>
 /// <param name="Entry">The entry.</param>

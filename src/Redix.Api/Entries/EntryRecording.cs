@@ -40,14 +40,14 @@ public static class EntryRecording
     }
 
     /// <summary>Whether the file <paramref name="attachmentId"/> names, or the same bytes, are on an entry of the project already (BR-22).</summary>
-    public static async Task<bool> IsFileOnAnEntryAsync(Guid projectId, Guid attachmentId, RedixDbContext db)
+    public static async Task<bool> IsFileOnAnEntryAsync(Guid projectId, Guid attachmentId, RedixDbContext db, Guid editing = default)
     {
         var hash = await db.Attachments.Where(attachment => attachment.Id == attachmentId).Select(attachment => attachment.Sha256).SingleAsync();
-        return await db.EntryAttachments.AnyAsync(link => db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
+        return await db.EntryAttachments.AnyAsync(link => link.EntryId != editing && db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
     }
 
     /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/>, or from whoever holds its VAT number in another project the caller can read (AC-17.1); null when there is none, so nothing about a project they cannot read shows (BR-33). The supplier of an invoice is the purchase's, or the contract's on a contractor payment.</summary>
-    public static async Task<EarlierEntryView?> EarlierEntryAsync(Supplier supplier, string number, UserAccess access, RedixDbContext db)
+    public static async Task<EarlierEntryView?> EarlierEntryAsync(Supplier supplier, string number, UserAccess access, RedixDbContext db, Guid editing = default)
     {
         var parties = db.PurchaseDetails.Select(purchase => new { purchase.EntryId, purchase.SupplierId }).Concat(
             from payment in db.ContractorPaymentDetails
@@ -58,7 +58,7 @@ public static class EntryRecording
             join party in parties on invoice.EntryId equals party.EntryId
             join named in db.Suppliers on party.SupplierId equals named.Id
             join project in db.Projects on named.ProjectId equals project.Id
-            where invoice.Number == number && (named.Id == supplier.Id || (supplier.VatNumber != "" && named.VatNumber == supplier.VatNumber))
+            where invoice.EntryId != editing && invoice.Number == number && (named.Id == supplier.Id || (supplier.VatNumber != "" && named.VatNumber == supplier.VatNumber))
             select new { ProjectId = project.Id, ProjectName = project.Name, invoice.EntryId, invoice.InvoiceDate, invoice.Total }).ToListAsync();
         var earlier = rows.OrderBy(row => row.EntryId).FirstOrDefault(row => row.ProjectId == supplier.ProjectId || access.In(row.ProjectId).Contains(Permission.ReadProject));
         return earlier is null ? null : new EarlierEntryView(earlier.ProjectName, earlier.InvoiceDate, earlier.Total);
