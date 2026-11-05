@@ -61,6 +61,9 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         await ChangePasswordAsync(session.AccessToken, "wrong", NewPassword);
 
         Assert.Equal("accountLocked", await CodeOf(await ChangePasswordAsync(session.AccessToken, Password, NewPassword)));
+        var trail = await factory.AuditTrailOfAsync(user.Id);
+        Assert.Contains(trail, record => record.Action == AuditAction.AccountLocked);
+        Assert.Contains(trail, record => record.Action == AuditAction.SignInFailed);
     }
 
     [Theory]

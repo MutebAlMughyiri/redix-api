@@ -20,7 +20,8 @@ public static class AuthEndpoints
 
     /// <summary>
     /// Signs a user in, opens a session on a new device (FR-01, AC-01.1) and records the sign-in in the audit trail (UC-005). A wrong username, a wrong
-    /// password and a disabled user all answer <c>invalidCredentials</c>; a locked account answers <c>accountLocked</c> (AC-01.2).
+    /// password and a disabled user all answer <c>invalidCredentials</c>; a locked account answers <c>accountLocked</c> (AC-01.2). A refusal is recorded against the user
+    /// whose name was typed; an unknown username has nobody to record it against.
     /// </summary>
     /// <param name="request">The username and password typed on the sign-in screen.</param>
     /// <param name="db">The database the user and the new device live in.</param>
@@ -36,7 +37,7 @@ public static class AuthEndpoints
             return Refusal.Of(StatusCodes.Status401Unauthorized, nameof(SignInOutcome.InvalidCredentials));
         }
 
-        var outcome = user.SignIn(request.Password, hasher, now);
+        var outcome = CheckPassword(user, request.Password, db, hasher, now);
         if (outcome != SignInOutcome.Success)
         {
             await db.SaveChangesAsync();
@@ -97,7 +98,7 @@ public static class AuthEndpoints
         var deviceId = AccessTokens.DeviceIdOf(principal);
         var user = await db.Users.SingleAsync(user => user.Id == userId);
 
-        var outcome = user.SignIn(request.CurrentPassword, hasher, now);
+        var outcome = CheckPassword(user, request.CurrentPassword, db, hasher, now);
         if (outcome != SignInOutcome.Success)
         {
             await db.SaveChangesAsync();
@@ -130,6 +131,17 @@ public static class AuthEndpoints
         db.Audit(await db.Users.SingleAsync(user => user.Id == userId), AuditAction.SignOut, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.NoContent();
+    }
+
+    private static SignInOutcome CheckPassword(User user, string password, RedixDbContext db, IPasswordHasher<User> hasher, DateTime now)
+    {
+        var lockedUntil = user.LockedUntil;
+        var outcome = user.SignIn(password, hasher, now);
+        if (outcome != SignInOutcome.Success)
+        {
+            db.Audit(user, user.LockedUntil == lockedUntil ? AuditAction.SignInFailed : AuditAction.AccountLocked, user.Id, now);
+        }
+        return outcome;
     }
 
     /// <summary>

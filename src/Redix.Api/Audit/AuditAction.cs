@@ -9,6 +9,12 @@ public enum AuditAction
     /// <summary>A user signed out of a device (UC-062).</summary>
     SignOut,
 
+    /// <summary>A wrong password was typed for a user, or any password while they are locked or disabled; what was typed never enters the trail (UC-005).</summary>
+    SignInFailed,
+
+    /// <summary>A wrong password locked a user's account (AC-01.2, UC-005).</summary>
+    AccountLocked,
+
     /// <summary>A user replaced their password (UC-003); the password's hash never enters the trail.</summary>
     ChangePassword,
 

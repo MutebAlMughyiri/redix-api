@@ -140,6 +140,78 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AWrongPasswordIsInTheAuditTrailAgainstTheUserAndNeverSaysWhatWasTyped()
+    {
+        var user = await factory.AddUserAsync(Password);
+        const string typed = "Someone-is-guessing-1";
+
+        await SignInAsync(user.Username, typed);
+
+        var record = Assert.Single(await factory.AuditTrailOfAsync(user.Id));
+        Assert.Equal(AuditAction.SignInFailed, record.Action);
+        Assert.Equal(user.Id, record.UserId);
+        Assert.Equal("Users", record.TableName);
+        Assert.Equal(factory.Time.GetUtcNow().UtcDateTime, record.At);
+        Assert.Contains("FailedSignIns", record.After);
+        Assert.DoesNotContain(typed, record.Before + record.After);
+    }
+
+    [Fact]
+    public async Task TheWrongPasswordThatLocksTheAccountIsRecordedAsALockout()
+    {
+        var user = await factory.AddUserAsync(Password);
+
+        for (var attempt = 0; attempt < User.WrongPasswordsBeforeLock; attempt++)
+        {
+            await SignInAsync(user.Username, "Wrong-password-1");
+        }
+
+        var trail = await factory.AuditTrailOfAsync(user.Id);
+        Assert.Equal(User.WrongPasswordsBeforeLock, trail.Count);
+        Assert.All(trail.SkipLast(1), record => Assert.Equal(AuditAction.SignInFailed, record.Action));
+        Assert.Equal(AuditAction.AccountLocked, trail[^1].Action);
+        Assert.Contains("LockedUntil", trail[^1].After);
+    }
+
+    [Fact]
+    public async Task TryingWhileLockedIsAFailedSignIn()
+    {
+        var user = await factory.AddUserAsync(Password);
+        for (var attempt = 0; attempt < User.WrongPasswordsBeforeLock; attempt++)
+        {
+            await SignInAsync(user.Username, "Wrong-password-1");
+        }
+
+        await SignInAsync(user.Username, Password);
+
+        Assert.Equal(AuditAction.SignInFailed, (await factory.AuditTrailOfAsync(user.Id))[^1].Action);
+    }
+
+    [Fact]
+    public async Task ASignInToADisabledUserIsAFailedSignIn()
+    {
+        var user = await factory.AddUserAsync(Password, isActive: false);
+
+        await SignInAsync(user.Username, Password);
+
+        Assert.Equal(AuditAction.SignInFailed, Assert.Single(await factory.AuditTrailOfAsync(user.Id)).Action);
+    }
+
+    [Fact]
+    public async Task AnUnknownUsernameRecordsNothing()
+    {
+        long Newest(RedixDbContext db) => db.AuditTrail.OrderByDescending(record => record.Id).Select(record => record.Id).FirstOrDefault();
+        var before = 0L;
+        var after = 0L;
+        await factory.WithDatabaseAsync(db => { before = Newest(db); return Task.CompletedTask; });
+
+        await SignInAsync($"nobody-{Guid.NewGuid():N}", "Wrong-password-1");
+
+        await factory.WithDatabaseAsync(db => { after = Newest(db); return Task.CompletedTask; });
+        Assert.Equal(before, after);
+    }
+
+    [Fact]
     public async Task AWrongPasswordAndAnUnknownUsernameGetTheSameAnswer()
     {
         var user = await factory.AddUserAsync(Password);

@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | A refused password is in the audit trail against the user whose name was typed, at sign-in and at a password change; the one that locks is `AccountLocked`, the others `SignInFailed`; an unknown username records nothing | Otherwise nobody can see that someone tried to guess a password. A wrong current password counts toward the same lock, so it is the same record. The table needs a user, so an unknown name has nothing to record against. Findings row 22. |
 | 2026-11-05 | A mobile is ASCII digits with a leading `+` at most; `+` alone, spaces and Arabic digits are refused with `invalidMobile`, on users, registration and suppliers | The columns are `varchar`, so anything else would be stored as `????`, and the browser front end sends what is typed. `User.IsAcceptableMobile` is the one owner. Findings row 75. |
 | 2026-11-05 | The admin seed runs only once no migration is left to apply | EF Core runs it after a rollback too, when the tables it writes may be gone, which printed `Invalid object name 'Users'` over a rollback that had worked. Findings row 17. |
 | 2026-11-05 | Who enters a draft sends it; `ManageAnyEntry`, a permission of its own for Finance, sends anyone's | UC-033 "Edit or delete an unapproved entry" gives the field their own entries and Finance any. A draft is seen by nobody's inbox, so nobody should send someone else's half-done work. Made without Muteb; see the findings |

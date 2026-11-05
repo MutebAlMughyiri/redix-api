@@ -26,6 +26,8 @@ Each use case adds its own actions; entries, users and attachments join the trai
 | Action | When | Record | Values |
 | --- | --- | --- | --- |
 | `SignIn` | A user signs in (UC-002) | The user | What the sign-in changed, such as the count of wrong passwords cleared |
+| `SignInFailed` | A wrong password is typed for a user, at sign-in or at a password change, or any password while they are locked or disabled (AC-01.2) | The user whose name was typed; an unknown username records nothing | The count of wrong passwords; never what was typed |
+| `AccountLocked` | A wrong password locks the account | The same | The count, and `LockedUntil`, old and new |
 | `ChangePassword` | A user changes their password (UC-003) | The user | `MustChangePassword`, when a temporary password ends; never the password's hash |
 | `SignOut` | A user signs out of a device (UC-062) | The user | None: the record itself says it happened |
 | `Create`, `Update`, `ResetPassword`, `Disable`, `Enable` | A user is managed (UC-007, UC-008) | The user | What the action changed; never the password's hash |
@@ -40,6 +42,9 @@ After making its change and before `SaveChanges`, the endpoint calls `db.Audit(r
 | Rule | Code | Test |
 | --- | --- | --- |
 | A sign-in is recorded with the user and the time | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheAuditTrailWithTheUserAndTheTime` |
+| A refused sign-in is recorded against the user whose name was typed, and never what was typed | `AuthEndpoints.CheckPassword` | `AuthTests.AWrongPasswordIsInTheAuditTrailAgainstTheUserAndNeverSaysWhatWasTyped`, `AuthTests.TryingWhileLockedIsAFailedSignIn`, `AuthTests.ASignInToADisabledUserIsAFailedSignIn` |
+| The wrong password that locks the account is recorded as a lockout, at sign-in or at a password change | `AuthEndpoints.CheckPassword` | `AuthTests.TheWrongPasswordThatLocksTheAccountIsRecordedAsALockout`, `ChangePasswordTests.AWrongCurrentPasswordIsRefusedAndCountsTowardTheLockout` |
+| An unknown username records nothing, because there is nobody to record it against | `AuthEndpoints.SignIn` | `AuthTests.AnUnknownUsernameRecordsNothing` |
 | A password change is recorded with the values before and after, never the password's hash | `AuthEndpoints.ChangePassword`, `User.PasswordHash` (`[NotAudited]`) | `ChangePasswordTests.APasswordChangeIsInTheAuditTrailWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
 | A record is built from the values the save changes | `AuditRecord.Of` | Both tests above |
 | No record can be changed or deleted, through the API or any query (AC-21.1) | The database trigger `AuditTrailIsAppendOnly`, created by the `AuditTrail` migration | `AuditTrailTests.NoRecordOfTheTrailCanBeChangedOrDeletedByAnyone` |
