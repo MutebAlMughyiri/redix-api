@@ -437,7 +437,6 @@ public static class TranslationSeed
         ("expenses.duplicateInvoice", "This supplier's invoice number is already entered.", "رقم فاتورة هذا المورد مُدخل مسبقاً."),
         ("expenses.duplicateTitle", "This invoice looks entered already", "يبدو أن هذه الفاتورة مُدخلة مسبقاً"),
         ("expenses.duplicateExplain", "The same supplier and invoice number exist in the earlier entry above. Save it only if this is a different invoice.", "نفس المورد ورقم الفاتورة موجودان في القيد السابق أعلاه. احفظ فقط إن كانت فاتورة مختلفة."),
-        ("expenses.duplicateHidden", "The same supplier and invoice number exist in a project you have no access to. Save it only if this is a different invoice.", "نفس المورد ورقم الفاتورة موجودان في مشروع لا تملك صلاحية الوصول إليه. احفظ فقط إن كانت فاتورة مختلفة."),
         ("expenses.saveAnyway", "Save anyway", "حفظ رغم ذلك"),
         ("expenses.invoiceAlreadyAttached", "This file is already on another expense.", "هذا الملف مرفق بمصروف آخر."),
         ("suppliers.mostUsed", "Most used", "الأكثر استخداماً"),

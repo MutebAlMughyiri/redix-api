@@ -57,7 +57,7 @@ public static class ExpensesEndpoints
     /// <c>invalidPaymentAmount</c> or <c>invalidBankFees</c>. A date outside the project's period or in the future answers <c>invalidInvoiceDate</c> or <c>invalidPaymentDate</c> (BR-12). A file of no such attachment answers <c>unknownAttachment</c>. A custom value answers <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>.
     /// Sending also needs the required columns, <c>requiredColumnMissing</c> with its <c>columnKey</c> (FR-41), and the invoice's file or why there is none, <c>invoiceRequired</c> (FR-09); a draft can wait for them. A reason too long answers <c>invalidWithoutInvoiceReason</c>, and a reason beside a file <c>invoiceAndReason</c>.
     /// A negative amount is a deduction (FR-14): it has no invoice, so with no reason it answers <c>deductionNeedsReason</c>. A credit note (BR-18) with a reason answers <c>creditNoteNeedsInvoice</c>; one naming what it cannot return <c>unknownOriginalInvoice</c>; and one above what is left of that invoice <c>creditNoteAboveOriginal</c>.
-    /// A file already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). The same supplier's invoice number in any project answers <c>duplicateInvoice</c>, with the earlier entry as <c>earlier</c>, until the request says <c>confirmDuplicate</c> (UC-023, FR-17).
+    /// A file already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). The same supplier's invoice number in this project or another the caller can read answers <c>duplicateInvoice</c>, with the earlier entry as <c>earlier</c>, until the request says <c>confirmDuplicate</c> (UC-023, FR-17).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">What was typed and chosen.</param>
@@ -181,12 +181,11 @@ public static class ExpensesEndpoints
     }
 }
 
-/// <summary>The entry an invoice number repeats (FR-17). One in a project the caller cannot read says only that it exists, because projects are separate (BR-33).</summary>
-/// <param name="IsVisible">Whether the caller can read its project, and so whether the rest says anything.</param>
+/// <summary>The entry an invoice number repeats, in a project the caller can read (AC-17.1).</summary>
 /// <param name="ProjectName">The project it is in.</param>
 /// <param name="InvoiceDate">The invoice's date.</param>
 /// <param name="Total">The invoice's total.</param>
-public record EarlierEntryView(bool IsVisible, string ProjectName, DateOnly InvoiceDate, decimal Total);
+public record EarlierEntryView(string ProjectName, DateOnly InvoiceDate, decimal Total);
 
 /// <summary>An invoice a credit note can return (BR-18), or none.</summary>
 /// <param name="EntryId">The invoice's entry; empty for none.</param>

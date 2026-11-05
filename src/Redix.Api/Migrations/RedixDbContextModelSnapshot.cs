@@ -8697,20 +8697,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("07ca8f05-3adf-959a-8805-fe9984c4873f"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("6820867f-f714-d5b1-fd69-f7959cd9da74"),
-                            Value = "The same supplier and invoice number exist in a project you have no access to. Save it only if this is a different invoice."
-                        },
-                        new
-                        {
-                            Id = new Guid("65c87a54-3324-2b56-95a4-3d61e1ecf589"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("6820867f-f714-d5b1-fd69-f7959cd9da74"),
-                            Value = "نفس المورد ورقم الفاتورة موجودان في مشروع لا تملك صلاحية الوصول إليه. احفظ فقط إن كانت فاتورة مختلفة."
-                        },
-                        new
-                        {
                             Id = new Guid("8c4cde6e-3654-36bd-bd3c-7863f0f2c7e3"),
                             Language = "en",
                             TranslationKeyId = new Guid("c153a218-ff68-1db3-bcec-66409d1e0695"),
@@ -11920,12 +11906,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d47cd49a-1a6a-7da3-9bed-39818b30f783"),
                             Description = "",
                             Key = "expenses.duplicateExplain"
-                        },
-                        new
-                        {
-                            Id = new Guid("6820867f-f714-d5b1-fd69-f7959cd9da74"),
-                            Description = "",
-                            Key = "expenses.duplicateHidden"
                         },
                         new
                         {

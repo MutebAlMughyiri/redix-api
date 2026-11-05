@@ -42,7 +42,7 @@ public static class EntryRecording
         return await db.EntryAttachments.AnyAsync(link => db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
     }
 
-    /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/> or from whoever holds its VAT number in another project, one the caller can read if there is any. The supplier of an invoice is the purchase's, or the contract's on a contractor payment.</summary>
+    /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/>, or from whoever holds its VAT number in another project the caller can read (AC-17.1); null when there is none, so nothing about a project they cannot read shows (BR-33). The supplier of an invoice is the purchase's, or the contract's on a contractor payment.</summary>
     public static async Task<EarlierEntryView?> EarlierEntryAsync(Supplier supplier, string number, UserAccess access, RedixDbContext db)
     {
         var parties = db.PurchaseDetails.Select(purchase => new { purchase.EntryId, purchase.SupplierId }).Concat(
@@ -56,12 +56,8 @@ public static class EntryRecording
             join project in db.Projects on named.ProjectId equals project.Id
             where invoice.Number == number && (named.Id == supplier.Id || (supplier.VatNumber != "" && named.VatNumber == supplier.VatNumber))
             select new { ProjectId = project.Id, ProjectName = project.Name, invoice.EntryId, invoice.InvoiceDate, invoice.Total }).ToListAsync();
-        if (rows.Count == 0)
-        {
-            return null;
-        }
-        var visible = rows.OrderBy(row => row.EntryId).FirstOrDefault(row => access.In(row.ProjectId).Contains(Permission.ReadProject));
-        return visible is null ? new EarlierEntryView(false, "", default, 0) : new EarlierEntryView(true, visible.ProjectName, visible.InvoiceDate, visible.Total);
+        var earlier = rows.OrderBy(row => row.EntryId).FirstOrDefault(row => row.ProjectId == supplier.ProjectId || access.In(row.ProjectId).Contains(Permission.ReadProject));
+        return earlier is null ? null : new EarlierEntryView(earlier.ProjectName, earlier.InvoiceDate, earlier.Total);
     }
 
     /// <summary>Why the custom values of <paramref name="request"/> do not fit <paramref name="columns"/> or, when sending, a required one is empty (FR-41), and the column's key. An empty reason when they fit.</summary>

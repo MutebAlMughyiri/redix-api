@@ -39,7 +39,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-020](use-cases/UC-020-contracts.md) | Record what each contractor was promised, to follow paid and remaining | Finance changes; everyone with access reads |
 | [UC-021](use-cases/UC-021-attachments.md) | Keep an invoice's picture or PDF, or a contract's document, and serve it only to people with access to the project | Finance and Field keep; everyone with access reads |
 | [UC-022](use-cases/UC-022-purchase-expense.md) | Record a purchase in the ledger, its figures computed as the accountant computes them | Finance and Field |
-| [UC-023](use-cases/UC-023-duplicate-invoice.md) | Warn when a supplier's invoice number is entered again, in any project | The API, on its own |
+| [UC-023](use-cases/UC-023-duplicate-invoice.md) | Warn when a supplier's invoice number is entered again, in this project or another the user can read | The API, on its own |
 | [UC-025](use-cases/UC-025-expense-without-invoice.md) | Record an expense that has no invoice, saying why, and list it among the exceptions | Finance and Field; everyone with access reads the list |
 | [UC-026](use-cases/UC-026-credit-note.md) | Record money coming back: a credit note, or a deduction | Finance and Field |
 | [UC-027](use-cases/UC-027-contractor-payment.md) | Pay a contractor against a contract, and keep its remaining right | Finance and Field |

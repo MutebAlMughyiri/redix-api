@@ -85,7 +85,6 @@ public class DuplicateInvoiceTests(MigratedApiFactory factory)
         var answer = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("duplicateInvoice", answer.GetProperty("code").GetString());
         var earlier = answer.GetProperty("earlier").Deserialize<EarlierEntryView>(Json)!;
-        Assert.True(earlier.IsVisible);
         Assert.Equal("غصون 6", earlier.ProjectName);
         Assert.Equal(1150m, earlier.Total);
         Assert.Equal(Entry.Today(factory.Time), earlier.InvoiceDate);
@@ -152,7 +151,7 @@ public class DuplicateInvoiceTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_33_AnEarlierEntryInAProjectTheCallerCannotReadSaysOnlyThatItExists()
+    public async Task AC_17_1_AnEarlierEntryInAProjectTheCallerCannotReadIsNeverMentioned()
     {
         var vatNumber = MigratedApiFactory.NewVatNumber();
         var first = await FinanceAsync("غصون 6", vatNumber);
@@ -161,13 +160,27 @@ public class DuplicateInvoiceTests(MigratedApiFactory factory)
 
         var response = await PostAsync(second, Expense(second));
 
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.DoesNotContain("غصون 6", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task AC_17_1_OfSeveralEarlierEntriesTheWarningNamesOneTheCallerCanRead()
+    {
+        var vatNumber = MigratedApiFactory.NewVatNumber();
+        var hidden = await FinanceAsync("غصون 5", vatNumber);
+        var user = await factory.AddUserAsync(Password);
+        var client = await factory.ClientSignedInAsAsync(user, Password);
+        var readable = await InProjectAsync(client, user, "غصون 6", vatNumber);
+        var current = await InProjectAsync(client, user, "غصون 7", vatNumber);
+        (await PostAsync(hidden, Expense(hidden))).EnsureSuccessStatusCode();
+        (await PostAsync(readable, Expense(readable))).EnsureSuccessStatusCode();
+
+        var response = await PostAsync(current, Expense(current));
+
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var earlier = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("earlier").Deserialize<EarlierEntryView>(Json)!;
-        Assert.False(earlier.IsVisible);
-        Assert.Equal("", earlier.ProjectName);
-        Assert.Equal(0m, earlier.Total);
-        Assert.Equal(default, earlier.InvoiceDate);
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(second, Expense(second) with { ConfirmDuplicate = true })).StatusCode);
+        Assert.Equal("غصون 6", earlier.ProjectName);
     }
 
     [Fact]
