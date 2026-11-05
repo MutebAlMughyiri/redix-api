@@ -130,12 +130,16 @@ public class Project
         return ProjectChangeOutcome.Done;
     }
 
-    /// <summary>Closes the finished project, which is read-only from then on (AC-04.1); a finished project cannot be closed again.</summary>
-    public ProjectChangeOutcome Close()
+    /// <summary>Closes the finished project, which is read-only from then on (AC-04.1); a finished project cannot be closed again, nor one with <paramref name="hasEntriesWaiting"/> for approval (BR-35).</summary>
+    public ProjectChangeOutcome Close(bool hasEntriesWaiting)
     {
         if (IsReadOnly)
         {
             return ProjectChangeOutcome.ProjectFinished;
+        }
+        if (hasEntriesWaiting)
+        {
+            return ProjectChangeOutcome.PendingEntries;
         }
         Status = ProjectStatus.Finished;
         return ProjectChangeOutcome.Done;

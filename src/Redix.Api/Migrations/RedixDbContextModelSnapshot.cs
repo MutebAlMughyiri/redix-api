@@ -3353,6 +3353,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("a39f0718-fbab-9144-900c-5272495dc673"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c33d1bdd-122b-d5b7-5927-b9b1d6e949f0"),
+                            Value = "Entries in this project are waiting for approval. Approve or reject them first."
+                        },
+                        new
+                        {
+                            Id = new Guid("2ab4d5c5-614e-362d-d207-fbb7c5a34bdc"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c33d1bdd-122b-d5b7-5927-b9b1d6e949f0"),
+                            Value = "في هذا المشروع قيود بانتظار الاعتماد. اعتمدها أو ارفضها أولاً."
+                        },
+                        new
+                        {
                             Id = new Guid("8d623765-3340-4981-e339-e7484d9f17bb"),
                             Language = "en",
                             TranslationKeyId = new Guid("baa327d4-e13f-b01c-96b9-865b9e648a55"),
@@ -9350,6 +9364,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("c8675013-b514-82b4-c81b-2a801ab38051"),
                             Description = "",
                             Key = "projects.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("c33d1bdd-122b-d5b7-5927-b9b1d6e949f0"),
+                            Description = "",
+                            Key = "projects.pendingEntries"
                         },
                         new
                         {

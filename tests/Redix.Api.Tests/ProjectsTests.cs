@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Entries;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Tests;
@@ -435,5 +436,43 @@ public class ProjectsTests(MigratedApiFactory factory)
         Assert.Equal(AuditAction.CloseProject, record.Action);
         Assert.Equal((int)ProjectStatus.Running, ValuesOf(record.Before).GetProperty("Status").GetInt32());
         Assert.Equal((int)ProjectStatus.Finished, ValuesOf(record.After).GetProperty("Status").GetInt32());
+    }
+
+    [Fact]
+    public async Task BR_35_AProjectWithEntriesWaitingForApprovalCannotBeClosed()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var entry = await ledger.RecordAsync(ledger.Purchase());
+        await ledger.SetStatusAsync(entry.Id, EntryStatus.PendingApproval);
+
+        var refused = await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/close", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("pendingEntries", await CodeOf(refused));
+        Assert.Equal(ProjectStatus.Running, (await ListAsync(ledger.Client))!.Single(project => project.Id == ledger.ProjectId).Status);
+    }
+
+    [Theory]
+    [InlineData(EntryStatus.Draft)]
+    [InlineData(EntryStatus.Approved)]
+    [InlineData(EntryStatus.Rejected)]
+    public async Task BR_35_OnlyEntriesWaitingForApprovalHoldAProjectOpen(EntryStatus status)
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var entry = await ledger.RecordAsync(ledger.Purchase());
+        await ledger.SetStatusAsync(entry.Id, status);
+
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/close", null)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task BR_35_AnEntryWaitingInAnotherProjectHoldsNothingOpen()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var entry = await ledger.RecordAsync(ledger.Purchase());
+        await ledger.SetStatusAsync(entry.Id, EntryStatus.PendingApproval);
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 7");
+
+        (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
     }
 }

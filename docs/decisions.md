@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | A project with entries waiting for approval cannot be closed; drafts do not hold it open | BR-35. A draft waits for nobody, so it would otherwise hold a project open for ever. Findings row 5. |
 | 2026-11-05 | Creating a project, adding a unit, closing a project and a changed VAT rate are in the audit trail, and an opening balance cannot change once any entry names the account, drafts included | Closing cannot be undone, a wrong rate changes the VAT of every new entry, and a changed opening balance moves every balance after it and can hide a reconciliation difference (BR-08). Nothing said who did them. Findings rows 31, 63, 66. |
 | 2026-11-05 | An account's edit is always in the audit trail, with whatever it changed; changing a name alone records the name | Row 66 asks for the opening balance. One line that records the edit needs no second check of what changed, and contracts already record every amendment. Findings rows 31, 63, 66. |
 | 2026-11-05 | A refused password is in the audit trail against the user whose name was typed, at sign-in and at a password change; the one that locks is `AccountLocked`, the others `SignInFailed`; an unknown username records nothing | Otherwise nobody can see that someone tried to guess a password. A wrong current password counts toward the same lock, so it is the same record. The table needs a user, so an unknown name has nothing to record against. Findings row 22. |

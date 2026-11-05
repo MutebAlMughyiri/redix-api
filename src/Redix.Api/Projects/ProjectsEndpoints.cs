@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Entries;
 
 namespace Redix.Api.Projects;
 
@@ -86,13 +87,16 @@ public static class ProjectsEndpoints
     public static Task<IResult> AddUnit(Guid projectId, AddUnitRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ChangeAsync(projectId, principal, db, time, AuditAction.Create, project => project.AddUnit(request.Name.Trim()));
 
-    /// <summary>Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>.</summary>
+    /// <summary>Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>; one with entries waiting for approval, <c>pendingEntries</c> (BR-35). A draft waits for nobody, so it holds nothing open.</summary>
     /// <param name="projectId">The project to close.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
     /// <param name="time">The current time, for the audit record.</param>
-    public static Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, principal, db, time, AuditAction.CloseProject, project => project.Close());
+    public static async Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var hasEntriesWaiting = await db.Entries.AnyAsync(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval);
+        return await ChangeAsync(projectId, principal, db, time, AuditAction.CloseProject, project => project.Close(hasEntriesWaiting));
+    }
 
     /// <summary>Sets the rate new entries' VAT is computed at (BR-14); saved entries keep theirs. A finished project answers <c>projectFinished</c>; a percentage outside 0 to 100, or with more than two decimals, <c>invalidVatRate</c>.</summary>
     /// <param name="projectId">The project.</param>
