@@ -47,6 +47,20 @@ public class Project
     /// <summary>The project's units, in the order they were added, and once approved the shared one.</summary>
     public List<Unit> Units { get; } = [];
 
+    /// <summary>How far the work has come, as a percentage from 0 to 100 (UC-063); 0 until someone says.</summary>
+    public decimal CompletionPercent { get; private set; }
+
+    /// <summary>Sets how far the work has come, from 0 to 100 with at most two decimals; false, changing nothing, for anything else.</summary>
+    public bool SetCompletion(decimal percent)
+    {
+        if (percent is < 0 or > 100 || decimal.Round(percent, 2) != percent)
+        {
+            return false;
+        }
+        CompletionPercent = percent;
+        return true;
+    }
+
     /// <summary>True once the project is finished: nothing in it changes any more (AC-04.1).</summary>
     public bool IsReadOnly => Status == ProjectStatus.Finished;
 

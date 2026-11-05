@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | UC-063: completion is one percentage for the project, typed by whoever holds `ManageProject`, in the audit trail; cost is the approved expenses; everyone sees both | Its five open questions were Muteb's, and he asked for features without decisions tonight. One typed figure needs no budget the BRS lacks, and these are the smallest answers to reverse |
+| 2026-11-05 | The contracts report is the contracts list of UC-020, which already has value, paid, remaining and the overrun alert | A second route would answer the same thing twice |
+| 2026-11-05 | Two old migration tests write their project as that schema had it | They inserted through today's model, so any column added to projects broke them |
 | 2026-11-05 | A sale carries the real estate transaction tax by default, at 5%, outside the net VAT due, or VAT at the project's rate | Open question 6 waits for the accountant. Both are kept, so the answer needs no change to recorded sales, only the default |
 | 2026-11-05 | A sales invoice belongs to the sale's revenue entry, so a sale recorded first takes its invoice later and counts once | AC-42.1 asks that the sale not count twice in revenue |
 | 2026-11-05 | The VAT statement is computed, never stored; only the periodic report is a snapshot | Row 95: an invoice declared later must move between quarters, and a stored statement would hold the old answer |

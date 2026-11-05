@@ -633,6 +633,14 @@ public class SuppliersTests(MigratedApiFactory factory)
         (await DisableAsync(client, project.Id, named.Id)).EnsureSuccessStatusCode();
     }
 
+    /// <summary>A project written as the schema of these older migrations has it, so a column added to projects later does not reach back into them.</summary>
+    private static async Task<Guid> OldProjectAsync(RedixDbContext db, string name)
+    {
+        var id = Guid.CreateVersion7();
+        await db.Database.ExecuteSqlAsync($"INSERT INTO Projects (Id, Name, StartDate, Status, RejectionReason, IsTemplate, StructureSourceId, VatRate) VALUES ({id}, {name}, {new DateOnly(2026, 11, 1)}, 1, '', 0, {Guid.Empty}, 0.15)");
+        return id;
+    }
+
     [Fact]
     public Task TheMigrationMarksTheRowTheApprovalNamedInAProjectApprovedBeforeIt() =>
         factory.OnScratchDatabaseAsync("RedixGeneralCashTests", async db =>
@@ -642,12 +650,12 @@ public class SuppliersTests(MigratedApiFactory factory)
             var target = names.Single(name => name.EndsWith("_GeneralCashSupplierFlag"));
             await migrator.MigrateAsync(names[names.IndexOf(target) - 1]);
             var user = new User { Username = "approver", CreatedAt = factory.Time.GetUtcNow().UtcDateTime };
-            var (project, _) = Project.New("غصون 6", new DateOnly(2026, 11, 1), []);
-            var (otherProject, _) = Project.New("غصون 7", new DateOnly(2026, 11, 1), []);
-            db.AddRange(user, project, otherProject);
+            db.Add(user);
             await db.SaveChangesAsync();
+            var project = await OldProjectAsync(db, "غصون 6");
+            var otherProject = await OldProjectAsync(db, "غصون 7");
             Guid general = Guid.CreateVersion7(), other = Guid.CreateVersion7(), renamed = Guid.CreateVersion7();
-            foreach (var (id, projectId, name) in new[] { (general, project.Id, Supplier.GeneralCashSupplierName), (other, project.Id, "شركة النخيل"), (renamed, otherProject.Id, "نقدي") })
+            foreach (var (id, projectId, name) in new[] { (general, project, Supplier.GeneralCashSupplierName), (other, project, "شركة النخيل"), (renamed, otherProject, "نقدي") })
             {
                 await db.Database.ExecuteSqlAsync($"INSERT INTO Suppliers (Id, ProjectId, Name, VatNumber, Mobile, Status, IsActive, CreatedByUserId) VALUES ({id}, {projectId}, {name}, '', '', 0, 1, {user.Id})");
             }
@@ -726,12 +734,12 @@ public class SuppliersTests(MigratedApiFactory factory)
             var target = names.Single(name => name.EndsWith("_SupplierNormalizedName"));
             await migrator.MigrateAsync(names[names.IndexOf(target) - 1]);
             var user = new User { Username = "approver", CreatedAt = factory.Time.GetUtcNow().UtcDateTime };
-            var (project, _) = Project.New("غصون 6", new DateOnly(2026, 11, 1), []);
-            db.AddRange(user, project);
+            db.Add(user);
             await db.SaveChangesAsync();
+            var project = await OldProjectAsync(db, "غصون 6");
             const string name = "أَحْمَد إبراهيم مؤسسة آل مصطفى شئون";
             var id = Guid.CreateVersion7();
-            await db.Database.ExecuteSqlAsync($"INSERT INTO Suppliers (Id, ProjectId, Name, VatNumber, Mobile, Status, IsActive, IsGeneralCash, CreatedByUserId) VALUES ({id}, {project.Id}, {name}, '', '', 0, 1, 0, {user.Id})");
+            await db.Database.ExecuteSqlAsync($"INSERT INTO Suppliers (Id, ProjectId, Name, VatNumber, Mobile, Status, IsActive, IsGeneralCash, CreatedByUserId) VALUES ({id}, {project}, {name}, '', '', 0, 1, 0, {user.Id})");
 
             await migrator.MigrateAsync(target);
 
