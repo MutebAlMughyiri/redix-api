@@ -21,7 +21,7 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 | `GET /projects/{projectId}/accounts` | `ReadProject` | `200` every account, banks first and then in the order added, disabled ones too |
 | `GET /projects/{projectId}/accounts/offered` | `ReadProject` | `200` what the caller may spend from |
 | `POST /projects/{projectId}/accounts` with `{ type, name, openingBalance, custodianId }` | `ManageSettings` | `200`; `400` `invalidName`, `invalidOpeningBalance`, `custodianRequired` or `unknownCustodian` |
-| `POST /projects/{projectId}/accounts/{id}` with `{ name, openingBalance, custodianId }` | `ManageSettings` | The same; `404` |
+| `POST /projects/{projectId}/accounts/{id}` with `{ name, openingBalance, custodianId }` | `ManageSettings` | The same; `404`; `409` `accountHasEntries` for a new opening balance once any entry names the account |
 | `POST /projects/{projectId}/accounts/{id}/disable` | `ManageSettings` | `200`; `404` |
 | `POST /projects/{projectId}/accounts/{id}/enable` | `ManageSettings` | `200`; `404` |
 | `GET /projects/{projectId}/members` | `ReadProject` | `200` the project's active people by name, once each, as `{ id, displayName }`, for choosing a custodian |
@@ -48,6 +48,8 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 | An account needs a name of 1 to 100 characters | `Account.RefusalOf` | `AccountsTests.AnAccountNeedsANameOfAtMost100Characters` |
 | An opening balance has two decimals (NFR-04) and a limit | `Account.RefusalOf` | `AccountsTests.AnOpeningBalanceHasTwoDecimalsAndALimit` |
 | An edit changes the name, the opening balance and the custodian; the type never changes | `AccountsEndpoints.Edit`, `Account.HandTo` | `AccountsTests.AnEditChangesTheNameTheOpeningBalanceAndTheCustodian`, `AnEditCanLeaveABankAccountWithNobody` |
+| A changed opening balance is in the audit trail, old and new | `AccountsEndpoints.Edit`, `RedixDbContext.Audit` | `AccountsTests.AChangedOpeningBalanceIsInTheAuditTrailOldAndNew` |
+| An opening balance cannot change once any entry names the account, drafts included; its name still can | `AccountsEndpoints.Edit` | `AccountsTests.AnOpeningBalanceCannotChangeOnceTheAccountHasAnEntry`, `AnAccountWithAnEntryStillChangesItsName` |
 | A disabled account leaves entry and stays on the list (BR-15) | `Account.IsOfferedTo` | `AccountsTests.ADisabledAccountLeavesEntryAndStaysOnTheList`, `EnablingBringsAnAccountBackIntoEntry` |
 | Banks come first, then in the order added | `AccountsEndpoints.ViewsAsync` | `AccountsTests.BanksComeFirstThenInTheOrderTheyWereAdded` |
 | A custodian sees their custody and every other account, and changes none (AC-22.1, BR-31) | `AccountView.IsMine`, `Permission.ManageSettings` | `AccountsTests.ACustodianSeesTheirCustodyAndEveryOtherAccountWithoutChangingThem` |

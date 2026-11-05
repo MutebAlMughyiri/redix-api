@@ -235,6 +235,7 @@ public static class TranslationSeed
         ("accounts.invalidOpeningBalance", "Enter an opening balance in numbers, with at most two decimals.", "أدخل الرصيد الافتتاحي بالأرقام، بخانتين عشريتين على الأكثر."),
         ("accounts.custodianRequired", "A cash custody needs someone who holds it.", "العهدة النقدية تحتاج إلى صاحب عهدة."),
         ("accounts.unknownCustodian", "That person is not in this project.", "هذا الشخص ليس في هذا المشروع."),
+        ("accounts.accountHasEntries", "This account has entries, so its opening balance cannot change.", "هذا الحساب عليه قيود، فلا يتغير رصيده الافتتاحي."),
         ("accounts.new", "Add account", "إضافة حساب"),
         ("accounts.edit", "Edit account", "تعديل الحساب"),
         ("accounts.save", "Save", "حفظ"),

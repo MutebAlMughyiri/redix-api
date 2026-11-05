@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -249,6 +250,19 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
 
         Assert.Equal((decimal)percent, (await answer.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!.VatPercent);
         await factory.WithDatabaseAsync(async db => Assert.Equal((decimal)percent / 100, (await db.Projects.SingleAsync(row => row.Id == project.Id)).VatRate));
+    }
+
+    [Fact]
+    public async Task AChangedVatRateIsInTheAuditTrailOldAndNew()
+    {
+        var (client, project) = await FinanceAsync();
+
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/vat-rate", new SetVatRateRequest(5))).EnsureSuccessStatusCode();
+
+        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
+        Assert.Equal(AuditAction.Update, record.Action);
+        Assert.Equal(0.15m, JsonDocument.Parse(record.Before).RootElement.GetProperty("VatRate").GetDecimal());
+        Assert.Equal(0.05m, JsonDocument.Parse(record.After).RootElement.GetProperty("VatRate").GetDecimal());
     }
 
     [Theory]

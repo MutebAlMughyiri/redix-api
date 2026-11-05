@@ -116,6 +116,16 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// </summary>
     public void Audit(object record, AuditAction action, Guid userId, DateTime at) => AuditTrail.Add(AuditRecord.Of(Entry(record), action, userId, at));
 
+    /// <summary>Records <paramref name="action"/> against each record the coming save changes, so one reached through a navigation is recorded like any other. Call it after the change, before any other audit record.</summary>
+    public void AuditChanges(AuditAction action, Guid userId, DateTime at)
+    {
+        ChangeTracker.DetectChanges();
+        foreach (var changed in ChangeTracker.Entries().Where(entry => entry.State != EntityState.Unchanged).ToList())
+        {
+            Audit(changed.Entity, action, userId, at);
+        }
+    }
+
     /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

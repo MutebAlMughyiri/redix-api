@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -62,12 +63,17 @@ public static class AccountsEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Changes an account's name, its opening balance and who holds it; its type never changes. It answers as <see cref="Add"/> does.</summary>
+    /// <summary>
+    /// Changes an account's name, its opening balance and who holds it, in the audit trail; its type never changes. It answers as <see cref="Add"/> does. Once any entry names it, a new opening balance
+    /// answers <c>accountHasEntries</c>, because it would move every balance after it and could hide a reconciliation difference (BR-08).
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="accountId">The account.</param>
     /// <param name="request">Its name and opening balance, and who holds it.</param>
+    /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
-    public static async Task<IResult> Edit(Guid projectId, Guid accountId, EditAccountRequest request, RedixDbContext db)
+    /// <param name="time">The current time, for the audit record.</param>
+    public static async Task<IResult> Edit(Guid projectId, Guid accountId, EditAccountRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var account = await db.Accounts.Include(row => row.Custodians).SingleOrDefaultAsync(row => row.Id == accountId && row.ProjectId == projectId);
         if (account is null)
@@ -82,9 +88,15 @@ public static class AccountsEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
         }
 
+        if (request.OpeningBalance != account.OpeningBalance && await db.Entries.AnyAsync(entry => entry.AccountId == accountId))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "AccountHasEntries");
+        }
+
         account.Name = name;
         account.OpeningBalance = request.OpeningBalance;
         account.HandTo(request.CustodianId);
+        db.Audit(account, AuditAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok();
     }

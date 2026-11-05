@@ -32,6 +32,10 @@ Each use case adds its own actions; entries, users and attachments join the trai
 | `SignOut` | A user signs out of a device (UC-062) | The user | None: the record itself says it happened |
 | `Create`, `Update`, `ResetPassword`, `Disable`, `Enable` | A user is managed (UC-007, UC-008) | The user | What the action changed; never the password's hash |
 | `AssignProject`, `RemoveProject` | A role in a project is given or taken (UC-008, UC-009) | The `ProjectMembers` row | The role before and after; every value of a removed row in `Before` |
+| `RegisterProject` | A project is registered (UC-006, UC-066) | The project | Every value of the new record |
+| `Create` | A unit is added (UC-006) | The unit | Every value of the new record |
+| `CloseProject` | A project is closed (UC-006) | The project | Its status, old and new |
+| `Update` | A project's VAT rate changes (UC-014), or an account is edited (UC-015) | The project, or the account | The values changed, old and new |
 
 ## How a use case records an action
 

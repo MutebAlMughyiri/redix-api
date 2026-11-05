@@ -5845,6 +5845,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("5ece3a4c-3b6e-c7c6-4b32-1e2fcd503b38"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6557b35c-28ae-0339-5b20-90d6fb2482b1"),
+                            Value = "This account has entries, so its opening balance cannot change."
+                        },
+                        new
+                        {
+                            Id = new Guid("1d18f432-1755-ba9b-d98b-e2c9c241c151"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6557b35c-28ae-0339-5b20-90d6fb2482b1"),
+                            Value = "هذا الحساب عليه قيود، فلا يتغير رصيده الافتتاحي."
+                        },
+                        new
+                        {
                             Id = new Guid("e354a690-42e6-edd7-f26d-bd7d9de2d4a6"),
                             Language = "en",
                             TranslationKeyId = new Guid("a6b357e6-3a37-7f35-fe4e-fe2dad16a421"),
@@ -10404,6 +10418,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("ea46842b-3d2a-8204-111e-18e19350629a"),
                             Description = "",
                             Key = "accounts.unknownCustodian"
+                        },
+                        new
+                        {
+                            Id = new Guid("6557b35c-28ae-0339-5b20-90d6fb2482b1"),
+                            Description = "",
+                            Key = "accounts.accountHasEntries"
                         },
                         new
                         {

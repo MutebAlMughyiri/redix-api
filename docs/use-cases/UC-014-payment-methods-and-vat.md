@@ -22,7 +22,7 @@ The VAT rate is a column of the project, `Projects.VatRate`, a fraction that sta
 | `POST /projects/{projectId}/payment-methods/{id}` with `{ name }` | `ManageSettings` | `200`; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/payment-methods/{id}/disable` | `ManageSettings` | `200`; `404` |
 | `POST /projects/{projectId}/payment-methods/{id}/enable` | `ManageSettings` | `200`; `404` |
-| `POST /projects/{projectId}/vat-rate` with `{ vatPercent }` | `ManageSettings` | `200` the project; `400` `invalidVatRate`; `404` |
+| `POST /projects/{projectId}/vat-rate` with `{ vatPercent }` | `ManageSettings` | `200` the project, with the rate old and new in the audit trail (`AChangedVatRateIsInTheAuditTrailOldAndNew`); `400` `invalidVatRate`; `404` |
 
 Every change also answers `409` `projectFinished` in a finished project.
 

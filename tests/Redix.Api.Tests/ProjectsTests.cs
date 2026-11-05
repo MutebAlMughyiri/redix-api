@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -395,5 +396,44 @@ public class ProjectsTests(MigratedApiFactory factory)
         await client.PostAsync($"/projects/{project.Id}/close", null);
 
         Assert.Equal(HttpStatusCode.OK, (await SetDefaultAsync(client, project.Id)).StatusCode);
+    }
+
+    private static JsonElement ValuesOf(string values) => JsonDocument.Parse(values).RootElement;
+
+    [Fact]
+    public async Task CreatingAProjectIsInTheAuditTrailWithItsName()
+    {
+        var user = await StarterAsync();
+
+        var project = await ProjectOf(await CreateAsync(await ClientOfAsync(user), "غصون 6"));
+
+        var record = Assert.Single(await factory.AuditTrailOfAsync(project.Id));
+        Assert.Equal((AuditAction.RegisterProject, user.Id, "Projects"), (record.Action, record.UserId, record.TableName));
+        Assert.Equal("غصون 6", ValuesOf(record.After).GetProperty("Name").GetString());
+    }
+
+    [Fact]
+    public async Task AddingAUnitIsInTheAuditTrailWithItsName()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+
+        var unit = (await ProjectOf(await AddUnitAsync(client, project.Id))).Units.Single();
+
+        var record = Assert.Single(await factory.AuditTrailOfAsync(unit.Id));
+        Assert.Equal((AuditAction.Create, "Units"), (record.Action, record.TableName));
+        Assert.Equal("الفلة الشرقية", ValuesOf(record.After).GetProperty("Name").GetString());
+    }
+
+    [Fact]
+    public async Task ClosingAProjectIsInTheAuditTrailWithItsStatusOldAndNew()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+
+        (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
+
+        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
+        Assert.Equal(AuditAction.CloseProject, record.Action);
+        Assert.Equal((int)ProjectStatus.Running, ValuesOf(record.Before).GetProperty("Status").GetInt32());
+        Assert.Equal((int)ProjectStatus.Finished, ValuesOf(record.After).GetProperty("Status").GetInt32());
     }
 }

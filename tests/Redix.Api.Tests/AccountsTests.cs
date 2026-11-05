@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -184,6 +185,44 @@ public class AccountsTests(MigratedApiFactory factory)
         Assert.Equal(250.5m, edited.OpeningBalance);
         Assert.Equal(fawaz.Id.ToString(), edited.CustodianId);
         Assert.Equal(AccountType.CashCustody, edited.Type);
+    }
+
+    [Fact]
+    public async Task AChangedOpeningBalanceIsInTheAuditTrailOldAndNew()
+    {
+        var (client, project) = await FinanceAsync();
+        var account = await AddAsync(client, project.Id, "حساب المؤسسة", openingBalance: 100);
+
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("حساب المؤسسة", 250.5m), Json)).EnsureSuccessStatusCode();
+
+        var record = Assert.Single(await factory.AuditTrailOfAsync(account.Id));
+        Assert.Equal(AuditAction.Update, record.Action);
+        Assert.Equal(100m, JsonDocument.Parse(record.Before).RootElement.GetProperty("OpeningBalance").GetDecimal());
+        Assert.Equal(250.5m, JsonDocument.Parse(record.After).RootElement.GetProperty("OpeningBalance").GetDecimal());
+    }
+
+    [Fact]
+    public async Task AnOpeningBalanceCannotChangeOnceTheAccountHasAnEntry()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ledger.RecordAsync(ledger.Purchase());
+
+        var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}", new EditAccountRequest("حساب المؤسسة", 500), Json);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("accountHasEntries", await CodeOf(refused));
+        Assert.Equal(0m, Assert.Single(await AccountsOf(ledger.Client, ledger.ProjectId)).OpeningBalance);
+    }
+
+    [Fact]
+    public async Task AnAccountWithAnEntryStillChangesItsName()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ledger.RecordAsync(ledger.Purchase());
+
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}", new EditAccountRequest("الحساب الجاري", 0), Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal("الحساب الجاري", Assert.Single(await AccountsOf(ledger.Client, ledger.ProjectId)).Name);
     }
 
     [Fact]

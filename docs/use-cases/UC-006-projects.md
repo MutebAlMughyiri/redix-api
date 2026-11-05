@@ -29,6 +29,7 @@ A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ 
 | The status travels by its glossary name, `running` or `finished` | `ConfigureHttpJsonOptions`, `ProjectStatus` | `ProjectsTests.TheStatusTravelsAsItsGlossaryName` |
 | A project or a unit needs a name of 1 to 100 characters, spaces around it trimmed | `Project.IsAcceptableName` | `ProjectsTests.AProjectOrAUnitNeedsANameOfAtMost100Characters` |
 | Whoever registers a project manages it | `ProjectsEndpoints.AddWithManagerAsync` | `ProjectsTests.WhoeverStartsAProjectManagesIt` |
+| Creating a project, adding a unit and closing a project are in the audit trail | `ProjectsEndpoints.AddWithManagerAsync`, `ProjectsEndpoints.ChangeAsync`, `RedixDbContext.AuditChanges` | `ProjectsTests.CreatingAProjectIsInTheAuditTrailWithItsName`, `AddingAUnitIsInTheAuditTrailWithItsName`, `ClosingAProjectIsInTheAuditTrailWithItsStatusOldAndNew` |
 
 ## Left to later use cases
 

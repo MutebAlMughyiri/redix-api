@@ -82,22 +82,26 @@ public static class ProjectsEndpoints
     /// <param name="request">The unit's name.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    public static Task<IResult> AddUnit(Guid projectId, AddUnitRequest request, ClaimsPrincipal principal, RedixDbContext db) =>
-        ChangeAsync(projectId, principal, db, project => project.AddUnit(request.Name.Trim()));
+    /// <param name="time">The current time, for the audit record.</param>
+    public static Task<IResult> AddUnit(Guid projectId, AddUnitRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        ChangeAsync(projectId, principal, db, time, AuditAction.Create, project => project.AddUnit(request.Name.Trim()));
 
     /// <summary>Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>.</summary>
     /// <param name="projectId">The project to close.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    public static Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) => ChangeAsync(projectId, principal, db, project => project.Close());
+    /// <param name="time">The current time, for the audit record.</param>
+    public static Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        ChangeAsync(projectId, principal, db, time, AuditAction.CloseProject, project => project.Close());
 
     /// <summary>Sets the rate new entries' VAT is computed at (BR-14); saved entries keep theirs. A finished project answers <c>projectFinished</c>; a percentage outside 0 to 100, or with more than two decimals, <c>invalidVatRate</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The rate, as a percentage.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    public static Task<IResult> SetVatRate(Guid projectId, SetVatRateRequest request, ClaimsPrincipal principal, RedixDbContext db) =>
-        ChangeAsync(projectId, principal, db, project => project.SetVatPercent(request.VatPercent));
+    /// <param name="time">The current time, for the audit record.</param>
+    public static Task<IResult> SetVatRate(Guid projectId, SetVatRateRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.SetVatPercent(request.VatPercent));
 
     /// <summary>Makes a project the caller's default, replacing any other, and says whether sign-in opens it directly (FR-37). It applies from the next sign-in (AC-37.1).</summary>
     /// <param name="projectId">The project, which the caller must be able to read.</param>
@@ -133,7 +137,7 @@ public static class ProjectsEndpoints
         return new DefaultProjectView("", false);
     }
 
-    private static async Task<IResult> ChangeAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, Func<Project, ProjectChangeOutcome> change)
+    private static async Task<IResult> ChangeAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Func<Project, ProjectChangeOutcome> change)
     {
         var project = await db.Projects.Include(project => project.Units.OrderBy(unit => unit.SortOrder)).SingleOrDefaultAsync(project => project.Id == projectId);
         if (project is null)
@@ -147,8 +151,10 @@ public static class ProjectsEndpoints
             var status = outcome is ProjectChangeOutcome.InvalidName or ProjectChangeOutcome.InvalidVatRate ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;
             return Refusal.Of(status, outcome.ToString());
         }
+        var userId = AccessTokens.UserIdOf(principal);
+        db.AuditChanges(action, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
-        return Results.Ok(await ViewOfAsync(project, AccessTokens.UserIdOf(principal), db));
+        return Results.Ok(await ViewOfAsync(project, userId, db));
     }
 
     private static async Task<ILookup<Guid, string>> RolesByProjectAsync(Guid userId, RedixDbContext db)
