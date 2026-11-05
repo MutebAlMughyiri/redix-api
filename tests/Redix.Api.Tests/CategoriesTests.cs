@@ -4,8 +4,10 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Contracts;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
+using Redix.Api.Suppliers;
 
 namespace Redix.Api.Tests;
 
@@ -677,6 +679,20 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Equal("itemHasEntries", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task AnItemAContractNamesKeepsItsType()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var contractor = (await ledger.Client.GetFromJsonAsync<List<SupplierView>>($"/projects/{ledger.ProjectId}/suppliers", Json))!.Single(supplier => supplier.Name == Supplier.GeneralCashSupplierName);
+        var item = (await OfferedFor(ledger.Client, ledger.ProjectId, "contractorPayments")).SelectMany(category => category.Items).First();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, item.Id, ledger.Project.Units[0].Id, 34000m, false), Json)).EnsureSuccessStatusCode();
+
+        var refused = await ChangeTypeAsync(ledger.Client, ledger.ProjectId, item.Id, ItemType.Purchases);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("itemHasContract", await CodeOf(refused));
     }
 
     [Fact]

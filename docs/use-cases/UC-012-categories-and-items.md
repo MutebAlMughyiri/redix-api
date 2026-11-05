@@ -48,6 +48,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 
 | Rule | Code | Test |
 | --- | --- | --- |
+| An item a contract names keeps its type, or that contract's payments would be refused | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AnItemAContractNamesKeepsItsType` |
 | The template holds the categories and items of BRS section 3 | `StructureSeed` | `CategoriesTests.TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
 | The category تكلفة الأراضي holds one item, تكلفة الأرض, of both types, because an entry needs an item (BRS section 3 lists it empty) | `StructureSeed` | `CategoriesTests.LandCostCanBeRecordedBecauseItsCategoryHoldsOneItemOfBothTypes` |
 | A subgroup no entry uses is removed, and one added later still goes last; the general one is never removed | `CategoriesEndpoints.DeleteSubgroup`, `AddSubgroup` | `CategoriesTests.ASubgroupNoEntryUsesIsRemoved`, `ASubgroupAddedAfterARemovalStillGoesLast`, `ASubgroupAnEntryUsesIsNotRemoved`, `TheGeneralSubgroupIsNeverRemoved` |

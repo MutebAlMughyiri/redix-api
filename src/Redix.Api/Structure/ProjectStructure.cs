@@ -34,7 +34,7 @@ public static class ProjectStructure
 
     /// <summary>The refusal of <paramref name="outcome"/>: a request that could never work is a bad request, anything else a conflict with what the row is.</summary>
     public static IResult Refused(StructureChangeOutcome outcome) =>
-        Refusal.Of(outcome is StructureChangeOutcome.GeneralSubgroup or StructureChangeOutcome.SubgroupInUse or StructureChangeOutcome.ItemHasEntries or StructureChangeOutcome.CoreColumn ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, outcome.ToString());
+        Refusal.Of(outcome is StructureChangeOutcome.GeneralSubgroup or StructureChangeOutcome.SubgroupInUse or StructureChangeOutcome.ItemHasEntries or StructureChangeOutcome.ItemHasContract or StructureChangeOutcome.CoreColumn ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, outcome.ToString());
 
     /// <summary>The item <paramref name="itemId"/> if it belongs to <paramref name="projectId"/>, so one project's route never reaches another's rows (BR-33).</summary>
     public static Task<Item?> ItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>

@@ -146,7 +146,7 @@ public static class CategoriesEndpoints
     public static Task<IResult> EnableItem(Guid projectId, Guid itemId, RedixDbContext db) => ChangeItemAsync(projectId, itemId, db, item => item.IsActive = true);
 
     /// <summary>
-    /// Changes what an item is for while no entry names it, or <c>itemHasEntries</c>; it is in the audit trail. Its built-in columns become the project's default columns for the new type, because what an entry is asked follows them (FR-38),
+    /// Changes what an item is for while no entry names it, or <c>itemHasEntries</c>, and no contract does, or <c>itemHasContract</c>; it is in the audit trail. Its built-in columns become the project's default columns for the new type, because what an entry is asked follows them (FR-38),
     /// and nothing has a value in them yet. The columns a person added stay, after them.
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -165,6 +165,10 @@ public static class CategoriesEndpoints
         if (await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId))
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasEntries);
+        }
+        if (await db.Contracts.AnyAsync(contract => contract.ItemId == itemId))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.ItemHasContract);
         }
 
         item.Type = request.Type;

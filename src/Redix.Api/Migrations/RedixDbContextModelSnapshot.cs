@@ -4763,6 +4763,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("3ac93d3f-8a62-cde3-9bf2-803c92011b99"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("be9ac772-02a4-1393-7189-495e3103dfad"),
+                            Value = "A contract names this item, so its type cannot change."
+                        },
+                        new
+                        {
+                            Id = new Guid("a8e5cd8b-4ec2-0c35-933c-4dcfe0aa0dfb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("be9ac772-02a4-1393-7189-495e3103dfad"),
+                            Value = "عقد يذكر هذا البند، فلا يتغيّر نوعه."
+                        },
+                        new
+                        {
                             Id = new Guid("2f55b30b-3fa7-74ca-b2bf-7906150e78d8"),
                             Language = "en",
                             TranslationKeyId = new Guid("e84af6cd-4410-441d-7fa4-f1d800eb903e"),
@@ -10220,6 +10234,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("f7aa01bb-a08c-fd84-a26e-0f4a02368f21"),
                             Description = "",
                             Key = "categories.itemHasEntries"
+                        },
+                        new
+                        {
+                            Id = new Guid("be9ac772-02a4-1393-7189-495e3103dfad"),
+                            Description = "",
+                            Key = "categories.itemHasContract"
                         },
                         new
                         {

@@ -21,6 +21,9 @@ public enum StructureChangeOutcome
     /// <summary>An entry names the item, so its type stays (FR-38).</summary>
     ItemHasEntries,
 
+    /// <summary>A contract names the item, so its type stays, or that contract's payments would be refused (FR-38).</summary>
+    ItemHasContract,
+
     /// <summary>A person cannot choose that type for a column (FR-41).</summary>
     InvalidDataType,
 

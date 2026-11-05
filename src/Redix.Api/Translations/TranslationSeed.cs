@@ -156,6 +156,7 @@ public static class TranslationSeed
         ("categories.generalSubgroup", "The item's general group cannot be renamed or removed.", "المجموعة العامة للبند لا يُعدَّل اسمها ولا تُحذف."),
         ("categories.subgroupInUse", "Entries use this subgroup, so it cannot be removed.", "هذه المجموعة الفرعية عليها قيود، فلا تُحذف."),
         ("categories.itemHasEntries", "This item has entries, so its type cannot change.", "هذا البند عليه قيود، فلا يتغير نوعه."),
+        ("categories.itemHasContract", "A contract names this item, so its type cannot change.", "عقد يذكر هذا البند، فلا يتغيّر نوعه."),
         ("categories.changeType", "Change type", "تغيير النوع"),
         ("subgroups.delete", "Remove subgroup", "حذف المجموعة الفرعية"),
         ("subgroups.deleteQuestion", "Remove this subgroup?", "حذف هذه المجموعة الفرعية؟"),
