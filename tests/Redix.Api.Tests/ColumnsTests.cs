@@ -528,4 +528,90 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/projects/{project.Id}/default-columns/rent")).StatusCode);
     }
+
+    private static async Task<(HttpClient Client, Guid ProjectId, Guid ItemId, ColumnView Column)> PickListAsync(HttpClient client, Guid projectId)
+    {
+        var item = await ItemOfType(client, projectId, ItemType.Both);
+        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{item.Id}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, ["شرق", "غرب"]), Json)).EnsureSuccessStatusCode();
+        return (client, projectId, item.Id, (await ColumnsOf(client, projectId, item.Id)).Last());
+    }
+
+    private static Task<HttpResponseMessage> EditItemColumnAsync(HttpClient client, Guid projectId, Guid itemId, ColumnView column, params List<string> newOptions) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new { name = column.Name, isRequired = column.IsRequired, showInReports = column.ShowInReports, newOptions }, Json);
+
+    [Fact]
+    public async Task APickListGainsChoicesAndKeepsItsOwnInTheirOrder()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var (_, projectId, itemId, column) = await PickListAsync(client, project.Id);
+
+        (await EditItemColumnAsync(client, projectId, itemId, column, " شمال ", "", "شرق", "جنوب", "شمال")).EnsureSuccessStatusCode();
+
+        Assert.Equal(["شرق", "غرب", "شمال", "جنوب"], (await ColumnsOf(client, projectId, itemId)).Last().Options);
+    }
+
+    [Fact]
+    public async Task AnEditThatGivesNoNewChoiceChangesNoChoice()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var (_, projectId, itemId, column) = await PickListAsync(client, project.Id);
+
+        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new EditColumnRequest("الجهة الأصلية", false, false), Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal(["شرق", "غرب"], (await ColumnsOf(client, projectId, itemId)).Last().Options);
+    }
+
+    [Fact]
+    public async Task ANewChoiceIsWithinTheLimitOfAName()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var (_, projectId, itemId, column) = await PickListAsync(client, project.Id);
+
+        var refused = await EditItemColumnAsync(client, projectId, itemId, column, new string('x', Project.NameMaxLength + 1));
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("invalidOptions", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task OnlyAPickListAPersonAddedGainsChoices()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = await ItemOfType(client, project.Id, ItemType.Both);
+        var columns = await ColumnsOf(client, project.Id, item.Id);
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn, Json)).EnsureSuccessStatusCode();
+        var area = (await ColumnsOf(client, project.Id, item.Id)).Last();
+
+        Assert.Equal("invalidOptions", await CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, area, "شمال")));
+        Assert.Equal("invalidOptions", await CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, columns.Single(column => column.Key == "unit"), "شمال")));
+    }
+
+    [Fact]
+    public async Task AnEntryCanHoldTheChoiceAListGained()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, ["شرق"]), Json)).EnsureSuccessStatusCode();
+        var column = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last();
+        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new() { [column.Key] = "شمال" } }, "invalidColumnValue");
+
+        (await EditItemColumnAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, column, "شمال")).EnsureSuccessStatusCode();
+
+        await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new() { [column.Key] = "شمال" } });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied(bool applyToAllItems)
+    {
+        var (_, client, project) = await FinanceAsync();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both", new AddDefaultColumnRequest("الجهة", ColumnDataType.List, false, false, ["شرق"], true), Json)).EnsureSuccessStatusCode();
+        var column = (await TemplateOf(client, project.Id)).Last();
+        var item = await ItemOfType(client, project.Id, ItemType.Both);
+
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{column.Id}", new { name = column.Name, isRequired = false, showInReports = false, applyToAllItems, newOptions = new[] { "شمال" } }, Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal(["شرق", "شمال"], (await TemplateOf(client, project.Id)).Last().Options);
+        Assert.Equal(applyToAllItems ? ["شرق", "شمال"] : ["شرق"], (await ColumnsOf(client, project.Id, item.Id)).Single(row => row.Key == column.Key).Options);
+    }
 }

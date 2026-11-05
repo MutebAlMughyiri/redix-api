@@ -98,14 +98,14 @@ public static class ColumnsEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Changes a column of one item. A name out of its limits answers <c>invalidName</c>; more than the name of a core column, <c>coreColumn</c>. Its type is not among what can change (BR-21).</summary>
+    /// <summary>Changes a column of one item. A name out of its limits answers <c>invalidName</c>; more than the name of a core column, <c>coreColumn</c>; a new choice too long, or for anything but a list a person added, <c>invalidOptions</c>. Its type is not among what can change, and a list's choices are only added to (BR-21).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
     /// <param name="columnId">The column.</param>
     /// <param name="request">What it becomes.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> EditOfItem(Guid projectId, Guid itemId, Guid columnId, EditColumnRequest request, RedixDbContext db) =>
-        ChangeOfItemAsync(projectId, itemId, columnId, db, column => column.Edit(request.Name, request.IsRequired, request.ShowInReports));
+        ChangeOfItemAsync(projectId, itemId, columnId, db, column => column.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewOptions));
 
     /// <summary>Deletes a column of one item: it leaves entry, and its values stay on their entries and in the audit trail (AC-41.2). A core column answers <c>coreColumn</c>.</summary>
     /// <param name="projectId">The project.</param>
@@ -185,7 +185,7 @@ public static class ColumnsEndpoints
         {
             return Results.NotFound();
         }
-        var outcome = column.Edit(request.Name, request.IsRequired, request.ShowInReports);
+        var outcome = column.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewOptions);
         if (outcome != StructureChangeOutcome.Done)
         {
             return ProjectStructure.Refused(outcome);
@@ -195,7 +195,7 @@ public static class ColumnsEndpoints
         {
             foreach (var ofItem in await ColumnsOfItemsOf(projectId, itemType, db).Where(row => row.Key == column.Key).ToListAsync())
             {
-                ofItem.Edit(request.Name, request.IsRequired, request.ShowInReports);
+                ofItem.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewOptions);
             }
         }
         await db.SaveChangesAsync();
@@ -283,14 +283,22 @@ public record AddDefaultColumnRequest(string Name, ColumnDataType DataType, bool
 /// <param name="Name">Its name.</param>
 /// <param name="IsRequired">Whether entry asks for it.</param>
 /// <param name="ShowInReports">Whether it prints in the reports.</param>
-public record EditColumnRequest(string Name, bool IsRequired, bool ShowInReports);
+public record EditColumnRequest(string Name, bool IsRequired, bool ShowInReports)
+{
+    /// <summary>Choices a list a person added gains; left out when none.</summary>
+    public List<string> NewOptions { get; init; } = [];
+}
 
 /// <summary>What the app sends to change a column of the default template.</summary>
 /// <param name="Name">Its name.</param>
 /// <param name="IsRequired">Whether entry asks for it.</param>
 /// <param name="ShowInReports">Whether it prints in the reports.</param>
 /// <param name="ApplyToAllItems">Whether every existing item of this type follows.</param>
-public record EditDefaultColumnRequest(string Name, bool IsRequired, bool ShowInReports, bool ApplyToAllItems);
+public record EditDefaultColumnRequest(string Name, bool IsRequired, bool ShowInReports, bool ApplyToAllItems)
+{
+    /// <summary>Choices a list a person added gains; left out when none.</summary>
+    public List<string> NewOptions { get; init; } = [];
+}
 
 /// <summary>What the app sends to put the default template in a new order.</summary>
 /// <param name="Ids">Every column's id, in the new order.</param>

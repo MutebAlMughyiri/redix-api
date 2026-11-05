@@ -207,6 +207,7 @@ public static class TranslationSeed
         ("columns.typeList", "Pick list", "قائمة اختيار"),
         ("columns.typeFile", "File", "ملف"),
         ("columns.choices", "Choices, one on each line", "الخيارات، كل خيار في سطر"),
+        ("columns.newChoices", "New choices, one on each line. Those above stay, because entries hold them.", "خيارات جديدة، كل خيار في سطر. وتبقى الخيارات أعلاه لأن القيود تحملها."),
         ("columns.required", "Required at entry", "إلزامي عند الإدخال"),
         ("columns.optional", "Optional", "اختياري"),
         ("columns.showInReports", "Shown in printed reports", "يظهر في التقارير المطبوعة"),

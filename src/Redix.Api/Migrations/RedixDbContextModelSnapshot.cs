@@ -5469,6 +5469,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("cc1e4606-7762-e2bc-66f5-0224b550e1d0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a845c7b5-7c6a-5394-5e49-b2b92dfe32c0"),
+                            Value = "New choices, one on each line. Those above stay, because entries hold them."
+                        },
+                        new
+                        {
+                            Id = new Guid("6e8565c5-7d06-7747-3f2f-f31b32de6009"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a845c7b5-7c6a-5394-5e49-b2b92dfe32c0"),
+                            Value = "خيارات جديدة، كل خيار في سطر. وتبقى الخيارات أعلاه لأن القيود تحملها."
+                        },
+                        new
+                        {
                             Id = new Guid("80635ccc-ce5f-79aa-2cf4-b3973026ea7d"),
                             Language = "en",
                             TranslationKeyId = new Guid("7b9780dd-416b-92de-d22c-a4ffe2898e0d"),
@@ -10490,6 +10504,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("1ca0ec62-9701-e642-fa33-5a96ff5f1c9e"),
                             Description = "",
                             Key = "columns.choices"
+                        },
+                        new
+                        {
+                            Id = new Guid("a845c7b5-7c6a-5394-5e49-b2b92dfe32c0"),
+                            Description = "",
+                            Key = "columns.newChoices"
                         },
                         new
                         {

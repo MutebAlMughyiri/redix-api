@@ -48,6 +48,7 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | An item of both types holds the purchase columns, then what only a contractor payment has | `StructureSeed.DefaultColumns` | `ColumnsTests.AnItemOfBothTypesHoldsThePurchaseColumnsThenWhatOnlyAContractorPaymentHas` |
 | A column added to one item is asked in that item only (AC-41.1) | `ColumnsEndpoints.AddToItem` | `ColumnsTests.AColumnAddedToOneItemIsAskedInThatItemOnly` |
 | A column needs a name of 1 to 100 characters | `Column.CheckNew`, `Column.Edit` | `ColumnsTests.AColumnNeedsANameOfAtMost100Characters` |
+| A list a person added gains choices; those it has stay, in their order, because entries hold them; a new choice has the limit of a name; the template's reach items only when applied (BR-21) | `Column.Edit`, `ColumnsEndpoints.EditOfItem`, `EditOfTemplate` | `ColumnsTests.APickListGainsChoicesAndKeepsItsOwnInTheirOrder`, `AnEditThatGivesNoNewChoiceChangesNoChoice`, `ANewChoiceIsWithinTheLimitOfAName`, `OnlyAPickListAPersonAddedGainsChoices`, `AnEntryCanHoldTheChoiceAListGained`, `AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied` |
 | A pick list needs a choice; another type keeps none | `Column.CheckNew`, `DefaultColumn.New` | `ColumnsTests.APickListNeedsAChoice`, `APickListKeepsItsChoicesAndAnotherTypeNone` |
 | A person chooses among five types | `Column.CheckNew` | `ColumnsTests.APersonCannotAddAFileColumn` |
 | A core column is renamed and reordered (BR-20) | `Column.Edit`, `ProjectStructure.PutInOrder` | `ColumnsTests.ACoreColumnIsRenamedAndReordered` |

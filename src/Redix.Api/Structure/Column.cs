@@ -75,8 +75,11 @@ public abstract class Column : IOrdered
     /// <summary>What was typed as the choices of a list: each trimmed, the empty ones and the repeated ones gone.</summary>
     public static List<string> ChoicesOf(List<string> options) => options.Select(option => option.Trim()).Where(option => option.Length > 0).Distinct().ToList();
 
-    /// <summary>Changes the name, and on a column that is not core whether entry asks for it and whether it prints (BR-20). The type never changes (BR-21).</summary>
-    public StructureChangeOutcome Edit(string name, bool isRequired, bool showInReports)
+    /// <summary>
+    /// Changes the name, and on a column that is not core whether entry asks for it and whether it prints (BR-20). The type never changes (BR-21). A list a person added gains <paramref name="newOptions"/>,
+    /// each within the limit of a name, or it answers <see cref="StructureChangeOutcome.InvalidOptions"/>, as any other column given one does. Its own choices stay, because entries hold them.
+    /// </summary>
+    public StructureChangeOutcome Edit(string name, bool isRequired, bool showInReports, List<string> newOptions)
     {
         if (!Project.IsAcceptableName(name.Trim()))
         {
@@ -86,9 +89,15 @@ public abstract class Column : IOrdered
         {
             return StructureChangeOutcome.CoreColumn;
         }
+        var choices = ChoicesOf(newOptions);
+        if (choices.Count > 0 && (DataType != ColumnDataType.List || !IsCustom || !choices.All(Project.IsAcceptableName)))
+        {
+            return StructureChangeOutcome.InvalidOptions;
+        }
         Name = name.Trim();
         IsRequired = isRequired;
         ShowInReports = showInReports;
+        Options.AddRange(choices.Except(Options));
         return StructureChangeOutcome.Done;
     }
 }
