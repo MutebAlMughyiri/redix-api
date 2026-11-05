@@ -6,6 +6,8 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | Notifications are rows the app reads; nothing is pushed to a phone yet | Push needs Firebase and Huawei accounts nobody has opened. Rows work today, and a sender added later only reads them |
+| 2026-11-05 | A notification with an empty `EntryId` is about the project itself, so it has no foreign key to entries | One table holds both kinds without a null, and deleting an entry removes its rows by hand |
 | 2026-11-05 | A deleted entry is removed from the ledger, and its steps with it; the audit trail keeps what it held | BR-15's rule against deleting is about what entries depend on. An entry never approved counted for nothing, and UC-033 asks for it to go |
 | 2026-11-05 | A reversal is dated the day it is made, with the original's item, unit and account, and its invoice figures negated in the current VAT quarter | The original's period may be closed with the accountant, and the correction belongs where it was made |
 | 2026-11-05 | A credit note is approved only with or after its invoice | Row 105: approved alone, it would reduce an item and the VAT statement by an invoice that does not count. Sending it with its invoice in one approval works |

@@ -98,6 +98,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What ties one entry to another.</summary>
     public DbSet<EntryLink> EntryLinks => Set<EntryLink>();
 
+    /// <summary>What each person was told about an entry.</summary>
+    public DbSet<Redix.Api.Notifications.Notification> Notifications => Set<Redix.Api.Notifications.Notification>();
+
     /// <summary>Each entry's steps through approval.</summary>
     public DbSet<EntryDecision> EntryDecisions => Set<EntryDecision>();
 
@@ -320,6 +323,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.Property(i => i.Number).HasMaxLength(Invoice.NumberMaxLength);
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Redix.Api.Notifications.Notification>(notification =>
+        {
+            notification.Property(n => n.Id).ValueGeneratedNever();
+            notification.HasIndex(n => new { n.UserId, n.At });
+            notification.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<EntryDecision>(decision =>
         {

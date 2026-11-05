@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Notifications;
 
 namespace Redix.Api.Entries;
 
@@ -45,6 +46,7 @@ public static class EntryChanges
         if (sending)
         {
             db.EntryDecisions.Add(new EntryDecision { EntryId = existing.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = at });
+            await NotificationsEndpoints.TellDecidersAsync(existing, userId, at, db);
         }
         foreach (var detail in details)
         {
@@ -60,6 +62,7 @@ public static class EntryChanges
     {
         await RemoveDetailsAsync(entry.Id, userId, at, db);
         db.EntryDecisions.RemoveRange(await db.EntryDecisions.Where(row => row.EntryId == entry.Id).ToListAsync());
+        db.Notifications.RemoveRange(await db.Notifications.Where(row => row.EntryId == entry.Id).ToListAsync());
         db.Audit(entry, AuditAction.Delete, userId, at);
         db.Entries.Remove(entry);
         await db.SaveChangesAsync();

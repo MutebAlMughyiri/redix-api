@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Notifications;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
 
@@ -135,6 +136,7 @@ public static class EntryRecording
         if (entry.Status == EntryStatus.PendingApproval)
         {
             db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = entry.CreatedAt });
+            await NotificationsEndpoints.TellDecidersAsync(entry, userId, entry.CreatedAt, db);
         }
         details.ForEach(detail => db.Audit(detail, AuditAction.Create, userId, entry.CreatedAt));
         await db.SaveChangesAsync();

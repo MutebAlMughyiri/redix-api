@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Notifications;
 using Redix.Api.Projects;
 using Redix.Api.Suppliers;
 
@@ -62,6 +63,7 @@ public static class ApprovalsEndpoints
             entry.ApprovedAt = at;
             db.EntryDecisions.Add(new EntryDecision { EntryId = id, Action = EntryDecisionAction.Approve, UserId = userId, At = at });
             db.Audit(entry, AuditAction.Approve, userId, at);
+            NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryApproved, userId, at, db);
             await ApproveItsSupplierAsync(id, userId, at, db);
             approved.Add(id);
         }
@@ -98,6 +100,7 @@ public static class ApprovalsEndpoints
         entry.Status = EntryStatus.Rejected;
         db.EntryDecisions.Add(new EntryDecision { EntryId = entryId, Action = EntryDecisionAction.Reject, UserId = userId, At = at, Reason = reason });
         db.Audit(entry, AuditAction.Reject, userId, at);
+        NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryRejected, userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok();
     }

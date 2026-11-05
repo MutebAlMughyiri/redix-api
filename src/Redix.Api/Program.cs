@@ -16,6 +16,7 @@ using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
+using Redix.Api.Notifications;
 using Redix.Api.Suppliers;
 using Redix.Api.Sync;
 using Redix.Api.Translations;
@@ -101,6 +102,7 @@ app.MapExpenses();
 app.MapContractorPayments();
 app.MapEntries();
 app.MapApprovals();
+app.MapNotifications();
 app.MapSyncEndpoints();
 
 app.Run();

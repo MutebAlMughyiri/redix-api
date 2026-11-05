@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Notifications;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 
@@ -112,6 +113,7 @@ public static class EntriesEndpoints
         entry.Status = EntryStatus.PendingApproval;
         db.Audit(entry, AuditAction.Submit, userId, time.GetUtcNow().UtcDateTime);
         db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = time.GetUtcNow().UtcDateTime });
+        await NotificationsEndpoints.TellDecidersAsync(entry, userId, time.GetUtcNow().UtcDateTime, db);
         await db.SaveChangesAsync();
         return Results.Ok(await ViewOfAsync(entry, db));
     }

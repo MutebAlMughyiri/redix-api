@@ -935,6 +935,42 @@ namespace Redix.Api.Migrations
                     b.ToTable("PurchaseDetails");
                 });
 
+            modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "At");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5338,6 +5374,146 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("d496a29e-93aa-0fa0-edad-cdf08c4c269f"),
                             Value = "عُكس هذا القيد من قبل."
+                        },
+                        new
+                        {
+                            Id = new Guid("7554ce76-1b7b-2135-e342-bd788a577769"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a3570f57-d336-573f-3eef-dfdfbc93440d"),
+                            Value = "Notifications"
+                        },
+                        new
+                        {
+                            Id = new Guid("ebe3e3ae-c8f1-bdfb-8e81-5a070fbb108a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a3570f57-d336-573f-3eef-dfdfbc93440d"),
+                            Value = "الإشعارات"
+                        },
+                        new
+                        {
+                            Id = new Guid("bdf1673c-d93e-d96a-0a56-5cc98a228ecd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a13edf44-3a0e-efac-4e44-4ec55dbda22d"),
+                            Value = "Nothing new."
+                        },
+                        new
+                        {
+                            Id = new Guid("2fc0c662-b7cd-be4b-b658-ad5be4f14aec"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a13edf44-3a0e-efac-4e44-4ec55dbda22d"),
+                            Value = "لا جديد."
+                        },
+                        new
+                        {
+                            Id = new Guid("4e98f9ce-ded1-b9ea-e26f-843d8ef1ff9e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3d860c53-1e24-9e8d-7a73-d4c581ce7e16"),
+                            Value = "Could not read the notifications. Check the connection and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("f42cf6f5-f78b-73c9-2157-38d242581fd8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3d860c53-1e24-9e8d-7a73-d4c581ce7e16"),
+                            Value = "تعذرت قراءة الإشعارات. تحقق من الاتصال وحاول مجدداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("675e3729-3695-4e2f-cc2d-70263a08c6e6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("99815dd7-8976-d1e9-8ca1-f695088eeb34"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("3c8b6ed6-25aa-82c8-16e8-16f7693254c7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("99815dd7-8976-d1e9-8ca1-f695088eeb34"),
+                            Value = "لا اتصال بالخادم. حاول مجدداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("2679e75f-a430-fa83-92a9-3762735e6c2c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("32604101-1bb2-8f2a-15b4-1a7df4de510b"),
+                            Value = "This could not be done."
+                        },
+                        new
+                        {
+                            Id = new Guid("75610cda-762f-7651-81a7-aad2c40e9b7c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("32604101-1bb2-8f2a-15b4-1a7df4de510b"),
+                            Value = "تعذر تنفيذ ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("01b01836-d63d-bea2-6190-8832bbb5d9ff"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("443baa91-634b-1c28-3bcd-a0af3d91f1eb"),
+                            Value = "An entry waits for your decision"
+                        },
+                        new
+                        {
+                            Id = new Guid("23f84925-6f6c-6530-6aab-1923098f37b0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("443baa91-634b-1c28-3bcd-a0af3d91f1eb"),
+                            Value = "قيد ينتظر قرارك"
+                        },
+                        new
+                        {
+                            Id = new Guid("ffb372f1-15eb-cc43-6e5d-4b9eb0400e8f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1f837e7c-3a33-e378-f943-d6478ef27825"),
+                            Value = "Your entry was approved"
+                        },
+                        new
+                        {
+                            Id = new Guid("ae2cb54d-7049-b5e0-ccae-a31896f5c137"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1f837e7c-3a33-e378-f943-d6478ef27825"),
+                            Value = "اعتُمد قيدك"
+                        },
+                        new
+                        {
+                            Id = new Guid("c96dd33e-153d-d72e-fa54-c3d5d4cdab01"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f9008dc5-8ea2-6d76-47bf-d2c890d6acea"),
+                            Value = "Your entry was rejected"
+                        },
+                        new
+                        {
+                            Id = new Guid("581f18a7-e7b3-01dd-6d56-85814037152d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f9008dc5-8ea2-6d76-47bf-d2c890d6acea"),
+                            Value = "رُفض قيدك"
+                        },
+                        new
+                        {
+                            Id = new Guid("0aa18445-a76f-8514-98bb-30066af547f4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e7af2e6a-4c0c-8029-5b2a-710ccfaec2f2"),
+                            Value = "Your project was approved"
+                        },
+                        new
+                        {
+                            Id = new Guid("ccebc95d-a5f9-0ea8-36ca-a53657efc666"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e7af2e6a-4c0c-8029-5b2a-710ccfaec2f2"),
+                            Value = "اعتُمد مشروعك"
+                        },
+                        new
+                        {
+                            Id = new Guid("b8b9d691-a292-2c39-cc4e-06abc62eca20"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0235f6de-0058-db2f-73d1-1a2f72aca48e"),
+                            Value = "Your project was not approved"
+                        },
+                        new
+                        {
+                            Id = new Guid("960a2bad-7be7-a210-a515-4267ad9cc0a6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0235f6de-0058-db2f-73d1-1a2f72aca48e"),
+                            Value = "لم يُعتمد مشروعك"
                         },
                         new
                         {
@@ -11617,6 +11793,66 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("a3570f57-d336-573f-3eef-dfdfbc93440d"),
+                            Description = "",
+                            Key = "notifications.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("a13edf44-3a0e-efac-4e44-4ec55dbda22d"),
+                            Description = "",
+                            Key = "notifications.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("3d860c53-1e24-9e8d-7a73-d4c581ce7e16"),
+                            Description = "",
+                            Key = "notifications.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("99815dd7-8976-d1e9-8ca1-f695088eeb34"),
+                            Description = "",
+                            Key = "notifications.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("32604101-1bb2-8f2a-15b4-1a7df4de510b"),
+                            Description = "",
+                            Key = "notifications.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("443baa91-634b-1c28-3bcd-a0af3d91f1eb"),
+                            Description = "",
+                            Key = "notifications.entrySubmitted"
+                        },
+                        new
+                        {
+                            Id = new Guid("1f837e7c-3a33-e378-f943-d6478ef27825"),
+                            Description = "",
+                            Key = "notifications.entryApproved"
+                        },
+                        new
+                        {
+                            Id = new Guid("f9008dc5-8ea2-6d76-47bf-d2c890d6acea"),
+                            Description = "",
+                            Key = "notifications.entryRejected"
+                        },
+                        new
+                        {
+                            Id = new Guid("e7af2e6a-4c0c-8029-5b2a-710ccfaec2f2"),
+                            Description = "",
+                            Key = "notifications.projectApproved"
+                        },
+                        new
+                        {
+                            Id = new Guid("0235f6de-0058-db2f-73d1-1a2f72aca48e"),
+                            Description = "",
+                            Key = "notifications.projectRejected"
+                        },
+                        new
+                        {
                             Id = new Guid("338c0fed-ebff-67bc-e0fa-5bd1e3b24e0c"),
                             Description = "",
                             Key = "approvals.title"
@@ -14074,6 +14310,15 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Suppliers.Supplier", null)
                         .WithMany()
                         .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
