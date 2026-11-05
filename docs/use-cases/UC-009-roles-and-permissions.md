@@ -11,7 +11,7 @@
 
 A route names a permission. A database row says which role holds it. A role counts only in the project it was given for. Nothing in the code tells one role from another.
 
-A user holds a permission everywhere through `UserRoles`, and in one project through `ProjectMembers`. Both are read on each request, so a change counts at the next request, with no new sign-in and no release.
+A user holds a permission everywhere through `UserRoles`, and in one project through `ProjectMembers`, once that project is approved (UC-066). Both are read on each request, so a change counts at the next request, with no new sign-in and no release.
 
 | Table | Holds |
 | --- | --- |
@@ -22,10 +22,9 @@ A user holds a permission everywhere through `UserRoles`, and in one project thr
 
 ## The roles as they start
 
-| Permission | System admin | Project manager | Finance | Field | Reader |
+| Permission | Admin | Project manager | Finance | Field | Reader |
 | --- | --- | --- | --- | --- | --- |
-| `StartProject` | Yes | | | | |
-| `ManageLogins` | Yes | | | | |
+| `ApproveProjects` | Yes | | | | |
 | `ManageUsers` | | Yes | | | |
 | `ReadProject` | | Yes | Yes | Yes | Yes |
 | `SeeAllCapital` | | Yes | Yes | | |
@@ -48,17 +47,15 @@ A new permission is code: a route has to name it, and a migration adds it. The d
 | Route | Needs | Answers |
 | --- | --- | --- |
 | `GET /projects` | Any session | The projects they hold `ReadProject` in, with `roles` and `permissions` |
-| `POST /projects` | `StartProject` | `201` the project; the caller becomes its first manager |
 | `GET /projects/{projectId}/roles` | `ManageUsers` | `200` the project roles, in order |
 | `GET /projects/{projectId}/users` | `ManageUsers` | `200` this project's people and their roles |
 | `POST /projects/{projectId}/users` | `ManageUsers` | `201` a new login, as the last role |
 | `POST /projects/{projectId}/users/existing` | `ManageUsers` | `200` adds `{ username }`, as the last role; `404` `unknownUser` |
 | `POST /projects/{projectId}/users/{userId}/roles/{roleId}` | `ManageUsers` | `200`; `400` `invalidRole` |
 | `POST /projects/{projectId}/users/{userId}/roles/{roleId}/remove` | `ManageUsers` | `200`; `409` `lastManager` |
-| `GET /users` | `ManageLogins` | `200` every login |
 | `POST /users/{userId}`, `/reset-password`, `/disable`, `/enable` | See below | `200`; `403` `otherProject`; `409` `lastManager` on disable |
 
-A login is shared across projects, so changing one needs `ManageLogins`, or `ManageUsers` in every project that login is in. Otherwise one project's manager could reset a password and sign in to another project.
+A login is shared across projects, so changing one needs `ManageUsers` in every project that login is in, and a login with a system-wide role can never be changed there. Otherwise one project's manager could reset a password and sign in to another project, or as the admin.
 
 A session answers `permissions`, what the user holds everywhere.
 

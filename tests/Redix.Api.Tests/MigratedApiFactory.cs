@@ -20,8 +20,8 @@ namespace Redix.Api.Tests;
 
 public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    public const string SystemAdminUsername = "system-admin";
-    public const string SystemAdminPassword = "System-admin-test-password";
+    public const string AdminUsername = "admin";
+    public const string AdminPassword = "Admin-test-password";
 
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
 
@@ -37,8 +37,9 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             ["ConnectionStrings:Redix"] = testDatabase.ConnectionString,
             ["Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-            ["SystemAdmin:Username"] = SystemAdminUsername,
-            ["SystemAdmin:Password"] = SystemAdminPassword,
+            ["Admin:Username"] = AdminUsername,
+            ["Admin:Password"] = AdminPassword,
+            ["Registration:PermitsPerHour"] = "100000",
         }));
         builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time));
     }
@@ -51,7 +52,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await database.MigrateAsync();
     }
 
-    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false, bool isSystemAdmin = false)
+    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false, bool isAdmin = false)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
@@ -61,9 +62,9 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         };
         user.SetPassword(password, scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>());
         db.Users.Add(user);
-        if (isSystemAdmin)
+        if (isAdmin)
         {
-            db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.SystemAdminId });
+            db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.AdminId });
         }
         await db.SaveChangesAsync();
         return user;
@@ -106,6 +107,19 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             db.ProjectMembers.Add(new ProjectMember { UserId = userId, ProjectId = projectId, RoleId = RoleSeed.IdOf(wordKey) });
             return db.SaveChangesAsync();
         });
+
+    /// <summary>Registers a project for <paramref name="client"/> and approves it straight in the database, for a test whose subject is something else.</summary>
+    public async Task<ProjectView> ApprovedProjectAsync(HttpClient client, string name, params List<string> units)
+    {
+        var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest(name, new DateOnly(2026, 11, 1), units));
+        var project = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
+        await WithDatabaseAsync(async db =>
+        {
+            (await db.Projects.SingleAsync(stored => stored.Id == project.Id)).Approve();
+            await db.SaveChangesAsync();
+        });
+        return (await client.GetFromJsonAsync<List<ProjectView>>("/projects", Json))!.Single(listed => listed.Id == project.Id);
+    }
 
     /// <summary>Works on the database directly, as someone configuring roles does (BR-32).</summary>
     public async Task WithDatabaseAsync(Func<RedixDbContext, Task> work)

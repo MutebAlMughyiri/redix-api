@@ -6,11 +6,8 @@ namespace Redix.Api.Auth;
 /// </summary>
 public enum Permission
 {
-    /// <summary>Starts a project, becoming its first project manager (BR-29).</summary>
-    StartProject,
-
-    /// <summary>Sees every login, and edits, resets, disables or enables any of them (BR-29).</summary>
-    ManageLogins,
+    /// <summary>Sees the registered projects, and approves or rejects them (BR-29, BR-34).</summary>
+    ApproveProjects,
 
     /// <summary>Adds people to one project and gives their roles in it (FR-02, BR-29).</summary>
     ManageUsers,

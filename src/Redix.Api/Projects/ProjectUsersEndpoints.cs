@@ -72,7 +72,7 @@ public static class ProjectUsersEndpoints
         return Results.Created($"/users/{user.Id}", await ViewInProjectAsync(user, projectId, db));
     }
 
-    /// <summary>Adds someone who already has a login, named by their exact username, as this project's last role; nothing else about them shows (BR-33). An unknown username answers <c>unknownUser</c>.</summary>
+    /// <summary>Adds someone who already has a login, named by their exact username, as this project's last role; nothing else about them shows (BR-33). An unknown username answers <c>unknownUser</c>, and so does the admin's, so a manager can never reach that login.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The exact username.</param>
     /// <param name="principal">The project manager's session.</param>
@@ -81,7 +81,7 @@ public static class ProjectUsersEndpoints
     public static async Task<IResult> AddExisting(Guid projectId, AddExistingUserRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var username = request.Username.Trim();
-        var user = await db.Users.SingleOrDefaultAsync(user => user.Username == username);
+        var user = await db.Users.SingleOrDefaultAsync(user => user.Username == username && !db.UserRoles.Any(row => row.UserId == user.Id));
         if (user is null)
         {
             return Refusal.Of(StatusCodes.Status404NotFound, "UnknownUser");

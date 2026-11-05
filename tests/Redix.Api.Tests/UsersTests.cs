@@ -16,7 +16,14 @@ public class UsersTests(MigratedApiFactory factory)
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
-    private async Task<HttpClient> SystemAdminAsync() => await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password, isSystemAdmin: true), Password);
+    /// <summary>A project's manager, with <paramref name="user"/> in that project.</summary>
+    private async Task<HttpClient> ManagerOfAsync(User user)
+    {
+        var manager = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
+        var project = await factory.ApprovedProjectAsync(manager, $"project-{Guid.CreateVersion7()}");
+        await factory.GiveRoleAsync(user.Id, project.Id, "users.roleField");
+        return manager;
+    }
 
     private static async Task<UserView> ViewOf(HttpResponseMessage response)
     {
@@ -36,22 +43,20 @@ public class UsersTests(MigratedApiFactory factory)
     [Fact]
     public async Task EditingChangesTheNameAndMobile()
     {
-        var systemAdmin = await SystemAdminAsync();
         var user = await factory.AddUserAsync(Password);
+        var manager = await ManagerOfAsync(user);
 
-        var edited = await ViewOf(await systemAdmin.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111")));
+        var edited = await ViewOf(await manager.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111")));
 
         Assert.Equal((user.Username, "نواف الأول", "0511111111"), (edited.Username, edited.DisplayName, edited.Mobile));
-        var listed = (await systemAdmin.GetFromJsonAsync<List<UserView>>("/users", Json))!.Single(listed => listed.Id == user.Id);
-        Assert.Equal("نواف الأول", listed.DisplayName);
-        Assert.Equal("invalidName", await CodeOf(await systemAdmin.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", ""))));
+        Assert.Equal("invalidName", await CodeOf(await manager.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", ""))));
     }
 
     [Fact]
     public async Task AResetForcesAChangeEndsTheLockAndSignsOutEveryDevice()
     {
-        var systemAdmin = await SystemAdminAsync();
         var user = await factory.AddUserAsync(Password);
+        var manager = await ManagerOfAsync(user);
         var session = (await (await SignInAsync(user.Username, Password)).Content.ReadFromJsonAsync<Session>(Json))!;
         for (var attempt = 0; attempt < User.WrongPasswordsBeforeLock; attempt++)
         {
@@ -59,7 +64,7 @@ public class UsersTests(MigratedApiFactory factory)
         }
         Assert.Equal("accountLocked", await CodeOf(await SignInAsync(user.Username, Password)));
 
-        var reset = await ViewOf(await ResetAsync(systemAdmin, user.Id));
+        var reset = await ViewOf(await ResetAsync(manager, user.Id));
 
         Assert.True(reset.MustChangePassword);
         var renewal = await factory.CreateClient().PostAsJsonAsync("/auth/refresh", new RefreshRequest(session.RefreshToken));
@@ -67,83 +72,43 @@ public class UsersTests(MigratedApiFactory factory)
         Assert.Equal("invalidCredentials", await CodeOf(await SignInAsync(user.Username, Password)));
         var signedIn = (await (await SignInAsync(user.Username, Temporary)).Content.ReadFromJsonAsync<Session>(Json))!;
         Assert.True(signedIn.MustChangePassword);
-        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(systemAdmin, user.Id, "Short-1")));
+        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(manager, user.Id, "Short-1")));
     }
 
     [Fact]
     public async Task DisablingAUserEndsTheOpenSessionAtTheNextRequest()
     {
-        var systemAdmin = await SystemAdminAsync();
         var user = await factory.AddUserAsync(Password);
+        var manager = await ManagerOfAsync(user);
         var client = await factory.ClientSignedInAsAsync(user, Password);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/users")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/projects")).StatusCode);
 
-        var disabled = await ViewOf(await systemAdmin.PostAsync($"/users/{user.Id}/disable", null));
+        var disabled = await ViewOf(await manager.PostAsync($"/users/{user.Id}/disable", null));
 
         Assert.False(disabled.IsActive);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/users")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/projects")).StatusCode);
         Assert.Equal("invalidCredentials", await CodeOf(await SignInAsync(user.Username, Password)));
     }
 
     [Fact]
     public async Task AnEnabledUserCanSignInAgain()
     {
-        var systemAdmin = await SystemAdminAsync();
         var user = await factory.AddUserAsync(Password);
-        await systemAdmin.PostAsync($"/users/{user.Id}/disable", null);
+        var manager = await ManagerOfAsync(user);
+        await manager.PostAsync($"/users/{user.Id}/disable", null);
 
-        var enabled = await ViewOf(await systemAdmin.PostAsync($"/users/{user.Id}/enable", null));
+        var enabled = await ViewOf(await manager.PostAsync($"/users/{user.Id}/enable", null));
 
         Assert.True(enabled.IsActive);
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(user.Username, Password)).StatusCode);
     }
 
     [Fact]
-    public async Task TheSystemAdminResetsAnyLogin()
-    {
-        var starter = await SystemAdminAsync();
-        var created = await starter.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 6", new DateOnly(2026, 11, 1), []));
-        var project = (await created.Content.ReadFromJsonAsync<ProjectView>(Json))!;
-        var manager = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(manager.Id, project.Id, "users.roleManager");
-
-        var reset = await ViewOf(await ResetAsync(await SystemAdminAsync(), manager.Id));
-
-        Assert.True(reset.MustChangePassword);
-    }
-
-    [Fact]
-    public async Task EveryLoginIsListedActiveUsersFirstByNameWithTheirRoles()
-    {
-        var starter = await SystemAdminAsync();
-        var created = await starter.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 6", new DateOnly(2026, 11, 1), []));
-        var project = (await created.Content.ReadFromJsonAsync<ProjectView>(Json))!;
-        var systemAdmin = await SystemAdminAsync();
-        var disabled = await factory.AddUserAsync(Password, isActive: false);
-        var active = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(active.Id, project.Id, "users.roleField");
-
-        var users = (await systemAdmin.GetFromJsonAsync<List<UserView>>("/users", Json))!;
-
-        Assert.True(users.FindIndex(user => user.Id == active.Id) < users.FindIndex(user => user.Id == disabled.Id));
-        var line = Assert.Single(users.Single(user => user.Id == active.Id).Projects);
-        Assert.Equal((project.Id, "غصون 6", "users.roleField"), (line.ProjectId, line.Name, line.Role.WordKey));
-    }
-
-    [Fact]
     public async Task AnUnknownUserIsNotFound()
-    {
-        var systemAdmin = await SystemAdminAsync();
-
-        Assert.Equal(HttpStatusCode.NotFound, (await systemAdmin.PostAsync($"/users/{Guid.CreateVersion7()}/enable", null)).StatusCode);
-    }
-
-    [Fact]
-    public async Task OnlyTheSystemAdminListsEveryLogin()
     {
         var user = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/users")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await user.PostAsync($"/users/{Guid.CreateVersion7()}/enable", null)).StatusCode);
     }
 
     [Fact]
@@ -162,9 +127,11 @@ public class UsersTests(MigratedApiFactory factory)
     [Fact]
     public async Task EveryChangeIsInTheAuditTrailWithNoPasswordHash()
     {
-        var systemAdmin = await factory.AddUserAsync(Password, isSystemAdmin: true);
-        var client = await factory.ClientSignedInAsAsync(systemAdmin, Password);
+        var managerUser = await factory.AddUserAsync(Password);
+        var client = await factory.ClientSignedInAsAsync(managerUser, Password);
+        var project = await factory.ApprovedProjectAsync(client, $"project-{Guid.CreateVersion7()}");
         var user = await factory.AddUserAsync(Password);
+        await factory.GiveRoleAsync(user.Id, project.Id, "users.roleField");
 
         await client.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0500000000"));
         await ResetAsync(client, user.Id);
@@ -173,7 +140,7 @@ public class UsersTests(MigratedApiFactory factory)
 
         var trail = await factory.AuditTrailOfAsync(user.Id);
         Assert.Equal([AuditAction.Update, AuditAction.ResetPassword, AuditAction.Disable, AuditAction.Enable], trail.Select(record => record.Action));
-        Assert.All(trail, record => Assert.Equal(systemAdmin.Id, record.UserId));
+        Assert.All(trail, record => Assert.Equal(managerUser.Id, record.UserId));
         Assert.Equal("نواف الأول", JsonNode.Parse(trail[0].After)!["DisplayName"]!.GetValue<string>());
         Assert.All(trail, record => Assert.DoesNotContain("PasswordHash", record.Before + record.After));
     }
@@ -181,9 +148,11 @@ public class UsersTests(MigratedApiFactory factory)
     [Fact]
     public async Task AnAnswerNeverCarriesThePasswordHash()
     {
-        var systemAdmin = await SystemAdminAsync();
+        var user = await factory.AddUserAsync(Password);
+        var manager = await factory.ClientSignedInAsAsync(user, Password);
+        var project = await factory.ApprovedProjectAsync(manager, $"project-{Guid.CreateVersion7()}");
 
-        var listed = await systemAdmin.GetAsync("/users");
+        var listed = await manager.GetAsync($"/projects/{project.Id}/users");
 
         Assert.DoesNotContain("passwordHash", await listed.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
     }

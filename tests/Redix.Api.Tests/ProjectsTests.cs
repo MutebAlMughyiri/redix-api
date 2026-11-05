@@ -19,16 +19,16 @@ public class ProjectsTests(MigratedApiFactory factory)
 
     public static TheoryData<string> UnacceptableNames => ["   ", new string('x', Project.NameMaxLength + 1)];
 
-    private Task<User> SystemAdminAsync() => factory.AddUserAsync(Password, isSystemAdmin: true);
+    private Task<User> StarterAsync() => factory.AddUserAsync(Password);
 
     private Task<HttpClient> ClientOfAsync(User user) => factory.ClientSignedInAsAsync(user, Password);
 
-    /// <summary>A system admin who starts <paramref name="name"/> and also does its finance.</summary>
+    /// <summary>Someone who registered <paramref name="name"/>, now approved, and also does its finance.</summary>
     private async Task<(HttpClient Client, ProjectView Project)> FinanceOfNewProjectAsync(string name, params List<string> units)
     {
-        var user = await SystemAdminAsync();
+        var user = await StarterAsync();
         var client = await ClientOfAsync(user);
-        var project = await ProjectOf(await CreateAsync(client, name, units));
+        var project = await factory.ApprovedProjectAsync(client, name, units);
         await factory.GiveRoleAsync(user.Id, project.Id, Finance);
         return (client, project);
     }
@@ -59,11 +59,11 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task TheSystemAdminStartsAProjectWithItsUnitsInOrder()
+    public async Task AProjectKeepsItsUnitsInOrder()
     {
-        var client = await ClientOfAsync(await SystemAdminAsync());
+        var client = await ClientOfAsync(await StarterAsync());
 
-        var project = await ProjectOf(await CreateAsync(client, "  غصون 7  ", " الفلة الغربية ", "الفلة الجنوبية"));
+        var project = await factory.ApprovedProjectAsync(client, "  غصون 7  ", " الفلة الغربية ", "الفلة الجنوبية");
 
         Assert.Equal("غصون 7", project.Name);
         Assert.Equal(ProjectStatus.Running, project.Status);
@@ -76,9 +76,9 @@ public class ProjectsTests(MigratedApiFactory factory)
     [Fact]
     public async Task WhoeverStartsAProjectManagesIt()
     {
-        var client = await ClientOfAsync(await SystemAdminAsync());
+        var client = await ClientOfAsync(await StarterAsync());
 
-        var project = await ProjectOf(await CreateAsync(client, "غصون 7"));
+        var project = await factory.ApprovedProjectAsync(client, "غصون 7");
 
         Assert.Equal([Manager], project.Roles);
         Assert.Contains(Permission.ManageUsers, project.Permissions);
@@ -86,17 +86,9 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task OnlyTheSystemAdminStartsAProject()
-    {
-        var user = await ClientOfAsync(await factory.AddUserAsync(Password));
-
-        Assert.Equal(HttpStatusCode.Forbidden, (await CreateAsync(user, "غصون 2")).StatusCode);
-    }
-
-    [Fact]
     public async Task ABadUnitNameCreatesNothing()
     {
-        var client = await ClientOfAsync(await SystemAdminAsync());
+        var client = await ClientOfAsync(await StarterAsync());
         var name = $"project-{Guid.CreateVersion7()}";
 
         var response = await CreateAsync(client, name, "الفلة الغربية", "   ");
@@ -113,7 +105,7 @@ public class ProjectsTests(MigratedApiFactory factory)
     [InlineData("""{ "name": "غصون 8", "startDate": "2026-11-01" }""")]
     public async Task ARequestMissingAFieldIsABadRequest(string body)
     {
-        var client = await ClientOfAsync(await SystemAdminAsync());
+        var client = await ClientOfAsync(await StarterAsync());
 
         var response = await client.PostAsync("/projects", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
 
@@ -174,9 +166,9 @@ public class ProjectsTests(MigratedApiFactory factory)
     [Fact]
     public async Task AUserSeesOnlyTheirProjects()
     {
-        var starter = await ClientOfAsync(await SystemAdminAsync());
-        var theirs = await ProjectOf(await CreateAsync(starter, "غصون 6"));
-        var other = await ProjectOf(await CreateAsync(starter, "غصون 5"));
+        var starter = await ClientOfAsync(await StarterAsync());
+        var theirs = await factory.ApprovedProjectAsync(starter, "غصون 6");
+        var other = await factory.ApprovedProjectAsync(starter, "غصون 5");
         var user = await factory.AddUserAsync(Password);
         await factory.GiveRoleAsync(user.Id, theirs.Id, Field);
 
@@ -189,9 +181,9 @@ public class ProjectsTests(MigratedApiFactory factory)
     [Fact]
     public async Task AnotherProjectIsForbidden()
     {
-        var starter = await ClientOfAsync(await SystemAdminAsync());
-        var theirs = await ProjectOf(await CreateAsync(starter, "غصون 6"));
-        var other = await ProjectOf(await CreateAsync(starter, "غصون 5"));
+        var starter = await ClientOfAsync(await StarterAsync());
+        var theirs = await factory.ApprovedProjectAsync(starter, "غصون 6");
+        var other = await factory.ApprovedProjectAsync(starter, "غصون 5");
         var user = await factory.AddUserAsync(Password);
         await factory.GiveRoleAsync(user.Id, theirs.Id, Finance);
         var client = await ClientOfAsync(user);
@@ -212,9 +204,9 @@ public class ProjectsTests(MigratedApiFactory factory)
     [Fact]
     public async Task PermissionsFollowTheRoleInEachProject()
     {
-        var starter = await ClientOfAsync(await SystemAdminAsync());
-        var financeProject = await ProjectOf(await CreateAsync(starter, "غصون 6"));
-        var fieldProject = await ProjectOf(await CreateAsync(starter, "غصون 7"));
+        var starter = await ClientOfAsync(await StarterAsync());
+        var financeProject = await factory.ApprovedProjectAsync(starter, "غصون 6");
+        var fieldProject = await factory.ApprovedProjectAsync(starter, "غصون 7");
         var user = await factory.AddUserAsync(Password);
         await factory.GiveRoleAsync(user.Id, financeProject.Id, Finance);
         await factory.GiveRoleAsync(user.Id, fieldProject.Id, Field);
@@ -235,8 +227,8 @@ public class ProjectsTests(MigratedApiFactory factory)
     [InlineData(Reader)]
     public async Task FieldAndReaderCannotChangeAProject(string role)
     {
-        var starter = await ClientOfAsync(await SystemAdminAsync());
-        var project = await ProjectOf(await CreateAsync(starter, "غصون 6"));
+        var starter = await ClientOfAsync(await StarterAsync());
+        var project = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var user = await factory.AddUserAsync(Password);
         await factory.GiveRoleAsync(user.Id, project.Id, role);
         var client = await ClientOfAsync(user);
@@ -249,9 +241,9 @@ public class ProjectsTests(MigratedApiFactory factory)
     [Fact]
     public async Task AManagerChangesAProjectOnlyWithFinanceToo()
     {
-        var user = await SystemAdminAsync();
+        var user = await StarterAsync();
         var client = await ClientOfAsync(user);
-        var project = await ProjectOf(await CreateAsync(client, "غصون 6"));
+        var project = await factory.ApprovedProjectAsync(client, "غصون 6");
         Assert.Equal(HttpStatusCode.Forbidden, (await AddUnitAsync(client, project.Id)).StatusCode);
 
         await factory.GiveRoleAsync(user.Id, project.Id, Finance);
@@ -259,17 +251,6 @@ public class ProjectsTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.OK, (await AddUnitAsync(client, project.Id)).StatusCode);
         var listed = (await ListAsync(client))!.Single(listed => listed.Id == project.Id);
         Assert.Equal([Manager, Finance], listed.Roles);
-    }
-
-    [Fact]
-    public async Task TheSystemAdminSeesInsideAProjectOnlyWithARoleThere()
-    {
-        var other = await ClientOfAsync(await SystemAdminAsync());
-        var project = await ProjectOf(await CreateAsync(other, "غصون 6"));
-        var client = await ClientOfAsync(await SystemAdminAsync());
-
-        Assert.DoesNotContain((await ListAsync(client))!, listed => listed.Id == project.Id);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{project.Id}/users")).StatusCode);
     }
 
     [Fact]
@@ -284,8 +265,8 @@ public class ProjectsTests(MigratedApiFactory factory)
     [Fact]
     public async Task ATemporaryPasswordSessionIsForbidden()
     {
-        var starter = await ClientOfAsync(await SystemAdminAsync());
-        var project = await ProjectOf(await CreateAsync(starter, "غصون 6"));
+        var starter = await ClientOfAsync(await StarterAsync());
+        var project = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var user = await factory.AddUserAsync(Password, mustChangePassword: true);
         await factory.GiveRoleAsync(user.Id, project.Id, Finance);
         var client = await ClientOfAsync(user);

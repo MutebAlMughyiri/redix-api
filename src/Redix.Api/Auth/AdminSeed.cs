@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 namespace Redix.Api.Auth;
 
 /// <summary>
-/// Creates the first user, the system admin (BR-29), when the database has no user, from the <c>SystemAdmin</c> configuration section (the
-/// <c>REDIX_SystemAdmin__Username</c> and <c>REDIX_SystemAdmin__Password</c> environment variables), with a password that must be changed at first sign-in.
+/// Creates the first user, the admin (BR-29), when the database has no user, from the <c>Admin</c> configuration section (the
+/// <c>REDIX_Admin__Username</c> and <c>REDIX_Admin__Password</c> environment variables), with a password that must be changed at first sign-in.
 /// EF Core runs it after every migration.
 /// </summary>
-public static class SystemAdminSeed
+public static class AdminSeed
 {
-    /// <summary>Seeds the system admin during a synchronous migration, as <c>dotnet ef database update</c> runs one.</summary>
+    /// <summary>Seeds the admin during a synchronous migration, as <c>dotnet ef database update</c> runs one.</summary>
     public static void Seed(DbContext context, IServiceProvider services)
     {
         var users = context.Set<User>();
@@ -23,7 +23,7 @@ public static class SystemAdminSeed
         context.SaveChanges();
     }
 
-    /// <summary>Seeds the system admin during an asynchronous migration, as the tests run one.</summary>
+    /// <summary>Seeds the admin during an asynchronous migration, as the tests run one.</summary>
     public static async Task SeedAsync(DbContext context, IServiceProvider services, CancellationToken cancellation)
     {
         var users = context.Set<User>();
@@ -36,10 +36,10 @@ public static class SystemAdminSeed
         await context.SaveChangesAsync(cancellation);
     }
 
-    private static SystemAdminOptions Settings(IServiceProvider services) =>
-        services.GetRequiredService<IConfiguration>().GetSection("SystemAdmin").Get<SystemAdminOptions>() ?? new SystemAdminOptions();
+    private static AdminOptions Settings(IServiceProvider services) =>
+        services.GetRequiredService<IConfiguration>().GetSection("Admin").Get<AdminOptions>() ?? new AdminOptions();
 
-    private static void Add(DbContext context, SystemAdminOptions settings, IServiceProvider services)
+    private static void Add(DbContext context, AdminOptions settings, IServiceProvider services)
     {
         var user = new User
         {
@@ -50,16 +50,16 @@ public static class SystemAdminSeed
         };
         user.SetPassword(settings.Password, services.GetRequiredService<IPasswordHasher<User>>());
         context.Set<User>().Add(user);
-        context.Set<UserRole>().Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.SystemAdminId });
+        context.Set<UserRole>().Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.AdminId });
     }
 }
 
-/// <summary>The first user's credentials, from the <c>SystemAdmin</c> configuration section; empty when none is configured.</summary>
-public class SystemAdminOptions
+/// <summary>The first user's credentials, from the <c>Admin</c> configuration section; empty when none is configured.</summary>
+public class AdminOptions
 {
-    /// <summary>The system admin's username.</summary>
+    /// <summary>The admin's username.</summary>
     public string Username { get; set; } = "";
 
-    /// <summary>The system admin's temporary password.</summary>
+    /// <summary>The admin's temporary password.</summary>
     public string Password { get; set; } = "";
 }

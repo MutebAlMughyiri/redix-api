@@ -24,28 +24,15 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
     private static Guid RoleOf(string word) => RoleSeed.IdOf(word);
 
-    /// <summary>A system admin who started a new project, and so manages it.</summary>
+    /// <summary>Someone who registered a project, now approved, and so manages it.</summary>
     private async Task<(User User, HttpClient Client, Guid ProjectId)> ManagerAsync()
     {
-        var user = await factory.AddUserAsync(Password, isSystemAdmin: true);
+        var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         return (user, client, await StartProjectAsync(client));
     }
 
-    private static async Task<Guid> StartProjectAsync(HttpClient client)
-    {
-        var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest($"project-{Guid.CreateVersion7()}", new DateOnly(2026, 11, 1), []));
-        return (await created.Content.ReadFromJsonAsync<ProjectView>(Json))!.Id;
-    }
-
-    /// <summary>A manager of a new project who holds no system-wide role.</summary>
-    private async Task<(User User, HttpClient Client, Guid ProjectId)> PlainManagerAsync()
-    {
-        var (_, _, projectId) = await ManagerAsync();
-        var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, projectId, ManagerWord);
-        return (user, await factory.ClientSignedInAsAsync(user, Password), projectId);
-    }
+    private async Task<Guid> StartProjectAsync(HttpClient client) => (await factory.ApprovedProjectAsync(client, $"project-{Guid.CreateVersion7()}")).Id;
 
     private static async Task<UserView> ViewOf(HttpResponseMessage response)
     {
@@ -241,7 +228,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     {
         var (manager, client, projectId) = await ManagerAsync();
 
-        var system = await GiveAsync(client, projectId, manager.Id, "users.roleSystem");
+        var system = await GiveAsync(client, projectId, manager.Id, "users.roleAdmin");
         var unknown = await client.PostAsync($"/projects/{projectId}/users/{manager.Id}/roles/{Guid.CreateVersion7()}", null);
 
         Assert.Equal(HttpStatusCode.BadRequest, system.StatusCode);
@@ -287,9 +274,8 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     public async Task TheLastManagerCannotBeDisabled()
     {
         var (manager, client, projectId) = await ManagerAsync();
-        var systemAdmin = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password, isSystemAdmin: true), Password);
 
-        var refused = await systemAdmin.PostAsync($"/users/{manager.Id}/disable", null);
+        var refused = await client.PostAsync($"/users/{manager.Id}/disable", null);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Equal("lastManager", await CodeOf(refused));
@@ -299,7 +285,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     [Fact]
     public async Task AManagerResetsAndDisablesSomeoneOnlyInTheirProject()
     {
-        var (_, client, projectId) = await PlainManagerAsync();
+        var (_, client, projectId) = await ManagerAsync();
         var user = await factory.AddUserAsync(Password);
         await factory.GiveRoleAsync(user.Id, projectId, FieldWord);
 
@@ -313,7 +299,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     [Fact]
     public async Task AManagerCannotResetSomeoneInAnotherProject()
     {
-        var (_, client, projectId) = await PlainManagerAsync();
+        var (_, client, projectId) = await ManagerAsync();
         var (_, _, otherProjectId) = await ManagerAsync();
         var shared = await factory.AddUserAsync(Password);
         await factory.GiveRoleAsync(shared.Id, projectId, FieldWord);
@@ -332,19 +318,46 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AManagerCannotTakeOverTheAdmin()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var admin = await factory.AddUserAsync(Password, isAdmin: true);
+
+        var added = await AddExistingAsync(client, projectId, admin.Username);
+        Assert.Equal(HttpStatusCode.NotFound, added.StatusCode);
+        Assert.Equal("unknownUser", await CodeOf(added));
+
+        await factory.GiveRoleAsync(admin.Id, projectId, ReaderWord);
+        var reset = await ResetAsync(client, admin.Id);
+        Assert.Equal(HttpStatusCode.Forbidden, reset.StatusCode);
+        Assert.Equal("otherProject", await CodeOf(reset));
+        Assert.Equal("otherProject", await CodeOf(await client.PostAsync($"/users/{admin.Id}/disable", null)));
+        Assert.Equal("otherProject", await CodeOf(await client.PostAsJsonAsync($"/users/{admin.Id}", new EditUserRequest("x", ""))));
+        Assert.Equal(HttpStatusCode.OK, (await SignInAsync(admin.Username, Password)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ThePeopleOfAProjectAreListedActiveFirstByName()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var disabled = await factory.AddUserAsync(Password, isActive: false);
+        var active = await factory.AddUserAsync(Password);
+        await factory.GiveRoleAsync(disabled.Id, projectId, ReaderWord);
+        await factory.GiveRoleAsync(active.Id, projectId, ReaderWord);
+
+        var listed = (await ListAsync(client, projectId))!;
+
+        Assert.True(listed.FindIndex(user => user.Id == active.Id) < listed.FindIndex(user => user.Id == disabled.Id));
+    }
+
+    [Fact]
     public async Task SomeoneWhoManagesBothProjectsIsNotHeldBack()
     {
-        var (manager, client, projectId) = await ManagerAsync();
+        var (_, client, projectId) = await ManagerAsync();
         var otherProjectId = await StartProjectAsync(client);
         var shared = await factory.AddUserAsync(Password);
         await factory.GiveRoleAsync(shared.Id, projectId, FieldWord);
         await factory.GiveRoleAsync(shared.Id, otherProjectId, FieldWord);
-        await factory.WithDatabaseAsync(async db =>
-        {
-            db.UserRoles.RemoveRange(db.UserRoles.Where(row => row.UserId == manager.Id));
-            await db.SaveChangesAsync();
-        });
-
         Assert.True((await ViewOf(await ResetAsync(client, shared.Id))).MustChangePassword);
     }
 

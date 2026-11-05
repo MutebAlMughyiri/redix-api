@@ -8,4 +8,10 @@ public enum ProjectStatus : byte
 
     /// <summary>Finished: read-only, with its reports still available (AC-04.1).</summary>
     Finished,
+
+    /// <summary>Registered, and waiting for the admin; no role counts in it yet (BR-34).</summary>
+    PendingApproval,
+
+    /// <summary>The admin refused it, saying why; no role counts in it (BR-34).</summary>
+    Rejected,
 }

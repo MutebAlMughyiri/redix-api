@@ -8,28 +8,19 @@ namespace Redix.Api.Auth;
 
 /// <summary>
 /// The logins (UC-007, FR-02): corrects, disables and resets them. A login is shared across projects, so one project's manager may change it only if they manage every
-/// project it is in; otherwise a reset could let them into another project (BR-33). Every change is saved with its audit record.
+/// project it is in, and never one holding a system-wide role; otherwise a reset could let them sign in to another project or as the admin (BR-33). Every change is saved
+/// with its audit record.
 /// </summary>
 public static class UsersEndpoints
 {
-    /// <summary>Maps <c>GET /users</c>, and under <c>/users/{userId}</c> the edit, <c>reset-password</c>, <c>disable</c> and <c>enable</c>.</summary>
+    /// <summary>Maps, under <c>/users/{userId}</c>, the edit, <c>reset-password</c>, <c>disable</c> and <c>enable</c>.</summary>
     public static void MapUsers(this WebApplication app)
     {
-        app.MapGet("/users", List).RequireAuthorization(nameof(Permission.ManageLogins));
         var users = app.MapGroup("/users/{userId:guid}").RequireAuthorization(SessionPolicies.Working);
         users.MapPost("", Edit);
         users.MapPost("/reset-password", ResetPassword);
         users.MapPost("/disable", Disable);
         users.MapPost("/enable", Enable);
-    }
-
-    /// <summary>Every login with their projects: active users first, by name.</summary>
-    /// <param name="db">The database the users live in.</param>
-    public static async Task<List<UserView>> List(RedixDbContext db)
-    {
-        var users = await db.Users.OrderByDescending(user => user.IsActive).ThenBy(user => user.DisplayName).ToListAsync();
-        var projects = await ProjectsByUserAsync(db.ProjectMembers, db);
-        return users.Select(user => UserView.Of(user, projects[user.Id].ToList())).ToList();
     }
 
     /// <summary>The projects and roles in <paramref name="members"/>, by user: one line per role, by project name and then the role's order.</summary>
@@ -119,10 +110,13 @@ public static class UsersEndpoints
 
     private static async Task<bool> MayChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db)
     {
+        if (await db.UserRoles.AnyAsync(row => row.UserId == userId))
+        {
+            return false;
+        }
         var access = await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db);
         var theirProjects = await db.ProjectMembers.Where(member => member.UserId == userId).Select(member => member.ProjectId).Distinct().ToListAsync();
-        return access.Everywhere.Contains(Permission.ManageLogins)
-            || (theirProjects.Count > 0 && theirProjects.All(project => access.In(project).Contains(Permission.ManageUsers)));
+        return theirProjects.Count > 0 && theirProjects.All(project => access.In(project).Contains(Permission.ManageUsers));
     }
 
     private static async Task<IResult> ChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Func<User, Task<string>> change)

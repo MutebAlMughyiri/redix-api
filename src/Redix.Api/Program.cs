@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -34,10 +35,17 @@ foreach (var permission in Enum.GetValues<Permission>())
     authorization.AddPolicy(permission.ToString(), policy => policy.Combine(SessionPolicies.Working).AddRequirements(new PermissionRequirement(permission)));
 }
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddRateLimiter(limiter =>
+{
+    limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    limiter.AddPolicy(RegistrationEndpoints.RegistrationLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("Registration:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
+});
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(services.GetRequiredService<IConfiguration>().GetConnectionString("Redix"))
-    .UseSeeding((context, _) => SystemAdminSeed.Seed(context, services))
-    .UseAsyncSeeding((context, _, cancellation) => SystemAdminSeed.SeedAsync(context, services, cancellation)));
+    .UseSeeding((context, _) => AdminSeed.Seed(context, services))
+    .UseAsyncSeeding((context, _, cancellation) => AdminSeed.SeedAsync(context, services, cancellation)));
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -63,11 +71,13 @@ if (!app.Environment.IsProduction())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapTranslations();
 app.MapAuth();
 app.MapProjects();
 app.MapProjectUsers();
+app.MapRegistration();
 app.MapUsers();
 
 app.Run();

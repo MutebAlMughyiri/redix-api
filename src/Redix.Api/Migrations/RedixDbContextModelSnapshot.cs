@@ -155,10 +155,10 @@ namespace Redix.Api.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("e5c8a57b-dca1-df52-59f4-a0520caa9080"),
+                            Id = new Guid("6a87517c-47ed-b83f-195d-c84e7a2720e0"),
                             Scope = "System",
                             SortOrder = 1,
-                            WordKey = "users.roleSystem"
+                            WordKey = "users.roleAdmin"
                         },
                         new
                         {
@@ -217,21 +217,15 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("RolePermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('StartProject', 'ManageLogins', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject')");
+                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject')");
                         });
 
                     b.HasData(
                         new
                         {
-                            Id = new Guid("5d9e61be-da59-a993-55f5-c5013028c46f"),
-                            Permission = "StartProject",
-                            RoleId = new Guid("e5c8a57b-dca1-df52-59f4-a0520caa9080")
-                        },
-                        new
-                        {
-                            Id = new Guid("578f9580-4389-dee4-365c-a6d94e78b230"),
-                            Permission = "ManageLogins",
-                            RoleId = new Guid("e5c8a57b-dca1-df52-59f4-a0520caa9080")
+                            Id = new Guid("229fb904-b3ae-c168-60c9-52379dc1ac5f"),
+                            Permission = "ApproveProjects",
+                            RoleId = new Guid("6a87517c-47ed-b83f-195d-c84e7a2720e0")
                         },
                         new
                         {
@@ -375,6 +369,11 @@ namespace Redix.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RejectionReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -955,14 +954,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("cf97457f-9011-3ee6-e375-8314bbc0be29"),
                             Language = "en",
                             TranslationKeyId = new Guid("cd4a60f1-e5bf-1b94-d586-f8cffe541755"),
-                            Value = "New project"
+                            Value = "Register new project"
                         },
                         new
                         {
                             Id = new Guid("ae2b97fa-fbea-6d7b-25dc-14a69959b463"),
                             Language = "ar",
                             TranslationKeyId = new Guid("cd4a60f1-e5bf-1b94-d586-f8cffe541755"),
-                            Value = "مشروع جديد"
+                            Value = "تسجيل مشروع جديد"
                         },
                         new
                         {
@@ -1151,14 +1150,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("4c362fb6-4bd8-ffa0-3fd5-629ea30055b3"),
                             Language = "en",
                             TranslationKeyId = new Guid("25f79ab6-6305-7112-554a-c09ef0e99eee"),
-                            Value = "Create project"
+                            Value = "Send for approval"
                         },
                         new
                         {
                             Id = new Guid("449fcb9f-8f5a-3d13-f1c5-54e9ffb328be"),
                             Language = "ar",
                             TranslationKeyId = new Guid("25f79ab6-6305-7112-554a-c09ef0e99eee"),
-                            Value = "إنشاء المشروع"
+                            Value = "إرسال للاعتماد"
                         },
                         new
                         {
@@ -1680,34 +1679,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("93b4a40b-4efb-7496-4ab1-0ded8b7c25ba"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
-                            Value = "No projects yet"
-                        },
-                        new
-                        {
-                            Id = new Guid("86018635-2aad-43d7-91e2-9af58611ae3d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
-                            Value = "لا مشاريع بعد"
-                        },
-                        new
-                        {
-                            Id = new Guid("3d54d177-caa7-2cf9-b250-a7faf032fa4e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("1d0bfe7c-785a-3170-264f-a825aa706b7a"),
-                            Value = "System admin"
-                        },
-                        new
-                        {
-                            Id = new Guid("1beea644-8d14-203f-7bfc-a76c377ad475"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("1d0bfe7c-785a-3170-264f-a825aa706b7a"),
-                            Value = "مسؤول النظام"
-                        },
-                        new
-                        {
                             Id = new Guid("750cb2f0-6200-d700-0def-3711392692f3"),
                             Language = "en",
                             TranslationKeyId = new Guid("a62c2d72-be90-19d8-a03f-098a766b52c3"),
@@ -1809,14 +1780,350 @@ namespace Redix.Api.Migrations
                             Id = new Guid("1d99d4ff-c3a1-f931-b2b5-eb0f28664540"),
                             Language = "en",
                             TranslationKeyId = new Guid("39457e5d-d993-e945-7e48-548736d938d2"),
-                            Value = "This person also works in another project, so the system admin does this."
+                            Value = "This person also works in another project, so this cannot be changed here."
                         },
                         new
                         {
                             Id = new Guid("4decc0a4-2985-7259-41a7-955a02ace1b5"),
                             Language = "ar",
                             TranslationKeyId = new Guid("39457e5d-d993-e945-7e48-548736d938d2"),
-                            Value = "يعمل هذا الشخص في مشروع آخر أيضاً، لذا يتولى ذلك مسؤول النظام."
+                            Value = "يعمل هذا الشخص في مشروع آخر أيضاً، لذا لا يمكن تغيير ذلك من هنا."
+                        },
+                        new
+                        {
+                            Id = new Guid("292e45e6-371c-fa95-2f53-c15f374eca31"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aba96efe-224a-d326-a2f1-3b58e392f70d"),
+                            Value = "Admin"
+                        },
+                        new
+                        {
+                            Id = new Guid("4d4ef630-76d1-5dd7-4d87-825918355a32"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aba96efe-224a-d326-a2f1-3b58e392f70d"),
+                            Value = "مسؤول النظام"
+                        },
+                        new
+                        {
+                            Id = new Guid("03a02752-8052-3eb3-96e8-24ba04e8f556"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6eb92667-c6c9-f895-793a-7b69eb0669ab"),
+                            Value = "Register new project"
+                        },
+                        new
+                        {
+                            Id = new Guid("288b3ed2-44de-4224-4401-a4fd33dd2249"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6eb92667-c6c9-f895-793a-7b69eb0669ab"),
+                            Value = "تسجيل مشروع جديد"
+                        },
+                        new
+                        {
+                            Id = new Guid("58102dec-646d-a5fa-8874-5fa6a4f7f70c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f6b2b75c-1d98-8d57-4464-a4438d2892c7"),
+                            Value = "The project opens once the admin approves it. You will be its project manager."
+                        },
+                        new
+                        {
+                            Id = new Guid("6fda4d74-06d1-bc92-5d0f-b1630324fcfb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f6b2b75c-1d98-8d57-4464-a4438d2892c7"),
+                            Value = "يُفتح المشروع بعد اعتماد مسؤول النظام له، وستكون مديره."
+                        },
+                        new
+                        {
+                            Id = new Guid("af4f8727-67f9-44b2-06fa-515f686c3108"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b3fbe8b5-d532-2a6b-77a3-46d077e8b7b7"),
+                            Value = "Sent for approval. Sign in to follow it."
+                        },
+                        new
+                        {
+                            Id = new Guid("bf5db913-233c-6507-301a-a8f3c720810e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b3fbe8b5-d532-2a6b-77a3-46d077e8b7b7"),
+                            Value = "أُرسل للاعتماد. سجّل الدخول لمتابعته."
+                        },
+                        new
+                        {
+                            Id = new Guid("5f61238f-f858-0bbb-d858-f34a1ddd6f74"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4bbf48cb-3405-2e57-5302-e8b53a619dd3"),
+                            Value = "Too many tries. Try again later."
+                        },
+                        new
+                        {
+                            Id = new Guid("1d22c626-af58-e2fb-f54c-3f520687f432"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4bbf48cb-3405-2e57-5302-e8b53a619dd3"),
+                            Value = "محاولات كثيرة. حاول مرة أخرى لاحقاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("5a0f7ab0-36c6-9c34-44b5-ec5cf2524ab6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0e648c6e-93d6-6eef-aba3-a712af269713"),
+                            Value = "Enter a name of 1 to 100 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("105f2a98-a822-c10a-1097-4243746aab20"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0e648c6e-93d6-6eef-aba3-a712af269713"),
+                            Value = "اكتب اسماً من 1 إلى 100 حرف."
+                        },
+                        new
+                        {
+                            Id = new Guid("a2dffc10-7bb3-8b28-3ca8-fd28c16f4796"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1f1eaf69-1625-34b5-d702-d6b656564302"),
+                            Value = "Enter a username of 1 to 50 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("2bd0e7d9-7feb-df5a-7bf0-b2dc0647b86d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1f1eaf69-1625-34b5-d702-d6b656564302"),
+                            Value = "اكتب اسم مستخدم من 1 إلى 50 حرفاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("dc93e950-2e06-1e46-381c-3782e8f8084c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f9c223e7-01ed-0cf2-576e-688be1721c5c"),
+                            Value = "Enter a mobile of up to 20 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("f07e3552-07f3-0f88-e991-31daabc44809"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f9c223e7-01ed-0cf2-576e-688be1721c5c"),
+                            Value = "اكتب رقم جوال من 20 حرفاً على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("9baea722-2831-1387-5e7d-fdf507b22847"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a26bc0f3-c210-7458-5766-d6352b305d8e"),
+                            Value = "Use at least 8 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("7a888b79-0b27-2870-0879-9a584a4670d8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a26bc0f3-c210-7458-5766-d6352b305d8e"),
+                            Value = "استخدم 8 أحرف على الأقل."
+                        },
+                        new
+                        {
+                            Id = new Guid("abb8b122-d8ac-fb98-a28a-69b5e98870a3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("912681b5-ddca-815f-37dc-ec1db8fe715b"),
+                            Value = "This username is taken. If it is yours, sign in and register from your projects."
+                        },
+                        new
+                        {
+                            Id = new Guid("54bdde86-da79-445c-ac1c-9ad69e73be17"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("912681b5-ddca-815f-37dc-ec1db8fe715b"),
+                            Value = "اسم المستخدم هذا مستخدم. إن كان لك، سجّل الدخول وسجّل المشروع من مشاريعك."
+                        },
+                        new
+                        {
+                            Id = new Guid("37d92a93-331b-1055-425f-dcb139479d91"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1548e8d5-514e-fdc6-580f-5ec78ed8dc29"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("b65204a1-3ffe-2b75-5944-24abbcd9f56f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1548e8d5-514e-fdc6-580f-5ec78ed8dc29"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("c0b7c618-9586-c57d-b1e5-c456603972ca"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("786f5578-b9e9-21c1-0653-95497fc2c4bc"),
+                            Value = "The server refused this change."
+                        },
+                        new
+                        {
+                            Id = new Guid("1aeac483-353c-794e-193c-2adc6092b0fd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("786f5578-b9e9-21c1-0653-95497fc2c4bc"),
+                            Value = "رفض الخادم هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("a576bf4f-43cb-3ea8-fffb-e0e9613e5817"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("38f1cad3-3916-86fa-2ff4-76e2ff662848"),
+                            Value = "Waiting for approval"
+                        },
+                        new
+                        {
+                            Id = new Guid("9d53dc65-7117-df0f-ba60-09d4c1f66aba"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("38f1cad3-3916-86fa-2ff4-76e2ff662848"),
+                            Value = "بانتظار الاعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("3669e773-c686-f408-6244-03e64f12f3f1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cd2f79cb-88f8-1027-d65f-85e16b1d0818"),
+                            Value = "Rejected"
+                        },
+                        new
+                        {
+                            Id = new Guid("7430aaa3-a28b-adbc-b8d4-80b5ed10dd27"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cd2f79cb-88f8-1027-d65f-85e16b1d0818"),
+                            Value = "مرفوض"
+                        },
+                        new
+                        {
+                            Id = new Guid("cfaf598e-7e06-247e-fd2f-782f2cad5df6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ec97e060-595b-d96f-9e99-bd7dc225278d"),
+                            Value = "Registered projects"
+                        },
+                        new
+                        {
+                            Id = new Guid("8ea23b2c-fee7-13c6-fe53-ded4229378bb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ec97e060-595b-d96f-9e99-bd7dc225278d"),
+                            Value = "المشاريع المسجّلة"
+                        },
+                        new
+                        {
+                            Id = new Guid("ddc946d7-c8dd-f2fd-49b3-d9da769ad66c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8715efff-ca9b-9091-09d3-f091e5f9b292"),
+                            Value = "No projects are waiting."
+                        },
+                        new
+                        {
+                            Id = new Guid("d9605ec2-dce2-3c02-f021-931b25374d79"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8715efff-ca9b-9091-09d3-f091e5f9b292"),
+                            Value = "لا مشاريع بانتظار الاعتماد."
+                        },
+                        new
+                        {
+                            Id = new Guid("bc790e39-1fe5-7142-d642-a78d632d8aa5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8a4f1058-dc1f-d01b-b157-30e09c26a7ff"),
+                            Value = "Could not load the registered projects. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("c3af4e7e-e7c1-612a-1b41-dc81586582d8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8a4f1058-dc1f-d01b-b157-30e09c26a7ff"),
+                            Value = "تعذّر تحميل المشاريع المسجّلة. تحقق من الشبكة وحاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("7dfc43b1-3ff5-6f98-03c9-ed46275b8798"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b9082fd6-b5a6-158d-5eef-2b32e34be47f"),
+                            Value = "Approve"
+                        },
+                        new
+                        {
+                            Id = new Guid("b3b28dfb-1d6d-fb8d-60cc-2bdd682b8a12"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b9082fd6-b5a6-158d-5eef-2b32e34be47f"),
+                            Value = "اعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("39873145-6091-6ad4-ebeb-049e648bd62e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d32e4883-f6ce-3aee-0a72-b6a985054b28"),
+                            Value = "Reject"
+                        },
+                        new
+                        {
+                            Id = new Guid("2c9fd444-231d-e12c-678e-12af42f77887"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d32e4883-f6ce-3aee-0a72-b6a985054b28"),
+                            Value = "رفض"
+                        },
+                        new
+                        {
+                            Id = new Guid("928c8257-9d8d-84f6-e981-a7b5142b80ce"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e01ff550-bb9d-0b5f-2781-0f1467855439"),
+                            Value = "Why it is rejected"
+                        },
+                        new
+                        {
+                            Id = new Guid("1c245e64-6423-331c-ed4b-b7de9730980a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e01ff550-bb9d-0b5f-2781-0f1467855439"),
+                            Value = "سبب الرفض"
+                        },
+                        new
+                        {
+                            Id = new Guid("9794af56-343f-ddd7-463d-8091f5855175"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fd4532ab-a578-4527-9d3f-f322bc18fbd5"),
+                            Value = "Write why, in up to 500 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("54beb956-04c1-7183-a384-1f4f43661ae7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fd4532ab-a578-4527-9d3f-f322bc18fbd5"),
+                            Value = "اكتب السبب، في 500 حرف على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("afe970f2-f153-8dc1-9469-6dce6a9350ef"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fe25fe7c-def5-fe97-4264-5d5ace06b24f"),
+                            Value = "This project was already decided."
+                        },
+                        new
+                        {
+                            Id = new Guid("6a726cfd-e081-1803-61b4-784a9d2629a9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fe25fe7c-def5-fe97-4264-5d5ace06b24f"),
+                            Value = "سبق البت في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("32755b57-4823-0526-ba64-bb34b002aa09"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("46821251-c294-7141-3e30-25a81e924b85"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("53ec6b65-33b3-1612-9b7a-60fa12921bda"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("46821251-c294-7141-3e30-25a81e924b85"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("905893a9-de3c-66e5-f0e7-d7e758856e4e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6e50a558-a6d3-3256-093c-09fe2224bf91"),
+                            Value = "The server refused this change."
+                        },
+                        new
+                        {
+                            Id = new Guid("684108bb-42ce-dcff-5934-43e67dfaa0c2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6e50a558-a6d3-3256-093c-09fe2224bf91"),
+                            Value = "رفض الخادم هذا التغيير."
                         });
                 });
 
@@ -2362,18 +2669,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("b90f2992-b1db-a571-cd82-f1141528a015"),
-                            Description = "",
-                            Key = "users.noProjects"
-                        },
-                        new
-                        {
-                            Id = new Guid("1d0bfe7c-785a-3170-264f-a825aa706b7a"),
-                            Description = "",
-                            Key = "users.roleSystem"
-                        },
-                        new
-                        {
                             Id = new Guid("a62c2d72-be90-19d8-a03f-098a766b52c3"),
                             Description = "",
                             Key = "users.roleManager"
@@ -2419,6 +2714,150 @@ namespace Redix.Api.Migrations
                             Id = new Guid("39457e5d-d993-e945-7e48-548736d938d2"),
                             Description = "",
                             Key = "users.otherProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("aba96efe-224a-d326-a2f1-3b58e392f70d"),
+                            Description = "",
+                            Key = "users.roleAdmin"
+                        },
+                        new
+                        {
+                            Id = new Guid("6eb92667-c6c9-f895-793a-7b69eb0669ab"),
+                            Description = "",
+                            Key = "signIn.registerProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("f6b2b75c-1d98-8d57-4464-a4438d2892c7"),
+                            Description = "",
+                            Key = "register.hint"
+                        },
+                        new
+                        {
+                            Id = new Guid("b3fbe8b5-d532-2a6b-77a3-46d077e8b7b7"),
+                            Description = "",
+                            Key = "register.sent"
+                        },
+                        new
+                        {
+                            Id = new Guid("4bbf48cb-3405-2e57-5302-e8b53a619dd3"),
+                            Description = "",
+                            Key = "register.tooManyTries"
+                        },
+                        new
+                        {
+                            Id = new Guid("0e648c6e-93d6-6eef-aba3-a712af269713"),
+                            Description = "",
+                            Key = "register.invalidName"
+                        },
+                        new
+                        {
+                            Id = new Guid("1f1eaf69-1625-34b5-d702-d6b656564302"),
+                            Description = "",
+                            Key = "register.invalidUsername"
+                        },
+                        new
+                        {
+                            Id = new Guid("f9c223e7-01ed-0cf2-576e-688be1721c5c"),
+                            Description = "",
+                            Key = "register.invalidMobile"
+                        },
+                        new
+                        {
+                            Id = new Guid("a26bc0f3-c210-7458-5766-d6352b305d8e"),
+                            Description = "",
+                            Key = "register.weakPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("912681b5-ddca-815f-37dc-ec1db8fe715b"),
+                            Description = "",
+                            Key = "register.usernameTaken"
+                        },
+                        new
+                        {
+                            Id = new Guid("1548e8d5-514e-fdc6-580f-5ec78ed8dc29"),
+                            Description = "",
+                            Key = "register.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("786f5578-b9e9-21c1-0653-95497fc2c4bc"),
+                            Description = "",
+                            Key = "register.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("38f1cad3-3916-86fa-2ff4-76e2ff662848"),
+                            Description = "",
+                            Key = "projects.pending"
+                        },
+                        new
+                        {
+                            Id = new Guid("cd2f79cb-88f8-1027-d65f-85e16b1d0818"),
+                            Description = "",
+                            Key = "projects.rejected"
+                        },
+                        new
+                        {
+                            Id = new Guid("ec97e060-595b-d96f-9e99-bd7dc225278d"),
+                            Description = "",
+                            Key = "registered.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("8715efff-ca9b-9091-09d3-f091e5f9b292"),
+                            Description = "",
+                            Key = "registered.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("8a4f1058-dc1f-d01b-b157-30e09c26a7ff"),
+                            Description = "",
+                            Key = "registered.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("b9082fd6-b5a6-158d-5eef-2b32e34be47f"),
+                            Description = "",
+                            Key = "registered.approve"
+                        },
+                        new
+                        {
+                            Id = new Guid("d32e4883-f6ce-3aee-0a72-b6a985054b28"),
+                            Description = "",
+                            Key = "registered.reject"
+                        },
+                        new
+                        {
+                            Id = new Guid("e01ff550-bb9d-0b5f-2781-0f1467855439"),
+                            Description = "",
+                            Key = "registered.reason"
+                        },
+                        new
+                        {
+                            Id = new Guid("fd4532ab-a578-4527-9d3f-f322bc18fbd5"),
+                            Description = "",
+                            Key = "registered.invalidReason"
+                        },
+                        new
+                        {
+                            Id = new Guid("fe25fe7c-def5-fe97-4264-5d5ace06b24f"),
+                            Description = "",
+                            Key = "registered.notPending"
+                        },
+                        new
+                        {
+                            Id = new Guid("46821251-c294-7141-3e30-25a81e924b85"),
+                            Description = "",
+                            Key = "registered.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("6e50a558-a6d3-3256-093c-09fe2224bf91"),
+                            Description = "",
+                            Key = "registered.refused"
                         });
                 });
 

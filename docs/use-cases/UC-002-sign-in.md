@@ -3,7 +3,7 @@
 # UC-002: Sign in with username and password
 
 **What it is for:** opening a session, so the app can act for a user; renewing it while the user keeps working.
-**Who uses it:** every user with an account. The first user, the system admin (BR-29), is created from configuration.
+**Who uses it:** every user with an account. The first user, the admin (BR-29), is created from configuration.
 **Issue:** redix-api #21; the app side is redix-app #23.
 
 ## Endpoints
@@ -37,7 +37,7 @@ A session is a JWT access token valid 15 minutes, a refresh token, and whether t
 | A refresh replaces the refresh token; the old one stops working | `Device.RenewRefreshToken` | `AuthTests.ARefreshReplacesTheRefreshToken` |
 | A refresh token unused for 12 hours expires (NFR-09) | `Device.CanRefresh` | `AuthTests.ASessionUsedWithin12HoursStaysOpenAndOneUnusedFor12HoursEnds` |
 | Only the refresh token's hash is stored | `Device.HashOf` | Enforced by the model |
-| The first user is the system admin, from configuration, and must change the password (BR-29) | `SystemAdminSeed`, run by EF Core's seeding | `AuthTests.TheFirstUserIsTheSystemAdminFromConfigurationAndMustChangeThePassword` |
+| The first user is the admin, from configuration, and must change the password (BR-29) | `AdminSeed`, run by EF Core's seeding | `AuthTests.TheFirstUserIsTheAdminFromConfigurationAndMustChangeThePassword` |
 | A sign-in is in the audit trail with the user and the time (UC-005) | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheAuditTrailWithTheUserAndTheTime` |
 | Every session says what its user holds everywhere (UC-009) | `Session.OfAsync` | `AuthTests.ASessionSaysWhatItsUserHoldsEverywhere` |
 

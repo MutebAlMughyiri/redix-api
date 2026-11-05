@@ -32,9 +32,9 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task TheFirstUserIsTheSystemAdminFromConfigurationAndMustChangeThePassword()
+    public async Task TheFirstUserIsTheAdminFromConfigurationAndMustChangeThePassword()
     {
-        var session = await SessionOf(await SignInAsync(MigratedApiFactory.SystemAdminUsername, MigratedApiFactory.SystemAdminPassword));
+        var session = await SessionOf(await SignInAsync(MigratedApiFactory.AdminUsername, MigratedApiFactory.AdminPassword));
 
         Assert.True(session.MustChangePassword);
         Assert.True(new JsonWebTokenHandler().ReadJsonWebToken(session.AccessToken).GetPayloadValue<bool>("mustChangePassword"));
@@ -57,16 +57,16 @@ public class AuthTests(MigratedApiFactory factory)
     [Fact]
     public async Task ASessionSaysWhatItsUserHoldsEverywhere()
     {
-        var systemAdmin = await factory.AddUserAsync(Password, isSystemAdmin: true);
+        var admin = await factory.AddUserAsync(Password, isAdmin: true);
         var user = await factory.AddUserAsync(Password);
 
-        var systemAdminSession = await SessionOf(await SignInAsync(systemAdmin.Username, Password));
+        var adminSession = await SessionOf(await SignInAsync(admin.Username, Password));
         var userSession = await SessionOf(await SignInAsync(user.Username, Password));
-        var renewed = await SessionOf(await RefreshAsync(systemAdminSession.RefreshToken));
+        var renewed = await SessionOf(await RefreshAsync(adminSession.RefreshToken));
 
-        Assert.Equal([Permission.StartProject, Permission.ManageLogins], systemAdminSession.Permissions.Order());
+        Assert.Equal([Permission.ApproveProjects], adminSession.Permissions);
         Assert.Empty(userSession.Permissions);
-        Assert.Equal([Permission.StartProject, Permission.ManageLogins], renewed.Permissions.Order());
+        Assert.Equal([Permission.ApproveProjects], renewed.Permissions);
     }
 
     private async Task<HttpResponseMessage> SignOutAsync(Session session)
@@ -84,9 +84,9 @@ public class AuthTests(MigratedApiFactory factory)
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/users")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/projects/registered")).StatusCode);
         factory.Time.Advance(AccessTokens.Lifetime);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/users")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/projects/registered")).StatusCode);
     }
 
     [Fact]

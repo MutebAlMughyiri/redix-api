@@ -18,15 +18,14 @@ public class RolesTests(MigratedApiFactory factory)
 
     private async Task<(User User, HttpClient Client, Guid ProjectId)> ManagerAsync()
     {
-        var user = await factory.AddUserAsync(Password, isSystemAdmin: true);
+        var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
-        var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest($"project-{Guid.CreateVersion7()}", new DateOnly(2026, 11, 1), []));
-        return (user, client, (await created.Content.ReadFromJsonAsync<ProjectView>(MigratedApiFactory.Json))!.Id);
+        return (user, client, (await factory.ApprovedProjectAsync(client, $"project-{Guid.CreateVersion7()}")).Id);
     }
 
     public static TheoryData<string, RoleScope, Permission[]> SectionTwo => new()
     {
-        { "users.roleSystem", RoleScope.System, [Permission.StartProject, Permission.ManageLogins] },
+        { "users.roleAdmin", RoleScope.System, [Permission.ApproveProjects] },
         { "users.roleManager", RoleScope.Project, [Permission.ManageUsers, Permission.ReadProject, Permission.SeeAllCapital] },
         { "users.roleFinance", RoleScope.Project, [Permission.ReadProject, Permission.SeeAllCapital, Permission.ManageProject] },
         { "users.roleField", RoleScope.Project, [Permission.ReadProject] },
@@ -47,7 +46,7 @@ public class RolesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task RolesAreOfferedInOrderAndTheSystemAdminsIsNot()
+    public async Task RolesAreOfferedInOrderAndTheAdminsIsNot()
     {
         var (_, client, projectId) = await ManagerAsync();
 
@@ -126,8 +125,9 @@ public class RolesTests(MigratedApiFactory factory)
     [Fact]
     public async Task ARoleHoldingAPermissionEverywhereReachesEveryProjectAndAnUnknownOneIsNotFound()
     {
-        var (_, client, projectId) = await ManagerAsync();
-        var held = new RolePermission { RoleId = RoleSeed.SystemAdminId, Permission = Permission.ManageProject };
+        var (_, starter, projectId) = await ManagerAsync();
+        var client = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password, isAdmin: true), Password);
+        var held = new RolePermission { RoleId = RoleSeed.AdminId, Permission = Permission.ManageProject };
 
         try
         {

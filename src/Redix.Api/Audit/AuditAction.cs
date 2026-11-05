@@ -32,4 +32,13 @@ public enum AuditAction
 
     /// <summary>A user's role in a project was taken away (UC-008, UC-009).</summary>
     RemoveProject,
+
+    /// <summary>A project was registered, and waits for the admin (UC-066).</summary>
+    RegisterProject,
+
+    /// <summary>The admin let a registered project in (UC-066).</summary>
+    ApproveProject,
+
+    /// <summary>The admin refused a registered project, saying why (UC-066).</summary>
+    RejectProject,
 }

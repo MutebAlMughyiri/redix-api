@@ -1,31 +1,80 @@
 namespace Redix.Api.Projects;
 
 /// <summary>
-/// A real-estate development project (FR-04): its name, its start date and its units. It owns the rule that a finished project is read-only,
-/// while its reports stay available (AC-04.1).
+/// A real-estate development project (FR-04): its name, its start date and its units. It owns the rules that it waits for the admin's decision (BR-34), and that
+/// a finished project is read-only, while its reports stay available (AC-04.1).
 /// </summary>
 public class Project
 {
     /// <summary>The longest name a project or a unit may have.</summary>
     public const int NameMaxLength = 100;
 
+    /// <summary>The longest reason a rejection may give.</summary>
+    public const int ReasonMaxLength = 500;
+
     /// <summary>The project's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
-    /// <summary>The project's name, as the financial supervisor typed it.</summary>
+    /// <summary>The project's name, as it was typed.</summary>
     public required string Name { get; init; }
 
     /// <summary>The day the project started.</summary>
     public DateOnly StartDate { get; init; }
 
-    /// <summary>Running, or finished once closed.</summary>
-    public ProjectStatus Status { get; private set; } = ProjectStatus.Running;
+    /// <summary>Where it stands; a new project waits for the admin.</summary>
+    public ProjectStatus Status { get; private set; } = ProjectStatus.PendingApproval;
+
+    /// <summary>Why the admin refused it; empty otherwise.</summary>
+    public string RejectionReason { get; private set; } = "";
 
     /// <summary>The project's units, in the order they were added.</summary>
     public List<Unit> Units { get; } = [];
 
     /// <summary>True once the project is finished: nothing in it changes any more (AC-04.1).</summary>
     public bool IsReadOnly => Status == ProjectStatus.Finished;
+
+    /// <summary>True once the admin has let it in, so roles count in it (BR-34).</summary>
+    public bool IsApproved => Status is ProjectStatus.Running or ProjectStatus.Finished;
+
+    /// <summary>A new project waiting for approval, with its units in order; the outcome says whether its name and every unit's are acceptable.</summary>
+    public static (Project Project, ProjectChangeOutcome Outcome) New(string name, DateOnly startDate, IEnumerable<string> units)
+    {
+        var project = new Project { Name = name.Trim(), StartDate = startDate };
+        var outcome = IsAcceptableName(project.Name) ? ProjectChangeOutcome.Done : ProjectChangeOutcome.InvalidName;
+        foreach (var unit in units)
+        {
+            var added = project.AddUnit(unit.Trim());
+            outcome = added == ProjectChangeOutcome.Done ? outcome : added;
+        }
+        return (project, outcome);
+    }
+
+    /// <summary>Lets the project in; its roles count from then on (BR-34). A decided project answers <see cref="ProjectChangeOutcome.NotPending"/>.</summary>
+    public ProjectChangeOutcome Approve()
+    {
+        if (Status != ProjectStatus.PendingApproval)
+        {
+            return ProjectChangeOutcome.NotPending;
+        }
+        Status = ProjectStatus.Running;
+        return ProjectChangeOutcome.Done;
+    }
+
+    /// <summary>Refuses the project, saying why (AC-52.2). A decided project answers <see cref="ProjectChangeOutcome.NotPending"/>; an unacceptable reason, <see cref="ProjectChangeOutcome.InvalidReason"/>.</summary>
+    public ProjectChangeOutcome Reject(string reason)
+    {
+        if (Status != ProjectStatus.PendingApproval)
+        {
+            return ProjectChangeOutcome.NotPending;
+        }
+        if (reason.Length is 0 or > ReasonMaxLength)
+        {
+            return ProjectChangeOutcome.InvalidReason;
+        }
+        Status = ProjectStatus.Rejected;
+        RejectionReason = reason;
+        return ProjectChangeOutcome.Done;
+    }
 
     /// <summary>Whether <paramref name="name"/>, already trimmed, may name a project or a unit: not empty, and at most <see cref="NameMaxLength"/> characters.</summary>
     public static bool IsAcceptableName(string name) => name.Length is > 0 and <= NameMaxLength;

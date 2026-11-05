@@ -11,4 +11,10 @@ public enum ProjectChangeOutcome
 
     /// <summary>The name is empty or longer than <see cref="Project.NameMaxLength"/> characters.</summary>
     InvalidName,
+
+    /// <summary>The project was already approved or rejected.</summary>
+    NotPending,
+
+    /// <summary>The reason for a rejection is empty or longer than <see cref="Project.ReasonMaxLength"/> characters.</summary>
+    InvalidReason,
 }
