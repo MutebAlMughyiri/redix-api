@@ -249,6 +249,41 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task EveryoneInTheProjectSeesItsEntriesWithTheirStatusAndOnlyTheirOwnDrafts()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var draft = ledger.WithoutInvoice();
+        await ledger.RecordAsync(draft);
+        var sent = ledger.WithoutInvoice(300m) with { Submit = true };
+        await ledger.RecordAsync(sent);
+        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+
+        var seen = (await reader.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
+        var own = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
+
+        var row = Assert.Single(seen);
+        Assert.Equal((sent.Id, EntryStatus.PendingApproval, 300m, false), (row.Id, row.Status, row.Amount, row.IsMine));
+        Assert.Equal("شركة النخيل", row.SupplierName);
+        Assert.Equal(2, own.Count);
+        Assert.All(own, entry => Assert.True(entry.IsMine));
+    }
+
+    [Fact]
+    public async Task AReversedEntryAndItsReversalAreMarkedOnTheList()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var request = ledger.WithoutInvoice() with { Submit = true };
+        await ledger.RecordAsync(request);
+        await ApproveAsync(ledger, request.Id);
+        (await ReverseAsync(ledger.Client, ledger, request.Id)).EnsureSuccessStatusCode();
+
+        var rows = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
+
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, row => Assert.True(row.IsReversed));
+    }
+
+    [Fact]
     public async Task OnlyWhoeverDecidesEntriesReversesThem()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

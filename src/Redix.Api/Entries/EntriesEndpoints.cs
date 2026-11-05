@@ -18,6 +18,7 @@ public static class EntriesEndpoints
     {
         app.MapGet("/projects/{projectId:guid}/entries/{entryId:guid}", Read).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapGet("/projects/{projectId:guid}/entries/mine", Mine).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/projects/{projectId:guid}/entries", List).RequireAuthorization(nameof(Permission.ReadProject));
         var changes = app.MapProjectChanges(Permission.RecordEntries);
         changes.MapPost("/entries/{entryId:guid}/submit", Submit);
         changes.MapPost("/entries/{entryId:guid}/delete", Delete);
@@ -29,11 +30,42 @@ public static class EntriesEndpoints
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static Task<List<EntryStatusView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
+    public static Task<List<EntryRowView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return db.Entries.Where(entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId).OrderByDescending(entry => entry.CreatedAt)
-            .Select(entry => new EntryStatusView(entry.Id, entry.Status, entry.Status != EntryStatus.Rejected ? "" : db.EntryDecisions.Where(row => row.EntryId == entry.Id && row.Action == EntryDecisionAction.Reject).OrderByDescending(row => row.Id).Select(row => row.Reason).First())).ToListAsync();
+        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId);
+    }
+
+    /// <summary>Every entry of the project, newest first: everyone who reads a project sees all its expenses, and drafts only of their own.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
+    {
+        var userId = AccessTokens.UserIdOf(principal);
+        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId));
+    }
+
+    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown)
+    {
+        var entries = await db.Entries.Where(shown).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id).ToListAsync();
+        var facts = await EntryFacts.OfAsync(projectId, entries, db);
+        var ids = entries.Select(entry => entry.Id).ToList();
+        var rejections = (await db.EntryDecisions.Where(row => ids.Contains(row.EntryId) && row.Action == EntryDecisionAction.Reject).OrderBy(row => row.Id).ToListAsync()).GroupBy(row => row.EntryId).ToDictionary(group => group.Key, group => group.Last().Reason);
+        var reversed = (await db.EntryLinks.Where(link => link.Type == EntryLinkType.Reversal && (ids.Contains(link.EntryId) || ids.Contains(link.LinkedEntryId))).ToListAsync()).SelectMany(link => new[] { link.EntryId, link.LinkedEntryId }).ToHashSet();
+        return entries.Select(entry => new EntryRowView(
+            entry.Id,
+            entry.Kind,
+            entry.Status,
+            entry.Status == EntryStatus.Rejected ? rejections.GetValueOrDefault(entry.Id, "") : "",
+            entry.EntryDate,
+            entry.Amount,
+            facts.ItemNameOf(entry),
+            facts.SupplierNameOf(entry),
+            facts.InvoiceOf(entry).Number,
+            facts.AuthorNameOf(entry),
+            entry.CreatedByUserId == userId,
+            reversed.Contains(entry.Id))).ToList();
     }
 
     /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. Anything else answers 404.</summary>
@@ -235,6 +267,21 @@ public static class EntriesEndpoints
         await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync(),
         await db.EntryLinks.Where(row => row.EntryId == entry.Id).ToListAsync());
 }
+
+/// <summary>An entry on a list.</summary>
+/// <param name="Id">The entry's id.</param>
+/// <param name="Kind">What it is.</param>
+/// <param name="Status">Where it stands.</param>
+/// <param name="RejectionReason">Why it was rejected, while it stands rejected; empty otherwise.</param>
+/// <param name="EntryDate">Its date.</param>
+/// <param name="Amount">What was paid.</param>
+/// <param name="ItemName">Its item.</param>
+/// <param name="SupplierName">Its supplier, or its contract's contractor.</param>
+/// <param name="InvoiceNumber">Its invoice's number; empty when it has none.</param>
+/// <param name="AuthorName">Who entered it.</param>
+/// <param name="IsMine">True when the caller entered it.</param>
+/// <param name="IsReversed">True when it was reversed, or is itself a reversal.</param>
+public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed);
 
 /// <summary>An entry's notes.</summary>
 /// <param name="Notes">The notes; may be empty.</param>

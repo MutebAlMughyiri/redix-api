@@ -161,7 +161,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
 
         (await RejectAsync(ledger, id, "صورة الفاتورة غير واضحة")).EnsureSuccessStatusCode();
 
-        var mine = (await ledger.Client.GetFromJsonAsync<List<EntryStatusView>>($"/projects/{ledger.ProjectId}/entries/mine", Json))!.Single();
+        var mine = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries/mine", Json))!.Single();
         Assert.Equal((EntryStatus.Rejected, "صورة الفاتورة غير واضحة"), (mine.Status, mine.RejectionReason));
     }
 

@@ -101,8 +101,8 @@ public class SyncTests(MigratedApiFactory factory)
         var recorded = await ledger.RecordAsync(ledger.Purchase());
         var (other, _) = await ledger.MemberAsync("users.roleFinance");
 
-        var mine = await ledger.Client.GetFromJsonAsync<List<EntryStatusView>>($"/projects/{ledger.ProjectId}/entries/mine", Json);
-        var theirs = await other.GetFromJsonAsync<List<EntryStatusView>>($"/projects/{ledger.ProjectId}/entries/mine", Json);
+        var mine = await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries/mine", Json);
+        var theirs = await other.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries/mine", Json);
 
         Assert.Equal(recorded.Id, Assert.Single(mine!).Id);
         Assert.Empty(theirs!);

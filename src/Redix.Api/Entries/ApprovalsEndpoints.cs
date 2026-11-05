@@ -29,29 +29,8 @@ public static class ApprovalsEndpoints
     public static async Task<List<PendingEntryView>> Pending(Guid projectId, RedixDbContext db)
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
-        var ids = entries.Select(entry => entry.Id).ToList();
-        var expenses = await db.ExpenseDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
-        var purchases = await db.PurchaseDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
-        var payments = await db.ContractorPaymentDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
-        var invoices = await db.Invoices.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
-        var files = (await db.EntryAttachments.Where(row => ids.Contains(row.EntryId)).ToListAsync()).ToLookup(row => row.EntryId);
-        var fileNames = await db.Attachments.Where(row => row.ProjectId == projectId).ToDictionaryAsync(row => row.Id, row => (row.FileName, row.ContentType));
-        var items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)).ToDictionaryAsync(item => item.Id, item => item.Name);
-        var units = await db.Set<Unit>().Where(unit => unit.ProjectId == projectId).ToDictionaryAsync(unit => unit.Id, unit => unit.Name);
-        var accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name);
-        var suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id, supplier => supplier.Name);
-        var contractors = await db.Contracts.Where(contract => contract.ProjectId == projectId).ToDictionaryAsync(contract => contract.Id, contract => contract.SupplierId);
-        var authorIds = entries.Select(entry => entry.CreatedByUserId).Distinct().ToList();
-        var authors = await db.Users.Where(user => authorIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
-        return entries.Select(entry =>
-        {
-            var expense = expenses.GetValueOrDefault(entry.Id) ?? new ExpenseDetails();
-            var supplierId = purchases.TryGetValue(entry.Id, out var purchase) ? purchase.SupplierId : contractors.GetValueOrDefault(payments.GetValueOrDefault(entry.Id)?.ContractId ?? Guid.Empty);
-            var invoice = invoices.GetValueOrDefault(entry.Id) ?? new Invoice();
-            var attachmentId = files[entry.Id].Select(file => file.AttachmentId).FirstOrDefault();
-            var file = fileNames.GetValueOrDefault(attachmentId, ("", ""));
-            return new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, items.GetValueOrDefault(expense.ItemId, ""), units.GetValueOrDefault(expense.UnitId, ""), suppliers.GetValueOrDefault(supplierId, ""), invoice.Number, invoice.Vat, accounts.GetValueOrDefault(entry.AccountId, ""), entry.Notes, expense.WithoutInvoiceReason, attachmentId == Guid.Empty ? "" : attachmentId.ToString(), file.Item2, authors.GetValueOrDefault(entry.CreatedByUserId, ""));
-        }).ToList();
+        var facts = await EntryFacts.OfAsync(projectId, entries, db);
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.UnitNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.InvoiceOf(entry).Vat, facts.AccountNameOf(entry), entry.Notes, facts.ExpenseOf(entry).WithoutInvoiceReason, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry))).ToList();
     }
 
     /// <summary>
