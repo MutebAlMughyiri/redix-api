@@ -23,4 +23,7 @@ public enum ProjectChangeOutcome
 
     /// <summary>Entries of the project wait for approval, and must be approved or rejected before it closes (BR-35).</summary>
     PendingEntries,
+
+    /// <summary>Another unit of the project holds the name (BR-37).</summary>
+    UnitNameTaken,
 }

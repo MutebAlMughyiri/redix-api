@@ -77,6 +77,15 @@ public class RegistrationTests(MigratedApiFactory factory)
         Assert.False(session.MustChangePassword);
     }
 
+    [Fact]
+    public async Task BR_37_ARegistrationCannotRepeatAUnitsName()
+    {
+        var refused = await RegisterAsync(Request(NewUsername(), units: ["الفلة الغربية", " الفلة الغربية "]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("unitNameTaken", await CodeOf(refused));
+    }
+
     [Theory]
     [InlineData("   ", "ريم", "0500000000", Password, "invalidName")]
     [InlineData("غصون 8", "   ", "0500000000", Password, "invalidName")]

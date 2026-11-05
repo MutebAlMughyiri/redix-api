@@ -96,7 +96,7 @@ public class Project
     /// <summary>Whether <paramref name="name"/>, already trimmed, may name a project, a unit or anything in its structure: not empty, and at most <see cref="NameMaxLength"/> characters.</summary>
     public static bool IsAcceptableName(string name) => name.Length is > 0 and <= NameMaxLength;
 
-    /// <summary>Adds a unit named <paramref name="name"/> at the end of the list, unless the project is finished or the name is not acceptable.</summary>
+    /// <summary>Adds a unit named <paramref name="name"/> at the end of the list, unless the project is finished, the name is not acceptable, or another unit holds it (BR-37).</summary>
     public ProjectChangeOutcome AddUnit(string name)
     {
         if (IsReadOnly)
@@ -107,9 +107,15 @@ public class Project
         {
             return ProjectChangeOutcome.InvalidName;
         }
+        if (IsUnitNameTaken(name))
+        {
+            return ProjectChangeOutcome.UnitNameTaken;
+        }
         Units.Add(new Unit { ProjectId = Id, Name = name, SortOrder = Units.Count });
         return ProjectChangeOutcome.Done;
     }
+
+    private bool IsUnitNameTaken(string name) => name == Unit.SharedName || Units.Any(unit => unit.Name == name);
 
     /// <summary>Adds the shared unit, which an entry or a contract may name instead of one of the project's units.</summary>
     public void AddSharedUnit() => Units.Add(new Unit { ProjectId = Id, Name = Unit.SharedName, IsShared = true });

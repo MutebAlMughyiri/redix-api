@@ -10,7 +10,7 @@
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `POST /projects/register` | Nothing; limited per address | `201` the project; `400` `invalidName`, `invalidUsername`, `invalidMobile` or `weakPassword`; `409` `usernameTaken`; `429` |
+| `POST /projects/register` | Nothing; limited per address | `201` the project; `400` `invalidName`, `unitNameTaken`, `invalidUsername`, `invalidMobile` or `weakPassword`; `409` `usernameTaken`; `429` |
 | `POST /projects` | Any session | `201` the project, with the caller as manager; `400` `invalidName` |
 | `GET /projects/registered` | `ApproveProjects` | `200` what is waiting, by start date, with the manager's details |
 | `POST /projects/{projectId}/approve` | `ApproveProjects` | `200`, and the project's structure is copied (UC-012); `404`; `409` `notPending` |

@@ -24,7 +24,7 @@ public static class RegistrationEndpoints
 
     /// <summary>
     /// Registers a project with a new login as its manager, all or nothing, waiting for the admin (AC-52.1). The password is one they typed, so it is not temporary. A field
-    /// outside its limit answers its code: <c>invalidName</c>, <c>invalidUsername</c>, <c>invalidMobile</c> or <c>weakPassword</c>; a username already taken, <c>usernameTaken</c>.
+    /// outside its limit answers its code: <c>invalidName</c>, <c>invalidUsername</c>, <c>invalidMobile</c> or <c>weakPassword</c>; a unit's name repeated, <c>unitNameTaken</c> (BR-37); a username already taken, <c>usernameTaken</c>.
     /// </summary>
     /// <param name="request">The project and its manager.</param>
     /// <param name="db">The database they join.</param>

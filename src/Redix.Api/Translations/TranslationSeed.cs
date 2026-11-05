@@ -57,6 +57,8 @@ public static class TranslationSeed
         ("projects.closeExplain", "It becomes read-only: no new entries or approvals, while its reports stay available. This cannot be undone.", "يصبح للقراءة فقط: لا إدخال ولا اعتماد، وتبقى تقاريره متاحة. لا يمكن التراجع عن ذلك."),
         ("projects.invalidName", "Enter a name of 1 to 100 characters.", "اكتب اسماً من 1 إلى 100 حرف."),
         ("projects.projectFinished", "This project is finished, so it cannot change.", "هذا المشروع منتهٍ، فلا يمكن تغييره."),
+        ("projects.unitNameTaken", "A unit of this project already has this name.", "توجد وحدة بهذا الاسم في هذا المشروع."),
+        ("register.unitNameTaken", "Two units cannot have the same name.", "لا يصح أن تحمل وحدتان الاسم نفسه."),
         ("projects.pendingEntries", "Entries in this project are waiting for approval. Approve or reject them first.", "في هذا المشروع قيود بانتظار الاعتماد. اعتمدها أو ارفضها أولاً."),
         ("projects.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
         ("projects.refused", "The server refused this change.", "رفض الخادم هذا التغيير."),

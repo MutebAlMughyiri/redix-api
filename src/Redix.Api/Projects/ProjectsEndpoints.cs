@@ -41,7 +41,7 @@ public static class ProjectsEndpoints
 
     /// <summary>
     /// Registers a project with its units, all or nothing, with the caller as its first project manager, waiting for the admin (BR-29, BR-34). An empty name, or one
-    /// longer than <see cref="Project.NameMaxLength"/>, for the project or any unit, answers <c>invalidName</c> and saves nothing. An earlier project to copy the structure from must be
+    /// longer than <see cref="Project.NameMaxLength"/>, for the project or any unit, answers <c>invalidName</c> and saves nothing; a unit's name repeated, <c>unitNameTaken</c> (BR-37). An earlier project to copy the structure from must be
     /// one the caller reads (BR-33), or it answers <c>unknownSource</c>.
     /// </summary>
     /// <param name="request">The project's name, start date and units.</param>
@@ -78,7 +78,7 @@ public static class ProjectsEndpoints
         db.Audit(manager, AuditAction.AssignProject, managerId, now);
     }
 
-    /// <summary>Adds a unit at the end of the project's list. A finished project answers <c>projectFinished</c>; an unacceptable name, <c>invalidName</c>.</summary>
+    /// <summary>Adds a unit at the end of the project's list. A finished project answers <c>projectFinished</c>; an unacceptable name, <c>invalidName</c>; a name another unit of the project holds, compared trimmed, <c>unitNameTaken</c> (BR-37).</summary>
     /// <param name="projectId">The project the unit belongs to.</param>
     /// <param name="request">The unit's name.</param>
     /// <param name="principal">The caller's session.</param>

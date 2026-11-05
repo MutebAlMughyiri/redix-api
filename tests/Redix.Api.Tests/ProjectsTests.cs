@@ -475,4 +475,49 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
     }
+
+    [Theory]
+    [InlineData("الفلة الغربية")]
+    [InlineData("  الفلة الغربية  ")]
+    public async Task BR_37_AUnitsNameCannotRepeatInItsProjectComparedTrimmed(string name)
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية");
+
+        var refused = await AddUnitAsync(client, project.Id, name);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("unitNameTaken", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task BR_37_NoUnitTakesTheSharedUnitsName()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+
+        Assert.Equal("unitNameTaken", await CodeOf(await AddUnitAsync(client, project.Id, Unit.SharedName)));
+        Assert.Equal("unitNameTaken", await CodeOf(await CreateAsync(client, "غصون 7", Unit.SharedName)));
+    }
+
+    [Fact]
+    public async Task BR_37_ANewProjectCannotRepeatAUnitsNameAndSavesNothing()
+    {
+        var client = await ClientOfAsync(await StarterAsync());
+
+        var refused = await CreateAsync(client, "غصون 6", "الفلة الغربية", " الفلة الغربية ");
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("unitNameTaken", await CodeOf(refused));
+        Assert.Empty((await ListAsync(client))!);
+    }
+
+    [Fact]
+    public async Task BR_37_ProjectsMayRepeatANameAndEachTheirUnitsNames()
+    {
+        var client = await ClientOfAsync(await StarterAsync());
+
+        await ProjectOf(await CreateAsync(client, "غصون 6", "الفلة الغربية"));
+        await ProjectOf(await CreateAsync(client, "غصون 6", "الفلة الغربية"));
+
+        Assert.Equal(2, (await ListAsync(client))!.Count);
+    }
 }

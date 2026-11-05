@@ -3353,6 +3353,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("19b938d8-3205-1c4f-42b2-f49d3fd0923d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("85f17e6f-428a-bc84-cce6-e9dd93bcf644"),
+                            Value = "A unit of this project already has this name."
+                        },
+                        new
+                        {
+                            Id = new Guid("219c0ede-cfac-b34f-2a5b-2dfbc66e31ca"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("85f17e6f-428a-bc84-cce6-e9dd93bcf644"),
+                            Value = "توجد وحدة بهذا الاسم في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("dda76acf-8e8a-0661-d7e1-c84317b3d395"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d7ac423a-16a1-47b1-d833-12ce010a99b0"),
+                            Value = "Two units cannot have the same name."
+                        },
+                        new
+                        {
+                            Id = new Guid("e83097b1-5f6a-96e5-d929-147658347f21"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d7ac423a-16a1-47b1-d833-12ce010a99b0"),
+                            Value = "لا يصح أن تحمل وحدتان الاسم نفسه."
+                        },
+                        new
+                        {
                             Id = new Guid("a39f0718-fbab-9144-900c-5272495dc673"),
                             Language = "en",
                             TranslationKeyId = new Guid("c33d1bdd-122b-d5b7-5927-b9b1d6e949f0"),
@@ -9364,6 +9392,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("c8675013-b514-82b4-c81b-2a801ab38051"),
                             Description = "",
                             Key = "projects.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("85f17e6f-428a-bc84-cce6-e9dd93bcf644"),
+                            Description = "",
+                            Key = "projects.unitNameTaken"
+                        },
+                        new
+                        {
+                            Id = new Guid("d7ac423a-16a1-47b1-d833-12ce010a99b0"),
+                            Description = "",
+                            Key = "register.unitNameTaken"
                         },
                         new
                         {
