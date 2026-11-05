@@ -90,6 +90,18 @@ public class AttachmentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task TheSameFileSentAgainIsKeptOnce()
+    {
+        var (client, project) = await FinanceAsync();
+
+        var first = await (await UploadAsync(client, project.Id, Png)).Content.ReadFromJsonAsync<AttachmentView>(Json);
+        var again = await UploadAsync(client, project.Id, Png);
+
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.Equal(first!.Id, (await again.Content.ReadFromJsonAsync<AttachmentView>(Json))!.Id);
+    }
+
+    [Fact]
     public async Task WhatAFileIsComesFromItsBytesNotFromWhatTheSenderSays()
     {
         var (client, project) = await FinanceAsync();

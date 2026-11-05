@@ -194,7 +194,8 @@ public record SetBiometricsRequest(bool On);
 /// <param name="DefaultProjectId">The project they chose to land on; empty when none, or when they can no longer read it (AC-37.2).</param>
 /// <param name="OpenDefaultProject">True when sign-in skips the list and opens that project (AC-37.1).</param>
 /// <param name="UsesBiometrics">True when this phone asks for a fingerprint or face on opening (UC-011).</param>
-public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool OpenDefaultProject, bool UsesBiometrics)
+/// <param name="UserId">Who this is, so that a phone's unsent entries go only with the person who entered them (UC-029).</param>
+public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool OpenDefaultProject, bool UsesBiometrics, Guid UserId)
 {
     /// <summary>The session of <paramref name="user"/> on <paramref name="device"/> with these tokens. One check covers every way of losing access to the default project.</summary>
     public static async Task<Session> OfAsync(User user, Device device, string accessToken, string refreshToken, RedixDbContext db)
@@ -202,6 +203,6 @@ public record Session(string AccessToken, string RefreshToken, bool MustChangePa
         var access = await UserAccess.OfAsync(user.Id, db);
         var chosen = await db.UserDefaultProjects.Where(row => row.UserId == user.Id).Select(row => row.ProjectId).SingleOrDefaultAsync();
         var defaultProjectId = access.In(chosen).Contains(Permission.ReadProject) ? chosen.ToString() : "";
-        return new(accessToken, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, user.OpenDefaultProject, device.UsesBiometrics);
+        return new(accessToken, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, user.OpenDefaultProject, device.UsesBiometrics, user.Id);
     }
 }

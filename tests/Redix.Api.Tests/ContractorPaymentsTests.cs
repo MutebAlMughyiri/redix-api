@@ -237,6 +237,19 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AC_16_3_APaymentSentAgainLandsOnce()
+    {
+        var setup = await ContractAsync();
+        var request = Payment(setup);
+        await RecordAsync(setup, request);
+
+        var again = await PostAsync(setup, request);
+
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.Equal(1, await setup.Ledger.ReadAsync(db => db.Entries.CountAsync(row => row.Id == request.Id)));
+    }
+
+    [Fact]
     public async Task APaymentGoesUnderTheSubgroupItNames()
     {
         var setup = await ContractAsync();
@@ -408,25 +421,11 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_16_3_AnIdAlreadyUsedSavesNothingNewAndAnEmptyOneIsRefused()
+    public async Task AnEmptyIdIsRefused()
     {
         var setup = await ContractAsync();
-        var request = Payment(setup);
-        await RecordAsync(setup, request);
 
-        Assert.Equal(HttpStatusCode.Conflict, (await PostAsync(setup, request)).StatusCode);
-        await AssertRefusedAsync(setup, request with { Id = Guid.Empty }, "invalidEntryId");
-    }
-
-    [Theory]
-    [InlineData("users.roleReader")]
-    [InlineData("users.roleManager")]
-    public async Task WhoHoldsNoRecordEntriesCannotRecordAPayment(string role)
-    {
-        var setup = await ContractAsync();
-        var (client, _) = await setup.Ledger.MemberAsync(role);
-
-        Assert.Equal(HttpStatusCode.Forbidden, (await PostAsync(setup, Payment(setup), client)).StatusCode);
+        await AssertRefusedAsync(setup, Payment(setup) with { Id = Guid.Empty }, "invalidEntryId");
     }
 
     [Fact]

@@ -25,6 +25,12 @@ public static class ContractorPaymentsEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Record(Guid projectId, ContractorPaymentRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
+        var repeated = await EntryRecording.RepeatOfAsync(request.Id, projectId, AccessTokens.UserIdOf(principal), db);
+        if (repeated is not null)
+        {
+            return Results.Ok(repeated);
+        }
+
         var (status, idRefusal) = await EntryRecording.RefusalOfIdAsync(request.Id, db);
         if (idRefusal.Length > 0)
         {

@@ -731,7 +731,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_16_3_AnIdAlreadyUsedSavesNothingNewAndAnEmptyOneIsRefused()
+    public async Task AC_16_3_AnUploadSentAgainLandsOnceAndAnswersTheEntry()
     {
         var setup = await FinanceAsync();
         var request = Expense(setup);
@@ -739,10 +739,26 @@ public class ExpensesTests(MigratedApiFactory factory)
 
         var again = await PostAsync(setup.Client, setup.Project.Id, request);
 
-        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
-        Assert.Equal("entryExists", await CodeOf(again));
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.Equal(request.Id, (await again.Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id);
         Assert.Equal(1, await ReadAsync(db => db.Entries.CountAsync(row => row.Id == request.Id)));
         await AssertRefusedAsync(setup, Expense(setup) with { Id = Guid.Empty }, "invalidEntryId");
+    }
+
+    [Fact]
+    public async Task AnIdSomeoneElseUsedIsRefusedAndTellsThemNothingOfIt()
+    {
+        var setup = await FinanceAsync();
+        var request = Expense(setup);
+        await RecordAsync(setup.Client, setup.Project.Id, request);
+        var other = await factory.AddUserAsync(Password);
+        await factory.GiveRoleAsync(other.Id, setup.Project.Id, Finance);
+        var otherClient = await factory.ClientSignedInAsAsync(other, Password);
+
+        var refused = await PostAsync(otherClient, setup.Project.Id, request);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("entryExists", await CodeOf(refused));
     }
 
     [Theory]

@@ -28,7 +28,7 @@ public static class AttachmentsEndpoints
         return attachment is null ? Results.NotFound() : Results.File(options.Value.PathOf(attachment), attachment.ContentType, attachment.FileName);
     }
 
-    /// <summary>Keeps a file, and answers it, for an entry or a contract to name. A file that is not a picture or a PDF answers <c>invalidFileType</c>; a picture of 1 MB or more, <c>imageTooLarge</c>.</summary>
+    /// <summary>Keeps a file, and answers it, for an entry or a contract to name. The same file from the same person answers the one already kept, so a retried upload keeps it once (UC-029). A file that is not a picture or a PDF answers <c>invalidFileType</c>; a picture of 1 MB or more, <c>imageTooLarge</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="file">The file.</param>
     /// <param name="principal">The caller's session.</param>
@@ -49,6 +49,12 @@ public static class AttachmentsEndpoints
         var at = time.GetUtcNow().UtcDateTime;
         var userId = AccessTokens.UserIdOf(principal);
         var attachment = Attachment.Of(projectId, content, file.FileName, userId, at);
+        var sent = await db.Attachments.FirstOrDefaultAsync(row => row.ProjectId == projectId && row.UploadedByUserId == userId && row.Sha256 == attachment.Sha256);
+        if (sent is not null)
+        {
+            return Results.Ok(AttachmentView.Of(sent));
+        }
+
         var path = options.Value.PathOf(attachment);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllBytesAsync(path, content);

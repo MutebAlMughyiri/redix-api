@@ -52,7 +52,7 @@ public static class ExpensesEndpoints
     }
 
     /// <summary>
-    /// Records a purchase as a draft, or sent for approval, and answers its figures. An id already used answers <c>entryExists</c>, and an empty one <c>invalidEntryId</c>. What it names has to be on offer to the caller: otherwise <c>itemNotOffered</c>, <c>unknownUnit</c>, <c>unknownSubgroup</c>,
+    /// Records a purchase as a draft, or sent for approval, and answers its figures. The same id from whoever recorded it answers that entry, so a retried upload lands once (AC-16.3); from anyone else <c>entryExists</c>, and an empty one <c>invalidEntryId</c>. What it names has to be on offer to the caller: otherwise <c>itemNotOffered</c>, <c>unknownUnit</c>, <c>unknownSubgroup</c>,
     /// <c>unknownSupplier</c> (BR-19), <c>unknownPaymentMethod</c> or <c>accountNotOffered</c> (BRS open question 4). What was typed answers <c>invalidInvoiceNumber</c>, <c>invalidProduct</c>, <c>invalidNotes</c>, <c>invalidUnitPrice</c>, <c>invalidQuantity</c>, <c>invalidAmount</c>, <c>invalidDiscount</c>,
     /// <c>invalidPaymentAmount</c> or <c>invalidBankFees</c>. A date outside the project's period or in the future answers <c>invalidInvoiceDate</c> or <c>invalidPaymentDate</c> (BR-12). A file of no such attachment answers <c>unknownAttachment</c>. A custom value answers <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>.
     /// Sending also needs the required columns, <c>requiredColumnMissing</c> with its <c>columnKey</c> (FR-41), and the invoice's file or why there is none, <c>invoiceRequired</c> (FR-09); a draft can wait for them. A reason too long answers <c>invalidWithoutInvoiceReason</c>, and a reason beside a file <c>invoiceAndReason</c>.
@@ -66,6 +66,12 @@ public static class ExpensesEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Record(Guid projectId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
+        var repeated = await EntryRecording.RepeatOfAsync(request.Id, projectId, AccessTokens.UserIdOf(principal), db);
+        if (repeated is not null)
+        {
+            return Results.Ok(repeated);
+        }
+
         var (status, idRefusal) = await EntryRecording.RefusalOfIdAsync(request.Id, db);
         if (idRefusal.Length > 0)
         {

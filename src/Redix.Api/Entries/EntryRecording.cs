@@ -20,6 +20,10 @@ public static class EntryRecording
         return await db.Entries.AnyAsync(entry => entry.Id == id) ? (StatusCodes.Status409Conflict, "EntryExists") : (0, "");
     }
 
+    /// <summary>The entry <paramref name="id"/> if <paramref name="userId"/> already recorded it in the project: an upload that was cut and sent again lands once (AC-16.3, UC-029).</summary>
+    public static Task<EntryStatusView?> RepeatOfAsync(Guid id, Guid projectId, Guid userId, RedixDbContext db) =>
+        db.Entries.Where(entry => entry.Id == id && entry.ProjectId == projectId && entry.CreatedByUserId == userId).Select(entry => new EntryStatusView(entry.Id, entry.Status)).Cast<EntryStatusView?>().SingleOrDefaultAsync();
+
     /// <summary>Why the payment method, the account or the file <paramref name="request"/> names cannot be used by <paramref name="userId"/>, who holds <paramref name="held"/>. Empty when they can.</summary>
     public static async Task<string> RefusalOfPaymentAsync(Guid projectId, EntryRequest request, Guid userId, List<Permission> held, RedixDbContext db)
     {
