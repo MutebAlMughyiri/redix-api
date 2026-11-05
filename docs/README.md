@@ -28,5 +28,6 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-009](use-cases/UC-009-roles-and-permissions.md) | Keep every role in the database, keep projects separate, and enforce both on the server | Every request |
 | [UC-010](use-cases/UC-010-default-project.md) | Keep each person's default project, and open it at sign-in | Everyone, for themselves |
 | [UC-011](use-cases/UC-011-biometrics.md) | Keep a phone with fingerprint or face signed in | Everyone, for this phone |
+| [UC-012](use-cases/UC-012-categories-and-items.md) | Shape a project's categories, items and subgroups, and start each approved project with a copy | Finance changes; everyone with access reads |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

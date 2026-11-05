@@ -11,7 +11,7 @@
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
 | `GET /projects` | The caller's projects with their units, running ones first, then the newest (UC-008) | `200` the projects |
-| `POST /projects` | Registers a project from a name, a start date and its units, all or nothing, with the caller as its first manager, waiting for approval | `201` the project; `400` `invalidName`; `400` for a missing field |
+| `POST /projects` | Registers a project from a name, a start date and its units, all or nothing, with the caller as its first manager, waiting for approval. `structureSourceId`, left out for the default template, names an earlier project to copy the structure from (UC-012) | `201` the project; `400` `invalidName` or `unknownSource`; `400` for a missing field |
 | `POST /projects/{projectId}/units` | Adds a unit at the end of the project's list | `200` the project; `400` `invalidName`; `409` `projectFinished`; `403` without `ManageProject` in it |
 | `POST /projects/{projectId}/close` | Closes a finished project | `200` the project; `409` `projectFinished` when already closed; `403` without `ManageProject` in it |
 
@@ -34,6 +34,5 @@ A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ 
 
 | What | Use case |
 | --- | --- |
-| Copying the structure from the default template or an earlier project (AC-05.2), and the template itself (`Projects.IsTemplate`) | UC-012, the first with categories and items to copy |
 | Refusing new entries and approvals in a finished project | Each entry use case, through `Project.IsReadOnly` |
 | The shared unit (`Units.IsShared`) | Open question 3 of the BRS |

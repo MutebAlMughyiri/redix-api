@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 using Redix.Api.Translations;
 
 namespace Redix.Api;
@@ -32,6 +33,15 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>The project each user chose to land on (FR-37).</summary>
     public DbSet<UserDefaultProject> UserDefaultProjects => Set<UserDefaultProject>();
+
+    /// <summary>Each project's categories of expenses, in the default template too (FR-39).</summary>
+    public DbSet<Category> Categories => Set<Category>();
+
+    /// <summary>The items under the categories (FR-05, FR-38).</summary>
+    public DbSet<Item> Items => Set<Item>();
+
+    /// <summary>The groups inside the items, a general one in each (FR-05).</summary>
+    public DbSet<Subgroup> Subgroups => Set<Subgroup>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -93,11 +103,30 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             project.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
             project.Property(p => p.RejectionReason).HasMaxLength(Project.ReasonMaxLength);
             project.HasMany(p => p.Units).WithOne().HasForeignKey(u => u.ProjectId);
+            project.HasData(StructureSeed.Template);
         });
         modelBuilder.Entity<Unit>(unit =>
         {
             unit.ToTable("Units");
             unit.Property(u => u.Name).HasMaxLength(Project.NameMaxLength);
+        });
+        modelBuilder.Entity<Category>(category =>
+        {
+            category.Property(c => c.Name).HasMaxLength(Project.NameMaxLength);
+            category.HasOne<Project>().WithMany().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            category.HasMany(c => c.Items).WithOne().HasForeignKey(i => i.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            category.HasData(StructureSeed.Categories);
+        });
+        modelBuilder.Entity<Item>(item =>
+        {
+            item.Property(i => i.Name).HasMaxLength(Project.NameMaxLength);
+            item.HasMany(i => i.Subgroups).WithOne().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
+            item.HasData(StructureSeed.Items);
+        });
+        modelBuilder.Entity<Subgroup>(subgroup =>
+        {
+            subgroup.Property(s => s.Name).HasMaxLength(Project.NameMaxLength);
+            subgroup.HasData(StructureSeed.Subgroups);
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {

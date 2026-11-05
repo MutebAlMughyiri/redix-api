@@ -9,7 +9,7 @@ public static class RoleSeed
     [
         (AdminWord, RoleScope.System, 1, [Permission.ApproveProjects]),
         ("users.roleManager", RoleScope.Project, 1, [Permission.ManageUsers, Permission.ReadProject, Permission.SeeAllCapital]),
-        ("users.roleFinance", RoleScope.Project, 2, [Permission.ManageProject, Permission.ReadProject, Permission.SeeAllCapital]),
+        ("users.roleFinance", RoleScope.Project, 2, [Permission.ManageProject, Permission.ManageStructure, Permission.ReadProject, Permission.SeeAllCapital]),
         ("users.roleField", RoleScope.Project, 3, [Permission.ReadProject]),
         ("users.roleReader", RoleScope.Project, 4, [Permission.ReadProject]),
     ];

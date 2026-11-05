@@ -15,6 +15,7 @@ using Microsoft.Extensions.Time.Testing;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
 
@@ -115,7 +116,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var project = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
         await WithDatabaseAsync(async db =>
         {
-            (await db.Projects.SingleAsync(stored => stored.Id == project.Id)).Approve();
+            await ProjectStructure.ApproveAsync(await db.Projects.SingleAsync(stored => stored.Id == project.Id), db);
             await db.SaveChangesAsync();
         });
         return (await client.GetFromJsonAsync<List<ProjectView>>("/projects", Json))!.Single(listed => listed.Id == project.Id);

@@ -27,7 +27,7 @@ public class RolesTests(MigratedApiFactory factory)
     {
         { "users.roleAdmin", RoleScope.System, [Permission.ApproveProjects] },
         { "users.roleManager", RoleScope.Project, [Permission.ManageUsers, Permission.ReadProject, Permission.SeeAllCapital] },
-        { "users.roleFinance", RoleScope.Project, [Permission.ReadProject, Permission.SeeAllCapital, Permission.ManageProject] },
+        { "users.roleFinance", RoleScope.Project, [Permission.ReadProject, Permission.SeeAllCapital, Permission.ManageProject, Permission.ManageStructure] },
         { "users.roleField", RoleScope.Project, [Permission.ReadProject] },
         { "users.roleReader", RoleScope.Project, [Permission.ReadProject] },
     };

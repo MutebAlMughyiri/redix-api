@@ -13,6 +13,7 @@ src/Redix.Api/
   Auth/                 sign-in, users and roles: users, devices, access tokens, the permission check, the seeds of the roles and the admin
   Audit/                the audit trail: its records, its actions, and the mark that keeps a secret out of it
   Projects/             projects and their units
+  Structure/            what a project's expenses are recorded against: categories, items and subgroups, the default template, and its copy when a project is approved
   Refusal.cs            the answer to a refused request: problem details with a code
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database
 docs/                   these pages

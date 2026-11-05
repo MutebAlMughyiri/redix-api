@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Projects;
 
@@ -81,13 +82,13 @@ public static class RegistrationEndpoints
         }).ToList();
     }
 
-    /// <summary>Lets a registered project in, so its roles count from the next request (BR-34). A decided project answers <c>notPending</c>.</summary>
+    /// <summary>Lets a registered project in, with its structure copied, so its roles count from the next request (BR-34). A decided project answers <c>notPending</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The admin's session.</param>
     /// <param name="db">The database the project lives in.</param>
     /// <param name="time">The current time, for the audit record.</param>
     public static Task<IResult> Approve(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        DecideAsync(projectId, principal, db, time, AuditAction.ApproveProject, project => project.Approve());
+        DecideAsync(projectId, principal, db, time, AuditAction.ApproveProject, project => ProjectStructure.ApproveAsync(project, db));
 
     /// <summary>Refuses a registered project, saying why (AC-52.2). A decided project answers <c>notPending</c>; a reason empty or too long, <c>invalidReason</c>.</summary>
     /// <param name="projectId">The project.</param>
@@ -96,9 +97,9 @@ public static class RegistrationEndpoints
     /// <param name="db">The database the project lives in.</param>
     /// <param name="time">The current time, for the audit record.</param>
     public static Task<IResult> Reject(Guid projectId, RejectProjectRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        DecideAsync(projectId, principal, db, time, AuditAction.RejectProject, project => project.Reject(request.Reason.Trim()));
+        DecideAsync(projectId, principal, db, time, AuditAction.RejectProject, project => Task.FromResult(project.Reject(request.Reason.Trim())));
 
-    private static async Task<IResult> DecideAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Func<Project, ProjectChangeOutcome> decide)
+    private static async Task<IResult> DecideAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Func<Project, Task<ProjectChangeOutcome>> decide)
     {
         var project = await db.Projects.SingleOrDefaultAsync(project => project.Id == projectId);
         if (project is null)
@@ -106,7 +107,7 @@ public static class RegistrationEndpoints
             return Results.NotFound();
         }
 
-        var outcome = decide(project);
+        var outcome = await decide(project);
         if (outcome != ProjectChangeOutcome.Done)
         {
             var status = outcome == ProjectChangeOutcome.InvalidReason ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;

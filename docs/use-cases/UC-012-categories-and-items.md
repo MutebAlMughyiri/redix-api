@@ -1,0 +1,76 @@
+[Documentation](../README.md) › UC-012
+
+# UC-012: Manage categories and items
+
+**What it is for:** shaping a project's expense structure: its categories, their items and the items' subgroups (FR-05, FR-38, FR-39), which is what expenses are recorded against and what the periodic report prints, in this order.
+**Who uses it:** whoever holds `ManageStructure` in the project, which is Finance. Everyone with access reads it.
+**Issue:** redix-api #30; the app side is redix-app #31.
+
+## Where a structure comes from
+
+The default template is a project (`Projects.IsTemplate`) that nobody is a member of, seeded from BRS section 3. Copying from it and copying from an earlier project are therefore one copy.
+
+A project's structure is copied **when the admin approves it** (`ProjectStructure.ApproveAsync`), never before. Registering from the sign-in page always takes the template; someone signed in may name an earlier project they can read (`CreateProjectRequest.StructureSourceId`, kept in `Projects.StructureSourceId`). Only active categories and active items are copied, with their subgroups; never entries, contracts or balances (AC-05.2).
+
+## Endpoints
+
+| Endpoint | Needs | Answers |
+| --- | --- | --- |
+| `GET /projects/{projectId}/categories` | `ReadProject` | `200` every category and item, disabled ones included, in the order of the report |
+| `GET /projects/{projectId}/categories/offered?itemType=` | `ReadProject` | `200` what an entry of `purchases` or `contractorPayments` may choose from; `400` for another word. The entry use cases call it |
+| `POST /projects/{projectId}/categories` with `{ name }` | `ManageStructure` | `201` the category, at the end; `400` `invalidName` |
+| `POST /projects/{projectId}/categories/reorder` with `{ ids }` | `ManageStructure` | `200`; `400` `invalidOrder` |
+| `POST /projects/{projectId}/categories/{categoryId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
+| `POST /projects/{projectId}/categories/{categoryId}/disable`, `/enable` | `ManageStructure` | `200`; `404` |
+| `POST /projects/{projectId}/categories/{categoryId}/items` with `{ name, type }` | `ManageStructure` | `201` the item, at the end, with its general group; `400` `invalidName`; `404` |
+| `POST /projects/{projectId}/categories/{categoryId}/items/reorder` with `{ ids }` | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
+| `POST /projects/{projectId}/items/{itemId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
+| `POST /projects/{projectId}/items/{itemId}/disable`, `/enable` | `ManageStructure` | `200`; `404` |
+| `POST /projects/{projectId}/items/{itemId}/subgroups` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
+| `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `generalSubgroup` |
+
+Every change also answers `409` `projectFinished` in a finished project. `type` is `purchases`, `contractorPayments` or `both`.
+
+## Tables
+
+| Table | Holds |
+| --- | --- |
+| `Categories` | A project's categories: name, place in the report, whether active |
+| `Items` | A category's items: name, type, place in the report, whether active |
+| `Subgroups` | An item's groups, a general one named `''` in each, so an entry always has a subgroup and reports never special-case it |
+| `Projects.IsTemplate` | The default template |
+| `Projects.StructureSourceId` | The earlier project to copy from on approval; `Guid.Empty` for the template |
+
+## Rules and where they live
+
+| Rule | Code | Test |
+| --- | --- | --- |
+| The template holds the categories and items of BRS section 3 | `StructureSeed` | `CategoriesTests.TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
+| Every item has a general subgroup | `Item.New`, `StructureSeed.Subgroups` | `CategoriesTests.EveryItemHasAGeneralSubgroup`, `AnItemIsAddedWithItsTypeAtTheEndOfItsCategoryWithItsGeneralGroup` |
+| Every approved project starts with its own copy of the structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.ApprovingCopiesTheTemplateIntoRowsOfTheProjectsOwn`, `ThePublicRegistrationStartsFromTheTemplateWhenApproved` |
+| A waiting or rejected project has no structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.AWaitingOrRejectedProjectHasNoStructure` |
+| A project copies an earlier one's structure, and nothing else (AC-05.2) | `ProjectStructure.ApproveAsync`, `Category.CopyFor` | `CategoriesTests.AProjectCopiedFromAnEarlierOneTakesItsStructureAtApproval` |
+| What was disabled is not copied | `Category.CopyFor` | `CategoriesTests.WhatWasDisabledInTheEarlierProjectIsNotCopied` |
+| Only a project the caller reads can be copied (BR-33) | `ProjectsEndpoints.Create` | `CategoriesTests.AnEarlierProjectTheCallerCannotReadCannotBeCopied`, `TheTemplateItselfCannotBeNamedAsAnEarlierProject` |
+| Nobody sees the template | No member holds a role in it | `CategoriesTests.NobodySeesTheTemplate` |
+| A change in one project touches nothing else (BR-33) | Each project's own rows | `CategoriesTests.AChangeInOneProjectLeavesTheTemplateAndOtherProjectsAlone` |
+| One project's route never reaches another's rows (BR-33) | `CategoriesEndpoints.ItemOfAsync` and the category lookups | `CategoriesTests.ARouteOfOneProjectNeverReachesAnothersRows` |
+| The order set here is the order of the report (AC-39.1) | `IOrdered`, `CategoriesEndpoints.ReorderCategories`, `ReorderItems` | `CategoriesTests.TheOrderOfCategoriesIsTheOrderTheReportReads`, `TheOrderOfItemsIsTheOrderTheReportReads` |
+| An order names every row exactly once | `CategoriesEndpoints` | `CategoriesTests.AnOrderMustNameEveryRowExactlyOnce` |
+| A disabled item leaves entry and stays listed; nothing can be deleted (AC-05.3, BR-15) | `Item.IsOfferedFor`; no delete route exists | `CategoriesTests.ADisabledItemDisappearsFromEntryAndStaysListed`, `NothingInTheStructureCanBeDeleted` |
+| A disabled category takes its items out of entry | `Category.ItemsOfferedFor` | `CategoriesTests.ADisabledCategoryTakesItsItemsOutOfEntryAndStaysListed` |
+| What was disabled can be enabled | `CategoriesEndpoints.EnableItem`, `EnableCategory` | `CategoriesTests.ADisabledItemComesBackWhenEnabled` |
+| An item is offered only for what its type allows (AC-38.1) | `Item.IsOfferedFor` | `CategoriesTests.APurchasesItemIsNotOfferedForContractorPayments`, `AContractorPaymentsItemIsNotOfferedForPurchases` |
+| A new item reaches Field at their next read (AC-05.1) | `CategoriesEndpoints.Offered` | `CategoriesTests.ANewItemIsOfferedToFieldAtOnce` |
+| A name has 1 to 100 characters, spaces around it trimmed | `Project.IsAcceptableName` | `CategoriesTests.ACategoryAnItemOrASubgroupNeedsANameOfAtMost100Characters` |
+| The general subgroup has no name to change | `CategoriesEndpoints.RenameSubgroup` | `CategoriesTests.TheGeneralSubgroupHasNoNameToChange` |
+| Everyone with access reads; only Finance changes | `Permission.ManageStructure`, `RoleSeed` | `CategoriesTests.EveryoneWithAccessReadsTheStructureAndOnlyFinanceChangesIt` |
+| A finished project refuses every change and stays readable (AC-04.1) | `ProjectStructure.MapStructureChanges`, an endpoint filter | `CategoriesTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+
+## Left to later use cases
+
+| What | Use case |
+| --- | --- |
+| A new item inherits the default columns of its type (FR-38) | UC-013, whose tables they are |
+| The item picker on the entry screens | The entry use cases, through `GET .../categories/offered` |
+| Printing in the order set here (AC-39.1) | The periodic report, which reads `SortOrder` |

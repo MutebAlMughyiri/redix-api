@@ -29,6 +29,7 @@ A user holds a permission everywhere through `UserRoles`, and in one project thr
 | `ReadProject` | | Yes | Yes | Yes | Yes |
 | `SeeAllCapital` | | Yes | Yes | | |
 | `ManageProject` | | | Yes | | |
+| `ManageStructure` | | | Yes | | |
 
 ## Changing a role
 

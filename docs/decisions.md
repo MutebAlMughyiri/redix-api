@@ -6,6 +6,17 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-06 | A project's structure is copied when the admin approves it, from what its registration chose, kept in `Projects.StructureSourceId` | Every approved project starts with one, a rejected project costs nothing, and the public route, which writes with no session, stays small. Made without Muteb |
+| 2026-11-06 | The default template is one seeded project with no members; nobody changes it from the app | The database design makes it a project, so one copy serves both sources. With projects completely separate, no role reaches every project. Made without Muteb; findings row 52 |
+| 2026-11-06 | One permission, `ManageStructure`, for everything in the structure, given to Finance | It names what it allows, and `ManageProject` adds units and closes a project, which is another thing. Made without Muteb |
+| 2026-11-06 | A category, an item or a subgroup is never deleted, whether or not it has entries | FR-05 and FR-39 list adding, naming, ordering and disabling; BR-15 forbids deleting what has entries, and no entries exist yet to ask about. Made without Muteb; findings row 50 |
+| 2026-11-06 | Disabled categories and items are not copied to a new project | They were retired for a reason in the earlier project. Made without Muteb |
+| 2026-11-06 | An item's type is set when it is added and never changes | The issue lists renaming, ordering and disabling, and a new item inherits its type's columns. Made without Muteb; findings row 51 |
+| 2026-11-06 | The template's items are "both", except الحديد and الخرسانة as the canvas draws them, and دفعات العظم | The BRS names the items and gives no types, and "both" hides nothing from entry. Made without Muteb; findings row 47 |
+| 2026-11-06 | Changes to the structure are not in the audit trail | FR-21 speaks of entries, and UC-012 names no record, as with units in findings row 31. Made without Muteb |
+| 2026-11-06 | Items in one category may share a name | The BRS sets no rule, and its own list has السباكة and الكهرباء in two categories; the question is open with units in findings row 24. Made without Muteb |
+| 2026-11-06 | `GET .../categories/offered` is built now, with no screen calling it | AC-05.1, AC-05.3 and AC-38.1 are this use case's, so the rule of what entry offers lives here with its tests; the entry use cases call it. Made without Muteb |
+| 2026-11-06 | A finished project refuses structure changes in one endpoint filter on the route group | No route can forget it |
 | 2026-11-05 | A phone with fingerprint or face on never times out; every other phone keeps 12 hours | Muteb's decision: with 12 hours it would never save a password, and without the prompt a permanent session opens for whoever holds the phone |
 | 2026-11-05 | A default project is one row in `UserDefaultProjects`, and `Users.OpenDefaultProject` says whether sign-in skips the list | Having no default is no row, never an empty column |
 | 2026-11-05 | Access to the default is checked when the session is built, and it is not audited | AC-37.2: a default without access is not offered; it is one person's preference, and changes no record of the business |

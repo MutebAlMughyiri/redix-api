@@ -39,7 +39,8 @@ public static class ProjectsEndpoints
 
     /// <summary>
     /// Registers a project with its units, all or nothing, with the caller as its first project manager, waiting for the admin (BR-29, BR-34). An empty name, or one
-    /// longer than <see cref="Project.NameMaxLength"/>, for the project or any unit, answers <c>invalidName</c> and saves nothing.
+    /// longer than <see cref="Project.NameMaxLength"/>, for the project or any unit, answers <c>invalidName</c> and saves nothing. An earlier project to copy the structure from must be
+    /// one the caller reads (BR-33), or it answers <c>unknownSource</c>.
     /// </summary>
     /// <param name="request">The project's name, start date and units.</param>
     /// <param name="principal">The caller's session.</param>
@@ -54,6 +55,12 @@ public static class ProjectsEndpoints
         }
 
         var userId = AccessTokens.UserIdOf(principal);
+        if (request.StructureSourceId != Guid.Empty && !(await UserAccess.OfAsync(userId, db)).In(request.StructureSourceId).Contains(Permission.ReadProject))
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownSource");
+        }
+
+        project.StructureSourceId = request.StructureSourceId;
         await AddWithManagerAsync(project, userId, db, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{project.Id}", await ViewOfAsync(project, userId, db));
@@ -156,7 +163,11 @@ public static class ProjectsEndpoints
 /// <param name="Name">The project's name.</param>
 /// <param name="StartDate">The day the project started.</param>
 /// <param name="Units">The names of the project's units, in order; may be empty.</param>
-public record CreateProjectRequest(string Name, DateOnly StartDate, List<string> Units);
+public record CreateProjectRequest(string Name, DateOnly StartDate, List<string> Units)
+{
+    /// <summary>The earlier project to copy the structure from when it is approved; left out for the default template.</summary>
+    public Guid StructureSourceId { get; init; }
+}
 
 /// <summary>What the app sends to set the default project.</summary>
 /// <param name="OpenDirectly">Whether sign-in skips the list and opens it.</param>
