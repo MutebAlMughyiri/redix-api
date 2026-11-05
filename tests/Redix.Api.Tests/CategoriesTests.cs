@@ -79,8 +79,21 @@ public class CategoriesTests(MigratedApiFactory factory)
         var categories = await CategoriesOf(client, project.Id);
 
         Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "الإشراف"], categories.Select(category => category.Name));
-        Assert.Equal([0, 6, 9, 14, 2], categories.Select(category => category.Items.Count));
+        Assert.Equal([1, 6, 9, 14, 2], categories.Select(category => category.Items.Count));
         Assert.Equal(["الحفر", "الحديد", "الخرسانة", "البناء", "دفعات العظم", "الكهرباء", "السباكة", "ردود الماء", "أغراض الموقع"], categories[2].Items.Select(item => item.Name));
+    }
+
+    [Fact]
+    public async Task LandCostCanBeRecordedBecauseItsCategoryHoldsOneItemOfBothTypes()
+    {
+        var (_, client, project) = await FinanceAsync();
+
+        var land = (await CategoriesOf(client, project.Id)).Single(category => category.Name == "تكلفة الأراضي");
+
+        var item = Assert.Single(land.Items);
+        Assert.Equal(("تكلفة الأرض", ItemType.Both), (item.Name, item.Type));
+        Assert.Contains((await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories/offered?itemType={ItemType.Purchases}", Json))!, category => category.Name == "تكلفة الأراضي");
+        Assert.Contains((await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories/offered?itemType={ItemType.ContractorPayments}", Json))!, category => category.Name == "تكلفة الأراضي");
     }
 
     [Fact]
@@ -335,7 +348,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/enable", null)).EnsureSuccessStatusCode();
 
-        Assert.Contains((await OfferedFor(client, project.Id, "purchases"))[1].Items, offered => offered.Id == item.Id);
+        Assert.Contains((await OfferedFor(client, project.Id, "purchases")).SelectMany(category => category.Items), offered => offered.Id == item.Id);
     }
 
     [Fact]
@@ -403,9 +416,9 @@ public class CategoriesTests(MigratedApiFactory factory)
     public async Task ACategoryWithNothingToOfferIsLeftOut()
     {
         var (_, client, project) = await FinanceAsync();
-        var land = (await CategoriesOf(client, project.Id))[0];
+        var empty = await AddCategoryAsync(client, project.Id, "الملاحق");
 
-        Assert.DoesNotContain(await OfferedFor(client, project.Id, "purchases"), offered => offered.Id == land.Id);
+        Assert.DoesNotContain(await OfferedFor(client, project.Id, "purchases"), offered => offered.Id == empty.Id);
     }
 
     [Fact]

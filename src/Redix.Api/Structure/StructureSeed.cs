@@ -7,7 +7,7 @@ public static class StructureSeed
 {
     private static readonly (string Category, (string Name, ItemType Type)[] Items)[] Seeded =
     [
-        ("تكلفة الأراضي", []),
+        ("تكلفة الأراضي", [("تكلفة الأرض", ItemType.Both)]),
         ("الرسوم والفواتير",
         [
             ("المكتب الهندسي", ItemType.Both), ("رسوم الأمانة", ItemType.Both), ("المكتب المشرف", ItemType.Both), ("التأمين", ItemType.Both), ("المحاسب", ItemType.Both),

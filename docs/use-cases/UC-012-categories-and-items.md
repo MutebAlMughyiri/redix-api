@@ -46,6 +46,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | Rule | Code | Test |
 | --- | --- | --- |
 | The template holds the categories and items of BRS section 3 | `StructureSeed` | `CategoriesTests.TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
+| The category تكلفة الأراضي holds one item, تكلفة الأرض, of both types, because an entry needs an item (BRS section 3 lists it empty) | `StructureSeed` | `CategoriesTests.LandCostCanBeRecordedBecauseItsCategoryHoldsOneItemOfBothTypes` |
 | Every item has a general subgroup | `Item.New`, `StructureSeed.Subgroups` | `CategoriesTests.EveryItemHasAGeneralSubgroup`, `AnItemIsAddedWithItsTypeAtTheEndOfItsCategoryWithItsGeneralGroup` |
 | Every approved project starts with its own copy of the structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.ApprovingCopiesTheTemplateIntoRowsOfTheProjectsOwn`, `ThePublicRegistrationStartsFromTheTemplateWhenApproved` |
 | A waiting or rejected project has no structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.AWaitingOrRejectedProjectHasNoStructure` |

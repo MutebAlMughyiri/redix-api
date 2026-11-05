@@ -1933,6 +1933,15 @@ namespace Redix.Api.Migrations
                     b.HasData(
                         new
                         {
+                            Id = new Guid("1b5d6c03-3b9b-a505-ec3e-e164c29fb9cc"),
+                            CategoryId = new Guid("c4aece2a-cb9d-fb1d-ae30-dce8baba5959"),
+                            IsActive = true,
+                            Name = "تكلفة الأرض",
+                            SortOrder = 0,
+                            Type = (byte)2
+                        },
+                        new
+                        {
                             Id = new Guid("db415f43-3b91-e7b2-4041-3330e8c49b76"),
                             CategoryId = new Guid("b0d24870-bb67-9c79-b0bd-ec7fef769cde"),
                             IsActive = true,
@@ -2296,6 +2305,13 @@ namespace Redix.Api.Migrations
                     b.ToTable("Subgroups");
 
                     b.HasData(
+                        new
+                        {
+                            Id = new Guid("c2db4d48-a4a5-e23f-d04c-09564fe6b494"),
+                            ItemId = new Guid("1b5d6c03-3b9b-a505-ec3e-e164c29fb9cc"),
+                            Name = "",
+                            SortOrder = 0
+                        },
                         new
                         {
                             Id = new Guid("7860a42d-3edf-8147-730c-265d34ccc642"),

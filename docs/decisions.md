@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | The template's item تكلفة الأرض keeps one name, in Arabic, like every other item; its English, Land cost, is in the glossary | `Items` holds one name, as a person typed it, and nothing translates a project's own structure. A second column for one seeded row would be a feature of its own. Findings row 48. |
 | 2026-11-05 | A unit's deletion is a real delete, because nothing refers to it; everything else stays disabled rather than deleted | BR-38 says a unit with no entries is deleted, and BR-15 keeps only what has entries. The audit trail keeps what it was. Findings row 30. |
 | 2026-11-05 | A unit's name cannot repeat inside its project, compared exactly once trimmed, and no unit takes the shared unit's name; there is no unique index | BR-37. The shared unit joins at approval, so a registered unit named مشترك would repeat it then. A check in `Project.AddUnit` covers adding, registering and renaming; an index would add a failing migration for existing test data and only closes a race nobody would notice, since a repeated name can be renamed. Findings row 24. |
 | 2026-11-05 | A project with entries waiting for approval cannot be closed; drafts do not hold it open | BR-35. A draft waits for nobody, so it would otherwise hold a project open for ever. Findings row 5. |
