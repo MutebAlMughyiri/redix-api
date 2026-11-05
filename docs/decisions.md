@@ -6,6 +6,11 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | PDFs come from QuestPDF under its Community licence, workbooks from ClosedXML | QuestPDF shapes Arabic and lays out right to left; its Community licence is free below 1M USD a year of revenue, which Muteb should confirm holds |
+| 2026-11-05 | Every report file is for whoever holds `SeeAllCapital` | Muteb's rule: exporting stays the owner's and Finance's; a file would show every partner |
+| 2026-11-05 | The periodic report's words are the statement's own Arabic, in the files | Report 23 is Arabic, and the files are matched against it page for page |
+| 2026-11-05 | A contractor payment's one file goes into the invoices' ZIP as its invoice | Row 108: a second file on a payment would be a new field nobody enters today; the receipt is what the accountant has |
+| 2026-11-05 | The summary page details only the items that have money | Listing every empty item ran the summary onto a second page, unlike report 23 |
 | 2026-11-05 | UC-063: completion is one percentage for the project, typed by whoever holds `ManageProject`, in the audit trail; cost is the approved expenses; everyone sees both | Its five open questions were Muteb's, and he asked for features without decisions tonight. One typed figure needs no budget the BRS lacks, and these are the smallest answers to reverse |
 | 2026-11-05 | The contracts report is the contracts list of UC-020, which already has value, paid, remaining and the overrun alert | A second route would answer the same thing twice |
 | 2026-11-05 | Two old migration tests write their project as that schema had it | They inserted through today's model, so any column added to projects broke them |

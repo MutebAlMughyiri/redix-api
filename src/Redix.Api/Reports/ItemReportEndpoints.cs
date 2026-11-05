@@ -21,11 +21,18 @@ public static class ItemReportEndpoints
     public static async Task<IResult> Report(Guid projectId, Guid itemId, RedixDbContext db)
     {
         var item = await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).SingleOrDefaultAsync(row => row.Id == itemId && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId));
-        return item is null ? Results.NotFound() : Results.Ok(await OfAsync(projectId, item, db));
+        return item is null ? Results.NotFound() : Results.Ok(await OfAsync(projectId, item, await NewSinceAsync(projectId, db), db));
     }
 
-    /// <summary>The report of <paramref name="item"/>, for whatever shows it: the screen, or a file.</summary>
-    public static async Task<ItemReportView> OfAsync(Guid projectId, Item item, RedixDbContext db)
+    /// <summary>When the latest periodic report was issued: what was approved since is new (BR-26).</summary>
+    public static async Task<DateTime> NewSinceAsync(Guid projectId, RedixDbContext db)
+    {
+        var issued = db.PeriodicReports.Where(report => report.ProjectId == projectId).Select(report => report.IssuedAt);
+        return await issued.AnyAsync() ? await issued.MaxAsync() : Entry.NotApproved;
+    }
+
+    /// <summary>The report of <paramref name="item"/>, for whatever shows it: the screen, or a file. What was approved after <paramref name="newSince"/> is marked new (BR-26).</summary>
+    public static async Task<ItemReportView> OfAsync(Guid projectId, Item item, DateTime newSince, RedixDbContext db)
     {
         var rows = await (
             from expense in db.ExpenseDetails
@@ -44,7 +51,7 @@ public static class ItemReportEndpoints
         {
             var purchase = purchases.GetValueOrDefault(entry.Id) ?? new PurchaseDetails();
             var values = expense.CustomValuesByKey();
-            return new ItemEntryRow(entry.Id, entry.EntryDate, purchase.Product.Length > 0 ? purchase.Product : entry.Notes, facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, purchase.UnitPrice, purchase.Quantity, entry.Amount, (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract, columns.Select(column => values.GetValueOrDefault(column.Key, "")).ToList());
+            return new ItemEntryRow(entry.Id, entry.EntryDate, purchase.Product.Length > 0 ? purchase.Product : entry.Notes, facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, purchase.UnitPrice, purchase.Quantity, entry.Amount, (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract, columns.Select(column => values.GetValueOrDefault(column.Key, "")).ToList(), entry.ApprovedAt > newSince);
         }
 
         var subgroups = item.Subgroups.OrderBy(subgroup => subgroup.SortOrder).Select(subgroup =>
@@ -107,4 +114,5 @@ public record ContractReportView(Guid Id, string ContractorName, decimal Value, 
 /// <param name="Amount">What was paid.</param>
 /// <param name="IsOutsideContract">True for a payment outside its contract.</param>
 /// <param name="Values">The values of the item's own columns, in the report's order.</param>
-public record ItemEntryRow(Guid EntryId, DateOnly Date, string Description, string SupplierName, string InvoiceNumber, decimal UnitPrice, decimal Quantity, decimal Amount, bool IsOutsideContract, List<string> Values);
+/// <param name="IsNew">True when it was approved after the latest periodic report, shaded green (BR-26).</param>
+public record ItemEntryRow(Guid EntryId, DateOnly Date, string Description, string SupplierName, string InvoiceNumber, decimal UnitPrice, decimal Quantity, decimal Amount, bool IsOutsideContract, List<string> Values, bool IsNew);

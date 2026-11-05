@@ -112,6 +112,8 @@ app.MapCapital();
 app.MapRevenue();
 app.MapDashboard();
 app.MapItemReport();
+app.MapPeriodicReports();
+app.MapReportFiles();
 app.MapSyncEndpoints();
 
 app.Run();

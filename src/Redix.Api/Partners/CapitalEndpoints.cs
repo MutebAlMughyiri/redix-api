@@ -31,6 +31,12 @@ public static class CapitalEndpoints
     {
         var userId = AccessTokens.UserIdOf(principal);
         var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
+        return await ViewOfAsync(projectId, userId, seesAll, db);
+    }
+
+    /// <summary>The project's capital with every line when <paramref name="seesAll"/>, otherwise only <paramref name="userId"/>'s: the one owner of balances and shares (BR-05, BR-28).</summary>
+    public static async Task<CapitalView> ViewOfAsync(Guid projectId, Guid userId, bool seesAll, RedixDbContext db)
+    {
         var balances = await BalancesAsync(projectId, db);
         var total = balances.Values.Sum();
         var partners = await db.Partners.Where(partner => partner.ProjectId == projectId && (seesAll || partner.UserId == userId)).ToListAsync();
@@ -55,6 +61,12 @@ public static class CapitalEndpoints
         {
             return Results.NotFound();
         }
+        return Results.Ok(await MovementsOfAsync(projectId, partnerId, db));
+    }
+
+    /// <summary>One partner's movements, newest first: what the capital screen and the periodic report both show.</summary>
+    public static async Task<List<CapitalMovementView>> MovementsOfAsync(Guid projectId, Guid partnerId, RedixDbContext db)
+    {
         var rows = await (
             from details in db.CapitalMovementDetails
             join entry in db.Entries on details.EntryId equals entry.Id
@@ -65,7 +77,7 @@ public static class CapitalEndpoints
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var reversed = (await db.EntryLinks.Where(link => link.Type == EntryLinkType.Reversal && (ids.Contains(link.EntryId) || ids.Contains(link.LinkedEntryId))).ToListAsync()).SelectMany(link => new[] { link.EntryId, link.LinkedEntryId }).ToHashSet();
-        return Results.Ok(rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.details.Description, row.details.CashReason, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id))).ToList());
+        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.details.Description, row.details.CashReason, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id))).ToList();
     }
 
     /// <summary>

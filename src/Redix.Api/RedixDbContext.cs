@@ -104,6 +104,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The account of each partner's pocket.</summary>
     public DbSet<Redix.Api.Partners.PartnerPocket> PartnerPockets => Set<Redix.Api.Partners.PartnerPocket>();
 
+    /// <summary>Each periodic report as it was issued.</summary>
+    public DbSet<Redix.Api.Reports.PeriodicReport> PeriodicReports => Set<Redix.Api.Reports.PeriodicReport>();
+
     /// <summary>Each check of the accounts against the books.</summary>
     public DbSet<Reconciliation> Reconciliations => Set<Reconciliation>();
 
@@ -363,6 +366,14 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             pocket.HasIndex(p => p.PartnerId).IsUnique();
             pocket.HasOne<Account>().WithOne().HasForeignKey<Redix.Api.Partners.PartnerPocket>(p => p.AccountId).OnDelete(DeleteBehavior.Restrict);
             pocket.HasOne<Partner>().WithOne().HasForeignKey<Redix.Api.Partners.PartnerPocket>(p => p.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Redix.Api.Reports.PeriodicReport>(report =>
+        {
+            report.Property(r => r.Id).ValueGeneratedNever();
+            report.HasIndex(r => new { r.ProjectId, r.Number }).IsUnique();
+            report.Property(r => r.Snapshot).HasColumnType("json");
+            report.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            report.HasOne<User>().WithMany().HasForeignKey(r => r.IssuedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Reconciliation>(reconciliation =>
         {

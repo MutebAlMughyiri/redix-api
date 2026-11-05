@@ -1278,6 +1278,47 @@ namespace Redix.Api.Migrations
                     b.ToTable("UserDefaultProjects");
                 });
 
+            modelBuilder.Entity("Redix.Api.Reports.PeriodicReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ExpensesTotal")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("IssuedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Snapshot")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IssuedByUserId");
+
+                    b.HasIndex("ProjectId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("PeriodicReports");
+                });
+
             modelBuilder.Entity("Redix.Api.Revenue.RevenueDetails", b =>
                 {
                     b.Property<Guid>("EntryId")
@@ -5603,6 +5644,272 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("4d93403b-9585-4da1-bb82-0fb56ca0bdd4"),
                             Value = "التقارير"
+                        },
+                        new
+                        {
+                            Id = new Guid("132c066e-906d-1ba2-5901-4128c31482c4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("514da573-6ea1-e3b6-02f5-aa5e98c20a19"),
+                            Value = "Periodic report"
+                        },
+                        new
+                        {
+                            Id = new Guid("92175432-7671-3975-1c42-4aeb395b7604"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("514da573-6ea1-e3b6-02f5-aa5e98c20a19"),
+                            Value = "التقرير الدوري"
+                        },
+                        new
+                        {
+                            Id = new Guid("6b4ef07d-b414-eca8-8b5d-07c364aa01df"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("03efddcb-5de9-7c2a-ea10-94d0bc58c8ea"),
+                            Value = "Last issued"
+                        },
+                        new
+                        {
+                            Id = new Guid("768b19cc-aea5-4e1a-dc73-518a39d7fa4e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("03efddcb-5de9-7c2a-ea10-94d0bc58c8ea"),
+                            Value = "آخر إصدار"
+                        },
+                        new
+                        {
+                            Id = new Guid("e182625f-6fe9-334e-6634-9375d0227bc1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4d0ddf42-3e31-c2be-bbd1-e046a203bb54"),
+                            Value = "No report issued yet."
+                        },
+                        new
+                        {
+                            Id = new Guid("d0b17e79-fb7c-c582-6fa4-bae0246f619c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4d0ddf42-3e31-c2be-bbd1-e046a203bb54"),
+                            Value = "لم يُصدر تقرير بعد."
+                        },
+                        new
+                        {
+                            Id = new Guid("a956fb7c-c040-bacf-adf3-4973c480a159"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("be76222d-384e-52df-0251-68ae7904f8d9"),
+                            Value = "Issue number {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("0ce7c2a1-49ab-2f75-f509-822ff45276a7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("be76222d-384e-52df-0251-68ae7904f8d9"),
+                            Value = "إصدار رقم {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("1e3330ab-ea34-a807-bbff-1974fcb9139f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0c1a7e24-0bfc-afc4-589a-a190830c78fa"),
+                            Value = "Issue report number {0}?"
+                        },
+                        new
+                        {
+                            Id = new Guid("71632ad2-1d92-9230-0086-1a3ab8ae3500"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0c1a7e24-0bfc-afc4-589a-a190830c78fa"),
+                            Value = "إصدار التقرير رقم {0}؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5323b40-30fd-f6e5-aac2-6a6eafe2c2cd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8f6a9ff1-d7db-fc89-d679-f6379ed7d682"),
+                            Value = "It holds what is approved now and never changes. {1} entries waiting for approval show as one line."
+                        },
+                        new
+                        {
+                            Id = new Guid("03ca8285-ff93-b8f9-88a5-47b271085b20"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8f6a9ff1-d7db-fc89-d679-f6379ed7d682"),
+                            Value = "يشمل المعتمد الآن ولا يتغير بعد إصداره. والقيود المنتظرة للاعتماد ({1}) تظهر سطراً واحداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("557e9a49-f05b-f047-e5c3-394a09b66b44"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2edf46b0-1df2-fb8f-c27b-ca3f9a3e7a7a"),
+                            Value = "Report issued."
+                        },
+                        new
+                        {
+                            Id = new Guid("ba95605f-ef31-ca7b-f253-710466eafe8f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2edf46b0-1df2-fb8f-c27b-ca3f9a3e7a7a"),
+                            Value = "صدر التقرير."
+                        },
+                        new
+                        {
+                            Id = new Guid("af3bbf36-2c99-551f-16b7-e385f0b53fe7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("47f27971-14f6-b7cb-a730-f265b420dc16"),
+                            Value = "Report number"
+                        },
+                        new
+                        {
+                            Id = new Guid("0b75c2d4-2ab2-a2d7-2f1a-c21e97c487ca"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("47f27971-14f6-b7cb-a730-f265b420dc16"),
+                            Value = "تقرير رقم"
+                        },
+                        new
+                        {
+                            Id = new Guid("589761c4-52c2-a344-d24f-82285a13b785"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("79d57a45-ccf5-596d-1e55-f250deb73c52"),
+                            Value = "Previous report's expenses"
+                        },
+                        new
+                        {
+                            Id = new Guid("93f949e4-ae8a-dc67-08b1-ec6d7c87d1fa"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("79d57a45-ccf5-596d-1e55-f250deb73c52"),
+                            Value = "مصروفات التقرير السابق"
+                        },
+                        new
+                        {
+                            Id = new Guid("cd21c1fa-d9c1-2d32-9a24-8f480a5fa245"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("444dd357-7cc1-e78f-a448-0c16a2617477"),
+                            Value = "This report's expenses"
+                        },
+                        new
+                        {
+                            Id = new Guid("faae8e7c-b2bd-8cc7-487b-9060311107eb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("444dd357-7cc1-e78f-a448-0c16a2617477"),
+                            Value = "مصروفات التقرير الحالي"
+                        },
+                        new
+                        {
+                            Id = new Guid("db223d83-c6f8-65a2-2f8b-00a82101b117"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a9e61c2c-ca64-b70b-195b-fd96d498488d"),
+                            Value = "Difference"
+                        },
+                        new
+                        {
+                            Id = new Guid("012f16b1-576f-a02e-7f1d-c85144b13a98"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a9e61c2c-ca64-b70b-195b-fd96d498488d"),
+                            Value = "الفرق"
+                        },
+                        new
+                        {
+                            Id = new Guid("c859bdac-e662-373f-60ee-7ba8a6d733c7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("36387219-5110-e631-5aed-f9636ed99d65"),
+                            Value = "Liquidation"
+                        },
+                        new
+                        {
+                            Id = new Guid("4a0a5a42-b0a2-d246-1638-baebdcff664e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("36387219-5110-e631-5aed-f9636ed99d65"),
+                            Value = "التصفية"
+                        },
+                        new
+                        {
+                            Id = new Guid("78b2e4f0-8a07-7c6c-ee1c-b2ba51436fe4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2dcce97a-2ada-8d02-afb4-dd8a9cef0a7a"),
+                            Value = "PDF"
+                        },
+                        new
+                        {
+                            Id = new Guid("097d4f60-34e6-98b0-7ac5-f8bf4dc4094f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2dcce97a-2ada-8d02-afb4-dd8a9cef0a7a"),
+                            Value = "PDF"
+                        },
+                        new
+                        {
+                            Id = new Guid("75032098-1f4b-e633-77fa-5227d31d59e7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3e3ffa86-e670-d194-d664-808dc91ce2bc"),
+                            Value = "Excel"
+                        },
+                        new
+                        {
+                            Id = new Guid("868ad98d-7996-0d9a-0dd6-55d62e1cc411"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3e3ffa86-e670-d194-d664-808dc91ce2bc"),
+                            Value = "Excel"
+                        },
+                        new
+                        {
+                            Id = new Guid("726046d8-680b-7fad-96fc-7266129b4766"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0da1a854-f40d-8414-1a65-283ef6a8978c"),
+                            Value = "Print"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0d95ad8-fbd9-e3c8-f8d9-a7ffe20e8b65"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0da1a854-f40d-8414-1a65-283ef6a8978c"),
+                            Value = "طباعة"
+                        },
+                        new
+                        {
+                            Id = new Guid("f4fb997a-ef7b-2a82-55fb-a3989ba202d4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3c09dceb-ebff-699f-f371-c74219300a75"),
+                            Value = "Share"
+                        },
+                        new
+                        {
+                            Id = new Guid("0f2caf8d-cff5-5aa7-7185-1f611aa4a91c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3c09dceb-ebff-699f-f371-c74219300a75"),
+                            Value = "مشاركة"
+                        },
+                        new
+                        {
+                            Id = new Guid("3bd0132e-5742-36d8-8b81-e60612cc0b9d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6f4ec94e-a710-9909-4460-eac3400ee247"),
+                            Value = "Invoice images"
+                        },
+                        new
+                        {
+                            Id = new Guid("1dd5a3ec-3250-4148-240c-4229f730a11d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6f4ec94e-a710-9909-4460-eac3400ee247"),
+                            Value = "صور الفواتير"
+                        },
+                        new
+                        {
+                            Id = new Guid("b8408a74-7d35-32f5-aa53-b270071b5410"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bc871a93-5f71-0ee8-40f4-33ed3a5934d4"),
+                            Value = "Earlier reports"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1e43600-0b8a-ad08-cdf4-e936acb3290e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bc871a93-5f71-0ee8-40f4-33ed3a5934d4"),
+                            Value = "التقارير السابقة"
+                        },
+                        new
+                        {
+                            Id = new Guid("f8ba640a-51f5-1d85-a4ac-5a2f52d2573c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("00c3c7b8-a2dc-1c17-99a1-42de7ca3b988"),
+                            Value = "Could not get the file. Check the connection and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("e6db5caa-81d1-c6fa-1e33-3d8850e1ff59"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("00c3c7b8-a2dc-1c17-99a1-42de7ca3b988"),
+                            Value = "تعذر جلب الملف. تحقق من الاتصال وحاول مجدداً."
                         },
                         new
                         {
@@ -15584,6 +15891,120 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("514da573-6ea1-e3b6-02f5-aa5e98c20a19"),
+                            Description = "",
+                            Key = "reports.periodic"
+                        },
+                        new
+                        {
+                            Id = new Guid("03efddcb-5de9-7c2a-ea10-94d0bc58c8ea"),
+                            Description = "",
+                            Key = "reports.lastIssued"
+                        },
+                        new
+                        {
+                            Id = new Guid("4d0ddf42-3e31-c2be-bbd1-e046a203bb54"),
+                            Description = "",
+                            Key = "reports.noneIssued"
+                        },
+                        new
+                        {
+                            Id = new Guid("be76222d-384e-52df-0251-68ae7904f8d9"),
+                            Description = "",
+                            Key = "reports.issue"
+                        },
+                        new
+                        {
+                            Id = new Guid("0c1a7e24-0bfc-afc4-589a-a190830c78fa"),
+                            Description = "",
+                            Key = "reports.issueQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("8f6a9ff1-d7db-fc89-d679-f6379ed7d682"),
+                            Description = "",
+                            Key = "reports.issueExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("2edf46b0-1df2-fb8f-c27b-ca3f9a3e7a7a"),
+                            Description = "",
+                            Key = "reports.issued"
+                        },
+                        new
+                        {
+                            Id = new Guid("47f27971-14f6-b7cb-a730-f265b420dc16"),
+                            Description = "",
+                            Key = "reports.reportNumber"
+                        },
+                        new
+                        {
+                            Id = new Guid("79d57a45-ccf5-596d-1e55-f250deb73c52"),
+                            Description = "",
+                            Key = "reports.previous"
+                        },
+                        new
+                        {
+                            Id = new Guid("444dd357-7cc1-e78f-a448-0c16a2617477"),
+                            Description = "",
+                            Key = "reports.current"
+                        },
+                        new
+                        {
+                            Id = new Guid("a9e61c2c-ca64-b70b-195b-fd96d498488d"),
+                            Description = "",
+                            Key = "reports.difference"
+                        },
+                        new
+                        {
+                            Id = new Guid("36387219-5110-e631-5aed-f9636ed99d65"),
+                            Description = "",
+                            Key = "reports.liquidation"
+                        },
+                        new
+                        {
+                            Id = new Guid("2dcce97a-2ada-8d02-afb4-dd8a9cef0a7a"),
+                            Description = "",
+                            Key = "reports.pdf"
+                        },
+                        new
+                        {
+                            Id = new Guid("3e3ffa86-e670-d194-d664-808dc91ce2bc"),
+                            Description = "",
+                            Key = "reports.excel"
+                        },
+                        new
+                        {
+                            Id = new Guid("0da1a854-f40d-8414-1a65-283ef6a8978c"),
+                            Description = "",
+                            Key = "reports.print"
+                        },
+                        new
+                        {
+                            Id = new Guid("3c09dceb-ebff-699f-f371-c74219300a75"),
+                            Description = "",
+                            Key = "reports.share"
+                        },
+                        new
+                        {
+                            Id = new Guid("6f4ec94e-a710-9909-4460-eac3400ee247"),
+                            Description = "",
+                            Key = "reports.invoiceImages"
+                        },
+                        new
+                        {
+                            Id = new Guid("bc871a93-5f71-0ee8-40f4-33ed3a5934d4"),
+                            Description = "",
+                            Key = "reports.earlier"
+                        },
+                        new
+                        {
+                            Id = new Guid("00c3c7b8-a2dc-1c17-99a1-42de7ca3b988"),
+                            Description = "",
+                            Key = "reports.fileFailed"
+                        },
+                        new
+                        {
                             Id = new Guid("dcfc4b11-786f-e75b-7712-128fa2b7fe96"),
                             Description = "",
                             Key = "reports.item"
@@ -19748,6 +20169,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Reports.PeriodicReport", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

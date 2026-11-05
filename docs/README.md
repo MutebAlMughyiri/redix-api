@@ -51,6 +51,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-033, UC-034, UC-035](use-cases/UC-033-change-entry.md) | Change an unapproved entry, keep the approved version, reverse an approved one | Who entered it, and whoever decides entries |
 | [UC-036](use-cases/UC-036-notifications.md) | Tell people what happened to an entry or a project | Everyone signed in |
 | [UC-039](use-cases/UC-039-attach-invoice.md) | Attach an invoice to an expense entered without one | Whoever enters expenses |
+| [UC-053 to UC-058](use-cases/UC-053-reports.md) | The numbered periodic report, and every report as PDF, workbook and the invoices' ZIP | Finance issues; everyone reads; whoever sees all capital exports |
 | [UC-049, UC-050, UC-051, UC-063](use-cases/UC-049-dashboard-and-reports.md) | The dashboard, an item's report, the contracts, completion and cost | Everyone in the project; the manager sets completion |
 | [UC-047, UC-048, UC-056](use-cases/UC-047-revenue-and-vat.md) | Revenue, sales invoices, and the VAT statement for any period | Whoever does the project's finance; everyone reads |
 | [UC-040 to UC-045](use-cases/UC-040-money-movements.md) | Transfers, reconciliation, capital movements, carrying a balance, shares, and expenses a partner paid | Whoever does the project's finance; everyone reads |
