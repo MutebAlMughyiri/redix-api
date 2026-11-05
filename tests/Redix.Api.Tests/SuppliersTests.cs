@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
@@ -591,4 +593,68 @@ public class SuppliersTests(MigratedApiFactory factory)
         }
         Assert.Equal(2, (await RegisterOf(client, project.Id)).Count);
     }
+
+    private static Task<HttpResponseMessage> DisableAsync(HttpClient client, Guid projectId, Guid supplierId) =>
+        client.PostAsync($"/projects/{projectId}/suppliers/{supplierId}/disable", null);
+
+    [Fact]
+    public async Task TheGeneralCashSupplierCannotBeDisabled()
+    {
+        var (client, project) = await FinanceAsync();
+        var general = Assert.Single(await RegisterOf(client, project.Id));
+
+        var refused = await DisableAsync(client, project.Id, general.Id);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("generalCashSupplier", await CodeOf(refused));
+        Assert.True(Assert.Single(await RegisterOf(client, project.Id)).IsActive);
+    }
+
+    [Fact]
+    public async Task TheGeneralCashSupplierCanBeRenamedAndStaysTheGeneralOne()
+    {
+        var (client, project) = await FinanceAsync();
+        var general = Assert.Single(await RegisterOf(client, project.Id));
+
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{general.Id}", new SupplierRequest("نقدي") { NotVatRegistered = true }, Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal("نقدي", Assert.Single(await RegisterOf(client, project.Id)).Name);
+        Assert.Equal("generalCashSupplier", await CodeOf(await DisableAsync(client, project.Id, general.Id)));
+    }
+
+    [Fact]
+    public async Task ASupplierNamedLikeTheGeneralOneCanBeDisabled()
+    {
+        var (client, project) = await FinanceAsync();
+        var general = Assert.Single(await RegisterOf(client, project.Id));
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{general.Id}", new SupplierRequest("نقدي") { NotVatRegistered = true }, Json)).EnsureSuccessStatusCode();
+        var named = await AddAsync(client, project.Id, Supplier.GeneralCashSupplierName);
+
+        (await DisableAsync(client, project.Id, named.Id)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public Task TheMigrationMarksTheRowTheApprovalNamedInAProjectApprovedBeforeIt() =>
+        factory.OnScratchDatabaseAsync("RedixGeneralCashTests", async db =>
+        {
+            var migrator = db.GetService<IMigrator>();
+            var names = db.GetService<IMigrationsAssembly>().Migrations.Keys.ToList();
+            var target = names.Single(name => name.EndsWith("_GeneralCashSupplierFlag"));
+            await migrator.MigrateAsync(names[names.IndexOf(target) - 1]);
+            var user = new User { Username = "approver", CreatedAt = factory.Time.GetUtcNow().UtcDateTime };
+            var (project, _) = Project.New("غصون 6", new DateOnly(2026, 11, 1), []);
+            var (otherProject, _) = Project.New("غصون 7", new DateOnly(2026, 11, 1), []);
+            db.AddRange(user, project, otherProject);
+            await db.SaveChangesAsync();
+            Guid general = Guid.CreateVersion7(), other = Guid.CreateVersion7(), renamed = Guid.CreateVersion7();
+            foreach (var (id, projectId, name) in new[] { (general, project.Id, Supplier.GeneralCashSupplierName), (other, project.Id, "شركة النخيل"), (renamed, otherProject.Id, "نقدي") })
+            {
+                await db.Database.ExecuteSqlAsync($"INSERT INTO Suppliers (Id, ProjectId, Name, VatNumber, Mobile, Status, IsActive, CreatedByUserId) VALUES ({id}, {projectId}, {name}, '', '', 0, 1, {user.Id})");
+            }
+
+            await migrator.MigrateAsync(target);
+
+            var marked = await db.Database.SqlQuery<Guid>($"SELECT Id AS Value FROM Suppliers WHERE IsGeneralCash = 1").ToListAsync();
+            Assert.Equal(general, Assert.Single(marked));
+        });
 }

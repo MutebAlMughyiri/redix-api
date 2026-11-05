@@ -2542,6 +2542,9 @@ namespace Redix.Api.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsGeneralCash")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Mobile")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -6712,6 +6715,20 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("031eedd8-ca40-9972-3c5e-62436b4fcde2"),
                             Value = "هذا البند ليس في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("bcfbb0d1-d1a2-b1af-916f-ca151fb92825"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a2b9b6a0-e2a6-76f9-6a69-d9b7848f6606"),
+                            Value = "The general cash supplier stays on the register, because expenses with no supplier need it. You can rename it."
+                        },
+                        new
+                        {
+                            Id = new Guid("0f60dc1f-f376-69e0-4bd0-272dedec8780"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a2b9b6a0-e2a6-76f9-6a69-d9b7848f6606"),
+                            Value = "يبقى المورد النقدي العام في القائمة لأن المصروفات التي بلا مورد تحتاجه. ويمكنك تغيير اسمه."
                         },
                         new
                         {
@@ -11038,6 +11055,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("031eedd8-ca40-9972-3c5e-62436b4fcde2"),
                             Description = "",
                             Key = "suppliers.unknownItem"
+                        },
+                        new
+                        {
+                            Id = new Guid("a2b9b6a0-e2a6-76f9-6a69-d9b7848f6606"),
+                            Description = "",
+                            Key = "suppliers.generalCashSupplier"
                         },
                         new
                         {

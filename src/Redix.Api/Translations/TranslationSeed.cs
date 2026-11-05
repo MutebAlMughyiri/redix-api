@@ -296,6 +296,7 @@ public static class TranslationSeed
         ("suppliers.vatNumberTaken", "This VAT number already belongs to another supplier.", "هذا الرقم الضريبي لمورد آخر."),
         ("suppliers.holder", "Existing supplier:", "المورد الموجود:"),
         ("suppliers.unknownItem", "That item is not in this project.", "هذا البند ليس في هذا المشروع."),
+        ("suppliers.generalCashSupplier", "The general cash supplier stays on the register, because expenses with no supplier need it. You can rename it.", "يبقى المورد النقدي العام في القائمة لأن المصروفات التي بلا مورد تحتاجه. ويمكنك تغيير اسمه."),
         ("suppliers.new", "Add supplier", "إضافة مورد"),
         ("suppliers.edit", "Edit supplier", "تعديل المورد"),
         ("suppliers.save", "Save", "حفظ"),

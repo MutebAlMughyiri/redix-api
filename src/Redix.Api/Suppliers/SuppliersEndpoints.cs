@@ -100,7 +100,7 @@ public static class SuppliersEndpoints
         });
     }
 
-    /// <summary>Disables a supplier: it disappears from entry and stays in the reports (BR-15).</summary>
+    /// <summary>Disables a supplier: it disappears from entry and stays in the reports (BR-15). The general cash supplier answers <c>generalCashSupplier</c>, because a disabled one would leave expenses with no supplier nothing to pick.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="supplierId">The supplier.</param>
     /// <param name="db">The database they live in.</param>
@@ -143,6 +143,10 @@ public static class SuppliersEndpoints
         if (supplier is null)
         {
             return Results.NotFound();
+        }
+        if (supplier.IsGeneralCash && !isActive)
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "GeneralCashSupplier");
         }
         supplier.IsActive = isActive;
         await db.SaveChangesAsync();

@@ -54,6 +54,8 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 | Disabled, it stays in the register, never deleted (BR-15) | No delete route; `SuppliersEndpoints.Disable` | `ADisabledSupplierStaysInTheRegisterAndCanBeEnabled` |
 | The register lists suppliers by name | `SuppliersEndpoints.List` | `TheRegisterListsSuppliersByName` |
 | An approved project starts with the general cash supplier | `ProjectStructure.ApproveAsync`, `Supplier.GeneralCashSupplier` | `AnApprovedProjectStartsWithTheGeneralCashSupplier` |
+| The general cash supplier can be renamed and never disabled, by a flag set at approval, so another supplier with its name can | `Supplier.IsGeneralCash`, `SuppliersEndpoints.SetActiveAsync` | `TheGeneralCashSupplierCannotBeDisabled`, `TheGeneralCashSupplierCanBeRenamedAndStaysTheGeneralOne`, `ASupplierNamedLikeTheGeneralOneCanBeDisabled` |
+| The migration marks the row the approval named, in a project approved before it | The `GeneralCashSupplierFlag` migration | `TheMigrationMarksTheRowTheApprovalNamedInAProjectApprovedBeforeIt` |
 | A copied project starts with only that one (AC-05.2) | `ProjectStructure.ApproveAsync` | `ACopiedProjectStartsWithOnlyTheGeneralCashSupplier` |
 | Everyone with access reads the register (BR-31) | `Permission.ReadProject` | `EveryoneWithAccessReadsTheRegister` |
 | Only Finance changes suppliers | `Permission.ManageSettings` | `OnlyFinanceChangesSuppliers` |
