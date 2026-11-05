@@ -98,7 +98,7 @@ public static class PeriodicReportsEndpoints
     {
         var snapshot = await SnapshotOfAsync(projectId, number, db);
         var receipts = $"{request.Scheme}://{request.Host}/projects/{projectId}/attachments/";
-        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportFiles.Excel(snapshot, receipts), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
+        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportWorkbook.Of(snapshot, receipts), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
     }
 
     private static async Task<PeriodicReportSnapshot?> SnapshotOfAsync(Guid projectId, int number, RedixDbContext db)

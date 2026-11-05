@@ -1,11 +1,10 @@
-using ClosedXML.Excel;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
 namespace Redix.Api.Reports;
 
-/// <summary>The periodic report as a PDF laid out as report 23 (UC-054, FR-45) and as a workbook with live totals (UC-055, FR-46). Words are the statement's own Arabic, as report 23 prints them.</summary>
+/// <summary>The periodic report as a PDF laid out as report 23 (UC-054, FR-45); its workbook is <see cref="PeriodicReportWorkbook"/>. Words are the statement's own Arabic, as report 23 prints them.</summary>
 public static class PeriodicReportFiles
 {
     /// <summary>A4 portrait, right to left: the summary, the partners, then a page per item; new rows shaded green (BR-26).</summary>
@@ -148,126 +147,5 @@ public static class PeriodicReportFiles
         {
             cell.Bold();
         }
-    }
-
-    /// <summary>A summary sheet, a partners sheet with a link to each receipt, and a sheet per item; every total a live formula, new rows green (FR-46).</summary>
-    public static byte[] Excel(PeriodicReportSnapshot report, string receiptsAddress)
-    {
-        using var workbook = new XLWorkbook();
-        var names = new HashSet<string>();
-        var summary = workbook.Worksheets.Add(ReportFormats.SheetName("الملخص", names));
-        var partners = workbook.Worksheets.Add(ReportFormats.SheetName("الشركاء", names));
-        var itemTotals = new Dictionary<Guid, string>();
-        foreach (var item in report.Items)
-        {
-            var sheet = workbook.Worksheets.Add(ReportFormats.SheetName(item.ItemName, names));
-            itemTotals[item.ItemId] = $"'{sheet.Name}'!{ItemReportFiles.FillSheet(sheet, item)}";
-        }
-        FillSummary(summary, report, itemTotals);
-        FillPartners(partners, report, receiptsAddress);
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
-    }
-
-    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, Dictionary<Guid, string> itemTotals)
-    {
-        sheet.RightToLeft = true;
-        sheet.Cell(1, 1).Value = $"{report.ProjectName} · تقرير رقم {report.Number} · {ReportFormats.Time(report.IssuedAt)}";
-        sheet.Cell(1, 1).Style.Font.Bold = true;
-        var row = 3;
-        void Put(string label, Action<IXLCell> value)
-        {
-            sheet.Cell(row, 1).Value = label;
-            value(sheet.Cell(row, 2));
-            sheet.Cell(row, 2).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
-            row++;
-        }
-
-        var accountsFirst = row;
-        foreach (var account in report.Accounts)
-        {
-            Put(account.Name, cell => cell.Value = account.Balance);
-        }
-        var accountsTotal = $"B{row}";
-        Put("إجمالي الحسابات", cell => cell.FormulaA1 = row > accountsFirst ? $"SUM(B{accountsFirst}:B{row - 1})" : "0");
-        var categoriesFirst = row + 1;
-        row++;
-        foreach (var category in report.Categories)
-        {
-            var parts = category.Items.Where(item => itemTotals.ContainsKey(item.Id)).Select(item => itemTotals[item.Id]).ToList();
-            Put(category.Name, cell => cell.FormulaA1 = parts.Count > 0 ? string.Join("+", parts) : "0");
-        }
-        var expenses = $"B{row}";
-        Put("مجموع المصروفات", cell => cell.FormulaA1 = row > categoriesFirst ? $"SUM(B{categoriesFirst}:B{row - 1})" : "0");
-        Put("مصروفات التقرير السابق", cell => cell.Value = report.PreviousExpenses);
-        var previous = $"B{row - 1}";
-        Put("الفرق", cell => cell.FormulaA1 = $"{expenses}-{previous}");
-        row++;
-        var revenueFirst = row;
-        Put("رأس المال", cell => cell.Value = report.Capital);
-        Put("استرجاع الضرائب", cell => cell.Value = report.VatRefunds);
-        Put("إيرادات أخرى", cell => cell.Value = report.OtherRevenue);
-        var sales = $"B{row}";
-        Put("البيع", cell => cell.Value = report.Sales);
-        var revenue = $"B{row}";
-        Put("مجموع الإيرادات", cell => cell.FormulaA1 = $"SUM(B{revenueFirst}:B{row - 1})");
-        Put("المجموع بدون البيع", cell => cell.FormulaA1 = $"{revenue}-{sales}");
-        var surplus = $"B{row}";
-        Put("الفائض", cell => cell.FormulaA1 = $"{revenue}-{expenses}");
-        Put("الفائض بدون البيع", cell => cell.FormulaA1 = $"{surplus}-{sales}");
-        Put("التصفية", cell => cell.Value = report.Liquidation);
-        Put("فرق المطابقة", cell => cell.FormulaA1 = $"{accountsTotal}-{surplus}");
-        if (report.PendingCount > 0)
-        {
-            Put($"بانتظار الاعتماد ({report.PendingCount})", cell => cell.Value = report.PendingAmount);
-        }
-        sheet.Columns().AdjustToContents();
-    }
-
-    private static void FillPartners(IXLWorksheet sheet, PeriodicReportSnapshot report, string receiptsAddress)
-    {
-        sheet.RightToLeft = true;
-        string[] titles = ["الشريك", "الرصيد", "النسبة %"];
-        for (var column = 0; column < titles.Length; column++)
-        {
-            sheet.Cell(1, column + 1).Value = titles[column];
-            sheet.Cell(1, column + 1).Style.Font.Bold = true;
-        }
-        var row = 2;
-        foreach (var partner in report.Partners)
-        {
-            sheet.Cell(row, 1).Value = partner.Name;
-            sheet.Cell(row, 2).Value = partner.Balance;
-            sheet.Cell(row, 2).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
-            sheet.Cell(row, 3).FormulaA1 = $"IF(B{report.Partners.Count + 2}=0,0,B{row}/B{report.Partners.Count + 2}*100)";
-            sheet.Cell(row, 3).Style.NumberFormat.Format = "0.0000000000";
-            row++;
-        }
-        sheet.Cell(row, 1).Value = "الإجمالي";
-        sheet.Cell(row, 2).FormulaA1 = row > 2 ? $"SUM(B2:B{row - 1})" : "0";
-        sheet.Cell(row, 2).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
-        row += 2;
-        foreach (var partner in report.Partners.Where(partner => partner.Movements.Count > 0))
-        {
-            sheet.Cell(row, 1).Value = $"حركات {partner.Name}";
-            sheet.Cell(row, 1).Style.Font.Bold = true;
-            row++;
-            foreach (var movement in partner.Movements)
-            {
-                sheet.Cell(row, 1).Value = movement.Date.ToDateTime(TimeOnly.MinValue);
-                sheet.Cell(row, 1).Style.DateFormat.Format = ReportFormats.ExcelDate;
-                sheet.Cell(row, 2).Value = movement.Amount;
-                sheet.Cell(row, 2).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
-                sheet.Cell(row, 3).Value = movement.Description;
-                if (movement.AttachmentId.Length > 0)
-                {
-                    sheet.Cell(row, 4).Value = "الإيصال";
-                    sheet.Cell(row, 4).SetHyperlink(new XLHyperlink(receiptsAddress + movement.AttachmentId));
-                }
-                row++;
-            }
-        }
-        sheet.Columns().AdjustToContents();
     }
 }

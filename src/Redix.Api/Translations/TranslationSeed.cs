@@ -856,6 +856,9 @@ public static class TranslationSeed
         ("biometrics.notChanged", "Could not change this. Check the network and try again.", "تعذّر التغيير. تحقق من الشبكة وحاول مرة أخرى."),
     ];
 
+    /// <summary>The Arabic of the word <paramref name="key"/>, for a file written in the statement's Arabic.</summary>
+    public static string Arabic(string key) => Words.Single(word => word.Key == key).Arabic;
+
     /// <summary>One key per seeded word, with an id derived from the key so every migration and database agree on it.</summary>
     public static IEnumerable<TranslationKey> Keys => Words.Select(word => new TranslationKey { Id = StableIds.Of(word.Key), Key = word.Key });
 

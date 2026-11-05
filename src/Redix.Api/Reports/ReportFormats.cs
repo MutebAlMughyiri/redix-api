@@ -46,7 +46,10 @@ public static class ReportFormats
     public static string Date(DateOnly date) => date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
 
     /// <summary>A time as dd.MM.yyyy HH:mm, in Saudi Arabia.</summary>
-    public static string Time(DateTime utc) => utc.AddHours(3).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+    public static string Time(DateTime utc) => InSaudiArabia(utc).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+
+    /// <summary>A moment in Saudi Arabia's time, three hours ahead of UTC all year.</summary>
+    public static DateTime InSaudiArabia(DateTime utc) => utc.AddHours(3);
 
     /// <summary>A name Excel accepts for a sheet: no forbidden character, at most 31 letters, and not one already taken in <paramref name="taken"/>.</summary>
     public static string SheetName(string name, HashSet<string> taken)

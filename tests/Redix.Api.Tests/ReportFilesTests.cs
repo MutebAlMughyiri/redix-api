@@ -113,22 +113,55 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_46_1_TheWorkbookHasItsSheetsAndTheSummaryAddsTheItemSheetsLive()
+    public async Task AC_46_1_TheWorkbookIsLaidOutAsTheStatementAndEveryTotalIsLive()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger, "شريك");
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 1000, ledger.AccountId, "") { CashReason = "نقداً" }, Json)).EnsureSuccessStatusCode();
         await ApprovedAsync(ledger, ledger.Purchase(115, "P1"));
         await IssueAsync(ledger);
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
+        workbook.RecalculateAllFormulas();
 
-        Assert.Equal(3, workbook.Worksheets.Count);
-        var summary = workbook.Worksheet(1);
         var itemSheet = workbook.Worksheet(3);
-        Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains(itemSheet.Name));
-        Assert.Contains(itemSheet.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.StartsWith("SUM("));
+        Assert.Equal(["الخلاصة", "راس المال"], workbook.Worksheets.Take(2).Select(sheet => sheet.Name));
+        Assert.All(workbook.Worksheets, sheet => Assert.True(sheet.RightToLeft && sheet.PageSetup.PagesWide == 1 && sheet.PageSetup.PaperSize == XLPaperSize.A4Paper));
+        var summary = workbook.Worksheet("الخلاصة");
+        Assert.Equal(("رقم التقرير:", "1", "غصون 6"), (summary.Cell("A2").GetString(), summary.Cell("B2").GetString(), summary.Cell("A1").GetString()));
+        Assert.Equal(("ايرادات", "مصروفات", "رأس المال", "'راس المال'!C3"), (summary.Cell("A9").GetString(), summary.Cell("D9").GetString(), summary.Cell("A10").GetString(), summary.Cell("B10").FormulaA1));
+        Assert.Equal((1000m, 115m, 885m), (summary.Cell("B13").GetValue<decimal>(), summary.Cell("E15").GetValue<decimal>(), summary.Cell("B18").GetValue<decimal>()));
+        Assert.Equal(("تفاصيل تكاليف العظم:", "B31"), (summary.Cell("A21").GetString(), summary.Cell("E12").FormulaA1));
+        Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains($"'{itemSheet.Name}'!"));
+        var capital = workbook.Worksheet("راس المال");
+        Assert.Equal(("شريك", 1000m, 100m), (capital.Cell("B2").GetString(), capital.Cell("C2").GetValue<decimal>(), capital.Cell("D2").GetValue<decimal>()));
+        Assert.Equal(("إضافة مبلغ", 1000m), (capital.Cell("H3").GetString(), capital.Cell("K4").GetValue<decimal>()));
         var row = itemSheet.CellsUsed().First(cell => cell.GetString() == "P1").Address.RowNumber;
         Assert.True(itemSheet.Cell(row, 6).IsEmpty() && itemSheet.Cell(row, 7).IsEmpty(), "a price and a quantity nobody entered stay blank, as in the PDF");
+        Assert.Equal(("الوصف", 115m), (itemSheet.Cell("B1").GetString(), itemSheet.Cell(row + 1, 8).GetValue<decimal>()));
     }
+
+    [Fact]
+    public void AC_46_2_AContractIsABlockWithItsValueAndWhatRemainsAfterEachPayment()
+    {
+        var item = new ItemReportView(Guid.NewGuid(), "بويه", "التشطيب", 700, [],
+            [new SubgroupReportView(Guid.NewGuid(), "", 100, [Row(100, "P1", isNew: true)])],
+            [new ContractReportView(Guid.NewGuid(), "مؤسسة الدهان", 1000, false, 500, 500, false, 600, [Row(400, ""), Row(100, "", isOutside: true), Row(100, "")])]);
+
+        using var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel(item)));
+        workbook.RecalculateAllFormulas();
+
+        var sheet = workbook.Worksheet(1);
+        Assert.Equal(("الاجمالي", 100m), (sheet.Cell("A3").GetString(), sheet.Cell("H3").GetValue<decimal>()));
+        Assert.Equal(StatementStyle.Green, sheet.Cell("B2").Style.Fill.BackgroundColor);
+        Assert.Equal(("دفعات بويه مؤسسة الدهان", 1000m), (sheet.Cell("A6").GetString(), sheet.Cell("C6").GetValue<decimal>()));
+        Assert.Equal([600m, 600m, 500m], new[] { 8, 9, 10 }.Select(line => sheet.Cell(line, 5).GetValue<decimal>()));
+        Assert.Equal((600m, 700m), (sheet.Cell("F6").GetValue<decimal>(), sheet.Cell("H13").GetValue<decimal>()));
+        Assert.Equal("اجمالي الكل", sheet.Cell("A13").GetString());
+    }
+
+    private static ItemEntryRow Row(decimal amount, string invoiceNumber, bool isNew = false, bool isOutside = false) =>
+        new(Guid.NewGuid(), new DateOnly(2026, 9, 1), "دفعة", "", invoiceNumber, 0, 0, amount, isOutside, [], isNew);
 
     [Fact]
     public async Task AC_47_1_TheVatWorkbookIsTheAccountantsFile()
