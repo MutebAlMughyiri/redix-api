@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Accounts;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
@@ -52,6 +53,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>The ways each project pays (FR-40).</summary>
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+
+    /// <summary>Where each project's money sits (FR-22).</summary>
+    public DbSet<Account> Accounts => Set<Account>();
+
+    /// <summary>Who holds which account.</summary>
+    public DbSet<AccountCustodian> AccountCustodians => Set<AccountCustodian>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -161,6 +168,17 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             method.HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
             method.HasData(PaymentMethodSeed.PaymentMethods);
         });
+        modelBuilder.Entity<Account>(account =>
+        {
+            account.Property(a => a.Name).HasMaxLength(Project.NameMaxLength);
+            account.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            account.HasMany(a => a.Custodians).WithOne().HasForeignKey(c => c.AccountId);
+        });
+        modelBuilder.Entity<AccountCustodian>(custodian =>
+        {
+            custodian.HasKey(c => c.AccountId);
+            custodian.HasOne<User>().WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<ProjectMember>(member =>
         {
             member.HasIndex(m => new { m.ProjectId, m.UserId, m.RoleId }).IsUnique();
@@ -210,9 +228,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             var entity = modelBuilder.Entity(entityType.ClrType);
             entity.Property<byte[]>("RowVersion").IsRowVersion().IsRequired();
-            if (entityType.FindPrimaryKey()?.Properties is [{ ClrType: var keyType }] && keyType == typeof(Guid))
+            if (entityType.FindPrimaryKey()?.Properties is [{ ClrType: var keyType, Name: var keyName }] && keyType == typeof(Guid))
             {
-                entity.Property("Id").ValueGeneratedNever();
+                entity.Property(keyName).ValueGeneratedNever();
             }
         }
     }

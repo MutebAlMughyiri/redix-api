@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api;
+using Redix.Api.Accounts;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -84,5 +85,6 @@ app.MapUsers();
 app.MapCategories();
 app.MapColumns();
 app.MapPaymentMethods();
+app.MapAccounts();
 
 app.Run();

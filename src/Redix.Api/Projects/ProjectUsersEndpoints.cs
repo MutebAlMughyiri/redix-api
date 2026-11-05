@@ -9,9 +9,10 @@ namespace Redix.Api.Projects;
 /// <summary>A project's people and their roles (UC-009, FR-02, FR-36), for its project manager. Every project keeps its own list (BR-33), and every change is saved with its audit record.</summary>
 public static class ProjectUsersEndpoints
 {
-    /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /roles</c>, <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, and giving and taking a role.</summary>
+    /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for its manager <c>GET /roles</c>, <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, and giving and taking a role.</summary>
     public static void MapProjectUsers(this WebApplication app)
     {
+        app.MapGet("/projects/{projectId:guid}/members", Members).RequireAuthorization(nameof(Permission.ReadProject));
         var project = app.MapGroup("/projects/{projectId:guid}").RequireAuthorization(nameof(Permission.ManageUsers));
         project.MapGet("/roles", Roles);
         project.MapGet("/users", List);
@@ -20,6 +21,16 @@ public static class ProjectUsersEndpoints
         project.MapPost("/users/{userId:guid}/roles/{roleId:guid}", GiveRole);
         project.MapPost("/users/{userId:guid}/roles/{roleId:guid}/remove", TakeRole);
     }
+
+    /// <summary>The active people of this project by name, once each, for choosing who holds something in it. Only their names show (BR-33).</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="db">The database they live in.</param>
+    public static Task<List<MemberView>> Members(Guid projectId, RedixDbContext db) =>
+        db.Users.Where(user => user.IsActive && db.ProjectMembers.Any(member => member.ProjectId == projectId && member.UserId == user.Id))
+            .OrderBy(user => user.DisplayName).Select(user => new MemberView(user.Id, user.DisplayName)).ToListAsync();
+
+    /// <summary>Whether <paramref name="userId"/> holds any role in <paramref name="projectId"/>.</summary>
+    public static Task<bool> IsMemberAsync(Guid projectId, Guid userId, RedixDbContext db) => db.ProjectMembers.AnyAsync(member => member.ProjectId == projectId && member.UserId == userId);
 
     /// <summary>The roles that can be given in a project, in their order (BR-32).</summary>
     /// <param name="db">The database the roles live in.</param>
@@ -174,3 +185,8 @@ public static class ProjectUsersEndpoints
 /// <summary>What the app sends to add someone who already has a login.</summary>
 /// <param name="Username">Their exact username.</param>
 public record AddExistingUserRequest(string Username);
+
+/// <summary>Someone in a project, as a person choosing among them sees them.</summary>
+/// <param name="Id">The user's id.</param>
+/// <param name="DisplayName">The user's name.</param>
+public record MemberView(Guid Id, string DisplayName);
