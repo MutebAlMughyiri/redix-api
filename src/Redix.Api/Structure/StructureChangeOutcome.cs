@@ -12,8 +12,14 @@ public enum StructureChangeOutcome
     /// <summary>The new order does not name every row of the list exactly once.</summary>
     InvalidOrder,
 
-    /// <summary>The item's general group has no name to change (UC-012).</summary>
+    /// <summary>The item's general group is never renamed or removed, so an entry always has a subgroup (UC-012).</summary>
     GeneralSubgroup,
+
+    /// <summary>An entry uses the subgroup, so it stays (FR-05).</summary>
+    SubgroupInUse,
+
+    /// <summary>An entry names the item, so its type stays (FR-38).</summary>
+    ItemHasEntries,
 
     /// <summary>A person cannot choose that type for a column (FR-41).</summary>
     InvalidDataType,

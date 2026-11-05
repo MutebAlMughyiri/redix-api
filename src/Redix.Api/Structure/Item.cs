@@ -12,8 +12,8 @@ public class Item : IOrdered
     /// <summary>The item's name, as it was typed.</summary>
     public required string Name { get; set; }
 
-    /// <summary>What it is for; set when it is added, and never changed.</summary>
-    public ItemType Type { get; init; }
+    /// <summary>What it is for; it changes only while no entry names it (FR-38).</summary>
+    public ItemType Type { get; set; }
 
     /// <summary>Its place in its category, which is the order in the report.</summary>
     public int SortOrder { get; set; }

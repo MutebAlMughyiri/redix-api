@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
@@ -525,5 +526,197 @@ public class CategoriesTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/projects/{project.Id}/categories/offered?itemType=rent")).StatusCode);
+    }
+
+    private async Task<(HttpClient Client, Guid ProjectId, ItemView Item)> ItemWithSubgroupsAsync(params string[] names)
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[3].Items[5];
+        foreach (var name in names)
+        {
+            (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups", new NameRequest(name))).EnsureSuccessStatusCode();
+        }
+        return (client, project.Id, (await CategoriesOf(client, project.Id))[3].Items[5]);
+    }
+
+    private static Task<HttpResponseMessage> ReorderSubgroupsAsync(HttpClient client, Guid projectId, Guid itemId, params IEnumerable<Guid> ids) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/subgroups/reorder", new { ids });
+
+    private static Task<HttpResponseMessage> DeleteSubgroupAsync(HttpClient client, Guid projectId, Guid itemId, Guid subgroupId) =>
+        client.PostAsync($"/projects/{projectId}/items/{itemId}/subgroups/{subgroupId}/delete", null);
+
+    [Fact]
+    public async Task ASubgroupNoEntryUsesIsRemoved()
+    {
+        var (client, projectId, item) = await ItemWithSubgroupsAsync("مواد", "دفان");
+
+        (await DeleteSubgroupAsync(client, projectId, item.Id, item.Subgroups[1].Id)).EnsureSuccessStatusCode();
+
+        Assert.Equal(["", "دفان"], (await CategoriesOf(client, projectId))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
+    }
+
+    [Fact]
+    public async Task ASubgroupAddedAfterARemovalStillGoesLast()
+    {
+        var (client, projectId, item) = await ItemWithSubgroupsAsync("مواد", "دفان");
+        (await DeleteSubgroupAsync(client, projectId, item.Id, item.Subgroups[1].Id)).EnsureSuccessStatusCode();
+
+        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{item.Id}/subgroups", new NameRequest("أسمنت"))).EnsureSuccessStatusCode();
+
+        Assert.Equal(["", "دفان", "أسمنت"], (await CategoriesOf(client, projectId))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
+    }
+
+    [Fact]
+    public async Task ASubgroupAnEntryUsesIsNotRemoved()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var added = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("مواد"), Json);
+        added.EnsureSuccessStatusCode();
+        var subgroup = (await CategoriesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == ledger.ItemId).Subgroups[1];
+        await ledger.RecordAsync(ledger.Purchase() with { SubgroupId = subgroup.Id });
+
+        var refused = await DeleteSubgroupAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, subgroup.Id);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("subgroupInUse", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task TheGeneralSubgroupIsNeverRemoved()
+    {
+        var (client, projectId, item) = await ItemWithSubgroupsAsync();
+
+        var refused = await DeleteSubgroupAsync(client, projectId, item.Id, item.Subgroups[0].Id);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("generalSubgroup", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task SubgroupsAreReorderedAndTheGeneralOneStaysFirst()
+    {
+        var (client, projectId, item) = await ItemWithSubgroupsAsync("مواد", "دفان", "أسمنت");
+
+        (await ReorderSubgroupsAsync(client, projectId, item.Id, item.Subgroups[3].Id, item.Subgroups[1].Id, item.Subgroups[2].Id)).EnsureSuccessStatusCode();
+
+        Assert.Equal(["", "أسمنت", "مواد", "دفان"], (await CategoriesOf(client, projectId))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
+    }
+
+    [Fact]
+    public async Task AnOrderOfSubgroupsNamesEveryNamedOneOnceAndNeverTheGeneralOne()
+    {
+        var (client, projectId, item) = await ItemWithSubgroupsAsync("مواد", "دفان");
+
+        foreach (var ids in new[] { [item.Subgroups[1].Id], [item.Subgroups[1].Id, item.Subgroups[1].Id], [item.Subgroups[0].Id, item.Subgroups[1].Id, item.Subgroups[2].Id], new[] { item.Subgroups[1].Id, Guid.NewGuid() } })
+        {
+            var refused = await ReorderSubgroupsAsync(client, projectId, item.Id, ids);
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+            Assert.Equal("invalidOrder", await CodeOf(refused));
+        }
+    }
+
+    [Fact]
+    public async Task OneProjectsRoutesNeverReachAnothersSubgroups()
+    {
+        var (client, projectId, _) = await ItemWithSubgroupsAsync();
+        var (_, otherProjectId, other) = await ItemWithSubgroupsAsync("مواد");
+
+        Assert.Equal(HttpStatusCode.NotFound, (await DeleteSubgroupAsync(client, projectId, other.Id, other.Subgroups[1].Id)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await ReorderSubgroupsAsync(client, projectId, other.Id, other.Subgroups[1].Id)).StatusCode);
+        Assert.Equal(["", "مواد"], (await CategoriesOf(await MemberOfAsync(otherProjectId), otherProjectId))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
+    }
+
+    private async Task<HttpClient> MemberOfAsync(Guid projectId)
+    {
+        var user = await factory.AddUserAsync(Password);
+        await factory.GiveRoleAsync(user.Id, projectId, Reader);
+        return await factory.ClientSignedInAsAsync(user, Password);
+    }
+
+    private static Task<HttpResponseMessage> ChangeTypeAsync(HttpClient client, Guid projectId, Guid itemId, ItemType type) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/type", new { type }, Json);
+
+    private static async Task<List<ColumnView>> ColumnsOfAsync(HttpClient client, Guid projectId, Guid itemId) =>
+        (await client.GetFromJsonAsync<List<ColumnView>>($"/projects/{projectId}/items/{itemId}/columns", Json))!;
+
+    [Fact]
+    public async Task AnItemsTypeChangesWhileItHasNoEntriesAndIsOfferedAsItsNewTypeIs()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[2].Items[1];
+        Assert.Equal(ItemType.Purchases, item.Type);
+
+        (await ChangeTypeAsync(client, project.Id, item.Id, ItemType.ContractorPayments)).EnsureSuccessStatusCode();
+
+        Assert.Equal(ItemType.ContractorPayments, (await CategoriesOf(client, project.Id))[2].Items[1].Type);
+        Assert.DoesNotContain((await OfferedFor(client, project.Id, "purchases")).SelectMany(category => category.Items), offered => offered.Id == item.Id);
+        Assert.Contains((await OfferedFor(client, project.Id, "contractorPayments")).SelectMany(category => category.Items), offered => offered.Id == item.Id);
+    }
+
+    [Fact]
+    public async Task AChangedTypeIsInTheAuditTrailOldAndNew()
+    {
+        var (user, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[2].Items[1];
+
+        (await ChangeTypeAsync(client, project.Id, item.Id, ItemType.Both)).EnsureSuccessStatusCode();
+
+        var record = Assert.Single(await factory.AuditTrailOfAsync(item.Id));
+        Assert.Equal((AuditAction.Update, user.Id, "Items"), (record.Action, record.UserId, record.TableName));
+        Assert.Equal((int)ItemType.Purchases, JsonDocument.Parse(record.Before).RootElement.GetProperty("Type").GetInt32());
+        Assert.Equal((int)ItemType.Both, JsonDocument.Parse(record.After).RootElement.GetProperty("Type").GetInt32());
+    }
+
+    [Fact]
+    public async Task AnItemWithAnEntryKeepsItsType()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ledger.RecordAsync(ledger.Purchase());
+
+        var refused = await ChangeTypeAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, ItemType.ContractorPayments);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("itemHasEntries", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task AChangedTypeAsksTheColumnsOfTheNewTypeAndKeepsWhatAPersonAdded()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[2].Items[1];
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", new AddColumnRequest("المساحة", ColumnDataType.Number, false, false, []), Json)).EnsureSuccessStatusCode();
+        var template = (await client.GetFromJsonAsync<List<ColumnView>>($"/projects/{project.Id}/default-columns/contractorPayments", Json))!;
+
+        (await ChangeTypeAsync(client, project.Id, item.Id, ItemType.ContractorPayments)).EnsureSuccessStatusCode();
+
+        var columns = await ColumnsOfAsync(client, project.Id, item.Id);
+        Assert.Equal([.. template.Select(column => column.Key), columns[^1].Key], columns.Select(column => column.Key));
+        Assert.Equal("المساحة", columns[^1].Name);
+    }
+
+    [Fact]
+    public async Task ChangingATypeThereAndBackLeavesOneOfEachColumn()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[2].Items[1];
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/purchases", new AddDefaultColumnRequest("رقم أمر الشراء", ColumnDataType.Text, false, false, [], true), Json)).EnsureSuccessStatusCode();
+
+        (await ChangeTypeAsync(client, project.Id, item.Id, ItemType.ContractorPayments)).EnsureSuccessStatusCode();
+        (await ChangeTypeAsync(client, project.Id, item.Id, ItemType.Purchases)).EnsureSuccessStatusCode();
+
+        var keys = (await ColumnsOfAsync(client, project.Id, item.Id)).Select(column => column.Key).ToList();
+        Assert.Equal(keys.Distinct().Count(), keys.Count);
+        Assert.Equal((await client.GetFromJsonAsync<List<ColumnView>>($"/projects/{project.Id}/default-columns/purchases", Json))!.Select(column => column.Key), keys);
+    }
+
+    [Fact]
+    public async Task OnlyFinanceChangesATypeAndNeverAnotherProjects()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[2].Items[1];
+        var (_, otherClient, other) = await FinanceAsync();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await ChangeTypeAsync(await MemberAsync(project, Field), project.Id, item.Id, ItemType.Both)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await ChangeTypeAsync(otherClient, other.Id, item.Id, ItemType.Both)).StatusCode);
     }
 }

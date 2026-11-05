@@ -1,10 +1,12 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
 
-/// <summary>Shapes a project's expense structure (UC-012): its categories, their items, and the items' subgroups. There is no delete: what is no longer wanted is disabled (BR-15).</summary>
+/// <summary>Shapes a project's expense structure (UC-012): its categories, their items, and the items' subgroups. What is no longer wanted is disabled (BR-15); only a subgroup no entry uses can be removed.</summary>
 public static class CategoriesEndpoints
 {
     /// <summary>Maps the routes that read a project's categories, for anyone who reads the project, and those that change them, for whoever holds <see cref="Permission.ManageStructure"/>.</summary>
@@ -26,7 +28,10 @@ public static class CategoriesEndpoints
         changes.MapPost("/items/{itemId:guid}/disable", DisableItem);
         changes.MapPost("/items/{itemId:guid}/enable", EnableItem);
         changes.MapPost("/items/{itemId:guid}/subgroups", AddSubgroup);
+        changes.MapPost("/items/{itemId:guid}/type", ChangeItemType);
+        changes.MapPost("/items/{itemId:guid}/subgroups/reorder", ReorderSubgroups);
         changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}", RenameSubgroup);
+        changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}/delete", DeleteSubgroup);
     }
 
     /// <summary>Every category and item of the project, disabled ones included, in the order of the periodic report (AC-39.1).</summary>
@@ -140,6 +145,43 @@ public static class CategoriesEndpoints
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> EnableItem(Guid projectId, Guid itemId, RedixDbContext db) => ChangeItemAsync(projectId, itemId, db, item => item.IsActive = true);
 
+    /// <summary>
+    /// Changes what an item is for while no entry names it, or <c>itemHasEntries</c>; it is in the audit trail. Its built-in columns become the project's default columns for the new type, because what an entry is asked follows them (FR-38),
+    /// and nothing has a value in them yet. The columns a person added stay, after them.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="itemId">The item.</param>
+    /// <param name="request">What it becomes.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the structure lives in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static async Task<IResult> ChangeItemType(Guid projectId, Guid itemId, ChangeItemTypeRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
+        if (item is null)
+        {
+            return Results.NotFound();
+        }
+        if (await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.ItemHasEntries);
+        }
+
+        item.Type = request.Type;
+        var defaults = await db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == request.Type).OrderBy(column => column.SortOrder).ToListAsync();
+        var columns = await db.ItemColumns.Where(column => column.ItemId == itemId).ToListAsync();
+        var added = columns.Where(column => column.IsCustom && defaults.All(row => row.Key != column.Key)).OrderBy(column => column.SortOrder).ToList();
+        db.ItemColumns.RemoveRange(columns.Except(added));
+        db.ItemColumns.AddRange(defaults.Select((column, place) => ItemColumn.Of(column, itemId, place)));
+        foreach (var (column, place) in added.Select((column, place) => (column, place)))
+        {
+            column.SortOrder = defaults.Count + place;
+        }
+        db.Audit(item, AuditAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
+
     /// <summary>Adds a named subgroup at the end of an item's list. An unacceptable name answers <c>invalidName</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
@@ -152,10 +194,51 @@ public static class CategoriesEndpoints
             {
                 return Results.NotFound();
             }
-            db.Subgroups.Add(new Subgroup { ItemId = itemId, Name = name, SortOrder = await db.Subgroups.CountAsync(subgroup => subgroup.ItemId == itemId) });
+            db.Subgroups.Add(new Subgroup { ItemId = itemId, Name = name, SortOrder = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).MaxAsync(subgroup => subgroup.SortOrder) + 1 });
             await db.SaveChangesAsync();
             return Results.Ok();
         });
+
+    /// <summary>Puts an item's named subgroups in the order given, which is their order in the report, the general group staying first. A list that is not exactly the named ones answers <c>invalidOrder</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="itemId">The item.</param>
+    /// <param name="request">Every named subgroup's id, in the new order.</param>
+    /// <param name="db">The database the structure lives in.</param>
+    public static async Task<IResult> ReorderSubgroups(Guid projectId, Guid itemId, ReorderRequest request, RedixDbContext db)
+    {
+        if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+        {
+            return Results.NotFound();
+        }
+        var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
+        var general = subgroups.Single(subgroup => subgroup.Name == Subgroup.GeneralName).Id;
+        return await ReorderAsync(subgroups, new ReorderRequest([general, .. request.Ids]), db);
+    }
+
+    /// <summary>Removes a subgroup no entry uses. One an entry uses answers <c>subgroupInUse</c>; the item's general group, <c>generalSubgroup</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="itemId">The item.</param>
+    /// <param name="subgroupId">The subgroup.</param>
+    /// <param name="db">The database the structure lives in.</param>
+    public static async Task<IResult> DeleteSubgroup(Guid projectId, Guid itemId, Guid subgroupId, RedixDbContext db)
+    {
+        var subgroup = await db.Subgroups.SingleOrDefaultAsync(row => row.Id == subgroupId && row.ItemId == itemId);
+        if (subgroup is null || await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+        {
+            return Results.NotFound();
+        }
+        if (subgroup.Name == Subgroup.GeneralName)
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.GeneralSubgroup);
+        }
+        if (await db.ExpenseDetails.AnyAsync(details => details.SubgroupId == subgroupId))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.SubgroupInUse);
+        }
+        db.Subgroups.Remove(subgroup);
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
 
     /// <summary>Renames a subgroup. An unacceptable name answers <c>invalidName</c>; the item's general group has no name to change, <c>generalSubgroup</c>.</summary>
     /// <param name="projectId">The project.</param>
@@ -228,6 +311,10 @@ public record NameRequest(string Name);
 /// <param name="Name">The item's name.</param>
 /// <param name="Type">What it is for.</param>
 public record AddItemRequest(string Name, ItemType Type);
+
+/// <summary>What the app sends to change what an item is for.</summary>
+/// <param name="Type">What it becomes.</param>
+public record ChangeItemTypeRequest(ItemType Type);
 
 /// <summary>What the app sends to put a list in a new order.</summary>
 /// <param name="Ids">Every row's id, in the new order.</param>

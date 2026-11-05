@@ -28,6 +28,9 @@ A project's structure is copied **when the admin approves it** (`ProjectStructur
 | `POST /projects/{projectId}/items/{itemId}/disable`, `/enable` | `ManageStructure` | `200`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/subgroups` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `generalSubgroup` |
+| `POST /projects/{projectId}/items/{itemId}/subgroups/reorder` with `{ ids }`, the named ones | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
+| `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}/delete` | `ManageStructure` | `200`; `404`; `409` `generalSubgroup` or `subgroupInUse` |
+| `POST /projects/{projectId}/items/{itemId}/type` with `{ type }` | `ManageStructure` | `200`; `404`; `409` `itemHasEntries` |
 
 Every change also answers `409` `projectFinished` in a finished project. `type` is `purchases`, `contractorPayments` or `both`.
 
@@ -47,6 +50,10 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | --- | --- | --- |
 | The template holds the categories and items of BRS section 3 | `StructureSeed` | `CategoriesTests.TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
 | The category تكلفة الأراضي holds one item, تكلفة الأرض, of both types, because an entry needs an item (BRS section 3 lists it empty) | `StructureSeed` | `CategoriesTests.LandCostCanBeRecordedBecauseItsCategoryHoldsOneItemOfBothTypes` |
+| A subgroup no entry uses is removed, and one added later still goes last; the general one is never removed | `CategoriesEndpoints.DeleteSubgroup`, `AddSubgroup` | `CategoriesTests.ASubgroupNoEntryUsesIsRemoved`, `ASubgroupAddedAfterARemovalStillGoesLast`, `ASubgroupAnEntryUsesIsNotRemoved`, `TheGeneralSubgroupIsNeverRemoved` |
+| Subgroups reorder as items do, the general one staying first | `CategoriesEndpoints.ReorderSubgroups`, `ProjectStructure.PutInOrder` | `CategoriesTests.SubgroupsAreReorderedAndTheGeneralOneStaysFirst`, `AnOrderOfSubgroupsNamesEveryNamedOneOnceAndNeverTheGeneralOne`, `OneProjectsRoutesNeverReachAnothersSubgroups` |
+| An item's type changes while no entry names it, in the audit trail, old and new | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AnItemsTypeChangesWhileItHasNoEntriesAndIsOfferedAsItsNewTypeIs`, `AChangedTypeIsInTheAuditTrailOldAndNew`, `AnItemWithAnEntryKeepsItsType`, `OnlyFinanceChangesATypeAndNeverAnotherProjects` |
+| A changed type asks the default columns of the new type, and keeps what a person added | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AChangedTypeAsksTheColumnsOfTheNewTypeAndKeepsWhatAPersonAdded`, `ChangingATypeThereAndBackLeavesOneOfEachColumn` |
 | Every item has a general subgroup | `Item.New`, `StructureSeed.Subgroups` | `CategoriesTests.EveryItemHasAGeneralSubgroup`, `AnItemIsAddedWithItsTypeAtTheEndOfItsCategoryWithItsGeneralGroup` |
 | Every approved project starts with its own copy of the structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.ApprovingCopiesTheTemplateIntoRowsOfTheProjectsOwn`, `ThePublicRegistrationStartsFromTheTemplateWhenApproved` |
 | A waiting or rejected project has no structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.AWaitingOrRejectedProjectHasNoStructure` |

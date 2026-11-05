@@ -4716,14 +4716,98 @@ namespace Redix.Api.Migrations
                             Id = new Guid("4c79b3f8-f4eb-4a61-43c0-62adf90e2c96"),
                             Language = "en",
                             TranslationKeyId = new Guid("99630674-1fe3-fb14-81dd-1a39c1af1703"),
-                            Value = "The item's general group has no name to change."
+                            Value = "The item's general group cannot be renamed or removed."
                         },
                         new
                         {
                             Id = new Guid("ea2b89c2-6ba0-2cfa-8597-955a77052eaf"),
                             Language = "ar",
                             TranslationKeyId = new Guid("99630674-1fe3-fb14-81dd-1a39c1af1703"),
-                            Value = "المجموعة العامة للبند ليس لها اسم يُغيَّر."
+                            Value = "المجموعة العامة للبند لا يُعدَّل اسمها ولا تُحذف."
+                        },
+                        new
+                        {
+                            Id = new Guid("03e6fd0e-410f-cf71-33b2-d8f3a59c5f4b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a2078bfe-1381-d297-c4a1-5766ddcf0629"),
+                            Value = "Entries use this subgroup, so it cannot be removed."
+                        },
+                        new
+                        {
+                            Id = new Guid("f380c4e6-8af7-55c3-1b9e-9e667ea8b473"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a2078bfe-1381-d297-c4a1-5766ddcf0629"),
+                            Value = "هذه المجموعة الفرعية عليها قيود، فلا تُحذف."
+                        },
+                        new
+                        {
+                            Id = new Guid("ae52cbd8-f8c4-48f3-ece8-9a4bc6b23fa8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f7aa01bb-a08c-fd84-a26e-0f4a02368f21"),
+                            Value = "This item has entries, so its type cannot change."
+                        },
+                        new
+                        {
+                            Id = new Guid("cfb7da61-781a-08e3-db09-46e586a455c0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f7aa01bb-a08c-fd84-a26e-0f4a02368f21"),
+                            Value = "هذا البند عليه قيود، فلا يتغير نوعه."
+                        },
+                        new
+                        {
+                            Id = new Guid("2f55b30b-3fa7-74ca-b2bf-7906150e78d8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e84af6cd-4410-441d-7fa4-f1d800eb903e"),
+                            Value = "Change type"
+                        },
+                        new
+                        {
+                            Id = new Guid("bd451b52-7f45-f998-5f7d-02061883875a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e84af6cd-4410-441d-7fa4-f1d800eb903e"),
+                            Value = "تغيير النوع"
+                        },
+                        new
+                        {
+                            Id = new Guid("dad5370a-e85b-e4a7-d61f-bf177539c682"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e74ea481-4167-704c-56e4-d84d5469f3c5"),
+                            Value = "Remove subgroup"
+                        },
+                        new
+                        {
+                            Id = new Guid("289c88c8-4e1b-bb42-de45-d60c1a2af8f3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e74ea481-4167-704c-56e4-d84d5469f3c5"),
+                            Value = "حذف المجموعة الفرعية"
+                        },
+                        new
+                        {
+                            Id = new Guid("84f84050-1de7-71bd-cfb6-3308e4bcf250"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("538f3cd3-08a5-34d3-84c6-ba44f8dbe5c0"),
+                            Value = "Remove this subgroup?"
+                        },
+                        new
+                        {
+                            Id = new Guid("b2cded1d-07e0-eff2-6a6d-bfe6faee7fc7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("538f3cd3-08a5-34d3-84c6-ba44f8dbe5c0"),
+                            Value = "حذف هذه المجموعة الفرعية؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("06165536-e25c-a27a-e773-144bdf8d66fd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("715a4055-0c6f-a9c3-0a38-1af080e61d86"),
+                            Value = "It leaves this item. A subgroup that entries use cannot be removed."
+                        },
+                        new
+                        {
+                            Id = new Guid("8f5e3085-0901-5721-a7b4-959fa2e4ed46"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("715a4055-0c6f-a9c3-0a38-1af080e61d86"),
+                            Value = "تُحذف من هذا البند. ولا تُحذف مجموعة فرعية عليها قيود."
                         },
                         new
                         {
@@ -10088,6 +10172,42 @@ namespace Redix.Api.Migrations
                             Id = new Guid("99630674-1fe3-fb14-81dd-1a39c1af1703"),
                             Description = "",
                             Key = "categories.generalSubgroup"
+                        },
+                        new
+                        {
+                            Id = new Guid("a2078bfe-1381-d297-c4a1-5766ddcf0629"),
+                            Description = "",
+                            Key = "categories.subgroupInUse"
+                        },
+                        new
+                        {
+                            Id = new Guid("f7aa01bb-a08c-fd84-a26e-0f4a02368f21"),
+                            Description = "",
+                            Key = "categories.itemHasEntries"
+                        },
+                        new
+                        {
+                            Id = new Guid("e84af6cd-4410-441d-7fa4-f1d800eb903e"),
+                            Description = "",
+                            Key = "categories.changeType"
+                        },
+                        new
+                        {
+                            Id = new Guid("e74ea481-4167-704c-56e4-d84d5469f3c5"),
+                            Description = "",
+                            Key = "subgroups.delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("538f3cd3-08a5-34d3-84c6-ba44f8dbe5c0"),
+                            Description = "",
+                            Key = "subgroups.deleteQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("715a4055-0c6f-a9c3-0a38-1af080e61d86"),
+                            Description = "",
+                            Key = "subgroups.deleteExplain"
                         },
                         new
                         {
