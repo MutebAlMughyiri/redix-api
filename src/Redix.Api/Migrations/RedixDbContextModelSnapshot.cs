@@ -613,6 +613,30 @@ namespace Redix.Api.Migrations
                     b.ToTable("ContractAttachments", (string)null);
                 });
 
+            modelBuilder.Entity("Redix.Api.Entries.ContractorPaymentDetails", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ContractId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsOutsideContract")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("ContractId");
+
+                    b.ToTable("ContractorPaymentDetails");
+                });
+
             modelBuilder.Entity("Redix.Api.Entries.Entry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8489,6 +8513,272 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("e221131d-1d27-0c1c-9d54-757378cccd48"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("37c64841-3318-0fcc-042d-03697eccd2be"),
+                            Value = "Choose a contract."
+                        },
+                        new
+                        {
+                            Id = new Guid("6b757b47-168d-097f-5021-899839234480"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("37c64841-3318-0fcc-042d-03697eccd2be"),
+                            Value = "اختر عقداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("1290264a-2564-28fb-8e04-7b4441b3e1db"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5d7051fd-39fd-3359-14e6-9d2911d660ee"),
+                            Value = "Add the transfer receipt or the receipt voucher before sending."
+                        },
+                        new
+                        {
+                            Id = new Guid("4bf70892-9364-1c40-ed5d-63d8648f7d62"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5d7051fd-39fd-3359-14e6-9d2911d660ee"),
+                            Value = "أضف إيصال التحويل أو سند الاستلام قبل الإرسال."
+                        },
+                        new
+                        {
+                            Id = new Guid("a2b7234c-1538-9015-0a75-63604bb8e72b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("52314600-de79-f3ab-38c6-5ded7893e819"),
+                            Value = "Enter the invoice's amount before VAT, above zero with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("1eb22d52-0e48-69f4-d7a2-9f97ca41c3cb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("52314600-de79-f3ab-38c6-5ded7893e819"),
+                            Value = "أدخل مبلغ الفاتورة قبل الضريبة، أكبر من صفر وبخانتين عشريتين على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("4e9aeff7-9a8d-2e0b-c1b0-b0dd1ec83844"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("59926246-1594-60fb-c542-7c8b332640fd"),
+                            Value = "Waiting for approval"
+                        },
+                        new
+                        {
+                            Id = new Guid("31c261e4-1282-737d-25f2-357e045933d6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("59926246-1594-60fb-c542-7c8b332640fd"),
+                            Value = "بانتظار الاعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("f0e0e21e-2b4b-24ec-e972-f4b74d91414c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4219e4e9-ba66-9c71-f0de-100b7f9b5040"),
+                            Value = "Contractor payment"
+                        },
+                        new
+                        {
+                            Id = new Guid("f2feb7c7-f067-5b72-acf8-d8b204cd6104"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4219e4e9-ba66-9c71-f0de-100b7f9b5040"),
+                            Value = "دفعة مقاول"
+                        },
+                        new
+                        {
+                            Id = new Guid("9f81435b-711a-b969-5505-46d13786830e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0cd22008-4e3c-cb6e-f801-b4ea43ff3402"),
+                            Value = "Contract"
+                        },
+                        new
+                        {
+                            Id = new Guid("088a6cbf-03c8-3144-17ef-71f61f5c0fcf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0cd22008-4e3c-cb6e-f801-b4ea43ff3402"),
+                            Value = "العقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("46fca222-75ab-9a64-f590-5d22e9323f40"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bd6c01ee-b87b-def0-a719-6f05a583e17d"),
+                            Value = "Remaining after this payment"
+                        },
+                        new
+                        {
+                            Id = new Guid("3a09b055-42a9-3a82-585d-6bfcace2eca4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bd6c01ee-b87b-def0-a719-6f05a583e17d"),
+                            Value = "المتبقي بعد الدفعة"
+                        },
+                        new
+                        {
+                            Id = new Guid("efa82456-f11c-30e9-f1b9-40dfe26a452b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9cd2fa12-f014-2e3f-62db-19295e9680ff"),
+                            Value = "This payment goes beyond the contract's value. You can still save it."
+                        },
+                        new
+                        {
+                            Id = new Guid("bdb6b091-da55-9df8-aec1-87f72da3beb1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9cd2fa12-f014-2e3f-62db-19295e9680ff"),
+                            Value = "هذه الدفعة تتجاوز قيمة العقد. يمكنك الحفظ رغم ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("5007f4c9-6b81-dd0d-1204-2aaba8bced79"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c2c86997-0b2d-9b63-1f90-8a58ab3343d7"),
+                            Value = "Saved, with the contract overrun."
+                        },
+                        new
+                        {
+                            Id = new Guid("19a24d30-08c4-a6c0-a2ce-41e7f4e0de18"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c2c86997-0b2d-9b63-1f90-8a58ab3343d7"),
+                            Value = "حُفظت، والعقد متجاوَز."
+                        },
+                        new
+                        {
+                            Id = new Guid("ef7d5929-ecd8-e00d-4e5b-aa1964e2f9d0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("dddacedd-b79c-aad1-66ba-682a14134923"),
+                            Value = "Payment type"
+                        },
+                        new
+                        {
+                            Id = new Guid("0a8817c6-9ecd-8cb0-c1c7-677aa8de819c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("dddacedd-b79c-aad1-66ba-682a14134923"),
+                            Value = "نوع الدفعة"
+                        },
+                        new
+                        {
+                            Id = new Guid("5d76814e-eef5-9a3b-5973-050a2ef7b76f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("99616917-0265-ac67-cc5f-f394388643ae"),
+                            Value = "Inside the contract"
+                        },
+                        new
+                        {
+                            Id = new Guid("be95c09e-c195-465e-d12a-042ab44453f5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("99616917-0265-ac67-cc5f-f394388643ae"),
+                            Value = "داخل العقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("e5691cf3-c78a-28e8-dd12-e34c8fdda7fc"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("db4f52fd-08a3-49ea-7979-2b9632296230"),
+                            Value = "Outside the contract"
+                        },
+                        new
+                        {
+                            Id = new Guid("112551b6-8585-fdc1-faeb-11431178178a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("db4f52fd-08a3-49ea-7979-2b9632296230"),
+                            Value = "خارج العقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("1c709a19-039b-058f-2c81-4ed5138bcb90"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("37bce61a-7169-feb4-7b00-807d656de57c"),
+                            Value = "Outside the contract: it counts in the item's total, and does not come off the remaining."
+                        },
+                        new
+                        {
+                            Id = new Guid("60e46676-b9a3-ffb7-61e6-e8855338bea0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("37bce61a-7169-feb4-7b00-807d656de57c"),
+                            Value = "خارج العقد: تدخل إجمالي البند ولا تُخصم من المتبقي."
+                        },
+                        new
+                        {
+                            Id = new Guid("b7600b23-02f6-da47-b67c-4ee9751568a2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6f574846-3aa0-5e99-c771-90ff632f264e"),
+                            Value = "Date"
+                        },
+                        new
+                        {
+                            Id = new Guid("616bb83c-44a2-8482-f1b5-636d46e76b39"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6f574846-3aa0-5e99-c771-90ff632f264e"),
+                            Value = "التاريخ"
+                        },
+                        new
+                        {
+                            Id = new Guid("62a48d5e-9f21-2f32-bed4-30bbca2d8e16"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5e37fcb2-fe5d-a524-e249-ca1b8bd74518"),
+                            Value = "Receipt voucher or transfer receipt (required)"
+                        },
+                        new
+                        {
+                            Id = new Guid("3444d843-0b82-f08c-f421-f027bf0cf64c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5e37fcb2-fe5d-a524-e249-ca1b8bd74518"),
+                            Value = "سند الاستلام أو إيصال التحويل (إلزامي)"
+                        },
+                        new
+                        {
+                            Id = new Guid("74760369-b920-3a2f-85d4-c16521ba7eca"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ab7fe299-7369-2a04-a9cf-b39f74bcbca3"),
+                            Value = "Why it is deducted"
+                        },
+                        new
+                        {
+                            Id = new Guid("d493159f-4ba7-6691-202b-9939403bfc4c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ab7fe299-7369-2a04-a9cf-b39f74bcbca3"),
+                            Value = "سبب الخصم"
+                        },
+                        new
+                        {
+                            Id = new Guid("f0ff4b3f-82ca-45a5-7573-21163e6e6e81"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("59744ae4-1def-c1c0-b1c7-a439bc91a988"),
+                            Value = "Say why it is deducted."
+                        },
+                        new
+                        {
+                            Id = new Guid("0c4759ef-5824-4cec-a20f-8c54fbc5e149"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("59744ae4-1def-c1c0-b1c7-a439bc91a988"),
+                            Value = "اذكر سبب الخصم."
+                        },
+                        new
+                        {
+                            Id = new Guid("c6e4f087-55f6-9813-1537-d3ca1ae41cb4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ab22102c-6a28-9715-f794-c861ba7f7797"),
+                            Value = "This payment has a tax invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("1a427fc1-75fe-0119-213c-c42f895e2cc4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ab22102c-6a28-9715-f794-c861ba7f7797"),
+                            Value = "للدفعة فاتورة ضريبية"
+                        },
+                        new
+                        {
+                            Id = new Guid("7a8c69fe-882b-9791-4643-5fb093bf03bd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e970f65e-3490-c978-4180-795440d833be"),
+                            Value = "It enters the VAT statement under the contractor's name."
+                        },
+                        new
+                        {
+                            Id = new Guid("99f01651-9702-ffae-5a56-3fc7db751226"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e970f65e-3490-c978-4180-795440d833be"),
+                            Value = "تدخل كشف الضريبة باسم المقاول."
+                        },
+                        new
+                        {
                             Id = new Guid("c65ff10d-e85f-0923-a7c8-2f7ae4855757"),
                             Language = "en",
                             TranslationKeyId = new Guid("5e14778e-c9c9-847a-d97a-3b0471c0cacd"),
@@ -11215,6 +11505,120 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("37c64841-3318-0fcc-042d-03697eccd2be"),
+                            Description = "",
+                            Key = "expenses.unknownContract"
+                        },
+                        new
+                        {
+                            Id = new Guid("5d7051fd-39fd-3359-14e6-9d2911d660ee"),
+                            Description = "",
+                            Key = "expenses.receiptRequired"
+                        },
+                        new
+                        {
+                            Id = new Guid("52314600-de79-f3ab-38c6-5ded7893e819"),
+                            Description = "",
+                            Key = "expenses.invalidInvoiceAmount"
+                        },
+                        new
+                        {
+                            Id = new Guid("59926246-1594-60fb-c542-7c8b332640fd"),
+                            Description = "",
+                            Key = "contracts.pending"
+                        },
+                        new
+                        {
+                            Id = new Guid("4219e4e9-ba66-9c71-f0de-100b7f9b5040"),
+                            Description = "",
+                            Key = "contractorPayments.new"
+                        },
+                        new
+                        {
+                            Id = new Guid("0cd22008-4e3c-cb6e-f801-b4ea43ff3402"),
+                            Description = "",
+                            Key = "contractorPayments.contract"
+                        },
+                        new
+                        {
+                            Id = new Guid("bd6c01ee-b87b-def0-a719-6f05a583e17d"),
+                            Description = "",
+                            Key = "contractorPayments.remainingAfter"
+                        },
+                        new
+                        {
+                            Id = new Guid("9cd2fa12-f014-2e3f-62db-19295e9680ff"),
+                            Description = "",
+                            Key = "contractorPayments.overrun"
+                        },
+                        new
+                        {
+                            Id = new Guid("c2c86997-0b2d-9b63-1f90-8a58ab3343d7"),
+                            Description = "",
+                            Key = "contractorPayments.savedOverrun"
+                        },
+                        new
+                        {
+                            Id = new Guid("dddacedd-b79c-aad1-66ba-682a14134923"),
+                            Description = "",
+                            Key = "contractorPayments.kind"
+                        },
+                        new
+                        {
+                            Id = new Guid("99616917-0265-ac67-cc5f-f394388643ae"),
+                            Description = "",
+                            Key = "contractorPayments.inside"
+                        },
+                        new
+                        {
+                            Id = new Guid("db4f52fd-08a3-49ea-7979-2b9632296230"),
+                            Description = "",
+                            Key = "contractorPayments.outside"
+                        },
+                        new
+                        {
+                            Id = new Guid("37bce61a-7169-feb4-7b00-807d656de57c"),
+                            Description = "",
+                            Key = "contractorPayments.outsideExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("6f574846-3aa0-5e99-c771-90ff632f264e"),
+                            Description = "",
+                            Key = "contractorPayments.date"
+                        },
+                        new
+                        {
+                            Id = new Guid("5e37fcb2-fe5d-a524-e249-ca1b8bd74518"),
+                            Description = "",
+                            Key = "contractorPayments.receipt"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab7fe299-7369-2a04-a9cf-b39f74bcbca3"),
+                            Description = "",
+                            Key = "contractorPayments.deductionReason"
+                        },
+                        new
+                        {
+                            Id = new Guid("59744ae4-1def-c1c0-b1c7-a439bc91a988"),
+                            Description = "",
+                            Key = "contractorPayments.deductionNeedsReason"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab22102c-6a28-9715-f794-c861ba7f7797"),
+                            Description = "",
+                            Key = "contractorPayments.hasInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("e970f65e-3490-c978-4180-795440d833be"),
+                            Description = "",
+                            Key = "contractorPayments.invoiceExplain"
+                        },
+                        new
+                        {
                             Id = new Guid("5e14778e-c9c9-847a-d97a-3b0471c0cacd"),
                             Description = "",
                             Key = "expenses.creditNote"
@@ -11416,6 +11820,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Contracts.Contract", null)
                         .WithMany()
                         .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.ContractorPaymentDetails", b =>
+                {
+                    b.HasOne("Redix.Api.Contracts.Contract", null)
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithOne()
+                        .HasForeignKey("Redix.Api.Entries.ContractorPaymentDetails", "EntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

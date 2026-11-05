@@ -1,7 +1,5 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
@@ -68,13 +66,10 @@ public static class ExpensesEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Record(Guid projectId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        if (request.Id == Guid.Empty)
+        var (status, idRefusal) = await EntryRecording.RefusalOfIdAsync(request.Id, db);
+        if (idRefusal.Length > 0)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidEntryId");
-        }
-        if (await db.Entries.AnyAsync(entry => entry.Id == request.Id))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "EntryExists");
+            return Refusal.Of(status, idRefusal);
         }
 
         var userId = AccessTokens.UserIdOf(principal);
@@ -96,7 +91,8 @@ public static class ExpensesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownSupplier");
         }
 
-        var refusal = await RefusalOfWhatItNamesAsync(projectId, request, userId, held, db);
+        var refusal = await db.Set<Unit>().AnyAsync(unit => unit.Id == request.UnitId && unit.ProjectId == projectId) ? "" : "UnknownUnit";
+        refusal = refusal.Length > 0 ? refusal : await EntryRecording.RefusalOfPaymentAsync(projectId, request, userId, held, db);
         refusal = refusal.Length > 0 ? refusal : request.RefusalOfTyped();
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
         refusal = refusal.Length > 0 ? refusal : RefusalOfDates(request, project.StartDate, Entry.Today(time));
@@ -122,7 +118,7 @@ public static class ExpensesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "CreditNoteAboveOriginal");
         }
 
-        var (reason, columnKey) = RefusalOfColumns(request, item.Columns.Where(column => !column.IsHidden).ToList());
+        var (reason, columnKey) = EntryRecording.RefusalOfColumns(request, item.Columns.Where(column => !column.IsHidden).ToList());
         if (reason.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, reason, "columnKey", columnKey);
@@ -132,13 +128,13 @@ public static class ExpensesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvoiceRequired");
         }
 
-        if (request.AttachmentId != Guid.Empty && await IsFileOnAnEntryAsync(projectId, request.AttachmentId, db))
+        if (request.AttachmentId != Guid.Empty && await EntryRecording.IsFileOnAnEntryAsync(projectId, request.AttachmentId, db))
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
         }
         if (!request.ConfirmDuplicate && !request.IsWithoutInvoice())
         {
-            var earlier = await EarlierEntryAsync(supplier, request.InvoiceNumber.Trim(), access, db);
+            var earlier = await EntryRecording.EarlierEntryAsync(supplier, request.InvoiceNumber.Trim(), access, db);
             if (earlier is not null)
             {
                 return Refusal.Of(StatusCodes.Status409Conflict, "DuplicateInvoice", "earlier", earlier);
@@ -147,54 +143,8 @@ public static class ExpensesEndpoints
 
         var kept = request.IsCreditNote ? figures.Negated() : figures;
         var (entry, details) = Build(request, projectId, subgroup.Id, kept, userId, time.GetUtcNow().UtcDateTime);
-        db.Add(entry);
-        details.ForEach(detail => db.Add(detail));
-        db.Audit(entry, request.Submit ? AuditAction.Submit : AuditAction.Create, userId, entry.CreatedAt);
-        details.ForEach(detail => db.Audit(detail, AuditAction.Create, userId, entry.CreatedAt));
-        await db.SaveChangesAsync();
+        await EntryRecording.SaveAsync(entry, details, userId, db);
         return Results.Created($"/projects/{projectId}/expenses/{entry.Id}", new ExpenseView(entry.Id, entry.Status, kept.AmountBeforeDiscount, kept.Discount, kept.AmountAfterDiscount, kept.Vat, kept.Total, entry.Amount));
-    }
-
-    private static async Task<string> RefusalOfWhatItNamesAsync(Guid projectId, ExpenseRequest request, Guid userId, List<Permission> held, RedixDbContext db)
-    {
-        if (!await db.Set<Unit>().AnyAsync(unit => unit.Id == request.UnitId && unit.ProjectId == projectId))
-        {
-            return "UnknownUnit";
-        }
-        if (!await db.PaymentMethods.AnyAsync(method => method.Id == request.PaymentMethodId && method.ProjectId == projectId && method.IsActive))
-        {
-            return "UnknownPaymentMethod";
-        }
-        var account = await db.Accounts.Include(row => row.Custodians).SingleOrDefaultAsync(row => row.Id == request.AccountId && row.ProjectId == projectId);
-        if (account is null || !account.IsOfferedTo(userId, held.Contains(Permission.ChargeAnyAccount)))
-        {
-            return "AccountNotOffered";
-        }
-        return request.AttachmentId == Guid.Empty || await db.Attachments.AnyAsync(attachment => attachment.Id == request.AttachmentId && attachment.ProjectId == projectId) ? "" : "UnknownAttachment";
-    }
-
-    private static async Task<bool> IsFileOnAnEntryAsync(Guid projectId, Guid attachmentId, RedixDbContext db)
-    {
-        var hash = await db.Attachments.Where(attachment => attachment.Id == attachmentId).Select(attachment => attachment.Sha256).SingleAsync();
-        return await db.EntryAttachments.AnyAsync(link => db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
-    }
-
-    /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/> or from whoever holds its VAT number in another project, one the caller can read if there is any.</summary>
-    private static async Task<EarlierEntryView?> EarlierEntryAsync(Supplier supplier, string number, UserAccess access, RedixDbContext db)
-    {
-        var rows = await (
-            from invoice in db.Invoices
-            join purchase in db.PurchaseDetails on invoice.EntryId equals purchase.EntryId
-            join named in db.Suppliers on purchase.SupplierId equals named.Id
-            join project in db.Projects on named.ProjectId equals project.Id
-            where invoice.Number == number && (named.Id == supplier.Id || (supplier.VatNumber != "" && named.VatNumber == supplier.VatNumber))
-            select new { ProjectId = project.Id, ProjectName = project.Name, invoice.EntryId, invoice.InvoiceDate, invoice.Total }).ToListAsync();
-        if (rows.Count == 0)
-        {
-            return null;
-        }
-        var visible = rows.OrderBy(row => row.EntryId).FirstOrDefault(row => access.In(row.ProjectId).Contains(Permission.ReadProject));
-        return visible is null ? new EarlierEntryView(false, "", default, 0) : new EarlierEntryView(true, visible.ProjectName, visible.InvoiceDate, visible.Total);
     }
 
     private static string RefusalOfDates(ExpenseRequest request, DateOnly projectStart, DateOnly today)
@@ -206,69 +156,18 @@ public static class ExpensesEndpoints
         return (request.PaymentDate == default && !request.IsWithoutInvoice()) || Entry.IsAcceptableDate(request.PaymentDate, projectStart, today) ? "" : "InvalidPaymentDate";
     }
 
-    private static (string Reason, string ColumnKey) RefusalOfColumns(ExpenseRequest request, List<ItemColumn> columns)
-    {
-        foreach (var (key, value) in request.CustomValuesKept())
-        {
-            var column = columns.SingleOrDefault(row => row.Key == key && row.IsCustom);
-            if (column is null)
-            {
-                return ("UnknownColumn", key);
-            }
-            if (!column.Accepts(value))
-            {
-                return ("InvalidColumnValue", key);
-            }
-        }
-        var missing = request.Submit ? columns.FirstOrDefault(column => column.IsRequired && !request.Answers(column)) : null;
-        return missing is null ? ("", "") : ("RequiredColumnMissing", missing.Key);
-    }
-
     private static (Entry Entry, List<object> Details) Build(ExpenseRequest request, Guid projectId, Guid subgroupId, InvoiceFigures kept, Guid userId, DateTime at)
     {
-        var entry = new Entry
-        {
-            Id = request.Id,
-            ProjectId = projectId,
-            Kind = EntryKind.Purchase,
-            Status = request.Submit ? EntryStatus.PendingApproval : EntryStatus.Draft,
-            EntryDate = request.PaymentDate == default ? request.InvoiceDate : request.PaymentDate,
-            Amount = request.PaidOf(kept),
-            AccountId = request.AccountId,
-            Notes = request.Notes.Trim(),
-            CreatedByUserId = userId,
-            CreatedAt = at,
-        };
+        var entryDate = request.PaymentDate == default ? request.InvoiceDate : request.PaymentDate;
+        var entry = EntryRecording.EntryOf(request, projectId, EntryKind.Purchase, entryDate, request.PaidOf(kept), userId, at);
         List<object> details =
         [
-            new ExpenseDetails
-            {
-                EntryId = entry.Id,
-                ItemId = request.ItemId,
-                SubgroupId = subgroupId,
-                UnitId = request.UnitId,
-                PaymentMethodId = request.PaymentMethodId,
-                BankFees = request.BankFees,
-                WithoutInvoiceReason = request.WithoutInvoiceReason.Trim(),
-                CustomValues = JsonSerializer.Serialize(request.CustomValuesKept()),
-            },
+            EntryRecording.ExpenseDetailsOf(request, request.ItemId, subgroupId, request.UnitId),
             new PurchaseDetails { EntryId = entry.Id, SupplierId = request.SupplierId, Product = request.Product.Trim(), UnitPrice = request.UnitPrice, Quantity = request.Quantity },
         ];
         if (!request.IsWithoutInvoice())
         {
-            details.Add(new Invoice
-            {
-                EntryId = entry.Id,
-                Number = request.InvoiceNumber.Trim(),
-                InvoiceDate = request.InvoiceDate,
-                AmountBeforeDiscount = kept.AmountBeforeDiscount,
-                Discount = kept.Discount,
-                AmountAfterDiscount = kept.AmountAfterDiscount,
-                Vat = kept.Vat,
-                Total = kept.Total,
-                IsCreditNote = request.IsCreditNote,
-                VatPeriodStart = Invoice.QuarterStartOf(request.InvoiceDate),
-            });
+            details.Add(EntryRecording.InvoiceOf(entry.Id, request.InvoiceNumber.Trim(), request.InvoiceDate, kept, request.IsCreditNote));
         }
         if (request.OriginalEntryId != Guid.Empty)
         {

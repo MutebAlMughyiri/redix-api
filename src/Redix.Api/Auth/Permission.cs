@@ -33,7 +33,7 @@ public enum Permission
     /// <summary>Spends from any active account of one project; without it, only from those the user holds (BRS open question 4). The entry use cases refuse the rest.</summary>
     ChargeAnyAccount,
 
-    /// <summary>Records a purchase in one project's ledger (FR-08).</summary>
+    /// <summary>Records a purchase or a contractor payment in one project's ledger (FR-08, FR-12).</summary>
     RecordEntries,
 
     /// <summary>Keeps a picture or a PDF in one project, for an entry or a contract (FR-09).</summary>

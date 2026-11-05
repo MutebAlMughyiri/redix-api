@@ -1,0 +1,434 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Redix.Api.Accounts;
+using Redix.Api.Audit;
+using Redix.Api.Contracts;
+using Redix.Api.Entries;
+using Redix.Api.Structure;
+
+namespace Redix.Api.Tests;
+
+[Collection(DatabaseCollection.Name)]
+public class ContractorPaymentsTests(MigratedApiFactory factory)
+{
+    private sealed record Setup(Ledger Ledger, Guid ContractId, Guid ItemId);
+
+    private async Task<Setup> ContractAsync(decimal value = 34000m, bool isOpenValue = false)
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        return await ContractOfAsync(ledger, value, isOpenValue);
+    }
+
+    private static async Task<Setup> ContractOfAsync(Ledger ledger, decimal value, bool isOpenValue)
+    {
+        var item = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType={ItemType.ContractorPayments}", Ledger.Json))!.SelectMany(category => category.Items).First();
+        var response = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, ledger.Project.Units[0].Id, value, isOpenValue), Ledger.Json);
+        response.EnsureSuccessStatusCode();
+        var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Ledger.Json))!.Last();
+        return new Setup(ledger, contract.Id, item.Id);
+    }
+
+    private static ContractorPaymentRequest Payment(Setup setup, decimal amount = 3000m) => new(Guid.CreateVersion7())
+    {
+        ContractId = setup.ContractId,
+        PaymentDate = setup.Ledger.Today,
+        Amount = amount,
+        PaymentMethodId = setup.Ledger.MethodId,
+        AccountId = setup.Ledger.AccountId,
+    };
+
+    private static Task<HttpResponseMessage> PostAsync(Setup setup, ContractorPaymentRequest request, HttpClient? client = null) =>
+        (client ?? setup.Ledger.Client).PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/contractor-payments", request, Ledger.Json);
+
+    private static async Task<ContractorPaymentView> RecordAsync(Setup setup, ContractorPaymentRequest request)
+    {
+        var response = await PostAsync(setup, request);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        return (await response.Content.ReadFromJsonAsync<ContractorPaymentView>(Ledger.Json))!;
+    }
+
+    /// <summary>A payment recorded through the API and sent with its receipt, and then approved as UC-032 "Approve or reject entries" will: by changing its status.</summary>
+    private static async Task<ContractorPaymentRequest> ApprovedAsync(Setup setup, decimal amount, bool isOutsideContract = false)
+    {
+        var request = Payment(setup, amount) with { IsOutsideContract = isOutsideContract, AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
+        await RecordAsync(setup, request);
+        await setup.Ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
+        return request;
+    }
+
+    private static async Task<ContractView> ContractOfAsync(Setup setup) =>
+        (await setup.Ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{setup.Ledger.ProjectId}/contracts", Ledger.Json))!.Single(row => row.Id == setup.ContractId);
+
+    private static async Task AssertRefusedAsync(Setup setup, ContractorPaymentRequest request, string code)
+    {
+        var response = await PostAsync(setup, request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(code, await Ledger.CodeOf(response));
+    }
+
+    /// <summary>The item's total as the design defines it (BR-02): the approved entries of the item, by Entries.Amount.</summary>
+    private static Task<decimal> ItemTotalAsync(Setup setup) => setup.Ledger.ReadAsync(db => (
+        from details in db.ExpenseDetails
+        join entry in db.Entries on details.EntryId equals entry.Id
+        where details.ItemId == setup.ItemId && entry.ProjectId == setup.Ledger.ProjectId && entry.Status == EntryStatus.Approved
+        select entry.Amount).SumAsync());
+
+    [Fact]
+    public async Task AC_07_1_ThePaymentsOfA34000ContractLeaveItsRemainingAndOneMoreOverrunsItWithAnAlertAndIsSaved()
+    {
+        var setup = await ContractAsync();
+        await ApprovedAsync(setup, 30000m);
+
+        var before = await ContractOfAsync(setup);
+        Assert.Equal(30000m, before.Paid);
+        Assert.Equal(4000m, before.Remaining);
+        Assert.False(before.IsOverrun);
+
+        var request = Payment(setup, 5000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
+        var view = await RecordAsync(setup, request);
+
+        Assert.Equal(EntryStatus.PendingApproval, view.Status);
+        Assert.Equal(-1000m, view.RemainingAfter);
+        Assert.True(view.IsOverrun);
+        Assert.Equal(30000m, view.Paid);
+
+        await setup.Ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
+        var after = await ContractOfAsync(setup);
+        Assert.Equal(35000m, after.Paid);
+        Assert.Equal(-1000m, after.Remaining);
+        Assert.True(after.IsOverrun);
+    }
+
+    [Fact]
+    public async Task AC_07_2_AnOpenValueContractAddsUpWithNoRemainingAndNoAlert()
+    {
+        var setup = await ContractAsync(0m, isOpenValue: true);
+        await ApprovedAsync(setup, 12000m);
+
+        var view = await RecordAsync(setup, Payment(setup, 5000m));
+        var contract = await ContractOfAsync(setup);
+
+        Assert.Equal(0m, view.RemainingAfter);
+        Assert.False(view.IsOverrun);
+        Assert.Equal(12000m, contract.Paid);
+        Assert.Equal(0m, contract.Remaining);
+        Assert.False(contract.IsOverrun);
+    }
+
+    [Fact]
+    public async Task BR_10_OnlyAnApprovedPaymentIsPaidAndAPendingOneWaitsBesideIt()
+    {
+        var setup = await ContractAsync();
+        var request = Payment(setup, 5000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
+
+        await RecordAsync(setup, request);
+
+        var pending = await ContractOfAsync(setup);
+        Assert.Equal(0m, pending.Paid);
+        Assert.Equal(5000m, pending.Pending);
+        Assert.Equal(34000m, pending.Remaining);
+
+        await setup.Ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
+
+        var approved = await ContractOfAsync(setup);
+        Assert.Equal(5000m, approved.Paid);
+        Assert.Equal(0m, approved.Pending);
+        Assert.Equal(29000m, approved.Remaining);
+    }
+
+    [Fact]
+    public async Task ADraftAndARejectedPaymentCountForNothing()
+    {
+        var setup = await ContractAsync();
+        await RecordAsync(setup, Payment(setup, 5000m));
+        var rejected = await ApprovedAsync(setup, 7000m);
+        await setup.Ledger.SetStatusAsync(rejected.Id, EntryStatus.Rejected);
+
+        var contract = await ContractOfAsync(setup);
+
+        Assert.Equal(0m, contract.Paid);
+        Assert.Equal(0m, contract.Pending);
+    }
+
+    [Fact]
+    public async Task TheAlertWhileEnteringCountsWhatWaitsSoTwoPendingPaymentsCannotOverrunUnseen()
+    {
+        var setup = await ContractAsync();
+        await RecordAsync(setup, Payment(setup, 30000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
+
+        var view = await RecordAsync(setup, Payment(setup, 5000m));
+
+        Assert.Equal(0m, view.Paid);
+        Assert.Equal(30000m, view.Pending);
+        Assert.Equal(-1000m, view.RemainingAfter);
+        Assert.True(view.IsOverrun);
+    }
+
+    [Fact]
+    public async Task AC_13_1_APaymentOutsideTheContractEntersTheItemTotalAndLeavesTheRemainingAlone()
+    {
+        var setup = await ContractAsync();
+        await ApprovedAsync(setup, 1000m);
+
+        var view = await RecordAsync(setup, Payment(setup, 2000m) with { IsOutsideContract = true });
+        Assert.Equal(33000m, view.RemainingAfter);
+        await ApprovedAsync(setup, 2000m, isOutsideContract: true);
+
+        var contract = await ContractOfAsync(setup);
+        Assert.Equal(1000m, contract.Paid);
+        Assert.Equal(33000m, contract.Remaining);
+        Assert.Equal(3000m, await ItemTotalAsync(setup));
+    }
+
+    [Fact]
+    public async Task AC_14_1_ADeductionOf136ReducesTheItemTotalAndThePaidOnTheContract()
+    {
+        var setup = await ContractAsync();
+        await ApprovedAsync(setup, 1000m);
+        var deduction = Payment(setup, -136m) with { WithoutInvoiceReason = "خصم من المبلط", Submit = true };
+
+        await RecordAsync(setup, deduction);
+        await setup.Ledger.SetStatusAsync(deduction.Id, EntryStatus.Approved);
+
+        var contract = await ContractOfAsync(setup);
+        Assert.Equal(864m, contract.Paid);
+        Assert.Equal(33136m, contract.Remaining);
+        Assert.Equal(864m, await ItemTotalAsync(setup));
+    }
+
+    [Fact]
+    public async Task ADeductionSaysWhyInPlaceOfAReceiptAndOnlyADeductionMay()
+    {
+        var setup = await ContractAsync();
+
+        await AssertRefusedAsync(setup, Payment(setup, -136m), "deductionNeedsReason");
+        await AssertRefusedAsync(setup, Payment(setup, 136m) with { WithoutInvoiceReason = "نسيت الإيصال" }, "invalidWithoutInvoiceReason");
+        await AssertRefusedAsync(setup, Payment(setup, -136m) with { WithoutInvoiceReason = "خصم", AttachmentId = await setup.Ledger.FileAsync() }, "invoiceAndReason");
+        await AssertRefusedAsync(setup, Payment(setup, -136m) with { WithoutInvoiceReason = "خصم", InvoiceNumber = "F-1", InvoiceDate = setup.Ledger.Today, InvoiceAmountBeforeVat = 100m }, "invalidInvoiceNumber");
+    }
+
+    [Fact]
+    public async Task AC_12_1_SendingNeedsTheReceiptAndADraftCanWaitForIt()
+    {
+        var setup = await ContractAsync();
+
+        await AssertRefusedAsync(setup, Payment(setup) with { Submit = true }, "receiptRequired");
+
+        var draft = await RecordAsync(setup, Payment(setup));
+        Assert.Equal(EntryStatus.Draft, draft.Status);
+    }
+
+    [Fact]
+    public async Task TheReceiptIsLinkedAsAReceiptAndAFileAlreadyOnAnEntryIsRefused()
+    {
+        var setup = await ContractAsync();
+        var fileId = await setup.Ledger.FileAsync();
+        var request = Payment(setup) with { AttachmentId = fileId, Submit = true };
+
+        await RecordAsync(setup, request);
+
+        var link = await setup.Ledger.ReadAsync(db => db.EntryAttachments.SingleAsync(row => row.EntryId == request.Id));
+        Assert.Equal(EntryAttachmentRole.Receipt, link.Role);
+        var again = await PostAsync(setup, Payment(setup) with { AttachmentId = fileId });
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Equal("invoiceAlreadyAttached", await Ledger.CodeOf(again));
+    }
+
+    [Fact]
+    public async Task ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup()
+    {
+        var setup = await ContractAsync();
+        var request = Payment(setup);
+
+        await RecordAsync(setup, request);
+
+        var (entry, details, payment) = await setup.Ledger.ReadAsync(async db => (
+            await db.Entries.SingleAsync(row => row.Id == request.Id),
+            await db.ExpenseDetails.SingleAsync(row => row.EntryId == request.Id),
+            await db.ContractorPaymentDetails.SingleAsync(row => row.EntryId == request.Id)));
+        Assert.Equal(EntryKind.ContractorPayment, entry.Kind);
+        Assert.Equal(3000m, entry.Amount);
+        Assert.Equal(setup.Ledger.Today, entry.EntryDate);
+        Assert.Equal(setup.ItemId, details.ItemId);
+        Assert.Equal(setup.Ledger.Project.Units[0].Id, details.UnitId);
+        Assert.Equal(setup.ContractId, payment.ContractId);
+        Assert.False(payment.IsOutsideContract);
+        var subgroup = await setup.Ledger.ReadAsync(db => db.Set<Subgroup>().SingleAsync(row => row.Id == details.SubgroupId));
+        Assert.Equal(Subgroup.GeneralName, subgroup.Name);
+    }
+
+    [Fact]
+    public async Task ATaxInvoiceEntersTheStatementWithItsVatComputedHereAndTheContractorAsItsSupplier()
+    {
+        var setup = await ContractAsync();
+        var request = Payment(setup, 1150m) with { InvoiceNumber = "T-1", InvoiceDate = setup.Ledger.Today, InvoiceAmountBeforeVat = 1000m };
+
+        var view = await RecordAsync(setup, request);
+
+        Assert.Equal(150m, view.Vat);
+        var invoice = await setup.Ledger.ReadAsync(db => db.Invoices.SingleAsync(row => row.EntryId == request.Id));
+        Assert.Equal("T-1", invoice.Number);
+        Assert.Equal(1000m, invoice.AmountAfterDiscount);
+        Assert.Equal(150m, invoice.Vat);
+        Assert.Equal(1150m, invoice.Total);
+        Assert.Equal(Invoice.QuarterStartOf(setup.Ledger.Today), invoice.VatPeriodStart);
+    }
+
+    [Fact]
+    public async Task APaymentWithNoTaxInvoiceHasNoInvoiceRow()
+    {
+        var setup = await ContractAsync();
+        var request = Payment(setup);
+
+        var view = await RecordAsync(setup, request);
+
+        Assert.Equal(0m, view.Vat);
+        Assert.False(await setup.Ledger.ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id)));
+    }
+
+    [Fact]
+    public async Task AC_17_1_TheSameInvoiceNumberFromTheContractorWarnsOnAPaymentAndOnAPurchase()
+    {
+        var setup = await ContractAsync();
+        var first = Payment(setup) with { InvoiceNumber = "T-2", InvoiceDate = setup.Ledger.Today, InvoiceAmountBeforeVat = 100m };
+        await RecordAsync(setup, first);
+
+        var again = await PostAsync(setup, first with { Id = Guid.CreateVersion7() });
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Equal("duplicateInvoice", await Ledger.CodeOf(again));
+        await RecordAsync(setup, first with { Id = Guid.CreateVersion7(), ConfirmDuplicate = true });
+
+        var purchase = await setup.Ledger.PostAsync(setup.Ledger.Purchase(100m, "T-2"));
+        Assert.Equal(HttpStatusCode.Conflict, purchase.StatusCode);
+    }
+
+    [Fact]
+    public async Task WhatWasTypedIsRefusedWhenItCannotBeKept()
+    {
+        var setup = await ContractAsync();
+        var today = setup.Ledger.Today;
+
+        await AssertRefusedAsync(setup, Payment(setup, 0m), "invalidAmount");
+        await AssertRefusedAsync(setup, Payment(setup, 1.234m), "invalidAmount");
+        await AssertRefusedAsync(setup, Payment(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");
+        await AssertRefusedAsync(setup, Payment(setup) with { PaymentDate = default }, "invalidPaymentDate");
+        await AssertRefusedAsync(setup, Payment(setup) with { PaymentDate = today.AddDays(1) }, "invalidPaymentDate");
+        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = new string('1', Invoice.NumberMaxLength + 1), InvoiceDate = today, InvoiceAmountBeforeVat = 1m }, "invalidInvoiceNumber");
+        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = "T-3", InvoiceDate = today.AddDays(1), InvoiceAmountBeforeVat = 1m }, "invalidInvoiceDate");
+        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = "T-3", InvoiceDate = today }, "invalidInvoiceAmount");
+        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = "T-3", InvoiceDate = today, InvoiceAmountBeforeVat = Money.Largest }, "invalidInvoiceAmount");
+    }
+
+    [Fact]
+    public async Task ADisabledContractOrOneOfAnotherProjectIsRefused()
+    {
+        var setup = await ContractAsync();
+        var other = await ContractAsync();
+
+        await AssertRefusedAsync(setup, Payment(setup) with { ContractId = other.ContractId }, "unknownContract");
+        (await setup.Ledger.Client.PostAsync($"/projects/{setup.Ledger.ProjectId}/contracts/{setup.ContractId}/disable", null)).EnsureSuccessStatusCode();
+        await AssertRefusedAsync(setup, Payment(setup), "unknownContract");
+    }
+
+    [Fact]
+    public async Task AC_38_1_AContractWhoseItemIsDisabledTakesNoPayment()
+    {
+        var setup = await ContractAsync();
+        await factory.WithDatabaseAsync(db => db.Items.Where(item => item.Id == setup.ItemId).ExecuteUpdateAsync(item => item.SetProperty(row => row.IsActive, false)));
+
+        await AssertRefusedAsync(setup, Payment(setup), "itemNotOffered");
+    }
+
+    [Fact]
+    public async Task OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther()
+    {
+        var setup = await ContractAsync();
+        var (field, fieldId) = await setup.Ledger.MemberAsync("users.roleField");
+
+        var refused = await PostAsync(setup, Payment(setup), field);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("accountNotOffered", await Ledger.CodeOf(refused));
+
+        (await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = fieldId }, Ledger.Json)).EnsureSuccessStatusCode();
+        var custody = (await setup.Ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{setup.Ledger.ProjectId}/accounts", Ledger.Json))!.Single(account => account.Name == "عهدة نواف");
+
+        var response = await PostAsync(setup, Payment(setup) with { AccountId = custody.Id }, field);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task FR_41_ARequiredCustomColumnIsAskedOfAPaymentWhenSending()
+    {
+        var setup = await ContractAsync();
+        (await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/items/{setup.ItemId}/columns", new AddColumnRequest("المرحلة", ColumnDataType.Text, true, false, []), Ledger.Json)).EnsureSuccessStatusCode();
+        var key = (await setup.Ledger.Client.GetFromJsonAsync<List<ColumnView>>($"/projects/{setup.Ledger.ProjectId}/items/{setup.ItemId}/columns", Ledger.Json))!.Single(column => column.Name == "المرحلة").Key;
+        var request = Payment(setup) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
+
+        var refused = await PostAsync(setup, request);
+        var answer = await refused.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("requiredColumnMissing", answer.GetProperty("code").GetString());
+        Assert.Equal(key, answer.GetProperty("columnKey").GetString());
+
+        await RecordAsync(setup, request with { CustomValues = new() { [key] = "الدور الأرضي" } });
+    }
+
+    [Fact]
+    public async Task FR_41_WhatOnlyAPurchaseHoldsIsNeverAskedOfAPayment()
+    {
+        var setup = await ContractAsync();
+        await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == setup.ItemId && column.Key == "product").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
+
+        var view = await RecordAsync(setup, Payment(setup) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
+
+        Assert.Equal(EntryStatus.PendingApproval, view.Status);
+    }
+
+    [Fact]
+    public async Task AC_16_3_AnIdAlreadyUsedSavesNothingNewAndAnEmptyOneIsRefused()
+    {
+        var setup = await ContractAsync();
+        var request = Payment(setup);
+        await RecordAsync(setup, request);
+
+        Assert.Equal(HttpStatusCode.Conflict, (await PostAsync(setup, request)).StatusCode);
+        await AssertRefusedAsync(setup, request with { Id = Guid.Empty }, "invalidEntryId");
+    }
+
+    [Theory]
+    [InlineData("users.roleReader")]
+    [InlineData("users.roleManager")]
+    public async Task WhoHoldsNoRecordEntriesCannotRecordAPayment(string role)
+    {
+        var setup = await ContractAsync();
+        var (client, _) = await setup.Ledger.MemberAsync(role);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await PostAsync(setup, Payment(setup), client)).StatusCode);
+    }
+
+    [Fact]
+    public async Task AC_04_1_AFinishedProjectRecordsNoPayment()
+    {
+        var setup = await ContractAsync();
+        (await setup.Ledger.Client.PostAsync($"/projects/{setup.Ledger.ProjectId}/close", null)).EnsureSuccessStatusCode();
+
+        var response = await PostAsync(setup, Payment(setup));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("projectFinished", await Ledger.CodeOf(response));
+    }
+
+    [Fact]
+    public async Task FR_21_APaymentIsInTheAuditTrail()
+    {
+        var setup = await ContractAsync();
+        var request = Payment(setup) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
+
+        await RecordAsync(setup, request);
+
+        var trail = await factory.AuditTrailOfAsync(request.Id);
+        Assert.Equal(["Entries", "ExpenseDetails", "ContractorPaymentDetails", "EntryAttachments"], trail.Select(record => record.TableName));
+        Assert.Equal(AuditAction.Submit, trail[0].Action);
+    }
+}

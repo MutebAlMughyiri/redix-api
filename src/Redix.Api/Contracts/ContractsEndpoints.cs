@@ -34,14 +34,15 @@ public static class ContractsEndpoints
             join item in db.Items on contract.ItemId equals item.Id
             join unit in db.Set<Unit>() on contract.UnitId equals unit.Id
             where contract.ProjectId == projectId
-            select new { Contract = contract, SupplierName = supplier.Name, ItemName = item.Name, UnitName = unit.Name }).ToListAsync();
+            select new { Contract = contract, SupplierName = supplier.Name, supplier.VatNumber, ItemName = item.Name, UnitName = unit.Name }).ToListAsync();
         var documents = (await (
             from link in db.Set<ContractAttachment>()
             join attachment in db.Attachments on link.AttachmentId equals attachment.Id
             where attachment.ProjectId == projectId
             select new { link.ContractId, Attachment = attachment }).ToListAsync()).OrderBy(row => row.Attachment.Id).ToLookup(row => row.ContractId, row => AttachmentView.Of(row.Attachment));
+        var money = await ContractMoney.OfProjectAsync(projectId, db);
         return rows.OrderBy(row => row.Contract.Id)
-            .Select(row => ContractView.Of(row.Contract, row.Contract.Paid, row.SupplierName, row.ItemName, row.UnitName) with { Documents = [.. documents[row.Contract.Id]] }).ToList();
+            .Select(row => ContractView.Of(row.Contract, money.GetValueOrDefault(row.Contract.Id), row.SupplierName, row.ItemName, row.UnitName) with { SupplierVatNumber = row.VatNumber, Documents = [.. documents[row.Contract.Id]] }).ToList();
     }
 
     /// <summary>
@@ -191,6 +192,7 @@ public record AddContractRequest(Guid SupplierId, Guid ItemId, Guid UnitId, deci
 
 /// <summary>A contract as the app shows it.</summary>
 /// <param name="Id">The contract's id.</param>
+/// <param name="ItemId">The item it is for, whose columns a payment asks.</param>
 /// <param name="SupplierName">The contractor's name.</param>
 /// <param name="ItemName">The item's name.</param>
 /// <param name="UnitName">The unit's name.</param>
@@ -199,16 +201,20 @@ public record AddContractRequest(Guid SupplierId, Guid ItemId, Guid UnitId, deci
 /// <param name="UnitPrice">The price of one unit of work; 0 when not used.</param>
 /// <param name="Quantity">How many units of work; 0 when not used.</param>
 /// <param name="Notes">Notes on the contract and its amendments; empty when none.</param>
-/// <param name="Paid">What has been paid inside the contract.</param>
+/// <param name="Paid">What has been paid inside the contract, which counts only once approved (BR-10).</param>
+/// <param name="Pending">What waits for approval inside the contract, shown beside what was paid.</param>
 /// <param name="Remaining">The value less what was paid, below zero once overrun; 0 for an open-value contract.</param>
 /// <param name="IsOverrun">Whether what was paid goes beyond the value, which shows an alert.</param>
 /// <param name="IsActive">False once disabled.</param>
-public record ContractView(Guid Id, string SupplierName, string ItemName, string UnitName, decimal Value, bool IsOpenValue, decimal UnitPrice, decimal Quantity, string Notes, decimal Paid, decimal Remaining, bool IsOverrun, bool IsActive)
+public record ContractView(Guid Id, Guid ItemId, string SupplierName, string ItemName, string UnitName, decimal Value, bool IsOpenValue, decimal UnitPrice, decimal Quantity, string Notes, decimal Paid, decimal Pending, decimal Remaining, bool IsOverrun, bool IsActive)
 {
+    /// <summary>The contractor's VAT number, empty for none, which decides the VAT of a payment's tax invoice.</summary>
+    public string SupplierVatNumber { get; init; } = "";
+
     /// <summary>The documents it carries, in the order they were kept.</summary>
     public List<AttachmentView> Documents { get; init; } = [];
 
-    /// <summary>The view of <paramref name="contract"/> with <paramref name="paid"/> paid inside it, between the parties named.</summary>
-    public static ContractView Of(Contract contract, decimal paid, string supplierName, string itemName, string unitName) =>
-        new(contract.Id, supplierName, itemName, unitName, contract.Value, contract.IsOpenValue, contract.UnitPrice, contract.Quantity, contract.Notes, paid, contract.RemainingAfter(paid), contract.IsOverrunBy(paid), contract.IsActive);
+    /// <summary>The view of <paramref name="contract"/> with <paramref name="money"/> inside it, between the parties named.</summary>
+    public static ContractView Of(Contract contract, ContractMoney money, string supplierName, string itemName, string unitName) =>
+        new(contract.Id, contract.ItemId, supplierName, itemName, unitName, contract.Value, contract.IsOpenValue, contract.UnitPrice, contract.Quantity, contract.Notes, money.Paid, money.Pending, contract.RemainingAfter(money.Paid), contract.IsOverrunBy(money.Paid), contract.IsActive);
 }

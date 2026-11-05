@@ -89,6 +89,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What only a purchase has.</summary>
     public DbSet<PurchaseDetails> PurchaseDetails => Set<PurchaseDetails>();
 
+    /// <summary>What only a contractor payment has.</summary>
+    public DbSet<ContractorPaymentDetails> ContractorPaymentDetails => Set<ContractorPaymentDetails>();
+
     /// <summary>The invoices of the expenses, which the VAT statement goes by.</summary>
     public DbSet<Invoice> Invoices => Set<Invoice>();
 
@@ -289,6 +292,13 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             details.Property(d => d.Product).HasMaxLength(global::Redix.Api.Entries.PurchaseDetails.ProductMaxLength);
             details.HasOne<Entry>().WithOne().HasForeignKey<PurchaseDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Supplier>().WithMany().HasForeignKey(d => d.SupplierId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ContractorPaymentDetails>(details =>
+        {
+            details.HasKey(d => d.EntryId);
+            details.HasIndex(d => d.ContractId);
+            details.HasOne<Entry>().WithOne().HasForeignKey<ContractorPaymentDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Contract>().WithMany().HasForeignKey(d => d.ContractId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Invoice>(invoice =>
         {

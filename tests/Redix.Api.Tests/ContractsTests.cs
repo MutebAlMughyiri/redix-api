@@ -116,7 +116,7 @@ public class ContractsTests(MigratedApiFactory factory)
     [Fact]
     public void APaymentBeyondTheValueLeavesANegativeRemainingWithAnAlert()
     {
-        var view = ContractView.Of(ContractOf(34000m), 35000m, "مبلط", "البلاط", "الفلة الغربية");
+        var view = ContractView.Of(ContractOf(34000m), new ContractMoney(35000m, 0), "مبلط", "البلاط", "الفلة الغربية");
 
         Assert.Equal(-1000m, view.Remaining);
         Assert.True(view.IsOverrun);
@@ -125,7 +125,7 @@ public class ContractsTests(MigratedApiFactory factory)
     [Fact]
     public void AnOpenValueContractAddsUpWithNoRemainingAndNoAlert()
     {
-        var view = ContractView.Of(ContractOf(0m, isOpenValue: true), 12000m, "دهان", "بويه", "الفلة الغربية");
+        var view = ContractView.Of(ContractOf(0m, isOpenValue: true), new ContractMoney(12000m, 0), "دهان", "بويه", "الفلة الغربية");
 
         Assert.Equal(12000m, view.Paid);
         Assert.Equal(0m, view.Remaining);

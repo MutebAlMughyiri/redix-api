@@ -12,7 +12,7 @@ A contractor is a supplier of the project (the database design's decision 2), so
 
 `Units.IsShared` marks the shared unit (مشترك), a row added when the admin approves the project (open question 3). `ProjectView.units` keeps the project's own units; `entryUnits` is what an entry or a contract may name, the shared one last.
 
-The remaining lives on the contract: `Contract.RemainingAfter(paid)` and `IsOverrunBy(paid)`. What was paid is 0 in one property, `Contract.Paid`, until UC-027 "Record a contractor payment" adds the ledger's approved payments inside the contract. AC-07.1 and AC-07.2 are therefore proved on the class.
+The remaining lives on the contract: `Contract.RemainingAfter(paid)` and `IsOverrunBy(paid)`. What was paid comes from the ledger through `ContractMoney`, since UC-027 "Record a contractor payment".
 
 An amendment is an edit of the terms: the value, open value, unit price, quantity and notes. The contractor, item and unit never change, because a payment's VAT follows the contractor; a wrong one is disabled and added again. Every change of a contract goes in the audit trail, with what it was before.
 
@@ -39,7 +39,7 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | Rule | Code | Test in `ContractsTests` |
 | --- | --- | --- |
 | Finance adds a contract with its contractor, item, unit and value (FR-07) | `ContractsEndpoints.Add` | `FinanceAddsAContractWithItsContractorItemUnitAndValue` |
-| A new contract has its whole value remaining | `Contract.Paid` | `ANewContractHasItsWholeValueRemaining` |
+| A new contract has its whole value remaining | `ContractMoney` | `ANewContractHasItsWholeValueRemaining` |
 | The remaining is the value less what was paid inside (AC-07.1, BR-04) | `Contract.RemainingAfter` | `TheRemainingIsTheValueLessWhatWasPaidInsideTheContract` |
 | A payment beyond the value leaves a negative remaining, with an alert (AC-07.1) | `Contract.IsOverrunBy` | `APaymentBeyondTheValueLeavesANegativeRemainingWithAnAlert` |
 | An open-value contract adds up, with no remaining and no alert (AC-07.2) | `Contract.RemainingAfter`, `IsOverrunBy` | `AnOpenValueContractAddsUpWithNoRemainingAndNoAlert` |
@@ -66,5 +66,4 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | What | Use case |
 | --- | --- |
 | The contract's document, through `ContractAttachments` | UC-021 "Store an invoice or receipt attachment" |
-| What was paid inside the contract, from the ledger's approved payments | UC-027 "Record a contractor payment" |
 | The contracts report | UC-051 "Contracts report" |

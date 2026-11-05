@@ -39,9 +39,6 @@ public class Contract
     /// <summary>False once disabled: no new payment can name it, and it stays in the reports.</summary>
     public bool IsActive { get; set; } = true;
 
-    /// <summary>What has been paid inside the contract, which is nothing until UC-027 "Record a contractor payment" adds the ledger's approved payments (BR-04).</summary>
-    public decimal Paid => 0;
-
     /// <summary>The value less <paramref name="paid"/>, below zero once overrun; 0 for an open-value contract, which has no remaining (BR-04).</summary>
     public decimal RemainingAfter(decimal paid) => IsOpenValue ? 0 : Value - paid;
 

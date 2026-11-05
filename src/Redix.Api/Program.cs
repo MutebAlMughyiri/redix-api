@@ -97,5 +97,6 @@ app.MapSuppliers();
 app.MapContracts();
 app.MapAttachments();
 app.MapExpenses();
+app.MapContractorPayments();
 
 app.Run();
