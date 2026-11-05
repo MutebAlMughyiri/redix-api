@@ -1152,6 +1152,49 @@ namespace Redix.Api.Migrations
                     b.ToTable("PartnerPockets");
                 });
 
+            modelBuilder.Entity("Redix.Api.Projects.Blueprint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AttachmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttachmentId");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("ProjectId", "AttachmentId")
+                        .IsUnique();
+
+                    b.ToTable("Blueprints");
+                });
+
             modelBuilder.Entity("Redix.Api.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9252,6 +9295,314 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d083c07d-9508-65f6-8b5f-996e7f94499c"),
                             Language = "ar",
                             TranslationKeyId = new Guid("53d6a2d8-c1c6-0057-3dd2-6d54130df912"),
+                            Value = "هذا المشروع مغلق."
+                        },
+                        new
+                        {
+                            Id = new Guid("90913383-3f47-8283-b483-7b7d4ee0a548"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("eccbe712-90d1-8a3f-5be2-127115802b51"),
+                            Value = "Blueprints"
+                        },
+                        new
+                        {
+                            Id = new Guid("a86df643-bfe1-b81c-c1a9-f1ddaea9fc43"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("eccbe712-90d1-8a3f-5be2-127115802b51"),
+                            Value = "المخططات"
+                        },
+                        new
+                        {
+                            Id = new Guid("8d4f7964-619a-336e-16ac-a5ef65634d35"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9518c738-75a2-f404-6254-eeef0dcc6dac"),
+                            Value = "The whole project"
+                        },
+                        new
+                        {
+                            Id = new Guid("0de37523-ef57-b40d-ab8b-858b864426ec"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9518c738-75a2-f404-6254-eeef0dcc6dac"),
+                            Value = "المشروع كاملاً"
+                        },
+                        new
+                        {
+                            Id = new Guid("413b4277-5e73-b755-9abb-f6fbca376981"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6a5342c9-2ce5-69ab-daf9-b065e7213fa8"),
+                            Value = "No blueprint is kept yet."
+                        },
+                        new
+                        {
+                            Id = new Guid("edf86e67-b5f1-3fd2-013e-ca363ee85af3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6a5342c9-2ce5-69ab-daf9-b065e7213fa8"),
+                            Value = "لا توجد مخططات بعد."
+                        },
+                        new
+                        {
+                            Id = new Guid("db2279c2-cd1b-0783-3736-424368419f84"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f3e83606-58ca-d917-e1b9-567d2a0d5a02"),
+                            Value = "Add a blueprint"
+                        },
+                        new
+                        {
+                            Id = new Guid("fcaece09-bdcc-a7f4-84e5-e4df19383fc0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f3e83606-58ca-d917-e1b9-567d2a0d5a02"),
+                            Value = "إضافة مخطط"
+                        },
+                        new
+                        {
+                            Id = new Guid("757ad734-796c-8b00-8fc9-44f08036f640"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b1dba068-3897-3042-646d-795240b739aa"),
+                            Value = "What it shows"
+                        },
+                        new
+                        {
+                            Id = new Guid("578a3a51-d844-5eea-06cc-c9a5008a4230"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b1dba068-3897-3042-646d-795240b739aa"),
+                            Value = "عنوان المخطط"
+                        },
+                        new
+                        {
+                            Id = new Guid("8715f26b-8038-1069-6a0f-6c378d2f8539"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8748b042-883f-d596-d36c-44b904250aa4"),
+                            Value = "For"
+                        },
+                        new
+                        {
+                            Id = new Guid("a3764f12-b69b-e88e-8c71-5eaf8ec36045"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8748b042-883f-d596-d36c-44b904250aa4"),
+                            Value = "خاص بـ"
+                        },
+                        new
+                        {
+                            Id = new Guid("0469f645-b307-939d-46c1-b1ca86140ae9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cf0b24d5-3b1c-5d1a-d991-7382431f3514"),
+                            Value = "Choose the file"
+                        },
+                        new
+                        {
+                            Id = new Guid("e5f3031b-f79e-ad2d-d733-02cb3ac014e2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cf0b24d5-3b1c-5d1a-d991-7382431f3514"),
+                            Value = "اختر الملف"
+                        },
+                        new
+                        {
+                            Id = new Guid("63219b41-6162-a11b-f448-d3377e91825b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ff78fbd0-ee46-2d52-c35c-456bd382dd18"),
+                            Value = "A PDF, or a picture under 1 MB."
+                        },
+                        new
+                        {
+                            Id = new Guid("189442eb-ce34-191a-27d8-f07785176728"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ff78fbd0-ee46-2d52-c35c-456bd382dd18"),
+                            Value = "ملف PDF، أو صورة أصغر من 1 ميغابايت."
+                        },
+                        new
+                        {
+                            Id = new Guid("8164f9bf-03e0-ccb0-7b94-1a5b7f0737e0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6f1e3dd1-9eb9-fa32-2d40-b86321ae8600"),
+                            Value = "Keep"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c8a52cb-088f-7b81-037c-b4affd824209"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6f1e3dd1-9eb9-fa32-2d40-b86321ae8600"),
+                            Value = "حفظ"
+                        },
+                        new
+                        {
+                            Id = new Guid("0eb68ecc-823c-9911-e5ae-579dfa6a78ae"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6122e7b1-dd4f-0861-f9a5-a373ca3715e2"),
+                            Value = "The blueprint is kept."
+                        },
+                        new
+                        {
+                            Id = new Guid("c1158e18-17ad-4aea-ce28-3b9c613a4886"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6122e7b1-dd4f-0861-f9a5-a373ca3715e2"),
+                            Value = "تم حفظ المخطط."
+                        },
+                        new
+                        {
+                            Id = new Guid("ccf4f31c-7cdc-407e-674c-fa229bf03e1f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("55209840-a152-fa3f-6768-b0e0131dd18b"),
+                            Value = "Remove from the list"
+                        },
+                        new
+                        {
+                            Id = new Guid("5b43e7fd-109a-e3e0-56aa-f20dd019615c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("55209840-a152-fa3f-6768-b0e0131dd18b"),
+                            Value = "إزالة من القائمة"
+                        },
+                        new
+                        {
+                            Id = new Guid("4fd3a414-3e37-fff4-207d-1bee622bf8e3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d40c2ff8-fad4-b516-30b1-4b798634010c"),
+                            Value = "Remove this blueprint from the list?"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a4bc5e1-2ccd-fc7c-335f-caab576ace11"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d40c2ff8-fad4-b516-30b1-4b798634010c"),
+                            Value = "إزالة هذا المخطط من القائمة؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("d7a982d9-f5ef-63d3-f3d1-4089328f6b57"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4c265a19-5eee-9e94-fe32-147f5a37c2c3"),
+                            Value = "Its file stays kept, as every file does."
+                        },
+                        new
+                        {
+                            Id = new Guid("69a2b9da-ea2a-6835-be78-a8fa93ec1fa9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4c265a19-5eee-9e94-fe32-147f5a37c2c3"),
+                            Value = "يبقى ملفه محفوظاً كسائر الملفات."
+                        },
+                        new
+                        {
+                            Id = new Guid("01ce0aa5-751c-77c0-4010-73a959077d8a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4aec8e9a-e9fa-296a-3bc8-d21421d35527"),
+                            Value = "The blueprint is removed from the list."
+                        },
+                        new
+                        {
+                            Id = new Guid("ee6645e4-902f-3b15-d367-2b94a6e32279"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4aec8e9a-e9fa-296a-3bc8-d21421d35527"),
+                            Value = "تمت إزالة المخطط من القائمة."
+                        },
+                        new
+                        {
+                            Id = new Guid("09089290-5de8-4240-a478-03dcde651bad"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e6fbfc8d-c294-393f-a39e-406a0c0bb684"),
+                            Value = "The blueprints could not be read."
+                        },
+                        new
+                        {
+                            Id = new Guid("4992b91a-05dc-c0f5-642a-673c0200adb3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e6fbfc8d-c294-393f-a39e-406a0c0bb684"),
+                            Value = "تعذّرت قراءة المخططات."
+                        },
+                        new
+                        {
+                            Id = new Guid("9f017cf5-fb5f-c26f-3f21-2285a8450560"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f03e9671-a0ff-01d8-69c0-a9cc7ff37271"),
+                            Value = "No connection. Try again when online."
+                        },
+                        new
+                        {
+                            Id = new Guid("cb1709ab-c26f-30cc-4dd3-6395f6d6c610"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f03e9671-a0ff-01d8-69c0-a9cc7ff37271"),
+                            Value = "لا يوجد اتصال. حاول مرة أخرى عند الاتصال."
+                        },
+                        new
+                        {
+                            Id = new Guid("8bc477ab-d68a-2b96-465f-bdae34826762"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("73b03e1c-2d18-732c-4af3-2df3573c821f"),
+                            Value = "This could not be done."
+                        },
+                        new
+                        {
+                            Id = new Guid("aed4df0f-62f0-3e04-4df7-60bb5038325c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("73b03e1c-2d18-732c-4af3-2df3573c821f"),
+                            Value = "تعذّر تنفيذ ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("503cecd8-df01-7d83-c430-594c6759bf67"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6f64c628-1215-b122-f40e-9276c9ddd670"),
+                            Value = "Say what the blueprint shows, in 200 letters at most."
+                        },
+                        new
+                        {
+                            Id = new Guid("b473767f-b751-1672-500e-04cf5c2901df"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6f64c628-1215-b122-f40e-9276c9ddd670"),
+                            Value = "اذكر عنوان المخطط في 200 حرف على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("6aa5fb1d-0f51-b034-3298-6464974f4535"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0a9b82c5-154a-be13-aee9-e0409fcdb1b4"),
+                            Value = "Choose the blueprint's file first."
+                        },
+                        new
+                        {
+                            Id = new Guid("21509e1c-d0c3-2f01-0b82-04972867d5f8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0a9b82c5-154a-be13-aee9-e0409fcdb1b4"),
+                            Value = "اختر ملف المخطط أولاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("6b66abc2-481d-2d86-2aa7-ce1e1af2aa03"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1132e8ef-56a5-78f9-ce59-21836e99b0e6"),
+                            Value = "Choose the project or one of its units."
+                        },
+                        new
+                        {
+                            Id = new Guid("cd2f0990-8702-6421-0ab8-e058a31d3f56"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1132e8ef-56a5-78f9-ce59-21836e99b0e6"),
+                            Value = "اختر المشروع أو إحدى وحداته."
+                        },
+                        new
+                        {
+                            Id = new Guid("73a89b9d-0faa-6abd-c95c-91cde881a2a5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3c67bbbe-17ac-a125-0d31-0c8b8318a061"),
+                            Value = "This file is already kept as a blueprint."
+                        },
+                        new
+                        {
+                            Id = new Guid("37846440-3c47-555c-e16d-4e1a6d8e266c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3c67bbbe-17ac-a125-0d31-0c8b8318a061"),
+                            Value = "هذا الملف محفوظ كمخطط من قبل."
+                        },
+                        new
+                        {
+                            Id = new Guid("c2fa3b8d-bd50-4f4e-6322-3c103fcaa488"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3ccc24ec-4eb5-e382-9a1f-bf529970527a"),
+                            Value = "This project is closed."
+                        },
+                        new
+                        {
+                            Id = new Guid("617810c2-057f-1430-4220-f898294c7029"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3ccc24ec-4eb5-e382-9a1f-bf529970527a"),
                             Value = "هذا المشروع مغلق."
                         },
                         new
@@ -17900,6 +18251,138 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("eccbe712-90d1-8a3f-5be2-127115802b51"),
+                            Description = "",
+                            Key = "blueprints.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("9518c738-75a2-f404-6254-eeef0dcc6dac"),
+                            Description = "",
+                            Key = "blueprints.project"
+                        },
+                        new
+                        {
+                            Id = new Guid("6a5342c9-2ce5-69ab-daf9-b065e7213fa8"),
+                            Description = "",
+                            Key = "blueprints.none"
+                        },
+                        new
+                        {
+                            Id = new Guid("f3e83606-58ca-d917-e1b9-567d2a0d5a02"),
+                            Description = "",
+                            Key = "blueprints.add"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1dba068-3897-3042-646d-795240b739aa"),
+                            Description = "",
+                            Key = "blueprints.titleField"
+                        },
+                        new
+                        {
+                            Id = new Guid("8748b042-883f-d596-d36c-44b904250aa4"),
+                            Description = "",
+                            Key = "blueprints.for"
+                        },
+                        new
+                        {
+                            Id = new Guid("cf0b24d5-3b1c-5d1a-d991-7382431f3514"),
+                            Description = "",
+                            Key = "blueprints.file"
+                        },
+                        new
+                        {
+                            Id = new Guid("ff78fbd0-ee46-2d52-c35c-456bd382dd18"),
+                            Description = "",
+                            Key = "blueprints.fileHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("6f1e3dd1-9eb9-fa32-2d40-b86321ae8600"),
+                            Description = "",
+                            Key = "blueprints.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("6122e7b1-dd4f-0861-f9a5-a373ca3715e2"),
+                            Description = "",
+                            Key = "blueprints.saved"
+                        },
+                        new
+                        {
+                            Id = new Guid("55209840-a152-fa3f-6768-b0e0131dd18b"),
+                            Description = "",
+                            Key = "blueprints.remove"
+                        },
+                        new
+                        {
+                            Id = new Guid("d40c2ff8-fad4-b516-30b1-4b798634010c"),
+                            Description = "",
+                            Key = "blueprints.removeQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("4c265a19-5eee-9e94-fe32-147f5a37c2c3"),
+                            Description = "",
+                            Key = "blueprints.removeExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("4aec8e9a-e9fa-296a-3bc8-d21421d35527"),
+                            Description = "",
+                            Key = "blueprints.removed"
+                        },
+                        new
+                        {
+                            Id = new Guid("e6fbfc8d-c294-393f-a39e-406a0c0bb684"),
+                            Description = "",
+                            Key = "blueprints.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("f03e9671-a0ff-01d8-69c0-a9cc7ff37271"),
+                            Description = "",
+                            Key = "blueprints.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("73b03e1c-2d18-732c-4af3-2df3573c821f"),
+                            Description = "",
+                            Key = "blueprints.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("6f64c628-1215-b122-f40e-9276c9ddd670"),
+                            Description = "",
+                            Key = "blueprints.invalidTitle"
+                        },
+                        new
+                        {
+                            Id = new Guid("0a9b82c5-154a-be13-aee9-e0409fcdb1b4"),
+                            Description = "",
+                            Key = "blueprints.unknownAttachment"
+                        },
+                        new
+                        {
+                            Id = new Guid("1132e8ef-56a5-78f9-ce59-21836e99b0e6"),
+                            Description = "",
+                            Key = "blueprints.unknownUnit"
+                        },
+                        new
+                        {
+                            Id = new Guid("3c67bbbe-17ac-a125-0d31-0c8b8318a061"),
+                            Description = "",
+                            Key = "blueprints.blueprintAlreadyKept"
+                        },
+                        new
+                        {
+                            Id = new Guid("3ccc24ec-4eb5-e382-9a1f-bf529970527a"),
+                            Description = "",
+                            Key = "blueprints.projectFinished"
+                        },
+                        new
+                        {
                             Id = new Guid("0213446a-8644-d22f-874f-cc35f2c9c3e6"),
                             Description = "",
                             Key = "liquidation.title"
@@ -20804,6 +21287,27 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Partners.Partner", null)
                         .WithOne()
                         .HasForeignKey("Redix.Api.Partners.PartnerPocket", "PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.Blueprint", b =>
+                {
+                    b.HasOne("Redix.Api.Attachments.Attachment", null)
+                        .WithMany()
+                        .HasForeignKey("AttachmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

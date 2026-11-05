@@ -80,6 +80,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The pictures and PDFs each project keeps (FR-09).</summary>
     public DbSet<Attachment> Attachments => Set<Attachment>();
 
+    /// <summary>Engineering blueprints, each a file of the attachment store kept for a project or a unit (UC-064).</summary>
+    public DbSet<Blueprint> Blueprints => Set<Blueprint>();
+
     /// <summary>The ledger: every movement of money, of any kind.</summary>
     public DbSet<Entry> Entries => Set<Entry>();
 
@@ -288,6 +291,14 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             attachment.HasIndex(a => new { a.ProjectId, a.Sha256 });
             attachment.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);
             attachment.HasOne<User>().WithMany().HasForeignKey(a => a.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Blueprint>(blueprint =>
+        {
+            blueprint.Property(b => b.Title).HasMaxLength(Blueprint.TitleMaxLength);
+            blueprint.HasIndex(b => new { b.ProjectId, b.AttachmentId }).IsUnique();
+            blueprint.HasOne<Project>().WithMany().HasForeignKey(b => b.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            blueprint.HasOne<Attachment>().WithMany().HasForeignKey(b => b.AttachmentId).OnDelete(DeleteBehavior.Restrict);
+            blueprint.HasOne<User>().WithMany().HasForeignKey(b => b.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ContractAttachment>(link =>
         {

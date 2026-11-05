@@ -114,6 +114,7 @@ app.MapDashboard();
 app.MapItemReport();
 app.MapUnitTotals();
 app.MapLiquidation();
+app.MapBlueprints();
 app.MapPeriodicReports();
 app.MapReportFiles();
 app.MapSyncEndpoints();

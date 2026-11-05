@@ -110,7 +110,7 @@ public static class ProjectsEndpoints
     public static Task<IResult> RenameUnit(Guid projectId, Guid unitId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.RenameUnit(unitId, request.Name.Trim()));
 
-    /// <summary>Deletes a unit while its project is open (BR-38). One an entry or a contract uses answers <c>unitInUse</c>; the shared unit, <c>sharedUnit</c>; a finished project, <c>projectFinished</c>; one outside the project 404.</summary>
+    /// <summary>Deletes a unit while its project is open (BR-38). One an entry, a contract or a blueprint uses answers <c>unitInUse</c>; the shared unit, <c>sharedUnit</c>; a finished project, <c>projectFinished</c>; one outside the project 404.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="unitId">The unit.</param>
     /// <param name="principal">The caller's session.</param>
@@ -118,7 +118,7 @@ public static class ProjectsEndpoints
     /// <param name="time">The current time, for the audit record.</param>
     public static async Task<IResult> DeleteUnit(Guid projectId, Guid unitId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var isUsed = await db.ExpenseDetails.AnyAsync(details => details.UnitId == unitId) || await db.Contracts.AnyAsync(contract => contract.UnitId == unitId);
+        var isUsed = await db.ExpenseDetails.AnyAsync(details => details.UnitId == unitId) || await db.Contracts.AnyAsync(contract => contract.UnitId == unitId) || await db.Blueprints.AnyAsync(blueprint => blueprint.UnitId == unitId);
         return await ChangeAsync(projectId, principal, db, time, AuditAction.Delete, project => project.RemoveUnit(unitId, isUsed));
     }
 
