@@ -5,9 +5,6 @@ namespace Redix.Api.Accounts;
 /// <summary>Where a project's money sits: a bank account or a cash custody (FR-22). It belongs to one project (BR-33), and is disabled rather than deleted (BR-15). It owns the rules of who may spend from it.</summary>
 public class Account
 {
-    /// <summary>The largest opening balance, either way, in the two decimals of the riyal (NFR-04).</summary>
-    public const decimal LargestOpeningBalance = 999_999_999_999_999.99m;
-
     /// <summary>The account's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
@@ -48,7 +45,7 @@ public class Account
         {
             return "InvalidName";
         }
-        if (Math.Abs(openingBalance) > LargestOpeningBalance || decimal.Round(openingBalance, 2) != openingBalance)
+        if (!Money.IsAcceptable(openingBalance))
         {
             return "InvalidOpeningBalance";
         }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Contracts;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -70,6 +71,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>The item each supplier's expenses usually go to.</summary>
     public DbSet<SupplierDefaultItem> SupplierDefaultItems => Set<SupplierDefaultItem>();
+
+    /// <summary>What each project's contractors were promised (FR-07).</summary>
+    public DbSet<Contract> Contracts => Set<Contract>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -211,6 +215,14 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             row.HasKey(r => r.SupplierId);
             row.HasOne<Item>().WithMany().HasForeignKey(r => r.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Contract>(contract =>
+        {
+            contract.Property(c => c.Notes).HasMaxLength(Contract.NotesMaxLength);
+            contract.HasOne<Project>().WithMany().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            contract.HasOne<Item>().WithMany().HasForeignKey(c => c.ItemId).OnDelete(DeleteBehavior.Restrict);
+            contract.HasOne<Unit>().WithMany().HasForeignKey(c => c.UnitId).OnDelete(DeleteBehavior.Restrict);
+            contract.HasOne<Supplier>().WithMany().HasForeignKey(c => c.SupplierId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api;
 using Redix.Api.Accounts;
 using Redix.Api.Auth;
+using Redix.Api.Contracts;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -90,5 +91,6 @@ app.MapPaymentMethods();
 app.MapAccounts();
 app.MapPartners();
 app.MapSuppliers();
+app.MapContracts();
 
 app.Run();

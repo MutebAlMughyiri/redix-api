@@ -14,7 +14,7 @@ Whoever sends a supplier says either its number or `notVatRegistered`, so a numb
 
 `SupplierDefaultItems` holds the item a supplier's expenses usually go to, one row at most. Its row has a foreign key to the item, which an empty value in a column could not have.
 
-The register starts with the general cash supplier (`Supplier.GeneralCash`, مورد نقدي عام), for expenses with no supplier: `ProjectStructure.ApproveAsync` adds it when the admin approves the project, in the admin's name. It is an ordinary row, and only it comes along: a project copied from an earlier one takes none of that project's suppliers (AC-05.2).
+The register starts with the general cash supplier (`Supplier.GeneralCashSupplier`, مورد نقدي عام), for expenses with no supplier: `ProjectStructure.ApproveAsync` adds it when the admin approves the project, in the admin's name. It is an ordinary row, and only it comes along: a project copied from an earlier one takes none of that project's suppliers (AC-05.2).
 
 ## Endpoints
 
@@ -53,7 +53,7 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 | A default item must be in the project (BR-33) | `ProjectStructure.ItemOfAsync` | `ADefaultItemMustBeInTheProject` |
 | Disabled, it stays in the register, never deleted (BR-15) | No delete route; `SuppliersEndpoints.Disable` | `ADisabledSupplierStaysInTheRegisterAndCanBeEnabled` |
 | The register lists suppliers by name | `SuppliersEndpoints.List` | `TheRegisterListsSuppliersByName` |
-| An approved project starts with the general cash supplier | `ProjectStructure.ApproveAsync`, `Supplier.GeneralCash` | `AnApprovedProjectStartsWithTheGeneralCashSupplier` |
+| An approved project starts with the general cash supplier | `ProjectStructure.ApproveAsync`, `Supplier.GeneralCashSupplier` | `AnApprovedProjectStartsWithTheGeneralCashSupplier` |
 | A copied project starts with only that one (AC-05.2) | `ProjectStructure.ApproveAsync` | `ACopiedProjectStartsWithOnlyTheGeneralCashSupplier` |
 | Everyone with access reads the register (BR-31) | `Permission.ReadProject` | `EveryoneWithAccessReadsTheRegister` |
 | Only Finance changes suppliers | `Permission.ManageSettings` | `OnlyFinanceChangesSuppliers` |

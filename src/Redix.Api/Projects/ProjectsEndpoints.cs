@@ -205,14 +205,19 @@ public record AddUnitRequest(string Name);
 /// <param name="Roles">The keys of the words naming the caller's roles in this project.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
 /// <param name="VatPercent">The VAT rate of its new entries, as a percentage.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<string> Roles, List<Permission> Permissions, decimal VatPercent)
+/// <param name="EntryUnits">What an entry or a contract may name: the project's units in order, and the shared one last.</param>
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<string> Roles, List<Permission> Permissions, decimal VatPercent, List<UnitView> EntryUnits)
 {
     /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="roles"/> and <paramref name="permissions"/> in it.</summary>
     public static ProjectView Of(Project project, List<string> roles, List<Permission> permissions) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Select(unit => new UnitView(unit.Id, unit.Name)).ToList(), roles, permissions, project.VatRate * 100);
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Where(unit => !unit.IsShared).Select(UnitView.Of).ToList(), roles, permissions, project.VatRate * 100, project.Units.OrderBy(unit => unit.IsShared).Select(UnitView.Of).ToList());
 }
 
 /// <summary>A unit as the app shows it.</summary>
 /// <param name="Id">The unit's id.</param>
 /// <param name="Name">The unit's name.</param>
-public record UnitView(Guid Id, string Name);
+public record UnitView(Guid Id, string Name)
+{
+    /// <summary>The view of <paramref name="unit"/>.</summary>
+    public static UnitView Of(Unit unit) => new(unit.Id, unit.Name);
+}

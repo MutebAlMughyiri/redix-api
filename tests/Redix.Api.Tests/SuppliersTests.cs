@@ -271,7 +271,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         await AddAsync(client, project.Id, "ياسر");
         await AddAsync(client, project.Id, "باسم", OtherVatNumber);
 
-        Assert.Equal(["باسم", Supplier.GeneralCashName, "ياسر"], (await RegisterOf(client, project.Id)).Select(row => row.Name));
+        Assert.Equal(["باسم", Supplier.GeneralCashSupplierName, "ياسر"], (await RegisterOf(client, project.Id)).Select(row => row.Name));
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         var general = Assert.Single(await RegisterOf(client, project.Id));
 
-        Assert.Equal(Supplier.GeneralCashName, general.Name);
+        Assert.Equal(Supplier.GeneralCashSupplierName, general.Name);
         Assert.Equal("", general.VatNumber);
         Assert.Equal(SupplierStatus.Approved, general.Status);
         Assert.True(general.IsActive);
@@ -298,7 +298,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var admin = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password, isAdmin: true), Password);
         (await admin.PostAsync($"/projects/{later.Id}/approve", null)).EnsureSuccessStatusCode();
 
-        Assert.Equal(Supplier.GeneralCashName, Assert.Single(await RegisterOf(client, later.Id)).Name);
+        Assert.Equal(Supplier.GeneralCashSupplierName, Assert.Single(await RegisterOf(client, later.Id)).Name);
     }
 
     [Theory]
@@ -398,7 +398,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         await AddAsync(client, project.Id, "ياسر");
         await AddAsync(client, project.Id, "باسم", OtherVatNumber);
 
-        Assert.Equal(["باسم", Supplier.GeneralCashName, "ياسر"], (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers/search", Json))!.Select(row => row.Name));
+        Assert.Equal(["باسم", Supplier.GeneralCashSupplierName, "ياسر"], (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers/search", Json))!.Select(row => row.Name));
     }
 
     [Fact]

@@ -453,6 +453,65 @@ namespace Redix.Api.Migrations
                     b.ToTable("UserRoles");
                 });
 
+            modelBuilder.Entity("Redix.Api.Contracts.Contract", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOpenValue")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("UnitId");
+
+                    b.ToTable("Contracts");
+                });
+
             modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
                 {
                     b.Property<Guid>("Id")
@@ -578,6 +637,9 @@ namespace Redix.Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -6288,6 +6350,524 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("b5634a95-8e1e-48dc-2586-fd20e5230c7e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2031c582-a52b-baca-6cab-db6b6d21938c"),
+                            Value = "Contracts"
+                        },
+                        new
+                        {
+                            Id = new Guid("0facd6a8-fa10-5475-6c5d-76b601fa1c82"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2031c582-a52b-baca-6cab-db6b6d21938c"),
+                            Value = "العقود"
+                        },
+                        new
+                        {
+                            Id = new Guid("2f4ae0b3-2478-0c99-50c8-a6afa3e85cda"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c7bf799e-0114-c25a-46db-b0ff31655ea2"),
+                            Value = "No contracts."
+                        },
+                        new
+                        {
+                            Id = new Guid("71de789d-4059-45ea-db83-2c5cc9128034"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c7bf799e-0114-c25a-46db-b0ff31655ea2"),
+                            Value = "لا توجد عقود."
+                        },
+                        new
+                        {
+                            Id = new Guid("0ba613ef-d4ae-2ad6-aee9-079960838311"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f765a18e-4438-22a7-7c83-34c6c52556aa"),
+                            Value = "Could not read the contracts. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("3b92cf4f-4399-afdb-e1c1-fd65582728b7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f765a18e-4438-22a7-7c83-34c6c52556aa"),
+                            Value = "تعذّرت قراءة العقود. تحقق من الشبكة وحاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("992bba4c-016d-41f8-567d-0fb671857be4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d27f69c2-2341-a5fd-169a-0fe4fcb28231"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("20a25d80-5e0e-ed88-74f3-701c588ef8e2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d27f69c2-2341-a5fd-169a-0fe4fcb28231"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("94e1bf81-f4a3-2918-c488-0d4268a32f18"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fb02bd6e-5d70-1516-9b9e-cc0dc9de6e24"),
+                            Value = "This change was refused."
+                        },
+                        new
+                        {
+                            Id = new Guid("95dbf3fb-a165-cec6-1a24-2c2fbd1d4232"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fb02bd6e-5d70-1516-9b9e-cc0dc9de6e24"),
+                            Value = "رُفض هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("580da880-4154-0edc-b4c0-2915a596e72b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a4c5a6c5-2bf8-9771-ccad-f574e9524b1d"),
+                            Value = "This project is finished, so nothing in it changes."
+                        },
+                        new
+                        {
+                            Id = new Guid("6c2ca628-066c-4303-9242-78e65f36e8e3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a4c5a6c5-2bf8-9771-ccad-f574e9524b1d"),
+                            Value = "هذا المشروع منتهٍ، فلا يتغير فيه شيء."
+                        },
+                        new
+                        {
+                            Id = new Guid("0b331b74-2be5-1a3a-3047-8bc54608314e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("118c1718-9436-8431-a45c-33cc878270cd"),
+                            Value = "Choose a contractor from the suppliers."
+                        },
+                        new
+                        {
+                            Id = new Guid("90a05b67-d0ec-636b-c805-679cbd892cab"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("118c1718-9436-8431-a45c-33cc878270cd"),
+                            Value = "اختر مقاولاً من الموردين."
+                        },
+                        new
+                        {
+                            Id = new Guid("be1ead27-a400-a768-2fcf-bbcd40acc118"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("29ec94e3-2193-25b2-910d-684e12785662"),
+                            Value = "Choose an item that takes contractor payments."
+                        },
+                        new
+                        {
+                            Id = new Guid("abc1ee24-d071-836d-7f75-8ecdf9e633de"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("29ec94e3-2193-25b2-910d-684e12785662"),
+                            Value = "اختر بنداً يقبل دفعات المقاولين."
+                        },
+                        new
+                        {
+                            Id = new Guid("997d342f-967d-1e2a-e8b2-18ab1eb903a0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("91bb55ac-5d59-91e6-e7cc-c307f336a941"),
+                            Value = "Choose a unit of this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("9f0f8df4-d525-0dbc-65ef-680f3759746e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("91bb55ac-5d59-91e6-e7cc-c307f336a941"),
+                            Value = "اختر وحدة من هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("23723111-6d1f-43ef-6e30-3d194bd9b0eb"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3fcd9339-243f-3cbe-fd7b-5b5ecafffb95"),
+                            Value = "Enter a contract value above zero, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("5127f1d4-aaf0-0c02-5306-6efa98c1f692"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3fcd9339-243f-3cbe-fd7b-5b5ecafffb95"),
+                            Value = "أدخل قيمة عقد أكبر من صفر، بخانتين عشريتين على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("6251cae4-8958-0c60-a083-f58fd5709b15"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("41b8bec4-2f08-0ebf-c459-f13df0e88abf"),
+                            Value = "Enter a unit price in numbers, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("8232e654-0733-83e4-4675-ee1fcbd48707"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("41b8bec4-2f08-0ebf-c459-f13df0e88abf"),
+                            Value = "أدخل سعر الوحدة بالأرقام، بخانتين عشريتين على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("5d5d2855-6b1e-47ed-76e3-2a7f0007d6e4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7be7f869-b472-557b-1492-eccce29349c1"),
+                            Value = "Enter a quantity in numbers, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("4f3c3c31-8d21-d6dd-34a8-de6f99ccb374"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7be7f869-b472-557b-1492-eccce29349c1"),
+                            Value = "أدخل الكمية بالأرقام، بخانتين عشريتين على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("87e50819-ceb5-d8e5-fa5c-46048a550f84"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("24cb39ad-03f5-00c5-f8b1-9dc2cfe8ee6f"),
+                            Value = "Notes may have at most 1000 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("22755869-6663-f268-d51f-497c0788873e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("24cb39ad-03f5-00c5-f8b1-9dc2cfe8ee6f"),
+                            Value = "الملاحظات 1000 حرف على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("252dd856-9447-ec03-bcaa-cb6bbfcfa9f9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6e6b33e7-a92e-ec64-29d9-bf2395e6ad33"),
+                            Value = "Add contract"
+                        },
+                        new
+                        {
+                            Id = new Guid("1b616b32-bb3d-9703-a449-e093e8e844f4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6e6b33e7-a92e-ec64-29d9-bf2395e6ad33"),
+                            Value = "إضافة عقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("0974e52e-f3f7-3334-2e71-541773bcb02d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7af715d8-ec95-8907-97e9-8b70888b6057"),
+                            Value = "Amend contract"
+                        },
+                        new
+                        {
+                            Id = new Guid("97d70963-922a-314a-df3f-4b06c18577a5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7af715d8-ec95-8907-97e9-8b70888b6057"),
+                            Value = "تعديل العقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("fcf4ee5c-1885-92d8-9b2e-b9a19486d0ef"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f06db356-d48c-9833-6ce4-84fd6216c6f4"),
+                            Value = "Save"
+                        },
+                        new
+                        {
+                            Id = new Guid("ae1abfb5-d65e-ac30-5ded-2c07ddcc4733"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f06db356-d48c-9833-6ce4-84fd6216c6f4"),
+                            Value = "حفظ"
+                        },
+                        new
+                        {
+                            Id = new Guid("a8c8a8ac-b5c5-7612-edec-21fd5c8477b6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9f06078f-e74f-a396-e2e7-0ba93ec7efb5"),
+                            Value = "Contractor"
+                        },
+                        new
+                        {
+                            Id = new Guid("f28a3021-8b54-711a-7701-de758bf8865f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9f06078f-e74f-a396-e2e7-0ba93ec7efb5"),
+                            Value = "المقاول"
+                        },
+                        new
+                        {
+                            Id = new Guid("60a70f8c-d012-a361-030e-cbb86aaa43b1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7dcd7eb5-e6f8-611b-d54e-f013824c52ed"),
+                            Value = "Item"
+                        },
+                        new
+                        {
+                            Id = new Guid("97523ac0-00fb-3869-9de8-2b4bb8ac0c55"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7dcd7eb5-e6f8-611b-d54e-f013824c52ed"),
+                            Value = "البند"
+                        },
+                        new
+                        {
+                            Id = new Guid("fb473810-2457-12d5-52e9-99469cc261d4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c96bdf63-848a-9489-58d4-69828fe27483"),
+                            Value = "Unit"
+                        },
+                        new
+                        {
+                            Id = new Guid("783c3df5-020d-dbe4-b741-e43bad28a1ad"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c96bdf63-848a-9489-58d4-69828fe27483"),
+                            Value = "الوحدة"
+                        },
+                        new
+                        {
+                            Id = new Guid("152c3616-4f8d-9b31-29bb-80bbf2516298"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6178cdf9-ca43-4fa3-6129-2be822ab2878"),
+                            Value = "Open-value contract"
+                        },
+                        new
+                        {
+                            Id = new Guid("209d2417-44f5-d683-e394-752c3d511abe"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6178cdf9-ca43-4fa3-6129-2be822ab2878"),
+                            Value = "عقد مفتوح القيمة"
+                        },
+                        new
+                        {
+                            Id = new Guid("95ea06a1-8525-89cd-c56d-6c69f02bc1b6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a6778df3-f6ae-496b-670e-e27f109f9a11"),
+                            Value = "Contract value"
+                        },
+                        new
+                        {
+                            Id = new Guid("cb2158d5-9575-9aa9-a683-498ebf016a2b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a6778df3-f6ae-496b-670e-e27f109f9a11"),
+                            Value = "قيمة العقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("8118e655-cf60-98c7-9308-bc6939298674"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ce47b02e-e9c6-9218-1e86-cbd3ff295615"),
+                            Value = "Unit price (optional)"
+                        },
+                        new
+                        {
+                            Id = new Guid("e893aaaf-469c-f4ca-539c-e6aef0e71e61"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ce47b02e-e9c6-9218-1e86-cbd3ff295615"),
+                            Value = "سعر الوحدة (اختياري)"
+                        },
+                        new
+                        {
+                            Id = new Guid("a66ae456-9a16-df2c-3895-350064537fa8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c98fbaa2-010d-7a4f-9d25-8930b53b7205"),
+                            Value = "Quantity (optional)"
+                        },
+                        new
+                        {
+                            Id = new Guid("a960ef51-2a68-48c4-95b6-13f35684e777"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c98fbaa2-010d-7a4f-9d25-8930b53b7205"),
+                            Value = "الكمية (اختياري)"
+                        },
+                        new
+                        {
+                            Id = new Guid("9e2d6a22-9713-50b7-a89b-4fa23c3cf61c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("80b6142e-d1ce-c722-a458-21b86c12b803"),
+                            Value = "Notes and amendments"
+                        },
+                        new
+                        {
+                            Id = new Guid("82d0d5ad-1b42-5a41-6628-6d2ec02a262f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("80b6142e-d1ce-c722-a458-21b86c12b803"),
+                            Value = "الملاحظات والتعديلات"
+                        },
+                        new
+                        {
+                            Id = new Guid("9626b2aa-641e-c783-229a-02a934de527e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b5834e1b-bf74-70a7-283f-a8491b5cc932"),
+                            Value = "Value"
+                        },
+                        new
+                        {
+                            Id = new Guid("5a8e491f-ac5f-d72d-7306-ebbc65ea4fb4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b5834e1b-bf74-70a7-283f-a8491b5cc932"),
+                            Value = "القيمة"
+                        },
+                        new
+                        {
+                            Id = new Guid("6960ad34-64e9-5004-bbb8-1c929d4d6fd8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e9160ba5-1b69-99b2-12f3-5206b9c2f576"),
+                            Value = "Paid"
+                        },
+                        new
+                        {
+                            Id = new Guid("c44b7041-88bb-9204-1c8e-ef6c96c080d7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e9160ba5-1b69-99b2-12f3-5206b9c2f576"),
+                            Value = "المدفوع"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5050b2f-a083-f3c0-e96e-d1ac8142bbbf"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c53eb634-036f-cbfe-2c8d-ad1130753b3b"),
+                            Value = "Remaining"
+                        },
+                        new
+                        {
+                            Id = new Guid("d6d2eee3-e183-5d03-14b3-591ffce846e3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c53eb634-036f-cbfe-2c8d-ad1130753b3b"),
+                            Value = "المتبقي"
+                        },
+                        new
+                        {
+                            Id = new Guid("de955506-0678-30c5-aba0-c74616789580"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("928081e2-36dc-555b-7453-9f98e48d99c3"),
+                            Value = "Open"
+                        },
+                        new
+                        {
+                            Id = new Guid("60f953f1-891d-e1c6-c956-8d24450e1d04"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("928081e2-36dc-555b-7453-9f98e48d99c3"),
+                            Value = "مفتوح"
+                        },
+                        new
+                        {
+                            Id = new Guid("6b561eae-1f5b-b5d4-609c-5f2136247149"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("39054aee-63ce-ce01-530d-aa84a950cf1d"),
+                            Value = "Contract overrun"
+                        },
+                        new
+                        {
+                            Id = new Guid("3654c337-1a43-1e43-80b7-617e072188ae"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("39054aee-63ce-ce01-530d-aa84a950cf1d"),
+                            Value = "تجاوز العقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("f5607183-c3cd-db73-1da7-240d88805f86"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bceb373f-bc7f-b5b5-1758-1b259c6e9e17"),
+                            Value = "Not started"
+                        },
+                        new
+                        {
+                            Id = new Guid("e0c35421-b088-3b0e-75e6-57634ec027b8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bceb373f-bc7f-b5b5-1758-1b259c6e9e17"),
+                            Value = "لم يبدأ"
+                        },
+                        new
+                        {
+                            Id = new Guid("d6be266c-60a2-6060-8a47-bd1a0cfc9d24"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b379c1f7-e5e2-9b3c-947b-0d4d2ca6f100"),
+                            Value = "In progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("2154434c-62c9-9f9c-e09c-aeca936ac2a6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b379c1f7-e5e2-9b3c-947b-0d4d2ca6f100"),
+                            Value = "جارٍ"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3df0f18-b200-87a1-b710-ccecac22ab91"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5ca80f8e-9ed5-b201-6bc2-d408d2f1546d"),
+                            Value = "All"
+                        },
+                        new
+                        {
+                            Id = new Guid("0c168d51-1606-135d-f1de-ea85ce1e9720"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5ca80f8e-9ed5-b201-6bc2-d408d2f1546d"),
+                            Value = "الكل"
+                        },
+                        new
+                        {
+                            Id = new Guid("08006225-d160-6d0c-4a8e-8f3e2f17108f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8c1e6e3e-e5cb-80d9-99a3-23e442c0db26"),
+                            Value = "Overrun"
+                        },
+                        new
+                        {
+                            Id = new Guid("61e0d155-53d8-c8bf-5289-99820f68b691"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8c1e6e3e-e5cb-80d9-99a3-23e442c0db26"),
+                            Value = "متجاوز"
+                        },
+                        new
+                        {
+                            Id = new Guid("fd15300e-1d04-c7dc-6b3b-d47608e75824"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("79ff7e2f-527b-779c-ce47-95604cfa8be5"),
+                            Value = "Open value"
+                        },
+                        new
+                        {
+                            Id = new Guid("fb08cc33-c75d-3522-1170-450e5c0f761b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("79ff7e2f-527b-779c-ce47-95604cfa8be5"),
+                            Value = "مفتوح القيمة"
+                        },
+                        new
+                        {
+                            Id = new Guid("c43b3cc7-cb30-0b9c-3d7f-4d2e5444ce4f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cc91f0f8-c9dc-c060-380b-888212c6cbd8"),
+                            Value = "Disable"
+                        },
+                        new
+                        {
+                            Id = new Guid("542f775e-6703-e590-e114-497279f476fe"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cc91f0f8-c9dc-c060-380b-888212c6cbd8"),
+                            Value = "تعطيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("540d4f62-b9f6-1734-fab6-c4d279d128c7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3d391363-227c-a3d1-1197-343359825878"),
+                            Value = "Enable"
+                        },
+                        new
+                        {
+                            Id = new Guid("d958d35e-dec3-8479-9d91-34ff80e10e1b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3d391363-227c-a3d1-1197-343359825878"),
+                            Value = "تفعيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("55f26691-8729-b53a-ed7f-1c7a5ad7f141"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("83e68eb5-2e9f-3110-3bb7-8b16b5248213"),
+                            Value = "Disabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("cee4d6a4-0475-784e-a0c2-d65b8dd5b565"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("83e68eb5-2e9f-3110-3bb7-8b16b5248213"),
+                            Value = "معطّل"
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -8092,6 +8672,228 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("2031c582-a52b-baca-6cab-db6b6d21938c"),
+                            Description = "",
+                            Key = "contracts.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7bf799e-0114-c25a-46db-b0ff31655ea2"),
+                            Description = "",
+                            Key = "contracts.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("f765a18e-4438-22a7-7c83-34c6c52556aa"),
+                            Description = "",
+                            Key = "contracts.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("d27f69c2-2341-a5fd-169a-0fe4fcb28231"),
+                            Description = "",
+                            Key = "contracts.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("fb02bd6e-5d70-1516-9b9e-cc0dc9de6e24"),
+                            Description = "",
+                            Key = "contracts.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("a4c5a6c5-2bf8-9771-ccad-f574e9524b1d"),
+                            Description = "",
+                            Key = "contracts.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("118c1718-9436-8431-a45c-33cc878270cd"),
+                            Description = "",
+                            Key = "contracts.unknownSupplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("29ec94e3-2193-25b2-910d-684e12785662"),
+                            Description = "",
+                            Key = "contracts.itemNotOffered"
+                        },
+                        new
+                        {
+                            Id = new Guid("91bb55ac-5d59-91e6-e7cc-c307f336a941"),
+                            Description = "",
+                            Key = "contracts.unknownUnit"
+                        },
+                        new
+                        {
+                            Id = new Guid("3fcd9339-243f-3cbe-fd7b-5b5ecafffb95"),
+                            Description = "",
+                            Key = "contracts.invalidValue"
+                        },
+                        new
+                        {
+                            Id = new Guid("41b8bec4-2f08-0ebf-c459-f13df0e88abf"),
+                            Description = "",
+                            Key = "contracts.invalidUnitPrice"
+                        },
+                        new
+                        {
+                            Id = new Guid("7be7f869-b472-557b-1492-eccce29349c1"),
+                            Description = "",
+                            Key = "contracts.invalidQuantity"
+                        },
+                        new
+                        {
+                            Id = new Guid("24cb39ad-03f5-00c5-f8b1-9dc2cfe8ee6f"),
+                            Description = "",
+                            Key = "contracts.invalidNotes"
+                        },
+                        new
+                        {
+                            Id = new Guid("6e6b33e7-a92e-ec64-29d9-bf2395e6ad33"),
+                            Description = "",
+                            Key = "contracts.new"
+                        },
+                        new
+                        {
+                            Id = new Guid("7af715d8-ec95-8907-97e9-8b70888b6057"),
+                            Description = "",
+                            Key = "contracts.edit"
+                        },
+                        new
+                        {
+                            Id = new Guid("f06db356-d48c-9833-6ce4-84fd6216c6f4"),
+                            Description = "",
+                            Key = "contracts.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("9f06078f-e74f-a396-e2e7-0ba93ec7efb5"),
+                            Description = "",
+                            Key = "contracts.contractor"
+                        },
+                        new
+                        {
+                            Id = new Guid("7dcd7eb5-e6f8-611b-d54e-f013824c52ed"),
+                            Description = "",
+                            Key = "contracts.item"
+                        },
+                        new
+                        {
+                            Id = new Guid("c96bdf63-848a-9489-58d4-69828fe27483"),
+                            Description = "",
+                            Key = "contracts.unit"
+                        },
+                        new
+                        {
+                            Id = new Guid("6178cdf9-ca43-4fa3-6129-2be822ab2878"),
+                            Description = "",
+                            Key = "contracts.openValue"
+                        },
+                        new
+                        {
+                            Id = new Guid("a6778df3-f6ae-496b-670e-e27f109f9a11"),
+                            Description = "",
+                            Key = "contracts.contractValue"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce47b02e-e9c6-9218-1e86-cbd3ff295615"),
+                            Description = "",
+                            Key = "contracts.unitPrice"
+                        },
+                        new
+                        {
+                            Id = new Guid("c98fbaa2-010d-7a4f-9d25-8930b53b7205"),
+                            Description = "",
+                            Key = "contracts.quantity"
+                        },
+                        new
+                        {
+                            Id = new Guid("80b6142e-d1ce-c722-a458-21b86c12b803"),
+                            Description = "",
+                            Key = "contracts.notes"
+                        },
+                        new
+                        {
+                            Id = new Guid("b5834e1b-bf74-70a7-283f-a8491b5cc932"),
+                            Description = "",
+                            Key = "contracts.value"
+                        },
+                        new
+                        {
+                            Id = new Guid("e9160ba5-1b69-99b2-12f3-5206b9c2f576"),
+                            Description = "",
+                            Key = "contracts.paid"
+                        },
+                        new
+                        {
+                            Id = new Guid("c53eb634-036f-cbfe-2c8d-ad1130753b3b"),
+                            Description = "",
+                            Key = "contracts.remaining"
+                        },
+                        new
+                        {
+                            Id = new Guid("928081e2-36dc-555b-7453-9f98e48d99c3"),
+                            Description = "",
+                            Key = "contracts.open"
+                        },
+                        new
+                        {
+                            Id = new Guid("39054aee-63ce-ce01-530d-aa84a950cf1d"),
+                            Description = "",
+                            Key = "contracts.overrun"
+                        },
+                        new
+                        {
+                            Id = new Guid("bceb373f-bc7f-b5b5-1758-1b259c6e9e17"),
+                            Description = "",
+                            Key = "contracts.notStarted"
+                        },
+                        new
+                        {
+                            Id = new Guid("b379c1f7-e5e2-9b3c-947b-0d4d2ca6f100"),
+                            Description = "",
+                            Key = "contracts.running"
+                        },
+                        new
+                        {
+                            Id = new Guid("5ca80f8e-9ed5-b201-6bc2-d408d2f1546d"),
+                            Description = "",
+                            Key = "contracts.filterAll"
+                        },
+                        new
+                        {
+                            Id = new Guid("8c1e6e3e-e5cb-80d9-99a3-23e442c0db26"),
+                            Description = "",
+                            Key = "contracts.filterOverrun"
+                        },
+                        new
+                        {
+                            Id = new Guid("79ff7e2f-527b-779c-ce47-95604cfa8be5"),
+                            Description = "",
+                            Key = "contracts.filterOpenValue"
+                        },
+                        new
+                        {
+                            Id = new Guid("cc91f0f8-c9dc-c060-380b-888212c6cbd8"),
+                            Description = "",
+                            Key = "contracts.disable"
+                        },
+                        new
+                        {
+                            Id = new Guid("3d391363-227c-a3d1-1197-343359825878"),
+                            Description = "",
+                            Key = "contracts.enable"
+                        },
+                        new
+                        {
+                            Id = new Guid("83e68eb5-2e9f-3110-3bb7-8b16b5248213"),
+                            Description = "",
+                            Key = "contracts.disabled"
+                        },
+                        new
+                        {
                             Id = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
                             Description = "",
                             Key = "biometrics.notChanged"
@@ -8170,6 +8972,33 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Contracts.Contract", b =>
+                {
+                    b.HasOne("Redix.Api.Structure.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Suppliers.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Unit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

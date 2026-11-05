@@ -64,7 +64,7 @@ public static class SuppliersEndpoints
         var status = await KeepsSettingsAsync(projectId, userId, db) ? SupplierStatus.Approved : SupplierStatus.PendingApproval;
         return await IfAcceptableAsync(projectId, Guid.Empty, request, db, async () =>
         {
-            var supplier = new Supplier { ProjectId = projectId, Name = request.Name.Trim(), VatNumber = request.VatNumberKept, Mobile = request.Mobile.Trim(), Status = status, CreatedByUserId = userId };
+            var supplier = new Supplier { ProjectId = projectId, Name = request.Name.Trim(), VatNumber = request.VatNumberKept(), Mobile = request.Mobile.Trim(), Status = status, CreatedByUserId = userId };
             supplier.DefaultTo(request.DefaultItemId);
             db.Suppliers.Add(supplier);
             await db.SaveChangesAsync();
@@ -87,7 +87,7 @@ public static class SuppliersEndpoints
         return await IfAcceptableAsync(projectId, supplierId, request, db, async () =>
         {
             supplier.Name = request.Name.Trim();
-            supplier.VatNumber = request.VatNumberKept;
+            supplier.VatNumber = request.VatNumberKept();
             supplier.Mobile = request.Mobile.Trim();
             supplier.DefaultTo(request.DefaultItemId);
             await db.SaveChangesAsync();
@@ -111,7 +111,7 @@ public static class SuppliersEndpoints
 
     private static async Task<IResult> IfAcceptableAsync(Guid projectId, Guid supplierId, SupplierRequest request, RedixDbContext db, Func<Task<IResult>> change)
     {
-        var vatNumber = request.VatNumberKept;
+        var vatNumber = request.VatNumberKept();
         var refusal = Supplier.RefusalOf(request.Name.Trim(), vatNumber, !request.NotVatRegistered, request.Mobile.Trim());
         if (refusal.Length == 0 && request.DefaultItemId != Guid.Empty && await ProjectStructure.ItemOfAsync(projectId, request.DefaultItemId, db) is null)
         {
@@ -162,7 +162,7 @@ public record SupplierRequest(string Name)
     public Guid DefaultItemId { get; init; }
 
     /// <summary>The VAT number to keep: what was sent, trimmed, and empty for a supplier not VAT-registered.</summary>
-    public string VatNumberKept => NotVatRegistered ? "" : VatNumber.Trim();
+    public string VatNumberKept() => NotVatRegistered ? "" : VatNumber.Trim();
 }
 
 /// <summary>A supplier as the app shows it.</summary>

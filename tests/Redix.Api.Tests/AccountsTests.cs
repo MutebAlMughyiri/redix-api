@@ -20,7 +20,7 @@ public class AccountsTests(MigratedApiFactory factory)
 
     public static TheoryData<string> UnacceptableNames => ["   ", new string('x', Project.NameMaxLength + 1)];
 
-    public static TheoryData<decimal> UnacceptableBalances => [1.234m, Account.LargestOpeningBalance + 1, -Account.LargestOpeningBalance - 1];
+    public static TheoryData<decimal> UnacceptableBalances => [1.234m, Money.Largest + 1, -Money.Largest - 1];
 
     private async Task<(HttpClient Client, ProjectView Project)> FinanceAsync(string name = "غصون 6")
     {

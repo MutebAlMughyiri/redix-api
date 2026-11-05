@@ -44,7 +44,7 @@ public class Project
     /// <summary>The fraction its new entries' VAT is computed at (BR-14); each project keeps its own (BR-33). An entry keeps the VAT it was saved with.</summary>
     public decimal VatRate { get; private set; } = StartingVatRate;
 
-    /// <summary>The project's units, in the order they were added.</summary>
+    /// <summary>The project's units, in the order they were added, and once approved the shared one.</summary>
     public List<Unit> Units { get; } = [];
 
     /// <summary>True once the project is finished: nothing in it changes any more (AC-04.1).</summary>
@@ -110,6 +110,9 @@ public class Project
         Units.Add(new Unit { ProjectId = Id, Name = name, SortOrder = Units.Count });
         return ProjectChangeOutcome.Done;
     }
+
+    /// <summary>Adds the shared unit, which an entry or a contract may name instead of one of the project's units.</summary>
+    public void AddSharedUnit() => Units.Add(new Unit { ProjectId = Id, Name = Unit.SharedName, IsShared = true });
 
     /// <summary>Sets the VAT rate to <paramref name="percent"/>, from 0 to 100 with at most two decimals, which the column keeps exactly, unless the project is finished.</summary>
     public ProjectChangeOutcome SetVatPercent(decimal percent)
