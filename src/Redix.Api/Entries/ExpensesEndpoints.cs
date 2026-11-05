@@ -12,14 +12,29 @@ namespace Redix.Api.Entries;
 /// <summary>Records a purchase expense (UC-022, FR-08): the first time money enters the ledger. The figures are computed here from what was typed, once, and kept (BR-13).</summary>
 public static class ExpensesEndpoints
 {
-    /// <summary>Maps the route that records an expense, for whoever holds <see cref="Permission.RecordEntries"/>.</summary>
-    public static void MapExpenses(this WebApplication app) => app.MapProjectChanges(Permission.RecordEntries).MapPost("/expenses", Record);
+    /// <summary>Maps the route that records an expense, for whoever holds <see cref="Permission.RecordEntries"/>, and the one that reads the exceptions list, for anyone who reads the project.</summary>
+    public static void MapExpenses(this WebApplication app)
+    {
+        app.MapGet("/projects/{projectId:guid}/expenses/exceptions", Exceptions).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapProjectChanges(Permission.RecordEntries).MapPost("/expenses", Record);
+    }
+
+    /// <summary>The exceptions list (AC-09.1): the expenses sent or approved with no invoice, each saying why, in the order they were entered. UC-056 "Build the VAT statement for a period" adds what else it holds.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static Task<List<ExceptionView>> Exceptions(Guid projectId, RedixDbContext db) => (
+        from details in db.ExpenseDetails
+        join entry in db.Entries on details.EntryId equals entry.Id
+        join item in db.Items on details.ItemId equals item.Id
+        where entry.ProjectId == projectId && details.WithoutInvoiceReason != "" && (entry.Status == EntryStatus.PendingApproval || entry.Status == EntryStatus.Approved)
+        orderby entry.Id
+        select new ExceptionView(entry.Id, entry.Status, entry.EntryDate, entry.Amount, item.Name, details.WithoutInvoiceReason)).ToListAsync();
 
     /// <summary>
     /// Records a purchase as a draft, or sent for approval, and answers its figures. An id already used answers <c>entryExists</c>, and an empty one <c>invalidEntryId</c>. What it names has to be on offer to the caller: otherwise <c>itemNotOffered</c>, <c>unknownUnit</c>, <c>unknownSubgroup</c>,
     /// <c>unknownSupplier</c> (BR-19), <c>unknownPaymentMethod</c> or <c>accountNotOffered</c> (BRS open question 4). What was typed answers <c>invalidInvoiceNumber</c>, <c>invalidProduct</c>, <c>invalidNotes</c>, <c>invalidUnitPrice</c>, <c>invalidQuantity</c>, <c>invalidAmount</c>, <c>invalidDiscount</c>,
     /// <c>invalidPaymentAmount</c> or <c>invalidBankFees</c>. A date outside the project's period or in the future answers <c>invalidInvoiceDate</c> or <c>invalidPaymentDate</c> (BR-12). A file of no such attachment answers <c>unknownAttachment</c>. A custom value answers <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>.
-    /// Sending also needs the required columns, <c>requiredColumnMissing</c> with its <c>columnKey</c> (FR-41), and the invoice's file, <c>invoiceRequired</c> (FR-09); a draft can wait for them.
+    /// Sending also needs the required columns, <c>requiredColumnMissing</c> with its <c>columnKey</c> (FR-41), and the invoice's file or why there is none, <c>invoiceRequired</c> (FR-09); a draft can wait for them. A reason too long answers <c>invalidWithoutInvoiceReason</c>, and a reason beside a file <c>invoiceAndReason</c>.
     /// A file already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). The same supplier's invoice number in any project answers <c>duplicateInvoice</c>, with the earlier entry as <c>earlier</c>, until the request says <c>confirmDuplicate</c> (UC-023, FR-17).
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -66,7 +81,7 @@ public static class ExpensesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
         }
 
-        var vatRate = request.IsNotTaxable || supplier.VatNumber.Length == 0 ? 0 : project.VatRate;
+        var vatRate = request.IsNotTaxable || request.IsWithoutInvoice() || supplier.VatNumber.Length == 0 ? 0 : project.VatRate;
         var figures = InvoiceFigures.Of(request.EnteredAmount(), request.EnteredAmountIncludesVat(), request.Discount, vatRate);
         refusal = ExpenseRequest.RefusalOfFigures(figures);
         if (refusal.Length > 0)
@@ -79,7 +94,7 @@ public static class ExpensesEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, reason, "columnKey", columnKey);
         }
-        if (request.Submit && request.AttachmentId == Guid.Empty)
+        if (request.Submit && request.AttachmentId == Guid.Empty && !request.IsWithoutInvoice())
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvoiceRequired");
         }
@@ -88,7 +103,7 @@ public static class ExpensesEndpoints
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
         }
-        if (!request.ConfirmDuplicate)
+        if (!request.ConfirmDuplicate && !request.IsWithoutInvoice())
         {
             var earlier = await EarlierEntryAsync(supplier, request.InvoiceNumber.Trim(), access, db);
             if (earlier is not null)
@@ -150,11 +165,11 @@ public static class ExpensesEndpoints
 
     private static string RefusalOfDates(ExpenseRequest request, DateOnly projectStart, DateOnly today)
     {
-        if (!Entry.IsAcceptableDate(request.InvoiceDate, projectStart, today))
+        if (!request.IsWithoutInvoice() && !Entry.IsAcceptableDate(request.InvoiceDate, projectStart, today))
         {
             return "InvalidInvoiceDate";
         }
-        return request.PaymentDate == default || Entry.IsAcceptableDate(request.PaymentDate, projectStart, today) ? "" : "InvalidPaymentDate";
+        return (request.PaymentDate == default && !request.IsWithoutInvoice()) || Entry.IsAcceptableDate(request.PaymentDate, projectStart, today) ? "" : "InvalidPaymentDate";
     }
 
     private static (string Reason, string ColumnKey) RefusalOfColumns(ExpenseRequest request, List<ItemColumn> columns)
@@ -200,10 +215,14 @@ public static class ExpensesEndpoints
                 UnitId = request.UnitId,
                 PaymentMethodId = request.PaymentMethodId,
                 BankFees = request.BankFees,
+                WithoutInvoiceReason = request.WithoutInvoiceReason.Trim(),
                 CustomValues = JsonSerializer.Serialize(request.CustomValuesKept()),
             },
             new PurchaseDetails { EntryId = entry.Id, SupplierId = request.SupplierId, Product = request.Product.Trim(), UnitPrice = request.UnitPrice, Quantity = request.Quantity },
-            new Invoice
+        ];
+        if (!request.IsWithoutInvoice())
+        {
+            details.Add(new Invoice
             {
                 EntryId = entry.Id,
                 Number = request.InvoiceNumber.Trim(),
@@ -214,8 +233,8 @@ public static class ExpensesEndpoints
                 Vat = figures.Vat,
                 Total = figures.Total,
                 VatPeriodStart = Invoice.QuarterStartOf(request.InvoiceDate),
-            },
-        ];
+            });
+        }
         if (request.AttachmentId != Guid.Empty)
         {
             details.Add(new EntryAttachment { EntryId = entry.Id, AttachmentId = request.AttachmentId, Role = EntryAttachmentRole.Invoice });
@@ -230,6 +249,15 @@ public static class ExpensesEndpoints
 /// <param name="InvoiceDate">The invoice's date.</param>
 /// <param name="Total">The invoice's total.</param>
 public record EarlierEntryView(bool IsVisible, string ProjectName, DateOnly InvoiceDate, decimal Total);
+
+/// <summary>One row of the exceptions list (AC-09.1).</summary>
+/// <param name="EntryId">The entry's id.</param>
+/// <param name="Status">Where it stands.</param>
+/// <param name="EntryDate">The day the money moved.</param>
+/// <param name="Amount">What was paid.</param>
+/// <param name="ItemName">The item it is recorded against.</param>
+/// <param name="Reason">Why there is no invoice.</param>
+public record ExceptionView(Guid EntryId, EntryStatus Status, DateOnly EntryDate, decimal Amount, string ItemName, string Reason);
 
 /// <summary>A recorded expense's figures, as the API computed them.</summary>
 /// <param name="Id">The entry's id.</param>

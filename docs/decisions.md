@@ -6,6 +6,11 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | An expense without an invoice still names its supplier from the register | BR-19 never takes free text and the design has no NULL. A shop with no register row is quick-added, or goes under the general cash supplier. Made without Muteb |
+| 2026-11-05 | An expense without an invoice has no `Invoices` row, no VAT, and the payment date as its date | There is no tax document to reclaim VAT on, and the VAT statement lists it as an exception rather than counting it. Made without Muteb |
+| 2026-11-05 | The reason alone says there is no invoice; a reason beside a file is refused | A second flag could disagree with it, and the use case's precondition is that the expense has no attachment. Made without Muteb |
+| 2026-11-05 | The exceptions list is one route that holds, for now, what is sent or approved with a reason; it has no screen | AC-09.1 needs it to exist. The canvas draws no screen for it (findings row 7), and UC-056 "Build the VAT statement for a period" adds its other rows. Made without Muteb |
+| 2026-11-05 | No cap on an expense without an invoice | BRS open question 2, answered for now. Made without Muteb |
 | 2026-11-05 | The expense's unit price and quantity say no "(optional)"; a required field is what gets marked | The two sit side by side, and the words were cut off on the emulator. Finance can make either required, so "(optional)" could also be untrue. Made without Muteb |
 | 2026-11-05 | "The same supplier in every project" is the same row, or in another project whoever holds the same VAT number | Each project has its own register (BR-33), so a company is a different row in each, and its number is what stays the same. A supplier with no number has nothing to compare. Made without Muteb |
 | 2026-11-05 | An earlier entry in a project the caller cannot read says only that it exists | AC-17.1 shows the earlier entry, and BR-33 makes projects completely separate. The warning still protects the money, and nothing of the other project leaks. Made without Muteb; see the findings |

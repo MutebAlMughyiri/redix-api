@@ -21,7 +21,7 @@ public class ExpenseDetails
     /// <summary>What the bank charged on top; 0 when nothing (BR-24).</summary>
     public decimal BankFees { get; init; }
 
-    /// <summary>Why there is no invoice; empty when there is one (FR-09). UC-025 "Record an expense without an invoice" fills it.</summary>
+    /// <summary>Why there is no invoice; empty when there is one (FR-09).</summary>
     public string WithoutInvoiceReason { get; init; } = "";
 
     /// <summary>What becomes of it when paid from a partner's money (BR-25).</summary>

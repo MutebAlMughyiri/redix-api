@@ -1,3 +1,4 @@
+using Redix.Api.Projects;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Entries;
@@ -18,11 +19,14 @@ public record ExpenseRequest(Guid Id)
     /// <summary>The supplier, from the project's register.</summary>
     public Guid SupplierId { get; init; }
 
-    /// <summary>The invoice's number.</summary>
+    /// <summary>The invoice's number; left out for an expense without an invoice.</summary>
     public string InvoiceNumber { get; init; } = "";
 
-    /// <summary>The invoice's date.</summary>
+    /// <summary>The invoice's date; left out for an expense without an invoice.</summary>
     public DateOnly InvoiceDate { get; init; }
+
+    /// <summary>Why there is no invoice; left out when there is one (FR-09). An expense that says why has no invoice number, no file and no VAT, and its date is <see cref="PaymentDate"/>.</summary>
+    public string WithoutInvoiceReason { get; init; } = "";
 
     /// <summary>What was bought; left out when not said.</summary>
     public string Product { get; init; } = "";
@@ -51,7 +55,7 @@ public record ExpenseRequest(Guid Id)
     /// <summary>The account it was paid from.</summary>
     public Guid AccountId { get; init; }
 
-    /// <summary>The day it was paid; left out when it is the invoice's date (BR-24).</summary>
+    /// <summary>The day it was paid; left out when it is the invoice's date (BR-24), and required without an invoice.</summary>
     public DateOnly PaymentDate { get; init; }
 
     /// <summary>What was paid; left out when it is the invoice's total (BR-24).</summary>
@@ -75,6 +79,9 @@ public record ExpenseRequest(Guid Id)
     /// <summary>True once the person has seen that this supplier's invoice number exists already, and saves it anyway (FR-17).</summary>
     public bool ConfirmDuplicate { get; init; }
 
+    /// <summary>Whether this expense says why it has no invoice (FR-09).</summary>
+    public bool IsWithoutInvoice() => WithoutInvoiceReason.Trim().Length > 0;
+
     /// <summary>The amount as typed, or else what the unit price and quantity make: which BR-01 says includes VAT.</summary>
     public decimal EnteredAmount() => Amount > 0 ? Amount : UnitPrice * Quantity;
 
@@ -87,7 +94,15 @@ public record ExpenseRequest(Guid Id)
     /// <summary>Why the texts and typed amounts cannot be kept: each amount is not negative, has at most two decimals and stays within <see cref="Money.Largest"/>. Empty when they can.</summary>
     public string RefusalOfTyped()
     {
-        if (InvoiceNumber.Trim().Length is 0 or > Invoice.NumberMaxLength)
+        if (WithoutInvoiceReason.Trim().Length > Project.ReasonMaxLength)
+        {
+            return "InvalidWithoutInvoiceReason";
+        }
+        if (IsWithoutInvoice() && AttachmentId != Guid.Empty)
+        {
+            return "InvoiceAndReason";
+        }
+        if (!IsWithoutInvoice() && InvoiceNumber.Trim().Length is 0 or > Invoice.NumberMaxLength)
         {
             return "InvalidInvoiceNumber";
         }

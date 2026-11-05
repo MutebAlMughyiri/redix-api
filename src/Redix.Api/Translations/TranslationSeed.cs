@@ -421,6 +421,11 @@ public static class TranslationSeed
         ("expenses.saveAnyway", "Save anyway", "حفظ رغم ذلك"),
         ("expenses.invoiceAlreadyAttached", "This file is already on another expense.", "هذا الملف مرفق بمصروف آخر."),
         ("suppliers.mostUsed", "Most used", "الأكثر استخداماً"),
+        ("expenses.withoutInvoice", "Without an invoice", "بدون فاتورة"),
+        ("expenses.withoutInvoiceReason", "Why there is no invoice", "سبب عدم وجود فاتورة"),
+        ("expenses.invalidWithoutInvoiceReason", "Say why there is no invoice, in up to 500 characters.", "اذكر سبب عدم وجود فاتورة، حتى 500 حرف."),
+        ("expenses.invoiceAndReason", "An expense without an invoice carries no invoice file.", "المصروف بدون فاتورة لا يُرفق به ملف فاتورة."),
+        ("expenses.amount", "Amount", "المبلغ"),
         ("biometrics.notChanged", "Could not change this. Check the network and try again.", "تعذّر التغيير. تحقق من الشبكة وحاول مرة أخرى."),
     ];
 
