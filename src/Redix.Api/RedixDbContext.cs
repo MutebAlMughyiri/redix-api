@@ -4,6 +4,7 @@ using Redix.Api.Attachments;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
+using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -78,6 +79,21 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>The pictures and PDFs each project keeps (FR-09).</summary>
     public DbSet<Attachment> Attachments => Set<Attachment>();
+
+    /// <summary>The ledger: every movement of money, of any kind.</summary>
+    public DbSet<Entry> Entries => Set<Entry>();
+
+    /// <summary>What every expense has.</summary>
+    public DbSet<ExpenseDetails> ExpenseDetails => Set<ExpenseDetails>();
+
+    /// <summary>What only a purchase has.</summary>
+    public DbSet<PurchaseDetails> PurchaseDetails => Set<PurchaseDetails>();
+
+    /// <summary>The invoices of the expenses, which the VAT statement goes by.</summary>
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+
+    /// <summary>The files each entry carries.</summary>
+    public DbSet<EntryAttachment> EntryAttachments => Set<EntryAttachment>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -243,6 +259,44 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             link.ToTable("ContractAttachments");
             link.HasKey(l => new { l.ContractId, l.AttachmentId });
             link.HasOne<Contract>().WithMany().HasForeignKey(l => l.ContractId).OnDelete(DeleteBehavior.Restrict);
+            link.HasOne<Attachment>().WithMany().HasForeignKey(l => l.AttachmentId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Entry>(entry =>
+        {
+            entry.Property(e => e.Notes).HasMaxLength(global::Redix.Api.Entries.Entry.NotesMaxLength);
+            entry.HasIndex(e => new { e.ProjectId, e.Status });
+            entry.HasOne<Project>().WithMany().HasForeignKey(e => e.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            entry.HasOne<Account>().WithMany().HasForeignKey(e => e.AccountId).OnDelete(DeleteBehavior.Restrict);
+            entry.HasOne<User>().WithMany().HasForeignKey(e => e.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ExpenseDetails>(details =>
+        {
+            details.HasKey(d => d.EntryId);
+            details.Property(d => d.WithoutInvoiceReason).HasMaxLength(Project.ReasonMaxLength);
+            details.Property(d => d.CustomValues).HasColumnType("json");
+            details.HasOne<Entry>().WithOne().HasForeignKey<ExpenseDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Item>().WithMany().HasForeignKey(d => d.ItemId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Subgroup>().WithMany().HasForeignKey(d => d.SubgroupId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Unit>().WithMany().HasForeignKey(d => d.UnitId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<PaymentMethod>().WithMany().HasForeignKey(d => d.PaymentMethodId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<PurchaseDetails>(details =>
+        {
+            details.HasKey(d => d.EntryId);
+            details.Property(d => d.Product).HasMaxLength(global::Redix.Api.Entries.PurchaseDetails.ProductMaxLength);
+            details.HasOne<Entry>().WithOne().HasForeignKey<PurchaseDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Supplier>().WithMany().HasForeignKey(d => d.SupplierId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Invoice>(invoice =>
+        {
+            invoice.HasKey(i => i.EntryId);
+            invoice.Property(i => i.Number).HasMaxLength(Invoice.NumberMaxLength);
+            invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<EntryAttachment>(link =>
+        {
+            link.HasKey(l => new { l.EntryId, l.AttachmentId });
+            link.HasOne<Entry>().WithMany().HasForeignKey(l => l.EntryId).OnDelete(DeleteBehavior.Restrict);
             link.HasOne<Attachment>().WithMany().HasForeignKey(l => l.AttachmentId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ProjectMember>(member =>

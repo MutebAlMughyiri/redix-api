@@ -116,8 +116,7 @@ public static class ContractsEndpoints
         {
             return "UnknownSupplier";
         }
-        var category = await db.Categories.Include(row => row.Items).SingleOrDefaultAsync(row => row.ProjectId == projectId && row.Items.Any(item => item.Id == request.ItemId));
-        if (category is null || !category.ItemsOfferedFor(ItemType.ContractorPayments).Any(item => item.Id == request.ItemId))
+        if (await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.ContractorPayments, db) is null)
         {
             return "ItemNotOffered";
         }

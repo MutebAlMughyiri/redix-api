@@ -19,6 +19,7 @@ src/Redix.Api/
   Partners/             a project's partners, and the login whose capital each is
   Suppliers/            a project's supplier register, its search, and the rule of a VAT number
   Contracts/            what a project's contractors were promised, and what remains, with their documents
+  Entries/              the ledger: every movement of money, the details of each kind, and the one owner of an invoice's arithmetic
   Attachments/          a project's pictures and PDFs: the record of each, the folder the files live in, and who may read them
   Refusal.cs            the answer to a refused request: problem details with a code
   Money.cs              what every amount a person types shares: two decimals and a limit

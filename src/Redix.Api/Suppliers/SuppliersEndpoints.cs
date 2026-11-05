@@ -31,7 +31,7 @@ public static class SuppliersEndpoints
         await ViewsOfAsync(await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Include(supplier => supplier.DefaultItems).OrderBy(supplier => supplier.Name).ToListAsync(), db);
 
     /// <summary>
-    /// What the caller's entry may pick: the suppliers on offer to them (<see cref="Supplier.OfferedTo"/>) whose name or VAT number holds <paramref name="text"/>, by name, at most <see cref="Supplier.SearchLimit"/> of them (AC-43.1). Fewer than
+    /// What the caller's entry may pick: the suppliers on offer to them (<see cref="Supplier.OfferedTo"/>) whose name or VAT number holds <paramref name="text"/>, those on most of the caller's purchases first and then by name, at most <see cref="Supplier.SearchLimit"/> of them (AC-43.1). Fewer than
     /// <see cref="Supplier.SearchMinLength"/> letters narrow nothing down. An exact VAT number answers its one supplier, and one in no supplier's hands answers an empty list, for the app to offer a quick add (FR-43).
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -44,10 +44,15 @@ public static class SuppliersEndpoints
         var seesPending = await KeepsSettingsAsync(projectId, userId, db);
         var typed = text.Trim();
         var narrowsNothing = typed.Length < Supplier.SearchMinLength;
+        var callersPurchases = db.PurchaseDetails.Where(purchase => db.Entries.Any(entry => entry.Id == purchase.EntryId && entry.CreatedByUserId == userId));
         var found = await db.Suppliers.Where(Supplier.OfferedTo(userId, seesPending))
             .Where(supplier => supplier.ProjectId == projectId && (narrowsNothing || supplier.Name.Contains(typed) || supplier.VatNumber.Contains(typed)))
-            .Include(supplier => supplier.DefaultItems).OrderBy(supplier => supplier.Name).Take(Supplier.SearchLimit).ToListAsync();
-        return await ViewsOfAsync(found, db);
+            .Include(supplier => supplier.DefaultItems)
+            .OrderByDescending(supplier => callersPurchases.Count(purchase => purchase.SupplierId == supplier.Id)).ThenBy(supplier => supplier.Name).Take(Supplier.SearchLimit).ToListAsync();
+        var foundIds = found.Select(supplier => supplier.Id).ToList();
+        var uses = await callersPurchases.Where(purchase => foundIds.Contains(purchase.SupplierId)).GroupBy(purchase => purchase.SupplierId)
+            .Select(group => new { SupplierId = group.Key, Uses = group.Count() }).ToDictionaryAsync(row => row.SupplierId, row => row.Uses);
+        return (await ViewsOfAsync(found, db)).Select(view => view with { TimesUsed = uses.GetValueOrDefault(view.Id) }).ToList();
     }
 
     /// <summary>
@@ -176,6 +181,9 @@ public record SupplierRequest(string Name)
 /// <param name="IsActive">False once disabled.</param>
 public record SupplierView(Guid Id, string Name, string VatNumber, string Mobile, string DefaultItemId, string DefaultItemName, SupplierStatus Status, bool IsActive)
 {
+    /// <summary>How many of the caller's purchases name it, in a search; 0 otherwise.</summary>
+    public int TimesUsed { get; init; }
+
     /// <summary>The view of <paramref name="supplier"/>, whose default item is named <paramref name="defaultItemName"/>.</summary>
     public static SupplierView Of(Supplier supplier, string defaultItemName) =>
         new(supplier.Id, supplier.Name, supplier.VatNumber, supplier.Mobile, supplier.DefaultItemId == Guid.Empty ? "" : supplier.DefaultItemId.ToString(), defaultItemName, supplier.Status, supplier.IsActive);

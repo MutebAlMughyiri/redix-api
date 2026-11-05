@@ -333,7 +333,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("RolePermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'AttachFiles')");
+                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'AttachFiles')");
                         });
 
                     b.HasData(
@@ -393,6 +393,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("67937e5c-2761-3f8b-fe1a-397f2c237edb"),
+                            Permission = "RecordEntries",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
+                        },
+                        new
+                        {
                             Id = new Guid("da2b0bde-147b-579a-ce58-6486192222af"),
                             Permission = "AttachFiles",
                             RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
@@ -413,6 +419,12 @@ namespace Redix.Api.Migrations
                         {
                             Id = new Guid("c79fdab1-3bb3-ec46-2886-93b77a5fe831"),
                             Permission = "AddSupplier",
+                            RoleId = new Guid("f50f9eae-0001-8d5d-c4b1-e47737eac451")
+                        },
+                        new
+                        {
+                            Id = new Guid("017f8267-5712-23a9-ab09-f3654a3f5802"),
+                            Permission = "RecordEntries",
                             RoleId = new Guid("f50f9eae-0001-8d5d-c4b1-e47737eac451")
                         },
                         new
@@ -599,6 +611,221 @@ namespace Redix.Api.Migrations
                     b.HasIndex("AttachmentId");
 
                     b.ToTable("ContractAttachments", (string)null);
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.Entry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("EntryDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ProjectId", "Status");
+
+                    b.ToTable("Entries");
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.EntryAttachment", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AttachmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Role")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("EntryId", "AttachmentId");
+
+                    b.HasIndex("AttachmentId");
+
+                    b.ToTable("EntryAttachments");
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.ExpenseDetails", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("BankFees")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("CustomValues")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("PartnerTreatment")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("PaymentMethodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SubgroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("WithoutInvoiceReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("SubgroupId");
+
+                    b.HasIndex("UnitId");
+
+                    b.ToTable("ExpenseDetails");
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.Invoice", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AmountAfterDiscount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("AmountBeforeDiscount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("Discount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateOnly>("InvoiceDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsCreditNote")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("Vat")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateOnly>("VatPeriodStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("EntryId");
+
+                    b.ToTable("Invoices");
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.PurchaseDetails", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Product")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("PurchaseDetails");
                 });
 
             modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
@@ -7167,6 +7394,944 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("a831aa9c-0c16-8050-a4cd-ffcf2f830f0b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("627e20df-8451-b393-4dca-65e11f806396"),
+                            Value = "Item"
+                        },
+                        new
+                        {
+                            Id = new Guid("c9628631-0fec-75a3-8e06-74305a66a871"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("627e20df-8451-b393-4dca-65e11f806396"),
+                            Value = "البند"
+                        },
+                        new
+                        {
+                            Id = new Guid("71ac38db-1766-433d-2876-6a28d610b81f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("15c28535-89bc-0b53-9a07-2e2ab6313ee0"),
+                            Value = "Subgroup"
+                        },
+                        new
+                        {
+                            Id = new Guid("4a7962a8-cf01-3fa1-ff0a-6c5039855a1c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("15c28535-89bc-0b53-9a07-2e2ab6313ee0"),
+                            Value = "المجموعة الفرعية"
+                        },
+                        new
+                        {
+                            Id = new Guid("00d5981b-744a-50d5-842a-2246aed3a34c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4861aab6-d719-1fb5-e675-aeec1bf8bcca"),
+                            Value = "General"
+                        },
+                        new
+                        {
+                            Id = new Guid("313acc71-6830-3e3a-b79b-d0ccfb384f6e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4861aab6-d719-1fb5-e675-aeec1bf8bcca"),
+                            Value = "عام"
+                        },
+                        new
+                        {
+                            Id = new Guid("56c9c8cc-c8c9-038d-11d8-5c045fcb0503"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d6d1034b-6dcd-15b5-84f6-f3214c4a2b02"),
+                            Value = "Unit"
+                        },
+                        new
+                        {
+                            Id = new Guid("6efc9471-fe5d-676a-95e4-1a65063ad0eb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d6d1034b-6dcd-15b5-84f6-f3214c4a2b02"),
+                            Value = "الوحدة"
+                        },
+                        new
+                        {
+                            Id = new Guid("7755f159-824e-6727-668c-be21e71aa518"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5d71b29b-07f6-26ba-a47d-d6a100c2d513"),
+                            Value = "Supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("a32a43bd-b85b-c6e3-4c54-f75b314bfe3b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5d71b29b-07f6-26ba-a47d-d6a100c2d513"),
+                            Value = "المورد"
+                        },
+                        new
+                        {
+                            Id = new Guid("387021e9-5405-4797-4e87-3d3d33910e1d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5a91e337-2178-992a-0da0-4ab598ceff6b"),
+                            Value = "Invoice number"
+                        },
+                        new
+                        {
+                            Id = new Guid("bd47f371-748c-d182-1828-5e2323a2128d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5a91e337-2178-992a-0da0-4ab598ceff6b"),
+                            Value = "رقم الفاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0a8abcf-db11-8db8-ce81-50a11250d401"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8fe6a9ef-ebae-ee5c-23c8-8965728b4717"),
+                            Value = "Date"
+                        },
+                        new
+                        {
+                            Id = new Guid("c455c684-5893-66b9-5eb0-f47858bee224"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8fe6a9ef-ebae-ee5c-23c8-8965728b4717"),
+                            Value = "التاريخ"
+                        },
+                        new
+                        {
+                            Id = new Guid("1e4b5bb0-edc6-c704-8c95-42f19d64fcb8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("302fd9fd-584a-c19d-e9fb-0437027fbcb5"),
+                            Value = "Product"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5ca4622-0846-9b0f-90b6-005f52f01989"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("302fd9fd-584a-c19d-e9fb-0437027fbcb5"),
+                            Value = "الصنف"
+                        },
+                        new
+                        {
+                            Id = new Guid("1119f52f-d29e-839b-f71e-694ac237f060"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("da28b3b3-d768-fb85-9015-fd87d2d9caed"),
+                            Value = "Unit price (optional)"
+                        },
+                        new
+                        {
+                            Id = new Guid("864be42c-280f-d6f1-123c-a95722be794f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("da28b3b3-d768-fb85-9015-fd87d2d9caed"),
+                            Value = "سعر الوحدة (اختياري)"
+                        },
+                        new
+                        {
+                            Id = new Guid("9f5f8bc4-7278-37af-9089-0e7355c3a0d9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("91ce291c-b4fb-0b1c-0b20-82fd13f712ab"),
+                            Value = "Quantity (optional)"
+                        },
+                        new
+                        {
+                            Id = new Guid("c9a115a5-383e-1b62-7340-dbca17bf1ad6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("91ce291c-b4fb-0b1c-0b20-82fd13f712ab"),
+                            Value = "العدد (اختياري)"
+                        },
+                        new
+                        {
+                            Id = new Guid("27a8cd3e-9204-cd9a-7b8e-2f2515ad6651"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("39326569-bfee-321b-18c2-de9542077919"),
+                            Value = "Including VAT"
+                        },
+                        new
+                        {
+                            Id = new Guid("bf309a0e-b409-2873-fd9b-ee5bdd2006bd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("39326569-bfee-321b-18c2-de9542077919"),
+                            Value = "شامل الضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("4f3c018f-d6b1-4858-9889-c94b96e83c35"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1512645c-c7fb-e5c6-4261-9d7b67bafc6f"),
+                            Value = "Before VAT"
+                        },
+                        new
+                        {
+                            Id = new Guid("427d3d93-145b-8785-a13b-7e328b3b3342"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1512645c-c7fb-e5c6-4261-9d7b67bafc6f"),
+                            Value = "قبل الضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("79702266-80a0-d5ba-69ce-711592ddd3df"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("80abf007-9b28-f9ce-0bd0-e3190a886022"),
+                            Value = "Amount including VAT"
+                        },
+                        new
+                        {
+                            Id = new Guid("36a5e80a-68be-3423-76e3-68c3ddb7489e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("80abf007-9b28-f9ce-0bd0-e3190a886022"),
+                            Value = "المبلغ شامل الضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("0c993812-c58a-b23c-a1a1-32bdb1725ab0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f1c51566-e5e4-84f1-c0da-cc133832638c"),
+                            Value = "Amount before VAT"
+                        },
+                        new
+                        {
+                            Id = new Guid("4bad9f12-4048-d065-7b0e-82673dee5da3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f1c51566-e5e4-84f1-c0da-cc133832638c"),
+                            Value = "المبلغ قبل الضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("6464325f-be76-420a-abb5-13da941abd1d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("56b2809b-800a-2dfd-bb1e-0dc47ae1e996"),
+                            Value = "Discount"
+                        },
+                        new
+                        {
+                            Id = new Guid("3bce480a-80a8-f0d3-de9b-db146228836c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("56b2809b-800a-2dfd-bb1e-0dc47ae1e996"),
+                            Value = "الخصم"
+                        },
+                        new
+                        {
+                            Id = new Guid("a48c5b1a-c866-f75e-f4ba-a729b8bbce68"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("536dbb67-b590-59b3-3de2-a0635356666a"),
+                            Value = "This invoice is not taxable"
+                        },
+                        new
+                        {
+                            Id = new Guid("3453af31-1f8b-4ba0-a77f-9db47b4522a9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("536dbb67-b590-59b3-3de2-a0635356666a"),
+                            Value = "هذه الفاتورة غير خاضعة للضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("2530fde2-55a4-8e4d-56d7-d6b3ba50b359"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("38c1315d-cece-ac60-b65e-0e6a39cdf601"),
+                            Value = "Before VAT, after discount"
+                        },
+                        new
+                        {
+                            Id = new Guid("13d39e10-b67f-03c9-c8f6-3057f38b0af1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("38c1315d-cece-ac60-b65e-0e6a39cdf601"),
+                            Value = "قبل الضريبة بعد الخصم"
+                        },
+                        new
+                        {
+                            Id = new Guid("98301475-ea8c-23e8-8073-8e4ca59465f1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("406c1a1b-53c0-cd2a-4df9-6b27b6fe0d06"),
+                            Value = "VAT"
+                        },
+                        new
+                        {
+                            Id = new Guid("2875094f-ba99-8b34-983c-94b96a237f23"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("406c1a1b-53c0-cd2a-4df9-6b27b6fe0d06"),
+                            Value = "الضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("28b8f94f-21b6-a554-a8da-6a5a742f7e6a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bd47da61-ded7-c7d8-447a-ea0c154a1bc7"),
+                            Value = "Total"
+                        },
+                        new
+                        {
+                            Id = new Guid("7daefe63-0ef4-9919-195b-061255c4093c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bd47da61-ded7-c7d8-447a-ea0c154a1bc7"),
+                            Value = "الإجمالي"
+                        },
+                        new
+                        {
+                            Id = new Guid("468bdf08-324e-e5b1-02aa-834e4fad5745"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9fc7231e-3919-cb42-5bd5-703d0dafd9bf"),
+                            Value = "Payment source"
+                        },
+                        new
+                        {
+                            Id = new Guid("d8908226-2e4b-3e46-01ad-6660928b3556"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9fc7231e-3919-cb42-5bd5-703d0dafd9bf"),
+                            Value = "مصدر الدفع"
+                        },
+                        new
+                        {
+                            Id = new Guid("5ab5e673-8ab1-52ac-c703-155216c8cc0d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5b494c8c-bbc0-5021-25cb-ad60253b794c"),
+                            Value = "Payment method"
+                        },
+                        new
+                        {
+                            Id = new Guid("603072cd-6548-61dc-14b3-cd1da13e7e1a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5b494c8c-bbc0-5021-25cb-ad60253b794c"),
+                            Value = "طريقة الدفع"
+                        },
+                        new
+                        {
+                            Id = new Guid("6c78f16a-120e-7f9c-9061-c96cb5af2029"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("59a3a15a-b128-8e44-708b-809d6a215e8b"),
+                            Value = "Account"
+                        },
+                        new
+                        {
+                            Id = new Guid("46a2ed3a-2dc9-27fc-b5a2-4da491272e38"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("59a3a15a-b128-8e44-708b-809d6a215e8b"),
+                            Value = "الحساب"
+                        },
+                        new
+                        {
+                            Id = new Guid("75f18932-a0ef-fc8b-fb07-47939cf3f08c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a3f2bd02-c7c8-7e4e-79bb-1c5c9b06d494"),
+                            Value = "You hold no account to pay from. Ask Finance to hand you one."
+                        },
+                        new
+                        {
+                            Id = new Guid("87e5906d-abb8-d36f-3ed2-b81c5eea3202"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a3f2bd02-c7c8-7e4e-79bb-1c5c9b06d494"),
+                            Value = "لا تملك حساباً تدفع منه. اطلب من المالي تسليمك حساباً."
+                        },
+                        new
+                        {
+                            Id = new Guid("c118522f-5873-dd12-6e69-9dd875544b89"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ff093f4b-41d2-37dc-03d6-323291864bd3"),
+                            Value = "The payment differs from the invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("33da3f4e-3b46-9511-9b44-823e41d0a288"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ff093f4b-41d2-37dc-03d6-323291864bd3"),
+                            Value = "الدفع يختلف عن الفاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("d994c2f3-f8af-b180-fb12-1a40fa8d64e9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a3d53521-72fe-698b-c0b6-667e1b8dcce4"),
+                            Value = "Payment date"
+                        },
+                        new
+                        {
+                            Id = new Guid("42c8491e-c8dc-6c57-9a43-6afff6c3e625"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a3d53521-72fe-698b-c0b6-667e1b8dcce4"),
+                            Value = "تاريخ الدفع"
+                        },
+                        new
+                        {
+                            Id = new Guid("f5000d02-b4c6-1fde-1f9a-b17edf5da1a2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("44e256b4-f64b-09db-e5aa-d3c79a63ad7a"),
+                            Value = "Amount paid"
+                        },
+                        new
+                        {
+                            Id = new Guid("8a79de21-2d68-ea09-dab8-7587dc173831"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("44e256b4-f64b-09db-e5aa-d3c79a63ad7a"),
+                            Value = "المبلغ المدفوع"
+                        },
+                        new
+                        {
+                            Id = new Guid("ac478550-e87f-db96-6a74-cda8f49eccbd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a3da815d-fa5c-9317-c319-7d7c45f2619b"),
+                            Value = "Bank fees"
+                        },
+                        new
+                        {
+                            Id = new Guid("7362e7d5-1e75-db2f-a9c5-aeb170f5aba9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a3da815d-fa5c-9317-c319-7d7c45f2619b"),
+                            Value = "رسوم بنكية"
+                        },
+                        new
+                        {
+                            Id = new Guid("c14c3c92-b93e-3325-805e-3b69ea979ca4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3f15fb81-ad8a-daec-0fc2-831ac08ff2a9"),
+                            Value = "Notes"
+                        },
+                        new
+                        {
+                            Id = new Guid("bc859c76-e6b0-a1c0-840c-a360e6953c7a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3f15fb81-ad8a-daec-0fc2-831ac08ff2a9"),
+                            Value = "ملاحظات"
+                        },
+                        new
+                        {
+                            Id = new Guid("98837731-b5d0-ec39-e37f-4a9c2ea124a6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b4a77062-42a5-ffac-3c7a-46334d2c15dd"),
+                            Value = "Required"
+                        },
+                        new
+                        {
+                            Id = new Guid("56c5b8da-3d46-862f-3f6e-050f0c9c26bc"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b4a77062-42a5-ffac-3c7a-46334d2c15dd"),
+                            Value = "إلزامي"
+                        },
+                        new
+                        {
+                            Id = new Guid("7438bcb4-a721-9b62-e298-638f67ed13a8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3d700b75-43c6-6223-d8ab-58e512f360fd"),
+                            Value = "Send for approval"
+                        },
+                        new
+                        {
+                            Id = new Guid("c1e4bcdf-26c8-401a-d875-07309a8e32a4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3d700b75-43c6-6223-d8ab-58e512f360fd"),
+                            Value = "إرسال للاعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("5b38f0e3-42cb-c02e-3dff-d310dd14ccf9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0f5601eb-70a7-0f06-2124-b42f05805d3e"),
+                            Value = "Save draft"
+                        },
+                        new
+                        {
+                            Id = new Guid("9f6c3b52-21fc-6462-aaff-8753a461ac25"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0f5601eb-70a7-0f06-2124-b42f05805d3e"),
+                            Value = "حفظ مسودة"
+                        },
+                        new
+                        {
+                            Id = new Guid("318b2e5d-a71b-bd65-783a-6a65f36a2080"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("380e642c-9c07-1a59-fa8e-00ac845ab893"),
+                            Value = "Sent for approval."
+                        },
+                        new
+                        {
+                            Id = new Guid("2430dbfc-5f1b-45ef-8811-612833d7ecd5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("380e642c-9c07-1a59-fa8e-00ac845ab893"),
+                            Value = "أُرسل للاعتماد."
+                        },
+                        new
+                        {
+                            Id = new Guid("6d79cb8d-b572-f652-f60d-9655ba9cc976"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("650c3f6d-1a58-ea52-771e-62a588c05d40"),
+                            Value = "Saved as a draft."
+                        },
+                        new
+                        {
+                            Id = new Guid("78a0e7e2-d5a5-a1d1-44e7-baba704c660a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("650c3f6d-1a58-ea52-771e-62a588c05d40"),
+                            Value = "حُفظ كمسودة."
+                        },
+                        new
+                        {
+                            Id = new Guid("f4f50a8e-8aa5-73fd-0c43-00772c96172c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
+                            Value = "Could not read this. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("c8daed7b-bb4e-322d-fa46-536456195c23"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
+                            Value = "تعذّرت القراءة. تحقق من الشبكة وحاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("afd60553-d9e0-d075-a45d-bc2746653e11"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("60f4a34e-1e29-66ff-56c3-02c72aea7686"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("147de803-538b-c5fc-a985-5e2d35976d90"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("60f4a34e-1e29-66ff-56c3-02c72aea7686"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("dcd2ad27-d516-05c6-dcb9-b813fe8ba62d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("36ef27c5-fe22-8894-89bd-30a10c24cf7b"),
+                            Value = "The expense could not be saved."
+                        },
+                        new
+                        {
+                            Id = new Guid("33616a11-2b8d-d277-7512-8785320e996d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("36ef27c5-fe22-8894-89bd-30a10c24cf7b"),
+                            Value = "تعذّر حفظ المصروف."
+                        },
+                        new
+                        {
+                            Id = new Guid("78216797-7f73-756c-b9d5-1d9957a172b0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("09429ebe-a93e-aac0-7ce5-3a3a4ee70309"),
+                            Value = "This project is finished. Nothing in it can change."
+                        },
+                        new
+                        {
+                            Id = new Guid("88338f31-66dd-4b57-3553-2a3f42403585"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("09429ebe-a93e-aac0-7ce5-3a3a4ee70309"),
+                            Value = "هذا المشروع منتهٍ، ولا يمكن تغيير شيء فيه."
+                        },
+                        new
+                        {
+                            Id = new Guid("d86deaf5-bfa1-6019-dfae-bd572c4844a9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cefbd261-af15-a8f0-1690-5d7d93609f53"),
+                            Value = "The expense could not be saved."
+                        },
+                        new
+                        {
+                            Id = new Guid("9d99d97b-ed59-b769-49e7-841d8a3ba7f4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cefbd261-af15-a8f0-1690-5d7d93609f53"),
+                            Value = "تعذّر حفظ المصروف."
+                        },
+                        new
+                        {
+                            Id = new Guid("b332f743-46cc-e453-3d01-e294eb643509"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b73ed300-8a4a-3b72-380e-fa4652da0ce8"),
+                            Value = "This expense is already saved."
+                        },
+                        new
+                        {
+                            Id = new Guid("ba4d6398-6834-732c-e75a-760262abe5ea"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b73ed300-8a4a-3b72-380e-fa4652da0ce8"),
+                            Value = "هذا المصروف محفوظ مسبقاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("9f7742bd-2445-1eed-acf2-19e9bbbeb8da"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e02871f2-6721-3c8c-50c7-63840fb2d62d"),
+                            Value = "Choose an item that takes purchases."
+                        },
+                        new
+                        {
+                            Id = new Guid("c946555a-b3a9-5762-e807-bca9521cc28b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e02871f2-6721-3c8c-50c7-63840fb2d62d"),
+                            Value = "اختر بنداً يقبل المشتريات."
+                        },
+                        new
+                        {
+                            Id = new Guid("a11904de-fb13-e9ca-5108-deaa84092b2d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
+                            Value = "Choose a subgroup of this item."
+                        },
+                        new
+                        {
+                            Id = new Guid("13a81f25-c935-caae-0d87-3c2744dcfd52"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
+                            Value = "اختر مجموعة فرعية من هذا البند."
+                        },
+                        new
+                        {
+                            Id = new Guid("f55728f6-77e7-00eb-ae1c-b3cff8380629"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3b05c94c-c35e-6e4f-acda-a0d83eafcc11"),
+                            Value = "Choose a unit."
+                        },
+                        new
+                        {
+                            Id = new Guid("024fc536-6032-372a-0cc7-47527306116f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3b05c94c-c35e-6e4f-acda-a0d83eafcc11"),
+                            Value = "اختر الوحدة."
+                        },
+                        new
+                        {
+                            Id = new Guid("98ad406e-6ed3-0b3e-08eb-9c54d2b906da"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("99bb5246-dc7c-0c02-3e28-8264e981b90f"),
+                            Value = "Choose a supplier from the register."
+                        },
+                        new
+                        {
+                            Id = new Guid("9c7e6d82-bae9-ec48-9970-49b1322fdf63"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("99bb5246-dc7c-0c02-3e28-8264e981b90f"),
+                            Value = "اختر مورداً من القائمة."
+                        },
+                        new
+                        {
+                            Id = new Guid("171ff7a2-3a7e-630d-b4be-8c83ed40e3e2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1334383d-e3fa-4e9e-79fc-375601f92344"),
+                            Value = "Choose a payment method."
+                        },
+                        new
+                        {
+                            Id = new Guid("52177e46-4d0b-4890-8b73-665ac066089f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1334383d-e3fa-4e9e-79fc-375601f92344"),
+                            Value = "اختر طريقة الدفع."
+                        },
+                        new
+                        {
+                            Id = new Guid("347526c5-7a89-31e1-0ca3-fdc0b77a6961"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f6cceea5-ccf2-c1a2-e144-8a19c88d05b7"),
+                            Value = "Choose an account you may pay from."
+                        },
+                        new
+                        {
+                            Id = new Guid("3466bc9b-1e3e-fe1c-1b56-02a0189e625d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f6cceea5-ccf2-c1a2-e144-8a19c88d05b7"),
+                            Value = "اختر حساباً يحق لك الدفع منه."
+                        },
+                        new
+                        {
+                            Id = new Guid("70e7a079-1e69-1216-7a77-5dda1d81908a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3d2d51a2-54a6-d0d2-6dee-c1f414566543"),
+                            Value = "That file is not in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("3f2be9a4-93e6-2c34-ede6-6e5391f9fd1c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3d2d51a2-54a6-d0d2-6dee-c1f414566543"),
+                            Value = "هذا الملف ليس في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("da0048f7-95c7-bf7b-03f7-d334d3704f0b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("968a8709-f7f1-487b-c900-aaa17ba5cebf"),
+                            Value = "Enter the invoice number, up to 50 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("58272d8e-6d4f-35b8-1384-a2997376c82d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("968a8709-f7f1-487b-c900-aaa17ba5cebf"),
+                            Value = "أدخل رقم الفاتورة، حتى 50 حرفاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("d96f8ded-1abb-c561-23c3-f6ae7a577b0f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f16951fa-955f-b5ce-3d07-6959b3c1f936"),
+                            Value = "The product name is too long."
+                        },
+                        new
+                        {
+                            Id = new Guid("41405262-df7c-3c8b-fdfb-e8e631c21de3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f16951fa-955f-b5ce-3d07-6959b3c1f936"),
+                            Value = "اسم الصنف طويل جداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("ecb26879-92f7-96d4-dfb1-981c14462a18"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b5126880-99f8-1137-ad27-d3c4362c1cbf"),
+                            Value = "The notes are too long."
+                        },
+                        new
+                        {
+                            Id = new Guid("0b8aeded-f822-3f31-7828-f561301e7316"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b5126880-99f8-1137-ad27-d3c4362c1cbf"),
+                            Value = "الملاحظات طويلة جداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("cab370f6-b4cc-4094-42cb-9196f7e26070"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a1ab47cf-7bdf-64e1-e5dc-88e8b861dab7"),
+                            Value = "Enter a unit price of zero or more, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("df49099d-4369-3ac2-87af-0ac47c1b4b8f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a1ab47cf-7bdf-64e1-e5dc-88e8b861dab7"),
+                            Value = "أدخل سعر وحدة صفراً أو أكثر، بخانتين عشريتين كحد أقصى."
+                        },
+                        new
+                        {
+                            Id = new Guid("881d39af-4af9-584b-f8fe-5bed589c9968"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4e776b54-347c-16c2-41ee-e94dc0277a18"),
+                            Value = "Enter a quantity of zero or more, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("9011182f-5ced-e079-387c-6366fcea47dd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4e776b54-347c-16c2-41ee-e94dc0277a18"),
+                            Value = "أدخل عدداً صفراً أو أكثر، بخانتين عشريتين كحد أقصى."
+                        },
+                        new
+                        {
+                            Id = new Guid("d3fa33a9-cbd0-39f6-88d5-d5d6f3af2d51"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("77c18bfe-8b4b-02bd-6b55-4e3906106c6e"),
+                            Value = "Enter an amount above zero with at most two decimals, or a unit price and a quantity."
+                        },
+                        new
+                        {
+                            Id = new Guid("0196d2e3-c509-25d3-0f25-514282022409"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("77c18bfe-8b4b-02bd-6b55-4e3906106c6e"),
+                            Value = "أدخل مبلغاً أكبر من صفر بخانتين عشريتين كحد أقصى، أو سعر الوحدة والعدد."
+                        },
+                        new
+                        {
+                            Id = new Guid("7bce868e-859a-9ae7-0fc8-5f0581f8e8a7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9d56be88-02dd-b860-fb24-03d8bc0f2f1d"),
+                            Value = "Enter a discount no larger than the amount, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("1868e492-4f67-5a38-f1c5-94ba867c68c4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9d56be88-02dd-b860-fb24-03d8bc0f2f1d"),
+                            Value = "أدخل خصماً لا يتجاوز المبلغ، بخانتين عشريتين كحد أقصى."
+                        },
+                        new
+                        {
+                            Id = new Guid("82fb32a3-d7b6-6047-2289-8461dee7459d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("318c1e7b-c0ec-4def-53d8-fae8cd46c56e"),
+                            Value = "Enter the amount paid, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("6eed0024-7660-1862-1b0b-04620a0a1c8a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("318c1e7b-c0ec-4def-53d8-fae8cd46c56e"),
+                            Value = "أدخل المبلغ المدفوع، بخانتين عشريتين كحد أقصى."
+                        },
+                        new
+                        {
+                            Id = new Guid("6168034f-99eb-5f12-333a-1a9cc2057e84"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("75d05756-a223-4e00-4d44-08e85c749ce2"),
+                            Value = "Enter bank fees of zero or more, with at most two decimals."
+                        },
+                        new
+                        {
+                            Id = new Guid("97f65854-495a-9aa0-316b-e3eb8f7f1700"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("75d05756-a223-4e00-4d44-08e85c749ce2"),
+                            Value = "أدخل رسوماً بنكية صفراً أو أكثر، بخانتين عشريتين كحد أقصى."
+                        },
+                        new
+                        {
+                            Id = new Guid("18b9eee0-307a-772a-3cdf-850d83fd3cf2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5a90215d-8e19-7efa-60e6-692b27cd34e3"),
+                            Value = "The date must be within the project's period and not in the future."
+                        },
+                        new
+                        {
+                            Id = new Guid("315ed240-d0a6-17d4-861a-534545a30bf0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5a90215d-8e19-7efa-60e6-692b27cd34e3"),
+                            Value = "يجب أن يقع التاريخ ضمن فترة المشروع وألا يتجاوز اليوم."
+                        },
+                        new
+                        {
+                            Id = new Guid("38ed7541-948c-8ec5-4256-6644057d5cef"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("51abb597-0670-6810-42f8-ade90ed52984"),
+                            Value = "The payment date must be within the project's period and not in the future."
+                        },
+                        new
+                        {
+                            Id = new Guid("cb3e0bec-d780-3c81-2b66-b608dd235e6f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("51abb597-0670-6810-42f8-ade90ed52984"),
+                            Value = "يجب أن يقع تاريخ الدفع ضمن فترة المشروع وألا يتجاوز اليوم."
+                        },
+                        new
+                        {
+                            Id = new Guid("7183af42-9714-2db6-7275-93695c65dfaa"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f99247a0-15ac-6f60-2448-20f9343b51da"),
+                            Value = "This item no longer asks for that field. Open the expense again."
+                        },
+                        new
+                        {
+                            Id = new Guid("e4f1ff32-b9ad-4487-35af-8e5389d38792"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f99247a0-15ac-6f60-2448-20f9343b51da"),
+                            Value = "لم يعد هذا البند يطلب هذا الحقل. افتح المصروف من جديد."
+                        },
+                        new
+                        {
+                            Id = new Guid("db5dcb9f-e254-f1c9-c2f0-f539c6203ba9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a22e9a4f-6864-e64e-de6f-911aef07c007"),
+                            Value = "That value does not fit this field."
+                        },
+                        new
+                        {
+                            Id = new Guid("124d6e57-efac-9edb-915e-5b9de753a68a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a22e9a4f-6864-e64e-de6f-911aef07c007"),
+                            Value = "هذه القيمة لا تناسب هذا الحقل."
+                        },
+                        new
+                        {
+                            Id = new Guid("66abbd85-3ef4-f41c-b0b6-50d3118dff0c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("16e0fe60-45c7-4fda-b4d8-14c611962895"),
+                            Value = "Fill the required field."
+                        },
+                        new
+                        {
+                            Id = new Guid("94ed2e62-29b3-a221-6dcd-b2f8b5afe7a4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("16e0fe60-45c7-4fda-b4d8-14c611962895"),
+                            Value = "عبّئ الحقل الإلزامي."
+                        },
+                        new
+                        {
+                            Id = new Guid("95c3885a-caa6-6c2a-cb5d-4706238ea0c5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d30afc1b-e321-d5a7-bc87-7c490c35efb0"),
+                            Value = "Add the invoice's picture or PDF before sending."
+                        },
+                        new
+                        {
+                            Id = new Guid("d8a3fc6d-f1ff-e81e-20e4-cee141fd6706"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d30afc1b-e321-d5a7-bc87-7c490c35efb0"),
+                            Value = "أضف صورة الفاتورة أو ملف PDF قبل الإرسال."
+                        },
+                        new
+                        {
+                            Id = new Guid("c595b861-7d34-9c84-97f6-41948f51bd1f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b2ee8abf-87ec-8fe6-8bc2-90497031b108"),
+                            Value = "QR code read and fields filled"
+                        },
+                        new
+                        {
+                            Id = new Guid("0fb0adac-ef68-a968-4e72-ac835fd3432c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b2ee8abf-87ec-8fe6-8bc2-90497031b108"),
+                            Value = "قُرئ رمز QR وعُبّئت الحقول"
+                        },
+                        new
+                        {
+                            Id = new Guid("f0927f44-a92f-8efd-8beb-77c7cf7b66ee"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2d69bcda-f315-408b-f10b-afcc14a1cdb7"),
+                            Value = "The QR code could not be read. Fill the fields yourself."
+                        },
+                        new
+                        {
+                            Id = new Guid("8a24b383-6e39-03d6-94eb-d0c37f7f167d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2d69bcda-f315-408b-f10b-afcc14a1cdb7"),
+                            Value = "تعذّرت قراءة رمز QR. عبّئ الحقول يدوياً."
+                        },
+                        new
+                        {
+                            Id = new Guid("12dda6b9-b9b1-c919-bf06-920e193cd448"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("36cd458b-f7df-d4d1-233c-4aa193b2f9ab"),
+                            Value = "No supplier in the register holds this VAT number."
+                        },
+                        new
+                        {
+                            Id = new Guid("ec804f07-bd20-8d37-f843-e20c7eb2d63a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("36cd458b-f7df-d4d1-233c-4aa193b2f9ab"),
+                            Value = "لا يوجد في القائمة مورد بهذا الرقم الضريبي."
+                        },
+                        new
+                        {
+                            Id = new Guid("f9e5116e-d37e-cff4-e334-dc93bf7e9214"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ecbc1890-c919-c9c3-c4ec-2b02e170d000"),
+                            Value = "Add this supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a0c3da3-69d6-dfeb-d337-0933ec362005"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ecbc1890-c919-c9c3-c4ec-2b02e170d000"),
+                            Value = "إضافة هذا المورد"
+                        },
+                        new
+                        {
+                            Id = new Guid("be50484a-72ad-01a9-81b5-bfb48f7cef07"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6e557b3b-e956-03e3-f70f-5a43ed39e9b8"),
+                            Value = "The VAT on the invoice differs from the computed VAT by more than 0.01. You can still save."
+                        },
+                        new
+                        {
+                            Id = new Guid("fcba39e4-fade-72f3-405c-948e93b63078"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6e557b3b-e956-03e3-f70f-5a43ed39e9b8"),
+                            Value = "ضريبة الفاتورة تختلف عن الضريبة المحسوبة بأكثر من 0.01. يمكنك الحفظ رغم ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("9628e6ed-ded8-d1df-83b2-b3f252b6d9ea"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9e1d3b05-fe40-a90f-e8af-bb2db13ad54c"),
+                            Value = "Most used"
+                        },
+                        new
+                        {
+                            Id = new Guid("08d2d678-d7ab-602a-e539-8777e2253396"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9e1d3b05-fe40-a90f-e8af-bb2db13ad54c"),
+                            Value = "الأكثر استخداماً"
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -9283,6 +10448,408 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("627e20df-8451-b393-4dca-65e11f806396"),
+                            Description = "",
+                            Key = "expenses.item"
+                        },
+                        new
+                        {
+                            Id = new Guid("15c28535-89bc-0b53-9a07-2e2ab6313ee0"),
+                            Description = "",
+                            Key = "expenses.subgroup"
+                        },
+                        new
+                        {
+                            Id = new Guid("4861aab6-d719-1fb5-e675-aeec1bf8bcca"),
+                            Description = "",
+                            Key = "expenses.generalSubgroup"
+                        },
+                        new
+                        {
+                            Id = new Guid("d6d1034b-6dcd-15b5-84f6-f3214c4a2b02"),
+                            Description = "",
+                            Key = "expenses.unit"
+                        },
+                        new
+                        {
+                            Id = new Guid("5d71b29b-07f6-26ba-a47d-d6a100c2d513"),
+                            Description = "",
+                            Key = "expenses.supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("5a91e337-2178-992a-0da0-4ab598ceff6b"),
+                            Description = "",
+                            Key = "expenses.invoiceNumber"
+                        },
+                        new
+                        {
+                            Id = new Guid("8fe6a9ef-ebae-ee5c-23c8-8965728b4717"),
+                            Description = "",
+                            Key = "expenses.invoiceDate"
+                        },
+                        new
+                        {
+                            Id = new Guid("302fd9fd-584a-c19d-e9fb-0437027fbcb5"),
+                            Description = "",
+                            Key = "expenses.product"
+                        },
+                        new
+                        {
+                            Id = new Guid("da28b3b3-d768-fb85-9015-fd87d2d9caed"),
+                            Description = "",
+                            Key = "expenses.unitPrice"
+                        },
+                        new
+                        {
+                            Id = new Guid("91ce291c-b4fb-0b1c-0b20-82fd13f712ab"),
+                            Description = "",
+                            Key = "expenses.quantity"
+                        },
+                        new
+                        {
+                            Id = new Guid("39326569-bfee-321b-18c2-de9542077919"),
+                            Description = "",
+                            Key = "expenses.includingVat"
+                        },
+                        new
+                        {
+                            Id = new Guid("1512645c-c7fb-e5c6-4261-9d7b67bafc6f"),
+                            Description = "",
+                            Key = "expenses.beforeVat"
+                        },
+                        new
+                        {
+                            Id = new Guid("80abf007-9b28-f9ce-0bd0-e3190a886022"),
+                            Description = "",
+                            Key = "expenses.amountIncludingVat"
+                        },
+                        new
+                        {
+                            Id = new Guid("f1c51566-e5e4-84f1-c0da-cc133832638c"),
+                            Description = "",
+                            Key = "expenses.amountBeforeVat"
+                        },
+                        new
+                        {
+                            Id = new Guid("56b2809b-800a-2dfd-bb1e-0dc47ae1e996"),
+                            Description = "",
+                            Key = "expenses.discount"
+                        },
+                        new
+                        {
+                            Id = new Guid("536dbb67-b590-59b3-3de2-a0635356666a"),
+                            Description = "",
+                            Key = "expenses.notTaxable"
+                        },
+                        new
+                        {
+                            Id = new Guid("38c1315d-cece-ac60-b65e-0e6a39cdf601"),
+                            Description = "",
+                            Key = "expenses.afterDiscount"
+                        },
+                        new
+                        {
+                            Id = new Guid("406c1a1b-53c0-cd2a-4df9-6b27b6fe0d06"),
+                            Description = "",
+                            Key = "expenses.vat"
+                        },
+                        new
+                        {
+                            Id = new Guid("bd47da61-ded7-c7d8-447a-ea0c154a1bc7"),
+                            Description = "",
+                            Key = "expenses.total"
+                        },
+                        new
+                        {
+                            Id = new Guid("9fc7231e-3919-cb42-5bd5-703d0dafd9bf"),
+                            Description = "",
+                            Key = "expenses.paymentSource"
+                        },
+                        new
+                        {
+                            Id = new Guid("5b494c8c-bbc0-5021-25cb-ad60253b794c"),
+                            Description = "",
+                            Key = "expenses.paymentMethod"
+                        },
+                        new
+                        {
+                            Id = new Guid("59a3a15a-b128-8e44-708b-809d6a215e8b"),
+                            Description = "",
+                            Key = "expenses.account"
+                        },
+                        new
+                        {
+                            Id = new Guid("a3f2bd02-c7c8-7e4e-79bb-1c5c9b06d494"),
+                            Description = "",
+                            Key = "expenses.noAccount"
+                        },
+                        new
+                        {
+                            Id = new Guid("ff093f4b-41d2-37dc-03d6-323291864bd3"),
+                            Description = "",
+                            Key = "expenses.paymentDiffers"
+                        },
+                        new
+                        {
+                            Id = new Guid("a3d53521-72fe-698b-c0b6-667e1b8dcce4"),
+                            Description = "",
+                            Key = "expenses.paymentDate"
+                        },
+                        new
+                        {
+                            Id = new Guid("44e256b4-f64b-09db-e5aa-d3c79a63ad7a"),
+                            Description = "",
+                            Key = "expenses.paymentAmount"
+                        },
+                        new
+                        {
+                            Id = new Guid("a3da815d-fa5c-9317-c319-7d7c45f2619b"),
+                            Description = "",
+                            Key = "expenses.bankFees"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f15fb81-ad8a-daec-0fc2-831ac08ff2a9"),
+                            Description = "",
+                            Key = "expenses.notes"
+                        },
+                        new
+                        {
+                            Id = new Guid("b4a77062-42a5-ffac-3c7a-46334d2c15dd"),
+                            Description = "",
+                            Key = "expenses.required"
+                        },
+                        new
+                        {
+                            Id = new Guid("3d700b75-43c6-6223-d8ab-58e512f360fd"),
+                            Description = "",
+                            Key = "expenses.send"
+                        },
+                        new
+                        {
+                            Id = new Guid("0f5601eb-70a7-0f06-2124-b42f05805d3e"),
+                            Description = "",
+                            Key = "expenses.saveDraft"
+                        },
+                        new
+                        {
+                            Id = new Guid("380e642c-9c07-1a59-fa8e-00ac845ab893"),
+                            Description = "",
+                            Key = "expenses.sent"
+                        },
+                        new
+                        {
+                            Id = new Guid("650c3f6d-1a58-ea52-771e-62a588c05d40"),
+                            Description = "",
+                            Key = "expenses.saved"
+                        },
+                        new
+                        {
+                            Id = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
+                            Description = "",
+                            Key = "expenses.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("60f4a34e-1e29-66ff-56c3-02c72aea7686"),
+                            Description = "",
+                            Key = "expenses.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("36ef27c5-fe22-8894-89bd-30a10c24cf7b"),
+                            Description = "",
+                            Key = "expenses.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("09429ebe-a93e-aac0-7ce5-3a3a4ee70309"),
+                            Description = "",
+                            Key = "expenses.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("cefbd261-af15-a8f0-1690-5d7d93609f53"),
+                            Description = "",
+                            Key = "expenses.invalidEntryId"
+                        },
+                        new
+                        {
+                            Id = new Guid("b73ed300-8a4a-3b72-380e-fa4652da0ce8"),
+                            Description = "",
+                            Key = "expenses.entryExists"
+                        },
+                        new
+                        {
+                            Id = new Guid("e02871f2-6721-3c8c-50c7-63840fb2d62d"),
+                            Description = "",
+                            Key = "expenses.itemNotOffered"
+                        },
+                        new
+                        {
+                            Id = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
+                            Description = "",
+                            Key = "expenses.unknownSubgroup"
+                        },
+                        new
+                        {
+                            Id = new Guid("3b05c94c-c35e-6e4f-acda-a0d83eafcc11"),
+                            Description = "",
+                            Key = "expenses.unknownUnit"
+                        },
+                        new
+                        {
+                            Id = new Guid("99bb5246-dc7c-0c02-3e28-8264e981b90f"),
+                            Description = "",
+                            Key = "expenses.unknownSupplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("1334383d-e3fa-4e9e-79fc-375601f92344"),
+                            Description = "",
+                            Key = "expenses.unknownPaymentMethod"
+                        },
+                        new
+                        {
+                            Id = new Guid("f6cceea5-ccf2-c1a2-e144-8a19c88d05b7"),
+                            Description = "",
+                            Key = "expenses.accountNotOffered"
+                        },
+                        new
+                        {
+                            Id = new Guid("3d2d51a2-54a6-d0d2-6dee-c1f414566543"),
+                            Description = "",
+                            Key = "expenses.unknownAttachment"
+                        },
+                        new
+                        {
+                            Id = new Guid("968a8709-f7f1-487b-c900-aaa17ba5cebf"),
+                            Description = "",
+                            Key = "expenses.invalidInvoiceNumber"
+                        },
+                        new
+                        {
+                            Id = new Guid("f16951fa-955f-b5ce-3d07-6959b3c1f936"),
+                            Description = "",
+                            Key = "expenses.invalidProduct"
+                        },
+                        new
+                        {
+                            Id = new Guid("b5126880-99f8-1137-ad27-d3c4362c1cbf"),
+                            Description = "",
+                            Key = "expenses.invalidNotes"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1ab47cf-7bdf-64e1-e5dc-88e8b861dab7"),
+                            Description = "",
+                            Key = "expenses.invalidUnitPrice"
+                        },
+                        new
+                        {
+                            Id = new Guid("4e776b54-347c-16c2-41ee-e94dc0277a18"),
+                            Description = "",
+                            Key = "expenses.invalidQuantity"
+                        },
+                        new
+                        {
+                            Id = new Guid("77c18bfe-8b4b-02bd-6b55-4e3906106c6e"),
+                            Description = "",
+                            Key = "expenses.invalidAmount"
+                        },
+                        new
+                        {
+                            Id = new Guid("9d56be88-02dd-b860-fb24-03d8bc0f2f1d"),
+                            Description = "",
+                            Key = "expenses.invalidDiscount"
+                        },
+                        new
+                        {
+                            Id = new Guid("318c1e7b-c0ec-4def-53d8-fae8cd46c56e"),
+                            Description = "",
+                            Key = "expenses.invalidPaymentAmount"
+                        },
+                        new
+                        {
+                            Id = new Guid("75d05756-a223-4e00-4d44-08e85c749ce2"),
+                            Description = "",
+                            Key = "expenses.invalidBankFees"
+                        },
+                        new
+                        {
+                            Id = new Guid("5a90215d-8e19-7efa-60e6-692b27cd34e3"),
+                            Description = "",
+                            Key = "expenses.invalidInvoiceDate"
+                        },
+                        new
+                        {
+                            Id = new Guid("51abb597-0670-6810-42f8-ade90ed52984"),
+                            Description = "",
+                            Key = "expenses.invalidPaymentDate"
+                        },
+                        new
+                        {
+                            Id = new Guid("f99247a0-15ac-6f60-2448-20f9343b51da"),
+                            Description = "",
+                            Key = "expenses.unknownColumn"
+                        },
+                        new
+                        {
+                            Id = new Guid("a22e9a4f-6864-e64e-de6f-911aef07c007"),
+                            Description = "",
+                            Key = "expenses.invalidColumnValue"
+                        },
+                        new
+                        {
+                            Id = new Guid("16e0fe60-45c7-4fda-b4d8-14c611962895"),
+                            Description = "",
+                            Key = "expenses.requiredColumnMissing"
+                        },
+                        new
+                        {
+                            Id = new Guid("d30afc1b-e321-d5a7-bc87-7c490c35efb0"),
+                            Description = "",
+                            Key = "expenses.invoiceRequired"
+                        },
+                        new
+                        {
+                            Id = new Guid("b2ee8abf-87ec-8fe6-8bc2-90497031b108"),
+                            Description = "",
+                            Key = "expenses.qrRead"
+                        },
+                        new
+                        {
+                            Id = new Guid("2d69bcda-f315-408b-f10b-afcc14a1cdb7"),
+                            Description = "",
+                            Key = "expenses.qrUnreadable"
+                        },
+                        new
+                        {
+                            Id = new Guid("36cd458b-f7df-d4d1-233c-4aa193b2f9ab"),
+                            Description = "",
+                            Key = "expenses.qrSupplierMissing"
+                        },
+                        new
+                        {
+                            Id = new Guid("ecbc1890-c919-c9c3-c4ec-2b02e170d000"),
+                            Description = "",
+                            Key = "expenses.qrAddSupplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("6e557b3b-e956-03e3-f70f-5a43ed39e9b8"),
+                            Description = "",
+                            Key = "expenses.qrVatDiffers"
+                        },
+                        new
+                        {
+                            Id = new Guid("9e1d3b05-fe40-a90f-e8af-bb2db13ad54c"),
+                            Description = "",
+                            Key = "suppliers.mostUsed"
+                        },
+                        new
+                        {
                             Id = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
                             Description = "",
                             Key = "biometrics.notChanged"
@@ -9418,6 +10985,99 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Contracts.Contract", null)
                         .WithMany()
                         .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.Entry", b =>
+                {
+                    b.HasOne("Redix.Api.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.EntryAttachment", b =>
+                {
+                    b.HasOne("Redix.Api.Attachments.Attachment", null)
+                        .WithMany()
+                        .HasForeignKey("AttachmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.ExpenseDetails", b =>
+                {
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithOne()
+                        .HasForeignKey("Redix.Api.Entries.ExpenseDetails", "EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Structure.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Settings.PaymentMethod", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentMethodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Structure.Subgroup", null)
+                        .WithMany()
+                        .HasForeignKey("SubgroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Unit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.Invoice", b =>
+                {
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithOne()
+                        .HasForeignKey("Redix.Api.Entries.Invoice", "EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.PurchaseDetails", b =>
+                {
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithOne()
+                        .HasForeignKey("Redix.Api.Entries.PurchaseDetails", "EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Suppliers.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

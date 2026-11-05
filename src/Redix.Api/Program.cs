@@ -11,6 +11,7 @@ using Redix.Api.Accounts;
 using Redix.Api.Attachments;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
+using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -95,5 +96,6 @@ app.MapPartners();
 app.MapSuppliers();
 app.MapContracts();
 app.MapAttachments();
+app.MapExpenses();
 
 app.Run();

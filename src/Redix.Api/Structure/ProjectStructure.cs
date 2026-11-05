@@ -40,6 +40,14 @@ public static class ProjectStructure
     public static Task<Item?> ItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
         db.Items.SingleOrDefaultAsync(item => item.Id == itemId && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));
 
+    /// <summary>The item <paramref name="itemId"/> of the project with its subgroups and columns, if entering <paramref name="kind"/> offers it (AC-05.3, AC-38.1).</summary>
+    public static async Task<Item?> OfferedItemAsync(Guid projectId, Guid itemId, ItemType kind, RedixDbContext db)
+    {
+        var category = await db.Categories.Include(row => row.Items).ThenInclude(item => item.Subgroups).Include(row => row.Items).ThenInclude(item => item.Columns).AsSplitQuery()
+            .SingleOrDefaultAsync(row => row.ProjectId == projectId && row.Items.Any(item => item.Id == itemId));
+        return category?.ItemsOfferedFor(kind).SingleOrDefault(item => item.Id == itemId);
+    }
+
     /// <summary>Puts <paramref name="rows"/> in the order of <paramref name="ids"/>, the order of the report (AC-39.1). Anything but every row exactly once changes nothing, and answers false.</summary>
     public static bool PutInOrder<T>(List<T> rows, List<Guid> ids) where T : IOrdered
     {

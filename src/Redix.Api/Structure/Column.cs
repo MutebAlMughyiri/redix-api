@@ -1,3 +1,4 @@
+using System.Globalization;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
@@ -7,6 +8,9 @@ public abstract class Column : IOrdered
 {
     /// <summary>The longest key a column may have.</summary>
     public const int KeyMaxLength = 50;
+
+    /// <summary>The longest value an entry may give a column.</summary>
+    public const int ValueMaxLength = 1000;
 
     private const string CustomKeyPrefix = "custom.";
 
@@ -42,6 +46,16 @@ public abstract class Column : IOrdered
 
     /// <summary>A key for a column a person adds.</summary>
     public static string NewCustomKey() => CustomKeyPrefix + Guid.CreateVersion7().ToString("N");
+
+    /// <summary>Whether an entry can give this column <paramref name="value"/>: a number, an amount with at most two decimals, a date as <c>yyyy-MM-dd</c>, one of a list's choices, or a text within its limit.</summary>
+    public bool Accepts(string value) => DataType switch
+    {
+        ColumnDataType.Number => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _),
+        ColumnDataType.Amount => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) && Money.IsAcceptable(amount),
+        ColumnDataType.Date => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
+        ColumnDataType.List => Options.Contains(value),
+        _ => value.Length <= ValueMaxLength,
+    };
 
     /// <summary>Why a column with these values cannot be added, or <see cref="StructureChangeOutcome.Done"/>. A person chooses among five types, and a list needs a choice (FR-41).</summary>
     public static StructureChangeOutcome CheckNew(string name, ColumnDataType dataType, List<string> options)
