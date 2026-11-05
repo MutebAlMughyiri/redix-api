@@ -337,6 +337,14 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
         });
+        modelBuilder.Entity<UnitShare>(share =>
+        {
+            share.ToTable("UnitShares");
+            share.HasKey(s => new { s.EntryId, s.UnitId });
+            share.Property(s => s.Percent).HasPrecision(5, 2);
+            share.HasOne<Entry>().WithMany().HasForeignKey(s => s.EntryId).OnDelete(DeleteBehavior.Restrict);
+            share.HasOne<Unit>().WithMany().HasForeignKey(s => s.UnitId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<Redix.Api.Revenue.RevenueDetails>(details =>
         {
             details.HasKey(d => d.EntryId);

@@ -1001,6 +1001,31 @@ namespace Redix.Api.Migrations
                     b.ToTable("PurchaseDetails");
                 });
 
+            modelBuilder.Entity("Redix.Api.Entries.UnitShare", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Percent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("EntryId", "UnitId");
+
+                    b.HasIndex("UnitId");
+
+                    b.ToTable("UnitShares", (string)null);
+                });
+
             modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5815,6 +5840,160 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("fb3a7b61-8742-26eb-f8da-436cb72b4de6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0f5fb0bc-426d-b1d1-e736-373393389502"),
+                            Value = "Surplus"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab1b4a87-d462-984b-3577-8dc13f929aba"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0f5fb0bc-426d-b1d1-e736-373393389502"),
+                            Value = "الفائض"
+                        },
+                        new
+                        {
+                            Id = new Guid("d8550351-2c7d-269e-e937-4a6ae40fa623"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("24c97faf-6d73-138a-41dc-e553fbb9f911"),
+                            Value = "Units"
+                        },
+                        new
+                        {
+                            Id = new Guid("9fcd217a-deb1-4746-1356-42cdb2da6483"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("24c97faf-6d73-138a-41dc-e553fbb9f911"),
+                            Value = "الوحدات"
+                        },
+                        new
+                        {
+                            Id = new Guid("9173b557-7307-37cc-b3df-38dffe17dfdd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f6f5effc-4a2c-2758-dc54-25d329e013de"),
+                            Value = "Recorded against it"
+                        },
+                        new
+                        {
+                            Id = new Guid("c66f177c-45b2-510c-7c58-7bd04c48131f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f6f5effc-4a2c-2758-dc54-25d329e013de"),
+                            Value = "مسجل عليها"
+                        },
+                        new
+                        {
+                            Id = new Guid("09885d93-5575-7bfa-d422-967cef0197e4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c5af721d-05bd-b90d-05fa-5241236275a0"),
+                            Value = "Its part of the shared"
+                        },
+                        new
+                        {
+                            Id = new Guid("0522d40b-3c09-0198-c0c0-1f1e0c53f9df"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c5af721d-05bd-b90d-05fa-5241236275a0"),
+                            Value = "نصيبها من المشترك"
+                        },
+                        new
+                        {
+                            Id = new Guid("e2e2ee96-23d6-6b7b-0413-c5763ad858a0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("edf8c6e8-f53b-4645-bad3-292aef0dd0c4"),
+                            Value = "Shared, not split"
+                        },
+                        new
+                        {
+                            Id = new Guid("4d5643ba-31a5-7f4f-902d-a3f629ab61cc"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("edf8c6e8-f53b-4645-bad3-292aef0dd0c4"),
+                            Value = "مشترك غير موزع"
+                        },
+                        new
+                        {
+                            Id = new Guid("6c3a122a-1b5b-ea1e-cb78-4f556010bf27"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("73893fbc-38ce-5ea2-b40f-9421d9439be3"),
+                            Value = "Split between the units"
+                        },
+                        new
+                        {
+                            Id = new Guid("b8c673c5-e255-a104-1008-40364934f72d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("73893fbc-38ce-5ea2-b40f-9421d9439be3"),
+                            Value = "توزيع على الوحدات"
+                        },
+                        new
+                        {
+                            Id = new Guid("5550d815-7059-892f-79d5-5d81b347dafa"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0df52050-b16c-725c-2f99-5ef4fc859aed"),
+                            Value = "Equally"
+                        },
+                        new
+                        {
+                            Id = new Guid("2416b1fd-1f6c-084d-7124-a7d0d9d400e7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0df52050-b16c-725c-2f99-5ef4fc859aed"),
+                            Value = "بالتساوي"
+                        },
+                        new
+                        {
+                            Id = new Guid("83ef785c-9ff0-5788-9b5a-928ea809ab67"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aadc5b20-cca1-e823-9000-188fb4269be1"),
+                            Value = "By percentage"
+                        },
+                        new
+                        {
+                            Id = new Guid("0c16bf37-bcca-0e62-d6a7-37e6efcadb13"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aadc5b20-cca1-e823-9000-188fb4269be1"),
+                            Value = "بالنسبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("29911313-8522-e2f1-e809-7b2f0cf7fdba"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a972c947-2698-eb26-a30f-ed0d1d6d6e0f"),
+                            Value = "Together"
+                        },
+                        new
+                        {
+                            Id = new Guid("4d093e97-07b2-aa82-392b-52b64676e11e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a972c947-2698-eb26-a30f-ed0d1d6d6e0f"),
+                            Value = "المجموع"
+                        },
+                        new
+                        {
+                            Id = new Guid("4e97d436-e047-7d8a-fb97-6ba86e827eb7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("093181e1-3f51-88c3-d596-265935a828c1"),
+                            Value = "Only an expense on the shared unit is split."
+                        },
+                        new
+                        {
+                            Id = new Guid("619f5014-ad63-3cf1-64b9-5281580d66e9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("093181e1-3f51-88c3-d596-265935a828c1"),
+                            Value = "لا يوزَّع إلا المصروف المسجل على المشترك."
+                        },
+                        new
+                        {
+                            Id = new Guid("0884b375-fee8-e6c5-265e-73ea132d60a1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("99d2c12b-b195-dbcf-6613-49181cbee1e5"),
+                            Value = "Give each unit a part above zero, together 100%."
+                        },
+                        new
+                        {
+                            Id = new Guid("03ef1711-7dda-1d9d-5da3-f27542b20c7a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("99d2c12b-b195-dbcf-6613-49181cbee1e5"),
+                            Value = "أعطِ كل وحدة نسبة أكبر من الصفر، مجموعها 100%."
+                        },
+                        new
+                        {
                             Id = new Guid("78b2e4f0-8a07-7c6c-ee1c-b2ba51436fe4"),
                             Language = "en",
                             TranslationKeyId = new Guid("2dcce97a-2ada-8d02-afb4-dd8a9cef0a7a"),
@@ -6252,14 +6431,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("24e44838-df9f-6c90-d847-6a16c9c5ea69"),
                             Language = "en",
                             TranslationKeyId = new Guid("559748fd-2331-110f-f452-2c94c8a2f260"),
-                            Value = "{0} entries wait for your approval"
+                            Value = "Waiting for your approval: {0}"
                         },
                         new
                         {
                             Id = new Guid("4fce2d73-d49b-33a0-6ff1-cc72e64c1a43"),
                             Language = "ar",
                             TranslationKeyId = new Guid("559748fd-2331-110f-f452-2c94c8a2f260"),
-                            Value = "{0} مصروفات بانتظار اعتمادك"
+                            Value = "بانتظار اعتمادك: {0}"
                         },
                         new
                         {
@@ -15963,6 +16142,72 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("0f5fb0bc-426d-b1d1-e736-373393389502"),
+                            Description = "",
+                            Key = "reports.surplus"
+                        },
+                        new
+                        {
+                            Id = new Guid("24c97faf-6d73-138a-41dc-e553fbb9f911"),
+                            Description = "",
+                            Key = "reports.units"
+                        },
+                        new
+                        {
+                            Id = new Guid("f6f5effc-4a2c-2758-dc54-25d329e013de"),
+                            Description = "",
+                            Key = "reports.unitDirect"
+                        },
+                        new
+                        {
+                            Id = new Guid("c5af721d-05bd-b90d-05fa-5241236275a0"),
+                            Description = "",
+                            Key = "reports.unitFromShared"
+                        },
+                        new
+                        {
+                            Id = new Guid("edf8c6e8-f53b-4645-bad3-292aef0dd0c4"),
+                            Description = "",
+                            Key = "reports.unsplit"
+                        },
+                        new
+                        {
+                            Id = new Guid("73893fbc-38ce-5ea2-b40f-9421d9439be3"),
+                            Description = "",
+                            Key = "expenses.split"
+                        },
+                        new
+                        {
+                            Id = new Guid("0df52050-b16c-725c-2f99-5ef4fc859aed"),
+                            Description = "",
+                            Key = "expenses.splitEqual"
+                        },
+                        new
+                        {
+                            Id = new Guid("aadc5b20-cca1-e823-9000-188fb4269be1"),
+                            Description = "",
+                            Key = "expenses.splitPercent"
+                        },
+                        new
+                        {
+                            Id = new Guid("a972c947-2698-eb26-a30f-ed0d1d6d6e0f"),
+                            Description = "",
+                            Key = "expenses.splitTotal"
+                        },
+                        new
+                        {
+                            Id = new Guid("093181e1-3f51-88c3-d596-265935a828c1"),
+                            Description = "",
+                            Key = "expenses.splitNeedsSharedUnit"
+                        },
+                        new
+                        {
+                            Id = new Guid("99d2c12b-b195-dbcf-6613-49181cbee1e5"),
+                            Description = "",
+                            Key = "expenses.invalidSplit"
+                        },
+                        new
+                        {
                             Id = new Guid("2dcce97a-2ada-8d02-afb4-dd8a9cef0a7a"),
                             Description = "",
                             Key = "reports.pdf"
@@ -20076,6 +20321,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Suppliers.Supplier", null)
                         .WithMany()
                         .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.UnitShare", b =>
+                {
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Unit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -78,6 +78,7 @@ public static class EntryChanges
             .. await db.Invoices.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.EntryAttachments.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.EntryLinks.Where(row => row.EntryId == entryId && row.Type == EntryLinkType.CreditNoteOf).ToListAsync(),
+            .. await db.Set<UnitShare>().Where(row => row.EntryId == entryId).ToListAsync(),
         ];
         foreach (var detail in details)
         {

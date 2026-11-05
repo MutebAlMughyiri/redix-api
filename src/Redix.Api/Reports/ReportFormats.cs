@@ -27,7 +27,7 @@ public static class ReportFormats
         foreach (var name in assembly.GetManifestResourceNames().Where(name => name.EndsWith(".ttf", StringComparison.Ordinal)))
         {
             using var font = assembly.GetManifestResourceStream(name)!;
-            FontManager.RegisterFont(font);
+            FontManager.RegisterFontFromStream(font);
         }
         return true;
     });

@@ -112,6 +112,7 @@ app.MapCapital();
 app.MapRevenue();
 app.MapDashboard();
 app.MapItemReport();
+app.MapUnitTotals();
 app.MapPeriodicReports();
 app.MapReportFiles();
 app.MapSyncEndpoints();

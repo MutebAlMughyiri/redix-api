@@ -48,6 +48,7 @@ public static class EntryReversal
             details.Add(new CapitalMovementDetails { EntryId = reversal.Id, PartnerId = capital.PartnerId, Type = capital.Type, Description = reason });
             await BringBackIfSettledAsync(capital, db);
         }
+        details.AddRange(await db.Set<UnitShare>().Where(row => row.EntryId == entry.Id).Select(share => new UnitShare { EntryId = reversal.Id, UnitId = share.UnitId, Percent = share.Percent }).ToListAsync());
         var revenue = await db.Set<RevenueDetails>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (revenue is not null)
         {

@@ -84,6 +84,27 @@ public static class EntryRecording
         return missing.Count == 0 ? ("", "") : ("RequiredColumnMissing", missing[0]);
     }
 
+    /// <summary>
+    /// Why <paramref name="shares"/> cannot split an expense recorded against <paramref name="unitId"/> (FR-15): only the shared unit is split, otherwise <c>splitNeedsSharedUnit</c>; each part is one of the project's own units,
+    /// named once, above zero with at most two decimals, and together they make 100, otherwise <c>invalidSplit</c>. Empty when they can, or when nothing is split.
+    /// </summary>
+    public static async Task<string> RefusalOfSplitAsync(Guid projectId, Guid unitId, List<UnitShareRequest> shares, RedixDbContext db)
+    {
+        if (shares.Count == 0)
+        {
+            return "";
+        }
+        if (!await db.Set<Projects.Unit>().AnyAsync(unit => unit.Id == unitId && unit.ProjectId == projectId && unit.IsShared))
+        {
+            return "SplitNeedsSharedUnit";
+        }
+        var own = await db.Set<Projects.Unit>().Where(unit => unit.ProjectId == projectId && !unit.IsShared).Select(unit => unit.Id).ToListAsync();
+        var isValid = shares.All(share => own.Contains(share.UnitId) && share.Percent > 0 && decimal.Round(share.Percent, 2) == share.Percent)
+            && shares.Select(share => share.UnitId).Distinct().Count() == shares.Count
+            && shares.Sum(share => share.Percent) == 100;
+        return isValid ? "" : "InvalidSplit";
+    }
+
     /// <summary>A new entry from <paramref name="request"/>: sent for approval, or else a draft.</summary>
     public static Entry EntryOf(EntryRequest request, Guid projectId, EntryKind kind, DateOnly entryDate, decimal amount, Guid userId, DateTime at) => new()
     {
