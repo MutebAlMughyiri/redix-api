@@ -38,6 +38,7 @@ A session is a JWT access token valid 15 minutes, a refresh token, and whether t
 | A refresh token unused for 12 hours expires (NFR-09) | `Device.CanRefresh` | `AuthTests.ASessionUsedWithin12HoursStaysOpenAndOneUnusedFor12HoursEnds` |
 | Only the refresh token's hash is stored | `Device.HashOf` | Enforced by the model |
 | The first user is the admin, from configuration, and must change the password (BR-29) | `AdminSeed`, run by EF Core's seeding | `AuthTests.TheFirstUserIsTheAdminFromConfigurationAndMustChangeThePassword` |
+| The seed waits while a migration is still to apply, so a rollback to before the `Users` table succeeds quietly | `AdminSeed.Seed`, `AdminSeed.SeedAsync` | `AdminSeedTests.AMigrationThatStopsBeforeTheUsersTableSeedsNothingAndSucceeds_AsARollbackDoes` |
 | A sign-in is in the audit trail with the user and the time (UC-005) | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheAuditTrailWithTheUserAndTheTime` |
 | Every session says what its user holds everywhere (UC-009) | `Session.OfAsync` | `AuthTests.ASessionSaysWhatItsUserHoldsEverywhere` |
 

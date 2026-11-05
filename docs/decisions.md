@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | The admin seed runs only once no migration is left to apply | EF Core runs it after a rollback too, when the tables it writes may be gone, which printed `Invalid object name 'Users'` over a rollback that had worked. Findings row 17. |
 | 2026-11-05 | Who enters a draft sends it; `ManageAnyEntry`, a permission of its own for Finance, sends anyone's | UC-033 "Edit or delete an unapproved entry" gives the field their own entries and Finance any. A draft is seen by nobody's inbox, so nobody should send someone else's half-done work. Made without Muteb; see the findings |
 | 2026-11-05 | A refused entry answers every key it lacks at once, under `missing`, with the file as `attachment` | The issue says "refused with the missing fields", and `attachment` is the file's own column key. Made without Muteb |
 | 2026-11-05 | Reading an entry answers its rows with what its kind does not have empty, with an empty `entryId` | The design has no NULL, and this route is what UC-033 and UC-031 "List pending entries with their invoices" build on. Made without Muteb |

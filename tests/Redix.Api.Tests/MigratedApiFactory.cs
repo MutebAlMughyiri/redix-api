@@ -33,13 +33,9 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        var testDatabase = new SqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ConnectionStrings__Redix") ?? "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True")
-        {
-            InitialCatalog = "RedixTests",
-        };
         builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["ConnectionStrings:Redix"] = testDatabase.ConnectionString,
+            ["ConnectionStrings:Redix"] = ConnectionTo("RedixTests"),
             ["Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
             ["Admin:Username"] = AdminUsername,
             ["Admin:Password"] = AdminPassword,
@@ -47,6 +43,26 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Attachments:Folder"] = Path.Combine(Path.GetTempPath(), "RedixTestsAttachments"),
         }));
         builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time));
+    }
+
+    private static string ConnectionTo(string database) =>
+        new SqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ConnectionStrings__Redix") ?? "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True") { InitialCatalog = database }.ConnectionString;
+
+    /// <summary>The same API on an empty database of its own, for a test that moves through the migrations. It stands until <paramref name="work"/> ends.</summary>
+    public async Task OnScratchDatabaseAsync(string name, Func<RedixDbContext, Task> work)
+    {
+        await using var scratch = WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["ConnectionStrings:Redix"] = ConnectionTo(name) })));
+        using var scope = scratch.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
+        await db.Database.EnsureDeletedAsync();
+        try
+        {
+            await work(db);
+        }
+        finally
+        {
+            await db.Database.EnsureDeletedAsync();
+        }
     }
 
     public async Task InitializeAsync()

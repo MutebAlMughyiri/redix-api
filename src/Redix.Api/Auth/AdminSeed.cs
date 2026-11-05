@@ -6,7 +6,7 @@ namespace Redix.Api.Auth;
 /// <summary>
 /// Creates the first user, the admin (BR-29), when the database has no user, from the <c>Admin</c> configuration section (the
 /// <c>REDIX_Admin__Username</c> and <c>REDIX_Admin__Password</c> environment variables), with a password that must be changed at first sign-in.
-/// EF Core runs it after every migration.
+/// EF Core runs it after every migration, a rollback too; while a migration is still to apply, the tables it writes may not be there, so it waits.
 /// </summary>
 public static class AdminSeed
 {
@@ -15,7 +15,7 @@ public static class AdminSeed
     {
         var users = context.Set<User>();
         var settings = Settings(services);
-        if (settings.Username.Length == 0 || users.Any())
+        if (settings.Username.Length == 0 || context.Database.GetPendingMigrations().Any() || users.Any())
         {
             return;
         }
@@ -28,7 +28,7 @@ public static class AdminSeed
     {
         var users = context.Set<User>();
         var settings = Settings(services);
-        if (settings.Username.Length == 0 || await users.AnyAsync(cancellation))
+        if (settings.Username.Length == 0 || (await context.Database.GetPendingMigrationsAsync(cancellation)).Any() || await users.AnyAsync(cancellation))
         {
             return;
         }
