@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
+using Redix.Api.Settings;
 using Redix.Api.Structure;
 using Redix.Api.Translations;
 
@@ -48,6 +49,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>What each item asks for at entry (FR-41).</summary>
     public DbSet<ItemColumn> ItemColumns => Set<ItemColumn>();
+
+    /// <summary>The ways each project pays (FR-40).</summary>
+    public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -150,6 +154,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             column.Property(c => c.Name).HasMaxLength(Project.NameMaxLength);
             column.Property(c => c.Options).HasColumnType("json");
             column.HasIndex(c => new { c.ItemId, c.Key }).IsUnique();
+        });
+        modelBuilder.Entity<PaymentMethod>(method =>
+        {
+            method.Property(m => m.Name).HasMaxLength(Project.NameMaxLength);
+            method.HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            method.HasData(PaymentMethodSeed.PaymentMethods);
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {

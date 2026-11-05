@@ -14,7 +14,7 @@ public static class CategoriesEndpoints
         reads.MapGet("/", List);
         reads.MapGet("/offered", Offered);
 
-        var changes = app.MapStructureChanges();
+        var changes = app.MapProjectChanges(Permission.ManageStructure);
         changes.MapPost("/categories", AddCategory);
         changes.MapPost("/categories/reorder", ReorderCategories);
         changes.MapPost("/categories/{categoryId:guid}", RenameCategory);
@@ -49,7 +49,7 @@ public static class CategoriesEndpoints
     /// <param name="request">The category's name.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> AddCategory(Guid projectId, NameRequest request, RedixDbContext db) =>
-        WithNameAsync(request.Name, async name =>
+        ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             var category = new Category { ProjectId = projectId, Name = name, SortOrder = await db.Categories.CountAsync(row => row.ProjectId == projectId) };
             db.Categories.Add(category);
@@ -70,7 +70,7 @@ public static class CategoriesEndpoints
     /// <param name="request">Its new name.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> RenameCategory(Guid projectId, Guid categoryId, NameRequest request, RedixDbContext db) =>
-        WithNameAsync(request.Name, name => ChangeCategoryAsync(projectId, categoryId, db, category => category.Name = name));
+        ProjectChanges.WithNameAsync(request.Name, name => ChangeCategoryAsync(projectId, categoryId, db, category => category.Name = name));
 
     /// <summary>Disables a category: it and its items disappear from entry and stay in the reports (BR-15).</summary>
     /// <param name="projectId">The project.</param>
@@ -92,7 +92,7 @@ public static class CategoriesEndpoints
     /// <param name="request">The item's name and type.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> AddItem(Guid projectId, Guid categoryId, AddItemRequest request, RedixDbContext db) =>
-        WithNameAsync(request.Name, async name =>
+        ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             if (!await db.Categories.AnyAsync(category => category.Id == categoryId && category.ProjectId == projectId))
             {
@@ -126,7 +126,7 @@ public static class CategoriesEndpoints
     /// <param name="request">Its new name.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> RenameItem(Guid projectId, Guid itemId, NameRequest request, RedixDbContext db) =>
-        WithNameAsync(request.Name, name => ChangeItemAsync(projectId, itemId, db, item => item.Name = name));
+        ProjectChanges.WithNameAsync(request.Name, name => ChangeItemAsync(projectId, itemId, db, item => item.Name = name));
 
     /// <summary>Disables an item: it disappears from entry and stays in the reports (BR-15).</summary>
     /// <param name="projectId">The project.</param>
@@ -146,7 +146,7 @@ public static class CategoriesEndpoints
     /// <param name="request">The subgroup's name.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> AddSubgroup(Guid projectId, Guid itemId, NameRequest request, RedixDbContext db) =>
-        WithNameAsync(request.Name, async name =>
+        ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
             {
@@ -164,7 +164,7 @@ public static class CategoriesEndpoints
     /// <param name="request">Its new name.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> RenameSubgroup(Guid projectId, Guid itemId, Guid subgroupId, NameRequest request, RedixDbContext db) =>
-        WithNameAsync(request.Name, async name =>
+        ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             var subgroup = await db.Subgroups.SingleOrDefaultAsync(row => row.Id == subgroupId && row.ItemId == itemId);
             if (subgroup is null || await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
@@ -195,12 +195,6 @@ public static class CategoriesEndpoints
         return Results.Ok();
     }
 
-    private static async Task<IResult> WithNameAsync(string typed, Func<string, Task<IResult>> change)
-    {
-        var name = typed.Trim();
-        return Project.IsAcceptableName(name) ? await change(name) : ProjectStructure.Refused(StructureChangeOutcome.InvalidName);
-    }
-
     private static async Task<IResult> ChangeCategoryAsync(Guid projectId, Guid categoryId, RedixDbContext db, Action<Category> change)
     {
         var category = await db.Categories.SingleOrDefaultAsync(category => category.Id == categoryId && category.ProjectId == projectId);
@@ -226,7 +220,7 @@ public static class CategoriesEndpoints
     }
 }
 
-/// <summary>What the app sends to name a category, an item or a subgroup.</summary>
+/// <summary>What the app sends to name something in a project.</summary>
 /// <param name="Name">The name.</param>
 public record NameRequest(string Name);
 

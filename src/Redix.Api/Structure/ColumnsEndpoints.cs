@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
+using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
 
@@ -16,7 +17,7 @@ public static class ColumnsEndpoints
         reads.MapGet("/items/{itemId:guid}/columns", ListOfItem);
         reads.MapGet("/default-columns/{itemType}", ListOfTemplate);
 
-        var changes = app.MapStructureChanges();
+        var changes = app.MapProjectChanges(Permission.ManageStructure);
         changes.MapPost("/items/{itemId:guid}/columns", AddToItem);
         changes.MapPost("/items/{itemId:guid}/columns/reorder", ReorderOfItem);
         changes.MapPost("/items/{itemId:guid}/columns/{columnId:guid}", EditOfItem);

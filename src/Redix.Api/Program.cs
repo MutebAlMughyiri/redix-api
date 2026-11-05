@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
+using Redix.Api.Settings;
 using Redix.Api.Structure;
 using Redix.Api.Translations;
 
@@ -82,5 +83,6 @@ app.MapRegistration();
 app.MapUsers();
 app.MapCategories();
 app.MapColumns();
+app.MapPaymentMethods();
 
 app.Run();

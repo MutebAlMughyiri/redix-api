@@ -5,16 +5,17 @@ using Redix.Api.Auth;
 
 namespace Redix.Api.Projects;
 
-/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), adds units and closes them (UC-006, FR-04), and keeps each user's default (UC-010, FR-37).</summary>
+/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), adds units and closes them (UC-006, FR-04), sets their VAT rate (UC-014, BR-14), and keeps each user's default (UC-010, FR-37).</summary>
 public static class ProjectsEndpoints
 {
-    /// <summary>Maps <c>GET /projects</c>, <c>POST /projects</c>, <c>POST /projects/{projectId}/units</c> and <c>POST /projects/{projectId}/close</c>.</summary>
+    /// <summary>Maps <c>GET /projects</c>, <c>POST /projects</c>, <c>POST /projects/{projectId}/units</c>, <c>POST /projects/{projectId}/close</c> and <c>POST /projects/{projectId}/vat-rate</c>.</summary>
     public static void MapProjects(this WebApplication app)
     {
         app.MapGet("/projects", List);
         app.MapPost("/projects", Create).RequireAuthorization(SessionPolicies.Working);
         app.MapPost("/projects/{projectId:guid}/units", AddUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/close", Close).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPost("/projects/{projectId:guid}/vat-rate", SetVatRate).RequireAuthorization(nameof(Permission.ManageSettings));
         app.MapPost("/projects/{projectId:guid}/default", SetDefault).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapPost("/projects/default/remove", RemoveDefault).RequireAuthorization(SessionPolicies.Working);
     }
@@ -90,6 +91,14 @@ public static class ProjectsEndpoints
     /// <param name="db">The database the project lives in.</param>
     public static Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) => ChangeAsync(projectId, principal, db, project => project.Close());
 
+    /// <summary>Sets the rate new entries' VAT is computed at (BR-14); saved entries keep theirs. A finished project answers <c>projectFinished</c>; a percentage outside 0 to 100, or with more than two decimals, <c>invalidVatRate</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="request">The rate, as a percentage.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the project lives in.</param>
+    public static Task<IResult> SetVatRate(Guid projectId, SetVatRateRequest request, ClaimsPrincipal principal, RedixDbContext db) =>
+        ChangeAsync(projectId, principal, db, project => project.SetVatPercent(request.VatPercent));
+
     /// <summary>Makes a project the caller's default, replacing any other, and says whether sign-in opens it directly (FR-37). It applies from the next sign-in (AC-37.1).</summary>
     /// <param name="projectId">The project, which the caller must be able to read.</param>
     /// <param name="request">Whether sign-in opens it directly.</param>
@@ -135,7 +144,7 @@ public static class ProjectsEndpoints
         var outcome = change(project);
         if (outcome != ProjectChangeOutcome.Done)
         {
-            var status = outcome == ProjectChangeOutcome.InvalidName ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;
+            var status = outcome is ProjectChangeOutcome.InvalidName or ProjectChangeOutcome.InvalidVatRate ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;
             return Refusal.Of(status, outcome.ToString());
         }
         await db.SaveChangesAsync();
@@ -169,6 +178,10 @@ public record CreateProjectRequest(string Name, DateOnly StartDate, List<string>
     public Guid StructureSourceId { get; init; }
 }
 
+/// <summary>What the app sends to set the VAT rate.</summary>
+/// <param name="VatPercent">The rate, as a percentage: 15 for 15%.</param>
+public record SetVatRateRequest(decimal VatPercent);
+
 /// <summary>What the app sends to set the default project.</summary>
 /// <param name="OpenDirectly">Whether sign-in skips the list and opens it.</param>
 public record SetDefaultProjectRequest(bool OpenDirectly);
@@ -191,11 +204,12 @@ public record AddUnitRequest(string Name);
 /// <param name="Units">The project's units, in order.</param>
 /// <param name="Roles">The keys of the words naming the caller's roles in this project.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<string> Roles, List<Permission> Permissions)
+/// <param name="VatPercent">The VAT rate of its new entries, as a percentage.</param>
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<string> Roles, List<Permission> Permissions, decimal VatPercent)
 {
     /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="roles"/> and <paramref name="permissions"/> in it.</summary>
     public static ProjectView Of(Project project, List<string> roles, List<Permission> permissions) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Select(unit => new UnitView(unit.Id, unit.Name)).ToList(), roles, permissions);
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Select(unit => new UnitView(unit.Id, unit.Name)).ToList(), roles, permissions, project.VatRate * 100);
 }
 
 /// <summary>A unit as the app shows it.</summary>

@@ -17,4 +17,7 @@ public enum ProjectChangeOutcome
 
     /// <summary>The reason for a rejection is empty or longer than <see cref="Project.ReasonMaxLength"/> characters.</summary>
     InvalidReason,
+
+    /// <summary>The VAT rate is outside 0 to 100 percent, or has more than two decimals.</summary>
+    InvalidVatRate,
 }

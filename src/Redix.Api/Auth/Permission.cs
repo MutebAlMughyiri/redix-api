@@ -23,4 +23,7 @@ public enum Permission
 
     /// <summary>Shapes one project's expense structure: its categories, items, subgroups and columns (FR-05, FR-38, FR-39, FR-41).</summary>
     ManageStructure,
+
+    /// <summary>Keeps one project's payment methods and VAT rate (FR-40, BR-14).</summary>
+    ManageSettings,
 }

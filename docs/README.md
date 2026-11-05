@@ -30,5 +30,6 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-011](use-cases/UC-011-biometrics.md) | Keep a phone with fingerprint or face signed in | Everyone, for this phone |
 | [UC-012](use-cases/UC-012-categories-and-items.md) | Shape a project's categories, items and subgroups, and start each approved project with a copy | Finance changes; everyone with access reads |
 | [UC-013](use-cases/UC-013-item-columns.md) | Change the fields an item asks for, on one item or on the project's default template | Finance changes; everyone with access reads |
+| [UC-014](use-cases/UC-014-payment-methods-and-vat.md) | Keep a project's payment methods and its VAT rate | Finance changes; everyone with access reads |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |
