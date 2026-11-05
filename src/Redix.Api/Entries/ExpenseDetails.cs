@@ -27,7 +27,7 @@ public class ExpenseDetails
     public string WithoutInvoiceReason { get; set; } = "";
 
     /// <summary>What becomes of it when paid from a partner's money (BR-25).</summary>
-    public PartnerTreatment PartnerTreatment { get; init; } = PartnerTreatment.Empty;
+    public PartnerTreatment PartnerTreatment { get; set; } = PartnerTreatment.Empty;
 
     /// <summary>The values of the item's custom columns (FR-41), a JSON object of each column's key and its value.</summary>
     public string CustomValues { get; init; } = "{}";

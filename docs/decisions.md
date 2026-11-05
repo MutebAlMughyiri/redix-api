@@ -6,6 +6,14 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | Every partner has a pocket account, made with them | The database design said so, and it made "from a partner" a choice the payment lists already offer, with no new field on an entry |
+| 2026-11-05 | What a partner paid becomes capital when the expense is approved, not when it is saved | Row 4: BR-25 said saved, but only approved entries count (BR-10), and a rejected expense would leave them credit for nothing |
+| 2026-11-05 | A carry needs `MoveMoney` in both projects, and names an account in each | Row 40: BR-33 keeps projects apart, so whoever crosses them must hold the right on both sides; each side's books need an account |
+| 2026-11-05 | A settlement must take all the partner holds | A partner marked gone with money left would be a balance nobody can move |
+| 2026-11-05 | A refundable advance counts as a capital movement out, and has its own type | Open question 8: carried and reported as a line. BR-05 sums all movements, and the type lets the report print the line |
+| 2026-11-05 | The app warns about a receipt's other amount, and the API keeps no such amount | BR-23 asks for a warning, and the receipt itself is kept |
+| 2026-11-05 | A partner's pocket and its balance show only to whoever may see their capital | What the project owes a partner is a capital detail (BR-31). Its name is offered to anyone entering an expense |
+| 2026-11-05 | The entries list holds expenses only; transfers and capital movements have their own lists | Those have no item or supplier for a row to show, and Finance reaches them from the accounts and the partners |
 | 2026-11-05 | Attaching an invoice changes the status only of what is approved | BR-22 says "returns to approval". What is a draft or was rejected has not reached Finance, so sending it would act for its author, and Finance sees the difference when it arrives |
 | 2026-11-05 | An expense can take an invoice only when it was entered without one, so the canvas's "without invoice only" switch is gone | One with an invoice has nothing to attach, and fixing a draft's invoice is what its form does |
 | 2026-11-05 | The same invoice on two expenses is refused at attach, with no way to confirm it, unlike at entry | BR-22 says it cannot be attached; FR-17's confirmation is about entering one |

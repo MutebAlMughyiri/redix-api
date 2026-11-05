@@ -23,11 +23,16 @@ public static class AccountsEndpoints
         changes.MapPost("/accounts/{accountId:guid}/enable", Enable);
     }
 
-    /// <summary>Every account of the project, disabled ones included, banks first and then in the order they were added (AC-22.1).</summary>
+    /// <summary>Every account of the project, disabled ones included, banks first and then in the order they were added (AC-22.1). A partner's pocket says what they are owed, so it shows only to whoever may see their capital (BR-31).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
-    public static Task<List<AccountView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) => ViewsAsync(projectId, AccessTokens.UserIdOf(principal), db, _ => true);
+    public static async Task<List<AccountView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
+    {
+        var callerId = AccessTokens.UserIdOf(principal);
+        var hidden = await OthersPocketsAsync(projectId, callerId, db);
+        return await ViewsAsync(projectId, callerId, db, account => !hidden.Contains(account.Id));
+    }
 
     /// <summary>What the caller's entry may be paid from: the active accounts, all of them with <see cref="Permission.ChargeAnyAccount"/>, otherwise only those they hold (BRS open question 4).</summary>
     /// <param name="projectId">The project.</param>
@@ -80,6 +85,10 @@ public static class AccountsEndpoints
         {
             return Results.NotFound();
         }
+        if (account.Type == AccountType.PartnerPocket)
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "PocketFollowsPartner");
+        }
 
         var name = request.Name.Trim();
         var refusal = await RefusalOfAsync(projectId, name, account.Type, request.OpeningBalance, request.CustodianId, db);
@@ -119,8 +128,25 @@ public static class AccountsEndpoints
         var custodianIds = accounts.Select(account => account.CustodianId).ToList();
         var names = await db.Users.Where(user => custodianIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
         var moved = await AccountMoney.MovementsOfProjectAsync(projectId, db);
+        foreach (var pocket in await OthersPocketsAsync(projectId, callerId, db))
+        {
+            moved.Remove(pocket);
+        }
         return accounts.Where(shown).OrderBy(account => account.Type).ThenBy(account => account.Id)
             .Select(account => AccountView.Of(account, names.GetValueOrDefault(account.CustodianId, ""), callerId, moved.GetValueOrDefault(account.Id))).ToList();
+    }
+
+    private static async Task<List<Guid>> OthersPocketsAsync(Guid projectId, Guid callerId, RedixDbContext db)
+    {
+        if ((await UserAccess.OfAsync(callerId, db)).In(projectId).Contains(Permission.SeeAllCapital))
+        {
+            return [];
+        }
+        return await (
+            from pocket in db.PartnerPockets
+            join partner in db.Partners on pocket.PartnerId equals partner.Id
+            where partner.ProjectId == projectId && partner.UserId != callerId
+            select pocket.AccountId).ToListAsync();
     }
 
     private static async Task<string> RefusalOfAsync(Guid projectId, string name, AccountType type, decimal openingBalance, Guid custodianId, RedixDbContext db)
@@ -135,6 +161,10 @@ public static class AccountsEndpoints
         if (account is null)
         {
             return Results.NotFound();
+        }
+        if (account.Type == AccountType.PartnerPocket)
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "PocketFollowsPartner");
         }
         account.IsActive = isActive;
         await db.SaveChangesAsync();

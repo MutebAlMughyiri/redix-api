@@ -34,7 +34,7 @@ public static class EntriesEndpoints
     public static Task<List<EntryRowView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId);
+        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Kind == EntryKind.Purchase || entry.Kind == EntryKind.ContractorPayment) && entry.CreatedByUserId == userId);
     }
 
     /// <summary>Every entry of the project, newest first: everyone who reads a project sees all its expenses, and drafts only of their own.</summary>
@@ -44,7 +44,7 @@ public static class EntriesEndpoints
     public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId));
+        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Kind == EntryKind.Purchase || entry.Kind == EntryKind.ContractorPayment) && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId));
     }
 
     private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown)
@@ -172,7 +172,7 @@ public static class EntriesEndpoints
 
     /// <summary>
     /// Reverses an approved entry (UC-035, FR-50): an opposite entry of the same amount, tied to the original and approved at once, so both show in the reports and the net effect is zero. The original does not change.
-    /// No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; one already reversed, or itself a reversal, <c>alreadyReversed</c>.
+    /// What was entered as one reverses as one, a transfer's two sides, a carry's two sides, or an expense and the capital it gave. No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; one already reversed, or itself a reversal, <c>alreadyReversed</c>; and one tied to a project the caller cannot change, <c>tiedProjectRefused</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>
@@ -203,49 +203,19 @@ public static class EntriesEndpoints
 
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
-        var reversal = new Entry
+        var today = Entry.Today(time);
+        var tied = await EntryReversal.TiedToAsync(entryId, db);
+        var access = await UserAccess.OfAsync(userId, db);
+        var otherProjects = tied.Select(row => row.ProjectId).Where(id => id != projectId).ToList();
+        if (otherProjects.Any(id => !access.In(id).Contains(Permission.ApproveEntries)) || await db.Projects.AnyAsync(project => otherProjects.Contains(project.Id) && project.Status != ProjectStatus.Running))
         {
-            Id = Guid.CreateVersion7(),
-            ProjectId = projectId,
-            Kind = entry.Kind,
-            Status = EntryStatus.Approved,
-            EntryDate = Entry.Today(time),
-            Amount = -entry.Amount,
-            AccountId = entry.AccountId,
-            Notes = reason,
-            CreatedByUserId = userId,
-            CreatedAt = at,
-            ApprovedAt = at,
-        };
-        db.Add(reversal);
-        db.Audit(reversal, AuditAction.Create, userId, at);
-        List<object> details = [new EntryLink { EntryId = reversal.Id, Type = EntryLinkType.Reversal, LinkedEntryId = entryId, Reason = reason }];
-        var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entryId);
-        if (expense is not null)
-        {
-            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, UnitId = expense.UnitId, PaymentMethodId = expense.PaymentMethodId, BankFees = -expense.BankFees, WithoutInvoiceReason = reason, CustomValues = expense.CustomValues });
+            return Refusal.Of(StatusCodes.Status403Forbidden, "TiedProjectRefused");
         }
-        var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entryId);
-        if (purchase is not null)
+        var reversal = await EntryReversal.AddAsync(entry, reason, userId, at, today, db);
+        foreach (var other in tied)
         {
-            details.Add(new PurchaseDetails { EntryId = reversal.Id, SupplierId = purchase.SupplierId, Product = purchase.Product, UnitPrice = purchase.UnitPrice, Quantity = purchase.Quantity });
+            await EntryReversal.AddAsync(other, reason, userId, at, today, db);
         }
-        var payment = await db.ContractorPaymentDetails.SingleOrDefaultAsync(row => row.EntryId == entryId);
-        if (payment is not null)
-        {
-            details.Add(new ContractorPaymentDetails { EntryId = reversal.Id, ContractId = payment.ContractId, IsOutsideContract = payment.IsOutsideContract });
-        }
-        var invoice = await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entryId);
-        if (invoice is not null)
-        {
-            details.Add(new Invoice { EntryId = reversal.Id, Number = invoice.Number, InvoiceDate = invoice.InvoiceDate, AmountBeforeDiscount = -invoice.AmountBeforeDiscount, Discount = -invoice.Discount, AmountAfterDiscount = -invoice.AmountAfterDiscount, Vat = -invoice.Vat, Total = -invoice.Total, IsCreditNote = invoice.IsCreditNote, VatPeriodStart = Invoice.QuarterStartOf(reversal.EntryDate) });
-        }
-        foreach (var detail in details)
-        {
-            db.Add(detail);
-            db.Audit(detail, AuditAction.Create, userId, at);
-        }
-        db.EntryDecisions.Add(new EntryDecision { EntryId = reversal.Id, Action = EntryDecisionAction.Approve, UserId = userId, At = at, Reason = reason });
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{projectId}/entries/{reversal.Id}", new EntryStatusView(reversal.Id, reversal.Status, ""));
     }

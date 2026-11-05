@@ -44,4 +44,7 @@ public enum Permission
 
     /// <summary>Sees the entries waiting in one project, and approves or rejects them (FR-18, FR-19).</summary>
     ApproveEntries,
+
+    /// <summary>Enters what counts at once in one project: transfers, capital movements, revenue, and reconciles its accounts (BR-30, FR-23, FR-24, FR-25).</summary>
+    MoveMoney,
 }

@@ -16,8 +16,9 @@ public static class NotificationsEndpoints
     /// <param name="app">The app.</param>
     public static void MapNotifications(this WebApplication app)
     {
-        app.MapGet("/notifications", List);
-        app.MapPost("/notifications/{id:guid}/read", MarkRead);
+        var mine = app.MapGroup("/notifications").RequireAuthorization(SessionPolicies.Working);
+        mine.MapGet("/", List);
+        mine.MapPost("/{id:guid}/read", MarkRead);
     }
 
     /// <summary>What the caller was told, newest first, only about the projects they still have.</summary>

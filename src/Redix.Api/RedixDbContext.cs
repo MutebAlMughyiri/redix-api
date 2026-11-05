@@ -98,6 +98,15 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What ties one entry to another.</summary>
     public DbSet<EntryLink> EntryLinks => Set<EntryLink>();
 
+    /// <summary>What only a capital movement has.</summary>
+    public DbSet<Redix.Api.Partners.CapitalMovementDetails> CapitalMovementDetails => Set<Redix.Api.Partners.CapitalMovementDetails>();
+
+    /// <summary>The account of each partner's pocket.</summary>
+    public DbSet<Redix.Api.Partners.PartnerPocket> PartnerPockets => Set<Redix.Api.Partners.PartnerPocket>();
+
+    /// <summary>Each check of the accounts against the books.</summary>
+    public DbSet<Reconciliation> Reconciliations => Set<Reconciliation>();
+
     /// <summary>What each person was told about an entry.</summary>
     public DbSet<Redix.Api.Notifications.Notification> Notifications => Set<Redix.Api.Notifications.Notification>();
 
@@ -324,6 +333,35 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.Property(i => i.SellerVatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Redix.Api.Partners.CapitalMovementDetails>(details =>
+        {
+            details.HasKey(d => d.EntryId);
+            details.Property(d => d.Description).HasMaxLength(global::Redix.Api.Entries.Entry.NotesMaxLength);
+            details.Property(d => d.CashReason).HasMaxLength(Redix.Api.Partners.CapitalMovementDetails.ReasonMaxLength);
+            details.HasIndex(d => d.PartnerId);
+            details.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Partners.CapitalMovementDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Partner>().WithMany().HasForeignKey(d => d.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Redix.Api.Partners.PartnerPocket>(pocket =>
+        {
+            pocket.HasKey(p => p.AccountId);
+            pocket.HasIndex(p => p.PartnerId).IsUnique();
+            pocket.HasOne<Account>().WithOne().HasForeignKey<Redix.Api.Partners.PartnerPocket>(p => p.AccountId).OnDelete(DeleteBehavior.Restrict);
+            pocket.HasOne<Partner>().WithOne().HasForeignKey<Redix.Api.Partners.PartnerPocket>(p => p.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Reconciliation>(reconciliation =>
+        {
+            reconciliation.Property(r => r.Id).ValueGeneratedNever();
+            reconciliation.HasIndex(r => new { r.ProjectId, r.At });
+            reconciliation.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            reconciliation.HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
+            reconciliation.HasMany(r => r.Balances).WithOne().HasForeignKey(b => b.ReconciliationId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<ReconciliationBalance>(balance =>
+        {
+            balance.HasKey(b => new { b.ReconciliationId, b.AccountId });
+            balance.HasOne<Account>().WithMany().HasForeignKey(b => b.AccountId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Redix.Api.Notifications.Notification>(notification =>
         {
