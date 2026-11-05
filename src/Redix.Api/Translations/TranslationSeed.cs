@@ -294,6 +294,10 @@ public static class TranslationSeed
         ("suppliers.pick", "Choose a supplier", "اختر المورد"),
         ("suppliers.searchHint", "Search by name or VAT number", "بحث بالاسم أو الرقم الضريبي"),
         ("suppliers.noMatch", "No supplier matches.", "لا يوجد مورد مطابق."),
+        ("suppliers.quickAdd", "New supplier", "مورد جديد"),
+        ("suppliers.addAndPick", "Add and choose", "إضافة واختيار"),
+        ("suppliers.pendingHint", "A new supplier is approved with its first expense.", "يُعتمد المورد الجديد مع أول مصروف عليه."),
+        ("suppliers.useExisting", "Use this supplier", "استخدام هذا المورد"),
         ("biometrics.notChanged", "Could not change this. Check the network and try again.", "تعذّر التغيير. تحقق من الشبكة وحاول مرة أخرى."),
     ];
 

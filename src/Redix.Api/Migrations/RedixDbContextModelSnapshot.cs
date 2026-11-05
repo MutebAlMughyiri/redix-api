@@ -277,7 +277,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("RolePermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'ChargeAnyAccount')");
+                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount')");
                         });
 
                     b.HasData(
@@ -331,6 +331,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("b806ca26-2b86-5e82-b58e-d6d9a19ee416"),
+                            Permission = "AddSupplier",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
+                        },
+                        new
+                        {
                             Id = new Guid("3c35a012-dd63-53fb-9008-d3fc0de2de8c"),
                             Permission = "ReadProject",
                             RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
@@ -340,6 +346,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("7a0b2030-6690-e681-2973-197db92c573a"),
                             Permission = "SeeAllCapital",
                             RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
+                        },
+                        new
+                        {
+                            Id = new Guid("c79fdab1-3bb3-ec46-2886-93b77a5fe831"),
+                            Permission = "AddSupplier",
+                            RoleId = new Guid("f50f9eae-0001-8d5d-c4b1-e47737eac451")
                         },
                         new
                         {
@@ -6220,6 +6232,62 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("95ccb243-4dfa-ffef-1f95-e0798ee51e92"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a1b9d41a-10d5-3f31-b67f-358cc0a46ddc"),
+                            Value = "New supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("0700fe3f-fc77-1294-7b69-eb07064e7a88"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a1b9d41a-10d5-3f31-b67f-358cc0a46ddc"),
+                            Value = "مورد جديد"
+                        },
+                        new
+                        {
+                            Id = new Guid("4910a692-db3a-6a64-8b1e-285a54fda81d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("db2e5cba-5b40-d921-38c4-47e4fde8b5db"),
+                            Value = "Add and choose"
+                        },
+                        new
+                        {
+                            Id = new Guid("2fa225cc-a6be-2ea6-0785-529de756469c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("db2e5cba-5b40-d921-38c4-47e4fde8b5db"),
+                            Value = "إضافة واختيار"
+                        },
+                        new
+                        {
+                            Id = new Guid("fd5de387-cdb7-ed3c-8e81-910210d4c221"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4ef536a5-a7d5-313a-1c15-1bf7d854c58b"),
+                            Value = "A new supplier is approved with its first expense."
+                        },
+                        new
+                        {
+                            Id = new Guid("041a1376-8b31-2afa-32a1-666b1ce425f8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4ef536a5-a7d5-313a-1c15-1bf7d854c58b"),
+                            Value = "يُعتمد المورد الجديد مع أول مصروف عليه."
+                        },
+                        new
+                        {
+                            Id = new Guid("ef94a4f6-c87b-0c79-2d6e-e227016332d4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("15cc3735-49e9-7dec-4543-8f0e82cfaa0f"),
+                            Value = "Use this supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("bc3e2fa3-9a60-26bc-52db-dc18efd88e3d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("15cc3735-49e9-7dec-4543-8f0e82cfaa0f"),
+                            Value = "استخدام هذا المورد"
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -7997,6 +8065,30 @@ namespace Redix.Api.Migrations
                             Id = new Guid("14591419-de9f-6241-35d5-f33de2c90d77"),
                             Description = "",
                             Key = "suppliers.noMatch"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1b9d41a-10d5-3f31-b67f-358cc0a46ddc"),
+                            Description = "",
+                            Key = "suppliers.quickAdd"
+                        },
+                        new
+                        {
+                            Id = new Guid("db2e5cba-5b40-d921-38c4-47e4fde8b5db"),
+                            Description = "",
+                            Key = "suppliers.addAndPick"
+                        },
+                        new
+                        {
+                            Id = new Guid("4ef536a5-a7d5-313a-1c15-1bf7d854c58b"),
+                            Description = "",
+                            Key = "suppliers.pendingHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("15cc3735-49e9-7dec-4543-8f0e82cfaa0f"),
+                            Description = "",
+                            Key = "suppliers.useExisting"
                         },
                         new
                         {

@@ -316,6 +316,17 @@ public class SuppliersTests(MigratedApiFactory factory)
 
     [Theory]
     [InlineData(Manager)]
+    [InlineData(Reader)]
+    public async Task OnlyFinanceAndFieldAddSuppliers(string role)
+    {
+        var (_, project) = await FinanceAsync();
+        var memberClient = await MemberAsync(project, role);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await PostAsync(memberClient, project.Id, new SupplierRequest("مورد") { VatNumber = OtherVatNumber })).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(Manager)]
     [InlineData(Field)]
     [InlineData(Reader)]
     public async Task OnlyFinanceChangesSuppliers(string role)
@@ -326,7 +337,6 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await PostAsync(memberClient, project.Id, new SupplierRequest("مورد") { VatNumber = OtherVatNumber }),
             await memberClient.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber }, Json),
             await memberClient.PostAsync($"/projects/{project.Id}/suppliers/{supplier.Id}/disable", null),
             await memberClient.PostAsync($"/projects/{project.Id}/suppliers/{supplier.Id}/enable", null),
@@ -467,6 +477,88 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         Assert.Empty(await SearchAsync(client, project.Id, "نخيل"));
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{other.Id}/suppliers/search")).StatusCode);
+    }
+
+    [Fact]
+    public async Task WhatFieldAddsWaitsForApproval()
+    {
+        var (_, project) = await FinanceAsync();
+        var fieldClient = await MemberAsync(project, Field);
+
+        var supplier = await AddAsync(fieldClient, project.Id, "شركة النخيل");
+
+        Assert.Equal(SupplierStatus.PendingApproval, supplier.Status);
+        Assert.Equal(SupplierStatus.PendingApproval, (await RegisterOf(fieldClient, project.Id)).Single(row => row.Id == supplier.Id).Status);
+    }
+
+    [Fact]
+    public async Task WhatFieldAddsIsValidatedAsAnySupplier()
+    {
+        var (_, project) = await FinanceAsync();
+        var fieldClient = await MemberAsync(project, Field);
+
+        Assert.Equal("invalidVatNumber", await CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest("مورد") { VatNumber = "30088967710003" })));
+        Assert.Equal("invalidName", await CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest(" ") { VatNumber = VatNumber })));
+    }
+
+    [Fact]
+    public async Task AVatNumberAlreadyInTheRegisterIsRefusedToFieldNamingItsSupplier()
+    {
+        var (client, project) = await FinanceAsync();
+        var holder = await AddAsync(client, project.Id, "شركة النخيل");
+        var fieldClient = await MemberAsync(project, Field);
+
+        var refused = await PostAsync(fieldClient, project.Id, new SupplierRequest("النخيل") { VatNumber = VatNumber });
+
+        var answer = await refused.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("vatNumberTaken", answer.GetProperty("code").GetString());
+        Assert.Equal(holder.Id, answer.GetProperty("existing").Deserialize<SupplierView>(Json)!.Id);
+    }
+
+    [Fact]
+    public async Task APendingSupplierAlreadyHoldsItsVatNumber()
+    {
+        var (_, project) = await FinanceAsync();
+        var firstClient = await MemberAsync(project, Field);
+        var secondClient = await MemberAsync(project, Field);
+        await AddAsync(firstClient, project.Id, "شركة النخيل");
+
+        Assert.Equal("vatNumberTaken", await CodeOf(await PostAsync(secondClient, project.Id, new SupplierRequest("النخيل") { VatNumber = VatNumber })));
+    }
+
+    [Fact]
+    public async Task APendingSupplierIsOfferedToWhoAddedItAndToFinanceOnly()
+    {
+        var (client, project) = await FinanceAsync();
+        var adderClient = await MemberAsync(project, Field);
+        var otherClient = await MemberAsync(project, Field);
+        var pending = await AddAsync(adderClient, project.Id, "شركة النخيل");
+
+        Assert.Equal(pending.Id, Assert.Single(await SearchAsync(adderClient, project.Id, "نخيل")).Id);
+        Assert.Equal(pending.Id, Assert.Single(await SearchAsync(client, project.Id, "نخيل")).Id);
+        Assert.Empty(await SearchAsync(otherClient, project.Id, "نخيل"));
+        Assert.Empty(await SearchAsync(otherClient, project.Id, VatNumber));
+    }
+
+    [Fact]
+    public async Task EveryoneWithAccessSeesAPendingSupplierInTheRegister()
+    {
+        var (_, project) = await FinanceAsync();
+        var adderClient = await MemberAsync(project, Field);
+        var readerClient = await MemberAsync(project, Reader);
+        var pending = await AddAsync(adderClient, project.Id, "شركة النخيل");
+
+        Assert.Equal(SupplierStatus.PendingApproval, (await RegisterOf(readerClient, project.Id)).Single(row => row.Id == pending.Id).Status);
+    }
+
+    [Fact]
+    public async Task AFinishedProjectRefusesWhatFieldAdds()
+    {
+        var (client, project) = await FinanceAsync();
+        var fieldClient = await MemberAsync(project, Field);
+        (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
+
+        Assert.Equal("projectFinished", await CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest("مورد") { VatNumber = VatNumber })));
     }
 
     [Fact]

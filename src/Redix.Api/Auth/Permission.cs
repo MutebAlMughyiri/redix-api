@@ -27,6 +27,9 @@ public enum Permission
     /// <summary>Keeps one project's payment methods, VAT rate, accounts, partners and suppliers (FR-40, BR-14, FR-22, UC-016, FR-06).</summary>
     ManageSettings,
 
+    /// <summary>Adds a supplier to one project's register; without <see cref="ManageSettings"/> it waits for approval (FR-44, BR-30).</summary>
+    AddSupplier,
+
     /// <summary>Spends from any active account of one project; without it, only from those the user holds (BRS open question 4). The entry use cases refuse the rest.</summary>
     ChargeAnyAccount,
 }

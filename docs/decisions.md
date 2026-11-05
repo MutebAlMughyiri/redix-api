@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | One route adds a supplier for anyone holding `AddSupplier`, Finance and Field; it is approved for whoever holds `ManageSettings`, otherwise pending | A second route would repeat the same rules (BR-16, BR-19), and only the status differs. FR-44 keeps what Field adds waiting for Finance. Made without Muteb |
+| 2026-11-05 | A pending supplier is offered to who added it and to whoever holds `ManageSettings`; the register shows it to everyone | The issue says Field uses it on their own expenses, and Finance has to reach it to approve anything. BR-31 shows everyone the whole project. Made without Muteb; see the findings |
+| 2026-11-05 | Field may also add a supplier with no VAT number | The issue says it is validated as for any supplier, and BR-16 says "if any". Finance sees it pending. Made without Muteb; see the findings |
 | 2026-11-05 | The search answers by name; "most used first" waits for the ledger | Nothing records which supplier is used until UC-022 "Record a purchase expense", and a made-up order would be a lie. The order has one place to change. Made without Muteb; see the findings |
 | 2026-11-05 | One route answers typed text and a QR code's VAT number; an empty list is the "not found" | An exact number can only match one supplier, since a number has one holder, so a second route would answer the same thing. Made without Muteb |
 | 2026-11-05 | Fewer than three letters narrow nothing down, for a VAT number too; a search answers at most 20 suppliers | AC-43.1 starts at three letters, and two digits of a VAT number match nearly everyone. The answer stays small however large the register grows. Made without Muteb |

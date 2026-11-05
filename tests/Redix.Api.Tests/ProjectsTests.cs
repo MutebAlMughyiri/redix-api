@@ -217,7 +217,8 @@ public class ProjectsTests(MigratedApiFactory factory)
         Assert.Equal([Finance], listed.Single(project => project.Id == financeProject.Id).Roles);
         Assert.Contains(Permission.ManageProject, listed.Single(project => project.Id == financeProject.Id).Permissions);
         Assert.Equal([Field], listed.Single(project => project.Id == fieldProject.Id).Roles);
-        Assert.Equal([Permission.ReadProject], listed.Single(project => project.Id == fieldProject.Id).Permissions);
+        Assert.DoesNotContain(Permission.ManageProject, listed.Single(project => project.Id == fieldProject.Id).Permissions);
+        Assert.Contains(Permission.ReadProject, listed.Single(project => project.Id == fieldProject.Id).Permissions);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/projects/{financeProject.Id}/close", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"/projects/{fieldProject.Id}/close", null)).StatusCode);
     }

@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -50,6 +51,10 @@ public class Supplier
 
     /// <summary>The supplier <paramref name="projectId"/> starts with, for expenses with no supplier: approved at once, and not VAT-registered, so nothing on it reaches the VAT statement.</summary>
     public static Supplier GeneralCash(Guid projectId, Guid createdByUserId) => new() { ProjectId = projectId, Name = GeneralCashName, CreatedByUserId = createdByUserId };
+
+    /// <summary>What <paramref name="userId"/> may pick: active suppliers that are approved or that they added themselves (UC-019 step 3), and any pending one if they <paramref name="seePending"/>.</summary>
+    public static Expression<Func<Supplier, bool>> OfferedTo(Guid userId, bool seePending) =>
+        supplier => supplier.IsActive && (supplier.Status == SupplierStatus.Approved || supplier.CreatedByUserId == userId || seePending);
 
     /// <summary>Whether <paramref name="vatNumber"/> is 15 digits, starting and ending with 3 (BR-16).</summary>
     public static bool IsValidVatNumber(string vatNumber) => vatNumber.Length == VatNumberLength && vatNumber.All(char.IsAsciiDigit) && vatNumber[0] == '3' && vatNumber[^1] == '3';

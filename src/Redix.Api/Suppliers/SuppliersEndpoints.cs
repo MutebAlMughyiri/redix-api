@@ -6,18 +6,19 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Suppliers;
 
-/// <summary>A project's supplier register (UC-017, FR-06) and the search of it (UC-018, FR-43). There is no delete: what is no longer wanted is disabled (BR-15).</summary>
+/// <summary>A project's supplier register (UC-017, FR-06), the search of it (UC-018, FR-43), and a supplier added from the field (UC-019, FR-44). There is no delete: what is no longer wanted is disabled (BR-15).</summary>
 public static class SuppliersEndpoints
 {
-    /// <summary>Maps the routes that read a project's register and search it, for anyone who reads the project, and those that change it, for whoever holds <see cref="Permission.ManageSettings"/>.</summary>
+    /// <summary>Maps the routes that read a project's register and search it, for anyone who reads the project, the one that adds, for whoever holds <see cref="Permission.AddSupplier"/>, and those that change it, for whoever holds <see cref="Permission.ManageSettings"/>.</summary>
     public static void MapSuppliers(this WebApplication app)
     {
         var reads = app.MapGroup("/projects/{projectId:guid}/suppliers").RequireAuthorization(nameof(Permission.ReadProject));
         reads.MapGet("/", List);
         reads.MapGet("/search", Search);
 
+        app.MapProjectChanges(Permission.AddSupplier).MapPost("/suppliers", Add);
+
         var changes = app.MapProjectChanges(Permission.ManageSettings);
-        changes.MapPost("/suppliers", Add);
         changes.MapPost("/suppliers/{supplierId:guid}", Edit);
         changes.MapPost("/suppliers/{supplierId:guid}/disable", Disable);
         changes.MapPost("/suppliers/{supplierId:guid}/enable", Enable);
@@ -30,38 +31,46 @@ public static class SuppliersEndpoints
         await ViewsOfAsync(await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Include(supplier => supplier.DefaultItems).OrderBy(supplier => supplier.Name).ToListAsync(), db);
 
     /// <summary>
-    /// What an entry may pick: the active suppliers whose name or VAT number holds <paramref name="text"/>, by name, at most <see cref="Supplier.SearchLimit"/> of them (AC-43.1). Fewer than
+    /// What the caller's entry may pick: the suppliers on offer to them (<see cref="Supplier.OfferedTo"/>) whose name or VAT number holds <paramref name="text"/>, by name, at most <see cref="Supplier.SearchLimit"/> of them (AC-43.1). Fewer than
     /// <see cref="Supplier.SearchMinLength"/> letters narrow nothing down. An exact VAT number answers its one supplier, and one in no supplier's hands answers an empty list, for the app to offer a quick add (FR-43).
     /// </summary>
     /// <param name="projectId">The project.</param>
+    /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
     /// <param name="text">What was typed, or read from a QR code.</param>
-    public static async Task<List<SupplierView>> Search(Guid projectId, RedixDbContext db, string text = "")
+    public static async Task<List<SupplierView>> Search(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, string text = "")
     {
+        var userId = AccessTokens.UserIdOf(principal);
+        var seesPending = await KeepsSettingsAsync(projectId, userId, db);
         var typed = text.Trim();
         var narrowsNothing = typed.Length < Supplier.SearchMinLength;
-        var found = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId && supplier.IsActive && (narrowsNothing || supplier.Name.Contains(typed) || supplier.VatNumber.Contains(typed)))
+        var found = await db.Suppliers.Where(Supplier.OfferedTo(userId, seesPending))
+            .Where(supplier => supplier.ProjectId == projectId && (narrowsNothing || supplier.Name.Contains(typed) || supplier.VatNumber.Contains(typed)))
             .Include(supplier => supplier.DefaultItems).OrderBy(supplier => supplier.Name).Take(Supplier.SearchLimit).ToListAsync();
         return await ViewsOfAsync(found, db);
     }
 
     /// <summary>
-    /// Adds a supplier, and answers it. An unacceptable name answers <c>invalidName</c>; a VAT number breaking BR-16, <c>invalidVatNumber</c>; a mobile too long, <c>invalidMobile</c>; a default item outside the project,
+    /// Adds a supplier, and answers it: approved for whoever holds <see cref="Permission.ManageSettings"/>, otherwise waiting for approval (FR-44). An unacceptable name answers <c>invalidName</c>; a VAT number breaking BR-16, <c>invalidVatNumber</c>; a mobile too long, <c>invalidMobile</c>; a default item outside the project,
     /// <c>unknownItem</c>; a VAT number another supplier of the project holds, <c>vatNumberTaken</c>, with that supplier as <c>existing</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The supplier's name, VAT number or that it has none, mobile and default item.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
-    public static Task<IResult> Add(Guid projectId, SupplierRequest request, ClaimsPrincipal principal, RedixDbContext db) =>
-        IfAcceptableAsync(projectId, Guid.Empty, request, db, async () =>
+    public static async Task<IResult> Add(Guid projectId, SupplierRequest request, ClaimsPrincipal principal, RedixDbContext db)
+    {
+        var userId = AccessTokens.UserIdOf(principal);
+        var status = await KeepsSettingsAsync(projectId, userId, db) ? SupplierStatus.Approved : SupplierStatus.PendingApproval;
+        return await IfAcceptableAsync(projectId, Guid.Empty, request, db, async () =>
         {
-            var supplier = new Supplier { ProjectId = projectId, Name = request.Name.Trim(), VatNumber = request.VatNumberKept, Mobile = request.Mobile.Trim(), CreatedByUserId = AccessTokens.UserIdOf(principal) };
+            var supplier = new Supplier { ProjectId = projectId, Name = request.Name.Trim(), VatNumber = request.VatNumberKept, Mobile = request.Mobile.Trim(), Status = status, CreatedByUserId = userId };
             supplier.DefaultTo(request.DefaultItemId);
             db.Suppliers.Add(supplier);
             await db.SaveChangesAsync();
             return Results.Created($"/projects/{projectId}/suppliers/{supplier.Id}", (await ViewsOfAsync([supplier], db)).Single());
         });
+    }
 
     /// <summary>Changes a supplier's name, VAT number, mobile and default item. It answers as <see cref="Add"/> does, leaving a supplier its own number.</summary>
     /// <param name="projectId">The project.</param>
@@ -97,6 +106,8 @@ public static class SuppliersEndpoints
     /// <param name="supplierId">The supplier.</param>
     /// <param name="db">The database they live in.</param>
     public static Task<IResult> Enable(Guid projectId, Guid supplierId, RedixDbContext db) => SetActiveAsync(projectId, supplierId, true, db);
+
+    private static async Task<bool> KeepsSettingsAsync(Guid projectId, Guid userId, RedixDbContext db) => (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.ManageSettings);
 
     private static async Task<IResult> IfAcceptableAsync(Guid projectId, Guid supplierId, SupplierRequest request, RedixDbContext db, Func<Task<IResult>> change)
     {

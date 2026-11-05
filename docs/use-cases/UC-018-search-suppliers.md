@@ -16,7 +16,7 @@ The list is by name for now. "Most used first" (AC-43.1) needs to know which sup
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `GET /projects/{projectId}/suppliers/search?text=...` | `ReadProject` | `200` with at most 20 active suppliers, by name, whose name or VAT number holds `text`, each as in the register. `text` may be left out; fewer than 3 letters narrow nothing down |
+| `GET /projects/{projectId}/suppliers/search?text=...` | `ReadProject` | `200` with at most 20 suppliers on offer to the caller (UC-019), by name, whose name or VAT number holds `text`, each as in the register. `text` may be left out; fewer than 3 letters narrow nothing down |
 
 ## Tables
 
