@@ -2108,6 +2108,8 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("ProjectId", "Name");
+
                     b.HasIndex("ProjectId", "VatNumber")
                         .IsUnique()
                         .HasFilter("[VatNumber] <> ''");
@@ -6176,6 +6178,48 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("1b8b407c-d0d6-a289-6397-05be25db444f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ecb0ee7d-db94-4df3-afda-8ac1a7cef0ac"),
+                            Value = "Choose a supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("587e484b-e94d-2e55-53f6-285520e88efe"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ecb0ee7d-db94-4df3-afda-8ac1a7cef0ac"),
+                            Value = "اختر المورد"
+                        },
+                        new
+                        {
+                            Id = new Guid("c8e7b8ce-e873-6ba2-cf12-331a066b55df"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cb895b73-22f7-75b6-8314-30d4da3f876b"),
+                            Value = "Search by name or VAT number"
+                        },
+                        new
+                        {
+                            Id = new Guid("0542b3d1-aa00-dac4-5f0b-1aa4cd8201ae"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cb895b73-22f7-75b6-8314-30d4da3f876b"),
+                            Value = "بحث بالاسم أو الرقم الضريبي"
+                        },
+                        new
+                        {
+                            Id = new Guid("4ee59b92-f034-5383-e583-43a359df6b79"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("14591419-de9f-6241-35d5-f33de2c90d77"),
+                            Value = "No supplier matches."
+                        },
+                        new
+                        {
+                            Id = new Guid("49accb3e-48f9-31a0-f342-911c8d471fdf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("14591419-de9f-6241-35d5-f33de2c90d77"),
+                            Value = "لا يوجد مورد مطابق."
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -7935,6 +7979,24 @@ namespace Redix.Api.Migrations
                             Id = new Guid("999558f1-820f-444d-8020-cf4d0aa34358"),
                             Description = "",
                             Key = "suppliers.disabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("ecb0ee7d-db94-4df3-afda-8ac1a7cef0ac"),
+                            Description = "",
+                            Key = "suppliers.pick"
+                        },
+                        new
+                        {
+                            Id = new Guid("cb895b73-22f7-75b6-8314-30d4da3f876b"),
+                            Description = "",
+                            Key = "suppliers.searchHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("14591419-de9f-6241-35d5-f33de2c90d77"),
+                            Description = "",
+                            Key = "suppliers.noMatch"
                         },
                         new
                         {

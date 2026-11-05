@@ -291,6 +291,9 @@ public static class TranslationSeed
         ("suppliers.disable", "Disable", "تعطيل"),
         ("suppliers.enable", "Enable", "تفعيل"),
         ("suppliers.disabled", "Disabled", "معطّل"),
+        ("suppliers.pick", "Choose a supplier", "اختر المورد"),
+        ("suppliers.searchHint", "Search by name or VAT number", "بحث بالاسم أو الرقم الضريبي"),
+        ("suppliers.noMatch", "No supplier matches.", "لا يوجد مورد مطابق."),
         ("biometrics.notChanged", "Could not change this. Check the network and try again.", "تعذّر التغيير. تحقق من الشبكة وحاول مرة أخرى."),
     ];
 

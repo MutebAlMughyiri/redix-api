@@ -12,6 +12,12 @@ public class Supplier
     /// <summary>How many digits a VAT number has (BR-16).</summary>
     public const int VatNumberLength = 15;
 
+    /// <summary>How many letters a search needs before it narrows anything down (AC-43.1).</summary>
+    public const int SearchMinLength = 3;
+
+    /// <summary>The most suppliers one search answers.</summary>
+    public const int SearchLimit = 20;
+
     /// <summary>The supplier's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 

@@ -64,7 +64,6 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 
 | What | Use case |
 | --- | --- |
-| Finding a supplier while entering an expense | UC-018 "Search suppliers" |
 | A supplier added from the field, pending approval | UC-019 "Quick-add a supplier pending approval" |
 | A purchase saved only with a supplier from the register (BR-19) | UC-022 "Record a purchase expense" |
 | Invoices of a supplier with no number staying out of the VAT statement (AC-06.2) | UC-056 "Build the VAT statement for a period" |

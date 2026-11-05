@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | The search answers by name; "most used first" waits for the ledger | Nothing records which supplier is used until UC-022 "Record a purchase expense", and a made-up order would be a lie. The order has one place to change. Made without Muteb; see the findings |
+| 2026-11-05 | One route answers typed text and a QR code's VAT number; an empty list is the "not found" | An exact number can only match one supplier, since a number has one holder, so a second route would answer the same thing. Made without Muteb |
+| 2026-11-05 | Fewer than three letters narrow nothing down, for a VAT number too; a search answers at most 20 suppliers | AC-43.1 starts at three letters, and two digits of a VAT number match nearly everyone. The answer stays small however large the register grows. Made without Muteb |
 | 2026-11-05 | A supplier belongs to one project, and FR-06's "shared between all projects" is not built | BR-33 makes projects completely separate, and the database design follows it. Made without Muteb; see the findings |
 | 2026-11-05 | `SupplierDefaultItems` is keyed by the supplier alone, without the design's `ProjectId` | The column dates from a register shared between projects; a supplier now has one project, and so one default item. Issue 75 is changed. Made without Muteb |
 | 2026-11-05 | The general cash supplier is an ordinary row added when the admin approves the project, in the admin's name, and can be renamed or disabled like any other | The issue asks only that the register holds it. A flag to protect it would be a part no rule needs, and a disabled one comes back with Enable. Made without Muteb; see the findings |

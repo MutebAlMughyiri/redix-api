@@ -6,14 +6,15 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Suppliers;
 
-/// <summary>A project's supplier register (UC-017, FR-06). There is no delete: what is no longer wanted is disabled (BR-15).</summary>
+/// <summary>A project's supplier register (UC-017, FR-06) and the search of it (UC-018, FR-43). There is no delete: what is no longer wanted is disabled (BR-15).</summary>
 public static class SuppliersEndpoints
 {
-    /// <summary>Maps the route that reads a project's register, for anyone who reads the project, and those that change it, for whoever holds <see cref="Permission.ManageSettings"/>.</summary>
+    /// <summary>Maps the routes that read a project's register and search it, for anyone who reads the project, and those that change it, for whoever holds <see cref="Permission.ManageSettings"/>.</summary>
     public static void MapSuppliers(this WebApplication app)
     {
         var reads = app.MapGroup("/projects/{projectId:guid}/suppliers").RequireAuthorization(nameof(Permission.ReadProject));
         reads.MapGet("/", List);
+        reads.MapGet("/search", Search);
 
         var changes = app.MapProjectChanges(Permission.ManageSettings);
         changes.MapPost("/suppliers", Add);
@@ -27,6 +28,22 @@ public static class SuppliersEndpoints
     /// <param name="db">The database they live in.</param>
     public static async Task<List<SupplierView>> List(Guid projectId, RedixDbContext db) =>
         await ViewsOfAsync(await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Include(supplier => supplier.DefaultItems).OrderBy(supplier => supplier.Name).ToListAsync(), db);
+
+    /// <summary>
+    /// What an entry may pick: the active suppliers whose name or VAT number holds <paramref name="text"/>, by name, at most <see cref="Supplier.SearchLimit"/> of them (AC-43.1). Fewer than
+    /// <see cref="Supplier.SearchMinLength"/> letters narrow nothing down. An exact VAT number answers its one supplier, and one in no supplier's hands answers an empty list, for the app to offer a quick add (FR-43).
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="db">The database they live in.</param>
+    /// <param name="text">What was typed, or read from a QR code.</param>
+    public static async Task<List<SupplierView>> Search(Guid projectId, RedixDbContext db, string text = "")
+    {
+        var typed = text.Trim();
+        var narrowsNothing = typed.Length < Supplier.SearchMinLength;
+        var found = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId && supplier.IsActive && (narrowsNothing || supplier.Name.Contains(typed) || supplier.VatNumber.Contains(typed)))
+            .Include(supplier => supplier.DefaultItems).OrderBy(supplier => supplier.Name).Take(Supplier.SearchLimit).ToListAsync();
+        return await ViewsOfAsync(found, db);
+    }
 
     /// <summary>
     /// Adds a supplier, and answers it. An unacceptable name answers <c>invalidName</c>; a VAT number breaking BR-16, <c>invalidVatNumber</c>; a mobile too long, <c>invalidMobile</c>; a default item outside the project,

@@ -202,6 +202,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             supplier.Property(s => s.VatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
             supplier.Property(s => s.Mobile).HasMaxLength(User.MobileMaxLength).IsUnicode(false);
             supplier.HasIndex(s => new { s.ProjectId, s.VatNumber }).IsUnique().HasFilter("[VatNumber] <> ''");
+            supplier.HasIndex(s => new { s.ProjectId, s.Name });
             supplier.HasOne<Project>().WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Restrict);
             supplier.HasOne<User>().WithMany().HasForeignKey(s => s.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
             supplier.HasMany(s => s.DefaultItems).WithOne().HasForeignKey(row => row.SupplierId);

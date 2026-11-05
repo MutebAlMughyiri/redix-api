@@ -349,6 +349,126 @@ public class SuppliersTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{other.Id}/suppliers")).StatusCode);
     }
 
+    private static async Task<List<SupplierView>> SearchAsync(HttpClient client, Guid projectId, string text) =>
+        (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{projectId}/suppliers/search?text={Uri.EscapeDataString(text)}", Json))!;
+
+    [Fact]
+    public async Task ThreeLettersOfTheNameFindTheSupplier()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "شركة النخيل");
+        await AddAsync(client, project.Id, "مؤسسة الواحة", OtherVatNumber);
+
+        Assert.Equal("شركة النخيل", Assert.Single(await SearchAsync(client, project.Id, "نخي")).Name);
+    }
+
+    [Fact]
+    public async Task PartOfTheVatNumberFindsTheSupplier()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "شركة النخيل");
+        await AddAsync(client, project.Id, "مؤسسة الواحة", OtherVatNumber);
+
+        Assert.Equal("مؤسسة الواحة", Assert.Single(await SearchAsync(client, project.Id, "1111")).Name);
+    }
+
+    [Fact]
+    public async Task FewerThanThreeLettersNarrowNothingDown()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "شركة النخيل");
+
+        Assert.Equal(2, (await SearchAsync(client, project.Id, "نخ")).Count);
+    }
+
+    [Fact]
+    public async Task NoTextOffersTheSuppliersByName()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "ياسر");
+        await AddAsync(client, project.Id, "باسم", OtherVatNumber);
+
+        Assert.Equal(["باسم", Supplier.GeneralCashName, "ياسر"], (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers/search", Json))!.Select(row => row.Name));
+    }
+
+    [Fact]
+    public async Task AnExactVatNumberFindsItsSupplierAlone()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "شركة النخيل");
+        await AddAsync(client, project.Id, "مؤسسة الواحة", OtherVatNumber);
+
+        var found = Assert.Single(await SearchAsync(client, project.Id, VatNumber));
+
+        Assert.Equal("شركة النخيل", found.Name);
+        Assert.Equal(VatNumber, found.VatNumber);
+    }
+
+    [Fact]
+    public async Task AVatNumberNoSupplierHoldsFindsNothing()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "شركة النخيل");
+
+        Assert.Empty(await SearchAsync(client, project.Id, OtherVatNumber));
+    }
+
+    [Fact]
+    public async Task ADisabledSupplierIsNotOffered()
+    {
+        var (client, project) = await FinanceAsync();
+        var supplier = await AddAsync(client, project.Id, "شركة النخيل");
+        (await client.PostAsync($"/projects/{project.Id}/suppliers/{supplier.Id}/disable", null)).EnsureSuccessStatusCode();
+
+        Assert.Empty(await SearchAsync(client, project.Id, "نخيل"));
+        Assert.DoesNotContain(await SearchAsync(client, project.Id, ""), row => row.Id == supplier.Id);
+    }
+
+    [Fact]
+    public async Task ASearchAnswersAtMost20SuppliersWithinASecond()
+    {
+        var (client, project) = await FinanceAsync();
+        var userId = Guid.Empty;
+        await factory.WithDatabaseAsync(async db =>
+        {
+            userId = await db.ProjectMembers.Where(member => member.ProjectId == project.Id).Select(member => member.UserId).FirstAsync();
+            db.Suppliers.AddRange(Enumerable.Range(0, 500).Select(number => new Supplier { ProjectId = project.Id, Name = $"مورد البناء {number}", CreatedByUserId = userId }));
+            await db.SaveChangesAsync();
+        });
+        await SearchAsync(client, project.Id, "");
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var found = await SearchAsync(client, project.Id, "البناء");
+        watch.Stop();
+
+        Assert.Equal(Supplier.SearchLimit, found.Count);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(1), $"The search took {watch.Elapsed}.");
+    }
+
+    [Theory]
+    [InlineData(Manager)]
+    [InlineData(Field)]
+    [InlineData(Reader)]
+    public async Task EveryoneWithAccessSearches(string role)
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "شركة النخيل");
+        var memberClient = await MemberAsync(project, role);
+
+        Assert.Single(await SearchAsync(memberClient, project.Id, "نخيل"));
+    }
+
+    [Fact]
+    public async Task ASearchNeverReachesAnotherProject()
+    {
+        var (client, project) = await FinanceAsync();
+        var (otherClient, other) = await FinanceAsync("غصون 5");
+        await AddAsync(otherClient, other.Id, "شركة النخيل");
+
+        Assert.Empty(await SearchAsync(client, project.Id, "نخيل"));
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{other.Id}/suppliers/search")).StatusCode);
+    }
+
     [Fact]
     public async Task AFinishedProjectRefusesEveryChangeAndStaysReadable()
     {
