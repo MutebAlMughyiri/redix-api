@@ -18,7 +18,8 @@ src/Redix.Api/
   Accounts/             where a project's money sits: its accounts and who holds them
   Partners/             a project's partners, and the login whose capital each is
   Suppliers/            a project's supplier register, its search, and the rule of a VAT number
-  Contracts/            what a project's contractors were promised, and what remains
+  Contracts/            what a project's contractors were promised, and what remains, with their documents
+  Attachments/          a project's pictures and PDFs: the record of each, the folder the files live in, and who may read them
   Refusal.cs            the answer to a refused request: problem details with a code
   Money.cs              what every amount a person types shares: two decimals and a limit
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database

@@ -41,6 +41,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Admin:Username"] = AdminUsername,
             ["Admin:Password"] = AdminPassword,
             ["Registration:PermitsPerHour"] = "100000",
+            ["Attachments:Folder"] = Path.Combine(Path.GetTempPath(), "RedixTestsAttachments"),
         }));
         builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time));
     }

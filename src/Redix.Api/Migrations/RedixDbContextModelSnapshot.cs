@@ -79,6 +79,62 @@ namespace Redix.Api.Migrations
                     b.ToTable("AccountCustodians");
                 });
 
+            modelBuilder.Entity("Redix.Api.Attachments.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<int>("SizeBytes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("ProjectId", "Sha256");
+
+                    b.ToTable("Attachments");
+                });
+
             modelBuilder.Entity("Redix.Api.Audit.AuditRecord", b =>
                 {
                     b.Property<long>("Id")
@@ -277,7 +333,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("RolePermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount')");
+                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'AttachFiles')");
                         });
 
                     b.HasData(
@@ -337,6 +393,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("da2b0bde-147b-579a-ce58-6486192222af"),
+                            Permission = "AttachFiles",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
+                        },
+                        new
+                        {
                             Id = new Guid("3c35a012-dd63-53fb-9008-d3fc0de2de8c"),
                             Permission = "ReadProject",
                             RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
@@ -351,6 +413,12 @@ namespace Redix.Api.Migrations
                         {
                             Id = new Guid("c79fdab1-3bb3-ec46-2886-93b77a5fe831"),
                             Permission = "AddSupplier",
+                            RoleId = new Guid("f50f9eae-0001-8d5d-c4b1-e47737eac451")
+                        },
+                        new
+                        {
+                            Id = new Guid("55dcc157-3b4b-5c90-7196-d28f141da267"),
+                            Permission = "AttachFiles",
                             RoleId = new Guid("f50f9eae-0001-8d5d-c4b1-e47737eac451")
                         },
                         new
@@ -510,6 +578,27 @@ namespace Redix.Api.Migrations
                     b.HasIndex("UnitId");
 
                     b.ToTable("Contracts");
+                });
+
+            modelBuilder.Entity("Redix.Api.Contracts.ContractAttachment", b =>
+                {
+                    b.Property<Guid>("ContractId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AttachmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("ContractId", "AttachmentId");
+
+                    b.HasIndex("AttachmentId");
+
+                    b.ToTable("ContractAttachments", (string)null);
                 });
 
             modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
@@ -6868,6 +6957,216 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("b2903c28-0c9f-6203-6f3b-d759fc2a3e8f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e3c05b9b-d3be-b086-7c74-842e7831c547"),
+                            Value = "Documents"
+                        },
+                        new
+                        {
+                            Id = new Guid("f9fc0c3d-5718-1b19-c2f8-95f42a77bf6e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e3c05b9b-d3be-b086-7c74-842e7831c547"),
+                            Value = "المستندات"
+                        },
+                        new
+                        {
+                            Id = new Guid("35903837-025e-bc6c-7e73-7c042765c7e9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e8475111-cb44-b492-0147-e7f68f661565"),
+                            Value = "Add a document"
+                        },
+                        new
+                        {
+                            Id = new Guid("b921f07d-8c0d-ae7a-a19d-38e9e38e6200"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e8475111-cb44-b492-0147-e7f68f661565"),
+                            Value = "إضافة مستند"
+                        },
+                        new
+                        {
+                            Id = new Guid("82df2b30-b051-34b8-4054-c03c225c78b3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1aed4663-400d-2540-4649-dc62be40737c"),
+                            Value = "That document is not in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("43095f56-19bc-18a8-547a-e9c76293573d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1aed4663-400d-2540-4649-dc62be40737c"),
+                            Value = "هذا المستند ليس في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("1d2217b8-1b88-c5ea-baed-35fe0e740bb3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f3cb7312-d757-9241-9294-fb9f3991e990"),
+                            Value = "Only a picture or a PDF can be kept."
+                        },
+                        new
+                        {
+                            Id = new Guid("3a6ee065-0acb-c978-ceb4-9f363647374a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f3cb7312-d757-9241-9294-fb9f3991e990"),
+                            Value = "يمكن حفظ صورة أو ملف PDF فقط."
+                        },
+                        new
+                        {
+                            Id = new Guid("02f020dc-196d-e1fb-2324-eb94acb99a1a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d32a2de0-209f-c23e-6578-86f483e06f7b"),
+                            Value = "The picture must be smaller than 1 MB."
+                        },
+                        new
+                        {
+                            Id = new Guid("2cba0c38-b315-245e-dc47-2d09d0065507"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d32a2de0-209f-c23e-6578-86f483e06f7b"),
+                            Value = "يجب أن تكون الصورة أقل من 1 ميجابايت."
+                        },
+                        new
+                        {
+                            Id = new Guid("666a4015-5ba1-6afb-363b-3c9d6ad3648f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bb817023-ef08-1dd2-4025-1f63199a3b89"),
+                            Value = "This project is finished. Nothing in it can change."
+                        },
+                        new
+                        {
+                            Id = new Guid("f52868e6-a9ec-1988-10ae-c30eb66d8392"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bb817023-ef08-1dd2-4025-1f63199a3b89"),
+                            Value = "هذا المشروع منتهٍ، ولا يمكن تغيير شيء فيه."
+                        },
+                        new
+                        {
+                            Id = new Guid("17c483cb-3273-e620-d826-c6f5f484fb17"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a99cbe37-22ed-be76-50eb-887d569ce687"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("e1e22577-9284-d54e-26c9-72202ddf4fa0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a99cbe37-22ed-be76-50eb-887d569ce687"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("fca2ccc2-20cd-c741-f93b-a15a1b4d3494"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("12930e47-bc50-4e4f-477b-67b863e6317c"),
+                            Value = "The file could not be kept."
+                        },
+                        new
+                        {
+                            Id = new Guid("aa9bbd9b-89ab-252f-cfb9-203794c8f144"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("12930e47-bc50-4e4f-477b-67b863e6317c"),
+                            Value = "تعذّر حفظ الملف."
+                        },
+                        new
+                        {
+                            Id = new Guid("f9feee8a-40ca-c720-467e-dc4895a3610a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d3248620-efc3-08c6-4a0d-759eb701b08b"),
+                            Value = "The camera could not open. Pick the invoice from your files."
+                        },
+                        new
+                        {
+                            Id = new Guid("2cb3a343-530f-50f8-72f8-7a83cc651996"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d3248620-efc3-08c6-4a0d-759eb701b08b"),
+                            Value = "تعذّر فتح الكاميرا. اختر الفاتورة من ملفاتك."
+                        },
+                        new
+                        {
+                            Id = new Guid("a40204fc-d2db-3ae7-d9d8-908a4ab4765b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("554cb4c3-3ff5-2643-ec96-eba12e29997f"),
+                            Value = "That file could not be read. Pick another."
+                        },
+                        new
+                        {
+                            Id = new Guid("463b4b29-7cc8-0c26-5dfa-c77bc476263f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("554cb4c3-3ff5-2643-ec96-eba12e29997f"),
+                            Value = "تعذّرت قراءة الملف. اختر ملفاً آخر."
+                        },
+                        new
+                        {
+                            Id = new Guid("e9fd8ffe-e017-a51d-a59a-365eed5432b2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ded470ed-f243-7198-f2d2-b8bd5ea2fff0"),
+                            Value = "Invoice picture"
+                        },
+                        new
+                        {
+                            Id = new Guid("2b94ed2d-2fe6-83a6-c2ab-5457442fd805"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ded470ed-f243-7198-f2d2-b8bd5ea2fff0"),
+                            Value = "صورة الفاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1e04957-1404-e807-dd72-5678e5bfdc5b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e1e53e75-2a15-bb0b-aeab-b30e98e9b060"),
+                            Value = "Take again"
+                        },
+                        new
+                        {
+                            Id = new Guid("b165a593-83fe-23e6-f8d9-c1118168f082"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e1e53e75-2a15-bb0b-aeab-b30e98e9b060"),
+                            Value = "إعادة التصوير"
+                        },
+                        new
+                        {
+                            Id = new Guid("2dba8ecd-54f7-38e6-7c05-351a3812354a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b402a5a1-c456-729a-0d64-18cf0c439e73"),
+                            Value = "Take a picture"
+                        },
+                        new
+                        {
+                            Id = new Guid("23308247-efaf-66c5-c5f5-d175f94a1c7c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b402a5a1-c456-729a-0d64-18cf0c439e73"),
+                            Value = "تصوير الفاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("df992583-74f1-ed92-3cf7-1add9451b823"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("91c17e1e-fd83-0186-3d9d-56349e3235c7"),
+                            Value = "Pick from files"
+                        },
+                        new
+                        {
+                            Id = new Guid("bcff7fa0-bddf-3307-61de-2134c2caacbd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("91c17e1e-fd83-0186-3d9d-56349e3235c7"),
+                            Value = "اختيار من الملفات"
+                        },
+                        new
+                        {
+                            Id = new Guid("5ba314ee-52b4-30f4-57f3-0ac5c664ee0f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c89fb114-b98b-2496-6265-2718ec88059b"),
+                            Value = "New purchase expense"
+                        },
+                        new
+                        {
+                            Id = new Guid("a178b654-4d77-a92d-9911-613af738fd5a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c89fb114-b98b-2496-6265-2718ec88059b"),
+                            Value = "مصروف شراء جديد"
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -8894,6 +9193,96 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("e3c05b9b-d3be-b086-7c74-842e7831c547"),
+                            Description = "",
+                            Key = "contracts.documents"
+                        },
+                        new
+                        {
+                            Id = new Guid("e8475111-cb44-b492-0147-e7f68f661565"),
+                            Description = "",
+                            Key = "contracts.addDocument"
+                        },
+                        new
+                        {
+                            Id = new Guid("1aed4663-400d-2540-4649-dc62be40737c"),
+                            Description = "",
+                            Key = "contracts.unknownAttachment"
+                        },
+                        new
+                        {
+                            Id = new Guid("f3cb7312-d757-9241-9294-fb9f3991e990"),
+                            Description = "",
+                            Key = "attachments.invalidFileType"
+                        },
+                        new
+                        {
+                            Id = new Guid("d32a2de0-209f-c23e-6578-86f483e06f7b"),
+                            Description = "",
+                            Key = "attachments.imageTooLarge"
+                        },
+                        new
+                        {
+                            Id = new Guid("bb817023-ef08-1dd2-4025-1f63199a3b89"),
+                            Description = "",
+                            Key = "attachments.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("a99cbe37-22ed-be76-50eb-887d569ce687"),
+                            Description = "",
+                            Key = "attachments.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("12930e47-bc50-4e4f-477b-67b863e6317c"),
+                            Description = "",
+                            Key = "attachments.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("d3248620-efc3-08c6-4a0d-759eb701b08b"),
+                            Description = "",
+                            Key = "attachments.cameraFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("554cb4c3-3ff5-2643-ec96-eba12e29997f"),
+                            Description = "",
+                            Key = "attachments.unreadable"
+                        },
+                        new
+                        {
+                            Id = new Guid("ded470ed-f243-7198-f2d2-b8bd5ea2fff0"),
+                            Description = "",
+                            Key = "attachments.invoicePhoto"
+                        },
+                        new
+                        {
+                            Id = new Guid("e1e53e75-2a15-bb0b-aeab-b30e98e9b060"),
+                            Description = "",
+                            Key = "attachments.retake"
+                        },
+                        new
+                        {
+                            Id = new Guid("b402a5a1-c456-729a-0d64-18cf0c439e73"),
+                            Description = "",
+                            Key = "attachments.takePhoto"
+                        },
+                        new
+                        {
+                            Id = new Guid("91c17e1e-fd83-0186-3d9d-56349e3235c7"),
+                            Description = "",
+                            Key = "attachments.pickFile"
+                        },
+                        new
+                        {
+                            Id = new Guid("c89fb114-b98b-2496-6265-2718ec88059b"),
+                            Description = "",
+                            Key = "expenses.new"
+                        },
+                        new
+                        {
                             Id = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
                             Description = "",
                             Key = "biometrics.notChanged"
@@ -8920,6 +9309,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Attachments.Attachment", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -8999,6 +9403,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Unit", null)
                         .WithMany()
                         .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Contracts.ContractAttachment", b =>
+                {
+                    b.HasOne("Redix.Api.Attachments.Attachment", null)
+                        .WithMany()
+                        .HasForeignKey("AttachmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Contracts.Contract", null)
+                        .WithMany()
+                        .HasForeignKey("ContractId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

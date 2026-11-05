@@ -6,6 +6,11 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | Files live in a folder the API is configured with (`REDIX_Attachments__Folder`), by default in the local application data of the user running it, never in the repo | The design keeps files outside the database, and a folder is the simplest thing that does. A default keeps every machine and CI running with nothing to set. The backup has to include it. Made without Muteb; see the findings |
+| 2026-11-05 | An attachment belongs to one project (`Attachments.ProjectId`) | A file is sent before the entry that names it, so no link can answer who may read it. The database design says so, decision 22. Made without Muteb |
+| 2026-11-05 | Only a JPEG, a PNG or a PDF is kept, known from its first bytes; a picture is under 1,000,000 bytes, and a PDF has no limit of its own beyond the server's request limit of 30 MB | The issue says image or PDF, and the phone sends a JPEG. NFR-06 limits only the picture, and the BRS states none for a PDF. Made without Muteb; see the findings |
+| 2026-11-05 | `AttachFiles` is a permission of its own, for Finance and Field | A file is needed by an entry and by a contract, so neither's permission fits. Made without Muteb |
+| 2026-11-05 | An audit record's id is the first part of its key, and the rest of a composite key is kept with its values | So a link row records which file went on which contract. Every other record reads as before |
 | 2026-11-05 | An amendment is an edit of the terms, recorded before and after in the audit trail, and every other change of a contract is recorded too | The design has no amendments table and the BRS asks for none, and the remaining of a contract is money. Made without Muteb; see the findings |
 | 2026-11-05 | A contract's contractor, item and unit never change; a wrong one is disabled and added again, which is why a contract has Disable though the issue does not list it | Once payments exist, changing the contractor would move their VAT to someone else. `Contracts.IsActive` is in the design. Made without Muteb; see the findings |
 | 2026-11-05 | Unit price and quantity are kept as typed, and never checked against the value | The issue makes them optional, and a lump sum need not equal their product. Made without Muteb; see the findings |

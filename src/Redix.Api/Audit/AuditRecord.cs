@@ -37,26 +37,27 @@ public class AuditRecord
 
     /// <summary>
     /// The record of <paramref name="action"/> done by <paramref name="userId"/> at <paramref name="at"/> to the tracked <paramref name="entry"/>, with the values
-    /// the coming save changes: every value of a new or a removed record, the modified ones otherwise. Neither the key, the rowversion, nor a value marked
+    /// the coming save changes: every value of a new or a removed record, the modified ones otherwise. Neither the record's id (the first part of its key), the rowversion, nor a value marked
     /// <see cref="NotAuditedAttribute"/> enters it.
     /// </summary>
     public static AuditRecord Of(EntityEntry entry, AuditAction action, Guid userId, DateTime at)
     {
         var isNew = entry.State == EntityState.Added;
         var isRemoved = entry.State == EntityState.Deleted;
-        var changed = entry.Properties.Where(property => (isNew || isRemoved || property.IsModified) && IsAudited(property)).ToList();
+        var recordId = entry.Metadata.FindPrimaryKey()!.Properties[0];
+        var changed = entry.Properties.Where(property => (isNew || isRemoved || property.IsModified) && property.Metadata != recordId && IsAudited(property)).ToList();
         return new AuditRecord
         {
             At = at,
             UserId = userId,
             Action = action,
             TableName = entry.Metadata.GetTableName() ?? "",
-            RecordId = (Guid)entry.Property("Id").CurrentValue!,
+            RecordId = (Guid)entry.Property(recordId.Name).CurrentValue!,
             Before = isNew ? "{}" : JsonSerializer.Serialize(changed.ToDictionary(property => property.Metadata.Name, property => property.OriginalValue)),
             After = isRemoved ? "{}" : JsonSerializer.Serialize(changed.ToDictionary(property => property.Metadata.Name, property => property.CurrentValue)),
         };
     }
 
     private static bool IsAudited(PropertyEntry property) =>
-        !property.Metadata.IsKey() && !property.Metadata.IsShadowProperty() && property.Metadata.PropertyInfo?.GetCustomAttribute<NotAuditedAttribute>() is null;
+        !property.Metadata.IsShadowProperty() && property.Metadata.PropertyInfo?.GetCustomAttribute<NotAuditedAttribute>() is null;
 }

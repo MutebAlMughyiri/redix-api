@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api;
 using Redix.Api.Accounts;
+using Redix.Api.Attachments;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Partners;
@@ -52,6 +53,7 @@ builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(services.GetRequiredService<IConfiguration>().GetConnectionString("Redix"))
     .UseSeeding((context, _) => AdminSeed.Seed(context, services))
     .UseAsyncSeeding((context, _, cancellation) => AdminSeed.SeedAsync(context, services, cancellation)));
+builder.Services.AddOptions<AttachmentOptions>().BindConfiguration("Attachments");
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -92,5 +94,6 @@ app.MapAccounts();
 app.MapPartners();
 app.MapSuppliers();
 app.MapContracts();
+app.MapAttachments();
 
 app.Run();

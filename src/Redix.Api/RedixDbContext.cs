@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
+using Redix.Api.Attachments;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
@@ -74,6 +75,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>What each project's contractors were promised (FR-07).</summary>
     public DbSet<Contract> Contracts => Set<Contract>();
+
+    /// <summary>The pictures and PDFs each project keeps (FR-09).</summary>
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -223,6 +227,23 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             contract.HasOne<Item>().WithMany().HasForeignKey(c => c.ItemId).OnDelete(DeleteBehavior.Restrict);
             contract.HasOne<Unit>().WithMany().HasForeignKey(c => c.UnitId).OnDelete(DeleteBehavior.Restrict);
             contract.HasOne<Supplier>().WithMany().HasForeignKey(c => c.SupplierId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Attachment>(attachment =>
+        {
+            attachment.Property(a => a.StoragePath).HasMaxLength(200).IsUnicode(false);
+            attachment.Property(a => a.FileName).HasMaxLength(Attachment.FileNameMaxLength);
+            attachment.Property(a => a.ContentType).HasMaxLength(50).IsUnicode(false);
+            attachment.Property(a => a.Sha256).HasMaxLength(64).IsUnicode(false).IsFixedLength();
+            attachment.HasIndex(a => new { a.ProjectId, a.Sha256 });
+            attachment.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            attachment.HasOne<User>().WithMany().HasForeignKey(a => a.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ContractAttachment>(link =>
+        {
+            link.ToTable("ContractAttachments");
+            link.HasKey(l => new { l.ContractId, l.AttachmentId });
+            link.HasOne<Contract>().WithMany().HasForeignKey(l => l.ContractId).OnDelete(DeleteBehavior.Restrict);
+            link.HasOne<Attachment>().WithMany().HasForeignKey(l => l.AttachmentId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {

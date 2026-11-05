@@ -37,5 +37,6 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-018](use-cases/UC-018-search-suppliers.md) | Find a supplier by name or VAT number while entering an expense | Everyone with access |
 | [UC-019](use-cases/UC-019-quick-add-supplier.md) | Add a missing supplier from the field, pending approval | Finance and Field |
 | [UC-020](use-cases/UC-020-contracts.md) | Record what each contractor was promised, to follow paid and remaining | Finance changes; everyone with access reads |
+| [UC-021](use-cases/UC-021-attachments.md) | Keep an invoice's picture or PDF, or a contract's document, and serve it only to people with access to the project | Finance and Field keep; everyone with access reads |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

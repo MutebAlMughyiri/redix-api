@@ -47,4 +47,7 @@ public enum AuditAction
 
     /// <summary>A user turned off fingerprint or face on a phone, so its session times out again (UC-011).</summary>
     TurnOffBiometrics,
+
+    /// <summary>A file was kept, or linked to a contract (UC-021).</summary>
+    Attach,
 }
