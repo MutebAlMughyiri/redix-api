@@ -7,6 +7,9 @@ public record ContractorPaymentRequest(Guid Id) : EntryRequest(Id)
     /// <summary>The contract.</summary>
     public Guid ContractId { get; init; }
 
+    /// <summary>The subgroup of the contract's item; empty means its general group.</summary>
+    public Guid SubgroupId { get; init; }
+
     /// <summary>True for a payment outside the contract, which counts in the item's total and leaves the remaining alone (FR-13).</summary>
     public bool IsOutsideContract { get; init; }
 

@@ -237,6 +237,28 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task APaymentGoesUnderTheSubgroupItNames()
+    {
+        var setup = await ContractAsync();
+        (await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/items/{setup.ItemId}/subgroups", new NameRequest("الدور الأرضي"))).EnsureSuccessStatusCode();
+        var named = await setup.Ledger.ReadAsync(db => db.Set<Subgroup>().SingleAsync(row => row.ItemId == setup.ItemId && row.Name == "الدور الأرضي"));
+        var request = Payment(setup) with { SubgroupId = named.Id };
+
+        await RecordAsync(setup, request);
+
+        var details = await setup.Ledger.ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == request.Id));
+        Assert.Equal(named.Id, details.SubgroupId);
+    }
+
+    [Fact]
+    public async Task APaymentNamingASubgroupOfAnotherItemIsRefused()
+    {
+        var setup = await ContractAsync();
+
+        await AssertRefusedAsync(setup, Payment(setup) with { SubgroupId = Guid.CreateVersion7() }, "unknownSubgroup");
+    }
+
+    [Fact]
     public async Task ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup()
     {
         var setup = await ContractAsync();

@@ -6,6 +6,8 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | A contractor payment may name a subgroup of its contract's item | The item report would otherwise show every payment as general |
+| 2026-11-05 | An item's type is held while a contract names it | Otherwise that contract's payments are refused until someone notices |
 | 2026-11-05 | The duplicate warning looks only in this project and the others the caller can read, and says nothing about the rest; the `exists elsewhere` wording and its word are gone | AC-17.1 as it now reads. BR-33 keeps projects separate, so a project the caller cannot read shows nothing, not even that something exists. This supersedes the decision below that one in such a project says only that it exists. Findings row 98. |
 | 2026-11-05 | A contract's contractor, item and unit change through the same amendment as its terms, all or nothing; any payment holds them, a draft or a rejected one too | One save in the dialog is one request, so a refusal cannot leave half a change. Every payment's row holds the item and the unit it was saved with, whatever became of it. Findings row 84. |
 | 2026-11-05 | A search compares a normalized copy of the name, kept beside it, with one owner of the rule in C#; the migration fills old rows from SQL that owner writes | SQL Server's Arabic collations do not treat these spellings alike, as row 77 found. `ArabicSpelling` writes the migration's SQL too, so the two cannot differ. The VAT number is still compared as typed. Findings row 77. |

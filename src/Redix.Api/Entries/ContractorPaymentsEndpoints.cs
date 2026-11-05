@@ -41,6 +41,12 @@ public static class ContractorPaymentsEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "ItemNotOffered");
         }
 
+        var subgroup = item.Subgroups.SingleOrDefault(row => request.SubgroupId == Guid.Empty ? row.Name == Subgroup.GeneralName : row.Id == request.SubgroupId);
+        if (subgroup is null)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownSubgroup");
+        }
+
         var userId = AccessTokens.UserIdOf(principal);
         var access = await UserAccess.OfAsync(userId, db);
         var refusal = await EntryRecording.RefusalOfPaymentAsync(projectId, request, userId, access.In(projectId), db);
@@ -83,7 +89,7 @@ public static class ContractorPaymentsEndpoints
 
         var money = (await ContractMoney.OfProjectAsync(projectId, db)).GetValueOrDefault(contract.Id);
         var entry = EntryRecording.EntryOf(request, projectId, EntryKind.ContractorPayment, request.PaymentDate, request.Amount, userId, time.GetUtcNow().UtcDateTime);
-        await EntryRecording.SaveAsync(entry, DetailsOf(request, contract, item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, figures), userId, db);
+        await EntryRecording.SaveAsync(entry, DetailsOf(request, contract, subgroup.Id, figures), userId, db);
         var counted = money.Paid + money.Pending + (request.IsOutsideContract ? 0 : request.Amount);
         return Results.Created($"/projects/{projectId}/entries/{entry.Id}", new ContractorPaymentView(entry.Id, entry.Status, entry.Amount, figures.Vat, money.Paid, money.Pending, contract.RemainingAfter(counted), contract.IsOverrunBy(counted)));
     }

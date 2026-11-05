@@ -37,6 +37,7 @@ Tests are in `ContractorPaymentsTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
+| A payment goes under the subgroup it names, of its contract's item, or the general one | `ContractorPaymentsEndpoints` | `ContractorPaymentsTests.APaymentGoesUnderTheSubgroupItNames` |
 | AC-07.1: a real 30,000 leaves 4,000, and 5,000 more is saved with an alert and (1,000) | `ContractMoney`, `Contract.RemainingAfter`, `IsOverrunBy` | `AC_07_1_ThePaymentsOfA34000ContractLeaveItsRemainingAndOneMoreOverrunsItWithAnAlertAndIsSaved` |
 | AC-07.2: an open-value contract only adds up | `Contract` | `AC_07_2_AnOpenValueContractAddsUpWithNoRemainingAndNoAlert` |
 | BR-10: only an approved payment is paid; a pending one waits beside it | `ContractMoney` | `BR_10_OnlyAnApprovedPaymentIsPaidAndAPendingOneWaitsBesideIt`, `ADraftAndARejectedPaymentCountForNothing` |
