@@ -239,6 +239,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<Supplier>(supplier =>
         {
             supplier.Property(s => s.Name).HasMaxLength(Project.NameMaxLength);
+            supplier.Property(s => s.NormalizedName).HasMaxLength(Project.NameMaxLength);
             supplier.Property(s => s.VatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
             supplier.Property(s => s.Mobile).HasMaxLength(User.MobileMaxLength).IsUnicode(false);
             supplier.HasIndex(s => new { s.ProjectId, s.VatNumber }).IsUnique().HasFilter("[VatNumber] <> ''");

@@ -31,7 +31,7 @@ public static class SuppliersEndpoints
         await ViewsOfAsync(await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Include(supplier => supplier.DefaultItems).OrderBy(supplier => supplier.Name).ToListAsync(), db);
 
     /// <summary>
-    /// What the caller's entry may pick: the suppliers on offer to them (<see cref="Supplier.OfferedTo"/>) whose name or VAT number holds <paramref name="text"/>, those on most of the caller's purchases first and then by name, at most <see cref="Supplier.SearchLimit"/> of them (AC-43.1). Fewer than
+    /// What the caller's entry may pick: the suppliers on offer to them (<see cref="Supplier.OfferedTo"/>) whose name or VAT number holds <paramref name="text"/>, those on most of the caller's purchases first and then by name, at most <see cref="Supplier.SearchLimit"/> of them (AC-43.1). A name is compared as <see cref="ArabicSpelling"/> reads it. Fewer than
     /// <see cref="Supplier.SearchMinLength"/> letters narrow nothing down. An exact VAT number answers its one supplier, and one in no supplier's hands answers an empty list, for the app to offer a quick add (FR-43).
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -43,10 +43,11 @@ public static class SuppliersEndpoints
         var userId = AccessTokens.UserIdOf(principal);
         var seesPending = await KeepsSettingsAsync(projectId, userId, db);
         var typed = text.Trim();
-        var narrowsNothing = typed.Length < Supplier.SearchMinLength;
+        var normalized = ArabicSpelling.Normalize(typed);
+        var narrowsNothing = normalized.Length < Supplier.SearchMinLength;
         var callersPurchases = db.PurchaseDetails.Where(purchase => db.Entries.Any(entry => entry.Id == purchase.EntryId && entry.CreatedByUserId == userId));
         var found = await db.Suppliers.Where(Supplier.OfferedTo(userId, seesPending))
-            .Where(supplier => supplier.ProjectId == projectId && (narrowsNothing || supplier.Name.Contains(typed) || supplier.VatNumber.Contains(typed)))
+            .Where(supplier => supplier.ProjectId == projectId && (narrowsNothing || supplier.NormalizedName.Contains(normalized) || supplier.VatNumber.Contains(typed)))
             .Include(supplier => supplier.DefaultItems)
             .OrderByDescending(supplier => callersPurchases.Count(purchase => purchase.SupplierId == supplier.Id)).ThenBy(supplier => supplier.Name).Take(Supplier.SearchLimit).ToListAsync();
         var foundIds = found.Select(supplier => supplier.Id).ToList();

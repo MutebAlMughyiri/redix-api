@@ -20,13 +20,16 @@ The list is by name for now. "Most used first" (AC-43.1) needs to know which sup
 
 ## Tables
 
-No new table. An index on `Suppliers (ProjectId, Name)` serves the search and its order.
+No new table. An index on `Suppliers (ProjectId, Name)` serves the order. `Suppliers.NormalizedName`, kept beside the name and filled when it is saved, is what a search compares, because no SQL Server collation treats Arabic spelling variants alike.
 
 ## Rules and where they live
 
 | Rule | Code | Test in `SuppliersTests` |
 | --- | --- | --- |
 | Three letters of the name find the supplier (AC-43.1) | `SuppliersEndpoints.Search` | `ThreeLettersOfTheNameFindTheSupplier` |
+| A search treats أ إ آ with ا, ة with ه, ى with ي, ؤ with و, ئ with ي alike and ignores tashkeel, both ways; an answer shows the name as it was typed | `ArabicSpelling.Normalize`, `Supplier.NormalizedName`, `SuppliersEndpoints.Search` | `ASearchTreatsArabicSpellingVariantsAlikeAndIgnoresTashkeel`, `ArabicSpellingKeepsOneFormOfEachLetterAndNoTashkeel`, `AnAnswerShowsTheNameAsItWasTyped` |
+| A rename moves what a search finds; tashkeel counts for nothing toward the three letters | `Supplier.Name`, `SuppliersEndpoints.Search` | `ARenamedSupplierIsFoundByItsNewNameAndNoLongerByItsOldOne`, `TashkeelCountsForNothingTowardTheThreeLettersASearchNeeds` |
+| The migration fills the normalized name of rows saved before it, by the same rule | `ArabicSpelling.SqlOf`, the `SupplierNormalizedName` migration | `TheMigrationFillsTheNormalizedNameOfSuppliersSavedBeforeIt` |
 | Part of the VAT number finds the supplier (AC-43.1) | `SuppliersEndpoints.Search` | `PartOfTheVatNumberFindsTheSupplier` |
 | Fewer than three letters narrow nothing down | `Supplier.SearchMinLength` | `FewerThanThreeLettersNarrowNothingDown` |
 | With no text, the suppliers on offer, by name | `SuppliersEndpoints.Search` | `NoTextOffersTheSuppliersByName` |

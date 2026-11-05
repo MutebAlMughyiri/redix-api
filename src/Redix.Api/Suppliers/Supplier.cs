@@ -25,8 +25,19 @@ public class Supplier
     /// <summary>The project whose register holds it.</summary>
     public Guid ProjectId { get; init; }
 
-    /// <summary>The supplier's name, as it was typed.</summary>
-    public required string Name { get; set; }
+    /// <summary>The supplier's name, as it was typed; <see cref="NormalizedName"/> follows it.</summary>
+    public required string Name
+    {
+        get;
+        set
+        {
+            field = value;
+            NormalizedName = ArabicSpelling.Normalize(value);
+        }
+    }
+
+    /// <summary>The name as a search reads it (FR-43).</summary>
+    public string NormalizedName { get; private set; } = "";
 
     /// <summary>Its VAT number; empty for a supplier not VAT-registered, whose invoices stay out of the VAT statement (AC-06.2).</summary>
     public string VatNumber { get; set; } = "";

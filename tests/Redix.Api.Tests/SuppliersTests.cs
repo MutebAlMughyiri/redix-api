@@ -657,4 +657,85 @@ public class SuppliersTests(MigratedApiFactory factory)
             var marked = await db.Database.SqlQuery<Guid>($"SELECT Id AS Value FROM Suppliers WHERE IsGeneralCash = 1").ToListAsync();
             Assert.Equal(general, Assert.Single(marked));
         });
+
+    [Theory]
+    [InlineData("أحمد للمقاولات", "احمد")]
+    [InlineData("مؤسسة الواحة", "مؤسسه")]
+    [InlineData("إبراهيم وأولاده", "ابراهيم")]
+    [InlineData("آل سعود", "ال سعود")]
+    [InlineData("مصطفى للبناء", "مصطفي")]
+    [InlineData("شئون البناء", "شيون")]
+    [InlineData("سَعِيد الحَرْبي", "سعيد")]
+    [InlineData("احمد للمقاولات", "أحمد")]
+    [InlineData("محمد للبناء", "مُحَمَّد")]
+    public async Task ASearchTreatsArabicSpellingVariantsAlikeAndIgnoresTashkeel(string name, string typed)
+    {
+        var (client, project) = await FinanceAsync();
+        var supplier = await AddAsync(client, project.Id, name);
+
+        Assert.Equal(supplier.Id, Assert.Single(await SearchAsync(client, project.Id, typed)).Id);
+    }
+
+    [Fact]
+    public async Task AnAnswerShowsTheNameAsItWasTyped()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "مؤسسة الواحة");
+
+        Assert.Equal("مؤسسة الواحة", Assert.Single(await SearchAsync(client, project.Id, "مؤسسه")).Name);
+    }
+
+    [Fact]
+    public async Task ARenamedSupplierIsFoundByItsNewNameAndNoLongerByItsOldOne()
+    {
+        var (client, project) = await FinanceAsync();
+        var supplier = await AddAsync(client, project.Id, "أحمد للمقاولات");
+
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مؤسسة الواحة") { VatNumber = VatNumber }, Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal(supplier.Id, Assert.Single(await SearchAsync(client, project.Id, "مؤسسه")).Id);
+        Assert.Empty(await SearchAsync(client, project.Id, "احمد"));
+    }
+
+    [Fact]
+    public async Task TashkeelCountsForNothingTowardTheThreeLettersASearchNeeds()
+    {
+        var (client, project) = await FinanceAsync();
+        await AddAsync(client, project.Id, "شركة النخيل");
+
+        Assert.Equal(2, (await SearchAsync(client, project.Id, "نَخِ")).Count);
+    }
+
+    [Theory]
+    [InlineData("أإآ", "ااا")]
+    [InlineData("مدرسة", "مدرسه")]
+    [InlineData("موسى", "موسي")]
+    [InlineData("مسؤول", "مسوول")]
+    [InlineData("مسئول", "مسيول")]
+    [InlineData("مَدْرَسَةٌ", "مدرسه")]
+    [InlineData("شَدَّة وتنوينًا ٍ", "شده وتنوينا ")]
+    [InlineData("Company 15", "Company 15")]
+    public void ArabicSpellingKeepsOneFormOfEachLetterAndNoTashkeel(string text, string normalized) => Assert.Equal(normalized, ArabicSpelling.Normalize(text));
+
+    [Fact]
+    public Task TheMigrationFillsTheNormalizedNameOfSuppliersSavedBeforeIt() =>
+        factory.OnScratchDatabaseAsync("RedixNormalizedNameTests", async db =>
+        {
+            var migrator = db.GetService<IMigrator>();
+            var names = db.GetService<IMigrationsAssembly>().Migrations.Keys.ToList();
+            var target = names.Single(name => name.EndsWith("_SupplierNormalizedName"));
+            await migrator.MigrateAsync(names[names.IndexOf(target) - 1]);
+            var user = new User { Username = "approver", CreatedAt = factory.Time.GetUtcNow().UtcDateTime };
+            var (project, _) = Project.New("غصون 6", new DateOnly(2026, 11, 1), []);
+            db.AddRange(user, project);
+            await db.SaveChangesAsync();
+            const string name = "أَحْمَد إبراهيم مؤسسة آل مصطفى شئون";
+            var id = Guid.CreateVersion7();
+            await db.Database.ExecuteSqlAsync($"INSERT INTO Suppliers (Id, ProjectId, Name, VatNumber, Mobile, Status, IsActive, IsGeneralCash, CreatedByUserId) VALUES ({id}, {project.Id}, {name}, '', '', 0, 1, 0, {user.Id})");
+
+            await migrator.MigrateAsync(target);
+
+            var kept = await db.Database.SqlQuery<string>($"SELECT NormalizedName AS Value FROM Suppliers WHERE Id = {id}").SingleAsync();
+            Assert.Equal(ArabicSpelling.Normalize(name), kept);
+        });
 }

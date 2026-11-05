@@ -23,6 +23,7 @@ src/Redix.Api/
   Attachments/          a project's pictures and PDFs: the record of each, the folder the files live in, and who may read them
   Refusal.cs            the answer to a refused request: problem details with a code
   Money.cs              what every amount a person types shares: two decimals and a limit
+  ArabicSpelling.cs     what a search treats alike in Arabic, and the one owner of that rule
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database
 docs/                   these pages
 ```
