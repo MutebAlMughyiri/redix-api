@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Projects;
+using Redix.Api.Suppliers;
 
 namespace Redix.Api.Structure;
 
@@ -9,8 +10,9 @@ public static class ProjectStructure
     /// <summary>
     /// Approves <paramref name="project"/> and copies its structure from what its registration chose, so every approved project starts with one (FR-05, UC-006 step 3). The caller saves
     /// them together. Only the structure is copied, never entries, contracts or balances (AC-05.2). Its payment methods always come from the default template: what registration chooses names categories and items.
+    /// Its register starts with the general cash supplier, added in the name of <paramref name="approverId"/> (UC-017).
     /// </summary>
-    public static async Task<ProjectChangeOutcome> ApproveAsync(Project project, RedixDbContext db)
+    public static async Task<ProjectChangeOutcome> ApproveAsync(Project project, Guid approverId, RedixDbContext db)
     {
         var outcome = project.Approve();
         if (outcome == ProjectChangeOutcome.Done)
@@ -24,6 +26,7 @@ public static class ProjectStructure
             db.Categories.AddRange(categories.Select(category => category.CopyFor(project.Id, defaults)));
             var paymentMethods = await db.PaymentMethods.AsNoTracking().Where(method => method.ProjectId == StructureSeed.TemplateId).ToListAsync();
             db.PaymentMethods.AddRange(paymentMethods.Select(method => method.CopyFor(project.Id)));
+            db.Suppliers.Add(Supplier.GeneralCash(project.Id, approverId));
         }
         return outcome;
     }

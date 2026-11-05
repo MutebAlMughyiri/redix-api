@@ -116,7 +116,8 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var project = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
         await WithDatabaseAsync(async db =>
         {
-            await ProjectStructure.ApproveAsync(await db.Projects.SingleAsync(stored => stored.Id == project.Id), db);
+            var managerId = await db.ProjectMembers.Where(member => member.ProjectId == project.Id).Select(member => member.UserId).FirstAsync();
+            await ProjectStructure.ApproveAsync(await db.Projects.SingleAsync(stored => stored.Id == project.Id), managerId, db);
             await db.SaveChangesAsync();
         });
         return (await client.GetFromJsonAsync<List<ProjectView>>("/projects", Json))!.Single(listed => listed.Id == project.Id);

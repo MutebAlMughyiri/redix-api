@@ -6,6 +6,7 @@ using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
+using Redix.Api.Suppliers;
 using Redix.Api.Translations;
 
 namespace Redix.Api;
@@ -63,6 +64,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>The partners of each project (UC-016).</summary>
     public DbSet<Partner> Partners => Set<Partner>();
+
+    /// <summary>The supplier register of each project (FR-06).</summary>
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+
+    /// <summary>The item each supplier's expenses usually go to.</summary>
+    public DbSet<SupplierDefaultItem> SupplierDefaultItems => Set<SupplierDefaultItem>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -188,6 +195,21 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             partner.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
             partner.HasIndex(p => new { p.ProjectId, p.UserId }).IsUnique().HasFilter($"[UserId] <> '{Guid.Empty}'");
             partner.HasOne<Project>().WithMany().HasForeignKey(p => p.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Supplier>(supplier =>
+        {
+            supplier.Property(s => s.Name).HasMaxLength(Project.NameMaxLength);
+            supplier.Property(s => s.VatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
+            supplier.Property(s => s.Mobile).HasMaxLength(User.MobileMaxLength).IsUnicode(false);
+            supplier.HasIndex(s => new { s.ProjectId, s.VatNumber }).IsUnique().HasFilter("[VatNumber] <> ''");
+            supplier.HasOne<Project>().WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            supplier.HasOne<User>().WithMany().HasForeignKey(s => s.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            supplier.HasMany(s => s.DefaultItems).WithOne().HasForeignKey(row => row.SupplierId);
+        });
+        modelBuilder.Entity<SupplierDefaultItem>(row =>
+        {
+            row.HasKey(r => r.SupplierId);
+            row.HasOne<Item>().WithMany().HasForeignKey(r => r.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {

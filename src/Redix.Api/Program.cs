@@ -13,6 +13,7 @@ using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
+using Redix.Api.Suppliers;
 using Redix.Api.Translations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -88,5 +89,6 @@ app.MapColumns();
 app.MapPaymentMethods();
 app.MapAccounts();
 app.MapPartners();
+app.MapSuppliers();
 
 app.Run();

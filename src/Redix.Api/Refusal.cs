@@ -9,4 +9,9 @@ public static class Refusal
     public static IResult Of(int status, string reason) => Results.Problem(
         statusCode: status,
         extensions: new Dictionary<string, object?> { ["code"] = JsonNamingPolicy.CamelCase.ConvertName(reason) });
+
+    /// <summary>A refusal that also says what it was refused over: <paramref name="detail"/>, under the name <paramref name="detailName"/>.</summary>
+    public static IResult Of(int status, string reason, string detailName, object detail) => Results.Problem(
+        statusCode: status,
+        extensions: new Dictionary<string, object?> { ["code"] = JsonNamingPolicy.CamelCase.ConvertName(reason), [detailName] = detail });
 }

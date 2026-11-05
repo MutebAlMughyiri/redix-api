@@ -88,7 +88,7 @@ public static class RegistrationEndpoints
     /// <param name="db">The database the project lives in.</param>
     /// <param name="time">The current time, for the audit record.</param>
     public static Task<IResult> Approve(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        DecideAsync(projectId, principal, db, time, AuditAction.ApproveProject, project => ProjectStructure.ApproveAsync(project, db));
+        DecideAsync(projectId, principal, db, time, AuditAction.ApproveProject, project => ProjectStructure.ApproveAsync(project, AccessTokens.UserIdOf(principal), db));
 
     /// <summary>Refuses a registered project, saying why (AC-52.2). A decided project answers <c>notPending</c>; a reason empty or too long, <c>invalidReason</c>.</summary>
     /// <param name="projectId">The project.</param>

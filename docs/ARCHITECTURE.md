@@ -17,6 +17,7 @@ src/Redix.Api/
   Settings/             what a project keeps besides its structure: its payment methods
   Accounts/             where a project's money sits: its accounts and who holds them
   Partners/             a project's partners, and the login whose capital each is
+  Suppliers/            a project's supplier register, and the rule of a VAT number
   Refusal.cs            the answer to a refused request: problem details with a code
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database
 docs/                   these pages

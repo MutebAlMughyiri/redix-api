@@ -2064,6 +2064,78 @@ namespace Redix.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Redix.Api.Suppliers.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("VatNumber")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ProjectId", "VatNumber")
+                        .IsUnique()
+                        .HasFilter("[VatNumber] <> ''");
+
+                    b.ToTable("Suppliers");
+                });
+
+            modelBuilder.Entity("Redix.Api.Suppliers.SupplierDefaultItem", b =>
+                {
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("SupplierId");
+
+                    b.HasIndex("ItemId");
+
+                    b.ToTable("SupplierDefaultItems");
+                });
+
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5754,6 +5826,356 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("af50ad36-e9a3-998a-e935-02dc53d0d6ca"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f86c64d9-5ef7-0b62-ea66-57ad18d77c5f"),
+                            Value = "Suppliers"
+                        },
+                        new
+                        {
+                            Id = new Guid("b3066af4-7e85-5095-a251-39f799f99fb4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f86c64d9-5ef7-0b62-ea66-57ad18d77c5f"),
+                            Value = "الموردون"
+                        },
+                        new
+                        {
+                            Id = new Guid("73ca43f1-8e42-9306-ef47-be4891a43920"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("35c3f97b-cd53-5a4e-966e-4fee912427cc"),
+                            Value = "No suppliers."
+                        },
+                        new
+                        {
+                            Id = new Guid("90d5a9ae-4874-5667-a181-8b26575f1585"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("35c3f97b-cd53-5a4e-966e-4fee912427cc"),
+                            Value = "لا يوجد موردون."
+                        },
+                        new
+                        {
+                            Id = new Guid("4526860c-d2fe-f2ea-1eac-2ae72eecea42"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5178081f-f07c-5e94-89b6-62af2e8decb9"),
+                            Value = "Could not read the suppliers. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("752af740-649a-e8af-ce73-3d0e9c1d0b16"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5178081f-f07c-5e94-89b6-62af2e8decb9"),
+                            Value = "تعذّرت قراءة الموردين. تحقق من الشبكة وحاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("63f8f177-9942-10b6-6829-d8051cabd3f6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d61d2a95-2885-25fd-f791-9eb38c86025e"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("93edac82-6c8c-8291-b19d-64da58f9be72"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d61d2a95-2885-25fd-f791-9eb38c86025e"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("071fa6a0-78b2-c504-9999-af8c61367f80"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("32492e3e-b952-a698-a19c-971373c185e4"),
+                            Value = "This change was refused."
+                        },
+                        new
+                        {
+                            Id = new Guid("35742bd6-0307-d220-896c-2547f138bff5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("32492e3e-b952-a698-a19c-971373c185e4"),
+                            Value = "رُفض هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("e4b27f47-6391-5082-1c40-9983b685b345"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c1987e37-ee52-46cc-d514-2fda4be0b52a"),
+                            Value = "This project is finished, so nothing in it changes."
+                        },
+                        new
+                        {
+                            Id = new Guid("e1f480fb-09d9-7e1b-a1d5-7c4b8c163e33"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c1987e37-ee52-46cc-d514-2fda4be0b52a"),
+                            Value = "هذا المشروع منتهٍ، فلا يتغير فيه شيء."
+                        },
+                        new
+                        {
+                            Id = new Guid("24623385-75dc-1b1d-f09d-4275a629af8f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2bdeab56-6aba-a65f-aa3a-a6741d6fd983"),
+                            Value = "Enter a name of 1 to 100 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("bc9a7f02-eedd-add1-96e6-cc8b0fb2a04c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2bdeab56-6aba-a65f-aa3a-a6741d6fd983"),
+                            Value = "أدخل اسماً من 1 إلى 100 حرف."
+                        },
+                        new
+                        {
+                            Id = new Guid("4bf7c0c2-aeb6-3336-fb8b-00349b3b63c4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("61e8b084-fc5d-d129-4eab-77ac71e6cee7"),
+                            Value = "A VAT number is 15 digits, starting and ending with 3."
+                        },
+                        new
+                        {
+                            Id = new Guid("b8f89f3c-cc3f-066c-eb00-2997b444efaf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("61e8b084-fc5d-d129-4eab-77ac71e6cee7"),
+                            Value = "الرقم الضريبي 15 رقماً، يبدأ بالرقم 3 وينتهي به."
+                        },
+                        new
+                        {
+                            Id = new Guid("d24f07e9-da5b-373f-d492-871258154c78"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7c5178da-e72c-99ca-6caf-953d8a2a626b"),
+                            Value = "Enter a mobile of up to 20 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("36d8c20b-c689-f2dd-ab27-3f928773bb2f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7c5178da-e72c-99ca-6caf-953d8a2a626b"),
+                            Value = "اكتب رقم جوال من 20 حرفاً على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("895ee1c1-759c-d715-05f7-f271ab4bae15"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d4d54668-94a8-24a2-a92e-711ee4ce86c5"),
+                            Value = "This VAT number already belongs to another supplier."
+                        },
+                        new
+                        {
+                            Id = new Guid("dbb25a89-ddf0-72f1-c985-e645573ae3b5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d4d54668-94a8-24a2-a92e-711ee4ce86c5"),
+                            Value = "هذا الرقم الضريبي لمورد آخر."
+                        },
+                        new
+                        {
+                            Id = new Guid("46b64c20-2b81-7a57-d946-fd080564a7a7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("12a28e1f-f7ff-815e-f6a1-23c0e1513b58"),
+                            Value = "Existing supplier:"
+                        },
+                        new
+                        {
+                            Id = new Guid("847c3a84-117e-ad30-29c4-1258d291ce1d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("12a28e1f-f7ff-815e-f6a1-23c0e1513b58"),
+                            Value = "المورد الموجود:"
+                        },
+                        new
+                        {
+                            Id = new Guid("d9349297-5a8a-54ff-af18-aa2487e8e9cb"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("031eedd8-ca40-9972-3c5e-62436b4fcde2"),
+                            Value = "That item is not in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("663136a2-da1f-da9f-4642-d3c32e267abf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("031eedd8-ca40-9972-3c5e-62436b4fcde2"),
+                            Value = "هذا البند ليس في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("aff7468c-16c7-951f-64d5-f5334986c495"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2b323d65-b935-9024-19ff-f7d92e0304aa"),
+                            Value = "Add supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("b537132f-7209-b701-ca9a-68e307f410e5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2b323d65-b935-9024-19ff-f7d92e0304aa"),
+                            Value = "إضافة مورد"
+                        },
+                        new
+                        {
+                            Id = new Guid("a8a9e2fa-1432-ae6c-4a58-d26c39d08af4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5b245aa4-efba-010e-497b-1716e298f0d5"),
+                            Value = "Edit supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("adfacaa2-2fa0-7ed2-7bae-8aeda504f4c8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5b245aa4-efba-010e-497b-1716e298f0d5"),
+                            Value = "تعديل المورد"
+                        },
+                        new
+                        {
+                            Id = new Guid("3c3356dc-3043-1024-6602-f7c34a0928a4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7313aa92-61f1-1081-7685-b3f184740dda"),
+                            Value = "Save"
+                        },
+                        new
+                        {
+                            Id = new Guid("ca53b9e7-fec4-993d-1fb6-a1c8b2b7d39c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7313aa92-61f1-1081-7685-b3f184740dda"),
+                            Value = "حفظ"
+                        },
+                        new
+                        {
+                            Id = new Guid("eb12f83c-0111-7126-047d-d7f7dbe69efd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b8fccba4-17f6-71b3-026f-8b4b6df011e3"),
+                            Value = "Supplier name"
+                        },
+                        new
+                        {
+                            Id = new Guid("66227c72-1351-8dfc-69e2-97d3f4fb7271"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b8fccba4-17f6-71b3-026f-8b4b6df011e3"),
+                            Value = "اسم المورد"
+                        },
+                        new
+                        {
+                            Id = new Guid("52bc5dd2-764d-ebd8-dbee-37a32bd0a6e2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("40f283f1-6f76-952a-01a6-fce856633438"),
+                            Value = "VAT number (15 digits)"
+                        },
+                        new
+                        {
+                            Id = new Guid("89cf7cc3-dd8e-19b2-b9dd-eaccbf453565"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("40f283f1-6f76-952a-01a6-fce856633438"),
+                            Value = "الرقم الضريبي (15 رقماً)"
+                        },
+                        new
+                        {
+                            Id = new Guid("60383cf9-62ec-5f53-1e2b-6cff79449eb3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f2b72244-b8ee-dde4-7e71-c447b7d73775"),
+                            Value = "Not VAT-registered"
+                        },
+                        new
+                        {
+                            Id = new Guid("48699ff2-feb6-f8a3-65b5-89452c221355"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f2b72244-b8ee-dde4-7e71-c447b7d73775"),
+                            Value = "غير مسجل بالضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("11ac03e8-39e7-43d0-bd2e-b1324d4948e6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ecd04b2a-a691-f32a-2b0b-973f9c008b89"),
+                            Value = "Mobile (optional)"
+                        },
+                        new
+                        {
+                            Id = new Guid("46d98895-fe5b-ddb2-e53f-43a93274f540"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ecd04b2a-a691-f32a-2b0b-973f9c008b89"),
+                            Value = "الجوال (اختياري)"
+                        },
+                        new
+                        {
+                            Id = new Guid("bba8a844-a32c-636f-5cc5-668db02c3193"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d24b9a39-e4da-0e0c-ac58-9249561ac870"),
+                            Value = "Default item (optional)"
+                        },
+                        new
+                        {
+                            Id = new Guid("4715a33f-814c-637f-2761-52c6980886ac"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d24b9a39-e4da-0e0c-ac58-9249561ac870"),
+                            Value = "البند الافتراضي (اختياري)"
+                        },
+                        new
+                        {
+                            Id = new Guid("fb9de578-4f34-3b76-9072-6d50ea72aff1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ed0aa89b-85e9-5685-1d92-b4b3ca316ffa"),
+                            Value = "No default item"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a13e3bc-22f3-786b-a963-311d54740fd4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ed0aa89b-85e9-5685-1d92-b4b3ca316ffa"),
+                            Value = "بدون بند افتراضي"
+                        },
+                        new
+                        {
+                            Id = new Guid("9096a3b0-ca65-08d0-32b3-e9e28031682c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("db99bbe9-66be-5278-b5f0-232b520547a5"),
+                            Value = "Pending approval"
+                        },
+                        new
+                        {
+                            Id = new Guid("c2ce3aec-ea61-478f-c365-054426c5c54b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("db99bbe9-66be-5278-b5f0-232b520547a5"),
+                            Value = "بانتظار الاعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("7d7142f1-4e13-9a45-ec84-f4faeccd11bb"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b849bf92-456d-e8ee-7467-0189899fbec2"),
+                            Value = "Disable"
+                        },
+                        new
+                        {
+                            Id = new Guid("d493ade0-b55e-bceb-90d3-2150965e9689"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b849bf92-456d-e8ee-7467-0189899fbec2"),
+                            Value = "تعطيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5615cd2-56f0-9ba8-49f3-c895c4999b67"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("242892cf-3a73-8d62-4b58-0d740b6a3f01"),
+                            Value = "Enable"
+                        },
+                        new
+                        {
+                            Id = new Guid("83fc62c8-1559-2c4c-2e5c-7ea95ff738e1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("242892cf-3a73-8d62-4b58-0d740b6a3f01"),
+                            Value = "تفعيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("b641739c-7ebd-1d23-8003-c810aabd7db7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("999558f1-820f-444d-8020-cf4d0aa34358"),
+                            Value = "Disabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("85fb396c-3eff-6813-7c0a-c5ea328b8978"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("999558f1-820f-444d-8020-cf4d0aa34358"),
+                            Value = "معطّل"
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -7366,6 +7788,156 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("f86c64d9-5ef7-0b62-ea66-57ad18d77c5f"),
+                            Description = "",
+                            Key = "suppliers.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("35c3f97b-cd53-5a4e-966e-4fee912427cc"),
+                            Description = "",
+                            Key = "suppliers.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("5178081f-f07c-5e94-89b6-62af2e8decb9"),
+                            Description = "",
+                            Key = "suppliers.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("d61d2a95-2885-25fd-f791-9eb38c86025e"),
+                            Description = "",
+                            Key = "suppliers.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("32492e3e-b952-a698-a19c-971373c185e4"),
+                            Description = "",
+                            Key = "suppliers.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("c1987e37-ee52-46cc-d514-2fda4be0b52a"),
+                            Description = "",
+                            Key = "suppliers.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("2bdeab56-6aba-a65f-aa3a-a6741d6fd983"),
+                            Description = "",
+                            Key = "suppliers.invalidName"
+                        },
+                        new
+                        {
+                            Id = new Guid("61e8b084-fc5d-d129-4eab-77ac71e6cee7"),
+                            Description = "",
+                            Key = "suppliers.invalidVatNumber"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c5178da-e72c-99ca-6caf-953d8a2a626b"),
+                            Description = "",
+                            Key = "suppliers.invalidMobile"
+                        },
+                        new
+                        {
+                            Id = new Guid("d4d54668-94a8-24a2-a92e-711ee4ce86c5"),
+                            Description = "",
+                            Key = "suppliers.vatNumberTaken"
+                        },
+                        new
+                        {
+                            Id = new Guid("12a28e1f-f7ff-815e-f6a1-23c0e1513b58"),
+                            Description = "",
+                            Key = "suppliers.holder"
+                        },
+                        new
+                        {
+                            Id = new Guid("031eedd8-ca40-9972-3c5e-62436b4fcde2"),
+                            Description = "",
+                            Key = "suppliers.unknownItem"
+                        },
+                        new
+                        {
+                            Id = new Guid("2b323d65-b935-9024-19ff-f7d92e0304aa"),
+                            Description = "",
+                            Key = "suppliers.new"
+                        },
+                        new
+                        {
+                            Id = new Guid("5b245aa4-efba-010e-497b-1716e298f0d5"),
+                            Description = "",
+                            Key = "suppliers.edit"
+                        },
+                        new
+                        {
+                            Id = new Guid("7313aa92-61f1-1081-7685-b3f184740dda"),
+                            Description = "",
+                            Key = "suppliers.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("b8fccba4-17f6-71b3-026f-8b4b6df011e3"),
+                            Description = "",
+                            Key = "suppliers.name"
+                        },
+                        new
+                        {
+                            Id = new Guid("40f283f1-6f76-952a-01a6-fce856633438"),
+                            Description = "",
+                            Key = "suppliers.vatNumber"
+                        },
+                        new
+                        {
+                            Id = new Guid("f2b72244-b8ee-dde4-7e71-c447b7d73775"),
+                            Description = "",
+                            Key = "suppliers.notVatRegistered"
+                        },
+                        new
+                        {
+                            Id = new Guid("ecd04b2a-a691-f32a-2b0b-973f9c008b89"),
+                            Description = "",
+                            Key = "suppliers.mobile"
+                        },
+                        new
+                        {
+                            Id = new Guid("d24b9a39-e4da-0e0c-ac58-9249561ac870"),
+                            Description = "",
+                            Key = "suppliers.defaultItem"
+                        },
+                        new
+                        {
+                            Id = new Guid("ed0aa89b-85e9-5685-1d92-b4b3ca316ffa"),
+                            Description = "",
+                            Key = "suppliers.noDefaultItem"
+                        },
+                        new
+                        {
+                            Id = new Guid("db99bbe9-66be-5278-b5f0-232b520547a5"),
+                            Description = "",
+                            Key = "suppliers.pendingApproval"
+                        },
+                        new
+                        {
+                            Id = new Guid("b849bf92-456d-e8ee-7467-0189899fbec2"),
+                            Description = "",
+                            Key = "suppliers.disable"
+                        },
+                        new
+                        {
+                            Id = new Guid("242892cf-3a73-8d62-4b58-0d740b6a3f01"),
+                            Description = "",
+                            Key = "suppliers.enable"
+                        },
+                        new
+                        {
+                            Id = new Guid("999558f1-820f-444d-8020-cf4d0aa34358"),
+                            Description = "",
+                            Key = "suppliers.disabled"
+                        },
+                        new
+                        {
                             Id = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
                             Description = "",
                             Key = "biometrics.notChanged"
@@ -7556,6 +8128,36 @@ namespace Redix.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Redix.Api.Suppliers.Supplier", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Suppliers.SupplierDefaultItem", b =>
+                {
+                    b.HasOne("Redix.Api.Structure.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Suppliers.Supplier", null)
+                        .WithMany("DefaultItems")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>
                 {
                     b.HasOne("Redix.Api.Translations.TranslationKey", null)
@@ -7585,6 +8187,11 @@ namespace Redix.Api.Migrations
                     b.Navigation("Columns");
 
                     b.Navigation("Subgroups");
+                });
+
+            modelBuilder.Entity("Redix.Api.Suppliers.Supplier", b =>
+                {
+                    b.Navigation("DefaultItems");
                 });
 
             modelBuilder.Entity("Redix.Api.Translations.TranslationKey", b =>
