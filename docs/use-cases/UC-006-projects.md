@@ -2,8 +2,8 @@
 
 # UC-006: Manage projects and units
 
-**What it is for:** starting a project with its units, and freezing it when it is finished (FR-04).
-**Who uses it:** whoever registers a project becomes its first project manager (UC-066); its financial supervisors add units and close it (UC-009).
+**What it is for:** starting a project with its units, correcting their names, removing a unit added by mistake, and freezing the project when it is finished (FR-04, BR-38).
+**Who uses it:** whoever registers a project becomes its first project manager (UC-066); whoever holds `ManageProject` in it, which Finance does, renames it, adds, renames and deletes units, and closes it (UC-009).
 **Issue:** redix-api #24; the app side is redix-app #26.
 
 ## Endpoints

@@ -65,7 +65,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | One project's route never reaches another's rows (BR-33) | `ProjectStructure.ItemOfAsync` and the category lookups | `CategoriesTests.ARouteOfOneProjectNeverReachesAnothersRows` |
 | The order set here is the order of the report (AC-39.1) | `IOrdered`, `CategoriesEndpoints.ReorderCategories`, `ReorderItems` | `CategoriesTests.TheOrderOfCategoriesIsTheOrderTheReportReads`, `TheOrderOfItemsIsTheOrderTheReportReads` |
 | An order names every row exactly once | `ProjectStructure.PutInOrder` | `CategoriesTests.AnOrderMustNameEveryRowExactlyOnce` |
-| A disabled item leaves entry and stays listed; nothing can be deleted (AC-05.3, BR-15) | `Item.IsOfferedFor`; no delete route exists | `CategoriesTests.ADisabledItemDisappearsFromEntryAndStaysListed`, `NothingInTheStructureCanBeDeleted` |
+| A disabled item leaves entry and stays listed; no item or category can be deleted (AC-05.3, BR-15) | `Item.IsOfferedFor`; no delete route exists | `CategoriesTests.ADisabledItemDisappearsFromEntryAndStaysListed`, `NothingInTheStructureCanBeDeleted` |
 | A disabled category takes its items out of entry | `Category.ItemsOfferedFor` | `CategoriesTests.ADisabledCategoryTakesItsItemsOutOfEntryAndStaysListed` |
 | What was disabled can be enabled | `CategoriesEndpoints.EnableItem`, `EnableCategory` | `CategoriesTests.ADisabledItemComesBackWhenEnabled` |
 | An item is offered only for what its type allows (AC-38.1) | `Item.IsOfferedFor` | `CategoriesTests.APurchasesItemIsNotOfferedForContractorPayments`, `AContractorPaymentsItemIsNotOfferedForPurchases` |
