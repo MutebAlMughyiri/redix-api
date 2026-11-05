@@ -441,6 +441,40 @@ namespace Redix.Api.Migrations
                     b.ToTable("UserRoles");
                 });
 
+            modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] <> '00000000-0000-0000-0000-000000000000'");
+
+                    b.ToTable("Partners");
+                });
+
             modelBuilder.Entity("Redix.Api.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5496,6 +5530,230 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("adb5f6b8-03d3-7006-8d6e-de86af2c4463"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2925e425-6bd7-7e87-1885-4a1921999f73"),
+                            Value = "Partners"
+                        },
+                        new
+                        {
+                            Id = new Guid("7dd4e58a-92f6-31cb-2d37-122bff506f60"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2925e425-6bd7-7e87-1885-4a1921999f73"),
+                            Value = "الشركاء"
+                        },
+                        new
+                        {
+                            Id = new Guid("8762d56e-cd0b-b2a5-5b61-402481900344"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aacd9d13-e9db-dd34-0f7b-2a366f311c99"),
+                            Value = "No partners."
+                        },
+                        new
+                        {
+                            Id = new Guid("63dc14e6-9f5c-1095-d06f-6cfcb7ba755f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aacd9d13-e9db-dd34-0f7b-2a366f311c99"),
+                            Value = "لا يوجد شركاء."
+                        },
+                        new
+                        {
+                            Id = new Guid("56e1972c-425a-0b33-f0a7-6e289ce698dd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9d1f88af-c113-c76e-5788-70b467c68c5f"),
+                            Value = "Could not read the partners. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("b2b57447-a5d1-43e8-02f3-b5abc254eff1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9d1f88af-c113-c76e-5788-70b467c68c5f"),
+                            Value = "تعذّرت قراءة الشركاء. تحقق من الشبكة وحاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("2334d59c-fb2b-0cb5-082a-042802e4cc7f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5b4575cc-d63c-892c-ae74-34fcdeb6c3d2"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("1b00c567-b3f6-2aeb-73be-225050e44cb9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5b4575cc-d63c-892c-ae74-34fcdeb6c3d2"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("5de87bc7-f42c-c035-6afa-f960a91c28d8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f569d1f9-3602-9e2c-c559-97d7b73686f9"),
+                            Value = "This change was refused."
+                        },
+                        new
+                        {
+                            Id = new Guid("f9f2a38b-5773-971a-573f-976c841d794d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f569d1f9-3602-9e2c-c559-97d7b73686f9"),
+                            Value = "رُفض هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("c3a105d6-6e87-5737-dfa3-93a88690d257"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f8571475-b130-7a9c-37fb-305e561984e7"),
+                            Value = "This project is finished, so nothing in it changes."
+                        },
+                        new
+                        {
+                            Id = new Guid("120281a5-3274-9341-8634-2243ab566e58"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f8571475-b130-7a9c-37fb-305e561984e7"),
+                            Value = "هذا المشروع منتهٍ، فلا يتغير فيه شيء."
+                        },
+                        new
+                        {
+                            Id = new Guid("2317fb4a-267e-1a66-0e25-6ad9a7679716"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3a34eb7f-69cb-b5d4-8a31-7e5677ef96f0"),
+                            Value = "Enter a name of 1 to 100 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("f70934cc-417e-17e4-ddac-84742eb16a2d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3a34eb7f-69cb-b5d4-8a31-7e5677ef96f0"),
+                            Value = "أدخل اسماً من 1 إلى 100 حرف."
+                        },
+                        new
+                        {
+                            Id = new Guid("3d3020e9-002e-e254-0252-b2ce4977a76a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("30a04719-0aab-9967-2f78-c57274e87419"),
+                            Value = "That person is not in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("ac662de6-7f16-d09a-4d2a-6527c2c0a9b2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("30a04719-0aab-9967-2f78-c57274e87419"),
+                            Value = "هذا الشخص ليس في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("4de5fa8c-00e2-64ad-1ba3-99f49ec65a14"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5dfaaef0-358a-0acd-dcaa-acc4d6d96f66"),
+                            Value = "That login is already another partner's in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("cfe22ac3-c042-7163-7235-2d1d4f9704f1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5dfaaef0-358a-0acd-dcaa-acc4d6d96f66"),
+                            Value = "حساب الدخول هذا لشريك آخر في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("81d93df7-0d57-1298-acd9-2532ff271c6d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("03e55979-5b42-cb95-2cd4-fe90242f98e9"),
+                            Value = "Add partner"
+                        },
+                        new
+                        {
+                            Id = new Guid("081a2a29-b1e5-88bc-f6d2-3ea5fbd6cacf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("03e55979-5b42-cb95-2cd4-fe90242f98e9"),
+                            Value = "إضافة شريك"
+                        },
+                        new
+                        {
+                            Id = new Guid("66382a84-cc98-5860-4f0b-11163479a10f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("886b87e1-42e3-e4fa-09da-8de435b16b0b"),
+                            Value = "Edit partner"
+                        },
+                        new
+                        {
+                            Id = new Guid("183d3872-728e-3d6c-1183-50f72e934090"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("886b87e1-42e3-e4fa-09da-8de435b16b0b"),
+                            Value = "تعديل الشريك"
+                        },
+                        new
+                        {
+                            Id = new Guid("cd51533c-c98b-9db6-0722-0a42d0dbe6a6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("21575f31-6470-40a7-1f01-5c5e4b271c8f"),
+                            Value = "Save"
+                        },
+                        new
+                        {
+                            Id = new Guid("7670ffa3-16f0-0c95-dfa1-1bae4b6c1213"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("21575f31-6470-40a7-1f01-5c5e4b271c8f"),
+                            Value = "حفظ"
+                        },
+                        new
+                        {
+                            Id = new Guid("e38ba2fd-e815-7c4b-134e-9702bece859b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("79c8bd2c-4f2f-eff3-df8c-826c8386cfd1"),
+                            Value = "Partner name"
+                        },
+                        new
+                        {
+                            Id = new Guid("c8c85611-21fd-2ba7-ceb1-e823a91c8b08"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("79c8bd2c-4f2f-eff3-df8c-826c8386cfd1"),
+                            Value = "اسم الشريك"
+                        },
+                        new
+                        {
+                            Id = new Guid("eeeed37e-ca44-83a6-0d16-1cf0c9cc94e3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ab4c2d48-928b-1109-1660-5c47d7108d91"),
+                            Value = "Their login"
+                        },
+                        new
+                        {
+                            Id = new Guid("e6ebdc9a-0eef-7821-1fcb-24851593c2fd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ab4c2d48-928b-1109-1660-5c47d7108d91"),
+                            Value = "حساب دخوله"
+                        },
+                        new
+                        {
+                            Id = new Guid("30aafa0c-fe08-5359-fc11-2a58f5724dd1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3c4e52be-f5bd-5cad-2b66-9b14153822e1"),
+                            Value = "No login"
+                        },
+                        new
+                        {
+                            Id = new Guid("878e14cc-7138-534e-699c-4edb6817f77c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3c4e52be-f5bd-5cad-2b66-9b14153822e1"),
+                            Value = "بدون حساب دخول"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a112cb9-5f3e-498f-bf95-e13593dc6336"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("adef17b4-d853-0bd6-6df4-733bd6dc75a8"),
+                            Value = "With a login, they see their own capital in this project and nobody else's."
+                        },
+                        new
+                        {
+                            Id = new Guid("1ba6638c-5385-2d57-0ebb-c5cca4f90ffb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("adef17b4-d853-0bd6-6df4-733bd6dc75a8"),
+                            Value = "بحساب الدخول يرى رأس ماله في هذا المشروع دون غيره."
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -7012,6 +7270,102 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("2925e425-6bd7-7e87-1885-4a1921999f73"),
+                            Description = "",
+                            Key = "partners.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("aacd9d13-e9db-dd34-0f7b-2a366f311c99"),
+                            Description = "",
+                            Key = "partners.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("9d1f88af-c113-c76e-5788-70b467c68c5f"),
+                            Description = "",
+                            Key = "partners.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("5b4575cc-d63c-892c-ae74-34fcdeb6c3d2"),
+                            Description = "",
+                            Key = "partners.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("f569d1f9-3602-9e2c-c559-97d7b73686f9"),
+                            Description = "",
+                            Key = "partners.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("f8571475-b130-7a9c-37fb-305e561984e7"),
+                            Description = "",
+                            Key = "partners.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("3a34eb7f-69cb-b5d4-8a31-7e5677ef96f0"),
+                            Description = "",
+                            Key = "partners.invalidName"
+                        },
+                        new
+                        {
+                            Id = new Guid("30a04719-0aab-9967-2f78-c57274e87419"),
+                            Description = "",
+                            Key = "partners.unknownUser"
+                        },
+                        new
+                        {
+                            Id = new Guid("5dfaaef0-358a-0acd-dcaa-acc4d6d96f66"),
+                            Description = "",
+                            Key = "partners.userTaken"
+                        },
+                        new
+                        {
+                            Id = new Guid("03e55979-5b42-cb95-2cd4-fe90242f98e9"),
+                            Description = "",
+                            Key = "partners.new"
+                        },
+                        new
+                        {
+                            Id = new Guid("886b87e1-42e3-e4fa-09da-8de435b16b0b"),
+                            Description = "",
+                            Key = "partners.edit"
+                        },
+                        new
+                        {
+                            Id = new Guid("21575f31-6470-40a7-1f01-5c5e4b271c8f"),
+                            Description = "",
+                            Key = "partners.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("79c8bd2c-4f2f-eff3-df8c-826c8386cfd1"),
+                            Description = "",
+                            Key = "partners.name"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab4c2d48-928b-1109-1660-5c47d7108d91"),
+                            Description = "",
+                            Key = "partners.login"
+                        },
+                        new
+                        {
+                            Id = new Guid("3c4e52be-f5bd-5cad-2b66-9b14153822e1"),
+                            Description = "",
+                            Key = "partners.noLogin"
+                        },
+                        new
+                        {
+                            Id = new Guid("adef17b4-d853-0bd6-6df4-733bd6dc75a8"),
+                            Description = "",
+                            Key = "partners.loginHint"
+                        },
+                        new
+                        {
                             Id = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
                             Description = "",
                             Key = "biometrics.notChanged"
@@ -7090,6 +7444,15 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

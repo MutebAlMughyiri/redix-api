@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
@@ -59,6 +60,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>Who holds which account.</summary>
     public DbSet<AccountCustodian> AccountCustodians => Set<AccountCustodian>();
+
+    /// <summary>The partners of each project (UC-016).</summary>
+    public DbSet<Partner> Partners => Set<Partner>();
 
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
@@ -178,6 +182,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             custodian.HasKey(c => c.AccountId);
             custodian.HasOne<User>().WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Partner>(partner =>
+        {
+            partner.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
+            partner.HasIndex(p => new { p.ProjectId, p.UserId }).IsUnique().HasFilter($"[UserId] <> '{Guid.Empty}'");
+            partner.HasOne<Project>().WithMany().HasForeignKey(p => p.ProjectId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {

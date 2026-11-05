@@ -32,5 +32,6 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-013](use-cases/UC-013-item-columns.md) | Change the fields an item asks for, on one item or on the project's default template | Finance changes; everyone with access reads |
 | [UC-014](use-cases/UC-014-payment-methods-and-vat.md) | Keep a project's payment methods and its VAT rate | Finance changes; everyone with access reads |
 | [UC-015](use-cases/UC-015-accounts-and-custodies.md) | Define a project's bank accounts and cash custodies, and who may spend from them | Finance changes; everyone with access reads |
+| [UC-016](use-cases/UC-016-partners.md) | Keep a project's partners, each linked to their login, so their capital is theirs to see | Finance changes; `SeeAllCapital` reads all; anyone else only their own |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

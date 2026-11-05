@@ -6,6 +6,11 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-06 | A partner is linked to a login by `Partners.UserId`, `Guid.Empty` for none, with no foreign key and a filtered unique index | BR-31 needs to know whose capital is someone's own (findings row 37, now closed). An empty value of its own type is the house rule, and it cannot point at a row, so the route checks the login is in the project; logins are never deleted. Made without Muteb; the database design says so |
+| 2026-11-06 | One login is one partner in a project, and may be a partner in several projects | "His capital" must have one answer in a project, and each project keeps its own partners (BR-33). Made without Muteb |
+| 2026-11-06 | `GET .../partners` answers everyone with `SeeAllCapital`, and anyone else only their own row | BR-31 hides the details of other partners' capital, and the safe reading hides the names too until a use case needs them. Made without Muteb |
+| 2026-11-06 | A partner is only added and renamed, and has no disable | The issue lists those two, BR-15 does not name partners, and someone who withdrew stays. `IsActive` waits for the capital use cases. Made without Muteb; findings row 69 |
+| 2026-11-06 | Partners are not copied from an earlier project | AC-05.2 copies only the structure. Made without Muteb |
 | 2026-11-06 | An account belongs to one project; the BRS's "shared between projects" is not built | BR-33 makes projects completely separate, and the database design follows it. Made without Muteb; findings row 65 |
 | 2026-11-06 | A bank account may have a custodian, and a cash custody must | Open question 4 lets Field spend from what they hold, which may be a card; a custody with nobody holding it means nothing. Made without Muteb |
 | 2026-11-06 | `ChargeAnyAccount` lets Finance spend from any active account; everyone else only from what they hold | Tonight's answer to open question 4, as a permission so the code names no role. A project manager who enters holds nothing by default. Made without Muteb; findings row 68 |

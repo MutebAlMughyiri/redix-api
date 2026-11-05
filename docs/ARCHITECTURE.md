@@ -16,6 +16,7 @@ src/Redix.Api/
   Structure/            what a project's expenses are recorded against: categories, items, subgroups and columns, the default template, and its copy when a project is approved
   Settings/             what a project keeps besides its structure: its payment methods
   Accounts/             where a project's money sits: its accounts and who holds them
+  Partners/             a project's partners, and the login whose capital each is
   Refusal.cs            the answer to a refused request: problem details with a code
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database
 docs/                   these pages

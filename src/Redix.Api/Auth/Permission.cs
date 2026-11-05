@@ -15,7 +15,7 @@ public enum Permission
     /// <summary>Sees one project and everything in it (BR-31).</summary>
     ReadProject,
 
-    /// <summary>Sees every partner's capital in one project, not only their own (BR-31); UC-044 reads it.</summary>
+    /// <summary>Sees every partner in one project and their capital, not only their own (BR-31).</summary>
     SeeAllCapital,
 
     /// <summary>Adds units to one project and closes it (FR-04).</summary>
@@ -24,7 +24,7 @@ public enum Permission
     /// <summary>Shapes one project's expense structure: its categories, items, subgroups and columns (FR-05, FR-38, FR-39, FR-41).</summary>
     ManageStructure,
 
-    /// <summary>Keeps one project's payment methods, VAT rate and accounts (FR-40, BR-14, FR-22).</summary>
+    /// <summary>Keeps one project's payment methods, VAT rate, accounts and partners (FR-40, BR-14, FR-22, UC-016).</summary>
     ManageSettings,
 
     /// <summary>Spends from any active account of one project; without it, only from those the user holds (BRS open question 4). The entry use cases refuse the rest.</summary>
