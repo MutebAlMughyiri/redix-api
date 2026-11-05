@@ -151,9 +151,16 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 /// <param name="RefreshToken">Renews the session; replaced at each renewal and expired after 12 hours unused.</param>
 /// <param name="MustChangePassword">True while the password is temporary and must be changed before anything else.</param>
 /// <param name="Permissions">What the user holds everywhere; the app shows what they allow. What they hold in a project comes with the project.</param>
-public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions)
+/// <param name="DefaultProjectId">The project they chose to land on; empty when none, or when they can no longer read it (AC-37.2).</param>
+/// <param name="OpenDefaultProject">True when sign-in skips the list and opens that project (AC-37.1).</param>
+public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool OpenDefaultProject)
 {
-    /// <summary>The session of <paramref name="user"/> with these tokens.</summary>
-    public static async Task<Session> OfAsync(User user, string accessToken, string refreshToken, RedixDbContext db) =>
-        new(accessToken, refreshToken, user.MustChangePassword, (await UserAccess.OfAsync(user.Id, db)).Everywhere.ToList());
+    /// <summary>The session of <paramref name="user"/> with these tokens. One check covers every way of losing access to the default project.</summary>
+    public static async Task<Session> OfAsync(User user, string accessToken, string refreshToken, RedixDbContext db)
+    {
+        var access = await UserAccess.OfAsync(user.Id, db);
+        var chosen = await db.UserDefaultProjects.Where(row => row.UserId == user.Id).Select(row => row.ProjectId).SingleOrDefaultAsync();
+        var defaultProjectId = access.In(chosen).Contains(Permission.ReadProject) ? chosen.ToString() : "";
+        return new(accessToken, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, user.OpenDefaultProject);
+    }
 }

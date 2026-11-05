@@ -308,6 +308,9 @@ namespace Redix.Api.Migrations
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("OpenDefaultProject")
+                        .HasColumnType("bit");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -453,6 +456,33 @@ namespace Redix.Api.Migrations
                     b.ToTable("Units", (string)null);
                 });
 
+            modelBuilder.Entity("Redix.Api.Projects.UserDefaultProject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserDefaultProjects");
+                });
+
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -500,20 +530,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("27d5e8ae-ac71-1977-0de4-6b4fee3d166e"),
                             Value = "REDIX"
-                        },
-                        new
-                        {
-                            Id = new Guid("8d67b336-f618-fc31-452a-987821e6b3c7"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("27b76d7a-c620-546c-ce3a-fb1a42f47534"),
-                            Value = "Project expenses"
-                        },
-                        new
-                        {
-                            Id = new Guid("1d9a0a5c-7a6b-9337-316e-473c1e550569"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("27b76d7a-c620-546c-ce3a-fb1a42f47534"),
-                            Value = "مصروفات المشاريع"
                         },
                         new
                         {
@@ -934,20 +950,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("e4b6fd5b-c018-8a6f-cfb9-eb702bc257f8"),
                             Value = "الإعدادات"
-                        },
-                        new
-                        {
-                            Id = new Guid("12724a61-4b5a-0647-1228-94eefe4524bf"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("42a8d72c-ec3f-c387-5ac5-f285424f5310"),
-                            Value = "Projects"
-                        },
-                        new
-                        {
-                            Id = new Guid("9b969ef2-cce0-4909-b584-4e169218bfc0"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("42a8d72c-ec3f-c387-5ac5-f285424f5310"),
-                            Value = "المشاريع"
                         },
                         new
                         {
@@ -2124,6 +2126,90 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("6e50a558-a6d3-3256-093c-09fe2224bf91"),
                             Value = "رفض الخادم هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("0f4cbc18-8dbb-5cd1-e75e-dbf2be7030a2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a57b43a9-63f7-b93a-6e84-5c0b6bd470a4"),
+                            Value = "Choose a project"
+                        },
+                        new
+                        {
+                            Id = new Guid("fe638376-2f4f-1dbe-b53a-7cca9772baef"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a57b43a9-63f7-b93a-6e84-5c0b6bd470a4"),
+                            Value = "اختر المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("b217d252-53b9-2e21-82d3-7624fbd1ad9a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f204e3a5-e455-2eb0-564f-a8707664748a"),
+                            Value = "Only the projects you have access to show."
+                        },
+                        new
+                        {
+                            Id = new Guid("89edeeb2-a4dc-d538-6e16-1f03541fac4f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f204e3a5-e455-2eb0-564f-a8707664748a"),
+                            Value = "تظهر المشاريع المصرّح لك بها فقط"
+                        },
+                        new
+                        {
+                            Id = new Guid("8167b690-1b8a-2eba-bd1f-d6fe763feb0c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("67e33263-15d6-e8f1-7603-7f9f41359510"),
+                            Value = "Default project"
+                        },
+                        new
+                        {
+                            Id = new Guid("c70e93d6-7e24-5ec2-a36a-6e21d3803a2e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("67e33263-15d6-e8f1-7603-7f9f41359510"),
+                            Value = "المشروع الافتراضي"
+                        },
+                        new
+                        {
+                            Id = new Guid("1b204491-bfd5-d807-4748-9e68b7189da5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("41f08b4f-d262-8f6b-05cb-3a7b21532454"),
+                            Value = "Open the default project directly"
+                        },
+                        new
+                        {
+                            Id = new Guid("42c1a391-380a-2b1d-abb2-6b5dd5285825"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("41f08b4f-d262-8f6b-05cb-3a7b21532454"),
+                            Value = "فتح المشروع الافتراضي مباشرة"
+                        },
+                        new
+                        {
+                            Id = new Guid("8c9ae49b-64f3-b76e-753a-d982f4845c44"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("be963f70-31fd-15f5-e72e-8e15162a53e2"),
+                            Value = "This screen will not show at sign-in."
+                        },
+                        new
+                        {
+                            Id = new Guid("01fa9773-222c-dea8-68a7-92b0d7ea490b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("be963f70-31fd-15f5-e72e-8e15162a53e2"),
+                            Value = "لن تظهر هذه الشاشة عند الدخول"
+                        },
+                        new
+                        {
+                            Id = new Guid("29d8b4a3-086b-f8b1-3147-7ed493115514"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
+                            Value = "Switch project"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a719b5e-fc79-3ab2-64af-caaaef29e274"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
+                            Value = "تبديل المشروع"
                         });
                 });
 
@@ -2162,12 +2248,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("27d5e8ae-ac71-1977-0de4-6b4fee3d166e"),
                             Description = "",
                             Key = "app.title"
-                        },
-                        new
-                        {
-                            Id = new Guid("27b76d7a-c620-546c-ce3a-fb1a42f47534"),
-                            Description = "",
-                            Key = "app.subtitle"
                         },
                         new
                         {
@@ -2348,12 +2428,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("e4b6fd5b-c018-8a6f-cfb9-eb702bc257f8"),
                             Description = "",
                             Key = "settings.title"
-                        },
-                        new
-                        {
-                            Id = new Guid("42a8d72c-ec3f-c387-5ac5-f285424f5310"),
-                            Description = "",
-                            Key = "projects.title"
                         },
                         new
                         {
@@ -2858,6 +2932,42 @@ namespace Redix.Api.Migrations
                             Id = new Guid("6e50a558-a6d3-3256-093c-09fe2224bf91"),
                             Description = "",
                             Key = "registered.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("a57b43a9-63f7-b93a-6e84-5c0b6bd470a4"),
+                            Description = "",
+                            Key = "projects.choose"
+                        },
+                        new
+                        {
+                            Id = new Guid("f204e3a5-e455-2eb0-564f-a8707664748a"),
+                            Description = "",
+                            Key = "projects.chooseHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("67e33263-15d6-e8f1-7603-7f9f41359510"),
+                            Description = "",
+                            Key = "projects.defaultProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("41f08b4f-d262-8f6b-05cb-3a7b21532454"),
+                            Description = "",
+                            Key = "projects.openDefault"
+                        },
+                        new
+                        {
+                            Id = new Guid("be963f70-31fd-15f5-e72e-8e15162a53e2"),
+                            Description = "",
+                            Key = "projects.openDefaultHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
+                            Description = "",
+                            Key = "settings.switchProject"
                         });
                 });
 
@@ -2940,6 +3050,21 @@ namespace Redix.Api.Migrations
                         .WithMany("Units")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.UserDefaultProject", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

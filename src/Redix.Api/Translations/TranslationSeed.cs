@@ -6,7 +6,6 @@ public static class TranslationSeed
     private static readonly (string Key, string English, string Arabic)[] Words =
     [
         ("app.title", "REDIX", "REDIX"),
-        ("app.subtitle", "Project expenses", "مصروفات المشاريع"),
         ("signIn.username", "Username", "اسم المستخدم"),
         ("signIn.password", "Password", "كلمة المرور"),
         ("signIn.hint", "Sign in to follow your projects' expenses", "سجّل الدخول لمتابعة مصروفات مشاريعك"),
@@ -37,7 +36,6 @@ public static class TranslationSeed
         ("myAccount.signOutQuestion", "Sign out of this phone?", "تسجيل الخروج من هذا الجوال؟"),
         ("myAccount.signOutExplain", "You will need your username and password to sign in again.", "ستحتاج إلى اسم المستخدم وكلمة المرور للدخول مرة أخرى."),
         ("settings.title", "Settings", "الإعدادات"),
-        ("projects.title", "Projects", "المشاريع"),
         ("projects.new", "Register new project", "تسجيل مشروع جديد"),
         ("projects.empty", "No projects yet.", "لا مشاريع بعد."),
         ("projects.loadFailed", "Could not load the projects. Check the network and try again.", "تعذّر تحميل المشاريع. تحقق من الشبكة وحاول مرة أخرى."),
@@ -122,6 +120,12 @@ public static class TranslationSeed
         ("registered.notPending", "This project was already decided.", "سبق البت في هذا المشروع."),
         ("registered.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
         ("registered.refused", "The server refused this change.", "رفض الخادم هذا التغيير."),
+        ("projects.choose", "Choose a project", "اختر المشروع"),
+        ("projects.chooseHint", "Only the projects you have access to show.", "تظهر المشاريع المصرّح لك بها فقط"),
+        ("projects.defaultProject", "Default project", "المشروع الافتراضي"),
+        ("projects.openDefault", "Open the default project directly", "فتح المشروع الافتراضي مباشرة"),
+        ("projects.openDefaultHint", "This screen will not show at sign-in.", "لن تظهر هذه الشاشة عند الدخول"),
+        ("settings.switchProject", "Switch project", "تبديل المشروع"),
     ];
 
     /// <summary>One key per seeded word, with an id derived from the key so every migration and database agree on it.</summary>

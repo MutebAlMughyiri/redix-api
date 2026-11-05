@@ -30,6 +30,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>Who works on which project, and as what: one row per role (FR-36).</summary>
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
+    /// <summary>The project each user chose to land on (FR-37).</summary>
+    public DbSet<UserDefaultProject> UserDefaultProjects => Set<UserDefaultProject>();
+
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
 
@@ -102,6 +105,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             member.HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
             member.HasOne<User>().WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Restrict);
             member.HasOne<Role>().WithMany().HasForeignKey(m => m.RoleId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<UserDefaultProject>(chosen =>
+        {
+            chosen.HasIndex(row => row.UserId).IsUnique();
+            chosen.HasOne<User>().WithMany().HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Restrict);
+            chosen.HasOne<Project>().WithMany().HasForeignKey(row => row.ProjectId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Role>(role =>
         {

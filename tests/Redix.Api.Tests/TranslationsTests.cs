@@ -7,13 +7,13 @@ namespace Redix.Api.Tests;
 public class TranslationsTests(MigratedApiFactory factory)
 {
     [Theory]
-    [InlineData("ar", "مصروفات المشاريع")]
-    [InlineData("en", "Project expenses")]
-    public async Task BundleHoldsEveryWordOfTheLanguage(string language, string subtitle)
+    [InlineData("ar", "اختر المشروع")]
+    [InlineData("en", "Choose a project")]
+    public async Task BundleHoldsEveryWordOfTheLanguage(string language, string choose)
     {
         var words = await factory.CreateClient().GetFromJsonAsync<Dictionary<string, string>>($"/translations/{language}");
 
-        Assert.Equal(subtitle, words!["app.subtitle"]);
+        Assert.Equal(choose, words!["projects.choose"]);
         Assert.Equal("REDIX", words["app.title"]);
     }
 

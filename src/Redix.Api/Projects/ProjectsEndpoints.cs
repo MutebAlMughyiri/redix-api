@@ -5,7 +5,7 @@ using Redix.Api.Auth;
 
 namespace Redix.Api.Projects;
 
-/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), adds units and closes them (UC-006, FR-04).</summary>
+/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), adds units and closes them (UC-006, FR-04), and keeps each user's default (UC-010, FR-37).</summary>
 public static class ProjectsEndpoints
 {
     /// <summary>Maps <c>GET /projects</c>, <c>POST /projects</c>, <c>POST /projects/{projectId}/units</c> and <c>POST /projects/{projectId}/close</c>.</summary>
@@ -15,6 +15,8 @@ public static class ProjectsEndpoints
         app.MapPost("/projects", Create).RequireAuthorization(SessionPolicies.Working);
         app.MapPost("/projects/{projectId:guid}/units", AddUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/close", Close).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPost("/projects/{projectId:guid}/default", SetDefault).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapPost("/projects/default/remove", RemoveDefault).RequireAuthorization(SessionPolicies.Working);
     }
 
     /// <summary>
@@ -81,6 +83,40 @@ public static class ProjectsEndpoints
     /// <param name="db">The database the project lives in.</param>
     public static Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) => ChangeAsync(projectId, principal, db, project => project.Close());
 
+    /// <summary>Makes a project the caller's default, replacing any other, and says whether sign-in opens it directly (FR-37). It applies from the next sign-in (AC-37.1).</summary>
+    /// <param name="projectId">The project, which the caller must be able to read.</param>
+    /// <param name="request">Whether sign-in opens it directly.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the choice lives in.</param>
+    public static async Task<DefaultProjectView> SetDefault(Guid projectId, SetDefaultProjectRequest request, ClaimsPrincipal principal, RedixDbContext db)
+    {
+        var userId = AccessTokens.UserIdOf(principal);
+        var chosen = await db.UserDefaultProjects.SingleOrDefaultAsync(row => row.UserId == userId);
+        if (chosen is null)
+        {
+            db.UserDefaultProjects.Add(new UserDefaultProject { UserId = userId, ProjectId = projectId });
+        }
+        else
+        {
+            chosen.ProjectId = projectId;
+        }
+        (await db.Users.SingleAsync(user => user.Id == userId)).OpenDefaultProject = request.OpenDirectly;
+        await db.SaveChangesAsync();
+        return new DefaultProjectView(projectId.ToString(), request.OpenDirectly);
+    }
+
+    /// <summary>Clears the caller's default, which also turns "open directly" off.</summary>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the choice lives in.</param>
+    public static async Task<DefaultProjectView> RemoveDefault(ClaimsPrincipal principal, RedixDbContext db)
+    {
+        var userId = AccessTokens.UserIdOf(principal);
+        await db.UserDefaultProjects.Where(row => row.UserId == userId).ExecuteDeleteAsync();
+        (await db.Users.SingleAsync(user => user.Id == userId)).OpenDefaultProject = false;
+        await db.SaveChangesAsync();
+        return new DefaultProjectView("", false);
+    }
+
     private static async Task<IResult> ChangeAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, Func<Project, ProjectChangeOutcome> change)
     {
         var project = await db.Projects.Include(project => project.Units.OrderBy(unit => unit.SortOrder)).SingleOrDefaultAsync(project => project.Id == projectId);
@@ -121,6 +157,15 @@ public static class ProjectsEndpoints
 /// <param name="StartDate">The day the project started.</param>
 /// <param name="Units">The names of the project's units, in order; may be empty.</param>
 public record CreateProjectRequest(string Name, DateOnly StartDate, List<string> Units);
+
+/// <summary>What the app sends to set the default project.</summary>
+/// <param name="OpenDirectly">Whether sign-in skips the list and opens it.</param>
+public record SetDefaultProjectRequest(bool OpenDirectly);
+
+/// <summary>The caller's default project, as a session says it.</summary>
+/// <param name="DefaultProjectId">The project; empty when none.</param>
+/// <param name="OpenDefaultProject">Whether sign-in opens it directly.</param>
+public record DefaultProjectView(string DefaultProjectId, bool OpenDefaultProject);
 
 /// <summary>What the app sends to add a unit.</summary>
 /// <param name="Name">The unit's name.</param>

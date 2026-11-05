@@ -273,4 +273,126 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Forbidden, (await AddUnitAsync(client, project.Id)).StatusCode);
     }
+
+    private Task<HttpResponseMessage> SignInAsync(User user) =>
+        factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(user.Username, Password));
+
+    private async Task<Session> SessionOfAsync(User user) => (await (await SignInAsync(user)).Content.ReadFromJsonAsync<Session>(Json))!;
+
+    private static Task<HttpResponseMessage> SetDefaultAsync(HttpClient client, Guid projectId, bool openDirectly = true) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/default", new SetDefaultProjectRequest(openDirectly));
+
+    [Fact]
+    public async Task NoDefaultProjectAtFirst()
+    {
+        var session = await SessionOfAsync(await factory.AddUserAsync(Password));
+
+        Assert.Equal(("", false), (session.DefaultProjectId, session.OpenDefaultProject));
+    }
+
+    [Fact]
+    public async Task ADefaultProjectIsKeptForTheNextSession()
+    {
+        var user = await StarterAsync();
+        var client = await ClientOfAsync(user);
+        var project = await factory.ApprovedProjectAsync(client, "غصون 6");
+
+        var answer = await SetDefaultAsync(client, project.Id);
+
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        var session = await SessionOfAsync(user);
+        Assert.Equal((project.Id.ToString(), true), (session.DefaultProjectId, session.OpenDefaultProject));
+    }
+
+    [Fact]
+    public async Task ANewDefaultReplacesTheOld()
+    {
+        var user = await StarterAsync();
+        var client = await ClientOfAsync(user);
+        var first = await factory.ApprovedProjectAsync(client, "غصون 6");
+        var second = await factory.ApprovedProjectAsync(client, "غصون 7");
+        await SetDefaultAsync(client, first.Id);
+
+        await SetDefaultAsync(client, second.Id, openDirectly: false);
+
+        var session = await SessionOfAsync(user);
+        Assert.Equal((second.Id.ToString(), false), (session.DefaultProjectId, session.OpenDefaultProject));
+    }
+
+    [Fact]
+    public async Task RemovingTheDefaultTurnsOpenDirectlyOff()
+    {
+        var user = await StarterAsync();
+        var client = await ClientOfAsync(user);
+        var project = await factory.ApprovedProjectAsync(client, "غصون 6");
+        await SetDefaultAsync(client, project.Id);
+
+        var answer = await client.PostAsync("/projects/default/remove", null);
+
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        var session = await SessionOfAsync(user);
+        Assert.Equal(("", false), (session.DefaultProjectId, session.OpenDefaultProject));
+    }
+
+    [Fact]
+    public async Task ADefaultWithoutAccessIsNotOffered()
+    {
+        var starter = await ClientOfAsync(await StarterAsync());
+        var project = await factory.ApprovedProjectAsync(starter, "غصون 6");
+        var user = await factory.AddUserAsync(Password);
+        await factory.GiveRoleAsync(user.Id, project.Id, Reader);
+        var client = await ClientOfAsync(user);
+        await SetDefaultAsync(client, project.Id);
+        Assert.Equal(project.Id.ToString(), (await SessionOfAsync(user)).DefaultProjectId);
+
+        await starter.PostAsync($"/projects/{project.Id}/users/{user.Id}/roles/{RoleSeed.IdOf(Reader)}/remove", null);
+
+        Assert.Equal("", (await SessionOfAsync(user)).DefaultProjectId);
+    }
+
+    [Fact]
+    public async Task AProjectWithoutAccessCannotBeTheDefault()
+    {
+        var starter = await ClientOfAsync(await StarterAsync());
+        var project = await factory.ApprovedProjectAsync(starter, "غصون 6");
+        var user = await factory.AddUserAsync(Password);
+        var client = await ClientOfAsync(user);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await SetDefaultAsync(client, project.Id)).StatusCode);
+
+        Assert.Equal("", (await SessionOfAsync(user)).DefaultProjectId);
+    }
+
+    [Fact]
+    public async Task AWaitingProjectCannotBeTheDefault()
+    {
+        var client = await ClientOfAsync(await StarterAsync());
+        var waiting = await ProjectOf(await CreateAsync(client, "غصون 8"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await SetDefaultAsync(client, waiting.Id)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ADefaultIsOneUsersAlone()
+    {
+        var user = await StarterAsync();
+        var client = await ClientOfAsync(user);
+        var project = await factory.ApprovedProjectAsync(client, "غصون 6");
+        var other = await factory.AddUserAsync(Password);
+        await factory.GiveRoleAsync(other.Id, project.Id, Reader);
+
+        await SetDefaultAsync(client, project.Id);
+
+        var session = await SessionOfAsync(other);
+        Assert.Equal(("", false), (session.DefaultProjectId, session.OpenDefaultProject));
+    }
+
+    [Fact]
+    public async Task AFinishedProjectCanBeTheDefault()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 5");
+        await client.PostAsync($"/projects/{project.Id}/close", null);
+
+        Assert.Equal(HttpStatusCode.OK, (await SetDefaultAsync(client, project.Id)).StatusCode);
+    }
 }
