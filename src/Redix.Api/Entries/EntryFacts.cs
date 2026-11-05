@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Projects;
+using Redix.Api.Suppliers;
 
 namespace Redix.Api.Entries;
 
@@ -15,7 +16,7 @@ public sealed class EntryFacts
     private Dictionary<Guid, string> _items = [];
     private Dictionary<Guid, string> _units = [];
     private Dictionary<Guid, string> _accounts = [];
-    private Dictionary<Guid, string> _suppliers = [];
+    private Dictionary<Guid, Supplier> _suppliers = [];
     private Dictionary<Guid, Guid> _contractors = [];
     private Dictionary<Guid, string> _authors = [];
 
@@ -35,7 +36,7 @@ public sealed class EntryFacts
             _items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)).ToDictionaryAsync(item => item.Id, item => item.Name),
             _units = await db.Set<Unit>().Where(unit => unit.ProjectId == projectId).ToDictionaryAsync(unit => unit.Id, unit => unit.Name),
             _accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name),
-            _suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id, supplier => supplier.Name),
+            _suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id),
             _contractors = await db.Contracts.Where(contract => contract.ProjectId == projectId).ToDictionaryAsync(contract => contract.Id, contract => contract.SupplierId),
             _authors = await db.Users.Where(user => authorIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName),
         };
@@ -59,12 +60,21 @@ public sealed class EntryFacts
     /// <summary>Who entered it.</summary>
     public string AuthorNameOf(Entry entry) => _authors.GetValueOrDefault(entry.CreatedByUserId, "");
 
-    /// <summary>Its supplier, or its contract's contractor.</summary>
-    public string SupplierNameOf(Entry entry)
+    /// <summary>Its supplier, or its contract's contractor; an empty one when it has none.</summary>
+    public Supplier SupplierOf(Entry entry)
     {
         var supplierId = _purchases.TryGetValue(entry.Id, out var purchase) ? purchase.SupplierId : _payments.TryGetValue(entry.Id, out var payment) ? _contractors.GetValueOrDefault(payment.ContractId) : Guid.Empty;
-        return _suppliers.GetValueOrDefault(supplierId, "");
+        return _suppliers.GetValueOrDefault(supplierId) ?? new Supplier { Name = "" };
     }
+
+    /// <summary>The name of its supplier.</summary>
+    public string SupplierNameOf(Entry entry) => SupplierOf(entry).Name;
+
+    /// <summary>The VAT number of its supplier.</summary>
+    public string SupplierVatNumberOf(Entry entry) => SupplierOf(entry).VatNumber;
+
+    /// <summary>What was bought; empty when not said.</summary>
+    public string ProductOf(Entry entry) => _purchases.TryGetValue(entry.Id, out var purchase) ? purchase.Product : "";
 
     /// <summary>The id of its file; empty when it has none.</summary>
     public string AttachmentIdOf(Entry entry) => _files[entry.Id].Select(file => file.AttachmentId.ToString()).FirstOrDefault("");

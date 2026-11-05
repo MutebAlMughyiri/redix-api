@@ -33,6 +33,9 @@ public class Invoice
     /// <summary>True for a credit note (BR-18). Its figures are negative, so a total needs no check of this.</summary>
     public bool IsCreditNote { get; init; }
 
+    /// <summary>The seller's VAT number on its QR code, when attached later (UC-039): what Finance compares with the supplier's. Empty otherwise.</summary>
+    public string SellerVatNumber { get; init; } = "";
+
     /// <summary>The first day of the quarter it is declared in, by default the quarter of its date (BR-17).</summary>
     public DateOnly VatPeriodStart { get; init; }
 

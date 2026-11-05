@@ -31,7 +31,7 @@ public static class ApprovalsEndpoints
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.UnitNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.InvoiceOf(entry).Vat, facts.AccountNameOf(entry), entry.Notes, facts.ExpenseOf(entry).WithoutInvoiceReason, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry))).ToList();
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.UnitNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.InvoiceOf(entry).Vat, facts.AccountNameOf(entry), entry.Notes, facts.ExpenseOf(entry).WithoutInvoiceReason, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry), facts.InvoiceOf(entry).Total, facts.InvoiceOf(entry).SellerVatNumber, facts.SupplierVatNumberOf(entry))).ToList();
     }
 
     /// <summary>
@@ -141,7 +141,10 @@ public static class ApprovalsEndpoints
 /// <param name="AttachmentId">Its file; empty when it has none.</param>
 /// <param name="ContentType">What the file is; empty when it has none.</param>
 /// <param name="AuthorName">Who entered it.</param>
-public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string UnitName, string SupplierName, string InvoiceNumber, decimal Vat, string AccountName, string Notes, string WithoutInvoiceReason, string AttachmentId, string ContentType, string AuthorName);
+/// <param name="InvoiceTotal">Its invoice's total, which may differ from what was paid (AC-49.3).</param>
+/// <param name="SellerVatNumber">The seller's VAT number on an invoice attached later; empty otherwise.</param>
+/// <param name="SupplierVatNumber">Its supplier's VAT number, to compare with that.</param>
+public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string UnitName, string SupplierName, string InvoiceNumber, decimal Vat, string AccountName, string Notes, string WithoutInvoiceReason, string AttachmentId, string ContentType, string AuthorName, decimal InvoiceTotal, string SellerVatNumber, string SupplierVatNumber);
 
 /// <summary>The entries to approve.</summary>
 /// <param name="EntryIds">Their ids.</param>

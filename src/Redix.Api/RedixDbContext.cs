@@ -321,6 +321,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             invoice.HasKey(i => i.EntryId);
             invoice.Property(i => i.Number).HasMaxLength(Invoice.NumberMaxLength);
+            invoice.Property(i => i.SellerVatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
         });

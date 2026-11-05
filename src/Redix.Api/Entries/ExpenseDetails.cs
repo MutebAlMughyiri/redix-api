@@ -24,7 +24,7 @@ public class ExpenseDetails
     public decimal BankFees { get; init; }
 
     /// <summary>Why there is no invoice; empty when there is one (FR-09).</summary>
-    public string WithoutInvoiceReason { get; init; } = "";
+    public string WithoutInvoiceReason { get; set; } = "";
 
     /// <summary>What becomes of it when paid from a partner's money (BR-25).</summary>
     public PartnerTreatment PartnerTreatment { get; init; } = PartnerTreatment.Empty;

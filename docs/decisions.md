@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | Attaching an invoice changes the status only of what is approved | BR-22 says "returns to approval". What is a draft or was rejected has not reached Finance, so sending it would act for its author, and Finance sees the difference when it arrives |
+| 2026-11-05 | An expense can take an invoice only when it was entered without one, so the canvas's "without invoice only" switch is gone | One with an invoice has nothing to attach, and fixing a draft's invoice is what its form does |
+| 2026-11-05 | The same invoice on two expenses is refused at attach, with no way to confirm it, unlike at entry | BR-22 says it cannot be attached; FR-17's confirmation is about entering one |
 | 2026-11-05 | Notifications are rows the app reads; nothing is pushed to a phone yet | Push needs Firebase and Huawei accounts nobody has opened. Rows work today, and a sender added later only reads them |
 | 2026-11-05 | A notification with an empty `EntryId` is about the project itself, so it has no foreign key to entries | One table holds both kinds without a null, and deleting an entry removes its rows by hand |
 | 2026-11-05 | A deleted entry is removed from the ledger, and its steps with it; the audit trail keeps what it held | BR-15's rule against deleting is about what entries depend on. An entry never approved counted for nothing, and UC-033 asks for it to go |

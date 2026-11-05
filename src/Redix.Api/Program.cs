@@ -103,6 +103,7 @@ app.MapContractorPayments();
 app.MapEntries();
 app.MapApprovals();
 app.MapNotifications();
+app.MapInvoiceAttach();
 app.MapSyncEndpoints();
 
 app.Run();

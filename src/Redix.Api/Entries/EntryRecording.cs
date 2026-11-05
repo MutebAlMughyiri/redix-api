@@ -113,7 +113,7 @@ public static class EntryRecording
     };
 
     /// <summary>The invoice of <paramref name="entryId"/>, with its <paramref name="kept"/> figures, declared in the quarter of its date by default (BR-17).</summary>
-    public static Invoice InvoiceOf(Guid entryId, string number, DateOnly date, InvoiceFigures kept, bool isCreditNote) => new()
+    public static Invoice InvoiceOf(Guid entryId, string number, DateOnly date, InvoiceFigures kept, bool isCreditNote, string sellerVatNumber = "") => new()
     {
         EntryId = entryId,
         Number = number,
@@ -124,6 +124,7 @@ public static class EntryRecording
         Vat = kept.Vat,
         Total = kept.Total,
         IsCreditNote = isCreditNote,
+        SellerVatNumber = sellerVatNumber,
         VatPeriodStart = Invoice.QuarterStartOf(date),
     };
 

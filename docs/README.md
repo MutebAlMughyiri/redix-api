@@ -50,5 +50,6 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-032](use-cases/UC-032-approve-reject.md) | Approve one or many, or reject saying why | Whoever decides entries |
 | [UC-033, UC-034, UC-035](use-cases/UC-033-change-entry.md) | Change an unapproved entry, keep the approved version, reverse an approved one | Who entered it, and whoever decides entries |
 | [UC-036](use-cases/UC-036-notifications.md) | Tell people what happened to an entry or a project | Everyone signed in |
+| [UC-039](use-cases/UC-039-attach-invoice.md) | Attach an invoice to an expense entered without one | Whoever enters expenses |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |
