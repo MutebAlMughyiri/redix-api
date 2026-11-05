@@ -42,7 +42,7 @@ public class Entry
     public DateTime CreatedAt { get; init; }
 
     /// <summary>When it was approved, which marks it new since the last report; <see cref="NotApproved"/> until then.</summary>
-    public DateTime ApprovedAt { get; init; } = NotApproved;
+    public DateTime ApprovedAt { get; set; } = NotApproved;
 
     /// <summary>Whether it can be sent for approval: only a draft, or what was rejected and fixed (UC-028).</summary>
     public bool CanBeSubmitted() => Status is EntryStatus.Draft or EntryStatus.Rejected;

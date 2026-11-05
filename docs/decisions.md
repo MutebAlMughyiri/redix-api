@@ -6,6 +6,9 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | A credit note is approved only with or after its invoice | Row 105: approved alone, it would reduce an item and the VAT statement by an invoice that does not count. Sending it with its invoice in one approval works |
+| 2026-11-05 | Each entry of a bulk approval stands alone: what can go goes, and each failure comes back by id with its reason | AC-19.2 refuses silent partial approval, not partial approval; holding 19 good entries back for one bad one helps nobody |
+| 2026-11-05 | Whoever entered an entry may also approve it, if they hold the permission | The BRS has no separation of duties, and Finance enters capital and revenue directly |
 | 2026-11-05 | One stamp covers all of a project's lists at a sync, and any change sends them all | A row that left a list leaves nothing to compare, and a hash of what is sent cannot miss it; these lists are small, and a change is rare |
 | 2026-11-05 | An upload sent again by its author answers the entry as it is, and changes nothing | Offline uploads are cut and retried, so a repeat has to be an answer, not a refusal. Anyone else using that id is still refused |
 | 2026-11-05 | A contractor payment may name a subgroup of its contract's item | The item report would otherwise show every payment as general |

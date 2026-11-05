@@ -98,6 +98,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What ties one entry to another.</summary>
     public DbSet<EntryLink> EntryLinks => Set<EntryLink>();
 
+    /// <summary>Each entry's steps through approval.</summary>
+    public DbSet<EntryDecision> EntryDecisions => Set<EntryDecision>();
+
     /// <summary>The files each entry carries.</summary>
     public DbSet<EntryAttachment> EntryAttachments => Set<EntryAttachment>();
 
@@ -317,6 +320,13 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.Property(i => i.Number).HasMaxLength(Invoice.NumberMaxLength);
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<EntryDecision>(decision =>
+        {
+            decision.Property(d => d.Reason).HasMaxLength(ApprovalsEndpoints.ReasonMaxLength);
+            decision.HasIndex(d => d.EntryId);
+            decision.HasOne<Entry>().WithMany().HasForeignKey(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            decision.HasOne<User>().WithMany().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<EntryLink>(link =>
         {

@@ -28,7 +28,8 @@ public static class EntriesEndpoints
     public static Task<List<EntryStatusView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return db.Entries.Where(entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId).OrderByDescending(entry => entry.CreatedAt).Select(entry => new EntryStatusView(entry.Id, entry.Status)).ToListAsync();
+        return db.Entries.Where(entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId).OrderByDescending(entry => entry.CreatedAt)
+            .Select(entry => new EntryStatusView(entry.Id, entry.Status, entry.Status != EntryStatus.Rejected ? "" : db.EntryDecisions.Where(row => row.EntryId == entry.Id && row.Action == EntryDecisionAction.Reject).OrderByDescending(row => row.Id).Select(row => row.Reason).First())).ToListAsync();
     }
 
     /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. Anything else answers 404.</summary>
@@ -74,6 +75,7 @@ public static class EntriesEndpoints
 
         entry.Status = EntryStatus.PendingApproval;
         db.Audit(entry, AuditAction.Submit, userId, time.GetUtcNow().UtcDateTime);
+        db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = time.GetUtcNow().UtcDateTime });
         await db.SaveChangesAsync();
         return Results.Ok(await ViewOfAsync(entry, db));
     }

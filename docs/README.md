@@ -46,5 +46,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-028](use-cases/UC-028-submit-entry.md) | Read an entry, and send a draft for approval | Finance and Field; everyone with access reads |
 | [UC-029](use-cases/UC-029-offline-uploads.md) | Take an entry sent from a phone exactly once, however often it is retried | The app, on its own |
 | [UC-030](use-cases/UC-030-sync.md) | Send a phone what it keeps to work without a network | The app, for anyone who reads the project |
+| [UC-031](use-cases/UC-031-pending-entries.md) | List what waits for approval, oldest first, with its file | Whoever decides entries |
+| [UC-032](use-cases/UC-032-approve-reject.md) | Approve one or many, or reject saying why | Whoever decides entries |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

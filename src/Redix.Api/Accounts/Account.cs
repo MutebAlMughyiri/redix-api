@@ -29,9 +29,6 @@ public class Account
     /// <summary>The user who holds it; <see cref="Guid.Empty"/> when nobody does.</summary>
     public Guid CustodianId => Custodians.Select(custodian => custodian.UserId).FirstOrDefault();
 
-    /// <summary>What it holds now, which is its opening balance until the entry use cases add the ledger's approved movements.</summary>
-    public decimal Balance => OpeningBalance;
-
     /// <summary>Whether <paramref name="userId"/> holds it.</summary>
     public bool IsHeldBy(Guid userId) => Custodians.Any(custodian => custodian.UserId == userId);
 

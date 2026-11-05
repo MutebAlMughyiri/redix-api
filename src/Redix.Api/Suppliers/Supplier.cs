@@ -46,7 +46,7 @@ public class Supplier
     public string Mobile { get; set; } = "";
 
     /// <summary>Where it stands.</summary>
-    public SupplierStatus Status { get; init; } = SupplierStatus.Approved;
+    public SupplierStatus Status { get; set; } = SupplierStatus.Approved;
 
     /// <summary>False once disabled: it disappears from entry and stays in the reports (BR-15).</summary>
     public bool IsActive { get; set; } = true;

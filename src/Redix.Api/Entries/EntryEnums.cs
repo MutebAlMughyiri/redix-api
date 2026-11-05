@@ -57,7 +57,20 @@ public enum EntryAttachmentRole : byte
     Other,
 }
 
-/// <summary>What ties one entry to another.</summary>
+/// <summary>One step of an entry through approval.</summary>
+public enum EntryDecisionAction : byte
+{
+    /// <summary>Sent for approval.</summary>
+    Submit,
+
+    /// <summary>Approved: it counts.</summary>
+    Approve,
+
+    /// <summary>Refused, saying why.</summary>
+    Reject,
+}
+
+/// <summary>What ties two entries.</summary>
 public enum EntryLinkType : byte
 {
     /// <summary>The two sides of a transfer between accounts.</summary>

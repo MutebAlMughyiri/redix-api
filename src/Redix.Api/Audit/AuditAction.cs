@@ -45,6 +45,12 @@ public enum AuditAction
     /// <summary>The admin let a registered project in (UC-066).</summary>
     ApproveProject,
 
+    /// <summary>Finance approved an entry, so it counts (UC-032).</summary>
+    Approve,
+
+    /// <summary>Finance rejected an entry, saying why (UC-032).</summary>
+    Reject,
+
     /// <summary>The admin refused a registered project, saying why (UC-066).</summary>
     RejectProject,
 

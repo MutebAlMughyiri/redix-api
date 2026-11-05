@@ -333,7 +333,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("RolePermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'AttachFiles')");
+                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'AttachFiles', 'ApproveEntries')");
                         });
 
                     b.HasData(
@@ -360,6 +360,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("6d013eea-b4b2-27df-4b1c-fbf617b5794a"),
                             Permission = "SeeAllCapital",
                             RoleId = new Guid("e469cf77-7a5b-a1a5-425b-4a42e26c96bd")
+                        },
+                        new
+                        {
+                            Id = new Guid("d2bdc53e-00df-5caa-8f2c-13197cb0e190"),
+                            Permission = "ApproveEntries",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
                         },
                         new
                         {
@@ -720,6 +726,46 @@ namespace Redix.Api.Migrations
                     b.HasIndex("AttachmentId");
 
                     b.ToTable("EntryAttachments");
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.EntryDecision", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<byte>("Action")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("EntryDecisions");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.EntryLink", b =>
@@ -4760,6 +4806,580 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("f7aa01bb-a08c-fd84-a26e-0f4a02368f21"),
                             Value = "هذا البند عليه قيود، فلا يتغير نوعه."
+                        },
+                        new
+                        {
+                            Id = new Guid("f2da35e5-3b03-99a2-c729-2d87804062db"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("338c0fed-ebff-67bc-e0fa-5bd1e3b24e0c"),
+                            Value = "Waiting for approval"
+                        },
+                        new
+                        {
+                            Id = new Guid("49b88906-65b7-e97a-03a7-b77839b70e35"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("338c0fed-ebff-67bc-e0fa-5bd1e3b24e0c"),
+                            Value = "بانتظار الاعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("03b39f24-015d-5117-5b7b-ed8f9e7ee1c7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("711490e3-5ccb-59ec-030e-26b08865b0a0"),
+                            Value = "Nothing is waiting for approval."
+                        },
+                        new
+                        {
+                            Id = new Guid("f401ad31-bcc4-056e-48a2-85618c6cc068"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("711490e3-5ccb-59ec-030e-26b08865b0a0"),
+                            Value = "لا شيء بانتظار الاعتماد."
+                        },
+                        new
+                        {
+                            Id = new Guid("06164929-a665-1198-ec1f-a6e2278dbb3a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2cd9691e-fe19-6384-2745-9b1c0f782d71"),
+                            Value = "Could not read what is waiting. Check the connection and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("f8288b56-1c40-60c8-d18e-b0fdc84783b4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2cd9691e-fe19-6384-2745-9b1c0f782d71"),
+                            Value = "تعذرت قراءة ما ينتظر. تحقق من الاتصال وحاول مجدداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("7cfff014-ce15-fd80-fa6a-1cc505275f3f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("23f2ed67-dfc9-a31d-6835-23026e65948d"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("644b6cb5-ef60-82a9-dce7-c84a3a6d72b1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("23f2ed67-dfc9-a31d-6835-23026e65948d"),
+                            Value = "لا اتصال بالخادم. حاول مجدداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("b32662e1-ac20-3ef9-0d7e-5d6dd85158d3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("97a8b48e-51a3-e1e5-7229-da3211d1ec1a"),
+                            Value = "All"
+                        },
+                        new
+                        {
+                            Id = new Guid("693d629a-fe16-83d6-8e03-19cfbb917165"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("97a8b48e-51a3-e1e5-7229-da3211d1ec1a"),
+                            Value = "الكل"
+                        },
+                        new
+                        {
+                            Id = new Guid("a6902aee-08d2-3320-b4e2-03e40172436b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("db434b0e-fca1-d5bd-e5e6-b7e11f512e63"),
+                            Value = "Purchases"
+                        },
+                        new
+                        {
+                            Id = new Guid("839b885e-723e-6b9b-9ee1-40cac7accf67"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("db434b0e-fca1-d5bd-e5e6-b7e11f512e63"),
+                            Value = "مشتريات"
+                        },
+                        new
+                        {
+                            Id = new Guid("94e33314-5b6a-29aa-4f31-c965847747e8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("efe2f215-2679-6afa-f013-5f2831a3ad0d"),
+                            Value = "Contractor payments"
+                        },
+                        new
+                        {
+                            Id = new Guid("a88558ba-bb33-e988-ed57-87f27785bff9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("efe2f215-2679-6afa-f013-5f2831a3ad0d"),
+                            Value = "دفعات مقاولين"
+                        },
+                        new
+                        {
+                            Id = new Guid("9d85559e-6be3-186a-1200-acaa8a1d6b94"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("28dbe9c8-0563-d9c3-859b-0a54e80ba746"),
+                            Value = "Approve"
+                        },
+                        new
+                        {
+                            Id = new Guid("551a5636-c500-9bee-823f-1e76d3761df4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("28dbe9c8-0563-d9c3-859b-0a54e80ba746"),
+                            Value = "اعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("71329c37-e1c2-c006-923b-458fb2aa7639"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("423d6f2d-e430-8ac9-48fc-ae8bfa25cb6d"),
+                            Value = "Reject"
+                        },
+                        new
+                        {
+                            Id = new Guid("d94d2fd7-57a3-2f53-4977-0dc14eec5101"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("423d6f2d-e430-8ac9-48fc-ae8bfa25cb6d"),
+                            Value = "رفض"
+                        },
+                        new
+                        {
+                            Id = new Guid("7433a2e0-7a84-7689-9953-0d337a0118d2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("772e071b-75e1-28ee-8740-e783aaa76b57"),
+                            Value = "Approve selected"
+                        },
+                        new
+                        {
+                            Id = new Guid("8ec27bfb-8b44-3252-6a5b-fc8e2758df54"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("772e071b-75e1-28ee-8740-e783aaa76b57"),
+                            Value = "اعتماد المحدد"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5c9d567-f42c-4f75-1691-5ddfb6d34464"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("705a7775-5e8e-f3d9-e897-93e451e8d827"),
+                            Value = "Select entries to approve together"
+                        },
+                        new
+                        {
+                            Id = new Guid("e62cb5fe-0240-4708-0dd2-309159d1014a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("705a7775-5e8e-f3d9-e897-93e451e8d827"),
+                            Value = "حدّد قيوداً للاعتماد الجماعي"
+                        },
+                        new
+                        {
+                            Id = new Guid("443b2d31-c9c4-7214-cbde-71b4a0e0f983"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("27a7104a-afd2-424f-1a1d-33600d7f049d"),
+                            Value = "Entered by"
+                        },
+                        new
+                        {
+                            Id = new Guid("2a6ffd43-a6d2-9a19-2806-2d3ba4f09be0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("27a7104a-afd2-424f-1a1d-33600d7f049d"),
+                            Value = "أدخله"
+                        },
+                        new
+                        {
+                            Id = new Guid("61cbc328-18e3-a3d2-6e9b-0779a96923cd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8f382797-5142-3cb6-5646-b245912d0d89"),
+                            Value = "Including VAT"
+                        },
+                        new
+                        {
+                            Id = new Guid("86d7a850-1543-d609-addb-941191a53738"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8f382797-5142-3cb6-5646-b245912d0d89"),
+                            Value = "شامل ضريبة"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbf07f8f-5ce8-63d7-c2af-8c3d93fa735f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d5649a27-1638-d95d-0c9c-c2b28901a4c7"),
+                            Value = "Without invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("41e67c6a-8c44-72db-6a8f-2f37885b0177"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d5649a27-1638-d95d-0c9c-c2b28901a4c7"),
+                            Value = "بدون فاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("04e59762-1d55-c7e0-2cc8-ce7863419500"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9ad90439-bc2c-6788-3e50-09c4c447588c"),
+                            Value = "Open the file"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1a8fd40-fb65-e3ee-3821-eb0ea0cad85a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9ad90439-bc2c-6788-3e50-09c4c447588c"),
+                            Value = "فتح الملف"
+                        },
+                        new
+                        {
+                            Id = new Guid("ba526b82-2fa1-8b38-b8db-5158c720e391"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("95e136cd-e108-c6dc-13ed-b987ae036063"),
+                            Value = "The file could not be opened."
+                        },
+                        new
+                        {
+                            Id = new Guid("1c80da2b-03c3-c8c8-8abb-7274da8f1a9c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("95e136cd-e108-c6dc-13ed-b987ae036063"),
+                            Value = "تعذر فتح الملف."
+                        },
+                        new
+                        {
+                            Id = new Guid("a058e5f4-fd5f-ed10-d0b3-7853475b6212"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f59f9d15-b1c8-d7e4-68b6-8ea7e5e2d198"),
+                            Value = "Reject the expense"
+                        },
+                        new
+                        {
+                            Id = new Guid("efc5d5da-391a-a123-fc6b-eeed7bc13c5e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f59f9d15-b1c8-d7e4-68b6-8ea7e5e2d198"),
+                            Value = "رفض المصروف"
+                        },
+                        new
+                        {
+                            Id = new Guid("ffd38969-1890-8b22-fd24-8a302ffdc79d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3a54e458-808b-2f23-1ddc-03727b3ef47d"),
+                            Value = "Quick reason"
+                        },
+                        new
+                        {
+                            Id = new Guid("d4fb6ff0-b19d-d02e-7359-104e3308068d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3a54e458-808b-2f23-1ddc-03727b3ef47d"),
+                            Value = "سبب سريع"
+                        },
+                        new
+                        {
+                            Id = new Guid("f632250b-caa1-c286-6db0-532735828b18"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9c653f8d-24cb-bfdb-e2c8-ea65f37ea8dd"),
+                            Value = "The invoice's picture is not clear"
+                        },
+                        new
+                        {
+                            Id = new Guid("86930c14-e8d1-8a00-7d35-1db59f2d309a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9c653f8d-24cb-bfdb-e2c8-ea65f37ea8dd"),
+                            Value = "صورة الفاتورة غير واضحة"
+                        },
+                        new
+                        {
+                            Id = new Guid("793dd720-f479-ed71-932f-0c1c98df1087"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4c99caf5-3f60-f788-46d0-a6f2050c86a9"),
+                            Value = "The amount does not match the invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("2f48c14b-20cc-5567-9008-15088029f85d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4c99caf5-3f60-f788-46d0-a6f2050c86a9"),
+                            Value = "المبلغ لا يطابق الفاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("b0af1a92-9ebc-9d56-9d0f-20647e0c25b9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e3004fbe-96e6-1618-a77a-bd12eb7f6e3b"),
+                            Value = "The item is wrong"
+                        },
+                        new
+                        {
+                            Id = new Guid("95e26c3a-3ccc-aec4-d36c-f245c0887c56"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e3004fbe-96e6-1618-a77a-bd12eb7f6e3b"),
+                            Value = "البند غير صحيح"
+                        },
+                        new
+                        {
+                            Id = new Guid("d04ce8da-1296-b46c-3ef8-bab65fd39e5c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("02819354-7adf-4d7c-0f6e-10d4840479a7"),
+                            Value = "A repeated invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a577061-dc73-d48f-f237-47fa260c1483"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("02819354-7adf-4d7c-0f6e-10d4840479a7"),
+                            Value = "فاتورة مكررة"
+                        },
+                        new
+                        {
+                            Id = new Guid("44b7f447-f095-ece2-d777-1535fd54a35e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e29ac4a4-aa9c-5e60-66bc-bb3cc77defd2"),
+                            Value = "Reason (required)"
+                        },
+                        new
+                        {
+                            Id = new Guid("12d4dbef-b9a3-c10f-d5cf-2739afb93706"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e29ac4a4-aa9c-5e60-66bc-bb3cc77defd2"),
+                            Value = "السبب (إلزامي)"
+                        },
+                        new
+                        {
+                            Id = new Guid("56c052ca-bee3-7631-652a-52c9e77f9042"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0f496a72-6aa9-9845-a2bd-7b9df5c35b0d"),
+                            Value = "The reason reaches who entered it, and the entry returns to them to fix and send again."
+                        },
+                        new
+                        {
+                            Id = new Guid("90c5a3e6-4ad5-691e-d348-74da5e463ad6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0f496a72-6aa9-9845-a2bd-7b9df5c35b0d"),
+                            Value = "يصل السبب لمن أدخله، ويعود القيد له للتعديل وإعادة الإرسال."
+                        },
+                        new
+                        {
+                            Id = new Guid("c612bdfb-b377-78c1-3b1f-987856a54580"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("dc6108e5-d00e-7366-079d-c085383fd361"),
+                            Value = "Reject and send the reason"
+                        },
+                        new
+                        {
+                            Id = new Guid("855942fd-638f-0214-64e2-939ead8a7376"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("dc6108e5-d00e-7366-079d-c085383fd361"),
+                            Value = "رفض وإرسال السبب"
+                        },
+                        new
+                        {
+                            Id = new Guid("fb73e8c3-b65d-7031-bf76-909bd16e8128"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("49a703b2-e054-2289-29a7-12dffaa4ad19"),
+                            Value = "Say why it is rejected."
+                        },
+                        new
+                        {
+                            Id = new Guid("22cef7e2-36dd-770d-ced0-8d5b085caed8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("49a703b2-e054-2289-29a7-12dffaa4ad19"),
+                            Value = "اذكر سبب الرفض."
+                        },
+                        new
+                        {
+                            Id = new Guid("32077232-7d2c-03e6-7827-370f417338c8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("923e65bb-3973-1536-0da6-6fed77ed393f"),
+                            Value = "Someone already decided this entry."
+                        },
+                        new
+                        {
+                            Id = new Guid("f8b063d7-3f00-126f-7aef-cfc899cc7dc6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("923e65bb-3973-1536-0da6-6fed77ed393f"),
+                            Value = "قرر أحدهم هذا القيد من قبل."
+                        },
+                        new
+                        {
+                            Id = new Guid("f88687a8-b936-fede-3159-9db15e0eeabe"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bfdad1c5-52c9-a786-2af4-af7f283bcde7"),
+                            Value = "This entry is no longer here."
+                        },
+                        new
+                        {
+                            Id = new Guid("e8299e2f-fcbd-ac3e-feee-9f81c3ea1eb4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bfdad1c5-52c9-a786-2af4-af7f283bcde7"),
+                            Value = "هذا القيد لم يعد هنا."
+                        },
+                        new
+                        {
+                            Id = new Guid("364aea71-34c3-b58a-083d-84d7e26b7a09"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b69a5f55-cf11-eda2-9d54-f11d11e89ab8"),
+                            Value = "The invoice this credit note returns is not approved."
+                        },
+                        new
+                        {
+                            Id = new Guid("ce5c80aa-7aea-17f4-c433-fc160700ca3d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b69a5f55-cf11-eda2-9d54-f11d11e89ab8"),
+                            Value = "الفاتورة التي يعيدها هذا المرتجع غير معتمدة."
+                        },
+                        new
+                        {
+                            Id = new Guid("d5e21278-1717-4036-641e-8b0d7797277d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("819f545f-f676-205c-39b4-9f252160b826"),
+                            Value = "This could not be done."
+                        },
+                        new
+                        {
+                            Id = new Guid("f0027403-0a50-4a40-94c4-365c9024e797"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("819f545f-f676-205c-39b4-9f252160b826"),
+                            Value = "تعذر تنفيذ ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("5d19dbbc-dbc0-28b5-dc87-25b064a2625a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b12efad9-a4d3-575e-31f4-780b64154463"),
+                            Value = "Approved"
+                        },
+                        new
+                        {
+                            Id = new Guid("218355fe-589d-59e8-14e8-bdb6facad513"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b12efad9-a4d3-575e-31f4-780b64154463"),
+                            Value = "تم الاعتماد"
+                        },
+                        new
+                        {
+                            Id = new Guid("82796d89-8715-48eb-b8b4-22e21b09a550"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("06979a48-314b-bc29-bc0d-ff7057f30b5c"),
+                            Value = "Could not be approved"
+                        },
+                        new
+                        {
+                            Id = new Guid("b9851c93-1378-b029-25f2-03f1e9fdb0ef"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("06979a48-314b-bc29-bc0d-ff7057f30b5c"),
+                            Value = "تعذر اعتماده"
+                        },
+                        new
+                        {
+                            Id = new Guid("b0f17453-e313-2166-78b6-a5a32e5e3b00"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d9d33794-9a38-c6e2-00d3-e4abf7c6af32"),
+                            Value = "Saved on this phone. It will be sent when the network returns."
+                        },
+                        new
+                        {
+                            Id = new Guid("04301270-828b-102c-3467-c07ef8c4bdf1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d9d33794-9a38-c6e2-00d3-e4abf7c6af32"),
+                            Value = "حُفظ على هذا الجهاز، ويُرسل عند عودة الشبكة."
+                        },
+                        new
+                        {
+                            Id = new Guid("97d9b24d-2d25-2676-84ab-6d91f4feabc8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("af4e7146-0390-4ae9-51ac-5d24f7a48b0f"),
+                            Value = "Waiting to sync"
+                        },
+                        new
+                        {
+                            Id = new Guid("e5e5629f-598f-db97-8e0d-aa2760cddd95"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("af4e7146-0390-4ae9-51ac-5d24f7a48b0f"),
+                            Value = "بانتظار المزامنة"
+                        },
+                        new
+                        {
+                            Id = new Guid("a899736c-4db2-7a95-9ee7-48468b544825"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("55f2a6f4-17e3-49ac-d2a4-e12bbcf1b93b"),
+                            Value = "Nothing is waiting."
+                        },
+                        new
+                        {
+                            Id = new Guid("1178de5d-f4f2-5ede-ad0a-6b1efd151989"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("55f2a6f4-17e3-49ac-d2a4-e12bbcf1b93b"),
+                            Value = "لا شيء بانتظار المزامنة."
+                        },
+                        new
+                        {
+                            Id = new Guid("baf1facc-15a9-ec26-6ec0-142223e611f5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("31201cdc-11c9-15b7-8319-28b1f71a6c67"),
+                            Value = "Waiting for the network"
+                        },
+                        new
+                        {
+                            Id = new Guid("dd28f535-f3d8-84ba-a0b5-0a8440423208"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("31201cdc-11c9-15b7-8319-28b1f71a6c67"),
+                            Value = "بانتظار الشبكة"
+                        },
+                        new
+                        {
+                            Id = new Guid("65618f07-639c-16da-2294-965a110f51c8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("871c72e3-b132-a835-90d7-5b4dc360dbe3"),
+                            Value = "Send again"
+                        },
+                        new
+                        {
+                            Id = new Guid("29815d63-2083-1ef2-b576-afd54f6bffab"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("871c72e3-b132-a835-90d7-5b4dc360dbe3"),
+                            Value = "إعادة الإرسال"
+                        },
+                        new
+                        {
+                            Id = new Guid("6e85d605-5f1c-41da-e2b0-48490e8d8250"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f319f805-8eef-cbce-6d05-752b5c30ff46"),
+                            Value = "Send anyway"
+                        },
+                        new
+                        {
+                            Id = new Guid("2189999a-26ec-0e91-c40c-2bd7013a6b4a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f319f805-8eef-cbce-6d05-752b5c30ff46"),
+                            Value = "إرسال رغم ذلك"
+                        },
+                        new
+                        {
+                            Id = new Guid("737f1238-3111-f960-e7b7-221b60e4afba"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f2a4897f-3f7b-e84c-25d6-f2aaff87e1df"),
+                            Value = "Delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("311694a2-2026-d939-49cc-dfcd8d502270"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f2a4897f-3f7b-e84c-25d6-f2aaff87e1df"),
+                            Value = "حذف"
+                        },
+                        new
+                        {
+                            Id = new Guid("f29e53dc-b0e2-08a4-863a-862138c9cf3c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("084575ec-a8f0-3e07-ae65-8cc66b51bf1e"),
+                            Value = "Delete this entry from the phone?"
+                        },
+                        new
+                        {
+                            Id = new Guid("a144a294-df3c-6231-b06d-e572e6bad7d3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("084575ec-a8f0-3e07-ae65-8cc66b51bf1e"),
+                            Value = "حذف هذا القيد من الجهاز؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("85bd0522-9c77-0872-6759-b8b1d3e1428b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("76ac5b37-e17a-f6fb-bef7-a8b1287d7231"),
+                            Value = "It was never sent, so it will be gone for good."
+                        },
+                        new
+                        {
+                            Id = new Guid("a1f915e5-7b4b-d8f5-38f6-481e06ad5e94"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("76ac5b37-e17a-f6fb-bef7-a8b1287d7231"),
+                            Value = "لم يُرسل قط، فسيذهب نهائياً."
                         },
                         new
                         {
@@ -10237,6 +10857,252 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("338c0fed-ebff-67bc-e0fa-5bd1e3b24e0c"),
+                            Description = "",
+                            Key = "approvals.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("711490e3-5ccb-59ec-030e-26b08865b0a0"),
+                            Description = "",
+                            Key = "approvals.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("2cd9691e-fe19-6384-2745-9b1c0f782d71"),
+                            Description = "",
+                            Key = "approvals.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("23f2ed67-dfc9-a31d-6835-23026e65948d"),
+                            Description = "",
+                            Key = "approvals.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("97a8b48e-51a3-e1e5-7229-da3211d1ec1a"),
+                            Description = "",
+                            Key = "approvals.all"
+                        },
+                        new
+                        {
+                            Id = new Guid("db434b0e-fca1-d5bd-e5e6-b7e11f512e63"),
+                            Description = "",
+                            Key = "approvals.purchases"
+                        },
+                        new
+                        {
+                            Id = new Guid("efe2f215-2679-6afa-f013-5f2831a3ad0d"),
+                            Description = "",
+                            Key = "approvals.contractorPayments"
+                        },
+                        new
+                        {
+                            Id = new Guid("28dbe9c8-0563-d9c3-859b-0a54e80ba746"),
+                            Description = "",
+                            Key = "approvals.approve"
+                        },
+                        new
+                        {
+                            Id = new Guid("423d6f2d-e430-8ac9-48fc-ae8bfa25cb6d"),
+                            Description = "",
+                            Key = "approvals.reject"
+                        },
+                        new
+                        {
+                            Id = new Guid("772e071b-75e1-28ee-8740-e783aaa76b57"),
+                            Description = "",
+                            Key = "approvals.approveSelected"
+                        },
+                        new
+                        {
+                            Id = new Guid("705a7775-5e8e-f3d9-e897-93e451e8d827"),
+                            Description = "",
+                            Key = "approvals.selectHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("27a7104a-afd2-424f-1a1d-33600d7f049d"),
+                            Description = "",
+                            Key = "approvals.enteredBy"
+                        },
+                        new
+                        {
+                            Id = new Guid("8f382797-5142-3cb6-5646-b245912d0d89"),
+                            Description = "",
+                            Key = "approvals.includingVat"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5649a27-1638-d95d-0c9c-c2b28901a4c7"),
+                            Description = "",
+                            Key = "approvals.withoutInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("9ad90439-bc2c-6788-3e50-09c4c447588c"),
+                            Description = "",
+                            Key = "approvals.openFile"
+                        },
+                        new
+                        {
+                            Id = new Guid("95e136cd-e108-c6dc-13ed-b987ae036063"),
+                            Description = "",
+                            Key = "approvals.fileFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("f59f9d15-b1c8-d7e4-68b6-8ea7e5e2d198"),
+                            Description = "",
+                            Key = "approvals.rejectTitle"
+                        },
+                        new
+                        {
+                            Id = new Guid("3a54e458-808b-2f23-1ddc-03727b3ef47d"),
+                            Description = "",
+                            Key = "approvals.quickReason"
+                        },
+                        new
+                        {
+                            Id = new Guid("9c653f8d-24cb-bfdb-e2c8-ea65f37ea8dd"),
+                            Description = "",
+                            Key = "approvals.reasonUnclear"
+                        },
+                        new
+                        {
+                            Id = new Guid("4c99caf5-3f60-f788-46d0-a6f2050c86a9"),
+                            Description = "",
+                            Key = "approvals.reasonAmount"
+                        },
+                        new
+                        {
+                            Id = new Guid("e3004fbe-96e6-1618-a77a-bd12eb7f6e3b"),
+                            Description = "",
+                            Key = "approvals.reasonItem"
+                        },
+                        new
+                        {
+                            Id = new Guid("02819354-7adf-4d7c-0f6e-10d4840479a7"),
+                            Description = "",
+                            Key = "approvals.reasonDuplicate"
+                        },
+                        new
+                        {
+                            Id = new Guid("e29ac4a4-aa9c-5e60-66bc-bb3cc77defd2"),
+                            Description = "",
+                            Key = "approvals.reason"
+                        },
+                        new
+                        {
+                            Id = new Guid("0f496a72-6aa9-9845-a2bd-7b9df5c35b0d"),
+                            Description = "",
+                            Key = "approvals.reasonHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("dc6108e5-d00e-7366-079d-c085383fd361"),
+                            Description = "",
+                            Key = "approvals.rejectSend"
+                        },
+                        new
+                        {
+                            Id = new Guid("49a703b2-e054-2289-29a7-12dffaa4ad19"),
+                            Description = "",
+                            Key = "approvals.reasonRequired"
+                        },
+                        new
+                        {
+                            Id = new Guid("923e65bb-3973-1536-0da6-6fed77ed393f"),
+                            Description = "",
+                            Key = "approvals.entryNotPending"
+                        },
+                        new
+                        {
+                            Id = new Guid("bfdad1c5-52c9-a786-2af4-af7f283bcde7"),
+                            Description = "",
+                            Key = "approvals.unknownEntry"
+                        },
+                        new
+                        {
+                            Id = new Guid("b69a5f55-cf11-eda2-9d54-f11d11e89ab8"),
+                            Description = "",
+                            Key = "approvals.originalNotApproved"
+                        },
+                        new
+                        {
+                            Id = new Guid("819f545f-f676-205c-39b4-9f252160b826"),
+                            Description = "",
+                            Key = "approvals.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("b12efad9-a4d3-575e-31f4-780b64154463"),
+                            Description = "",
+                            Key = "approvals.approvedSome"
+                        },
+                        new
+                        {
+                            Id = new Guid("06979a48-314b-bc29-bc0d-ff7057f30b5c"),
+                            Description = "",
+                            Key = "approvals.failedSome"
+                        },
+                        new
+                        {
+                            Id = new Guid("d9d33794-9a38-c6e2-00d3-e4abf7c6af32"),
+                            Description = "",
+                            Key = "expenses.keptOnPhone"
+                        },
+                        new
+                        {
+                            Id = new Guid("af4e7146-0390-4ae9-51ac-5d24f7a48b0f"),
+                            Description = "",
+                            Key = "offline.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("55f2a6f4-17e3-49ac-d2a4-e12bbcf1b93b"),
+                            Description = "",
+                            Key = "offline.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("31201cdc-11c9-15b7-8319-28b1f71a6c67"),
+                            Description = "",
+                            Key = "offline.waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("871c72e3-b132-a835-90d7-5b4dc360dbe3"),
+                            Description = "",
+                            Key = "offline.sendAgain"
+                        },
+                        new
+                        {
+                            Id = new Guid("f319f805-8eef-cbce-6d05-752b5c30ff46"),
+                            Description = "",
+                            Key = "offline.sendAnyway"
+                        },
+                        new
+                        {
+                            Id = new Guid("f2a4897f-3f7b-e84c-25d6-f2aaff87e1df"),
+                            Description = "",
+                            Key = "offline.discard"
+                        },
+                        new
+                        {
+                            Id = new Guid("084575ec-a8f0-3e07-ae65-8cc66b51bf1e"),
+                            Description = "",
+                            Key = "offline.discardQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("76ac5b37-e17a-f6fb-bef7-a8b1287d7231"),
+                            Description = "",
+                            Key = "offline.discardExplain"
+                        },
+                        new
+                        {
                             Id = new Guid("be9ac772-02a4-1393-7189-495e3103dfad"),
                             Description = "",
                             Key = "categories.itemHasContract"
@@ -12361,6 +13227,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Entries.Entry", null)
                         .WithMany()
                         .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.EntryDecision", b =>
+                {
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

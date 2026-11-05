@@ -41,4 +41,7 @@ public enum Permission
 
     /// <summary>Keeps a picture or a PDF in one project, for an entry or a contract (FR-09).</summary>
     AttachFiles,
+
+    /// <summary>Sees the entries waiting in one project, and approves or rejects them (FR-18, FR-19).</summary>
+    ApproveEntries,
 }

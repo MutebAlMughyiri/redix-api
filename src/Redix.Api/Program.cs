@@ -100,6 +100,7 @@ app.MapAttachments();
 app.MapExpenses();
 app.MapContractorPayments();
 app.MapEntries();
+app.MapApprovals();
 app.MapSyncEndpoints();
 
 app.Run();

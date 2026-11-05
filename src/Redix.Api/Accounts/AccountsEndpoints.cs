@@ -118,8 +118,9 @@ public static class AccountsEndpoints
         var accounts = await db.Accounts.Where(account => account.ProjectId == projectId).Include(account => account.Custodians).ToListAsync();
         var custodianIds = accounts.Select(account => account.CustodianId).ToList();
         var names = await db.Users.Where(user => custodianIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
+        var moved = await AccountMoney.MovementsOfProjectAsync(projectId, db);
         return accounts.Where(shown).OrderBy(account => account.Type).ThenBy(account => account.Id)
-            .Select(account => AccountView.Of(account, names.GetValueOrDefault(account.CustodianId, ""), callerId)).ToList();
+            .Select(account => AccountView.Of(account, names.GetValueOrDefault(account.CustodianId, ""), callerId, moved.GetValueOrDefault(account.Id))).ToList();
     }
 
     private static async Task<string> RefusalOfAsync(Guid projectId, string name, AccountType type, decimal openingBalance, Guid custodianId, RedixDbContext db)
@@ -172,13 +173,13 @@ public record EditAccountRequest(string Name, decimal OpeningBalance)
 /// <param name="IsActive">False once disabled.</param>
 public record AccountView(Guid Id, AccountType Type, string Name, decimal OpeningBalance, decimal Balance, string CustodianId, string CustodianName, bool IsMine, bool IsActive)
 {
-    /// <summary>The view of <paramref name="account"/>, held by the user named <paramref name="custodianName"/>, for <paramref name="callerId"/>.</summary>
-    public static AccountView Of(Account account, string custodianName, Guid callerId) => new(
+    /// <summary>The view of <paramref name="account"/>, held by the user named <paramref name="custodianName"/>, for <paramref name="callerId"/>, after <paramref name="moved"/> of approved entries.</summary>
+    public static AccountView Of(Account account, string custodianName, Guid callerId, decimal moved) => new(
         account.Id,
         account.Type,
         account.Name,
         account.OpeningBalance,
-        account.Balance,
+        account.OpeningBalance + moved,
         account.Custodians.Select(custodian => custodian.UserId.ToString()).FirstOrDefault(""),
         custodianName,
         account.IsHeldBy(callerId),
