@@ -5883,6 +5883,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("88604375-6641-00e0-c3a3-001883a46a1f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f850bed2-134d-1998-8332-e2fa4bfa7c0e"),
+                            Value = "Save to Download"
+                        },
+                        new
+                        {
+                            Id = new Guid("2160835e-82fb-6d29-e008-01dfd0e5d412"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f850bed2-134d-1998-8332-e2fa4bfa7c0e"),
+                            Value = "حفظ في التنزيلات"
+                        },
+                        new
+                        {
+                            Id = new Guid("5dc3589c-a39c-5097-5ff2-a7991c592b6f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4528a1fd-bbfc-a759-0960-9099879b7ead"),
+                            Value = "Saved in the phone's Download folder."
+                        },
+                        new
+                        {
+                            Id = new Guid("70d7bb76-225d-0a11-df22-f67cc426495b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4528a1fd-bbfc-a759-0960-9099879b7ead"),
+                            Value = "تم الحفظ في مجلد التنزيلات في الهاتف."
+                        },
+                        new
+                        {
                             Id = new Guid("fb3a7b61-8742-26eb-f8da-436cb72b4de6"),
                             Language = "en",
                             TranslationKeyId = new Guid("0f5fb0bc-426d-b1d1-e736-373393389502"),
@@ -16784,6 +16812,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("36387219-5110-e631-5aed-f9636ed99d65"),
                             Description = "",
                             Key = "reports.liquidation"
+                        },
+                        new
+                        {
+                            Id = new Guid("f850bed2-134d-1998-8332-e2fa4bfa7c0e"),
+                            Description = "",
+                            Key = "reports.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("4528a1fd-bbfc-a759-0960-9099879b7ead"),
+                            Description = "",
+                            Key = "reports.downloaded"
                         },
                         new
                         {

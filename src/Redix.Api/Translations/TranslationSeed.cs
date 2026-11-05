@@ -207,6 +207,8 @@ public static class TranslationSeed
         ("reports.current", "This report's expenses", "مصروفات التقرير الحالي"),
         ("reports.difference", "Difference", "الفرق"),
         ("reports.liquidation", "Liquidation", "التصفية"),
+        ("reports.save", "Save to Download", "حفظ في التنزيلات"),
+        ("reports.downloaded", "Saved in the phone's Download folder.", "تم الحفظ في مجلد التنزيلات في الهاتف."),
         ("reports.surplus", "Surplus", "الفائض"),
         ("reports.units", "Units", "الوحدات"),
         ("reports.unitDirect", "Recorded against it", "مسجل عليها"),
