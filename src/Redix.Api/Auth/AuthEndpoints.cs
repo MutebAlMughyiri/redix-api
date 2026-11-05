@@ -5,16 +5,17 @@ using Redix.Api.Audit;
 
 namespace Redix.Api.Auth;
 
-/// <summary>Opens, renews, secures and ends sessions: sign-in (UC-002), renewal with a device's refresh token, changing the password (UC-003), and sign-out (UC-062).</summary>
+/// <summary>Opens, renews, secures and ends sessions: sign-in (UC-002), renewal with a device's refresh token, changing the password (UC-003), sign-out (UC-062), and a phone that uses biometrics (UC-011).</summary>
 public static class AuthEndpoints
 {
-    /// <summary>Maps <c>POST /auth/sign-in</c> and <c>POST /auth/refresh</c>, open without a session, and <c>POST /auth/change-password</c> and <c>POST /auth/sign-out</c>, open to any session.</summary>
+    /// <summary>Maps <c>POST /auth/sign-in</c> and <c>POST /auth/refresh</c>, open without a session, <c>POST /auth/change-password</c> and <c>POST /auth/sign-out</c>, open to any session, and <c>POST /auth/biometrics</c>.</summary>
     public static void MapAuth(this WebApplication app)
     {
         app.MapPost("/auth/sign-in", SignIn).AllowAnonymous();
         app.MapPost("/auth/refresh", Refresh).AllowAnonymous();
         app.MapPost("/auth/change-password", ChangePassword).RequireAuthorization(SessionPolicies.MayChangePassword);
         app.MapPost("/auth/sign-out", SignOut).RequireAuthorization(SessionPolicies.MayChangePassword);
+        app.MapPost("/auth/biometrics", SetBiometrics).RequireAuthorization(SessionPolicies.Working);
     }
 
     /// <summary>
@@ -47,11 +48,11 @@ public static class AuthEndpoints
         db.Devices.Add(device);
         db.Audit(user, AuditAction.SignIn, user.Id, now);
         await db.SaveChangesAsync();
-        return Results.Ok(await Session.OfAsync(user, accessTokens.Create(user, device.Id), refreshToken, db));
+        return Results.Ok(await Session.OfAsync(user, device, accessTokens.Create(user, device.Id), refreshToken, db));
     }
 
     /// <summary>
-    /// Renews a session with a device's refresh token, which it replaces. An unknown, revoked or expired token (unused for 12 hours, NFR-09),
+    /// Renews a session with a device's refresh token, which it replaces. An unknown, revoked or expired token (unused for 12 hours on a phone without biometrics, NFR-09),
     /// or a user disabled since (AC-01.3), answers <c>sessionExpired</c>.
     /// </summary>
     /// <param name="request">The device's current refresh token.</param>
@@ -73,7 +74,7 @@ public static class AuthEndpoints
 
         var refreshToken = signedIn.Device.RenewRefreshToken(now);
         await db.SaveChangesAsync();
-        return Results.Ok(await Session.OfAsync(signedIn.User, accessTokens.Create(signedIn.User, signedIn.Device.Id), refreshToken, db));
+        return Results.Ok(await Session.OfAsync(signedIn.User, signedIn.Device, accessTokens.Create(signedIn.User, signedIn.Device.Id), refreshToken, db));
     }
 
     /// <summary>
@@ -114,7 +115,7 @@ public static class AuthEndpoints
         var refreshToken = thisDevice.RenewRefreshToken(now);
         db.Audit(user, AuditAction.ChangePassword, user.Id, now);
         await db.SaveChangesAsync();
-        return Results.Ok(await Session.OfAsync(user, accessTokens.Create(user, thisDevice.Id), refreshToken, db));
+        return Results.Ok(await Session.OfAsync(user, thisDevice, accessTokens.Create(user, thisDevice.Id), refreshToken, db));
     }
 
     /// <summary>Ends the session on this device, and only this one (UC-062), and records it in the audit trail.</summary>
@@ -129,6 +130,29 @@ public static class AuthEndpoints
         db.Audit(await db.Users.SingleAsync(user => user.Id == userId), AuditAction.SignOut, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Turns fingerprint or face on or off for this phone (UC-011, FR-35), and records it in the audit trail. The check runs on the phone; the server only remembers
+    /// that this phone asks for it, so its session stops timing out. The token is renewed, so turning it off starts the 12 hours from now.
+    /// </summary>
+    /// <param name="request">Whether it is on.</param>
+    /// <param name="principal">The signed-in session: its user and device.</param>
+    /// <param name="db">The database the user and device live in.</param>
+    /// <param name="accessTokens">Issues the renewed access token.</param>
+    /// <param name="time">The current time, for the renewed tokens and the audit record.</param>
+    public static async Task<IResult> SetBiometrics(SetBiometricsRequest request, ClaimsPrincipal principal, RedixDbContext db, AccessTokens accessTokens, TimeProvider time)
+    {
+        var now = time.GetUtcNow().UtcDateTime;
+        var userId = AccessTokens.UserIdOf(principal);
+        var deviceId = AccessTokens.DeviceIdOf(principal);
+        var user = await db.Users.SingleAsync(user => user.Id == userId);
+        var device = await db.Devices.SingleAsync(device => device.Id == deviceId);
+        device.UsesBiometrics = request.On;
+        var refreshToken = device.RenewRefreshToken(now);
+        db.Audit(user, request.On ? AuditAction.TurnOnBiometrics : AuditAction.TurnOffBiometrics, user.Id, now);
+        await db.SaveChangesAsync();
+        return Results.Ok(await Session.OfAsync(user, device, accessTokens.Create(user, device.Id), refreshToken, db));
     }
 }
 
@@ -146,21 +170,26 @@ public record RefreshRequest(string RefreshToken);
 /// <param name="NewPassword">The password that replaces it.</param>
 public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
-/// <summary>An open session, returned by sign-in, by every renewal, and by a password change.</summary>
+/// <summary>What the app sends to turn fingerprint or face on or off for this phone.</summary>
+/// <param name="On">Whether it is on.</param>
+public record SetBiometricsRequest(bool On);
+
+/// <summary>An open session, returned by sign-in, by every renewal, by a password change, and by turning fingerprint or face on or off.</summary>
 /// <param name="AccessToken">Sent with each request; valid for 15 minutes.</param>
-/// <param name="RefreshToken">Renews the session; replaced at each renewal and expired after 12 hours unused.</param>
+/// <param name="RefreshToken">Renews the session; replaced at each renewal and expired after 12 hours unused, unless this phone uses biometrics.</param>
 /// <param name="MustChangePassword">True while the password is temporary and must be changed before anything else.</param>
 /// <param name="Permissions">What the user holds everywhere; the app shows what they allow. What they hold in a project comes with the project.</param>
 /// <param name="DefaultProjectId">The project they chose to land on; empty when none, or when they can no longer read it (AC-37.2).</param>
 /// <param name="OpenDefaultProject">True when sign-in skips the list and opens that project (AC-37.1).</param>
-public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool OpenDefaultProject)
+/// <param name="UsesBiometrics">True when this phone asks for a fingerprint or face on opening (UC-011).</param>
+public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool OpenDefaultProject, bool UsesBiometrics)
 {
-    /// <summary>The session of <paramref name="user"/> with these tokens. One check covers every way of losing access to the default project.</summary>
-    public static async Task<Session> OfAsync(User user, string accessToken, string refreshToken, RedixDbContext db)
+    /// <summary>The session of <paramref name="user"/> on <paramref name="device"/> with these tokens. One check covers every way of losing access to the default project.</summary>
+    public static async Task<Session> OfAsync(User user, Device device, string accessToken, string refreshToken, RedixDbContext db)
     {
         var access = await UserAccess.OfAsync(user.Id, db);
         var chosen = await db.UserDefaultProjects.Where(row => row.UserId == user.Id).Select(row => row.ProjectId).SingleOrDefaultAsync();
         var defaultProjectId = access.In(chosen).Contains(Permission.ReadProject) ? chosen.ToString() : "";
-        return new(accessToken, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, user.OpenDefaultProject);
+        return new(accessToken, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, user.OpenDefaultProject, device.UsesBiometrics);
     }
 }

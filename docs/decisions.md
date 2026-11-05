@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | A phone with fingerprint or face on never times out; every other phone keeps 12 hours | Muteb's decision: with 12 hours it would never save a password, and without the prompt a permanent session opens for whoever holds the phone |
 | 2026-11-05 | A default project is one row in `UserDefaultProjects`, and `Users.OpenDefaultProject` says whether sign-in skips the list | Having no default is no row, never an empty column |
 | 2026-11-05 | Access to the default is checked when the session is built, and it is not audited | AC-37.2: a default without access is not offered; it is one person's preference, and changes no record of the business |
 | 2026-11-05 | Anyone registers a project and becomes its manager; an admin approves it, and that is the admin's only privilege | Muteb: "we will have admin that her approve the registered projects". Replaces the system admin of the row below, which could reset every login |

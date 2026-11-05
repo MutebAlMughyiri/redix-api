@@ -107,6 +107,9 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("UsesBiometrics")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RefreshTokenHash")
@@ -2210,6 +2213,132 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
                             Value = "تبديل المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("c02775dc-0135-6f76-5c2f-e6ffab2bd0a0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("56188aab-17e8-90db-33b8-57ef5761ad3c"),
+                            Value = "Sign in with fingerprint or face"
+                        },
+                        new
+                        {
+                            Id = new Guid("8bc23a05-b085-6ee1-1e87-6a3fa3ce1988"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("56188aab-17e8-90db-33b8-57ef5761ad3c"),
+                            Value = "الدخول بالبصمة أو الوجه"
+                        },
+                        new
+                        {
+                            Id = new Guid("4c7d3176-5677-9880-e2ef-17f1db36bb93"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d34475ac-83df-c60e-5175-4d0fc61569f5"),
+                            Value = "Opening the app asks for it, and you stay signed in until you sign out."
+                        },
+                        new
+                        {
+                            Id = new Guid("9ec7c2f3-b222-77e1-c31f-3974db486e7d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d34475ac-83df-c60e-5175-4d0fc61569f5"),
+                            Value = "يطلبها التطبيق عند فتحه، وتبقى مسجّلاً حتى تخرج."
+                        },
+                        new
+                        {
+                            Id = new Guid("5beb3b76-4b3e-0558-bc95-90d8a35362eb"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d8112671-3edd-9801-007c-1bee4c7d98d1"),
+                            Value = "or"
+                        },
+                        new
+                        {
+                            Id = new Guid("a7d434ab-ab55-f24f-9f24-295044b0b2f3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d8112671-3edd-9801-007c-1bee4c7d98d1"),
+                            Value = "أو"
+                        },
+                        new
+                        {
+                            Id = new Guid("d6e673fc-07a2-8a1b-09f7-6b3fab96c693"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1390dd4a-57ba-f706-667a-3a11503b3611"),
+                            Value = "Could not confirm it is you. Try again, or use your password."
+                        },
+                        new
+                        {
+                            Id = new Guid("71627720-2929-5eda-a1b8-1bf9760a8303"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1390dd4a-57ba-f706-667a-3a11503b3611"),
+                            Value = "تعذّر التحقق منك. حاول مرة أخرى، أو استخدم كلمة المرور."
+                        },
+                        new
+                        {
+                            Id = new Guid("eec075fa-f5f6-87b0-d5de-603142937bfa"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2a9f8f05-90b0-cdc5-679a-77feb4fad691"),
+                            Value = "Use your password to sign in."
+                        },
+                        new
+                        {
+                            Id = new Guid("72dd481f-5b91-301c-1d5a-63a693734e0b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2a9f8f05-90b0-cdc5-679a-77feb4fad691"),
+                            Value = "استخدم كلمة المرور لتسجيل الدخول."
+                        },
+                        new
+                        {
+                            Id = new Guid("4b7095cb-e444-982d-4e80-d75142520183"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b05829c4-d861-f7a2-defc-9f5e307dbe67"),
+                            Value = "Open REDIX"
+                        },
+                        new
+                        {
+                            Id = new Guid("946b9583-a5c5-e30f-b864-6fc57763e4ce"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b05829c4-d861-f7a2-defc-9f5e307dbe67"),
+                            Value = "فتح REDIX"
+                        },
+                        new
+                        {
+                            Id = new Guid("8adb7508-af93-ac7b-ec3f-c2eba709908f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("297ec172-80d8-98a7-f35a-62fb4c7e30fb"),
+                            Value = "Use password"
+                        },
+                        new
+                        {
+                            Id = new Guid("87773873-a24c-66c4-8303-47c93e0d89ad"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("297ec172-80d8-98a7-f35a-62fb4c7e30fb"),
+                            Value = "كلمة المرور"
+                        },
+                        new
+                        {
+                            Id = new Guid("48ede494-1658-ee76-7203-b3ab21167e7f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e03bb912-f276-4631-ae48-d0ff54c96a26"),
+                            Value = "Could not turn it on. Set up a fingerprint or face on this phone, then try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("c886e719-2e70-cc39-2946-485d7987ede4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e03bb912-f276-4631-ae48-d0ff54c96a26"),
+                            Value = "تعذّر التفعيل. أضف بصمة أو وجهاً في إعدادات الجوال، ثم حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
+                            Value = "Could not change this. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("333035c5-99f6-df96-d24d-5caa61992920"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
+                            Value = "تعذّر التغيير. تحقق من الشبكة وحاول مرة أخرى."
                         });
                 });
 
@@ -2968,6 +3097,60 @@ namespace Redix.Api.Migrations
                             Id = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
                             Description = "",
                             Key = "settings.switchProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("56188aab-17e8-90db-33b8-57ef5761ad3c"),
+                            Description = "",
+                            Key = "biometrics.signIn"
+                        },
+                        new
+                        {
+                            Id = new Guid("d34475ac-83df-c60e-5175-4d0fc61569f5"),
+                            Description = "",
+                            Key = "biometrics.hint"
+                        },
+                        new
+                        {
+                            Id = new Guid("d8112671-3edd-9801-007c-1bee4c7d98d1"),
+                            Description = "",
+                            Key = "biometrics.or"
+                        },
+                        new
+                        {
+                            Id = new Guid("1390dd4a-57ba-f706-667a-3a11503b3611"),
+                            Description = "",
+                            Key = "biometrics.failed"
+                        },
+                        new
+                        {
+                            Id = new Guid("2a9f8f05-90b0-cdc5-679a-77feb4fad691"),
+                            Description = "",
+                            Key = "biometrics.usePassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("b05829c4-d861-f7a2-defc-9f5e307dbe67"),
+                            Description = "",
+                            Key = "biometrics.promptTitle"
+                        },
+                        new
+                        {
+                            Id = new Guid("297ec172-80d8-98a7-f35a-62fb4c7e30fb"),
+                            Description = "",
+                            Key = "biometrics.promptCancel"
+                        },
+                        new
+                        {
+                            Id = new Guid("e03bb912-f276-4631-ae48-d0ff54c96a26"),
+                            Description = "",
+                            Key = "biometrics.notAvailable"
+                        },
+                        new
+                        {
+                            Id = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
+                            Description = "",
+                            Key = "biometrics.notChanged"
                         });
                 });
 

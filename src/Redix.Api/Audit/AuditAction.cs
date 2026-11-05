@@ -41,4 +41,10 @@ public enum AuditAction
 
     /// <summary>The admin refused a registered project, saying why (UC-066).</summary>
     RejectProject,
+
+    /// <summary>A user turned on fingerprint or face on a phone, so its session no longer times out (UC-011).</summary>
+    TurnOnBiometrics,
+
+    /// <summary>A user turned off fingerprint or face on a phone, so its session times out again (UC-011).</summary>
+    TurnOffBiometrics,
 }

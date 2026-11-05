@@ -25,6 +25,9 @@ public class Device
     /// <summary>True once the device may no longer refresh its session.</summary>
     public bool IsRevoked { get; set; }
 
+    /// <summary>True when this phone asks for a fingerprint or face on opening, so its session never times out (UC-011).</summary>
+    public bool UsesBiometrics { get; set; }
+
     /// <summary>When the device last opened or renewed its session.</summary>
     public DateTime LastSeenAt { get; private set; }
 
@@ -38,8 +41,8 @@ public class Device
         return refreshToken;
     }
 
-    /// <summary>Whether the device's refresh token still renews a session at <paramref name="now"/>.</summary>
-    public bool CanRefresh(DateTime now) => !IsRevoked && RefreshExpiresAt > now;
+    /// <summary>Whether the device's refresh token still renews a session at <paramref name="now"/>. A phone that uses biometrics never times out; it can only be revoked.</summary>
+    public bool CanRefresh(DateTime now) => !IsRevoked && (UsesBiometrics || RefreshExpiresAt > now);
 
     /// <summary>The stored form of a refresh token: its SHA-256, in hex.</summary>
     public static string HashOf(string refreshToken) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken)));

@@ -126,6 +126,15 @@ public static class TranslationSeed
         ("projects.openDefault", "Open the default project directly", "فتح المشروع الافتراضي مباشرة"),
         ("projects.openDefaultHint", "This screen will not show at sign-in.", "لن تظهر هذه الشاشة عند الدخول"),
         ("settings.switchProject", "Switch project", "تبديل المشروع"),
+        ("biometrics.signIn", "Sign in with fingerprint or face", "الدخول بالبصمة أو الوجه"),
+        ("biometrics.hint", "Opening the app asks for it, and you stay signed in until you sign out.", "يطلبها التطبيق عند فتحه، وتبقى مسجّلاً حتى تخرج."),
+        ("biometrics.or", "or", "أو"),
+        ("biometrics.failed", "Could not confirm it is you. Try again, or use your password.", "تعذّر التحقق منك. حاول مرة أخرى، أو استخدم كلمة المرور."),
+        ("biometrics.usePassword", "Use your password to sign in.", "استخدم كلمة المرور لتسجيل الدخول."),
+        ("biometrics.promptTitle", "Open REDIX", "فتح REDIX"),
+        ("biometrics.promptCancel", "Use password", "كلمة المرور"),
+        ("biometrics.notAvailable", "Could not turn it on. Set up a fingerprint or face on this phone, then try again.", "تعذّر التفعيل. أضف بصمة أو وجهاً في إعدادات الجوال، ثم حاول مرة أخرى."),
+        ("biometrics.notChanged", "Could not change this. Check the network and try again.", "تعذّر التغيير. تحقق من الشبكة وحاول مرة أخرى."),
     ];
 
     /// <summary>One key per seeded word, with an id derived from the key so every migration and database agree on it.</summary>

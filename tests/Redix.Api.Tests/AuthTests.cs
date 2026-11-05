@@ -212,6 +212,136 @@ public class AuthTests(MigratedApiFactory factory)
         Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(first.RefreshToken)));
     }
 
+    private async Task<HttpResponseMessage> PostBiometricsAsync(Session session, bool on)
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+        return await client.PostAsJsonAsync("/auth/biometrics", new SetBiometricsRequest(on));
+    }
+
+    private async Task<Session> SetBiometricsAsync(Session session, bool on) => await SessionOf(await PostBiometricsAsync(session, on));
+
+    [Fact]
+    public async Task TurningBiometricsOnIsAnswered()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var session = await SessionOf(await SignInAsync(user.Username, Password));
+
+        var turnedOn = await SetBiometricsAsync(session, true);
+
+        Assert.True(turnedOn.UsesBiometrics);
+        Assert.NotEqual(session.RefreshToken, turnedOn.RefreshToken);
+        Assert.True((await SessionOf(await RefreshAsync(turnedOn.RefreshToken))).UsesBiometrics);
+    }
+
+    [Fact]
+    public async Task ANewSignInStartsWithBiometricsOff()
+    {
+        var user = await factory.AddUserAsync(Password);
+        await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+
+        Assert.False((await SessionOf(await SignInAsync(user.Username, Password))).UsesBiometrics);
+    }
+
+    [Fact]
+    public async Task AnUnusedPhoneWithBiometricsNeverTimesOut()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var session = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+
+        factory.Time.Advance(TimeSpan.FromDays(365));
+
+        await SessionOf(await RefreshAsync(session.RefreshToken));
+    }
+
+    [Fact]
+    public async Task TurningBiometricsOffBringsBackThe12Hours()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var turnedOn = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+
+        factory.Time.Advance(TimeSpan.FromDays(30));
+        var renewed = await SessionOf(await RefreshAsync(turnedOn.RefreshToken));
+        var turnedOff = await SetBiometricsAsync(renewed, false);
+
+        Assert.False(turnedOff.UsesBiometrics);
+        factory.Time.Advance(Device.IdleTimeout);
+        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(turnedOff.RefreshToken)));
+    }
+
+    [Fact]
+    public async Task BiometricsDoNotOutliveARevokedPhoneOrADisabledUser()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var signedOut = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+        Assert.Equal(HttpStatusCode.NoContent, (await SignOutAsync(signedOut)).StatusCode);
+        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(signedOut.RefreshToken)));
+
+        var otherPhone = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+        var thisPhone = await SessionOf(await SignInAsync(user.Username, Password));
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", thisPhone.AccessToken);
+        var changed = await SessionOf(await client.PostAsJsonAsync("/auth/change-password", new ChangePasswordRequest(Password, Password + "-new")));
+        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(otherPhone.RefreshToken)));
+
+        var disabledPhone = await SetBiometricsAsync(changed, true);
+        await factory.WithDatabaseAsync(async db =>
+        {
+            (await db.Users.FindAsync(user.Id))!.IsActive = false;
+            await db.SaveChangesAsync();
+        });
+        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(disabledPhone.RefreshToken)));
+    }
+
+    [Fact]
+    public async Task ChangingThePasswordKeepsBiometricsOnThisPhone()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var session = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+
+        var changed = await SessionOf(await client.PostAsJsonAsync("/auth/change-password", new ChangePasswordRequest(Password, Password + "-new")));
+
+        Assert.True(changed.UsesBiometrics);
+    }
+
+    [Fact]
+    public async Task BiometricsBelongToOnePhone()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var withIt = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+        var without = await SessionOf(await SignInAsync(user.Username, Password));
+
+        factory.Time.Advance(Device.IdleTimeout);
+
+        await SessionOf(await RefreshAsync(withIt.RefreshToken));
+        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(without.RefreshToken)));
+    }
+
+    [Fact]
+    public async Task ATemporaryPasswordCannotTurnBiometricsOn()
+    {
+        var user = await factory.AddUserAsync(Password, mustChangePassword: true);
+
+        var answer = await PostBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+
+        Assert.Equal(HttpStatusCode.Forbidden, answer.StatusCode);
+    }
+
+    [Fact]
+    public async Task TurningBiometricsOnAndOffIsAudited()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var turnedOn = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
+
+        await SetBiometricsAsync(turnedOn, false);
+
+        var trail = await factory.AuditTrailOfAsync(user.Id);
+        Assert.Equal([AuditAction.SignIn, AuditAction.TurnOnBiometrics, AuditAction.TurnOffBiometrics], trail.Select(record => record.Action));
+        Assert.All(trail, record => Assert.Equal(user.Id, record.UserId));
+    }
+
     [Fact]
     public async Task ASessionUsedWithin12HoursStaysOpenAndOneUnusedFor12HoursEnds()
     {
