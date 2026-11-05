@@ -6,6 +6,10 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | A sale carries the real estate transaction tax by default, at 5%, outside the net VAT due, or VAT at the project's rate | Open question 6 waits for the accountant. Both are kept, so the answer needs no change to recorded sales, only the default |
+| 2026-11-05 | A sales invoice belongs to the sale's revenue entry, so a sale recorded first takes its invoice later and counts once | AC-42.1 asks that the sale not count twice in revenue |
+| 2026-11-05 | The VAT statement is computed, never stored; only the periodic report is a snapshot | Row 95: an invoice declared later must move between quarters, and a stored statement would hold the old answer |
+| 2026-11-05 | A not-taxable invoice and one with no file are listed as exceptions, beside those the BRS names | The accountant needs to see why an invoice is missing, and UC-058 says a row without a file goes there |
 | 2026-11-05 | Every partner has a pocket account, made with them | The database design said so, and it made "from a partner" a choice the payment lists already offer, with no new field on an entry |
 | 2026-11-05 | What a partner paid becomes capital when the expense is approved, not when it is saved | Row 4: BR-25 said saved, but only approved entries count (BR-10), and a rejected expense would leave them credit for nothing |
 | 2026-11-05 | A carry needs `MoveMoney` in both projects, and names an account in each | Row 40: BR-33 keeps projects apart, so whoever crosses them must hold the right on both sides; each side's books need an account |

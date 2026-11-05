@@ -13,6 +13,7 @@ using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
+using Redix.Api.Revenue;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
@@ -107,6 +108,7 @@ app.MapInvoiceAttach();
 app.MapTransfers();
 app.MapReconciliations();
 app.MapCapital();
+app.MapRevenue();
 app.MapSyncEndpoints();
 
 app.Run();

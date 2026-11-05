@@ -37,7 +37,7 @@ public class Invoice
     public string SellerVatNumber { get; init; } = "";
 
     /// <summary>The first day of the quarter it is declared in, by default the quarter of its date (BR-17).</summary>
-    public DateOnly VatPeriodStart { get; init; }
+    public DateOnly VatPeriodStart { get; set; }
 
     /// <summary>The first day of the quarter <paramref name="date"/> falls in.</summary>
     public static DateOnly QuarterStartOf(DateOnly date) => new(date.Year, (date.Month - 1) / 3 * 3 + 1, 1);

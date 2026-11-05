@@ -334,6 +334,20 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
         });
+        modelBuilder.Entity<Redix.Api.Revenue.RevenueDetails>(details =>
+        {
+            details.HasKey(d => d.EntryId);
+            details.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Revenue.RevenueDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Redix.Api.Revenue.SalesInvoice>(sale =>
+        {
+            sale.HasKey(s => s.EntryId);
+            sale.Property(s => s.BuyerName).HasMaxLength(Redix.Api.Revenue.SalesInvoice.BuyerNameMaxLength);
+            sale.Property(s => s.BuyerVatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
+            sale.Property(s => s.Number).HasMaxLength(Invoice.NumberMaxLength);
+            sale.HasIndex(s => s.Number);
+            sale.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Revenue.SalesInvoice>(s => s.EntryId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<Redix.Api.Partners.CapitalMovementDetails>(details =>
         {
             details.HasKey(d => d.EntryId);

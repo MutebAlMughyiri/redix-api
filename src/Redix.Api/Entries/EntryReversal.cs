@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Partners;
+using Redix.Api.Revenue;
 
 namespace Redix.Api.Entries;
 
@@ -46,6 +47,16 @@ public static class EntryReversal
         {
             details.Add(new CapitalMovementDetails { EntryId = reversal.Id, PartnerId = capital.PartnerId, Type = capital.Type, Description = reason });
             await BringBackIfSettledAsync(capital, db);
+        }
+        var revenue = await db.Set<RevenueDetails>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
+        if (revenue is not null)
+        {
+            details.Add(new RevenueDetails { EntryId = reversal.Id, Type = revenue.Type, PeriodStart = revenue.PeriodStart, PeriodEnd = revenue.PeriodEnd });
+        }
+        var sale = await db.Set<SalesInvoice>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
+        if (sale is not null)
+        {
+            details.Add(new SalesInvoice { EntryId = reversal.Id, BuyerName = sale.BuyerName, BuyerVatNumber = sale.BuyerVatNumber, Number = sale.Number, InvoiceDate = sale.InvoiceDate, AmountBeforeDiscount = -sale.AmountBeforeDiscount, Discount = -sale.Discount, AmountAfterDiscount = -sale.AmountAfterDiscount, Tax = -sale.Tax, Total = -sale.Total, TaxType = sale.TaxType, VatPeriodStart = sale.VatPeriodStart });
         }
         DirectEntries.Add(reversal, details, userId, at, db);
         return reversal;
