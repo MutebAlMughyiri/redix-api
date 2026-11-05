@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Redix.Api.Entries;
 
 /// <summary>What every expense has, a purchase or a contractor payment: what it was for and how it was paid.</summary>
@@ -29,4 +31,7 @@ public class ExpenseDetails
 
     /// <summary>The values of the item's custom columns (FR-41), a JSON object of each column's key and its value.</summary>
     public string CustomValues { get; init; } = "{}";
+
+    /// <summary>The values of the item's custom columns, by each column's key.</summary>
+    public Dictionary<string, string> CustomValuesByKey() => JsonSerializer.Deserialize<Dictionary<string, string>>(CustomValues)!;
 }

@@ -333,7 +333,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("RolePermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'AttachFiles')");
+                            t.HasCheckConstraint("CK_RolePermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'AttachFiles')");
                         });
 
                     b.HasData(
@@ -360,6 +360,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("6d013eea-b4b2-27df-4b1c-fbf617b5794a"),
                             Permission = "SeeAllCapital",
                             RoleId = new Guid("e469cf77-7a5b-a1a5-425b-4a42e26c96bd")
+                        },
+                        new
+                        {
+                            Id = new Guid("6d3b8981-4510-44da-705f-0ef97bbe9d28"),
+                            Permission = "ManageAnyEntry",
+                            RoleId = new Guid("8a930250-60d5-b402-464a-0545e0253004")
                         },
                         new
                         {
@@ -8513,6 +8519,48 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("88b34e8c-459b-f0cc-58ea-0b17c7efe3d0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("349c6178-e979-bb67-feaf-ae7e84931477"),
+                            Value = "Only who entered it, or Finance, can send this entry."
+                        },
+                        new
+                        {
+                            Id = new Guid("3ae42790-423a-73e8-a74a-bf251b414c75"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("349c6178-e979-bb67-feaf-ae7e84931477"),
+                            Value = "لا يرسل هذا القيد إلا من أدخله أو المالي."
+                        },
+                        new
+                        {
+                            Id = new Guid("9feb97fb-ca3c-c4ef-a9f1-c8e152bff433"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("16b7ad86-a2eb-26d5-44a6-4689b0ae9b4c"),
+                            Value = "This entry was already sent."
+                        },
+                        new
+                        {
+                            Id = new Guid("4a060192-53ee-f888-519a-df94387b5b47"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("16b7ad86-a2eb-26d5-44a6-4689b0ae9b4c"),
+                            Value = "هذا القيد مُرسل مسبقاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("31f22691-54a1-6fc9-5e37-2892bd568a5b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b102c8cb-efc2-f411-0219-59b1e745861b"),
+                            Value = "Fill what this entry still lacks before sending."
+                        },
+                        new
+                        {
+                            Id = new Guid("28f60970-e91b-5d53-df85-bc71ff454cb5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b102c8cb-efc2-f411-0219-59b1e745861b"),
+                            Value = "أكمل ما ينقص هذا القيد قبل الإرسال."
+                        },
+                        new
+                        {
                             Id = new Guid("e221131d-1d27-0c1c-9d54-757378cccd48"),
                             Language = "en",
                             TranslationKeyId = new Guid("37c64841-3318-0fcc-042d-03697eccd2be"),
@@ -11502,6 +11550,24 @@ namespace Redix.Api.Migrations
                             Id = new Guid("77ac899a-2c86-99d5-b7fd-2e6ee1cc1710"),
                             Description = "",
                             Key = "expenses.amount"
+                        },
+                        new
+                        {
+                            Id = new Guid("349c6178-e979-bb67-feaf-ae7e84931477"),
+                            Description = "",
+                            Key = "entries.notYourEntry"
+                        },
+                        new
+                        {
+                            Id = new Guid("16b7ad86-a2eb-26d5-44a6-4689b0ae9b4c"),
+                            Description = "",
+                            Key = "entries.entryNotSubmittable"
+                        },
+                        new
+                        {
+                            Id = new Guid("b102c8cb-efc2-f411-0219-59b1e745861b"),
+                            Description = "",
+                            Key = "entries.entryIncomplete"
                         },
                         new
                         {

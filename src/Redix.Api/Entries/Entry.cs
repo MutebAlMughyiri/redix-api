@@ -21,7 +21,7 @@ public class Entry
     public EntryKind Kind { get; init; }
 
     /// <summary>Where it stands.</summary>
-    public EntryStatus Status { get; init; }
+    public EntryStatus Status { get; set; }
 
     /// <summary>The day the money moved, which the periodic report goes by (BR-24).</summary>
     public DateOnly EntryDate { get; init; }
@@ -43,6 +43,9 @@ public class Entry
 
     /// <summary>When it was approved, which marks it new since the last report; <see cref="NotApproved"/> until then.</summary>
     public DateTime ApprovedAt { get; init; } = NotApproved;
+
+    /// <summary>Whether it can be sent for approval: only a draft, or what was rejected and fixed (UC-028).</summary>
+    public bool CanBeSubmitted() => Status is EntryStatus.Draft or EntryStatus.Rejected;
 
     /// <summary>Today's date in Saudi Arabia, where every project is, at <paramref name="time"/>: a date a person typed is theirs, not the server's.</summary>
     public static DateOnly Today(TimeProvider time) => DateOnly.FromDateTime(time.GetUtcNow().ToOffset(SaudiOffset).DateTime);

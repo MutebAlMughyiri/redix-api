@@ -36,6 +36,9 @@ public enum Permission
     /// <summary>Records a purchase or a contractor payment in one project's ledger (FR-08, FR-12).</summary>
     RecordEntries,
 
+    /// <summary>Sends for approval an entry someone else entered in one project; without it, only one's own (UC-028).</summary>
+    ManageAnyEntry,
+
     /// <summary>Keeps a picture or a PDF in one project, for an entry or a contract (FR-09).</summary>
     AttachFiles,
 }
