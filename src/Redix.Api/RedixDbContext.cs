@@ -291,6 +291,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             invoice.HasKey(i => i.EntryId);
             invoice.Property(i => i.Number).HasMaxLength(Invoice.NumberMaxLength);
+            invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<EntryAttachment>(link =>

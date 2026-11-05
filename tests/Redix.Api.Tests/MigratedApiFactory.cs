@@ -28,6 +28,9 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
 
+    /// <summary>A VAT number no other test holds, because a duplicate invoice is looked for across every project (FR-17).</summary>
+    public static string NewVatNumber() => $"3{Random.Shared.NextInt64(1_000_000_000_000, 9_999_999_999_999)}3";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         var testDatabase = new SqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ConnectionStrings__Redix") ?? "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True")

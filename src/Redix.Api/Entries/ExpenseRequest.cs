@@ -72,6 +72,9 @@ public record ExpenseRequest(Guid Id)
     /// <summary>True to send it for approval; otherwise it is saved as a draft.</summary>
     public bool Submit { get; init; }
 
+    /// <summary>True once the person has seen that this supplier's invoice number exists already, and saves it anyway (FR-17).</summary>
+    public bool ConfirmDuplicate { get; init; }
+
     /// <summary>The amount as typed, or else what the unit price and quantity make: which BR-01 says includes VAT.</summary>
     public decimal EnteredAmount() => Amount > 0 ? Amount : UnitPrice * Quantity;
 

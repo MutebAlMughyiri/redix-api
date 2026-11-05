@@ -23,7 +23,6 @@ public class ExpensesTests(MigratedApiFactory factory)
     private const string Field = "users.roleField";
     private const string Reader = "users.roleReader";
     private const string Manager = "users.roleManager";
-    private const string VatNumber = "300000000000003";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -35,7 +34,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name, "الفلة الغربية");
         await factory.GiveRoleAsync(user.Id, project.Id, Finance);
-        var supplier = await SupplierAsync(client, project.Id, "شركة النخيل", VatNumber);
+        var supplier = await SupplierAsync(client, project.Id, "شركة النخيل", MigratedApiFactory.NewVatNumber());
         var suppliers = (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers", Json))!;
         var methods = (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{project.Id}/payment-methods", Json))!;
         (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب المؤسسة", AccountType.Bank, 0), Json)).EnsureSuccessStatusCode();
@@ -467,7 +466,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var (nawaf, nawafId) = await MemberAsync(setup, Field);
         var (salem, _) = await MemberAsync(setup, Field);
-        var pending = await SupplierAsync(nawaf, setup.Project.Id, "مؤسسة الواحة", "311111111111113");
+        var pending = await SupplierAsync(nawaf, setup.Project.Id, "مؤسسة الواحة", MigratedApiFactory.NewVatNumber());
         var custody = await CustodyOfAsync(setup, nawafId);
         var request = Expense(setup) with { SupplierId = pending.Id, AccountId = custody };
 
@@ -807,7 +806,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     public async Task AC_43_1_TheSearchPutsWhatTheCallerUsedMostFirstAndThenByName()
     {
         var setup = await FinanceAsync();
-        var other = await SupplierAsync(setup.Client, setup.Project.Id, "مؤسسة الواحة", "311111111111113");
+        var other = await SupplierAsync(setup.Client, setup.Project.Id, "مؤسسة الواحة", MigratedApiFactory.NewVatNumber());
         await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = other.Id });
         await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = other.Id, InvoiceNumber = "2618" });
         await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { InvoiceNumber = "2619" });
@@ -822,7 +821,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     public async Task AC_43_1_MostUsedIsTheCallersOwnNotSomeoneElses()
     {
         var setup = await FinanceAsync();
-        var other = await SupplierAsync(setup.Client, setup.Project.Id, "مؤسسة الواحة", "311111111111113");
+        var other = await SupplierAsync(setup.Client, setup.Project.Id, "مؤسسة الواحة", MigratedApiFactory.NewVatNumber());
         await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = other.Id });
         var (member, _) = await MemberAsync(setup, Field);
 

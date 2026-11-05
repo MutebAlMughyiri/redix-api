@@ -20,6 +20,7 @@ public static class ExpensesEndpoints
     /// <c>unknownSupplier</c> (BR-19), <c>unknownPaymentMethod</c> or <c>accountNotOffered</c> (BRS open question 4). What was typed answers <c>invalidInvoiceNumber</c>, <c>invalidProduct</c>, <c>invalidNotes</c>, <c>invalidUnitPrice</c>, <c>invalidQuantity</c>, <c>invalidAmount</c>, <c>invalidDiscount</c>,
     /// <c>invalidPaymentAmount</c> or <c>invalidBankFees</c>. A date outside the project's period or in the future answers <c>invalidInvoiceDate</c> or <c>invalidPaymentDate</c> (BR-12). A file of no such attachment answers <c>unknownAttachment</c>. A custom value answers <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>.
     /// Sending also needs the required columns, <c>requiredColumnMissing</c> with its <c>columnKey</c> (FR-41), and the invoice's file, <c>invoiceRequired</c> (FR-09); a draft can wait for them.
+    /// A file already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). The same supplier's invoice number in any project answers <c>duplicateInvoice</c>, with the earlier entry as <c>earlier</c>, until the request says <c>confirmDuplicate</c> (UC-023, FR-17).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">What was typed and chosen.</param>
@@ -38,7 +39,8 @@ public static class ExpensesEndpoints
         }
 
         var userId = AccessTokens.UserIdOf(principal);
-        var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
+        var access = await UserAccess.OfAsync(userId, db);
+        var held = access.In(projectId);
         var item = await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.Purchases, db);
         if (item is null)
         {
@@ -82,6 +84,19 @@ public static class ExpensesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvoiceRequired");
         }
 
+        if (request.AttachmentId != Guid.Empty && await IsFileOnAnEntryAsync(projectId, request.AttachmentId, db))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
+        }
+        if (!request.ConfirmDuplicate)
+        {
+            var earlier = await EarlierEntryAsync(supplier, request.InvoiceNumber.Trim(), access, db);
+            if (earlier is not null)
+            {
+                return Refusal.Of(StatusCodes.Status409Conflict, "DuplicateInvoice", "earlier", earlier);
+            }
+        }
+
         var (entry, details) = Build(request, projectId, subgroup.Id, figures, userId, time.GetUtcNow().UtcDateTime);
         db.Add(entry);
         details.ForEach(detail => db.Add(detail));
@@ -107,6 +122,30 @@ public static class ExpensesEndpoints
             return "AccountNotOffered";
         }
         return request.AttachmentId == Guid.Empty || await db.Attachments.AnyAsync(attachment => attachment.Id == request.AttachmentId && attachment.ProjectId == projectId) ? "" : "UnknownAttachment";
+    }
+
+    private static async Task<bool> IsFileOnAnEntryAsync(Guid projectId, Guid attachmentId, RedixDbContext db)
+    {
+        var hash = await db.Attachments.Where(attachment => attachment.Id == attachmentId).Select(attachment => attachment.Sha256).SingleAsync();
+        return await db.EntryAttachments.AnyAsync(link => db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
+    }
+
+    /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/> or from whoever holds its VAT number in another project, one the caller can read if there is any.</summary>
+    private static async Task<EarlierEntryView?> EarlierEntryAsync(Supplier supplier, string number, UserAccess access, RedixDbContext db)
+    {
+        var rows = await (
+            from invoice in db.Invoices
+            join purchase in db.PurchaseDetails on invoice.EntryId equals purchase.EntryId
+            join named in db.Suppliers on purchase.SupplierId equals named.Id
+            join project in db.Projects on named.ProjectId equals project.Id
+            where invoice.Number == number && (named.Id == supplier.Id || (supplier.VatNumber != "" && named.VatNumber == supplier.VatNumber))
+            select new { ProjectId = project.Id, ProjectName = project.Name, invoice.EntryId, invoice.InvoiceDate, invoice.Total }).ToListAsync();
+        if (rows.Count == 0)
+        {
+            return null;
+        }
+        var visible = rows.OrderBy(row => row.EntryId).FirstOrDefault(row => access.In(row.ProjectId).Contains(Permission.ReadProject));
+        return visible is null ? new EarlierEntryView(false, "", default, 0) : new EarlierEntryView(true, visible.ProjectName, visible.InvoiceDate, visible.Total);
     }
 
     private static string RefusalOfDates(ExpenseRequest request, DateOnly projectStart, DateOnly today)
@@ -184,6 +223,13 @@ public static class ExpensesEndpoints
         return (entry, details);
     }
 }
+
+/// <summary>The entry an invoice number repeats (FR-17). One in a project the caller cannot read says only that it exists, because projects are separate (BR-33).</summary>
+/// <param name="IsVisible">Whether the caller can read its project, and so whether the rest says anything.</param>
+/// <param name="ProjectName">The project it is in.</param>
+/// <param name="InvoiceDate">The invoice's date.</param>
+/// <param name="Total">The invoice's total.</param>
+public record EarlierEntryView(bool IsVisible, string ProjectName, DateOnly InvoiceDate, decimal Total);
 
 /// <summary>A recorded expense's figures, as the API computed them.</summary>
 /// <param name="Id">The entry's id.</param>

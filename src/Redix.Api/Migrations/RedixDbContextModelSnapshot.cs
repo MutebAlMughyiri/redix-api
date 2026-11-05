@@ -791,6 +791,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("EntryId");
 
+                    b.HasIndex("Number");
+
                     b.ToTable("Invoices");
                 });
 
@@ -7509,28 +7511,28 @@ namespace Redix.Api.Migrations
                             Id = new Guid("1119f52f-d29e-839b-f71e-694ac237f060"),
                             Language = "en",
                             TranslationKeyId = new Guid("da28b3b3-d768-fb85-9015-fd87d2d9caed"),
-                            Value = "Unit price (optional)"
+                            Value = "Unit price"
                         },
                         new
                         {
                             Id = new Guid("864be42c-280f-d6f1-123c-a95722be794f"),
                             Language = "ar",
                             TranslationKeyId = new Guid("da28b3b3-d768-fb85-9015-fd87d2d9caed"),
-                            Value = "سعر الوحدة (اختياري)"
+                            Value = "سعر الوحدة"
                         },
                         new
                         {
                             Id = new Guid("9f5f8bc4-7278-37af-9089-0e7355c3a0d9"),
                             Language = "en",
                             TranslationKeyId = new Guid("91ce291c-b4fb-0b1c-0b20-82fd13f712ab"),
-                            Value = "Quantity (optional)"
+                            Value = "Quantity"
                         },
                         new
                         {
                             Id = new Guid("c9a115a5-383e-1b62-7340-dbca17bf1ad6"),
                             Language = "ar",
                             TranslationKeyId = new Guid("91ce291c-b4fb-0b1c-0b20-82fd13f712ab"),
-                            Value = "العدد (اختياري)"
+                            Value = "العدد"
                         },
                         new
                         {
@@ -7786,20 +7788,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("98837731-b5d0-ec39-e37f-4a9c2ea124a6"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b4a77062-42a5-ffac-3c7a-46334d2c15dd"),
-                            Value = "Required"
-                        },
-                        new
-                        {
-                            Id = new Guid("56c5b8da-3d46-862f-3f6e-050f0c9c26bc"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b4a77062-42a5-ffac-3c7a-46334d2c15dd"),
-                            Value = "إلزامي"
-                        },
-                        new
-                        {
                             Id = new Guid("7438bcb4-a721-9b62-e298-638f67ed13a8"),
                             Language = "en",
                             TranslationKeyId = new Guid("3d700b75-43c6-6223-d8ab-58e512f360fd"),
@@ -7853,20 +7841,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("650c3f6d-1a58-ea52-771e-62a588c05d40"),
                             Value = "حُفظ كمسودة."
-                        },
-                        new
-                        {
-                            Id = new Guid("f4f50a8e-8aa5-73fd-0c43-00772c96172c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
-                            Value = "Could not read this. Check the network and try again."
-                        },
-                        new
-                        {
-                            Id = new Guid("c8daed7b-bb4e-322d-fa46-536456195c23"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
-                            Value = "تعذّرت القراءة. تحقق من الشبكة وحاول مرة أخرى."
                         },
                         new
                         {
@@ -8265,14 +8239,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("f0927f44-a92f-8efd-8beb-77c7cf7b66ee"),
                             Language = "en",
                             TranslationKeyId = new Guid("2d69bcda-f315-408b-f10b-afcc14a1cdb7"),
-                            Value = "The QR code could not be read. Fill the fields yourself."
+                            Value = "No QR code could be read from this invoice. Fill the fields yourself."
                         },
                         new
                         {
                             Id = new Guid("8a24b383-6e39-03d6-94eb-d0c37f7f167d"),
                             Language = "ar",
                             TranslationKeyId = new Guid("2d69bcda-f315-408b-f10b-afcc14a1cdb7"),
-                            Value = "تعذّرت قراءة رمز QR. عبّئ الحقول يدوياً."
+                            Value = "تعذّرت قراءة رمز QR من هذه الفاتورة. عبّئ الحقول يدوياً."
                         },
                         new
                         {
@@ -8315,6 +8289,90 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("6e557b3b-e956-03e3-f70f-5a43ed39e9b8"),
                             Value = "ضريبة الفاتورة تختلف عن الضريبة المحسوبة بأكثر من 0.01. يمكنك الحفظ رغم ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("51472944-cc8f-fe92-78ff-3fbfb7f039ac"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("41bd2f90-dee4-67b8-a61b-550266149a69"),
+                            Value = "This supplier's invoice number is already entered."
+                        },
+                        new
+                        {
+                            Id = new Guid("55d18128-aa0e-664b-5841-1617d11d396a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("41bd2f90-dee4-67b8-a61b-550266149a69"),
+                            Value = "رقم فاتورة هذا المورد مُدخل مسبقاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("eedc95a7-38d9-4a61-dc8e-a6c254ad7634"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7b60f9ee-6402-b5f4-bfc6-07353d499dbe"),
+                            Value = "This invoice looks entered already"
+                        },
+                        new
+                        {
+                            Id = new Guid("80da283b-b8da-4c71-5b15-1864ad122c35"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7b60f9ee-6402-b5f4-bfc6-07353d499dbe"),
+                            Value = "يبدو أن هذه الفاتورة مُدخلة مسبقاً"
+                        },
+                        new
+                        {
+                            Id = new Guid("f89d53a5-983b-a25c-20fb-15d6fef8578c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d47cd49a-1a6a-7da3-9bed-39818b30f783"),
+                            Value = "The same supplier and invoice number exist in the earlier entry above. Save it only if this is a different invoice."
+                        },
+                        new
+                        {
+                            Id = new Guid("88992b82-bacc-3e21-1bf2-fa10bb524339"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d47cd49a-1a6a-7da3-9bed-39818b30f783"),
+                            Value = "نفس المورد ورقم الفاتورة موجودان في القيد السابق أعلاه. احفظ فقط إن كانت فاتورة مختلفة."
+                        },
+                        new
+                        {
+                            Id = new Guid("07ca8f05-3adf-959a-8805-fe9984c4873f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6820867f-f714-d5b1-fd69-f7959cd9da74"),
+                            Value = "The same supplier and invoice number exist in a project you have no access to. Save it only if this is a different invoice."
+                        },
+                        new
+                        {
+                            Id = new Guid("65c87a54-3324-2b56-95a4-3d61e1ecf589"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6820867f-f714-d5b1-fd69-f7959cd9da74"),
+                            Value = "نفس المورد ورقم الفاتورة موجودان في مشروع لا تملك صلاحية الوصول إليه. احفظ فقط إن كانت فاتورة مختلفة."
+                        },
+                        new
+                        {
+                            Id = new Guid("8c4cde6e-3654-36bd-bd3c-7863f0f2c7e3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c153a218-ff68-1db3-bcec-66409d1e0695"),
+                            Value = "Save anyway"
+                        },
+                        new
+                        {
+                            Id = new Guid("f8577729-6ee9-fe5a-b8eb-d9a88cde0f01"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c153a218-ff68-1db3-bcec-66409d1e0695"),
+                            Value = "حفظ رغم ذلك"
+                        },
+                        new
+                        {
+                            Id = new Guid("190594d7-d9d2-c6f7-9c7d-693b648abe5c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("41714f5b-9070-a72c-ef3d-83d05f9063b7"),
+                            Value = "This file is already on another expense."
+                        },
+                        new
+                        {
+                            Id = new Guid("1aa13478-96a9-7965-566a-7f766ac0bbe8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("41714f5b-9070-a72c-ef3d-83d05f9063b7"),
+                            Value = "هذا الملف مرفق بمصروف آخر."
                         },
                         new
                         {
@@ -10616,12 +10674,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("b4a77062-42a5-ffac-3c7a-46334d2c15dd"),
-                            Description = "",
-                            Key = "expenses.required"
-                        },
-                        new
-                        {
                             Id = new Guid("3d700b75-43c6-6223-d8ab-58e512f360fd"),
                             Description = "",
                             Key = "expenses.send"
@@ -10643,12 +10695,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("650c3f6d-1a58-ea52-771e-62a588c05d40"),
                             Description = "",
                             Key = "expenses.saved"
-                        },
-                        new
-                        {
-                            Id = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
-                            Description = "",
-                            Key = "expenses.loadFailed"
                         },
                         new
                         {
@@ -10841,6 +10887,42 @@ namespace Redix.Api.Migrations
                             Id = new Guid("6e557b3b-e956-03e3-f70f-5a43ed39e9b8"),
                             Description = "",
                             Key = "expenses.qrVatDiffers"
+                        },
+                        new
+                        {
+                            Id = new Guid("41bd2f90-dee4-67b8-a61b-550266149a69"),
+                            Description = "",
+                            Key = "expenses.duplicateInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("7b60f9ee-6402-b5f4-bfc6-07353d499dbe"),
+                            Description = "",
+                            Key = "expenses.duplicateTitle"
+                        },
+                        new
+                        {
+                            Id = new Guid("d47cd49a-1a6a-7da3-9bed-39818b30f783"),
+                            Description = "",
+                            Key = "expenses.duplicateExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("6820867f-f714-d5b1-fd69-f7959cd9da74"),
+                            Description = "",
+                            Key = "expenses.duplicateHidden"
+                        },
+                        new
+                        {
+                            Id = new Guid("c153a218-ff68-1db3-bcec-66409d1e0695"),
+                            Description = "",
+                            Key = "expenses.saveAnyway"
+                        },
+                        new
+                        {
+                            Id = new Guid("41714f5b-9070-a72c-ef3d-83d05f9063b7"),
+                            Description = "",
+                            Key = "expenses.invoiceAlreadyAttached"
                         },
                         new
                         {
