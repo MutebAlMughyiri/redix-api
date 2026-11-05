@@ -59,7 +59,7 @@ public class Supplier
     /// <summary>Whether <paramref name="vatNumber"/> is 15 digits, starting and ending with 3 (BR-16).</summary>
     public static bool IsValidVatNumber(string vatNumber) => vatNumber.Length == VatNumberLength && vatNumber.All(char.IsAsciiDigit) && vatNumber[0] == '3' && vatNumber[^1] == '3';
 
-    /// <summary>Why a supplier with these values, already trimmed, cannot be kept: a name outside its limits, a VAT number breaking BR-16 unless <paramref name="isVatRegistered"/> is false, or a mobile too long. Empty when it can.</summary>
+    /// <summary>Why a supplier with these values, already trimmed, cannot be kept: a name outside its limits, a VAT number breaking BR-16 unless <paramref name="isVatRegistered"/> is false, or a mobile <see cref="User.IsAcceptableMobile"/> refuses. Empty when it can.</summary>
     public static string RefusalOf(string name, string vatNumber, bool isVatRegistered, string mobile)
     {
         if (!Project.IsAcceptableName(name))
@@ -70,7 +70,7 @@ public class Supplier
         {
             return "InvalidVatNumber";
         }
-        return mobile.Length > User.MobileMaxLength ? "InvalidMobile" : "";
+        return User.IsAcceptableMobile(mobile) ? "" : "InvalidMobile";
     }
 
     /// <summary>Makes <paramref name="itemId"/> the item its expenses usually go to; <see cref="Guid.Empty"/> leaves it with none.</summary>

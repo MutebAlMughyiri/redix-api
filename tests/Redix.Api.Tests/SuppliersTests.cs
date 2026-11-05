@@ -240,6 +240,17 @@ public class SuppliersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task ASuppliersMobileIsDigitsOnAddAndOnEdit()
+    {
+        var (client, project) = await FinanceAsync();
+        var supplier = await AddAsync(client, project.Id, "مورد");
+
+        Assert.Equal("invalidMobile", await CodeOf(await PostAsync(client, project.Id, new SupplierRequest("مورد آخر") { NotVatRegistered = true, Mobile = "٠٥٠٠٠٠٠٠٠٠" })));
+        Assert.Equal("invalidMobile", await CodeOf(await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "050 000" }, Json)));
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "+966500000000" }, Json)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task ADefaultItemMustBeInTheProject()
     {
         var (client, project) = await FinanceAsync();

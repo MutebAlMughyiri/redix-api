@@ -27,6 +27,7 @@ A user answers as `{ id, username, displayName, mobile, isActive, mustChangePass
 | A username is unique, whatever its case | The unique index, `ProjectUsersEndpoints.Create` | `ProjectUsersTests.ARepeatedUsernameIsRefusedWhateverItsCase` |
 | Each field has its limit | `User.RefusalOfNew`, `User.RefusalOfDetails` | `ProjectUsersTests.AFieldOutsideItsLimitIsRefused` |
 | Editing changes the name and mobile, and nothing else | `UsersEndpoints.Edit` | `UsersTests.EditingChangesTheNameAndMobile` |
+| A mobile is ASCII digits with a leading `+` at most, or empty, for a user or a supplier, so the browser front end cannot store `????`; one owner | `User.IsAcceptableMobile` | `ProjectUsersTests.AMobileIsAsciiDigitsWithALeadingPlusAtMost`, `ProjectUsersTests.AMobileMayStartWithAPlus`, `UsersTests.AnEditCannotGiveAMobileThatIsNotDigits`, `RegistrationTests.ABadFieldCreatesNothing`, `SuppliersTests.ASuppliersMobileIsDigitsOnAddAndOnEdit` |
 | A reset forces a change, ends the lock and signs out every device | `User.ResetPassword`, `UsersEndpoints.ResetPassword` | `UsersTests.AResetForcesAChangeEndsTheLockAndSignsOutEveryDevice` |
 | A disabled user cannot sign in, and their open session ends at the next request (AC-01.3) | `SessionPolicies.CheckSessionIsOpen` | `UsersTests.DisablingAUserEndsTheOpenSessionAtTheNextRequest` |
 | An enabled user can sign in again | `UsersEndpoints.Enable` | `UsersTests.AnEnabledUserCanSignInAgain` |

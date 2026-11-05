@@ -49,7 +49,7 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 | Any number of suppliers may have no number | The index in `RedixDbContext` | `AnyNumberOfSuppliersMayHaveNoVatNumber` |
 | An edit changes a supplier and leaves it its own number | `SuppliersEndpoints.Edit` | `AnEditChangesASupplierAndLeavesItItsOwnNumber` |
 | An edit can take the default item and the number away | `Supplier.DefaultTo`, `SupplierRequest.VatNumberKept` | `AnEditCanTakeTheDefaultItemAndTheVatNumberAway` |
-| A name has 1 to 100 characters, a mobile at most 20 | `Supplier.RefusalOf` | `ASupplierNeedsANameOfAtMost100Characters`, `AMobileMayHaveAtMost20Characters` |
+| A name has 1 to 100 characters, a mobile at most 20, in ASCII digits with a leading `+` at most | `Supplier.RefusalOf`, `User.IsAcceptableMobile` | `ASupplierNeedsANameOfAtMost100Characters`, `AMobileMayHaveAtMost20Characters`, `ASuppliersMobileIsDigitsOnAddAndOnEdit` |
 | A default item must be in the project (BR-33) | `ProjectStructure.ItemOfAsync` | `ADefaultItemMustBeInTheProject` |
 | Disabled, it stays in the register, never deleted (BR-15) | No delete route; `SuppliersEndpoints.Disable` | `ADisabledSupplierStaysInTheRegisterAndCanBeEnabled` |
 | The register lists suppliers by name | `SuppliersEndpoints.List` | `TheRegisterListsSuppliersByName` |

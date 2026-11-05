@@ -3678,14 +3678,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("6316b8e7-2f05-0e2b-341e-98ae3e9e2a5b"),
                             Language = "en",
                             TranslationKeyId = new Guid("54aa5f3c-f52e-21c8-3edd-77b7485d1b95"),
-                            Value = "Enter a mobile of up to 20 characters."
+                            Value = "Enter a mobile in digits, up to 20, with a + at the start if it has one."
                         },
                         new
                         {
                             Id = new Guid("09091696-ccfc-2c4b-2fb6-30a990acc27b"),
                             Language = "ar",
                             TranslationKeyId = new Guid("54aa5f3c-f52e-21c8-3edd-77b7485d1b95"),
-                            Value = "اكتب رقم جوال من 20 حرفاً على الأكثر."
+                            Value = "اكتب رقم الجوال بالأرقام، حتى 20 رقماً، وقد يبدأ بعلامة +."
                         },
                         new
                         {
@@ -4000,14 +4000,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("dc93e950-2e06-1e46-381c-3782e8f8084c"),
                             Language = "en",
                             TranslationKeyId = new Guid("f9c223e7-01ed-0cf2-576e-688be1721c5c"),
-                            Value = "Enter a mobile of up to 20 characters."
+                            Value = "Enter a mobile in digits, up to 20, with a + at the start if it has one."
                         },
                         new
                         {
                             Id = new Guid("f07e3552-07f3-0f88-e991-31daabc44809"),
                             Language = "ar",
                             TranslationKeyId = new Guid("f9c223e7-01ed-0cf2-576e-688be1721c5c"),
-                            Value = "اكتب رقم جوال من 20 حرفاً على الأكثر."
+                            Value = "اكتب رقم الجوال بالأرقام، حتى 20 رقماً، وقد يبدأ بعلامة +."
                         },
                         new
                         {
@@ -6394,14 +6394,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d24f07e9-da5b-373f-d492-871258154c78"),
                             Language = "en",
                             TranslationKeyId = new Guid("7c5178da-e72c-99ca-6caf-953d8a2a626b"),
-                            Value = "Enter a mobile of up to 20 characters."
+                            Value = "Enter a mobile in digits, up to 20, with a + at the start if it has one."
                         },
                         new
                         {
                             Id = new Guid("36d8c20b-c689-f2dd-ab27-3f928773bb2f"),
                             Language = "ar",
                             TranslationKeyId = new Guid("7c5178da-e72c-99ca-6caf-953d8a2a626b"),
-                            Value = "اكتب رقم جوال من 20 حرفاً على الأكثر."
+                            Value = "اكتب رقم الجوال بالأرقام، حتى 20 رقماً، وقد يبدأ بعلامة +."
                         },
                         new
                         {

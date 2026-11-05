@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Redix.Api.Audit;
 
@@ -70,6 +71,9 @@ public class User
     /// <summary>Whether <paramref name="newPassword"/> may replace <paramref name="currentPassword"/>: long enough, and different.</summary>
     public static bool IsAcceptableNewPassword(string newPassword, string currentPassword) => IsLongEnough(newPassword) && newPassword != currentPassword;
 
+    /// <summary>Whether <paramref name="mobile"/>, already trimmed, may be kept, for a user or a supplier: empty, or ASCII digits with a leading plus at most, in at most <see cref="MobileMaxLength"/> characters. The column holds nothing else, so Arabic digits would become question marks.</summary>
+    public static bool IsAcceptableMobile(string mobile) => mobile.Length <= MobileMaxLength && Regex.IsMatch(mobile, @"\A(\+?[0-9]+)?\z");
+
     /// <summary>The refusal of a name and a mobile, already trimmed, as its code; empty when both are acceptable.</summary>
     public static string RefusalOfDetails(string displayName, string mobile)
     {
@@ -77,7 +81,7 @@ public class User
         {
             return "InvalidName";
         }
-        return mobile.Length > MobileMaxLength ? "InvalidMobile" : "";
+        return IsAcceptableMobile(mobile) ? "" : "InvalidMobile";
     }
 
     /// <summary>The refusal of a new user's fields, already trimmed, as its code; empty when all are acceptable.</summary>

@@ -115,6 +115,31 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         Assert.Equal(code, await CodeOf(refused));
     }
 
+    [Theory]
+    [InlineData("٠٥٠٠٠٠٠٠٠٠")]
+    [InlineData("050 000 0000")]
+    [InlineData("05+00000000")]
+    [InlineData("++966500000000")]
+    [InlineData("+")]
+    [InlineData("mobile")]
+    public async Task AMobileIsAsciiDigitsWithALeadingPlusAtMost(string mobile)
+    {
+        var (_, client, projectId) = await ManagerAsync();
+
+        var refused = await CreateAsync(client, projectId, NewUsername(), mobile: mobile);
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("invalidMobile", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task AMobileMayStartWithAPlus()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+
+        Assert.Equal("+966500000000", (await ViewOf(await CreateAsync(client, projectId, NewUsername(), mobile: "+966500000000"))).Mobile);
+    }
+
     [Fact]
     public async Task AnExistingUserIsAddedByUsernameAsTheLastRole()
     {

@@ -53,6 +53,15 @@ public class UsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AnEditCannotGiveAMobileThatIsNotDigits()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var manager = await ManagerOfAsync(user);
+
+        Assert.Equal("invalidMobile", await CodeOf(await manager.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "٠٥١١١١١١١١"))));
+    }
+
+    [Fact]
     public async Task AResetForcesAChangeEndsTheLockAndSignsOutEveryDevice()
     {
         var user = await factory.AddUserAsync(Password);

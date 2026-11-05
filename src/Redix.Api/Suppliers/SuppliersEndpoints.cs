@@ -56,7 +56,7 @@ public static class SuppliersEndpoints
     }
 
     /// <summary>
-    /// Adds a supplier, and answers it: approved for whoever holds <see cref="Permission.ManageSettings"/>, otherwise waiting for approval (FR-44). An unacceptable name answers <c>invalidName</c>; a VAT number breaking BR-16, <c>invalidVatNumber</c>; a mobile too long, <c>invalidMobile</c>; a default item outside the project,
+    /// Adds a supplier, and answers it: approved for whoever holds <see cref="Permission.ManageSettings"/>, otherwise waiting for approval (FR-44). An unacceptable name answers <c>invalidName</c>; a VAT number breaking BR-16, <c>invalidVatNumber</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>; a default item outside the project,
     /// <c>unknownItem</c>; a VAT number another supplier of the project holds, <c>vatNumberTaken</c>, with that supplier as <c>existing</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>

@@ -33,7 +33,7 @@ public static class UsersEndpoints
         return rows.ToLookup(row => row.UserId, row => new UserProjectView(row.ProjectId, row.Name, new RoleView(row.Id, row.WordKey)));
     }
 
-    /// <summary>Changes a user's name and mobile. A field outside its limit answers <c>invalidName</c> or <c>invalidMobile</c>.</summary>
+    /// <summary>Changes a user's name and mobile. A name outside its limit answers <c>invalidName</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>.</summary>
     /// <param name="userId">The user to change.</param>
     /// <param name="request">The new name and mobile.</param>
     /// <param name="principal">The caller's session.</param>
