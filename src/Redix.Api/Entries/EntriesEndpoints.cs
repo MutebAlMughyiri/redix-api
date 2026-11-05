@@ -17,7 +17,18 @@ public static class EntriesEndpoints
     public static void MapEntries(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/entries/{entryId:guid}", Read).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/projects/{projectId:guid}/entries/mine", Mine).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapProjectChanges(Permission.RecordEntries).MapPost("/entries/{entryId:guid}/submit", Submit);
+    }
+
+    /// <summary>Where the caller's own entries stand in the project, newest first.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static Task<List<EntryStatusView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
+    {
+        var userId = AccessTokens.UserIdOf(principal);
+        return db.Entries.Where(entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId).OrderByDescending(entry => entry.CreatedAt).Select(entry => new EntryStatusView(entry.Id, entry.Status)).ToListAsync();
     }
 
     /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. Anything else answers 404.</summary>

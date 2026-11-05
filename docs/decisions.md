@@ -6,6 +6,8 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-05 | One stamp covers all of a project's lists at a sync, and any change sends them all | A row that left a list leaves nothing to compare, and a hash of what is sent cannot miss it; these lists are small, and a change is rare |
+| 2026-11-05 | An upload sent again by its author answers the entry as it is, and changes nothing | Offline uploads are cut and retried, so a repeat has to be an answer, not a refusal. Anyone else using that id is still refused |
 | 2026-11-05 | A contractor payment may name a subgroup of its contract's item | The item report would otherwise show every payment as general |
 | 2026-11-05 | An item's type is held while a contract names it | Otherwise that contract's payments are refused until someone notices |
 | 2026-11-05 | The duplicate warning looks only in this project and the others the caller can read, and says nothing about the rest; the `exists elsewhere` wording and its word are gone | AC-17.1 as it now reads. BR-33 keeps projects separate, so a project the caller cannot read shows nothing, not even that something exists. This supersedes the decision below that one in such a project says only that it exists. Findings row 98. |

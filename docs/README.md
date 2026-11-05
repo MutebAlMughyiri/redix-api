@@ -44,5 +44,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-026](use-cases/UC-026-credit-note.md) | Record money coming back: a credit note, or a deduction | Finance and Field |
 | [UC-027](use-cases/UC-027-contractor-payment.md) | Pay a contractor against a contract, and keep its remaining right | Finance and Field |
 | [UC-028](use-cases/UC-028-submit-entry.md) | Read an entry, and send a draft for approval | Finance and Field; everyone with access reads |
+| [UC-029](use-cases/UC-029-offline-uploads.md) | Take an entry sent from a phone exactly once, however often it is retried | The app, on its own |
+| [UC-030](use-cases/UC-030-sync.md) | Send a phone what it keeps to work without a network | The app, for anyone who reads the project |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

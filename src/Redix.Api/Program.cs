@@ -17,6 +17,7 @@ using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
+using Redix.Api.Sync;
 using Redix.Api.Translations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -99,5 +100,6 @@ app.MapAttachments();
 app.MapExpenses();
 app.MapContractorPayments();
 app.MapEntries();
+app.MapSyncEndpoints();
 
 app.Run();

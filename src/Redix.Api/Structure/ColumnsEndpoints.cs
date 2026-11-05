@@ -38,8 +38,16 @@ public static class ColumnsEndpoints
         {
             return Results.NotFound();
         }
+        return Results.Ok(await ViewsOfItemAsync(itemId, db));
+    }
+
+    /// <summary>The columns an entry on the item <paramref name="itemId"/> asks for, in order.</summary>
+    /// <param name="itemId">The item.</param>
+    /// <param name="db">The database the columns live in.</param>
+    public static async Task<List<ColumnView>> ViewsOfItemAsync(Guid itemId, RedixDbContext db)
+    {
         var columns = await db.ItemColumns.Where(column => column.ItemId == itemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync();
-        return Results.Ok(columns.Select(ColumnView.Of).ToList());
+        return columns.Select(ColumnView.Of).ToList();
     }
 
     /// <summary>The project's default template for one type of item, in order.</summary>
