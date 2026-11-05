@@ -3,18 +3,22 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Projects;
 
-/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), adds units and closes them (UC-006, FR-04), sets their VAT rate (UC-014, BR-14), and keeps each user's default (UC-010, FR-37).</summary>
+/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), renames them, adds, renames and deletes units and closes them (UC-006, FR-04, BR-38), sets their VAT rate (UC-014, BR-14), and keeps each user's default (UC-010, FR-37).</summary>
 public static class ProjectsEndpoints
 {
-    /// <summary>Maps <c>GET /projects</c>, <c>POST /projects</c>, <c>POST /projects/{projectId}/units</c>, <c>POST /projects/{projectId}/close</c> and <c>POST /projects/{projectId}/vat-rate</c>.</summary>
+    /// <summary>Maps <c>GET /projects</c>, <c>POST /projects</c>, and under <c>POST /projects/{projectId}</c> the rename, <c>/units</c>, <c>/units/{unitId}</c>, <c>/units/{unitId}/delete</c>, <c>/close</c> and <c>/vat-rate</c>.</summary>
     public static void MapProjects(this WebApplication app)
     {
         app.MapGet("/projects", List);
         app.MapPost("/projects", Create).RequireAuthorization(SessionPolicies.Working);
+        app.MapPost("/projects/{projectId:guid}", Rename).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/units", AddUnit).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}", RenameUnit).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}/delete", DeleteUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/close", Close).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/vat-rate", SetVatRate).RequireAuthorization(nameof(Permission.ManageSettings));
         app.MapPost("/projects/{projectId:guid}/default", SetDefault).RequireAuthorization(nameof(Permission.ReadProject));
@@ -87,6 +91,37 @@ public static class ProjectsEndpoints
     public static Task<IResult> AddUnit(Guid projectId, AddUnitRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ChangeAsync(projectId, principal, db, time, AuditAction.Create, project => project.AddUnit(request.Name.Trim()));
 
+    /// <summary>Renames a project while it is open (BR-38). A finished project answers <c>projectFinished</c>; an unacceptable name, <c>invalidName</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="request">Its new name.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the project lives in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static Task<IResult> Rename(Guid projectId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.Rename(request.Name.Trim()));
+
+    /// <summary>Renames a unit while its project is open (BR-38). It answers as <see cref="AddUnit"/> does; the shared unit answers <c>sharedUnit</c>, and one outside the project 404.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="unitId">The unit.</param>
+    /// <param name="request">Its new name.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the project lives in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static Task<IResult> RenameUnit(Guid projectId, Guid unitId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.RenameUnit(unitId, request.Name.Trim()));
+
+    /// <summary>Deletes a unit while its project is open (BR-38). One an entry or a contract uses answers <c>unitInUse</c>; the shared unit, <c>sharedUnit</c>; a finished project, <c>projectFinished</c>; one outside the project 404.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="unitId">The unit.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the project lives in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static async Task<IResult> DeleteUnit(Guid projectId, Guid unitId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var isUsed = await db.ExpenseDetails.AnyAsync(details => details.UnitId == unitId) || await db.Contracts.AnyAsync(contract => contract.UnitId == unitId);
+        return await ChangeAsync(projectId, principal, db, time, AuditAction.Delete, project => project.RemoveUnit(unitId, isUsed));
+    }
+
     /// <summary>Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>; one with entries waiting for approval, <c>pendingEntries</c> (BR-35). A draft waits for nobody, so it holds nothing open.</summary>
     /// <param name="projectId">The project to close.</param>
     /// <param name="principal">The caller's session.</param>
@@ -150,6 +185,10 @@ public static class ProjectsEndpoints
         }
 
         var outcome = change(project);
+        if (outcome == ProjectChangeOutcome.UnknownUnit)
+        {
+            return Results.NotFound();
+        }
         if (outcome != ProjectChangeOutcome.Done)
         {
             var status = outcome is ProjectChangeOutcome.InvalidName or ProjectChangeOutcome.InvalidVatRate ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;

@@ -13,7 +13,7 @@ public class Unit
     public Guid ProjectId { get; init; }
 
     /// <summary>The unit's name, as the financial supervisor typed it.</summary>
-    public required string Name { get; init; }
+    public required string Name { get; set; }
 
     /// <summary>True for the shared unit, a row so that reports group it like any unit; it is not one of the project's own units.</summary>
     public bool IsShared { get; init; }

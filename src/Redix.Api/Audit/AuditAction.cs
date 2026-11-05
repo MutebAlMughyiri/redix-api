@@ -62,4 +62,7 @@ public enum AuditAction
 
     /// <summary>A project was closed, which cannot be undone (UC-006).</summary>
     CloseProject,
+
+    /// <summary>A unit nothing used was deleted (BR-38).</summary>
+    Delete,
 }

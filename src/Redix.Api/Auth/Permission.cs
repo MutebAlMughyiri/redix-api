@@ -18,7 +18,7 @@ public enum Permission
     /// <summary>Sees every partner in one project and their capital, not only their own (BR-31).</summary>
     SeeAllCapital,
 
-    /// <summary>Adds units to one project and closes it (FR-04).</summary>
+    /// <summary>Renames one project, adds, renames and deletes its units, and closes it (FR-04, BR-38).</summary>
     ManageProject,
 
     /// <summary>Shapes one project's expense structure: its categories, items, subgroups and columns (FR-05, FR-38, FR-39, FR-41).</summary>

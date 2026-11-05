@@ -20,8 +20,8 @@ public class Project
     /// <summary>The project's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
-    /// <summary>The project's name, as it was typed.</summary>
-    public required string Name { get; init; }
+    /// <summary>The project's name, as it was typed; it changes only through <see cref="Rename"/>.</summary>
+    public required string Name { get; set; }
 
     /// <summary>The day the project started.</summary>
     public DateOnly StartDate { get; init; }
@@ -111,11 +111,76 @@ public class Project
         {
             return ProjectChangeOutcome.UnitNameTaken;
         }
-        Units.Add(new Unit { ProjectId = Id, Name = name, SortOrder = Units.Count });
+        Units.Add(new Unit { ProjectId = Id, Name = name, SortOrder = Units.Count == 0 ? 0 : Units.Max(unit => unit.SortOrder) + 1 });
         return ProjectChangeOutcome.Done;
     }
 
-    private bool IsUnitNameTaken(string name) => name == Unit.SharedName || Units.Any(unit => unit.Name == name);
+    /// <summary>Renames the project while it is open (BR-38); another project may hold the same name (BR-37).</summary>
+    public ProjectChangeOutcome Rename(string name)
+    {
+        if (IsReadOnly)
+        {
+            return ProjectChangeOutcome.ProjectFinished;
+        }
+        if (!IsAcceptableName(name))
+        {
+            return ProjectChangeOutcome.InvalidName;
+        }
+        Name = name;
+        return ProjectChangeOutcome.Done;
+    }
+
+    /// <summary>Renames one of the project's own units while the project is open (BR-38), unless the name is not acceptable or another unit holds it (BR-37).</summary>
+    public ProjectChangeOutcome RenameUnit(Guid unitId, string name)
+    {
+        var refusal = RefusalOfChangingUnit(unitId);
+        if (refusal != ProjectChangeOutcome.Done)
+        {
+            return refusal;
+        }
+        if (!IsAcceptableName(name))
+        {
+            return ProjectChangeOutcome.InvalidName;
+        }
+        if (IsUnitNameTaken(name, unitId))
+        {
+            return ProjectChangeOutcome.UnitNameTaken;
+        }
+        Units.Single(unit => unit.Id == unitId).Name = name;
+        return ProjectChangeOutcome.Done;
+    }
+
+    /// <summary>Removes one of the project's own units while the project is open, unless <paramref name="isUsed"/> by an entry or a contract (BR-38).</summary>
+    public ProjectChangeOutcome RemoveUnit(Guid unitId, bool isUsed)
+    {
+        var refusal = RefusalOfChangingUnit(unitId);
+        if (refusal != ProjectChangeOutcome.Done)
+        {
+            return refusal;
+        }
+        if (isUsed)
+        {
+            return ProjectChangeOutcome.UnitInUse;
+        }
+        Units.RemoveAll(unit => unit.Id == unitId);
+        return ProjectChangeOutcome.Done;
+    }
+
+    private ProjectChangeOutcome RefusalOfChangingUnit(Guid unitId)
+    {
+        if (IsReadOnly)
+        {
+            return ProjectChangeOutcome.ProjectFinished;
+        }
+        var unit = Units.SingleOrDefault(row => row.Id == unitId);
+        if (unit is null)
+        {
+            return ProjectChangeOutcome.UnknownUnit;
+        }
+        return unit.IsShared ? ProjectChangeOutcome.SharedUnit : ProjectChangeOutcome.Done;
+    }
+
+    private bool IsUnitNameTaken(string name, Guid unitId = default) => name == Unit.SharedName || Units.Any(unit => unit.Name == name && unit.Id != unitId);
 
     /// <summary>Adds the shared unit, which an entry or a contract may name instead of one of the project's units.</summary>
     public void AddSharedUnit() => Units.Add(new Unit { ProjectId = Id, Name = Unit.SharedName, IsShared = true });

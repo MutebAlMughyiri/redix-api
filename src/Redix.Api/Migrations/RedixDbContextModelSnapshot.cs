@@ -3381,6 +3381,104 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("a43e219c-95b9-8a61-0643-8744929da343"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("46d6661d-ea85-afec-5ce0-df44c4c9d2e7"),
+                            Value = "Entries or contracts use this unit, so it cannot be deleted."
+                        },
+                        new
+                        {
+                            Id = new Guid("e0c936f7-6e01-fc2c-ea48-dbdee78b66b8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("46d6661d-ea85-afec-5ce0-df44c4c9d2e7"),
+                            Value = "هذه الوحدة عليها قيود أو عقود، فلا تُحذف."
+                        },
+                        new
+                        {
+                            Id = new Guid("6cb36bdf-aabd-ddf0-ffb6-dd62b558e5dd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c11644b9-5e78-0b99-05ba-004904ce9afd"),
+                            Value = "The shared unit cannot be renamed or deleted."
+                        },
+                        new
+                        {
+                            Id = new Guid("cae4d12f-1e01-bfe4-a70c-239463019d5f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c11644b9-5e78-0b99-05ba-004904ce9afd"),
+                            Value = "الوحدة المشتركة لا يُعدَّل اسمها ولا تُحذف."
+                        },
+                        new
+                        {
+                            Id = new Guid("5232747e-71ea-3536-984e-a2d41608aca4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b431f747-6e0e-242d-4abb-474876efeeb4"),
+                            Value = "Rename project"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0e152d4-1ecf-107f-aac7-e708dad6c1f8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b431f747-6e0e-242d-4abb-474876efeeb4"),
+                            Value = "تعديل اسم المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("d55fb92a-b4cc-448d-ce63-1dfa92003294"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9876a2f0-34b3-61e5-bce4-8373a59aa30d"),
+                            Value = "Rename unit"
+                        },
+                        new
+                        {
+                            Id = new Guid("cfddfb4c-09a6-4628-c7c8-4461c40df153"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9876a2f0-34b3-61e5-bce4-8373a59aa30d"),
+                            Value = "تعديل اسم الوحدة"
+                        },
+                        new
+                        {
+                            Id = new Guid("d1dd8d2a-d8a3-6956-539d-207fdc82e6fa"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("93caa0c9-b3c8-2f69-7583-e7fe363eeaba"),
+                            Value = "Delete this unit?"
+                        },
+                        new
+                        {
+                            Id = new Guid("5308ff98-93ed-ddfa-846f-ac63511369e4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("93caa0c9-b3c8-2f69-7583-e7fe363eeaba"),
+                            Value = "حذف هذه الوحدة؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("9774b8eb-6c82-b6f0-b56b-92a58fb57467"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
+                            Value = "It leaves this project. A unit that entries or contracts use cannot be deleted."
+                        },
+                        new
+                        {
+                            Id = new Guid("b0777b87-cdcc-965d-80a4-b5f3a843b845"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
+                            Value = "تُحذف من هذا المشروع. ولا تُحذف وحدة عليها قيود أو عقود."
+                        },
+                        new
+                        {
+                            Id = new Guid("151e7dd2-0a1c-5be2-accf-309ef2321dec"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d8653553-e111-a503-ccc9-af6dbc2704c3"),
+                            Value = "Save"
+                        },
+                        new
+                        {
+                            Id = new Guid("c52a61be-a397-1527-3563-a20bbbb342d5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d8653553-e111-a503-ccc9-af6dbc2704c3"),
+                            Value = "حفظ"
+                        },
+                        new
+                        {
                             Id = new Guid("a39f0718-fbab-9144-900c-5272495dc673"),
                             Language = "en",
                             TranslationKeyId = new Guid("c33d1bdd-122b-d5b7-5927-b9b1d6e949f0"),
@@ -9404,6 +9502,48 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d7ac423a-16a1-47b1-d833-12ce010a99b0"),
                             Description = "",
                             Key = "register.unitNameTaken"
+                        },
+                        new
+                        {
+                            Id = new Guid("46d6661d-ea85-afec-5ce0-df44c4c9d2e7"),
+                            Description = "",
+                            Key = "projects.unitInUse"
+                        },
+                        new
+                        {
+                            Id = new Guid("c11644b9-5e78-0b99-05ba-004904ce9afd"),
+                            Description = "",
+                            Key = "projects.sharedUnit"
+                        },
+                        new
+                        {
+                            Id = new Guid("b431f747-6e0e-242d-4abb-474876efeeb4"),
+                            Description = "",
+                            Key = "projects.rename"
+                        },
+                        new
+                        {
+                            Id = new Guid("9876a2f0-34b3-61e5-bce4-8373a59aa30d"),
+                            Description = "",
+                            Key = "projects.renameUnit"
+                        },
+                        new
+                        {
+                            Id = new Guid("93caa0c9-b3c8-2f69-7583-e7fe363eeaba"),
+                            Description = "",
+                            Key = "projects.removeUnitQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
+                            Description = "",
+                            Key = "projects.removeUnitExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("d8653553-e111-a503-ccc9-af6dbc2704c3"),
+                            Description = "",
+                            Key = "projects.save"
                         },
                         new
                         {

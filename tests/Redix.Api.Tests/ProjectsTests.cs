@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
 
@@ -519,5 +520,159 @@ public class ProjectsTests(MigratedApiFactory factory)
         await ProjectOf(await CreateAsync(client, "غصون 6", "الفلة الغربية"));
 
         Assert.Equal(2, (await ListAsync(client))!.Count);
+    }
+
+    private static Task<HttpResponseMessage> RenameAsync(HttpClient client, Guid projectId, string name) =>
+        client.PostAsJsonAsync($"/projects/{projectId}", new { name });
+
+    private static Task<HttpResponseMessage> RenameUnitAsync(HttpClient client, Guid projectId, Guid unitId, string name) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/units/{unitId}", new { name });
+
+    private static Task<HttpResponseMessage> DeleteUnitAsync(HttpClient client, Guid projectId, Guid unitId) =>
+        client.PostAsync($"/projects/{projectId}/units/{unitId}/delete", null);
+
+    [Fact]
+    public async Task BR_38_ARunningProjectIsRenamedAndTheAuditTrailShowsBothNames()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+
+        var renamed = await ProjectOf(await RenameAsync(client, project.Id, "  غصون السادس  "));
+
+        Assert.Equal("غصون السادس", renamed.Name);
+        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
+        Assert.Equal(AuditAction.Update, record.Action);
+        Assert.Equal("غصون 6", ValuesOf(record.Before).GetProperty("Name").GetString());
+        Assert.Equal("غصون السادس", ValuesOf(record.After).GetProperty("Name").GetString());
+    }
+
+    [Theory]
+    [MemberData(nameof(UnacceptableNames))]
+    public async Task BR_38_AProjectOrAUnitIsRenamedOnlyToAnAcceptableName(string name)
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية");
+
+        Assert.Equal("invalidName", await CodeOf(await RenameAsync(client, project.Id, name)));
+        Assert.Equal("invalidName", await CodeOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, name)));
+    }
+
+    [Fact]
+    public async Task BR_38_AUnitIsRenamedInPlaceAndTheAuditTrailShowsBothNames()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية", "الفلة الشرقية");
+
+        var renamed = await ProjectOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, " الفلة الجنوبية "));
+
+        Assert.Equal(["الفلة الجنوبية", "الفلة الشرقية"], renamed.Units.Select(unit => unit.Name));
+        var record = (await factory.AuditTrailOfAsync(project.Units[0].Id)).Last();
+        Assert.Equal((AuditAction.Update, "Units"), (record.Action, record.TableName));
+        Assert.Equal("الفلة الغربية", ValuesOf(record.Before).GetProperty("Name").GetString());
+        Assert.Equal("الفلة الجنوبية", ValuesOf(record.After).GetProperty("Name").GetString());
+    }
+
+    [Fact]
+    public async Task BR_37_ARenameCannotTakeAnotherUnitsNameAndMayKeepItsOwn()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية", "الفلة الشرقية");
+
+        var refused = await RenameUnitAsync(client, project.Id, project.Units[0].Id, " الفلة الشرقية ");
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("unitNameTaken", await CodeOf(refused));
+        await ProjectOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, "الفلة الغربية"));
+    }
+
+    [Fact]
+    public async Task BR_38_AUnitNothingUsesIsDeletedAndTheAuditTrailKeepsWhatItWas()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية", "الفلة الشرقية");
+
+        var left = await ProjectOf(await DeleteUnitAsync(client, project.Id, project.Units[0].Id));
+
+        Assert.Equal(["الفلة الشرقية"], left.Units.Select(unit => unit.Name));
+        var record = (await factory.AuditTrailOfAsync(project.Units[0].Id)).Last();
+        Assert.Equal((AuditAction.Delete, "Units"), (record.Action, record.TableName));
+        Assert.Equal("الفلة الغربية", ValuesOf(record.Before).GetProperty("Name").GetString());
+        Assert.Equal("{}", record.After);
+    }
+
+    [Fact]
+    public async Task AUnitAddedAfterADeletionStillGoesLast()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية", "الفلة الشرقية", "الفلة الشمالية");
+        await ProjectOf(await DeleteUnitAsync(client, project.Id, project.Units[0].Id));
+
+        var withUnit = await ProjectOf(await AddUnitAsync(client, project.Id, "الفلة الجنوبية"));
+
+        Assert.Equal(["الفلة الشرقية", "الفلة الشمالية", "الفلة الجنوبية"], withUnit.Units.Select(unit => unit.Name));
+        Assert.Equal(["الفلة الشرقية", "الفلة الشمالية", "الفلة الجنوبية"], (await ListAsync(client))!.Single(row => row.Id == project.Id).Units.Select(unit => unit.Name));
+    }
+
+    [Fact]
+    public async Task BR_38_AUnitAnEntryUsesIsNotDeleted()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ledger.RecordAsync(ledger.Purchase());
+
+        var refused = await DeleteUnitAsync(ledger.Client, ledger.ProjectId, ledger.Project.Units[0].Id);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("unitInUse", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task BR_38_AUnitAContractUsesIsNotDeleted()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var contract = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, ledger.Project.Units[0].Id, 1000, false), Json);
+        contract.EnsureSuccessStatusCode();
+
+        Assert.Equal("unitInUse", await CodeOf(await DeleteUnitAsync(ledger.Client, ledger.ProjectId, ledger.Project.Units[0].Id)));
+    }
+
+    [Fact]
+    public async Task BR_38_TheSharedUnitIsNeverRenamedOrDeleted()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+        var shared = project.EntryUnits.Single(unit => unit.Name == Unit.SharedName);
+
+        Assert.Equal("sharedUnit", await CodeOf(await RenameUnitAsync(client, project.Id, shared.Id, "الوحدات")));
+        Assert.Equal("sharedUnit", await CodeOf(await DeleteUnitAsync(client, project.Id, shared.Id)));
+    }
+
+    [Fact]
+    public async Task BR_38_AFinishedProjectRefusesRenamesAndDeletions()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية");
+        (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
+
+        Assert.Equal("projectFinished", await CodeOf(await RenameAsync(client, project.Id, "غصون 7")));
+        Assert.Equal("projectFinished", await CodeOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, "الوحدة")));
+        Assert.Equal("projectFinished", await CodeOf(await DeleteUnitAsync(client, project.Id, project.Units[0].Id)));
+    }
+
+    [Fact]
+    public async Task BR_33_AUnitOfAnotherProjectIsNotFound()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+        var (_, other) = await FinanceOfNewProjectAsync("غصون 7", "الفلة الغربية");
+
+        Assert.Equal(HttpStatusCode.NotFound, (await RenameUnitAsync(client, project.Id, other.Units[0].Id, "الوحدة")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await DeleteUnitAsync(client, project.Id, other.Units[0].Id)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(Manager)]
+    [InlineData(Field)]
+    [InlineData(Reader)]
+    public async Task BR_38_OnlyWhoeverManagesTheProjectRenamesAndDeletes(string role)
+    {
+        var (_, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية");
+        var member = await StarterAsync();
+        await factory.GiveRoleAsync(member.Id, project.Id, role);
+        var client = await ClientOfAsync(member);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await RenameAsync(client, project.Id, "غصون 7")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await RenameUnitAsync(client, project.Id, project.Units[0].Id, "الوحدة")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await DeleteUnitAsync(client, project.Id, project.Units[0].Id)).StatusCode);
     }
 }
