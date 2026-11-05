@@ -131,11 +131,11 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal(("رقم التقرير:", "1", "غصون 6"), (summary.Cell("A2").GetString(), summary.Cell("B2").GetString(), summary.Cell("A1").GetString()));
         Assert.Equal(("ايرادات", "مصروفات", "رأس المال", "'راس المال'!C3"), (summary.Cell("A9").GetString(), summary.Cell("D9").GetString(), summary.Cell("A10").GetString(), summary.Cell("B10").FormulaA1));
         Assert.Equal((1000m, 115m, 885m), (summary.Cell("B13").GetValue<decimal>(), summary.Cell("E15").GetValue<decimal>(), summary.Cell("B18").GetValue<decimal>()));
-        Assert.Equal(("تفاصيل تكاليف العظم:", "B31"), (summary.Cell("A21").GetString(), summary.Cell("E12").FormulaA1));
+        Assert.Equal(("تفاصيل العظم:", "B31"), (summary.Cell("A21").GetString(), summary.Cell("E12").FormulaA1));
         Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains($"'{itemSheet.Name}'!"));
         var capital = workbook.Worksheet("راس المال");
         Assert.Equal(("شريك", 1000m, 100m), (capital.Cell("B2").GetString(), capital.Cell("C2").GetValue<decimal>(), capital.Cell("D2").GetValue<decimal>()));
-        Assert.Equal(("إضافة مبلغ", 1000m), (capital.Cell("H3").GetString(), capital.Cell("K4").GetValue<decimal>()));
+        Assert.Equal(("إضافة مبلغ", 1000m), (capital.Cell("B7").GetString(), capital.Cell("E8").GetValue<decimal>()));
         var row = itemSheet.CellsUsed().First(cell => cell.GetString() == "P1").Address.RowNumber;
         Assert.True(itemSheet.Cell(row, 6).IsEmpty() && itemSheet.Cell(row, 7).IsEmpty(), "a price and a quantity nobody entered stay blank, as in the PDF");
         Assert.Equal(("الوصف", 115m), (itemSheet.Cell("B1").GetString(), itemSheet.Cell(row + 1, 8).GetValue<decimal>()));
@@ -154,10 +154,21 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var sheet = workbook.Worksheet(1);
         Assert.Equal(("الاجمالي", 100m), (sheet.Cell("A3").GetString(), sheet.Cell("H3").GetValue<decimal>()));
         Assert.Equal(StatementStyle.Green, sheet.Cell("B2").Style.Fill.BackgroundColor);
-        Assert.Equal(("دفعات بويه مؤسسة الدهان", 1000m), (sheet.Cell("A6").GetString(), sheet.Cell("C6").GetValue<decimal>()));
+        Assert.Equal(("دفعات مؤسسة الدهان", 1000m), (sheet.Cell("A6").GetString(), sheet.Cell("C6").GetValue<decimal>()));
         Assert.Equal([600m, 600m, 500m], new[] { 8, 9, 10 }.Select(line => sheet.Cell(line, 5).GetValue<decimal>()));
         Assert.Equal((600m, 700m), (sheet.Cell("F6").GetValue<decimal>(), sheet.Cell("H13").GetValue<decimal>()));
         Assert.Equal("اجمالي الكل", sheet.Cell("A13").GetString());
+    }
+
+    [Fact]
+    public void AC_46_3_ItemsOfOneNameInTwoCategoriesEachNameTheirCategoryOnTheirSheet()
+    {
+        ItemReportView Plumbing(string category) => new(Guid.NewGuid(), "السباكة", category, 100, [], [new SubgroupReportView(Guid.NewGuid(), "", 100, [Row(100, "P1")])], []);
+        var report = new PeriodicReportSnapshot("غصون 6", 1, new DateTime(2026, 11, 5), 0, 200, 0, 0, 0, 0, -200, -200, 0, [], [], 0, 200, 0, 0, 0, [], [Plumbing("العظم"), Plumbing("التشطيب")]);
+
+        using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, "")));
+
+        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(2).Select(sheet => sheet.Name));
     }
 
     private static ItemEntryRow Row(decimal amount, string invoiceNumber, bool isNew = false, bool isOutside = false) =>

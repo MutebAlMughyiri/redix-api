@@ -23,9 +23,10 @@ public static class PeriodicReportWorkbook
         var summary = StatementStyle.AddSheet(workbook, "الخلاصة", names, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
         var capital = StatementStyle.AddSheet(workbook, "راس المال", names, 4.63, 11, 13, 27.25, 13, 2.88, 4.38, 10.63, 11, 27, 13);
         var itemTotals = new Dictionary<Guid, string>();
+        var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
         foreach (var item in report.Items)
         {
-            var sheet = StatementStyle.AddSheet(workbook, item.ItemName, names);
+            var sheet = StatementStyle.AddSheet(workbook, repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName, names);
             itemTotals[item.ItemId] = StatementStyle.Reference(sheet, ItemReportFiles.FillSheet(sheet, item));
         }
         var capitalTotal = StatementStyle.Reference(capital, FillCapital(capital, report, receiptsAddress));
@@ -119,7 +120,7 @@ public static class PeriodicReportWorkbook
             var column = side == 0 ? Revenue : Expenses;
             var start = bottoms[side] + 3;
             var head = sheet.Range(start, column, start, column + 1).Merge();
-            head.FirstCell().Value = $"تفاصيل تكاليف {category.Name}:";
+            head.FirstCell().Value = $"تفاصيل {category.Name}:";
             head.AsTotal().Style.Border.BottomBorder = XLBorderStyleValues.Hair;
             var row = start + 1;
             foreach (var item in category.Items)
@@ -135,7 +136,8 @@ public static class PeriodicReportWorkbook
     }
 
     /// <summary>
-    /// Writes the partners' table and a block of movements per partner, each block under whichever side ends higher, and answers the address of the capital's total. Someone who sees only their own line
+    /// Writes the partners' table and a block of movements per partner, the first under the table and each next one under whichever side ends higher, as the statement lays them out, and answers the
+    /// address of the capital's total. Someone who sees only their own line
     /// (BR-31) still reads the whole total: the other partners are one line between them.
     /// </summary>
     private static string FillCapital(IXLWorksheet sheet, PeriodicReportSnapshot report, string receiptsAddress)
@@ -149,7 +151,7 @@ public static class PeriodicReportWorkbook
         var row = 2;
         foreach (var partner in report.Partners)
         {
-            var side = bottoms[1] < bottoms[0] ? 1 : 0;
+            var side = row == 2 || bottoms[0] <= bottoms[1] ? 0 : 1;
             var block = Movements(sheet, bottoms[side] + 1, side == 0 ? 1 : 7, partner, receiptsAddress);
             bottoms[side] = block + 1;
             Share(sheet, row++, total, partner.Name).SetMoneyFormula($"{(side == 0 ? "E" : "K")}{block}");

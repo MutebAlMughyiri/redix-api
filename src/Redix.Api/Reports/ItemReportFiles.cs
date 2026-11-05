@@ -143,7 +143,7 @@ public static class ItemReportFiles
         }
         foreach (var contract in item.Contracts)
         {
-            parts.Add(Contract(sheet, row, item.ItemName, contract));
+            parts.Add(Contract(sheet, row, contract));
             row += contract.Payments.Count + 4;
         }
         var all = sheet.Range(row, 1, row, 2).Merge();
@@ -157,10 +157,10 @@ public static class ItemReportFiles
     /// Writes a contract's block from <paramref name="start"/>, as the statement's payment blocks: its title and value, a header, each payment with what remains of a fixed value after it (a payment
     /// outside the contract leaves that as it was, BR-04), and the payments' total down the side. Answers the total's address.
     /// </summary>
-    private static string Contract(IXLWorksheet sheet, int start, string itemName, ContractReportView contract)
+    private static string Contract(IXLWorksheet sheet, int start, ContractReportView contract)
     {
         var title = sheet.Range(start, 1, start, 2).Merge();
-        title.FirstCell().SetCentred($"دفعات {itemName} {contract.ContractorName}");
+        title.FirstCell().SetCentred($"دفعات {contract.ContractorName}");
         var value = sheet.Range(start, 3, start, 5).Merge();
         if (contract.IsOpenValue)
         {
