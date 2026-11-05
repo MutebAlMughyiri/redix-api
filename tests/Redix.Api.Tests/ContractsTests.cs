@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Contracts;
+using Redix.Api.Entries;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
@@ -183,9 +184,10 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var (otherClient, other) = await FinanceAsync("غصون 5");
         var request = await RequestFor(client, project);
-        (await client.PostAsync($"/projects/{project.Id}/suppliers/{request.SupplierId}/disable", null)).EnsureSuccessStatusCode();
+        var disabled = await AnotherContractorAsync(client, project.Id);
+        (await client.PostAsync($"/projects/{project.Id}/suppliers/{disabled.Id}/disable", null)).EnsureSuccessStatusCode();
 
-        foreach (var supplierId in new[] { request.SupplierId, Guid.Empty, (await ContractorOf(otherClient, other.Id)).Id })
+        foreach (var supplierId in new[] { disabled.Id, Guid.Empty, (await ContractorOf(otherClient, other.Id)).Id })
         {
             Assert.Equal("unknownSupplier", await CodeOf(await PostAsync(client, project.Id, request with { SupplierId = supplierId })));
         }
@@ -396,5 +398,107 @@ public class ContractsTests(MigratedApiFactory factory)
             Assert.Equal("projectFinished", await CodeOf(refused));
         }
         Assert.Single(await ContractsOf(client, project.Id));
+    }
+
+    private static Task<HttpResponseMessage> AmendAsync(HttpClient client, Guid projectId, Guid contractId, object body) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/contracts/{contractId}", body, Json);
+
+    private static async Task<SupplierView> AnotherContractorAsync(HttpClient client, Guid projectId) =>
+        (await (await client.PostAsJsonAsync($"/projects/{projectId}/suppliers", new SupplierRequest("مؤسسة الواحة") { NotVatRegistered = true }, Json)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!;
+
+    private static async Task<ItemView> AnotherItemAsync(HttpClient client, Guid projectId, Guid notThis) =>
+        (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{projectId}/categories/offered?itemType={ItemType.ContractorPayments}", Json))!.SelectMany(category => category.Items).First(item => item.Id != notThis);
+
+    [Fact]
+    public async Task AContractAnswersItsPartiesAndThatItHasNoPayments()
+    {
+        var (client, project) = await FinanceAsync();
+        var request = await RequestFor(client, project);
+        (await PostAsync(client, project.Id, request)).EnsureSuccessStatusCode();
+
+        var contract = Assert.Single(await ContractsOf(client, project.Id));
+
+        Assert.Equal((request.SupplierId, request.ItemId, request.UnitId, false), (contract.SupplierId, contract.ItemId, contract.UnitId, contract.HasPayments));
+    }
+
+    [Fact]
+    public async Task AContractsPartiesChangeWhileItHasNoPaymentsAndTheAuditTrailShowsThemOldAndNew()
+    {
+        var (client, project) = await FinanceAsync();
+        var request = await RequestFor(client, project);
+        (await PostAsync(client, project.Id, request)).EnsureSuccessStatusCode();
+        var contract = Assert.Single(await ContractsOf(client, project.Id));
+        var contractor = await AnotherContractorAsync(client, project.Id);
+        var item = await AnotherItemAsync(client, project.Id, request.ItemId);
+        var shared = project.EntryUnits.Single(unit => unit.Name == Unit.SharedName);
+
+        (await AmendAsync(client, project.Id, contract.Id, new { value = 34000m, isOpenValue = false, supplierId = contractor.Id, itemId = item.Id, unitId = shared.Id })).EnsureSuccessStatusCode();
+
+        var amended = Assert.Single(await ContractsOf(client, project.Id));
+        Assert.Equal((contractor.Name, item.Name, Unit.SharedName), (amended.SupplierName, amended.ItemName, amended.UnitName));
+        var record = (await factory.AuditTrailOfAsync(contract.Id)).Last();
+        Assert.Equal(AuditAction.Update, record.Action);
+        Assert.Equal(request.SupplierId, JsonDocument.Parse(record.Before).RootElement.GetProperty("SupplierId").GetGuid());
+        Assert.Equal(contractor.Id, JsonDocument.Parse(record.After).RootElement.GetProperty("SupplierId").GetGuid());
+        Assert.Equal(request.ItemId, JsonDocument.Parse(record.Before).RootElement.GetProperty("ItemId").GetGuid());
+        Assert.Equal(item.Id, JsonDocument.Parse(record.After).RootElement.GetProperty("ItemId").GetGuid());
+        Assert.Equal(request.UnitId, JsonDocument.Parse(record.Before).RootElement.GetProperty("UnitId").GetGuid());
+        Assert.Equal(shared.Id, JsonDocument.Parse(record.After).RootElement.GetProperty("UnitId").GetGuid());
+    }
+
+    [Theory]
+    [InlineData(EntryStatus.Draft)]
+    [InlineData(EntryStatus.PendingApproval)]
+    [InlineData(EntryStatus.Approved)]
+    [InlineData(EntryStatus.Rejected)]
+    public async Task AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing(EntryStatus status)
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var item = await ItemOf(ledger.Client, ledger.ProjectId);
+        (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, ledger.Project.Units[0].Id, 34000m, false))).EnsureSuccessStatusCode();
+        var contract = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
+        var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();
+        await ledger.SetStatusAsync(payment.Id, status);
+        Assert.True(Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId)).HasPayments);
+        var contractor = await AnotherContractorAsync(ledger.Client, ledger.ProjectId);
+
+        var refused = await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 99000m, isOpenValue = false, supplierId = contractor.Id, itemId = item.Id, unitId = contract.UnitId });
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("contractHasPayments", await CodeOf(refused));
+        var kept = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
+        Assert.Equal((contract.SupplierName, 34000m), (kept.SupplierName, kept.Value));
+    }
+
+    [Fact]
+    public async Task AContractWithAPaymentStillChangesItsTerms()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var item = await ItemOf(ledger.Client, ledger.ProjectId);
+        (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, ledger.Project.Units[0].Id, 34000m, false))).EnsureSuccessStatusCode();
+        var contract = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
+        var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();
+
+        (await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 40000m, isOpenValue = false })).EnsureSuccessStatusCode();
+        (await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 41000m, isOpenValue = false, supplierId = contract.SupplierId, itemId = contract.ItemId, unitId = contract.UnitId })).EnsureSuccessStatusCode();
+
+        Assert.Equal(41000m, Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId)).Value);
+    }
+
+    [Fact]
+    public async Task NewPartiesAnswerAsAddingDoes()
+    {
+        var (client, project) = await FinanceAsync();
+        var request = await RequestFor(client, project);
+        (await PostAsync(client, project.Id, request)).EnsureSuccessStatusCode();
+        var contract = Assert.Single(await ContractsOf(client, project.Id));
+        var purchasesOnly = (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories", Json))!.SelectMany(category => category.Items).First(item => item.Type == ItemType.Purchases);
+
+        Assert.Equal("unknownSupplier", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, supplierId = Guid.NewGuid() })));
+        Assert.Equal("itemNotOffered", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, itemId = purchasesOnly.Id })));
+        Assert.Equal("unknownUnit", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, unitId = Guid.NewGuid() })));
+        Assert.Equal(34000m, Assert.Single(await ContractsOf(client, project.Id)).Value);
     }
 }

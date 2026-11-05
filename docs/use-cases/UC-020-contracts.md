@@ -14,7 +14,7 @@ A contractor is a supplier of the project (the database design's decision 2), so
 
 The remaining lives on the contract: `Contract.RemainingAfter(paid)` and `IsOverrunBy(paid)`. What was paid comes from the ledger through `ContractMoney`, since UC-027 "Record a contractor payment".
 
-An amendment is an edit of the terms: the value, open value, unit price, quantity and notes. The contractor, item and unit never change, because a payment's VAT follows the contractor; a wrong one is disabled and added again. Every change of a contract goes in the audit trail, with what it was before.
+An amendment is an edit of the terms: the value, open value, unit price, quantity and notes. The contractor, item and unit change too while no payment names the contract, whatever became of that payment; once one does they stay, because a payment's VAT follows the contractor and its row holds the item and the unit.
 
 ## Endpoints
 
@@ -22,7 +22,7 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | --- | --- | --- |
 | `GET /projects/{projectId}/contracts` | `ReadProject` | `200` in the order added, disabled ones included, as `{ id, supplierName, itemName, unitName, value, isOpenValue, unitPrice, quantity, notes, paid, remaining, isOverrun, isActive }` |
 | `POST /projects/{projectId}/contracts` with `{ supplierId, itemId, unitId, value, isOpenValue, unitPrice, quantity, notes }` | `ManageSettings` | `200`; `400` `unknownSupplier`, `itemNotOffered`, `unknownUnit`, `invalidValue`, `invalidUnitPrice`, `invalidQuantity` or `invalidNotes` |
-| `POST /projects/{projectId}/contracts/{id}` with `{ value, isOpenValue, unitPrice, quantity, notes }` | `ManageSettings` | `200`; `400` for the terms, as above; `404` |
+| `POST /projects/{projectId}/contracts/{id}` with `{ value, isOpenValue, unitPrice, quantity, notes }`, and `{ supplierId, itemId, unitId }` for any that is to change | `ManageSettings` | `200`; `400` for the terms and the parties, as above; `404`; `409` `contractHasPayments`, changing nothing |
 | `POST /projects/{projectId}/contracts/{id}/disable`, `.../enable` | `ManageSettings` | `200`; `404` |
 
 `unitPrice`, `quantity` and `notes` may be left out. Every change also answers `409` `projectFinished` in a finished project.
@@ -53,6 +53,9 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | A contract may be for the shared unit (open question 3) | `Project.AddSharedUnit` | `AContractMayBeForTheSharedUnit` |
 | An approved project offers its units, then the shared one | `ProjectView.Of` | `AnApprovedProjectOffersItsUnitsAndThenTheSharedOne` |
 | An amendment changes the terms and keeps the contractor | `ContractsEndpoints.Amend` | `AnAmendmentChangesTheTermsAndKeepsTheContractor`, `AnAmendmentCanMakeAContractOpenValue`, `AnAmendmentAnswersAsAddingDoes` |
+| A contract answers its parties, and whether any payment names it | `ContractView`, `ContractsEndpoints.List` | `AContractAnswersItsPartiesAndThatItHasNoPayments` |
+| A contract's contractor, item and unit change while it has no payments, in the audit trail, old and new; new ones answer as adding does | `ContractsEndpoints.Amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheAuditTrailShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
+| Any payment, even a draft or a rejected one, holds them, and a refusal changes nothing; the terms can still change | `ContractsEndpoints.Amend` | `AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing`, `AContractWithAPaymentStillChangesItsTerms` |
 | Every change of a contract is in the audit trail | `ContractsEndpoints` | `EveryChangeOfAContractIsInTheAuditTrail` |
 | Disabled, it stays on the list, never deleted | No delete route | `ADisabledContractStaysOnTheListAndCanBeEnabled` |
 | Contracts show in the order added | `ContractsEndpoints.List` | `ContractsShowInTheOrderTheyWereAdded` |

@@ -12,14 +12,14 @@ public class Contract
     /// <summary>The project it belongs to (BR-33).</summary>
     public Guid ProjectId { get; init; }
 
-    /// <summary>The item it is for; set when it is added, and never changed.</summary>
-    public Guid ItemId { get; init; }
+    /// <summary>The item it is for; it changes only while no payment names the contract.</summary>
+    public Guid ItemId { get; set; }
 
-    /// <summary>The unit it is for, which may be the shared one; set when it is added, and never changed.</summary>
-    public Guid UnitId { get; init; }
+    /// <summary>The unit it is for, which may be the shared one; it changes only while no payment names the contract.</summary>
+    public Guid UnitId { get; set; }
 
-    /// <summary>The contractor, who is a supplier of the project; set when it is added, and never changed.</summary>
-    public Guid SupplierId { get; init; }
+    /// <summary>The contractor, who is a supplier of the project; it changes only while no payment names the contract.</summary>
+    public Guid SupplierId { get; set; }
 
     /// <summary>What was promised; 0 for an open-value contract.</summary>
     public decimal Value { get; private set; }

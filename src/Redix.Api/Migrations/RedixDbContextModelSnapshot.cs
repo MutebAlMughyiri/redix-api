@@ -7101,6 +7101,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("08f5d8be-844d-c493-94ba-a5ffe9a7e853"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9acc9a21-9abe-5e0b-3c47-5a58043dd712"),
+                            Value = "This contract has payments, so its contractor, item and unit cannot change."
+                        },
+                        new
+                        {
+                            Id = new Guid("4bc91b90-0791-5b58-c656-fb2f12c46a47"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9acc9a21-9abe-5e0b-3c47-5a58043dd712"),
+                            Value = "لهذا العقد دفعات، فلا يتغير مقاوله ولا بنده ولا وحدته."
+                        },
+                        new
+                        {
                             Id = new Guid("0b331b74-2be5-1a3a-3047-8bc54608314e"),
                             Language = "en",
                             TranslationKeyId = new Guid("118c1718-9436-8431-a45c-33cc878270cd"),
@@ -11222,6 +11236,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("a4c5a6c5-2bf8-9771-ccad-f574e9524b1d"),
                             Description = "",
                             Key = "contracts.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("9acc9a21-9abe-5e0b-3c47-5a58043dd712"),
+                            Description = "",
+                            Key = "contracts.contractHasPayments"
                         },
                         new
                         {

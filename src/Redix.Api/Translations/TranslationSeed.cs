@@ -323,6 +323,7 @@ public static class TranslationSeed
         ("contracts.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
         ("contracts.refused", "This change was refused.", "رُفض هذا التغيير."),
         ("contracts.projectFinished", "This project is finished, so nothing in it changes.", "هذا المشروع منتهٍ، فلا يتغير فيه شيء."),
+        ("contracts.contractHasPayments", "This contract has payments, so its contractor, item and unit cannot change.", "لهذا العقد دفعات، فلا يتغير مقاوله ولا بنده ولا وحدته."),
         ("contracts.unknownSupplier", "Choose a contractor from the suppliers.", "اختر مقاولاً من الموردين."),
         ("contracts.itemNotOffered", "Choose an item that takes contractor payments.", "اختر بنداً يقبل دفعات المقاولين."),
         ("contracts.unknownUnit", "Choose a unit of this project.", "اختر وحدة من هذا المشروع."),

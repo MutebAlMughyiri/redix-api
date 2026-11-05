@@ -41,8 +41,9 @@ public static class ContractsEndpoints
             where attachment.ProjectId == projectId
             select new { link.ContractId, Attachment = attachment }).ToListAsync()).OrderBy(row => row.Attachment.Id).ToLookup(row => row.ContractId, row => AttachmentView.Of(row.Attachment));
         var money = await ContractMoney.OfProjectAsync(projectId, db);
+        var withPayments = await db.ContractorPaymentDetails.Where(payment => db.Contracts.Any(contract => contract.Id == payment.ContractId && contract.ProjectId == projectId)).Select(payment => payment.ContractId).Distinct().ToListAsync();
         return rows.OrderBy(row => row.Contract.Id)
-            .Select(row => ContractView.Of(row.Contract, money.GetValueOrDefault(row.Contract.Id), row.SupplierName, row.ItemName, row.UnitName) with { SupplierVatNumber = row.VatNumber, Documents = [.. documents[row.Contract.Id]] }).ToList();
+            .Select(row => ContractView.Of(row.Contract, money.GetValueOrDefault(row.Contract.Id), row.SupplierName, row.ItemName, row.UnitName) with { SupplierVatNumber = row.VatNumber, HasPayments = withPayments.Contains(row.Contract.Id), Documents = [.. documents[row.Contract.Id]] }).ToList();
     }
 
     /// <summary>
@@ -56,7 +57,7 @@ public static class ContractsEndpoints
     /// <param name="time">The current time, for the audit record.</param>
     public static async Task<IResult> Add(Guid projectId, AddContractRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var refusal = await RefusalOfPartiesAsync(projectId, request, db);
+        var refusal = await RefusalOfPartiesAsync(projectId, request.SupplierId, request.ItemId, request.UnitId, db);
         refusal = refusal.Length > 0 ? refusal : request.RefusalOfTerms();
         refusal = refusal.Length > 0 ? refusal : await RefusalOfDocumentsAsync(projectId, request.AttachmentIds, db);
         if (refusal.Length > 0)
@@ -75,22 +76,43 @@ public static class ContractsEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Amends a contract's terms and adds to its documents; its contractor, item and unit never change, and a document stays once attached. It answers as <see cref="Add"/> does for the terms.</summary>
+    /// <summary>
+    /// Amends a contract's terms and adds to its documents, a document staying once attached, and changes its contractor, item or unit while no payment names it, or answers <c>contractHasPayments</c> and changes nothing.
+    /// It answers as <see cref="Add"/> does for all of them, and all of it is in the audit trail.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="contractId">The contract.</param>
-    /// <param name="terms">The new terms.</param>
+    /// <param name="request">The new terms, and any new parties.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
     /// <param name="time">The current time, for the audit record.</param>
-    public static async Task<IResult> Amend(Guid projectId, Guid contractId, ContractTerms terms, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    public static async Task<IResult> Amend(Guid projectId, Guid contractId, AmendContractRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var refusal = terms.RefusalOfTerms();
-        refusal = refusal.Length > 0 ? refusal : await RefusalOfDocumentsAsync(projectId, terms.AttachmentIds, db);
+        var refusal = request.RefusalOfTerms();
+        refusal = refusal.Length > 0 ? refusal : await RefusalOfDocumentsAsync(projectId, request.AttachmentIds, db);
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
         }
-        return await ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Update, terms.ApplyTo, terms.AttachmentIds);
+
+        var contract = await db.Contracts.SingleOrDefaultAsync(row => row.Id == contractId && row.ProjectId == projectId);
+        if (contract is null)
+        {
+            return Results.NotFound();
+        }
+        if (request.ChangesPartiesOf(contract))
+        {
+            if (await db.ContractorPaymentDetails.AnyAsync(payment => payment.ContractId == contractId))
+            {
+                return Refusal.Of(StatusCodes.Status409Conflict, "ContractHasPayments");
+            }
+            refusal = await RefusalOfPartiesAsync(projectId, request.SupplierOf(contract), request.ItemOf(contract), request.UnitOf(contract), db);
+            if (refusal.Length > 0)
+            {
+                return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+            }
+        }
+        return await ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Update, request.ApplyAllTo, request.AttachmentIds);
     }
 
     /// <summary>Disables a contract: no new payment can name it, and it stays in the reports.</summary>
@@ -111,17 +133,17 @@ public static class ContractsEndpoints
     public static Task<IResult> Enable(Guid projectId, Guid contractId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Enable, contract => contract.IsActive = true);
 
-    private static async Task<string> RefusalOfPartiesAsync(Guid projectId, AddContractRequest request, RedixDbContext db)
+    private static async Task<string> RefusalOfPartiesAsync(Guid projectId, Guid supplierId, Guid itemId, Guid unitId, RedixDbContext db)
     {
-        if (!await db.Suppliers.AnyAsync(supplier => supplier.Id == request.SupplierId && supplier.ProjectId == projectId && supplier.IsActive))
+        if (!await db.Suppliers.AnyAsync(supplier => supplier.Id == supplierId && supplier.ProjectId == projectId && supplier.IsActive))
         {
             return "UnknownSupplier";
         }
-        if (await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.ContractorPayments, db) is null)
+        if (await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.ContractorPayments, db) is null)
         {
             return "ItemNotOffered";
         }
-        return await db.Set<Unit>().AnyAsync(unit => unit.Id == request.UnitId && unit.ProjectId == projectId) ? "" : "UnknownUnit";
+        return await db.Set<Unit>().AnyAsync(unit => unit.Id == unitId && unit.ProjectId == projectId) ? "" : "UnknownUnit";
     }
 
     private static async Task<string> RefusalOfDocumentsAsync(Guid projectId, List<Guid> attachmentIds, RedixDbContext db)
@@ -182,6 +204,40 @@ public record ContractTerms(decimal Value, bool IsOpenValue)
     public void ApplyTo(Contract contract) => contract.SetTerms(Value, IsOpenValue, UnitPrice, Quantity, Notes.Trim());
 }
 
+/// <summary>What the app sends to amend a contract: its terms, and any contractor, item or unit that is to change.</summary>
+/// <param name="Value">What was promised; ignored when <paramref name="IsOpenValue"/>.</param>
+/// <param name="IsOpenValue">True for a contract whose payments only add up.</param>
+public record AmendContractRequest(decimal Value, bool IsOpenValue) : ContractTerms(Value, IsOpenValue)
+{
+    /// <summary>The contractor it is to have; left out when it stays.</summary>
+    public Guid SupplierId { get; init; }
+
+    /// <summary>The item it is to be for; left out when it stays.</summary>
+    public Guid ItemId { get; init; }
+
+    /// <summary>The unit it is to be for; left out when it stays.</summary>
+    public Guid UnitId { get; init; }
+
+    /// <summary>The contractor <paramref name="contract"/> has after this.</summary>
+    public Guid SupplierOf(Contract contract) => SupplierId == Guid.Empty ? contract.SupplierId : SupplierId;
+
+    /// <summary>The item <paramref name="contract"/> is for after this.</summary>
+    public Guid ItemOf(Contract contract) => ItemId == Guid.Empty ? contract.ItemId : ItemId;
+
+    /// <summary>The unit <paramref name="contract"/> is for after this.</summary>
+    public Guid UnitOf(Contract contract) => UnitId == Guid.Empty ? contract.UnitId : UnitId;
+
+    /// <summary>Whether this changes the contractor, item or unit of <paramref name="contract"/>.</summary>
+    public bool ChangesPartiesOf(Contract contract) => SupplierOf(contract) != contract.SupplierId || ItemOf(contract) != contract.ItemId || UnitOf(contract) != contract.UnitId;
+
+    /// <summary>Makes these the terms and the parties of <paramref name="contract"/>.</summary>
+    public void ApplyAllTo(Contract contract)
+    {
+        ApplyTo(contract);
+        (contract.SupplierId, contract.ItemId, contract.UnitId) = (SupplierOf(contract), ItemOf(contract), UnitOf(contract));
+    }
+}
+
 /// <summary>What the app sends to add a contract.</summary>
 /// <param name="SupplierId">The contractor, a supplier of the project.</param>
 /// <param name="ItemId">The item it is for.</param>
@@ -208,6 +264,15 @@ public record AddContractRequest(Guid SupplierId, Guid ItemId, Guid UnitId, deci
 /// <param name="IsActive">False once disabled.</param>
 public record ContractView(Guid Id, Guid ItemId, string SupplierName, string ItemName, string UnitName, decimal Value, bool IsOpenValue, decimal UnitPrice, decimal Quantity, string Notes, decimal Paid, decimal Pending, decimal Remaining, bool IsOverrun, bool IsActive)
 {
+    /// <summary>The contractor.</summary>
+    public Guid SupplierId { get; init; }
+
+    /// <summary>The unit it is for.</summary>
+    public Guid UnitId { get; init; }
+
+    /// <summary>Whether any payment names it, whatever became of that payment: its contractor, item and unit then stay as they are.</summary>
+    public bool HasPayments { get; init; }
+
     /// <summary>The contractor's VAT number, empty for none, which decides the VAT of a payment's tax invoice.</summary>
     public string SupplierVatNumber { get; init; } = "";
 
@@ -216,5 +281,9 @@ public record ContractView(Guid Id, Guid ItemId, string SupplierName, string Ite
 
     /// <summary>The view of <paramref name="contract"/> with <paramref name="money"/> inside it, between the parties named.</summary>
     public static ContractView Of(Contract contract, ContractMoney money, string supplierName, string itemName, string unitName) =>
-        new(contract.Id, contract.ItemId, supplierName, itemName, unitName, contract.Value, contract.IsOpenValue, contract.UnitPrice, contract.Quantity, contract.Notes, money.Paid, money.Pending, contract.RemainingAfter(money.Paid), contract.IsOverrunBy(money.Paid), contract.IsActive);
+        new(contract.Id, contract.ItemId, supplierName, itemName, unitName, contract.Value, contract.IsOpenValue, contract.UnitPrice, contract.Quantity, contract.Notes, money.Paid, money.Pending, contract.RemainingAfter(money.Paid), contract.IsOverrunBy(money.Paid), contract.IsActive)
+        {
+            SupplierId = contract.SupplierId,
+            UnitId = contract.UnitId,
+        };
 }
