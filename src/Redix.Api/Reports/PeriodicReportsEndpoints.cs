@@ -135,7 +135,7 @@ public static class PeriodicReportsEndpoints
         }
         var accounts = reconciliation.Balances.Select(row => new ReportAccountView(row.AccountName, row.Type, row.ActualBalance)).ToList();
         return new PeriodicReportSnapshot(
-            project.Name, number, at, previous.ExpensesTotal, figures.Expenses, figures.Capital, figures.VatRefunds, figures.Sales, figures.OtherRevenue, figures.Surplus, figures.SurplusWithoutSales, 0,
+            project.Name, number, at, previous.ExpensesTotal, figures.Expenses, figures.Capital, figures.VatRefunds, figures.Sales, figures.OtherRevenue, figures.Surplus, figures.SurplusWithoutSales, figures.Liquidation,
             dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.PendingCount, dashboard.PendingAmount, capital.Total, partnerViews, itemReports);
     }
 }

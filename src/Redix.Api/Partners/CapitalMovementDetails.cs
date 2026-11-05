@@ -23,6 +23,9 @@ public enum CapitalMovementType : byte
 
     /// <summary>A partner took money that comes back to the account (BRS open question 8), reported as its own line.</summary>
     RefundableAdvance,
+
+    /// <summary>A partner's part of the final surplus when the project closed, paid out or carried, or of the deficit, paid in (BR-27): counted as the liquidation, not as capital.</summary>
+    Liquidation,
 }
 
 /// <summary>What only a capital movement has (FR-25).</summary>

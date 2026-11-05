@@ -113,6 +113,7 @@ app.MapRevenue();
 app.MapDashboard();
 app.MapItemReport();
 app.MapUnitTotals();
+app.MapLiquidation();
 app.MapPeriodicReports();
 app.MapReportFiles();
 app.MapSyncEndpoints();

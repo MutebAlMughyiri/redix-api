@@ -28,7 +28,8 @@ A report keeps every figure as issued, in `PeriodicReports.Snapshot`. What was a
 | The summary adds up as the statement does | `PeriodicReportsEndpoints.SnapshotAsync` | `ReportFilesTests.TheSummaryAddsUpAsTheStatementDoes` |
 | BR-31: everyone reads; only their own partner line; no one else exports | `PeriodicReportSnapshot.ForPartnerOf` | `ReportFilesTests.BR_31_EveryoneReadsTheReportAndSeesOnlyTheirOwnPartnerLineButNoOneElseExports` |
 | AC-45.1: a PDF, the summary and partners then a page per item | `PeriodicReportFiles.Pdf` | `ReportFilesTests.AC_45_1_ThePdfIsAPdfWithAPagePerItemAfterTheSummaryAndPartners` |
-| AC-46.1: the workbook's summary adds the item sheets live | `PeriodicReportWorkbook.Of` | `ReportFilesTests.AC_46_1_TheWorkbookHasItsSheetsAndTheSummaryAddsTheItemSheetsLive` |
+| AC-46.1: the workbook is laid out as the statement, every total live | `PeriodicReportWorkbook.Of` | `ReportFilesTests.AC_46_1_TheWorkbookIsLaidOutAsTheStatementAndEveryTotalIsLive` |
+| AC-46.2: a contract is a block with its value and what remains after each payment | `ItemReportFiles.FillSheet` | `ReportFilesTests.AC_46_2_AContractIsABlockWithItsValueAndWhatRemainsAfterEachPayment` |
 | AC-47.1: the VAT workbook is the accountant's file | `VatStatementFiles.Excel` | `ReportFilesTests.AC_47_1_TheVatWorkbookIsTheAccountantsFile` |
 | UC-058: the ZIP holds each invoice named by its row | `VatStatementFiles.Zip` | `ReportFilesTests.UC_058_TheZipHoldsEachInvoiceNamedByItsRow` |
 | AC-33.1: the item and contracts reports export | `ItemReportFiles` | `ReportFilesTests.AC_33_1_TheItemAndContractsReportsExport` |

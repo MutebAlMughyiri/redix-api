@@ -9172,6 +9172,300 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("c1d9d47a-9e2c-d240-e10c-55fa1d7d9511"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c47c7453-9601-018e-53e4-e368bd4cad38"),
+                            Value = "Liquidation share"
+                        },
+                        new
+                        {
+                            Id = new Guid("3647c8d9-e49c-f00d-18d5-5d19e0a2d315"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c47c7453-9601-018e-53e4-e368bd4cad38"),
+                            Value = "حصة التصفية"
+                        },
+                        new
+                        {
+                            Id = new Guid("8305d368-a0f5-cb42-e001-99fa61d1d928"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("94f31a2a-95ea-4b2b-db84-0994898bc99d"),
+                            Value = "A partner's part of the liquidation is shared out when the project is liquidated."
+                        },
+                        new
+                        {
+                            Id = new Guid("b6c1b002-3319-e673-2dbb-96145536ba2a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("94f31a2a-95ea-4b2b-db84-0994898bc99d"),
+                            Value = "تُوزَّع حصة الشريك من التصفية عند تصفية المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("a2ffb9aa-64df-334d-989d-5dbb53b48a4d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("75c17f5e-cb87-87cc-3022-bcf9fa626525"),
+                            Value = "Some entries still wait for approval. Approve or reject them first."
+                        },
+                        new
+                        {
+                            Id = new Guid("c1b7c721-22fc-4abb-7772-59d5345fcec8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("75c17f5e-cb87-87cc-3022-bcf9fa626525"),
+                            Value = "توجد قيود بانتظار الاعتماد. اعتمدها أو ارفضها أولاً."
+                        },
+                        new
+                        {
+                            Id = new Guid("c7e5ba40-7c21-9b54-4352-81aadbfeb5f2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8fa855b8-82dd-277c-08c9-23f47523cf46"),
+                            Value = "There is no partner to share it among."
+                        },
+                        new
+                        {
+                            Id = new Guid("dcec7463-fb3d-212e-5bd4-05380592cb6b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8fa855b8-82dd-277c-08c9-23f47523cf46"),
+                            Value = "لا يوجد شريك لتوزيعه عليه."
+                        },
+                        new
+                        {
+                            Id = new Guid("20985fbe-18e1-b140-a6b6-daa2cbc16d1a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("17398f8a-5f3d-21b0-d9d6-5507f99c5528"),
+                            Value = "Say how each partner's part goes."
+                        },
+                        new
+                        {
+                            Id = new Guid("2bb823a4-afcf-2e9f-4a01-b05f06dd0ffd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("17398f8a-5f3d-21b0-d9d6-5507f99c5528"),
+                            Value = "حدّد طريقة صرف حصة كل شريك."
+                        },
+                        new
+                        {
+                            Id = new Guid("2fa9bc7c-8d93-0bee-941f-ac0ce55694c8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("53d6a2d8-c1c6-0057-3dd2-6d54130df912"),
+                            Value = "This project is closed."
+                        },
+                        new
+                        {
+                            Id = new Guid("d083c07d-9508-65f6-8b5f-996e7f94499c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("53d6a2d8-c1c6-0057-3dd2-6d54130df912"),
+                            Value = "هذا المشروع مغلق."
+                        },
+                        new
+                        {
+                            Id = new Guid("e15589c7-490a-092d-ab41-1c40e3f42479"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0213446a-8644-d22f-874f-cc35f2c9c3e6"),
+                            Value = "Liquidate and close"
+                        },
+                        new
+                        {
+                            Id = new Guid("c546ba65-ee62-a31e-8428-74795869a8d0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0213446a-8644-d22f-874f-cc35f2c9c3e6"),
+                            Value = "التصفية والإغلاق"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1a21a02-a134-acb8-3b1b-19e9d83dd2c0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f4ea1db4-4a12-4857-656b-5d3ac1ec96b5"),
+                            Value = "Final surplus"
+                        },
+                        new
+                        {
+                            Id = new Guid("94f02ac4-ec30-8fa3-5376-2582adc9640c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f4ea1db4-4a12-4857-656b-5d3ac1ec96b5"),
+                            Value = "الفائض النهائي"
+                        },
+                        new
+                        {
+                            Id = new Guid("7ec270f0-6548-4ff6-7457-249ed8b5a14c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0db62c42-0434-bf8e-1965-63cbabee6752"),
+                            Value = "Final deficit"
+                        },
+                        new
+                        {
+                            Id = new Guid("3063c96f-4f0c-3bde-9bea-d30f29fcd9b1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0db62c42-0434-bf8e-1965-63cbabee6752"),
+                            Value = "العجز النهائي"
+                        },
+                        new
+                        {
+                            Id = new Guid("7532f470-f8ef-fa47-5363-eaab93a7fa8a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3f071fbc-e41a-3b0e-820d-a5b00e168bf1"),
+                            Value = "Each partner takes their share of the surplus, paid out or carried to a later project, and the project closes. Nothing in it changes after that."
+                        },
+                        new
+                        {
+                            Id = new Guid("42eff101-5d18-09b7-d5bf-2f564301086e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3f071fbc-e41a-3b0e-820d-a5b00e168bf1"),
+                            Value = "يأخذ كل شريك نسبته من الفائض صرفاً أو ترحيلاً إلى مشروع لاحق، ثم يُغلق المشروع ولا يتغير فيه شيء بعدها."
+                        },
+                        new
+                        {
+                            Id = new Guid("52b1c353-bd46-1428-11f1-1b3654f1c102"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ee439aba-83f4-d59c-5de0-222b3b9e65e2"),
+                            Value = "Each partner pays their share of the deficit in, or it comes off their balance in a later project, and the project closes."
+                        },
+                        new
+                        {
+                            Id = new Guid("5e8362bc-1f01-cc74-1b3d-161a7827f2a6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ee439aba-83f4-d59c-5de0-222b3b9e65e2"),
+                            Value = "يدفع كل شريك نسبته من العجز، أو تُخصم من رصيده في مشروع لاحق، ثم يُغلق المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("f8474702-408e-9dd4-cd19-5698355a707a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("af285bfa-936f-201a-6605-7c062c92be61"),
+                            Value = "Waiting for approval: {0}. Approve or reject them before liquidating."
+                        },
+                        new
+                        {
+                            Id = new Guid("376a6684-a674-8e61-0c34-eca05c7c1b06"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("af285bfa-936f-201a-6605-7c062c92be61"),
+                            Value = "بانتظار الاعتماد: {0}. اعتمدها أو ارفضها قبل التصفية."
+                        },
+                        new
+                        {
+                            Id = new Guid("4da6f79c-4986-37e0-98e1-328596f3b55e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d274cd87-fc95-0149-b7c5-984ad5e89340"),
+                            Value = "Pay out"
+                        },
+                        new
+                        {
+                            Id = new Guid("0f3ef5ac-285e-6176-5d27-e41f86a03114"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d274cd87-fc95-0149-b7c5-984ad5e89340"),
+                            Value = "صرف"
+                        },
+                        new
+                        {
+                            Id = new Guid("fbf55fae-4cce-ff38-2b99-a7f44e017c8b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("649ac112-55cc-0d09-f17b-82cf6972af58"),
+                            Value = "Carry"
+                        },
+                        new
+                        {
+                            Id = new Guid("9eb1d243-636e-5012-8903-fa6691d2f679"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("649ac112-55cc-0d09-f17b-82cf6972af58"),
+                            Value = "ترحيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("77afa977-3682-1324-dc25-4f56ec1ddd60"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("46e98734-759f-aaa8-7c76-50ba076086d9"),
+                            Value = "Date"
+                        },
+                        new
+                        {
+                            Id = new Guid("eb5e77f8-6c3f-a041-4f0f-bbfd223f18aa"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("46e98734-759f-aaa8-7c76-50ba076086d9"),
+                            Value = "التاريخ"
+                        },
+                        new
+                        {
+                            Id = new Guid("413c8e33-9074-1d4c-1e52-584a3c9f462b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b3a43f40-9310-b867-5316-82973dcf8fcb"),
+                            Value = "Liquidate and close"
+                        },
+                        new
+                        {
+                            Id = new Guid("14a6e1bd-5a0b-ddc1-e316-abd553c87aae"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b3a43f40-9310-b867-5316-82973dcf8fcb"),
+                            Value = "تصفية وإغلاق"
+                        },
+                        new
+                        {
+                            Id = new Guid("d3747326-e320-f435-dd51-daa3a64575f4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1493cf6e-a2fe-3b06-9120-ecb9f84aaec0"),
+                            Value = "Liquidate and close this project?"
+                        },
+                        new
+                        {
+                            Id = new Guid("2209644f-178c-a172-79c2-a88e66753697"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1493cf6e-a2fe-3b06-9120-ecb9f84aaec0"),
+                            Value = "تصفية هذا المشروع وإغلاقه؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("b416538d-88e1-08f4-6422-1d4ece5060e4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("59e02361-2efd-6c13-e10b-31dd51827e33"),
+                            Value = "Each part is entered as chosen and the project closes. This cannot be undone."
+                        },
+                        new
+                        {
+                            Id = new Guid("c40f40f1-bb3b-f76b-2cf0-fcea961fdc5a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("59e02361-2efd-6c13-e10b-31dd51827e33"),
+                            Value = "تُقيَّد كل حصة كما اخترت ويُغلق المشروع. لا يمكن التراجع عن ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("50902e08-40f5-85e9-a14d-51ec013dbdaf"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("244400f9-b98c-3570-42df-a9205dd5c843"),
+                            Value = "The project is liquidated and closed."
+                        },
+                        new
+                        {
+                            Id = new Guid("62d178e3-514f-a6ee-b465-2e04df9276c4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("244400f9-b98c-3570-42df-a9205dd5c843"),
+                            Value = "تمت تصفية المشروع وإغلاقه."
+                        },
+                        new
+                        {
+                            Id = new Guid("181d8abb-b72e-4b6d-ee30-3f8143a778f2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1659585e-040c-53cb-aa54-a6c9b25ec2d5"),
+                            Value = "Shared out"
+                        },
+                        new
+                        {
+                            Id = new Guid("e4dc9526-3c24-7c38-24f8-52f2208c67da"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1659585e-040c-53cb-aa54-a6c9b25ec2d5"),
+                            Value = "ما وُزِّع"
+                        },
+                        new
+                        {
+                            Id = new Guid("1d276a2e-693a-2f80-32e0-7fa56ccaa2f4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fd379b83-1e61-3eb8-4370-fa0efbce9ef6"),
+                            Value = "Nothing is left to share out."
+                        },
+                        new
+                        {
+                            Id = new Guid("1476922c-1699-51ad-ec2f-703d2d5d4acd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fd379b83-1e61-3eb8-4370-fa0efbce9ef6"),
+                            Value = "لا يوجد ما يُوزَّع."
+                        },
+                        new
+                        {
                             Id = new Guid("92dbd782-4b36-fc8e-72ca-c99499fe348c"),
                             Language = "en",
                             TranslationKeyId = new Guid("2ede21ba-9b50-aad9-9df0-48059892c06b"),
@@ -17567,6 +17861,132 @@ namespace Redix.Api.Migrations
                             Id = new Guid("131d5c36-f4df-4116-8a87-496f2b173c90"),
                             Description = "",
                             Key = "capital.targetProjectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("c47c7453-9601-018e-53e4-e368bd4cad38"),
+                            Description = "",
+                            Key = "capital.liquidation"
+                        },
+                        new
+                        {
+                            Id = new Guid("94f31a2a-95ea-4b2b-db84-0994898bc99d"),
+                            Description = "",
+                            Key = "capital.useLiquidation"
+                        },
+                        new
+                        {
+                            Id = new Guid("75c17f5e-cb87-87cc-3022-bcf9fa626525"),
+                            Description = "",
+                            Key = "capital.pendingEntries"
+                        },
+                        new
+                        {
+                            Id = new Guid("8fa855b8-82dd-277c-08c9-23f47523cf46"),
+                            Description = "",
+                            Key = "capital.noPartners"
+                        },
+                        new
+                        {
+                            Id = new Guid("17398f8a-5f3d-21b0-d9d6-5507f99c5528"),
+                            Description = "",
+                            Key = "capital.incompleteLiquidation"
+                        },
+                        new
+                        {
+                            Id = new Guid("53d6a2d8-c1c6-0057-3dd2-6d54130df912"),
+                            Description = "",
+                            Key = "capital.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("0213446a-8644-d22f-874f-cc35f2c9c3e6"),
+                            Description = "",
+                            Key = "liquidation.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("f4ea1db4-4a12-4857-656b-5d3ac1ec96b5"),
+                            Description = "",
+                            Key = "liquidation.surplus"
+                        },
+                        new
+                        {
+                            Id = new Guid("0db62c42-0434-bf8e-1965-63cbabee6752"),
+                            Description = "",
+                            Key = "liquidation.deficit"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f071fbc-e41a-3b0e-820d-a5b00e168bf1"),
+                            Description = "",
+                            Key = "liquidation.explain"
+                        },
+                        new
+                        {
+                            Id = new Guid("ee439aba-83f4-d59c-5de0-222b3b9e65e2"),
+                            Description = "",
+                            Key = "liquidation.deficitExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("af285bfa-936f-201a-6605-7c062c92be61"),
+                            Description = "",
+                            Key = "liquidation.pending"
+                        },
+                        new
+                        {
+                            Id = new Guid("d274cd87-fc95-0149-b7c5-984ad5e89340"),
+                            Description = "",
+                            Key = "liquidation.payOut"
+                        },
+                        new
+                        {
+                            Id = new Guid("649ac112-55cc-0d09-f17b-82cf6972af58"),
+                            Description = "",
+                            Key = "liquidation.carry"
+                        },
+                        new
+                        {
+                            Id = new Guid("46e98734-759f-aaa8-7c76-50ba076086d9"),
+                            Description = "",
+                            Key = "liquidation.date"
+                        },
+                        new
+                        {
+                            Id = new Guid("b3a43f40-9310-b867-5316-82973dcf8fcb"),
+                            Description = "",
+                            Key = "liquidation.confirm"
+                        },
+                        new
+                        {
+                            Id = new Guid("1493cf6e-a2fe-3b06-9120-ecb9f84aaec0"),
+                            Description = "",
+                            Key = "liquidation.question"
+                        },
+                        new
+                        {
+                            Id = new Guid("59e02361-2efd-6c13-e10b-31dd51827e33"),
+                            Description = "",
+                            Key = "liquidation.questionExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("244400f9-b98c-3570-42df-a9205dd5c843"),
+                            Description = "",
+                            Key = "liquidation.done"
+                        },
+                        new
+                        {
+                            Id = new Guid("1659585e-040c-53cb-aa54-a6c9b25ec2d5"),
+                            Description = "",
+                            Key = "liquidation.distributed"
+                        },
+                        new
+                        {
+                            Id = new Guid("fd379b83-1e61-3eb8-4370-fa0efbce9ef6"),
+                            Description = "",
+                            Key = "liquidation.nothing"
                         },
                         new
                         {
