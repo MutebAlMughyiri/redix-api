@@ -692,6 +692,35 @@ namespace Redix.Api.Migrations
                     b.ToTable("EntryAttachments");
                 });
 
+            modelBuilder.Entity("Redix.Api.Entries.EntryLink", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Type")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("LinkedEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("EntryId", "Type");
+
+                    b.HasIndex("LinkedEntryId");
+
+                    b.ToTable("EntryLinks");
+                });
+
             modelBuilder.Entity("Redix.Api.Entries.ExpenseDetails", b =>
                 {
                     b.Property<Guid>("EntryId")
@@ -8460,6 +8489,160 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("c65ff10d-e85f-0923-a7c8-2f7ae4855757"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5e14778e-c9c9-847a-d97a-3b0471c0cacd"),
+                            Value = "Credit note"
+                        },
+                        new
+                        {
+                            Id = new Guid("8759e2d3-541a-56b4-0e4d-3818a7d4f732"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5e14778e-c9c9-847a-d97a-3b0471c0cacd"),
+                            Value = "مرتجع (إشعار دائن)"
+                        },
+                        new
+                        {
+                            Id = new Guid("15c4e47d-c133-91cd-1390-391c811dbcfb"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5ccfb2fd-cf81-3f4a-5156-a391715acd5a"),
+                            Value = "Recorded as a negative; linking it to the original invoice is optional"
+                        },
+                        new
+                        {
+                            Id = new Guid("653f1c12-8398-3dc7-d855-c2d16b3f9f45"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5ccfb2fd-cf81-3f4a-5156-a391715acd5a"),
+                            Value = "يُسجَّل بالسالب، وربطه بالفاتورة الأصلية اختياري"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1bea701-6f9c-b217-c4e9-217a2c00f16b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("dd222740-ec12-f979-f92b-d8946a1f4293"),
+                            Value = "Original invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("0eb3ccf6-1dbe-47fc-c422-d56ea0e8468f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("dd222740-ec12-f979-f92b-d8946a1f4293"),
+                            Value = "الفاتورة الأصلية"
+                        },
+                        new
+                        {
+                            Id = new Guid("06e7cc96-233a-feff-fc9a-59d637f7711a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8b869839-f215-257c-3c40-13288e65d0d0"),
+                            Value = "Not linked to an invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("219b0a0f-7708-c0e6-18aa-63eb3a731635"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8b869839-f215-257c-3c40-13288e65d0d0"),
+                            Value = "غير مربوط بفاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("353550c9-aef4-1a44-71f7-b2b06a51a9a7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7f7a43e9-e415-4905-8160-e2de3ff1d90a"),
+                            Value = "This supplier has no invoice to return yet."
+                        },
+                        new
+                        {
+                            Id = new Guid("7b58b828-c2cf-e53c-8478-cbe48ed06600"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7f7a43e9-e415-4905-8160-e2de3ff1d90a"),
+                            Value = "لا توجد لهذا المورد فاتورة يمكن إرجاعها بعد."
+                        },
+                        new
+                        {
+                            Id = new Guid("c2309f13-f67c-b053-d1d6-2a5511eb2cd3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("235b58bb-a013-b56d-484b-3275929fac9f"),
+                            Value = "Left to return"
+                        },
+                        new
+                        {
+                            Id = new Guid("be853c47-44da-82bf-9b52-4f1a8daea502"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("235b58bb-a013-b56d-484b-3275929fac9f"),
+                            Value = "المتبقي للإرجاع"
+                        },
+                        new
+                        {
+                            Id = new Guid("f4f50a8e-8aa5-73fd-0c43-00772c96172c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
+                            Value = "The invoices could not be read."
+                        },
+                        new
+                        {
+                            Id = new Guid("c8daed7b-bb4e-322d-fa46-536456195c23"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
+                            Value = "تعذّرت قراءة الفواتير."
+                        },
+                        new
+                        {
+                            Id = new Guid("d6df82f5-26ef-9d4c-348b-0b6a574c5654"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1fa9acf7-0b4a-cb33-2c6b-92a535596b0d"),
+                            Value = "A credit note cannot go above what is left of its original invoice."
+                        },
+                        new
+                        {
+                            Id = new Guid("acfc8c1c-7588-4d1f-ff57-316c21eeb9a4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1fa9acf7-0b4a-cb33-2c6b-92a535596b0d"),
+                            Value = "لا يمكن أن يتجاوز المرتجع المتبقي من فاتورته الأصلية."
+                        },
+                        new
+                        {
+                            Id = new Guid("37019142-7349-cf37-1450-a08c64ecf923"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ec6bd3ce-2065-9244-3217-653bd057a20d"),
+                            Value = "Choose an invoice of this supplier that was sent for approval."
+                        },
+                        new
+                        {
+                            Id = new Guid("36f70000-08c5-72d2-deee-fac0a3d1c321"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ec6bd3ce-2065-9244-3217-653bd057a20d"),
+                            Value = "اختر فاتورة لهذا المورد أُرسلت للاعتماد."
+                        },
+                        new
+                        {
+                            Id = new Guid("50ee8361-d5f7-062d-8c0b-279a7299e279"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("dae028e9-ad68-bbcc-9efe-537cb1012894"),
+                            Value = "A credit note has its own number and date, so it cannot be without an invoice."
+                        },
+                        new
+                        {
+                            Id = new Guid("42b11d5b-3c05-ad62-af3a-d4fda7bd6be8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("dae028e9-ad68-bbcc-9efe-537cb1012894"),
+                            Value = "للمرتجع رقمه وتاريخه الخاصان، فلا يكون بدون فاتورة."
+                        },
+                        new
+                        {
+                            Id = new Guid("f77bbe10-14f6-5371-5406-a52050dcaa41"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2e1ade53-6e86-002e-70d0-c7e877035721"),
+                            Value = "A negative amount is a deduction with no invoice. Turn on Without an invoice and say why."
+                        },
+                        new
+                        {
+                            Id = new Guid("62ac94e0-6f89-6f7f-4d04-8afd2124667e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2e1ade53-6e86-002e-70d0-c7e877035721"),
+                            Value = "المبلغ السالب خصم بلا فاتورة. فعّل بدون فاتورة واذكر السبب."
+                        },
+                        new
+                        {
                             Id = new Guid("569045a4-b515-3955-379c-4e55af8f5fac"),
                             Language = "en",
                             TranslationKeyId = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
@@ -11032,6 +11215,72 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("5e14778e-c9c9-847a-d97a-3b0471c0cacd"),
+                            Description = "",
+                            Key = "expenses.creditNote"
+                        },
+                        new
+                        {
+                            Id = new Guid("5ccfb2fd-cf81-3f4a-5156-a391715acd5a"),
+                            Description = "",
+                            Key = "expenses.creditNoteExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("dd222740-ec12-f979-f92b-d8946a1f4293"),
+                            Description = "",
+                            Key = "expenses.originalInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("8b869839-f215-257c-3c40-13288e65d0d0"),
+                            Description = "",
+                            Key = "expenses.noOriginalInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("7f7a43e9-e415-4905-8160-e2de3ff1d90a"),
+                            Description = "",
+                            Key = "expenses.noCreditableInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("235b58bb-a013-b56d-484b-3275929fac9f"),
+                            Description = "",
+                            Key = "expenses.returnable"
+                        },
+                        new
+                        {
+                            Id = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
+                            Description = "",
+                            Key = "expenses.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("1fa9acf7-0b4a-cb33-2c6b-92a535596b0d"),
+                            Description = "",
+                            Key = "expenses.creditNoteAboveOriginal"
+                        },
+                        new
+                        {
+                            Id = new Guid("ec6bd3ce-2065-9244-3217-653bd057a20d"),
+                            Description = "",
+                            Key = "expenses.unknownOriginalInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("dae028e9-ad68-bbcc-9efe-537cb1012894"),
+                            Description = "",
+                            Key = "expenses.creditNoteNeedsInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("2e1ade53-6e86-002e-70d0-c7e877035721"),
+                            Description = "",
+                            Key = "expenses.deductionNeedsReason"
+                        },
+                        new
+                        {
                             Id = new Guid("ff64cabb-c86b-492a-c8b8-d821442416da"),
                             Description = "",
                             Key = "biometrics.notChanged"
@@ -11203,6 +11452,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Entries.Entry", null)
                         .WithMany()
                         .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Entries.EntryLink", b =>
+                {
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithMany()
+                        .HasForeignKey("LinkedEntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

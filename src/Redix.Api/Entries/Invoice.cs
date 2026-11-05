@@ -15,7 +15,7 @@ public class Invoice
     /// <summary>The invoice's date.</summary>
     public DateOnly InvoiceDate { get; init; }
 
-    /// <summary>The amount before VAT and before the discount.</summary>
+    /// <summary>The amount before VAT and before the discount; this and every figure below it is negative on a credit note (BR-18).</summary>
     public decimal AmountBeforeDiscount { get; init; }
 
     /// <summary>The discount, before VAT.</summary>
@@ -30,7 +30,7 @@ public class Invoice
     /// <summary>The amount after the discount, with VAT.</summary>
     public decimal Total { get; init; }
 
-    /// <summary>True for a credit note (BR-18); never yet, until UC-026 "Record a credit note or a deduction".</summary>
+    /// <summary>True for a credit note (BR-18). Its figures are negative, so a total needs no check of this.</summary>
     public bool IsCreditNote { get; init; }
 
     /// <summary>The first day of the quarter it is declared in, by default the quarter of its date (BR-17).</summary>

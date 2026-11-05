@@ -603,7 +603,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         await AssertRefusedAsync(setup, Expense(setup) with { UnitPrice = -1m }, "invalidUnitPrice");
         await AssertRefusedAsync(setup, Expense(setup) with { Quantity = 1.234m }, "invalidQuantity");
         await AssertRefusedAsync(setup, Expense(setup, 0m), "invalidAmount");
-        await AssertRefusedAsync(setup, Expense(setup, -5m), "invalidAmount");
+        await AssertRefusedAsync(setup, Expense(setup, -5m), "deductionNeedsReason");
         await AssertRefusedAsync(setup, Expense(setup, 1.234m), "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, 0m) with { UnitPrice = Money.Largest, Quantity = Money.Largest }, "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, Money.Largest) with { AmountIncludesVat = false }, "invalidAmount");

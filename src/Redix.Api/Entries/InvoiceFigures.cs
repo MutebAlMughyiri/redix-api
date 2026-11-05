@@ -21,5 +21,11 @@ public readonly record struct InvoiceFigures(decimal AmountBeforeDiscount, decim
         return new InvoiceFigures(Kept(beforeDiscount), discount, Kept(afterDiscount), Kept(vat), Kept(afterDiscount + vat));
     }
 
+    /// <summary>The rate an invoice with <paramref name="amountAfterDiscount"/> and <paramref name="vat"/> was computed at, as a fraction of the four decimals a rate is kept with; 0 for an invoice that has no VAT.</summary>
+    public static decimal RateOf(decimal amountAfterDiscount, decimal vat) => amountAfterDiscount == 0 ? 0 : decimal.Round(vat / amountAfterDiscount, KeptDecimals, MidpointRounding.AwayFromZero);
+
+    /// <summary>These figures as a credit note holds them (BR-18): every one negative, so that wherever figures are added up it takes away what the original counted, and no reader has to ask what it is.</summary>
+    public InvoiceFigures Negated() => new(-AmountBeforeDiscount, -Discount, -AmountAfterDiscount, -Vat, -Total);
+
     private static decimal Kept(decimal figure) => decimal.Round(figure, KeptDecimals, MidpointRounding.AwayFromZero);
 }

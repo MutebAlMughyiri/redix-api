@@ -37,7 +37,13 @@ public record ExpenseRequest(Guid Id)
     /// <summary>How many; left out when not used.</summary>
     public decimal Quantity { get; init; }
 
-    /// <summary>The amount; left out, it is the unit price times the quantity.</summary>
+    /// <summary>True for a credit note (BR-18): its own number and date, and <see cref="Amount"/> typed as a plain amount, which is kept negative.</summary>
+    public bool IsCreditNote { get; init; }
+
+    /// <summary>The entry of the invoice a credit note returns; left out when it is linked to none, which BR-18 allows.</summary>
+    public Guid OriginalEntryId { get; init; }
+
+    /// <summary>The amount; left out, it is the unit price times the quantity. Negative for a deduction (FR-14), which has no invoice and says why in <see cref="WithoutInvoiceReason"/>.</summary>
     public decimal Amount { get; init; }
 
     /// <summary>Whether <see cref="Amount"/> includes VAT, the default and what a QR code gives (BR-01).</summary>
@@ -82,11 +88,24 @@ public record ExpenseRequest(Guid Id)
     /// <summary>Whether this expense says why it has no invoice (FR-09).</summary>
     public bool IsWithoutInvoice() => WithoutInvoiceReason.Trim().Length > 0;
 
+    /// <summary>Whether this is a deduction: a negative amount, which FR-14 allows and which comes off the item.</summary>
+    public bool IsDeduction() => Amount < 0;
+
     /// <summary>The amount as typed, or else what the unit price and quantity make: which BR-01 says includes VAT.</summary>
-    public decimal EnteredAmount() => Amount > 0 ? Amount : UnitPrice * Quantity;
+    public decimal EnteredAmount() => Amount != 0 ? Amount : UnitPrice * Quantity;
 
     /// <summary>Whether <see cref="EnteredAmount"/> includes VAT: a unit price always does (BR-01).</summary>
-    public bool EnteredAmountIncludesVat() => Amount <= 0 || AmountIncludesVat;
+    public bool EnteredAmountIncludesVat() => Amount == 0 || AmountIncludesVat;
+
+    /// <summary>What was paid, given the <paramref name="kept"/> figures: the invoice's total unless the payment differs (BR-24). A credit note's payment is money coming back, so it is negative as its figures are.</summary>
+    public decimal PaidOf(InvoiceFigures kept)
+    {
+        if (PaymentAmount == 0)
+        {
+            return kept.Total;
+        }
+        return IsCreditNote ? -PaymentAmount : PaymentAmount;
+    }
 
     /// <summary>The custom values to keep: each trimmed, and the empty ones gone.</summary>
     public Dictionary<string, string> CustomValuesKept() => CustomValues.Where(value => value.Value.Trim().Length > 0).ToDictionary(value => value.Key, value => value.Value.Trim());
@@ -101,6 +120,18 @@ public record ExpenseRequest(Guid Id)
         if (IsWithoutInvoice() && AttachmentId != Guid.Empty)
         {
             return "InvoiceAndReason";
+        }
+        if (IsDeduction() && !IsWithoutInvoice())
+        {
+            return "DeductionNeedsReason";
+        }
+        if (IsCreditNote && IsWithoutInvoice())
+        {
+            return "CreditNoteNeedsInvoice";
+        }
+        if (!IsCreditNote && OriginalEntryId != Guid.Empty)
+        {
+            return "UnknownOriginalInvoice";
         }
         if (!IsWithoutInvoice() && InvoiceNumber.Trim().Length is 0 or > Invoice.NumberMaxLength)
         {
@@ -122,29 +153,29 @@ public record ExpenseRequest(Guid Id)
         {
             return "InvalidQuantity";
         }
-        if (Amount < 0 || !Money.IsAcceptable(Amount) || (Amount == 0 && !HasPriceAndQuantityWithinLimit))
+        if (!Money.IsAcceptable(Amount) || (Amount == 0 && !HasPriceAndQuantityWithinLimit))
         {
             return "InvalidAmount";
         }
-        if (Discount < 0 || !Money.IsAcceptable(Discount))
+        if (Discount < 0 || !Money.IsAcceptable(Discount) || (IsDeduction() && Discount > 0))
         {
             return "InvalidDiscount";
         }
-        if (PaymentAmount < 0 || !Money.IsAcceptable(PaymentAmount))
+        if (PaymentAmount < 0 || !Money.IsAcceptable(PaymentAmount) || (IsDeduction() && PaymentAmount > 0))
         {
             return "InvalidPaymentAmount";
         }
         return BankFees < 0 || !Money.IsAcceptable(BankFees) ? "InvalidBankFees" : "";
     }
 
-    /// <summary>Why <paramref name="figures"/> cannot be kept: a discount above the amount, or a total beyond <see cref="Money.Largest"/>. Empty when they can.</summary>
-    public static string RefusalOfFigures(InvoiceFigures figures)
+    /// <summary>Why <paramref name="figures"/> cannot be kept: a discount above the amount, or a total beyond <see cref="Money.Largest"/> either way. Empty when they can.</summary>
+    public string RefusalOfFigures(InvoiceFigures figures)
     {
-        if (figures.AmountAfterDiscount < 0)
+        if (figures.AmountAfterDiscount < 0 && !IsDeduction())
         {
             return "InvalidDiscount";
         }
-        return figures.Total > Money.Largest ? "InvalidAmount" : "";
+        return Math.Abs(figures.Total) > Money.Largest ? "InvalidAmount" : "";
     }
 
     /// <summary>Whether this request gives <paramref name="column"/> a value: what is checked elsewhere counts as given, and only what a person may leave empty is asked here (FR-41).</summary>

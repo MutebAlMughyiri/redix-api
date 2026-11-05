@@ -26,7 +26,7 @@ public class Entry
     /// <summary>The day the money moved, which the periodic report goes by (BR-24).</summary>
     public DateOnly EntryDate { get; init; }
 
-    /// <summary>What was paid, which the periodic report goes by (BR-24).</summary>
+    /// <summary>What was paid, which the periodic report goes by (BR-24); negative for a credit note or a deduction (FR-14).</summary>
     public decimal Amount { get; init; }
 
     /// <summary>The account it was paid from or into.</summary>

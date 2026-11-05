@@ -57,6 +57,22 @@ public enum EntryAttachmentRole : byte
     Other,
 }
 
+/// <summary>What ties one entry to another.</summary>
+public enum EntryLinkType : byte
+{
+    /// <summary>The two sides of a transfer between accounts.</summary>
+    TransferPair,
+
+    /// <summary>The two sides of a partner's balance carried between projects.</summary>
+    CarryPair,
+
+    /// <summary>The entry that reverses an approved one (FR-50).</summary>
+    Reversal,
+
+    /// <summary>The credit note of an invoice (BR-18).</summary>
+    CreditNoteOf,
+}
+
 /// <summary>What becomes of an expense paid from a partner's money (BR-25); nothing until UC-045 "Expense paid from a partner's money".</summary>
 public enum PartnerTreatment : byte
 {

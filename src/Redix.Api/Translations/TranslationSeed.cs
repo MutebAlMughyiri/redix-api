@@ -426,6 +426,17 @@ public static class TranslationSeed
         ("expenses.invalidWithoutInvoiceReason", "Say why there is no invoice, in up to 500 characters.", "اذكر سبب عدم وجود فاتورة، حتى 500 حرف."),
         ("expenses.invoiceAndReason", "An expense without an invoice carries no invoice file.", "المصروف بدون فاتورة لا يُرفق به ملف فاتورة."),
         ("expenses.amount", "Amount", "المبلغ"),
+        ("expenses.creditNote", "Credit note", "مرتجع (إشعار دائن)"),
+        ("expenses.creditNoteExplain", "Recorded as a negative; linking it to the original invoice is optional", "يُسجَّل بالسالب، وربطه بالفاتورة الأصلية اختياري"),
+        ("expenses.originalInvoice", "Original invoice", "الفاتورة الأصلية"),
+        ("expenses.noOriginalInvoice", "Not linked to an invoice", "غير مربوط بفاتورة"),
+        ("expenses.noCreditableInvoice", "This supplier has no invoice to return yet.", "لا توجد لهذا المورد فاتورة يمكن إرجاعها بعد."),
+        ("expenses.returnable", "Left to return", "المتبقي للإرجاع"),
+        ("expenses.loadFailed", "The invoices could not be read.", "تعذّرت قراءة الفواتير."),
+        ("expenses.creditNoteAboveOriginal", "A credit note cannot go above what is left of its original invoice.", "لا يمكن أن يتجاوز المرتجع المتبقي من فاتورته الأصلية."),
+        ("expenses.unknownOriginalInvoice", "Choose an invoice of this supplier that was sent for approval.", "اختر فاتورة لهذا المورد أُرسلت للاعتماد."),
+        ("expenses.creditNoteNeedsInvoice", "A credit note has its own number and date, so it cannot be without an invoice.", "للمرتجع رقمه وتاريخه الخاصان، فلا يكون بدون فاتورة."),
+        ("expenses.deductionNeedsReason", "A negative amount is a deduction with no invoice. Turn on Without an invoice and say why.", "المبلغ السالب خصم بلا فاتورة. فعّل بدون فاتورة واذكر السبب."),
         ("biometrics.notChanged", "Could not change this. Check the network and try again.", "تعذّر التغيير. تحقق من الشبكة وحاول مرة أخرى."),
     ];
 

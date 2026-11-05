@@ -16,6 +16,7 @@ public static class ExpensesEndpoints
     public static void MapExpenses(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/expenses/exceptions", Exceptions).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/projects/{projectId:guid}/expenses/creditable", Creditable).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapProjectChanges(Permission.RecordEntries).MapPost("/expenses", Record);
     }
 
@@ -30,11 +31,34 @@ public static class ExpensesEndpoints
         orderby entry.Id
         select new ExceptionView(entry.Id, entry.Status, entry.EntryDate, entry.Amount, item.Name, details.WithoutInvoiceReason)).ToListAsync();
 
+    /// <summary>The invoices of <paramref name="supplierId"/> that a credit note can return (BR-18): sent or approved, and no credit note themselves, each with what is left of its value after the credit notes that already name it. One rejected no longer takes anything.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="supplierId">The supplier.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static async Task<List<CreditableInvoiceView>> Creditable(Guid projectId, Guid supplierId, RedixDbContext db)
+    {
+        var invoices = await (
+            from invoice in db.Invoices
+            join purchase in db.PurchaseDetails on invoice.EntryId equals purchase.EntryId
+            join entry in db.Entries on invoice.EntryId equals entry.Id
+            where entry.ProjectId == projectId && purchase.SupplierId == supplierId && !invoice.IsCreditNote && (entry.Status == EntryStatus.PendingApproval || entry.Status == EntryStatus.Approved)
+            select invoice).ToListAsync();
+        var returned = await (
+            from link in db.EntryLinks
+            join note in db.Invoices on link.EntryId equals note.EntryId
+            join entry in db.Entries on link.EntryId equals entry.Id
+            where link.Type == EntryLinkType.CreditNoteOf && entry.ProjectId == projectId && entry.Status != EntryStatus.Rejected
+            group note.Total by link.LinkedEntryId into notes
+            select new { EntryId = notes.Key, Total = notes.Sum() }).ToDictionaryAsync(row => row.EntryId, row => row.Total);
+        return invoices.OrderBy(invoice => invoice.EntryId).Select(invoice => new CreditableInvoiceView(invoice.EntryId, invoice.Number, invoice.InvoiceDate, invoice.Total + returned.GetValueOrDefault(invoice.EntryId), InvoiceFigures.RateOf(invoice.AmountAfterDiscount, invoice.Vat))).ToList();
+    }
+
     /// <summary>
     /// Records a purchase as a draft, or sent for approval, and answers its figures. An id already used answers <c>entryExists</c>, and an empty one <c>invalidEntryId</c>. What it names has to be on offer to the caller: otherwise <c>itemNotOffered</c>, <c>unknownUnit</c>, <c>unknownSubgroup</c>,
     /// <c>unknownSupplier</c> (BR-19), <c>unknownPaymentMethod</c> or <c>accountNotOffered</c> (BRS open question 4). What was typed answers <c>invalidInvoiceNumber</c>, <c>invalidProduct</c>, <c>invalidNotes</c>, <c>invalidUnitPrice</c>, <c>invalidQuantity</c>, <c>invalidAmount</c>, <c>invalidDiscount</c>,
     /// <c>invalidPaymentAmount</c> or <c>invalidBankFees</c>. A date outside the project's period or in the future answers <c>invalidInvoiceDate</c> or <c>invalidPaymentDate</c> (BR-12). A file of no such attachment answers <c>unknownAttachment</c>. A custom value answers <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>.
     /// Sending also needs the required columns, <c>requiredColumnMissing</c> with its <c>columnKey</c> (FR-41), and the invoice's file or why there is none, <c>invoiceRequired</c> (FR-09); a draft can wait for them. A reason too long answers <c>invalidWithoutInvoiceReason</c>, and a reason beside a file <c>invoiceAndReason</c>.
+    /// A negative amount is a deduction (FR-14): it has no invoice, so with no reason it answers <c>deductionNeedsReason</c>. A credit note (BR-18) with a reason answers <c>creditNoteNeedsInvoice</c>; one naming what it cannot return <c>unknownOriginalInvoice</c>; and one above what is left of that invoice <c>creditNoteAboveOriginal</c>.
     /// A file already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). The same supplier's invoice number in any project answers <c>duplicateInvoice</c>, with the earlier entry as <c>earlier</c>, until the request says <c>confirmDuplicate</c> (UC-023, FR-17).
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -82,11 +106,20 @@ public static class ExpensesEndpoints
         }
 
         var vatRate = request.IsNotTaxable || request.IsWithoutInvoice() || supplier.VatNumber.Length == 0 ? 0 : project.VatRate;
-        var figures = InvoiceFigures.Of(request.EnteredAmount(), request.EnteredAmountIncludesVat(), request.Discount, vatRate);
-        refusal = ExpenseRequest.RefusalOfFigures(figures);
+        var original = request.OriginalEntryId == Guid.Empty ? CreditableInvoiceView.None(vatRate) : (await Creditable(projectId, request.SupplierId, db)).SingleOrDefault(row => row.EntryId == request.OriginalEntryId);
+        if (original is null)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownOriginalInvoice");
+        }
+        var figures = InvoiceFigures.Of(request.EnteredAmount(), request.EnteredAmountIncludesVat(), request.Discount, original.VatRate);
+        refusal = request.RefusalOfFigures(figures);
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+        }
+        if (figures.Total > original.Returnable)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "CreditNoteAboveOriginal");
         }
 
         var (reason, columnKey) = RefusalOfColumns(request, item.Columns.Where(column => !column.IsHidden).ToList());
@@ -112,13 +145,14 @@ public static class ExpensesEndpoints
             }
         }
 
-        var (entry, details) = Build(request, projectId, subgroup.Id, figures, userId, time.GetUtcNow().UtcDateTime);
+        var kept = request.IsCreditNote ? figures.Negated() : figures;
+        var (entry, details) = Build(request, projectId, subgroup.Id, kept, userId, time.GetUtcNow().UtcDateTime);
         db.Add(entry);
         details.ForEach(detail => db.Add(detail));
         db.Audit(entry, request.Submit ? AuditAction.Submit : AuditAction.Create, userId, entry.CreatedAt);
         details.ForEach(detail => db.Audit(detail, AuditAction.Create, userId, entry.CreatedAt));
         await db.SaveChangesAsync();
-        return Results.Created($"/projects/{projectId}/expenses/{entry.Id}", new ExpenseView(entry.Id, entry.Status, figures.AmountBeforeDiscount, figures.Discount, figures.AmountAfterDiscount, figures.Vat, figures.Total, entry.Amount));
+        return Results.Created($"/projects/{projectId}/expenses/{entry.Id}", new ExpenseView(entry.Id, entry.Status, kept.AmountBeforeDiscount, kept.Discount, kept.AmountAfterDiscount, kept.Vat, kept.Total, entry.Amount));
     }
 
     private static async Task<string> RefusalOfWhatItNamesAsync(Guid projectId, ExpenseRequest request, Guid userId, List<Permission> held, RedixDbContext db)
@@ -190,7 +224,7 @@ public static class ExpensesEndpoints
         return missing is null ? ("", "") : ("RequiredColumnMissing", missing.Key);
     }
 
-    private static (Entry Entry, List<object> Details) Build(ExpenseRequest request, Guid projectId, Guid subgroupId, InvoiceFigures figures, Guid userId, DateTime at)
+    private static (Entry Entry, List<object> Details) Build(ExpenseRequest request, Guid projectId, Guid subgroupId, InvoiceFigures kept, Guid userId, DateTime at)
     {
         var entry = new Entry
         {
@@ -199,7 +233,7 @@ public static class ExpensesEndpoints
             Kind = EntryKind.Purchase,
             Status = request.Submit ? EntryStatus.PendingApproval : EntryStatus.Draft,
             EntryDate = request.PaymentDate == default ? request.InvoiceDate : request.PaymentDate,
-            Amount = request.PaymentAmount > 0 ? request.PaymentAmount : figures.Total,
+            Amount = request.PaidOf(kept),
             AccountId = request.AccountId,
             Notes = request.Notes.Trim(),
             CreatedByUserId = userId,
@@ -227,13 +261,18 @@ public static class ExpensesEndpoints
                 EntryId = entry.Id,
                 Number = request.InvoiceNumber.Trim(),
                 InvoiceDate = request.InvoiceDate,
-                AmountBeforeDiscount = figures.AmountBeforeDiscount,
-                Discount = figures.Discount,
-                AmountAfterDiscount = figures.AmountAfterDiscount,
-                Vat = figures.Vat,
-                Total = figures.Total,
+                AmountBeforeDiscount = kept.AmountBeforeDiscount,
+                Discount = kept.Discount,
+                AmountAfterDiscount = kept.AmountAfterDiscount,
+                Vat = kept.Vat,
+                Total = kept.Total,
+                IsCreditNote = request.IsCreditNote,
                 VatPeriodStart = Invoice.QuarterStartOf(request.InvoiceDate),
             });
+        }
+        if (request.OriginalEntryId != Guid.Empty)
+        {
+            details.Add(new EntryLink { EntryId = entry.Id, Type = EntryLinkType.CreditNoteOf, LinkedEntryId = request.OriginalEntryId });
         }
         if (request.AttachmentId != Guid.Empty)
         {
@@ -249,6 +288,18 @@ public static class ExpensesEndpoints
 /// <param name="InvoiceDate">The invoice's date.</param>
 /// <param name="Total">The invoice's total.</param>
 public record EarlierEntryView(bool IsVisible, string ProjectName, DateOnly InvoiceDate, decimal Total);
+
+/// <summary>An invoice a credit note can return (BR-18), or none.</summary>
+/// <param name="EntryId">The invoice's entry; empty for none.</param>
+/// <param name="Number">The invoice's number.</param>
+/// <param name="InvoiceDate">The invoice's date.</param>
+/// <param name="Returnable">What is left of its total, with VAT, after the credit notes that already name it.</param>
+/// <param name="VatRate">The rate it was computed at, which its credit note follows, as a fraction.</param>
+public record CreditableInvoiceView(Guid EntryId, string Number, DateOnly InvoiceDate, decimal Returnable, decimal VatRate)
+{
+    /// <summary>No invoice: nothing limits what an expense not tied to one holds, computed at <paramref name="vatRate"/>.</summary>
+    public static CreditableInvoiceView None(decimal vatRate) => new(Guid.Empty, "", default, decimal.MaxValue, vatRate);
+}
 
 /// <summary>One row of the exceptions list (AC-09.1).</summary>
 /// <param name="EntryId">The entry's id.</param>

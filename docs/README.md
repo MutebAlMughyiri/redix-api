@@ -41,5 +41,6 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-022](use-cases/UC-022-purchase-expense.md) | Record a purchase in the ledger, its figures computed as the accountant computes them | Finance and Field |
 | [UC-023](use-cases/UC-023-duplicate-invoice.md) | Warn when a supplier's invoice number is entered again, in any project | The API, on its own |
 | [UC-025](use-cases/UC-025-expense-without-invoice.md) | Record an expense that has no invoice, saying why, and list it among the exceptions | Finance and Field; everyone with access reads the list |
+| [UC-026](use-cases/UC-026-credit-note.md) | Record money coming back: a credit note, or a deduction | Finance and Field |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

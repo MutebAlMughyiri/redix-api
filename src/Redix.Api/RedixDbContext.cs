@@ -92,6 +92,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The invoices of the expenses, which the VAT statement goes by.</summary>
     public DbSet<Invoice> Invoices => Set<Invoice>();
 
+    /// <summary>What ties one entry to another.</summary>
+    public DbSet<EntryLink> EntryLinks => Set<EntryLink>();
+
     /// <summary>The files each entry carries.</summary>
     public DbSet<EntryAttachment> EntryAttachments => Set<EntryAttachment>();
 
@@ -293,6 +296,14 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.Property(i => i.Number).HasMaxLength(Invoice.NumberMaxLength);
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<EntryLink>(link =>
+        {
+            link.HasKey(l => new { l.EntryId, l.Type });
+            link.Property(l => l.Reason).HasMaxLength(Project.ReasonMaxLength);
+            link.HasIndex(l => l.LinkedEntryId);
+            link.HasOne<Entry>().WithMany().HasForeignKey(l => l.EntryId).OnDelete(DeleteBehavior.Restrict);
+            link.HasOne<Entry>().WithMany().HasForeignKey(l => l.LinkedEntryId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<EntryAttachment>(link =>
         {
