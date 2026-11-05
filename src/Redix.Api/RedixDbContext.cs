@@ -43,6 +43,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The groups inside the items, a general one in each (FR-05).</summary>
     public DbSet<Subgroup> Subgroups => Set<Subgroup>();
 
+    /// <summary>What a new item of each type starts with, per project (FR-38, FR-41).</summary>
+    public DbSet<DefaultColumn> DefaultColumns => Set<DefaultColumn>();
+
+    /// <summary>What each item asks for at entry (FR-41).</summary>
+    public DbSet<ItemColumn> ItemColumns => Set<ItemColumn>();
+
     /// <summary>The roles, which are data (BR-32).</summary>
     public DbSet<Role> Roles => Set<Role>();
 
@@ -121,12 +127,29 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             item.Property(i => i.Name).HasMaxLength(Project.NameMaxLength);
             item.HasMany(i => i.Subgroups).WithOne().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
+            item.HasMany(i => i.Columns).WithOne().HasForeignKey(c => c.ItemId).OnDelete(DeleteBehavior.Restrict);
             item.HasData(StructureSeed.Items);
         });
         modelBuilder.Entity<Subgroup>(subgroup =>
         {
             subgroup.Property(s => s.Name).HasMaxLength(Project.NameMaxLength);
             subgroup.HasData(StructureSeed.Subgroups);
+        });
+        modelBuilder.Entity<DefaultColumn>(column =>
+        {
+            column.Property(c => c.Key).HasMaxLength(Column.KeyMaxLength).IsUnicode(false);
+            column.Property(c => c.Name).HasMaxLength(Project.NameMaxLength);
+            column.Property(c => c.Options).HasColumnType("json");
+            column.HasIndex(c => new { c.ProjectId, c.ItemType, c.Key }).IsUnique();
+            column.HasOne<Project>().WithMany().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            column.HasData(StructureSeed.DefaultColumns);
+        });
+        modelBuilder.Entity<ItemColumn>(column =>
+        {
+            column.Property(c => c.Key).HasMaxLength(Column.KeyMaxLength).IsUnicode(false);
+            column.Property(c => c.Name).HasMaxLength(Project.NameMaxLength);
+            column.Property(c => c.Options).HasColumnType("json");
+            column.HasIndex(c => new { c.ItemId, c.Key }).IsUnique();
         });
         modelBuilder.Entity<ProjectMember>(member =>
         {

@@ -2,7 +2,7 @@
 
 # UC-012: Manage categories and items
 
-**What it is for:** shaping a project's expense structure: its categories, their items and the items' subgroups (FR-05, FR-38, FR-39), which is what expenses are recorded against and what the periodic report prints, in this order.
+**What it is for:** shaping a project's expense structure: its categories, their items and the items' subgroups (FR-05, FR-38, FR-39), which is what expenses are recorded against and what the periodic report prints, in this order. A new item inherits its columns through [UC-013](UC-013-item-columns.md).
 **Who uses it:** whoever holds `ManageStructure` in the project, which is Finance. Everyone with access reads it.
 **Issue:** redix-api #30; the app side is redix-app #31.
 
@@ -54,9 +54,9 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | Only a project the caller reads can be copied (BR-33) | `ProjectsEndpoints.Create` | `CategoriesTests.AnEarlierProjectTheCallerCannotReadCannotBeCopied`, `TheTemplateItselfCannotBeNamedAsAnEarlierProject` |
 | Nobody sees the template | No member holds a role in it | `CategoriesTests.NobodySeesTheTemplate` |
 | A change in one project touches nothing else (BR-33) | Each project's own rows | `CategoriesTests.AChangeInOneProjectLeavesTheTemplateAndOtherProjectsAlone` |
-| One project's route never reaches another's rows (BR-33) | `CategoriesEndpoints.ItemOfAsync` and the category lookups | `CategoriesTests.ARouteOfOneProjectNeverReachesAnothersRows` |
+| One project's route never reaches another's rows (BR-33) | `ProjectStructure.ItemOfAsync` and the category lookups | `CategoriesTests.ARouteOfOneProjectNeverReachesAnothersRows` |
 | The order set here is the order of the report (AC-39.1) | `IOrdered`, `CategoriesEndpoints.ReorderCategories`, `ReorderItems` | `CategoriesTests.TheOrderOfCategoriesIsTheOrderTheReportReads`, `TheOrderOfItemsIsTheOrderTheReportReads` |
-| An order names every row exactly once | `CategoriesEndpoints` | `CategoriesTests.AnOrderMustNameEveryRowExactlyOnce` |
+| An order names every row exactly once | `ProjectStructure.PutInOrder` | `CategoriesTests.AnOrderMustNameEveryRowExactlyOnce` |
 | A disabled item leaves entry and stays listed; nothing can be deleted (AC-05.3, BR-15) | `Item.IsOfferedFor`; no delete route exists | `CategoriesTests.ADisabledItemDisappearsFromEntryAndStaysListed`, `NothingInTheStructureCanBeDeleted` |
 | A disabled category takes its items out of entry | `Category.ItemsOfferedFor` | `CategoriesTests.ADisabledCategoryTakesItsItemsOutOfEntryAndStaysListed` |
 | What was disabled can be enabled | `CategoriesEndpoints.EnableItem`, `EnableCategory` | `CategoriesTests.ADisabledItemComesBackWhenEnabled` |
@@ -71,6 +71,5 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 
 | What | Use case |
 | --- | --- |
-| A new item inherits the default columns of its type (FR-38) | UC-013, whose tables they are |
 | The item picker on the entry screens | The entry use cases, through `GET .../categories/offered` |
 | Printing in the order set here (AC-39.1) | The periodic report, which reads `SortOrder` |

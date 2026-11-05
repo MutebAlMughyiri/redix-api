@@ -81,5 +81,6 @@ app.MapProjectUsers();
 app.MapRegistration();
 app.MapUsers();
 app.MapCategories();
+app.MapColumns();
 
 app.Run();

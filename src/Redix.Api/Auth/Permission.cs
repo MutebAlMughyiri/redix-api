@@ -21,6 +21,6 @@ public enum Permission
     /// <summary>Adds units to one project and closes it (FR-04).</summary>
     ManageProject,
 
-    /// <summary>Shapes one project's expense structure: its categories, items and subgroups (FR-05, FR-38, FR-39).</summary>
+    /// <summary>Shapes one project's expense structure: its categories, items, subgroups and columns (FR-05, FR-38, FR-39, FR-41).</summary>
     ManageStructure,
 }

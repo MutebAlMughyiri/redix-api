@@ -2,7 +2,7 @@ using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
 
-/// <summary>The default template every database starts with (BRS section 3): a project nobody is a member of, whose categories and items a new project copies. After the first migration it is data.</summary>
+/// <summary>The default template every database starts with (BRS section 3): a project nobody is a member of, whose categories, items and columns a new project copies. After the first migration it is data.</summary>
 public static class StructureSeed
 {
     private static readonly (string Category, (string Name, ItemType Type)[] Items)[] Seeded =
@@ -25,6 +25,41 @@ public static class StructureSeed
             ("معدات تشطيب", ItemType.Both), ("رواتب الحارس", ItemType.Both),
         ]),
         ("الإشراف", [("إشراف مالي", ItemType.Both), ("إشراف ميداني", ItemType.Both)]),
+    ];
+
+    private static readonly (string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsRequired, bool ShowInReports)[] PurchaseColumns =
+    [
+        ("date", "التاريخ", ColumnDataType.Date, true, true, true),
+        ("supplier", "المورد", ColumnDataType.List, true, true, false),
+        ("invoiceNumber", "رقم الفاتورة", ColumnDataType.Text, true, true, true),
+        ("unit", "الوحدة", ColumnDataType.List, false, false, false),
+        ("product", "الصنف", ColumnDataType.Text, false, false, true),
+        ("unitPrice", "سعر الوحدة", ColumnDataType.Amount, false, false, true),
+        ("quantity", "العدد", ColumnDataType.Number, false, false, true),
+        ("amountBeforeDiscount", "المبلغ قبل الخصم", ColumnDataType.Amount, true, true, false),
+        ("discount", "الخصم", ColumnDataType.Amount, true, false, false),
+        ("vat", "الضريبة", ColumnDataType.Amount, true, false, false),
+        ("total", "الإجمالي", ColumnDataType.Amount, true, false, true),
+        ("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, false),
+        ("account", "الحساب", ColumnDataType.List, true, true, false),
+        ("attachment", "المرفق", ColumnDataType.File, true, true, false),
+        ("notes", "ملاحظات", ColumnDataType.Text, false, false, false),
+    ];
+
+    private static readonly (string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsRequired, bool ShowInReports)[] ContractorPaymentColumns =
+    [
+        ("date", "التاريخ", ColumnDataType.Date, true, true, true),
+        ("contract", "العقد", ColumnDataType.List, true, true, false),
+        ("amount", "المبلغ", ColumnDataType.Amount, true, true, true),
+        ("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, false),
+        ("account", "الحساب", ColumnDataType.List, true, true, false),
+        ("outsideContract", "داخل أو خارج العقد", ColumnDataType.List, true, false, false),
+        ("notes", "ملاحظات", ColumnDataType.Text, false, false, true),
+        ("attachment", "المرفق", ColumnDataType.File, true, true, false),
+        ("supplier", "المورد", ColumnDataType.List, true, false, false),
+        ("invoiceNumber", "رقم الفاتورة", ColumnDataType.Text, true, false, false),
+        ("amountBeforeDiscount", "المبلغ قبل الخصم", ColumnDataType.Amount, true, false, false),
+        ("vat", "الضريبة", ColumnDataType.Amount, true, false, false),
     ];
 
     /// <summary>The id of the default template, the same in every database.</summary>
@@ -50,6 +85,29 @@ public static class StructureSeed
 
     /// <summary>Each item's general group.</summary>
     public static IEnumerable<Subgroup> Subgroups => Items.Select(item => new Subgroup { Id = StableIds.Of($"subgroup:{item.Id}"), ItemId = item.Id, Name = Subgroup.GeneralName });
+
+    /// <summary>What an item of each type starts with (FR-38). An item of both types holds the purchase columns, then what only a contractor payment has, which no purchase can require.</summary>
+    public static IEnumerable<DefaultColumn> DefaultColumns =>
+    [
+        .. ColumnsOf(ItemType.Purchases, PurchaseColumns),
+        .. ColumnsOf(ItemType.ContractorPayments, ContractorPaymentColumns),
+        .. ColumnsOf(ItemType.Both, [.. PurchaseColumns, .. ContractorPaymentColumns.Where(column => PurchaseColumns.All(purchase => purchase.Key != column.Key)).Select(column => column with { IsRequired = false })]),
+    ];
+
+    private static IEnumerable<DefaultColumn> ColumnsOf(ItemType type, (string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsRequired, bool ShowInReports)[] columns) =>
+        columns.Select((column, index) => new DefaultColumn
+        {
+            Id = StableIds.Of($"column:{type}:{column.Key}"),
+            ProjectId = TemplateId,
+            ItemType = type,
+            Key = column.Key,
+            Name = column.Name,
+            DataType = column.DataType,
+            IsCore = column.IsCore,
+            IsRequired = column.IsRequired,
+            ShowInReports = column.ShowInReports,
+            SortOrder = index,
+        });
 
     private static Guid CategoryId(string category) => StableIds.Of($"category:{category}");
 

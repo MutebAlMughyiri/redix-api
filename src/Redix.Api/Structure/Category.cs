@@ -25,10 +25,10 @@ public class Category : IOrdered
     public List<Item> ItemsOfferedFor(ItemType kind) => IsActive ? Items.Where(item => item.IsOfferedFor(kind)).ToList() : [];
 
     /// <summary>The same category with its active items, for a new project: what was disabled here stays behind.</summary>
-    public Category CopyFor(Guid projectId)
+    public Category CopyFor(Guid projectId, List<DefaultColumn> defaults)
     {
         var copy = new Category { ProjectId = projectId, Name = Name, SortOrder = SortOrder };
-        copy.Items.AddRange(Items.Where(item => item.IsActive).Select(item => item.CopyFor(copy.Id)));
+        copy.Items.AddRange(Items.Where(item => item.IsActive).Select(item => item.CopyFor(copy.Id, defaults)));
         return copy;
     }
 }

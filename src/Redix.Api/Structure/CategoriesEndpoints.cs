@@ -86,7 +86,7 @@ public static class CategoriesEndpoints
     public static Task<IResult> EnableCategory(Guid projectId, Guid categoryId, RedixDbContext db) =>
         ChangeCategoryAsync(projectId, categoryId, db, category => category.IsActive = true);
 
-    /// <summary>Adds an item with its type at the end of a category, with its general group (FR-05, FR-38). An unacceptable name answers <c>invalidName</c>.</summary>
+    /// <summary>Adds an item with its type at the end of a category, with its general group and the default columns of its type (FR-05, FR-38). An unacceptable name answers <c>invalidName</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="categoryId">The category it joins.</param>
     /// <param name="request">The item's name and type.</param>
@@ -99,7 +99,8 @@ public static class CategoriesEndpoints
                 return Results.NotFound();
             }
 
-            var item = Item.New(categoryId, name, request.Type, await db.Items.CountAsync(row => row.CategoryId == categoryId));
+            var defaults = await db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == request.Type).ToListAsync();
+            var item = Item.New(categoryId, name, request.Type, await db.Items.CountAsync(row => row.CategoryId == categoryId), defaults);
             db.Items.Add(item);
             await db.SaveChangesAsync();
             return Results.Created($"/projects/{projectId}/items/{item.Id}", ItemView.Of(item));
@@ -147,7 +148,7 @@ public static class CategoriesEndpoints
     public static Task<IResult> AddSubgroup(Guid projectId, Guid itemId, NameRequest request, RedixDbContext db) =>
         WithNameAsync(request.Name, async name =>
         {
-            if (await ItemOfAsync(projectId, itemId, db) is null)
+            if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
             {
                 return Results.NotFound();
             }
@@ -166,26 +167,18 @@ public static class CategoriesEndpoints
         WithNameAsync(request.Name, async name =>
         {
             var subgroup = await db.Subgroups.SingleOrDefaultAsync(row => row.Id == subgroupId && row.ItemId == itemId);
-            if (subgroup is null || await ItemOfAsync(projectId, itemId, db) is null)
+            if (subgroup is null || await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
             {
                 return Results.NotFound();
             }
             if (subgroup.Name == Subgroup.GeneralName)
             {
-                return Refused(StructureChangeOutcome.GeneralSubgroup);
+                return ProjectStructure.Refused(StructureChangeOutcome.GeneralSubgroup);
             }
             subgroup.Name = name;
             await db.SaveChangesAsync();
             return Results.Ok();
         });
-
-    /// <summary>The refusal of <paramref name="outcome"/>: a request that could never work is a bad request, anything else a conflict with what the row is.</summary>
-    public static IResult Refused(StructureChangeOutcome outcome) =>
-        Refusal.Of(outcome == StructureChangeOutcome.GeneralSubgroup ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, outcome.ToString());
-
-    /// <summary>The item <paramref name="itemId"/> if it belongs to <paramref name="projectId"/>, so one project's route never reaches another's rows (BR-33).</summary>
-    public static Task<Item?> ItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
-        db.Items.SingleOrDefaultAsync(item => item.Id == itemId && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));
 
     private static async Task<List<Category>> ReadAsync(Guid projectId, RedixDbContext db) =>
         await db.Categories.Where(category => category.ProjectId == projectId).OrderBy(category => category.SortOrder)
@@ -194,13 +187,9 @@ public static class CategoriesEndpoints
 
     private static async Task<IResult> ReorderAsync<T>(List<T> rows, ReorderRequest request, RedixDbContext db) where T : IOrdered
     {
-        if (!request.Ids.Order().SequenceEqual(rows.Select(row => row.Id).Order()))
+        if (!ProjectStructure.PutInOrder(rows, request.Ids))
         {
-            return Refused(StructureChangeOutcome.InvalidOrder);
-        }
-        foreach (var row in rows)
-        {
-            row.SortOrder = request.Ids.IndexOf(row.Id);
+            return ProjectStructure.Refused(StructureChangeOutcome.InvalidOrder);
         }
         await db.SaveChangesAsync();
         return Results.Ok();
@@ -209,7 +198,7 @@ public static class CategoriesEndpoints
     private static async Task<IResult> WithNameAsync(string typed, Func<string, Task<IResult>> change)
     {
         var name = typed.Trim();
-        return Project.IsAcceptableName(name) ? await change(name) : Refused(StructureChangeOutcome.InvalidName);
+        return Project.IsAcceptableName(name) ? await change(name) : ProjectStructure.Refused(StructureChangeOutcome.InvalidName);
     }
 
     private static async Task<IResult> ChangeCategoryAsync(Guid projectId, Guid categoryId, RedixDbContext db, Action<Category> change)
@@ -226,7 +215,7 @@ public static class CategoriesEndpoints
 
     private static async Task<IResult> ChangeItemAsync(Guid projectId, Guid itemId, RedixDbContext db, Action<Item> change)
     {
-        var item = await ItemOfAsync(projectId, itemId, db);
+        var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
         if (item is null)
         {
             return Results.NotFound();

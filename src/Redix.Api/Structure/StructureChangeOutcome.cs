@@ -14,4 +14,13 @@ public enum StructureChangeOutcome
 
     /// <summary>The item's general group has no name to change (UC-012).</summary>
     GeneralSubgroup,
+
+    /// <summary>A person cannot choose that type for a column (FR-41).</summary>
+    InvalidDataType,
+
+    /// <summary>A list has no choice, or a choice is too long.</summary>
+    InvalidOptions,
+
+    /// <summary>A core column is renamed and reordered, and nothing else (BR-20).</summary>
+    CoreColumn,
 }
