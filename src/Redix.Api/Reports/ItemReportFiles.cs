@@ -118,8 +118,11 @@ public static class ItemReportFiles
                 sheet.Cell(row, 4).Value = line.Date.ToDateTime(TimeOnly.MinValue);
                 sheet.Cell(row, 4).Style.DateFormat.Format = ReportFormats.ExcelDate;
                 sheet.Cell(row, 5).Value = item.ItemName;
-                sheet.Cell(row, 6).Value = line.UnitPrice;
-                sheet.Cell(row, 7).Value = line.Quantity;
+                if (line.Quantity != 0)
+                {
+                    sheet.Cell(row, 6).Value = line.UnitPrice;
+                    sheet.Cell(row, 7).Value = line.Quantity;
+                }
                 sheet.Cell(row, 8).Value = line.Amount;
                 sheet.Range(row, 6, row, 8).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
                 if (line.IsNew)

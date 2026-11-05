@@ -356,7 +356,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var (partner, pocket) = await PocketAsync(ledger);
         var expense = ledger.Purchase(115) with { AccountId = pocket, Submit = true, AttachmentId = await ledger.FileAsync() };
         await ledger.RecordAsync(expense);
-        Assert.Empty((await CapitalAsync(ledger.Client, ledger.ProjectId)).Partners.Where(row => row.Balance != 0));
+        Assert.DoesNotContain((await CapitalAsync(ledger.Client, ledger.ProjectId)).Partners, row => row.Balance != 0);
 
         await ApproveAsync(ledger, expense.Id);
 

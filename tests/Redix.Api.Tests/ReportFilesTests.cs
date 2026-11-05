@@ -126,6 +126,8 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var itemSheet = workbook.Worksheet(3);
         Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains(itemSheet.Name));
         Assert.Contains(itemSheet.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.StartsWith("SUM("));
+        var row = itemSheet.CellsUsed().First(cell => cell.GetString() == "P1").Address.RowNumber;
+        Assert.True(itemSheet.Cell(row, 6).IsEmpty() && itemSheet.Cell(row, 7).IsEmpty(), "a price and a quantity nobody entered stay blank, as in the PDF");
     }
 
     [Fact]
