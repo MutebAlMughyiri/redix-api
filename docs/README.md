@@ -53,7 +53,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-039](use-cases/UC-039-attach-invoice.md) | Attach an invoice to an expense entered without one | Whoever enters expenses |
 | [UC-060](use-cases/UC-060-unit-split.md) | Split a shared expense across units, and each unit's cost | Whoever enters expenses; everyone reads |
 | [UC-061](use-cases/UC-061-liquidation.md) | Share out the final surplus by shares and close the project | Whoever does the project's finance |
-| [UC-064](use-cases/UC-064-blueprints.md) | Keep engineering blueprints for the project or a unit | The manager keeps them; everyone reads |
+| [UC-064](use-cases/UC-064-documents.md) | Keep a project's documents, any file, in optional groups | The manager keeps them; everyone reads |
 | [UC-053 to UC-058](use-cases/UC-053-reports.md) | The numbered periodic report, and every report as PDF, workbook and the invoices' ZIP | Finance issues; everyone reads; whoever sees all capital exports |
 | [UC-049, UC-050, UC-051, UC-063](use-cases/UC-049-dashboard-and-reports.md) | The dashboard, an item's report, the contracts, completion and cost | Everyone in the project; the manager sets completion |
 | [UC-047, UC-048, UC-056](use-cases/UC-047-revenue-and-vat.md) | Revenue, sales invoices, and the VAT statement for any period | Whoever does the project's finance; everyone reads |

@@ -59,7 +59,7 @@ public static class LiquidationEndpoints
             return Refusal.Of(StatusCodes.Status409Conflict, "ReceiptAlreadyAttached");
         }
         var userId = AccessTokens.UserIdOf(principal);
-        var (refusal, attachment, _) = await AttachmentsEndpoints.KeepAsync(projectId, file, userId, db, options.Value, time);
+        var (refusal, attachment, _) = await AttachmentsEndpoints.KeepAsync(projectId, file, FileKinds.PicturesAndPdfs, userId, db, options.Value, time);
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);

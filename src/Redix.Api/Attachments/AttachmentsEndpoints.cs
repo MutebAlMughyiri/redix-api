@@ -7,7 +7,7 @@ using Redix.Api.Projects;
 
 namespace Redix.Api.Attachments;
 
-/// <summary>Keeps a project's pictures and PDFs, and serves them only to people with access to that project (UC-021, FR-09). There is no delete (NFR-11).</summary>
+/// <summary>Keeps a project's files, and serves them only to people with access to that project (UC-021, FR-09). There is no delete (NFR-11).</summary>
 public static class AttachmentsEndpoints
 {
     /// <summary>Maps the route that reads a file, for anyone who reads the project, and the one that keeps it, for whoever holds <see cref="Permission.AttachFiles"/>.</summary>
@@ -37,7 +37,7 @@ public static class AttachmentsEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Upload(Guid projectId, IFormFile file, ClaimsPrincipal principal, RedixDbContext db, IOptions<AttachmentOptions> options, TimeProvider time)
     {
-        var (refusal, attachment, isNew) = await KeepAsync(projectId, file, AccessTokens.UserIdOf(principal), db, options.Value, time);
+        var (refusal, attachment, isNew) = await KeepAsync(projectId, file, FileKinds.PicturesAndPdfs, AccessTokens.UserIdOf(principal), db, options.Value, time);
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
@@ -47,15 +47,15 @@ public static class AttachmentsEndpoints
     }
 
     /// <summary>
-    /// Keeps <paramref name="file"/> for the project, its file written and its record added with its audit, saved with the change; the same file from the same person answers the one already kept.
-    /// Answers why it cannot be kept, as <see cref="Attachment.RefusalOf"/> does, with no attachment; otherwise the attachment and whether it is new.
+    /// Keeps <paramref name="file"/>, one of <paramref name="kinds"/>, for the project, its file written and its record added with its audit, saved with the change; the same file from the same person
+    /// answers the one already kept. Answers why it cannot be kept, as <see cref="Attachment.RefusalOf"/> does, with no attachment; otherwise the attachment and whether it is new.
     /// </summary>
-    public static async Task<(string Refusal, Attachment Attachment, bool IsNew)> KeepAsync(Guid projectId, IFormFile file, Guid userId, RedixDbContext db, AttachmentOptions options, TimeProvider time)
+    public static async Task<(string Refusal, Attachment Attachment, bool IsNew)> KeepAsync(Guid projectId, IFormFile file, FileKinds kinds, Guid userId, RedixDbContext db, AttachmentOptions options, TimeProvider time)
     {
         using var read = new MemoryStream();
         await file.CopyToAsync(read);
         var content = read.ToArray();
-        var refusal = Attachment.RefusalOf(content);
+        var refusal = Attachment.RefusalOf(content, kinds);
         if (refusal.Length > 0)
         {
             return (refusal, Attachment.Of(projectId, [], "", userId, default), false);

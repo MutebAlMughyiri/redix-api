@@ -4,6 +4,7 @@ using Redix.Api.Attachments;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
+using Redix.Api.Documents;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
@@ -80,8 +81,8 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The pictures and PDFs each project keeps (FR-09).</summary>
     public DbSet<Attachment> Attachments => Set<Attachment>();
 
-    /// <summary>Engineering blueprints, each a file of the attachment store kept for a project or a unit (UC-064).</summary>
-    public DbSet<Blueprint> Blueprints => Set<Blueprint>();
+    /// <summary>Documents, each a file of the attachment store kept for a project under a name (UC-064).</summary>
+    public DbSet<Document> Documents => Set<Document>();
 
     /// <summary>The ledger: every movement of money, of any kind.</summary>
     public DbSet<Entry> Entries => Set<Entry>();
@@ -286,19 +287,20 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             attachment.Property(a => a.StoragePath).HasMaxLength(200).IsUnicode(false);
             attachment.Property(a => a.FileName).HasMaxLength(Attachment.FileNameMaxLength);
-            attachment.Property(a => a.ContentType).HasMaxLength(50).IsUnicode(false);
+            attachment.Property(a => a.ContentType).HasMaxLength(Attachment.ContentTypeMaxLength).IsUnicode(false);
             attachment.Property(a => a.Sha256).HasMaxLength(64).IsUnicode(false).IsFixedLength();
             attachment.HasIndex(a => new { a.ProjectId, a.Sha256 });
             attachment.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);
             attachment.HasOne<User>().WithMany().HasForeignKey(a => a.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<Blueprint>(blueprint =>
+        modelBuilder.Entity<Document>(document =>
         {
-            blueprint.Property(b => b.Title).HasMaxLength(Blueprint.TitleMaxLength);
-            blueprint.HasIndex(b => new { b.ProjectId, b.AttachmentId }).IsUnique();
-            blueprint.HasOne<Project>().WithMany().HasForeignKey(b => b.ProjectId).OnDelete(DeleteBehavior.Restrict);
-            blueprint.HasOne<Attachment>().WithMany().HasForeignKey(b => b.AttachmentId).OnDelete(DeleteBehavior.Restrict);
-            blueprint.HasOne<User>().WithMany().HasForeignKey(b => b.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
+            document.Property(d => d.Name).HasMaxLength(Document.NameMaxLength);
+            document.Property(d => d.Group).HasMaxLength(Document.GroupMaxLength);
+            document.HasIndex(d => new { d.ProjectId, d.AttachmentId }).IsUnique();
+            document.HasOne<Project>().WithMany().HasForeignKey(d => d.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            document.HasOne<Attachment>().WithMany().HasForeignKey(d => d.AttachmentId).OnDelete(DeleteBehavior.Restrict);
+            document.HasOne<User>().WithMany().HasForeignKey(d => d.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ContractAttachment>(link =>
         {
