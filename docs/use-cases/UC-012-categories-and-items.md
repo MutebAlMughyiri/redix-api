@@ -33,7 +33,7 @@ A project's structure is copied **when the admin approves it** (`ProjectStructur
 | `POST /projects/{projectId}/items/{itemId}/type` with `{ type }` | `ManageStructure` | `200`; `404`; `409` `itemHasEntries` |
 | `POST /projects/{projectId}/items/{itemId}/table-percentages` with `{ isOn }` | `ManageStructure` | `200`; `404`. Whether the item's sheet in the periodic report calculates each table's percentage (AC-46.9); off until chosen, in the audit trail |
 
-Every change also answers `409` `projectFinished` in a finished project. `type` is `purchases`, `contractorPayments` or `both`.
+Every change also answers `409` `projectFinished` in a finished project. `type` is an expense type, `purchases`, `contractorPayments` or `both`, or a revenue type, `sale`, `vatRefund` or `otherRevenue` (UC-068, FR-38): the type says the item's side. Entering an expense offers the items of its type or of both; entering revenue of any kind offers every revenue item. A revenue item asks no columns (`revenueTakesNoColumns`), and its type changes, even across sides, only while no entry names it.
 
 ## Tables
 
@@ -56,6 +56,8 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | Subgroups reorder as items do, the general one staying first | `CategoriesEndpoints.ReorderSubgroups`, `ProjectStructure.PutInOrder` | `CategoriesTests.SubgroupsAreReorderedAndTheGeneralOneStaysFirst`, `AnOrderOfSubgroupsNamesEveryNamedOneOnceAndNeverTheGeneralOne`, `OneProjectsRoutesNeverReachAnothersSubgroups` |
 | An item's type changes while no entry names it, in the audit trail, old and new | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AnItemsTypeChangesWhileItHasNoEntriesAndIsOfferedAsItsNewTypeIs`, `AChangedTypeIsInTheAuditTrailOldAndNew`, `AnItemWithAnEntryKeepsItsType`, `OnlyFinanceChangesATypeAndNeverAnotherProjects` |
 | A changed type asks the default columns of the new type, and keeps what a person added | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AChangedTypeAsksTheColumnsOfTheNewTypeAndKeepsWhatAPersonAdded`, `ChangingATypeThereAndBackLeavesOneOfEachColumn` |
+| FR-38: an item is added on its side, and revenue entry offers every revenue item and no expense one | `Item.IsOfferedFor` | `CategoriesTests.FR_38_AnItemIsAddedOnItsSideAndRevenueEntryOffersEveryRevenueItemAndNoExpenseOne` |
+| FR-38: a revenue item asks no columns | `ColumnsEndpoints.AddToItem`, `AddToTemplate` | `CategoriesTests.FR_38_ARevenueItemAsksNoColumns` |
 | Every item has a general subgroup | `Item.New`, `StructureSeed.Subgroups` | `CategoriesTests.EveryItemHasAGeneralSubgroup`, `AnItemIsAddedWithItsTypeAtTheEndOfItsCategoryWithItsGeneralGroup` |
 | Every approved project starts with its own copy of the structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.ApprovingCopiesTheTemplateIntoRowsOfTheProjectsOwn`, `ThePublicRegistrationStartsFromTheTemplateWhenApproved` |
 | A waiting or rejected project has no structure | `ProjectStructure.ApproveAsync` | `CategoriesTests.AWaitingOrRejectedProjectHasNoStructure` |

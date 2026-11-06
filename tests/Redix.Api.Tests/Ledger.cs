@@ -46,6 +46,10 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
         return (await Factory.ClientSignedInAsAsync(user, Password), user.Id);
     }
 
+    /// <summary>The project's revenue item of <paramref name="type"/>: the template gives every project one of each.</summary>
+    public async Task<Guid> RevenueItemAsync(ItemType type) =>
+        (await Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ProjectId}/categories", Json))!.SelectMany(category => category.Items).First(item => item.Type == type).Id;
+
     public ExpenseRequest Purchase(decimal amount = 1150m, string number = "") => new(Guid.CreateVersion7())
     {
         ItemId = ItemId,

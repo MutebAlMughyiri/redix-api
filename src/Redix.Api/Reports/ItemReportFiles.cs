@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using QuestPDF.Fluent;
 using Redix.Api.Contracts;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
@@ -22,6 +23,10 @@ public static class ItemReportFiles
 
     private static readonly List<StatementColumn> PaymentColumns = [new("الوصف", CellKind.Text), new("التاريخ", CellKind.Date)];
 
+    private static readonly StatementColumn Received = new("المبلغ", CellKind.Text);
+
+    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", CellKind.Text), new("رقم الفاتورة", CellKind.Centred), new("التاريخ", CellKind.Date)];
+
     /// <summary>One item's report as a workbook, its sheet as the periodic report's.</summary>
     public static byte[] Excel(ItemReportView item)
     {
@@ -32,10 +37,16 @@ public static class ItemReportFiles
 
     /// <summary>
     /// An item's sheet (FR-46): a table of purchases per subgroup that has any, titled with its name or, for the general one, the item's, the item's own report columns before the cost (AC-46.8);
-    /// then a table of payments per contract, its agreed amount under it (AC-46.2). The item's choice says whether each table's percentage is calculated (AC-46.9).
+    /// then a table of payments per contract, its agreed amount under it (AC-46.2). A revenue item's tables list what came in: the description and buyer, the invoice, the day and the
+    /// amount. The item's choice says whether each table's percentage is calculated (AC-46.9).
     /// </summary>
     public static StatementSheet SheetOf(ItemReportView item)
     {
+        if (item.Type.IsRevenue())
+        {
+            List<StatementTable> received = [.. item.Subgroups.Select(subgroup => new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, RevenueColumns, Received, subgroup.Rows.Select(RevenueRow).ToList(), 0))];
+            return new StatementSheet(item.ItemName, received.Count > 0 ? received : [new StatementTable(item.ItemName, RevenueColumns, Received, [], 0)], item.ShowsTablePercentages ? "النسبة" : "");
+        }
         List<StatementColumn> purchaseColumns =
         [
             new("الوصف", CellKind.Text),
@@ -62,6 +73,10 @@ public static class ItemReportFiles
             line.Quantity == 0 ? Blank.Value : line.Quantity,
             .. line.Values.Select(value => (XLCellValue)value),
         ],
+        line.Amount, "", line.IsNew, true);
+
+    private static StatementRow RevenueRow(ItemEntryRow line) => new(
+        [string.Join(" · ", new[] { line.Description, line.SupplierName }.Where(text => text.Length > 0)), line.InvoiceNumber, line.Date.ToDateTime(TimeOnly.MinValue)],
         line.Amount, "", line.IsNew, true);
 
     private static StatementRow PaymentRow(ItemEntryRow payment) => new(

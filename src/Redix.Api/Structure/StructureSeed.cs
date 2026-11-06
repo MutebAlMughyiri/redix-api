@@ -25,6 +25,9 @@ public static class StructureSeed
             ("معدات تشطيب", ItemType.Both), ("رواتب الحارس", ItemType.Both),
         ]),
         ("الإشراف", [("إشراف مالي", ItemType.Both), ("إشراف ميداني", ItemType.Both)]),
+        ("استرجاع ضرائب", [("استرجاع الضرائب", ItemType.VatRefund)]),
+        ("إيرادات أخرى", [("إيرادات أخرى", ItemType.OtherRevenue)]),
+        ("فلوس البيع المودعة بالحساب", [("البيع", ItemType.Sale)]),
     ];
 
     private static readonly (string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsRequired, bool ShowInReports)[] PurchaseColumns =

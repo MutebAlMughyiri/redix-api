@@ -127,7 +127,7 @@ public static class PeriodicReportsEndpoints
         {
             partnerViews.Add(new ReportPartnerView(line.Name, partners[line.Id].UserId, line.Balance, line.SharePercent, await CapitalEndpoints.MovementsOfAsync(projectId, line.Id, db)));
         }
-        var itemIds = dashboard.Categories.SelectMany(category => category.Items).Where(item => item.Total != 0).Select(item => item.Id).ToList();
+        var itemIds = dashboard.Categories.Concat(dashboard.RevenueCategories).SelectMany(category => category.Items).Where(item => item.Total != 0).Select(item => item.Id).ToList();
         var items = await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).Where(row => itemIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id);
         var itemReports = new List<ItemReportView>();
         foreach (var id in itemIds)
@@ -135,15 +135,9 @@ public static class PeriodicReportsEndpoints
             itemReports.Add(await ItemReportEndpoints.OfAsync(projectId, items[id], previous.IssuedAt, db));
         }
         var accounts = reconciliation.Balances.Select(row => new ReportAccountView(row.AccountName, row.Type, row.ActualBalance)).ToList();
-        var revenue = await (
-            from details in db.Set<RevenueDetails>()
-            join entry in db.Entries on details.EntryId equals entry.Id
-            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved
-            orderby entry.EntryDate, entry.Id
-            select new ReportRevenueView(details.Type, entry.EntryDate, entry.Notes, entry.Amount, entry.ApprovedAt > previous.IssuedAt)).ToListAsync();
         return new PeriodicReportSnapshot(
             project.Name, number, at, previous.ExpensesTotal, figures.Expenses, figures.Capital, figures.VatRefunds, figures.Sales, figures.OtherRevenue, figures.Surplus, figures.SurplusWithoutSales, figures.Liquidation,
-            dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.PendingCount, dashboard.PendingAmount, capital.Total, partnerViews, itemReports, revenue);
+            dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.PendingCount, dashboard.PendingAmount, capital.Total, partnerViews, itemReports, dashboard.RevenueCategories);
     }
 }
 

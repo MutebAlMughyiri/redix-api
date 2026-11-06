@@ -163,7 +163,7 @@ public static class CategoriesEndpoints
         {
             return Results.NotFound();
         }
-        if (await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId))
+        if (await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId) || await db.Set<Revenue.RevenueDetails>().AnyAsync(details => details.ItemId == itemId))
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasEntries);
         }

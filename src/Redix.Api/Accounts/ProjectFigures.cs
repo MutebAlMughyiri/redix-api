@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Revenue;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Accounts;
 
@@ -37,7 +38,8 @@ public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds
         var revenue = await (
             from details in db.Set<RevenueDetails>()
             join entry in approved on details.EntryId equals entry.Id
-            group entry.Amount by details.Type into amounts
+            join item in db.Items on details.ItemId equals item.Id
+            group entry.Amount by item.Type into amounts
             select new { Type = amounts.Key, Total = amounts.Sum() }).ToDictionaryAsync(row => row.Type, row => row.Total);
         var liquidation = await (
             from details in db.CapitalMovementDetails
@@ -46,9 +48,9 @@ public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds
             select entry.Kind == EntryKind.CapitalOut ? entry.Amount : -entry.Amount).SumAsync();
         return new ProjectFigures(
             totals.GetValueOrDefault(EntryKind.CapitalIn) - totals.GetValueOrDefault(EntryKind.CapitalOut) + liquidation,
-            revenue.GetValueOrDefault(RevenueType.VatRefund),
-            revenue.GetValueOrDefault(RevenueType.Sale),
-            revenue.GetValueOrDefault(RevenueType.Other),
+            revenue.GetValueOrDefault(ItemType.VatRefund),
+            revenue.GetValueOrDefault(ItemType.Sale),
+            revenue.GetValueOrDefault(ItemType.OtherRevenue),
             totals.GetValueOrDefault(EntryKind.Purchase) + totals.GetValueOrDefault(EntryKind.ContractorPayment),
             liquidation);
     }

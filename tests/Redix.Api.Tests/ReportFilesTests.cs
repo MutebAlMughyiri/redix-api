@@ -8,6 +8,7 @@ using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Reports;
 using Redix.Api.Revenue;
+using Redix.Api.Structure;
 using Xunit;
 
 namespace Redix.Api.Tests;
@@ -124,14 +125,15 @@ public class ReportFilesTests(MigratedApiFactory factory)
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
         workbook.RecalculateAllFormulas();
 
-        var itemSheet = workbook.Worksheet(5);
-        Assert.Equal(["الخلاصة", "راس المال", "البيع", "استرجاع الضرائب"], workbook.Worksheets.Take(4).Select(sheet => sheet.Name));
+        var itemSheet = workbook.Worksheet(3);
+        Assert.Equal(["الخلاصة", "راس المال"], workbook.Worksheets.Take(2).Select(sheet => sheet.Name));
         Assert.All(workbook.Worksheets, sheet => Assert.True(sheet.RightToLeft && sheet.PageSetup.PagesWide == 1 && sheet.PageSetup.PaperSize == XLPaperSize.A4Paper));
         var summary = workbook.Worksheet("الخلاصة");
         Assert.Equal(("رقم التقرير:", "1", "غصون 6"), (summary.Cell("A2").GetString(), summary.Cell("B2").GetString(), summary.Cell("A1").GetString()));
         Assert.Equal(("ايرادات", "مصروفات", "رأس المال", "'راس المال'!E4"), (summary.Cell("A9").GetString(), summary.Cell("D9").GetString(), summary.Cell("A10").GetString(), summary.Cell("B10").FormulaA1));
-        Assert.Equal((1000m, 115m, 885m), (summary.Cell("B13").GetValue<decimal>(), summary.Cell("E15").GetValue<decimal>(), summary.Cell("B18").GetValue<decimal>()));
-        Assert.Equal(("تفاصيل العظم:", "B31"), (summary.Cell("A21").GetString(), summary.Cell("E12").FormulaA1));
+        Assert.Equal(("مجموع الايرادات", 1000m, 115m, 885m), (summary.Cell("A14").GetString(), summary.Cell("B14").GetValue<decimal>(), summary.Cell("E15").GetValue<decimal>(), summary.Cell("B19").GetValue<decimal>()));
+        Assert.Equal(("تفاصيل العظم:", "B32"), (summary.Cell("A22").GetString(), summary.Cell("E12").FormulaA1));
+        Assert.Equal(["استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], new[] { 11, 12, 13 }.Select(line => summary.Cell(line, 1).GetString()));
         Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains($"'{itemSheet.Name}'!"));
         var capital = workbook.Worksheet("راس المال");
         Assert.Equal(("شريك", "إضافة مبلغ", 1000m), (capital.Cell("A1").GetString(), capital.Cell("B3").GetString(), capital.Cell("E3").GetValue<decimal>()));
@@ -181,25 +183,25 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
         using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, "")));
 
-        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(4).Select(sheet => sheet.Name));
+        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(2).Select(sheet => sheet.Name));
     }
 
     [Fact]
-    public void AC_46_4_EachKindOfRevenueIsItsOwnSheetAndTheSummaryPointsAtItsTotal()
+    public void AC_46_7_TheRevenueSideIsCapitalThenEachRevenueCategoryEachOnItsOwnSheetAndSalesAreMuted()
     {
-        var report = Report([]) with
-        {
-            VatRefunds = 300,
-            RevenueRows = [new ReportRevenueView(RevenueType.VatRefund, new DateOnly(2026, 10, 1), "استرجاع الربع الثالث", 200, false), new ReportRevenueView(RevenueType.VatRefund, new DateOnly(2026, 10, 20), "استرجاع الربع الرابع", 100, true)],
-        };
+        var refunds = Item("استرجاع الضرائب", "استرجاع ضرائب", Subgroup("", Row(200, ""), Row(100, "", isNew: true))) with { Type = ItemType.VatRefund };
+        var sales = Item("البيع", "فلوس البيع المودعة بالحساب", Subgroup("", Row(1000, "S-1"))) with { Type = ItemType.Sale };
+        var report = Report([refunds, sales]) with { RevenueCategories = [Category("استرجاع ضرائب", ItemType.VatRefund, refunds), Category("فلوس البيع المودعة بالحساب", ItemType.Sale, sales)] };
 
         using var workbook = Workbook(report);
 
-        var refunds = workbook.Worksheet("استرجاع الضرائب");
         var summary = workbook.Worksheet("الخلاصة");
-        Assert.Equal(("استرجاع الضرائب", "الاجمالي", 300m), (refunds.Cell("A1").GetString(), refunds.Cell("A5").GetString(), refunds.Cell("D5").GetValue<decimal>()));
-        Assert.Equal(StatementStyle.Green, refunds.Cell("B4").Style.Fill.BackgroundColor);
-        Assert.Equal(("'استرجاع الضرائب'!D5", 300m, "'البيع'!D3", 0m), (summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>(), summary.Cell("B12").FormulaA1, summary.Cell("B12").GetValue<decimal>()));
+        var refundSheet = workbook.Worksheet("استرجاع الضرائب");
+        Assert.Equal(("المبلغ", 300m), (refundSheet.Cell("E2").GetString(), refundSheet.Cell("E5").GetValue<decimal>()));
+        Assert.Equal(StatementStyle.Green, refundSheet.Cell("B4").Style.Fill.BackgroundColor);
+        Assert.Equal(("رأس المال", "استرجاع ضرائب", "'استرجاع الضرائب'!E5", 300m), (summary.Cell("A10").GetString(), summary.Cell("A11").GetString(), summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>()));
+        Assert.Equal(("فلوس البيع المودعة بالحساب", StatementStyle.Muted), (summary.Cell("A12").GetString(), summary.Cell("A12").Style.Font.FontColor));
+        Assert.Equal(("مجموع الايرادات", 1300m, 300m), (summary.Cell("A13").GetString(), summary.Cell("B13").GetValue<decimal>(), summary.Cell("B15").GetValue<decimal>()));
     }
 
     [Fact]
@@ -207,7 +209,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var iron = Item("حديد", "العظم", Subgroup("", Row(300, "H1"))) with { ShowsTablePercentages = true };
 
-        using var workbook = Workbook(Report([iron]) with { Categories = [Category("الحديد", iron)] });
+        using var workbook = Workbook(Report([iron]) with { Categories = [Category("الحديد", ItemType.Both, iron)] });
 
         Assert.DoesNotContain(workbook.Worksheet("حديد").CellsUsed(), cell => cell.GetString() is "اجمالي الكل" or "النسبة" or "نسبة الكل");
         Assert.Equal(("'حديد'!G4", 300m), (workbook.Worksheet("الخلاصة").Cell("E10").FormulaA1, workbook.Worksheet("الخلاصة").Cell("E10").GetValue<decimal>()));
@@ -258,7 +260,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var tiles = Item("بلاط", "تكلفة التشطيب", Subgroup("", Row(30, "B1")));
         var paint = Item("بوية", "تكلفة التشطيب", Subgroup("", Row(20, "P1")));
 
-        using var workbook = Workbook(Report([fees, tiles, paint]) with { Categories = [Category("الرسوم والفواتير", fees), Category("تكلفة التشطيب", tiles, paint)] });
+        using var workbook = Workbook(Report([fees, tiles, paint]) with { Categories = [Category("الرسوم والفواتير", ItemType.Both, fees), Category("تكلفة التشطيب", ItemType.Both, tiles, paint)] });
 
         var summary = workbook.Worksheet("الخلاصة");
         Assert.Equal(("'الرسوم'!G11", 120m), (summary.Cell("E10").FormulaA1, summary.Cell("E10").GetValue<decimal>()));
@@ -300,8 +302,8 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
     private static SubgroupReportView Subgroup(string name, params ItemEntryRow[] rows) => new(Guid.NewGuid(), name, rows.Sum(row => row.Amount), [.. rows]);
 
-    private static CategoryTotalView Category(string name, params ItemReportView[] items) =>
-        new(Guid.NewGuid(), name, items.Sum(item => item.Total), [.. items.Select(item => new ItemTotalView(item.ItemId, item.ItemName, item.Total))]);
+    private static CategoryTotalView Category(string name, ItemType type, params ItemReportView[] items) =>
+        new(Guid.NewGuid(), name, items.Sum(item => item.Total), [.. items.Select(item => new ItemTotalView(item.ItemId, item.ItemName, item.Total, type))]);
 
     private static ReportPartnerView Partner(string name, Guid userId, decimal balance) =>
         new(name, userId, balance, 0, [new CapitalMovementView(Guid.NewGuid(), CapitalMovementType.Contribution, new DateOnly(2026, 3, 1), balance, "تحويل بنكي", "", "حساب المؤسسة", "", "", false)]);

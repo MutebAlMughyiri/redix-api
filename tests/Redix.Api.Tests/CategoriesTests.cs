@@ -81,8 +81,9 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var categories = await CategoriesOf(client, project.Id);
 
-        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "الإشراف"], categories.Select(category => category.Name));
-        Assert.Equal([1, 6, 9, 14, 2], categories.Select(category => category.Items.Count));
+        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "الإشراف", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], categories.Select(category => category.Name));
+        Assert.Equal([1, 6, 9, 14, 2, 1, 1, 1], categories.Select(category => category.Items.Count));
+        Assert.Equal([ItemType.VatRefund, ItemType.OtherRevenue, ItemType.Sale], categories.Skip(5).Select(category => category.Items.Single().Type));
         Assert.Equal(["الحفر", "الحديد", "الخرسانة", "البناء", "دفعات العظم", "الكهرباء", "السباكة", "ردود الماء", "أغراض الموقع"], categories[2].Items.Select(item => item.Name));
     }
 
@@ -168,7 +169,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         await ApproveAsAdminAsync(project.Id);
 
-        await factory.WithDatabaseAsync(async db => Assert.Equal(5, await db.Categories.CountAsync(category => category.ProjectId == project.Id)));
+        await factory.WithDatabaseAsync(async db => Assert.Equal(8, await db.Categories.CountAsync(category => category.ProjectId == project.Id)));
     }
 
     [Fact]
@@ -204,7 +205,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         await factory.GiveRoleAsync(user.Id, project.Id, Finance);
 
         var copied = await CategoriesOf(client, project.Id);
-        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب"], copied.Select(category => category.Name));
+        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], copied.Select(category => category.Name));
         Assert.DoesNotContain(copied[2].Items, copiedItem => copiedItem.Name == "الحفر");
     }
 
@@ -461,7 +462,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         foreach (var role in new[] { Field, Reader, "users.roleManager" })
         {
             var member = await MemberAsync(project, role);
-            Assert.Equal(5, (await CategoriesOf(member, project.Id)).Count);
+            Assert.Equal(8, (await CategoriesOf(member, project.Id)).Count);
             Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsJsonAsync($"/projects/{project.Id}/categories", new NameRequest("الملاحق"))).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsync($"/projects/{project.Id}/categories/{category.Id}/disable", null)).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsync($"/projects/{project.Id}/items/{category.Items[0].Id}/disable", null)).StatusCode);
@@ -510,7 +511,7 @@ public class CategoriesTests(MigratedApiFactory factory)
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
             Assert.Equal("projectFinished", await CodeOf(refused));
         }
-        Assert.Equal(5, (await CategoriesOf(client, project.Id)).Count);
+        Assert.Equal(8, (await CategoriesOf(client, project.Id)).Count);
     }
 
     [Fact]
@@ -763,5 +764,31 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Forbidden, (await TablePercentagesAsync(await MemberAsync(project, Field), project.Id, item.Id, true)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await TablePercentagesAsync(otherClient, other.Id, item.Id, true)).StatusCode);
+    }
+
+    [Fact]
+    public async Task FR_38_AnItemIsAddedOnItsSideAndRevenueEntryOffersEveryRevenueItemAndNoExpenseOne()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var category = await AddCategoryAsync(client, project.Id, "إيجارات");
+
+        var rent = await AddItemAsync(client, project.Id, category.Id, "إيجار المكتب", ItemType.OtherRevenue);
+
+        Assert.Equal(ItemType.OtherRevenue, rent.Type);
+        var revenue = (await OfferedFor(client, project.Id, "otherRevenue")).SelectMany(row => row.Items).Select(item => item.Type).ToList();
+        Assert.Equal(4, revenue.Count);
+        Assert.All(revenue, type => Assert.True(type.IsRevenue()));
+        Assert.DoesNotContain((await OfferedFor(client, project.Id, "purchases")).SelectMany(row => row.Items), item => item.Type.IsRevenue());
+    }
+
+    [Fact]
+    public async Task FR_38_ARevenueItemAsksNoColumns()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var sale = (await CategoriesOf(client, project.Id)).SelectMany(category => category.Items).Single(item => item.Type == ItemType.Sale);
+
+        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{sale.Id}/columns", new AddColumnRequest("المشتري", ColumnDataType.Text, false, false, []), Json);
+
+        Assert.Equal((HttpStatusCode.BadRequest, "revenueTakesNoColumns"), (refused.StatusCode, await CodeOf(refused)));
     }
 }

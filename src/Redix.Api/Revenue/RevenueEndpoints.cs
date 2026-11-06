@@ -4,6 +4,7 @@ using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 using Redix.Api.Suppliers;
 
 namespace Redix.Api.Revenue;
@@ -39,9 +40,10 @@ public static class RevenueEndpoints
         var rows = await (
             from details in db.Set<RevenueDetails>()
             join entry in db.Entries on details.EntryId equals entry.Id
+            join item in db.Items on details.ItemId equals item.Id
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved
             orderby entry.EntryDate descending, entry.Id descending
-            select new { entry, details }).ToListAsync();
+            select new { entry, details, item }).ToListAsync();
         var entries = rows.Select(row => row.entry).ToList();
         var ids = entries.Select(entry => entry.Id).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
@@ -50,15 +52,18 @@ public static class RevenueEndpoints
         var views = new List<RevenueRowView>();
         foreach (var row in rows)
         {
-            var expected = row.details.Type == RevenueType.VatRefund ? -await VatStatement.NetDueOfAsync(projectId, row.details.PeriodStart, db) : 0;
+            var isRefund = row.item.Type == ItemType.VatRefund;
+            var expected = isRefund ? -await VatStatement.NetDueOfAsync(projectId, row.details.PeriodStart, db) : 0;
             var invoice = invoices.GetValueOrDefault(row.entry.Id);
-            views.Add(new RevenueRowView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Amount, row.details.PeriodStart, row.details.PeriodEnd, facts.AccountNameOf(row.entry), row.entry.Notes, facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id), expected, row.details.Type == RevenueType.VatRefund ? row.entry.Amount - expected : 0, invoice?.BuyerName ?? "", invoice?.Number ?? ""));
+            views.Add(new RevenueRowView(row.entry.Id, row.item.Type, row.item.Id, row.item.Name, row.entry.EntryDate, row.entry.Amount, row.details.PeriodStart, row.details.PeriodEnd, facts.AccountNameOf(row.entry), row.entry.Notes, facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id), expected, isRefund ? row.entry.Amount - expected : 0, invoice?.BuyerName ?? "", invoice?.Number ?? ""));
         }
         return views;
     }
 
     /// <summary>
-    /// Records a VAT refund, a sale or other revenue, approved at once. A VAT refund is for a quarter: a start that is no quarter's first day answers <c>invalidPeriod</c>. Anything else is for its own day unless a period is given, and a period ending before it starts also answers <c>invalidPeriod</c>. Otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does.
+    /// Records revenue on one of the project's revenue items, approved at once; the item's type says what it is (FR-28, FR-38). Anything but an active revenue item of the project, or a
+    /// subgroup not its own, answers <c>unknownItem</c>. A VAT refund is for a quarter: a start that is no quarter's first day answers <c>invalidPeriod</c>. Anything else is for its own day
+    /// unless a period is given, and a period ending before it starts also answers <c>invalidPeriod</c>. Otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The revenue.</param>
@@ -67,8 +72,14 @@ public static class RevenueEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Record(Guid projectId, RevenueRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
+        var item = await RevenueItemOfAsync(projectId, request.ItemId, db);
+        var subgroupId = SubgroupOf(item, request.SubgroupId);
+        if (subgroupId == Guid.Empty)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownItem");
+        }
         var start = request.PeriodStart == default ? request.Date : request.PeriodStart;
-        var isRefund = request.Type == RevenueType.VatRefund;
+        var isRefund = item.Type == ItemType.VatRefund;
         var end = isRefund ? VatStatement.NextQuarter(start).AddDays(-1) : request.PeriodEnd == default ? start : request.PeriodEnd;
         if ((isRefund && start != Invoice.QuarterStartOf(start)) || end < start)
         {
@@ -83,13 +94,13 @@ public static class RevenueEndpoints
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
         var entry = DirectEntries.New(projectId, EntryKind.Revenue, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
-        DirectEntries.Add(entry, DetailsOf(entry.Id, request.Type, start, end, request.AttachmentId), userId, at, db);
+        DirectEntries.Add(entry, DetailsOf(entry.Id, item.Id, subgroupId, start, end, request.AttachmentId), userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok(new EntryStatusView(entry.Id, entry.Status, ""));
     }
 
     /// <summary>
-    /// Records a sales invoice, which reaches the sales section of its quarter (AC-42.1). Naming a sale already recorded as revenue puts the invoice on it, so its amount counts once; otherwise it records the sale as well, for what the buyer paid. A sale not found, or one with an invoice, answers <c>unknownSale</c>.
+    /// Records a sales invoice, which reaches the sales section of its quarter (AC-42.1). Naming a sale already recorded as revenue puts the invoice on it, so its amount counts once; otherwise it records the sale as well, for what the buyer paid, on the sale item named or else the project's first, and a project without one, or a name that is no sale item of it, answers <c>unknownItem</c>. A sale not found, or one with an invoice, answers <c>unknownSale</c>.
     /// What was typed answers <c>invalidBuyerName</c>, <c>invalidVatNumber</c>, <c>invalidInvoiceNumber</c>, <c>invalidInvoiceDate</c>, <c>invalidAmount</c> or <c>invalidDiscount</c>; a number the project used <c>duplicateInvoice</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -118,7 +129,7 @@ public static class RevenueEndpoints
         var entryId = request.SaleEntryId;
         if (entryId != Guid.Empty)
         {
-            var isOpen = await db.Set<RevenueDetails>().AnyAsync(details => details.EntryId == entryId && details.Type == RevenueType.Sale && db.Entries.Any(entry => entry.Id == entryId && entry.ProjectId == projectId) && !db.Set<SalesInvoice>().Any(sale => sale.EntryId == entryId));
+            var isOpen = await db.Set<RevenueDetails>().AnyAsync(details => details.EntryId == entryId && db.Items.Any(item => item.Id == details.ItemId && item.Type == ItemType.Sale) && db.Entries.Any(entry => entry.Id == entryId && entry.ProjectId == projectId) && !db.Set<SalesInvoice>().Any(sale => sale.EntryId == entryId));
             if (!isOpen)
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownSale");
@@ -126,6 +137,16 @@ public static class RevenueEndpoints
         }
         else
         {
+            var item = await (
+                from candidate in db.Items
+                join category in db.Categories on candidate.CategoryId equals category.Id
+                where category.ProjectId == projectId && candidate.IsActive && candidate.Type == ItemType.Sale && (request.ItemId == Guid.Empty || candidate.Id == request.ItemId)
+                orderby category.SortOrder, candidate.SortOrder
+                select candidate).Include(candidate => candidate.Subgroups).FirstOrDefaultAsync() ?? Item.None;
+            if (item.Id == Guid.Empty)
+            {
+                return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownItem");
+            }
             var received = request.TaxType == SaleTaxType.Vat ? figures.Total : figures.AmountAfterDiscount;
             refusal = await DirectEntries.RefusalOfAsync(projectId, request.InvoiceDate, received, request.Description, [request.AccountId], request.AttachmentId, time, db);
             if (refusal.Length > 0)
@@ -133,7 +154,7 @@ public static class RevenueEndpoints
                 return Refusal.Of(refusal == "InvoiceAlreadyAttached" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, refusal);
             }
             var entry = DirectEntries.New(projectId, EntryKind.Revenue, request.InvoiceDate, received, request.AccountId, request.Description.Trim(), userId, at);
-            DirectEntries.Add(entry, DetailsOf(entry.Id, RevenueType.Sale, request.InvoiceDate, request.InvoiceDate, request.AttachmentId), userId, at, db);
+            DirectEntries.Add(entry, DetailsOf(entry.Id, item.Id, SubgroupOf(item, Guid.Empty), request.InvoiceDate, request.InvoiceDate, request.AttachmentId), userId, at, db);
             entryId = entry.Id;
         }
         var invoice = new SalesInvoice
@@ -181,9 +202,17 @@ public static class RevenueEndpoints
         return Results.Ok();
     }
 
-    private static List<object> DetailsOf(Guid entryId, RevenueType type, DateOnly start, DateOnly end, Guid attachmentId)
+    /// <summary>The active revenue item <paramref name="itemId"/> of the project, with its subgroups; <see cref="Item.None"/> when there is no such item.</summary>
+    private static async Task<Item> RevenueItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
+        await db.Items.Include(item => item.Subgroups).SingleOrDefaultAsync(item => item.Id == itemId && item.IsActive && item.Type >= ItemType.Sale && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)) ?? Item.None;
+
+    /// <summary>The subgroup <paramref name="subgroupId"/> of <paramref name="item"/>, or its general one when none is named; empty when the item has no such subgroup.</summary>
+    private static Guid SubgroupOf(Item item, Guid subgroupId) =>
+        item.Subgroups.Where(subgroup => subgroupId == Guid.Empty ? subgroup.Name == Subgroup.GeneralName : subgroup.Id == subgroupId).Select(subgroup => subgroup.Id).FirstOrDefault();
+
+    private static List<object> DetailsOf(Guid entryId, Guid itemId, Guid subgroupId, DateOnly start, DateOnly end, Guid attachmentId)
     {
-        List<object> details = [new RevenueDetails { EntryId = entryId, Type = type, PeriodStart = start, PeriodEnd = end }];
+        List<object> details = [new RevenueDetails { EntryId = entryId, ItemId = itemId, SubgroupId = subgroupId, PeriodStart = start, PeriodEnd = end }];
         if (attachmentId != Guid.Empty)
         {
             details.Add(new EntryAttachment { EntryId = entryId, AttachmentId = attachmentId, Role = EntryAttachmentRole.Other });
@@ -219,13 +248,16 @@ public static class RevenueEndpoints
 }
 
 /// <summary>Revenue to record.</summary>
-/// <param name="Type">What it is.</param>
+/// <param name="ItemId">The revenue item it came in on, whose type says what it is.</param>
 /// <param name="Date">The day it came in.</param>
 /// <param name="Amount">How much, above zero.</param>
 /// <param name="AccountId">The account it reached.</param>
 /// <param name="Description">What was said about it; may be empty.</param>
-public record RevenueRequest(RevenueType Type, DateOnly Date, decimal Amount, Guid AccountId, string Description)
+public record RevenueRequest(Guid ItemId, DateOnly Date, decimal Amount, Guid AccountId, string Description)
 {
+    /// <summary>The item's subgroup; left out, its general one.</summary>
+    public Guid SubgroupId { get; init; }
+
     /// <summary>The first day of its period: a quarter's for a VAT refund; left out, its own day.</summary>
     public DateOnly PeriodStart { get; init; }
 
@@ -250,6 +282,9 @@ public record SalesInvoiceRequest(string BuyerName, string BuyerVatNumber, strin
     /// <summary>A sale already recorded as revenue; left out to record it now.</summary>
     public Guid SaleEntryId { get; init; }
 
+    /// <summary>The sale item a sale recorded now comes in on; left out, the project's first sale item; unused when it names a sale.</summary>
+    public Guid ItemId { get; init; }
+
     /// <summary>A file showing it; left out when none.</summary>
     public Guid AttachmentId { get; init; }
 
@@ -263,7 +298,9 @@ public record VatPeriodRequest(DateOnly PeriodStart);
 
 /// <summary>Revenue as the app shows it.</summary>
 /// <param name="Id">The entry.</param>
-/// <param name="Type">What it is.</param>
+/// <param name="Type">What it is: its item's type.</param>
+/// <param name="ItemId">The revenue item it came in on.</param>
+/// <param name="ItemName">That item's name.</param>
 /// <param name="Date">The day it came in.</param>
 /// <param name="Amount">How much.</param>
 /// <param name="PeriodStart">The first day of its period.</param>
@@ -277,4 +314,4 @@ public record VatPeriodRequest(DateOnly PeriodStart);
 /// <param name="RefundDifference">What came back, less that; zero for anything else.</param>
 /// <param name="BuyerName">The buyer on its sales invoice; empty when it has none.</param>
 /// <param name="InvoiceNumber">The number of its sales invoice; empty when it has none.</param>
-public record RevenueRowView(Guid Id, RevenueType Type, DateOnly Date, decimal Amount, DateOnly PeriodStart, DateOnly PeriodEnd, string AccountName, string Description, string AttachmentId, string ContentType, bool IsReversed, decimal StatementRefund, decimal RefundDifference, string BuyerName, string InvoiceNumber);
+public record RevenueRowView(Guid Id, ItemType Type, Guid ItemId, string ItemName, DateOnly Date, decimal Amount, DateOnly PeriodStart, DateOnly PeriodEnd, string AccountName, string Description, string AttachmentId, string ContentType, bool IsReversed, decimal StatementRefund, decimal RefundDifference, string BuyerName, string InvoiceNumber);

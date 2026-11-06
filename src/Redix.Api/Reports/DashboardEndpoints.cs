@@ -5,6 +5,7 @@ using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
@@ -34,12 +35,12 @@ public static class DashboardEndpoints
         var categoryIds = categories.Select(category => category.Id).ToList();
         var items = (await db.Items.Where(item => categoryIds.Contains(item.CategoryId)).OrderBy(item => item.SortOrder).ToListAsync()).ToLookup(item => item.CategoryId);
         var completion = await db.Projects.Where(project => project.Id == projectId).Select(project => project.CompletionPercent).SingleAsync();
-        var lines = categories.Select(category =>
-        {
-            var itemLines = items[category.Id].Select(item => new ItemTotalView(item.Id, item.Name, totals.GetValueOrDefault(item.Id))).ToList();
-            return new CategoryTotalView(category.Id, category.Name, itemLines.Sum(item => item.Total), itemLines);
-        }).ToList();
-        return new DashboardView(figures.Revenue, figures.Expenses, figures.Surplus, figures.SurplusWithoutSales, reconciliation.At != default, reconciliation.Difference, pendingCount, pendingAmount, completion, lines);
+        List<CategoryTotalView> SideOf(bool isRevenue) => categories
+            .Select(category => (Category: category, Items: items[category.Id].Where(item => item.Type.IsRevenue() == isRevenue).Select(item => new ItemTotalView(item.Id, item.Name, totals.GetValueOrDefault(item.Id), item.Type)).ToList()))
+            .Where(line => line.Items.Count > 0)
+            .Select(line => new CategoryTotalView(line.Category.Id, line.Category.Name, line.Items.Sum(item => item.Total), line.Items))
+            .ToList();
+        return new DashboardView(figures.Revenue, figures.Expenses, figures.Surplus, figures.SurplusWithoutSales, reconciliation.At != default, reconciliation.Difference, pendingCount, pendingAmount, completion, SideOf(false), SideOf(true));
     }
 
     /// <summary>Sets how far the project's work has come, as a percentage from 0 to 100 with at most two decimals, in the audit trail (UC-063). Anything else answers <c>invalidCompletion</c>.</summary>
@@ -75,8 +76,9 @@ public record CompletionRequest(decimal Percent);
 /// <param name="PendingCount">How many entries wait for approval.</param>
 /// <param name="PendingAmount">What they come to.</param>
 /// <param name="CompletionPercent">How far the work has come.</param>
-/// <param name="Categories">Each category's total, with its items'.</param>
-public record DashboardView(decimal Revenue, decimal Expenses, decimal Surplus, decimal SurplusWithoutSales, bool WasReconciled, decimal ReconciliationDifference, int PendingCount, decimal PendingAmount, decimal CompletionPercent, List<CategoryTotalView> Categories);
+/// <param name="Categories">Each category holding expense items, its total with those items'.</param>
+/// <param name="RevenueCategories">Each category holding revenue items, its total with those items' (FR-38).</param>
+public record DashboardView(decimal Revenue, decimal Expenses, decimal Surplus, decimal SurplusWithoutSales, bool WasReconciled, decimal ReconciliationDifference, int PendingCount, decimal PendingAmount, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
 
 /// <summary>One category's total (BR-03).</summary>
 /// <param name="Id">The category.</param>
@@ -88,5 +90,6 @@ public record CategoryTotalView(Guid Id, string Name, decimal Total, List<ItemTo
 /// <summary>One item's total (BR-02).</summary>
 /// <param name="Id">The item.</param>
 /// <param name="Name">Its name.</param>
-/// <param name="Total">Its purchases and contractor payments.</param>
-public record ItemTotalView(Guid Id, string Name, decimal Total);
+/// <param name="Total">Its purchases and contractor payments, or its revenue.</param>
+/// <param name="Type">What it is for, which says its side.</param>
+public record ItemTotalView(Guid Id, string Name, decimal Total, ItemType Type);

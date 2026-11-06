@@ -3,6 +3,9 @@ namespace Redix.Api.Structure;
 /// <summary>An item (البند) under a category, such as البلاط under التشطيب, that expenses are recorded against (FR-05, FR-38). It owns the rule of when it is offered at entry.</summary>
 public class Item : IOrdered
 {
+    /// <summary>No item: what a lookup that finds none answers, so no reader needs a null. Its empty id matches nothing.</summary>
+    public static Item None { get; } = new() { Id = Guid.Empty, Name = "", IsActive = false };
+
     /// <summary>The item's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
@@ -39,8 +42,11 @@ public class Item : IOrdered
         return item;
     }
 
-    /// <summary>Whether entering <paramref name="kind"/> offers this item (AC-05.3, AC-38.1).</summary>
-    public bool IsOfferedFor(ItemType kind) => IsActive && (Type == ItemType.Both || Type == kind);
+    /// <summary>
+    /// Whether entering <paramref name="kind"/> offers this item (AC-05.3, AC-38.1): an expense, an item of its type or of both; revenue of any kind, every revenue item, whose own type
+    /// then says what the revenue is.
+    /// </summary>
+    public bool IsOfferedFor(ItemType kind) => IsActive && (kind.IsRevenue() ? Type.IsRevenue() : Type == ItemType.Both || Type == kind);
 
     /// <summary>
     /// The same item with its subgroups and the columns it still asks for, for a new category. An item of the default template holds no columns of its own, so a copy of it takes the

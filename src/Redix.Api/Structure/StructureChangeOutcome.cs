@@ -32,4 +32,7 @@ public enum StructureChangeOutcome
 
     /// <summary>A core column is renamed and reordered, and nothing else (BR-20).</summary>
     CoreColumn,
+
+    /// <summary>A revenue item asks no columns (FR-38).</summary>
+    RevenueTakesNoColumns,
 }

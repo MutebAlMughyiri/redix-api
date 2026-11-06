@@ -52,7 +52,7 @@ public static class EntryReversal
         var revenue = await db.Set<RevenueDetails>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (revenue is not null)
         {
-            details.Add(new RevenueDetails { EntryId = reversal.Id, Type = revenue.Type, PeriodStart = revenue.PeriodStart, PeriodEnd = revenue.PeriodEnd });
+            details.Add(new RevenueDetails { EntryId = reversal.Id, ItemId = revenue.ItemId, SubgroupId = revenue.SubgroupId, PeriodStart = revenue.PeriodStart, PeriodEnd = revenue.PeriodEnd });
         }
         var sale = await db.Set<SalesInvoice>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (sale is not null)

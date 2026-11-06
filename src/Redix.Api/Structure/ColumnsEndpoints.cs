@@ -79,6 +79,10 @@ public static class ColumnsEndpoints
         {
             return Results.NotFound();
         }
+        if (item.Type.IsRevenue())
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.RevenueTakesNoColumns);
+        }
 
         var sortOrder = await db.ItemColumns.CountAsync(column => column.ItemId == itemId);
         db.ItemColumns.Add(ItemColumn.Of(DefaultColumn.New(projectId, item.Type, request, sortOrder), itemId, sortOrder));
@@ -130,7 +134,7 @@ public static class ColumnsEndpoints
     /// <param name="db">The database the structure lives in.</param>
     public static async Task<IResult> AddToTemplate(Guid projectId, ItemTypeInUrl itemType, AddDefaultColumnRequest request, RedixDbContext db)
     {
-        var outcome = Column.CheckNew(request.Name, request.DataType, request.Options);
+        var outcome = itemType.Value.IsRevenue() ? StructureChangeOutcome.RevenueTakesNoColumns : Column.CheckNew(request.Name, request.DataType, request.Options);
         if (outcome != StructureChangeOutcome.Done)
         {
             return ProjectStructure.Refused(outcome);

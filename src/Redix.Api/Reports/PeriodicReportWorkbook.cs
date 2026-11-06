@@ -3,14 +3,14 @@ using System.Text.Json;
 using ClosedXML.Excel;
 using Redix.Api.Accounts;
 using Redix.Api.Partners;
-using Redix.Api.Revenue;
+using Redix.Api.Structure;
 using Redix.Api.Translations;
 
 namespace Redix.Api.Reports;
 
 /// <summary>
 /// The periodic report as a workbook laid out as the project's own statement (UC-055, FR-46): الخلاصة with the revenue on one side and the expenses on the other, then a sheet for every
-/// other line of it, each written by <see cref="StatementWriter"/>: راس المال with a table per partner, a sheet per kind of revenue, and a sheet per item. Every line of the summary points at
+/// other line of it, each written by <see cref="StatementWriter"/>: راس المال with a table per partner, then a sheet per item, expense or revenue. Every line of the summary points at
 /// its own sheets, and no sheet serves two lines (AC-46.10). Every total is a live formula, and new rows are green (BR-26).
 /// </summary>
 public static class PeriodicReportWorkbook
@@ -18,15 +18,9 @@ public static class PeriodicReportWorkbook
     private const int Revenue = 1;
     private const int Expenses = 4;
 
-    private static readonly (RevenueType Type, string Name)[] RevenueSheets = [(RevenueType.Sale, "البيع"), (RevenueType.VatRefund, "استرجاع الضرائب"), (RevenueType.Other, "إيرادات أخرى")];
-
     private static readonly StatementColumn MovementAmount = new("المبلغ", CellKind.Text);
 
     private static readonly List<StatementColumn> MovementColumns = [new("النوع", CellKind.Centred), new("التاريخ", CellKind.Date), new("الوصف", CellKind.Linked)];
-
-    private static readonly StatementColumn RevenueAmount = new("المبلغ", CellKind.Text);
-
-    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", CellKind.Text), new("التاريخ", CellKind.Date)];
 
     /// <summary>The workbook of <paramref name="report"/>, each partner's receipt a link under <paramref name="receiptsAddress"/>.</summary>
     public static byte[] Of(PeriodicReportSnapshot report, string receiptsAddress)
@@ -35,11 +29,9 @@ public static class PeriodicReportWorkbook
         var names = new HashSet<string>();
         var summary = StatementStyle.AddSheet(workbook, "الخلاصة", names, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
         var capitalTotal = StatementWriter.Add(workbook, CapitalOf(report, receiptsAddress), names);
-        var revenueTotals = RevenueSheets.Where(kind => kind.Type != RevenueType.Other || report.RevenueRows.Any(row => row.Type == RevenueType.Other))
-            .ToDictionary(kind => kind.Type, kind => StatementWriter.Add(workbook, RevenueOf(kind.Name, report.RevenueRows.Where(row => row.Type == kind.Type)), names));
         var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
         var itemTotals = report.Items.ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, names));
-        FillSummary(summary, report, capitalTotal, revenueTotals, itemTotals);
+        FillSummary(summary, report, capitalTotal, itemTotals);
         StatementStyle.Fit(summary);
         return StatementStyle.Bytes(workbook);
     }
@@ -69,11 +61,12 @@ public static class PeriodicReportWorkbook
         ],
         movement.Amount, movement.AttachmentId.Length > 0 ? receiptsAddress + movement.AttachmentId : "", false, true);
 
-    /// <summary>A sheet of one kind of revenue, named <paramref name="name"/>: its entries oldest first, new ones green (BR-26).</summary>
-    private static StatementSheet RevenueOf(string name, IEnumerable<ReportRevenueView> rows) =>
-        new(name, [new StatementTable(name, RevenueColumns, RevenueAmount, rows.Select(row => new StatementRow([row.Description, row.Date.ToDateTime(TimeOnly.MinValue)], row.Amount, "", row.IsNew, true)).ToList(), 0)], "");
-
-    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, string capitalTotal, Dictionary<RevenueType, string> revenueTotals, Dictionary<Guid, string> itemTotals)
+    /// <summary>
+    /// Fills الخلاصة in the statement's layout. Each side lists its categories in order (AC-46.7): the revenue side starts with رأس المال, then every category of revenue items; the expense
+    /// side every category of expense items. A category of one item points at that item's sheet, one of more at its detail block (AC-46.10). A line holding only sale items is muted and left
+    /// out of مجموع الايرادات بدون البيع.
+    /// </summary>
+    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, string capitalTotal, Dictionary<Guid, string> itemTotals)
     {
         var title = sheet.Range(1, 1, 1, 5).Merge();
         title.FirstCell().Value = report.ProjectName;
@@ -107,31 +100,38 @@ public static class PeriodicReportWorkbook
         Line(sheet, top, Expenses, "مصروفات").AsTotal();
         var expensesTotal = top + 1 + report.Categories.Count;
 
-        var row = top + 1;
-        Line(sheet, row++, Revenue, "رأس المال", capitalTotal).AsBody();
-        Line(sheet, row++, Revenue, "استرجاع ضرائب", revenueTotals[RevenueType.VatRefund]).AsBody();
-        if (revenueTotals.TryGetValue(RevenueType.Other, out var other))
-        {
-            Line(sheet, row++, Revenue, "إيرادات أخرى", other).AsBody();
-        }
-        var sales = row++;
-        Line(sheet, sales, Revenue, "فلوس البيع المودعة بالحساب", revenueTotals[RevenueType.Sale]).AsMutedTotal();
-        var revenue = row;
-        Line(sheet, revenue, Revenue, "مجموع الايرادات", $"SUM(B{top + 1}:B{sales})").AsTotal();
+        var revenue = top + 2 + report.RevenueCategories.Count;
         var withoutSales = revenue + 2;
-        Line(sheet, withoutSales, Revenue, "مجموع الايرادات بدون البيع", $"B{revenue}-B{sales}").AsMutedTotal();
         var liquidation = withoutSales + 1;
+        var surplus = liquidation + 2;
+        var details = Details(sheet, [.. report.Categories, .. report.RevenueCategories], itemTotals, [surplus, expensesTotal]);
+        string ValueOf(CategoryTotalView category) => category.Items.Count > 1 ? details[category.Id] : category.Items.Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).FirstOrDefault("0");
+
+        Line(sheet, top + 1, Revenue, "رأس المال", capitalTotal).AsBody();
+        var row = top + 2;
+        foreach (var category in report.RevenueCategories)
+        {
+            var line = Line(sheet, row++, Revenue, category.Name, ValueOf(category));
+            if (category.Items.All(item => item.Type == ItemType.Sale))
+            {
+                line.AsMutedTotal();
+            }
+            else
+            {
+                line.AsBody();
+            }
+        }
+        Line(sheet, revenue, Revenue, "مجموع الايرادات", $"SUM(B{top + 1}:B{revenue - 1})").AsTotal();
+        var sales = report.RevenueCategories.SelectMany(category => category.Items).Where(item => item.Type == ItemType.Sale).Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).ToList();
+        Line(sheet, withoutSales, Revenue, "مجموع الايرادات بدون البيع", sales.Count > 0 ? $"B{revenue}-({string.Join("+", sales)})" : $"B{revenue}").AsMutedTotal();
         Line(sheet, liquidation, Revenue, "التصفية", report.Liquidation).AsMutedTotal();
         Line(sheet, liquidation + 1, Revenue, "الفائض بدون البيع", $"B{withoutSales}-E{expensesTotal}").AsMutedTotal();
-        var surplus = liquidation + 2;
         Line(sheet, surplus, Revenue, "الفائض\n( المبلغ المفروض بالحساب)", $"B{revenue}-(E{expensesTotal}+B{liquidation})").AsTotal().Style.Alignment.WrapText = true;
 
-        var details = Details(sheet, report, itemTotals, [surplus, expensesTotal]);
         row = top + 1;
         foreach (var category in report.Categories)
         {
-            var value = category.Items.Count > 1 ? details[category.Id] : category.Items.Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).FirstOrDefault("0");
-            Line(sheet, row++, Expenses, category.Name, value).AsBody();
+            Line(sheet, row++, Expenses, category.Name, ValueOf(category)).AsBody();
         }
         Line(sheet, expensesTotal, Expenses, "مجموع المصروفات", expensesTotal > top + 1 ? $"SUM(E{top + 1}:E{expensesTotal - 1})" : "0").AsTotal();
 
@@ -147,13 +147,13 @@ public static class PeriodicReportWorkbook
     }
 
     /// <summary>
-    /// Writes a block per category of more than one item, each item pointing at its sheet, under whichever side of the summary ends higher, starting from <paramref name="bottoms"/>: the last row of the revenue
-    /// side, then of the expenses side. Answers the address of each block's total.
+    /// Writes a block per category of more than one item among <paramref name="categories"/>, each item pointing at its sheet, under whichever side of the summary ends higher, starting from
+    /// <paramref name="bottoms"/>: the last row of the revenue side, then of the expenses side. Answers the address of each block's total.
     /// </summary>
-    private static Dictionary<Guid, string> Details(IXLWorksheet sheet, PeriodicReportSnapshot report, Dictionary<Guid, string> itemTotals, int[] bottoms)
+    private static Dictionary<Guid, string> Details(IXLWorksheet sheet, List<CategoryTotalView> categories, Dictionary<Guid, string> itemTotals, int[] bottoms)
     {
         var totals = new Dictionary<Guid, string>();
-        foreach (var category in report.Categories.Where(category => category.Items.Count > 1))
+        foreach (var category in categories.Where(category => category.Items.Count > 1))
         {
             var side = bottoms[0] <= bottoms[1] ? 0 : 1;
             var column = side == 0 ? Revenue : Expenses;

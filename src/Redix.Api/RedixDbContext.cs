@@ -360,6 +360,8 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             details.HasKey(d => d.EntryId);
             details.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Revenue.RevenueDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Item>().WithMany().HasForeignKey(d => d.ItemId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Subgroup>().WithMany().HasForeignKey(d => d.SubgroupId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Redix.Api.Revenue.SalesInvoice>(sale =>
         {

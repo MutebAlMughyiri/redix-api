@@ -15,7 +15,7 @@ A part is a capital movement of type `Liquidation`: out of the account here, or 
 
 Each part is the share times the surplus to two decimals, and the last partner takes what rounding left, so the parts make the surplus exactly. The periodic report's liquidation is `ProjectFigures.Liquidation`.
 
-**Not built:** revenue and late expenses after closing (findings row 124); a payout's bank receipt (row 125).
+**After closing.** A plain close is refused while there is a surplus or deficit to share (`liquidateFirst`): liquidating is the only way to close it. A late expense or revenue (`POST /projects/{id}/liquidation/late`) names one item: an expense item that takes purchases, or a revenue item, whose side says which it is (UC-068). It is approved at once, and each partner pays in their share of an expense, or takes their share of revenue, by their shares at closing, so the surplus stays nothing. Each part shared out takes its bank receipt afterwards, once (`POST /projects/{id}/liquidation/{entryId}/receipt`, BR-23).
 
 | Rule | Code | Test |
 | --- | --- | --- |
@@ -25,3 +25,7 @@ Each part is the share times the surplus to two decimals, and the last partner t
 | BR-27: a deficit is paid in by share and leaves nothing | `LiquidationEndpoints.Liquidate` | `LiquidationTests.BR_27_ADeficitIsPaidInByShareAndLeavesNothing` |
 | BR-35: entries waiting, or a line missing or extra, are refused and nothing is entered | `LiquidationEndpoints.Liquidate` | `LiquidationTests.BR_35_EntriesWaitingAndALineMissingOrExtraAreRefusedAndNothingIsEntered` |
 | A part of the liquidation is not a plain movement | `CapitalEndpoints.Record` | `LiquidationTests.APartOfTheLiquidationCannotBeEnteredAsAPlainMovement` |
+| BR-27: a late expense is paid in and late revenue taken by the shares at closing; the surplus stays nothing | `LiquidationEndpoints.RecordLate` | `LiquidationTests.BR_27_ALateExpenseIsPaidInAndLateRevenueTakenByTheSharesAtClosingAndTheSurplusStaysNothing` |
+| FR-51: a late entry needs a closed project and an item that takes purchases, or a revenue item | `LiquidationEndpoints.RecordLate` | `LiquidationTests.FR_51_ALateEntryNeedsAClosedProjectAndAnItemThatTakesPurchases` |
+| BR-23: a payout's receipt is attached after closing, and only once | `LiquidationEndpoints.AttachReceipt` | `LiquidationTests.BR_23_APayoutsReceiptIsAttachedAfterTheProjectClosesAndOnlyOnce` |
+| BR-27: a plain close is refused while there is something to share | `ProjectsEndpoints.Close` | `LiquidationTests.BR_27_APlainCloseIsRefusedWhileThereIsASurplusToShare` |

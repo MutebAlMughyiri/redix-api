@@ -1,6 +1,5 @@
 using Redix.Api.Accounts;
 using Redix.Api.Partners;
-using Redix.Api.Revenue;
 
 namespace Redix.Api.Reports;
 
@@ -17,7 +16,7 @@ namespace Redix.Api.Reports;
 /// <param name="Surplus">Revenue less expenses.</param>
 /// <param name="SurplusWithoutSales">The same without sales.</param>
 /// <param name="Liquidation">What was distributed when the project closed (BR-27); zero until then.</param>
-/// <param name="Categories">Each category's total with its items'.</param>
+/// <param name="Categories">Each category of expense items, its total with its items'.</param>
 /// <param name="Accounts">Each account's real balance at the latest reconciliation.</param>
 /// <param name="AccountsTotal">Their total.</param>
 /// <param name="ReconciliationDifference">That total less the surplus (BR-08).</param>
@@ -25,8 +24,8 @@ namespace Redix.Api.Reports;
 /// <param name="PendingAmount">What they came to.</param>
 /// <param name="CapitalTotal">All partners' capital.</param>
 /// <param name="Partners">Each partner's capital, share and movements.</param>
-/// <param name="Items">Each item's report, new rows marked.</param>
-/// <param name="RevenueRows">Each sale, VAT refund and other revenue, oldest first, new ones marked.</param>
+/// <param name="Items">Each item's report, expense and revenue, new rows marked.</param>
+/// <param name="RevenueCategories">Each category of revenue items, its total with its items' (FR-38): the summary's revenue side.</param>
 public record PeriodicReportSnapshot(
     string ProjectName,
     int Number,
@@ -49,7 +48,7 @@ public record PeriodicReportSnapshot(
     decimal CapitalTotal,
     List<ReportPartnerView> Partners,
     List<ItemReportView> Items,
-    List<ReportRevenueView> RevenueRows)
+    List<CategoryTotalView> RevenueCategories)
 {
     /// <summary>Expenses less the previous report's (BR-09).</summary>
     public decimal ExpensesDifference => Expenses - PreviousExpenses;
@@ -63,14 +62,6 @@ public record PeriodicReportSnapshot(
     /// <summary>The same report for someone who sees only their own capital (BR-31): the total, and no partner but theirs.</summary>
     public PeriodicReportSnapshot ForPartnerOf(Guid userId) => this with { Partners = Partners.Where(partner => partner.UserId == userId).ToList() };
 }
-
-/// <summary>One revenue entry in a report.</summary>
-/// <param name="Type">What it is.</param>
-/// <param name="Date">The day it came in.</param>
-/// <param name="Description">What was said about it.</param>
-/// <param name="Amount">How much.</param>
-/// <param name="IsNew">True when it was approved after the previous report, shaded green (BR-26).</param>
-public record ReportRevenueView(RevenueType Type, DateOnly Date, string Description, decimal Amount, bool IsNew);
 
 /// <summary>An account's balance in a report.</summary>
 /// <param name="Name">Its name.</param>

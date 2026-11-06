@@ -4,7 +4,9 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Entries;
+using Redix.Api.Reports;
 using Redix.Api.Revenue;
+using Redix.Api.Structure;
 using Xunit;
 
 namespace Redix.Api.Tests;
@@ -19,7 +21,8 @@ public class RevenueTests(MigratedApiFactory factory)
 
     private static Task<HttpResponseMessage> RevenueAsync(Ledger ledger, RevenueRequest request) => ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", request, Json);
 
-    private static Task<HttpResponseMessage> SaleAsync(Ledger ledger, SalesInvoiceRequest request) => ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/sales-invoices", request, Json);
+    private static async Task<HttpResponseMessage> SaleAsync(Ledger ledger, SalesInvoiceRequest request) =>
+        await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/sales-invoices", request with { ItemId = await ledger.RevenueItemAsync(ItemType.Sale) }, Json);
 
     private static SalesInvoiceRequest Sale(Ledger ledger, string number = "S-1", decimal amount = 1000, decimal discount = 0, SaleTaxType tax = SaleTaxType.Vat) =>
         new("أحمد", "", number, ledger.Today, amount, discount, tax, ledger.AccountId);
@@ -46,7 +49,7 @@ public class RevenueTests(MigratedApiFactory factory)
         await ApprovedPurchaseAsync(ledger, 1150, "2617");
         var before = await FiguresAsync(ledger);
 
-        (await RevenueAsync(ledger, new RevenueRequest(RevenueType.VatRefund, ledger.Today, 140, ledger.AccountId, "") { PeriodStart = QuarterOf(ledger) })).EnsureSuccessStatusCode();
+        (await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.VatRefund), ledger.Today, 140, ledger.AccountId, "") { PeriodStart = QuarterOf(ledger) })).EnsureSuccessStatusCode();
 
         var after = await FiguresAsync(ledger);
         Assert.Equal(before.Revenue + 140, after.Revenue);
@@ -60,7 +63,7 @@ public class RevenueTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
 
-        var refused = await RevenueAsync(ledger, new RevenueRequest(RevenueType.VatRefund, ledger.Today, 10, ledger.AccountId, "") { PeriodStart = QuarterOf(ledger).AddDays(1) });
+        var refused = await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.VatRefund), ledger.Today, 10, ledger.AccountId, "") { PeriodStart = QuarterOf(ledger).AddDays(1) });
 
         Assert.Equal("invalidPeriod", await Ledger.CodeOf(refused));
     }
@@ -70,7 +73,7 @@ public class RevenueTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
 
-        (await RevenueAsync(ledger, new RevenueRequest(RevenueType.Other, ledger.Today, 70, ledger.AccountId, "إيجار"))).EnsureSuccessStatusCode();
+        (await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, "إيجار"))).EnsureSuccessStatusCode();
 
         var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<RevenueRowView>>($"/projects/{ledger.ProjectId}/revenue", Json))!);
         Assert.Equal((ledger.Today, ledger.Today, "حساب المؤسسة"), (row.PeriodStart, row.PeriodEnd, row.AccountName));
@@ -83,7 +86,7 @@ public class RevenueTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (field, _) = await ledger.MemberAsync("users.roleField");
 
-        var refused = await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(RevenueType.Other, ledger.Today, 70, ledger.AccountId, ""), Json);
+        var refused = await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, ""), Json);
 
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
     }
@@ -118,7 +121,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task AC_42_1_ASaleAlreadyRecordedAsRevenueCountsOnce()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var recorded = await RevenueAsync(ledger, new RevenueRequest(RevenueType.Sale, ledger.Today, 1000, ledger.AccountId, ""));
+        var recorded = await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.Sale), ledger.Today, 1000, ledger.AccountId, ""));
         var entry = await recorded.Content.ReadFromJsonAsync<EntryStatusView>(Json);
 
         (await SaleAsync(ledger, Sale(ledger, tax: SaleTaxType.RealEstateTransaction) with { SaleEntryId = entry!.Id })).EnsureSuccessStatusCode();
@@ -248,5 +251,32 @@ public class RevenueTests(MigratedApiFactory factory)
         var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/vat-period", new VatPeriodRequest(QuarterOf(ledger).AddMonths(-3)), Json);
 
         Assert.Equal("invalidPeriod", await Ledger.CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task FR_28_RevenueGoesOnARevenueItemAndNeverOnAnExpenseOne()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+
+        var refused = await RevenueAsync(ledger, new RevenueRequest(ledger.ItemId, ledger.Today, 70, ledger.AccountId, ""));
+        (await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, "إيجار"))).EnsureSuccessStatusCode();
+
+        Assert.Equal("unknownItem", await Ledger.CodeOf(refused));
+        var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<RevenueRowView>>($"/projects/{ledger.ProjectId}/revenue", Json))!);
+        Assert.Equal((ItemType.OtherRevenue, "إيرادات أخرى"), (row.Type, row.ItemName));
+        Assert.Equal(70m, (await FiguresAsync(ledger)).OtherRevenue);
+    }
+
+    [Fact]
+    public async Task AC_46_7_TheDashboardKeepsRevenueCategoriesApartFromExpenseOnes()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.VatRefund), ledger.Today, 40, ledger.AccountId, "") { PeriodStart = QuarterOf(ledger) })).EnsureSuccessStatusCode();
+
+        var dashboard = (await ledger.Client.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!;
+
+        Assert.Equal(["استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], dashboard.RevenueCategories.Select(category => category.Name));
+        Assert.Equal(40m, dashboard.RevenueCategories[0].Total);
+        Assert.DoesNotContain(dashboard.Categories.SelectMany(category => category.Items), item => item.Type.IsRevenue());
     }
 }

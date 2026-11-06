@@ -1,26 +1,16 @@
 namespace Redix.Api.Revenue;
 
-/// <summary>What money coming in other than capital is (FR-28).</summary>
-public enum RevenueType : byte
-{
-    /// <summary>VAT refunded for a quarter.</summary>
-    VatRefund,
-
-    /// <summary>A unit sold.</summary>
-    Sale,
-
-    /// <summary>Anything else.</summary>
-    Other,
-}
-
-/// <summary>What only revenue has.</summary>
+/// <summary>What only revenue has: the revenue item it came in on, whose type says what it is (FR-28, FR-38).</summary>
 public class RevenueDetails
 {
     /// <summary>The entry.</summary>
     public Guid EntryId { get; init; }
 
-    /// <summary>What it is.</summary>
-    public RevenueType Type { get; init; }
+    /// <summary>The revenue item.</summary>
+    public Guid ItemId { get; init; }
+
+    /// <summary>The item's subgroup, its general one unless another was chosen.</summary>
+    public Guid SubgroupId { get; init; }
 
     /// <summary>The first day of the period it is for.</summary>
     public DateOnly PeriodStart { get; init; }

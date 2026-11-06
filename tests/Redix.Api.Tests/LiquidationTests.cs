@@ -6,6 +6,7 @@ using Redix.Api.Accounts;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 using Xunit;
 
 namespace Redix.Api.Tests;
@@ -157,8 +158,8 @@ public class LiquidationTests(MigratedApiFactory factory)
     {
         var (ledger, _, _) = await LiquidatedAsync();
 
-        (await LateAsync(ledger, new LateEntryRequest(true, ledger.Today, 100, ledger.AccountId, "فاتورة كهرباء متأخرة") { ItemId = ledger.ItemId })).EnsureSuccessStatusCode();
-        (await LateAsync(ledger, new LateEntryRequest(false, ledger.Today, 50, ledger.AccountId, "استرداد تأمين"))).EnsureSuccessStatusCode();
+        (await LateAsync(ledger, new LateEntryRequest(ledger.ItemId, ledger.Today, 100, ledger.AccountId, "فاتورة كهرباء متأخرة"))).EnsureSuccessStatusCode();
+        (await LateAsync(ledger, new LateEntryRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 50, ledger.AccountId, "استرداد تأمين"))).EnsureSuccessStatusCode();
 
         var figures = await ledger.ReadAsync(db => ProjectFigures.OfAsync(ledger.ProjectId, db));
         Assert.Equal((200m, 850m, 0m), (figures.Expenses, figures.Liquidation, figures.Surplus));
@@ -170,10 +171,10 @@ public class LiquidationTests(MigratedApiFactory factory)
     public async Task FR_51_ALateEntryNeedsAClosedProjectAndAnItemThatTakesPurchases()
     {
         var (ledger, _, _) = await TwoPartnersAsync(factory);
-        Assert.Equal("projectNotClosed", await Ledger.CodeOf(await LateAsync(ledger, new LateEntryRequest(false, ledger.Today, 50, ledger.AccountId, "إيراد"))));
+        Assert.Equal("projectNotClosed", await Ledger.CodeOf(await LateAsync(ledger, new LateEntryRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 50, ledger.AccountId, "إيراد"))));
         var (closed, _, _) = await LiquidatedAsync();
 
-        Assert.Equal("unknownItem", await Ledger.CodeOf(await LateAsync(closed, new LateEntryRequest(true, closed.Today, 50, closed.AccountId, "مصروف"))));
+        Assert.Equal("unknownItem", await Ledger.CodeOf(await LateAsync(closed, new LateEntryRequest(Guid.Empty, closed.Today, 50, closed.AccountId, "مصروف"))));
     }
 
     [Fact]

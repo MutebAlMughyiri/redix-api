@@ -88,9 +88,9 @@ public static class LiquidationEndpoints
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "ProjectNotClosed");
         }
-        var items = await db.Items.Include(row => row.Subgroups)
-            .Where(row => row.Id == request.ItemId && row.Type != ItemType.ContractorPayments && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId)).ToListAsync();
-        if (request.IsExpense && items.Count == 0)
+        var item = await db.Items.Include(row => row.Subgroups)
+            .SingleOrDefaultAsync(row => row.Id == request.ItemId && row.Type != ItemType.ContractorPayments && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId)) ?? Item.None;
+        if (item.Id == Guid.Empty)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownItem");
         }
@@ -108,23 +108,24 @@ public static class LiquidationEndpoints
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
         var description = request.Description.Trim();
-        if (request.IsExpense)
+        var isExpense = !item.Type.IsRevenue();
+        var general = item.Subgroups.Single(subgroup => subgroup.Name == Subgroup.GeneralName).Id;
+        if (isExpense)
         {
-            var item = items.Single();
             var entry = DirectEntries.New(projectId, EntryKind.Purchase, request.Date, request.Amount, request.AccountId, description, userId, at);
             var method = await db.PaymentMethods.Where(row => row.ProjectId == projectId && row.IsActive).OrderBy(row => row.SortOrder).Select(row => row.Id).FirstAsync();
             var supplier = await db.Suppliers.Where(row => row.ProjectId == projectId && row.IsGeneralCash).Select(row => row.Id).FirstAsync();
             DirectEntries.Add(entry, [
-                new ExpenseDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = item.Subgroups.Single(subgroup => subgroup.Name == Subgroup.GeneralName).Id, UnitId = project.Units.Single(unit => unit.IsShared).Id, PaymentMethodId = method, WithoutInvoiceReason = LateReason },
+                new ExpenseDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = general, UnitId = project.Units.Single(unit => unit.IsShared).Id, PaymentMethodId = method, WithoutInvoiceReason = LateReason },
                 new PurchaseDetails { EntryId = entry.Id, SupplierId = supplier, Product = description[..Math.Min(description.Length, PurchaseDetails.ProductMaxLength)] },
             ], userId, at, db);
         }
         else
         {
             var entry = DirectEntries.New(projectId, EntryKind.Revenue, request.Date, request.Amount, request.AccountId, description, userId, at);
-            DirectEntries.Add(entry, [new RevenueDetails { EntryId = entry.Id, Type = RevenueType.Other, PeriodStart = request.Date, PeriodEnd = request.Date }], userId, at, db);
+            DirectEntries.Add(entry, [new RevenueDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = general, PeriodStart = request.Date, PeriodEnd = request.Date }], userId, at, db);
         }
-        var kind = request.IsExpense ? EntryKind.CapitalIn : EntryKind.CapitalOut;
+        var kind = isExpense ? EntryKind.CapitalIn : EntryKind.CapitalOut;
         foreach (var (partner, part) in PartsOf(request.Amount, partners).Where(share => share.Part != 0))
         {
             var entry = DirectEntries.New(projectId, kind, request.Date, part, request.AccountId, description, userId, at);
@@ -293,13 +294,9 @@ public record LiquidationPartView(Guid PartnerId, string Name, decimal SharePerc
 public record LiquidationShareView(Guid EntryId, string PartnerName, DateOnly Date, decimal Amount, string AccountName, string Description, string ReceiptId, string ReceiptType);
 
 /// <summary>An expense or revenue that came after the project closed.</summary>
-/// <param name="IsExpense">True for an expense, false for revenue.</param>
+/// <param name="ItemId">The item: an expense item that takes purchases, or a revenue item, whose side says which this is.</param>
 /// <param name="Date">The day.</param>
 /// <param name="Amount">How much, above zero.</param>
 /// <param name="AccountId">The account it went through.</param>
 /// <param name="Description">What it was.</param>
-public record LateEntryRequest(bool IsExpense, DateOnly Date, decimal Amount, Guid AccountId, string Description)
-{
-    /// <summary>The item of an expense; left out for revenue.</summary>
-    public Guid ItemId { get; init; }
-}
+public record LateEntryRequest(Guid ItemId, DateOnly Date, decimal Amount, Guid AccountId, string Description);

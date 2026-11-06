@@ -2,11 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
+using Redix.Api.Revenue;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
-/// <summary>Everything spent on one item (UC-050, FR-30): its purchases by subgroup, then each contract's payments.</summary>
+/// <summary>Everything spent on one item (UC-050, FR-30): its purchases by subgroup, then each contract's payments; for a revenue item, its revenue by subgroup.</summary>
 public static class ItemReportEndpoints
 {
     /// <summary>Maps the route, for anyone who reads the project.</summary>
@@ -40,6 +41,14 @@ public static class ItemReportEndpoints
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && expense.ItemId == item.Id
             orderby entry.EntryDate, entry.Id
             select new { entry, expense }).ToListAsync();
+        var revenue = await (
+            from details in db.Set<RevenueDetails>()
+            join entry in db.Entries on details.EntryId equals entry.Id
+            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && details.ItemId == item.Id
+            orderby entry.EntryDate, entry.Id
+            select new { entry, details }).ToListAsync();
+        var revenueIds = revenue.Select(row => row.entry.Id).ToList();
+        var sales = await db.Set<SalesInvoice>().Where(sale => revenueIds.Contains(sale.EntryId)).ToDictionaryAsync(sale => sale.EntryId);
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
@@ -54,9 +63,16 @@ public static class ItemReportEndpoints
             return new ItemEntryRow(entry.Id, entry.EntryDate, purchase.Product.Length > 0 ? purchase.Product : entry.Notes, facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, purchase.UnitPrice, purchase.Quantity, entry.Amount, (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract, columns.Select(column => values.GetValueOrDefault(column.Key, "")).ToList(), entry.ApprovedAt > newSince);
         }
 
+        ItemEntryRow RevenueRowOf(Entry entry)
+        {
+            var sale = sales.GetValueOrDefault(entry.Id) ?? new SalesInvoice();
+            return new ItemEntryRow(entry.Id, entry.EntryDate, entry.Notes, sale.BuyerName, sale.Number, 0, 0, entry.Amount, false, [], entry.ApprovedAt > newSince);
+        }
+
         var subgroups = item.Subgroups.OrderBy(subgroup => subgroup.SortOrder).Select(subgroup =>
         {
-            var lines = rows.Where(row => row.entry.Kind == EntryKind.Purchase && row.expense.SubgroupId == subgroup.Id).Select(row => RowOf(row.entry, row.expense)).ToList();
+            var lines = rows.Where(row => row.entry.Kind == EntryKind.Purchase && row.expense.SubgroupId == subgroup.Id).Select(row => RowOf(row.entry, row.expense))
+                .Concat(revenue.Where(row => row.details.SubgroupId == subgroup.Id).Select(row => RevenueRowOf(row.entry))).ToList();
             return new SubgroupReportView(subgroup.Id, subgroup.Name, lines.Sum(line => line.Amount), lines);
         }).Where(subgroup => subgroup.Rows.Count > 0).ToList();
         var money = await ContractMoney.OfProjectAsync(projectId, db);
@@ -69,8 +85,8 @@ public static class ItemReportEndpoints
             return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.Value - paid, !row.contract.IsOpenValue && paid > row.contract.Value, lines.Sum(line => line.Amount), lines);
         }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
         var categoryName = await db.Categories.Where(category => category.Id == item.CategoryId).Select(category => category.Name).SingleAsync();
-        var total = rows.Sum(row => row.entry.Amount);
-        return new ItemReportView(item.Id, item.Name, categoryName, total, columns.Select(column => column.Name).ToList(), subgroups, contractViews) { ShowsTablePercentages = item.ShowsTablePercentages };
+        var total = rows.Sum(row => row.entry.Amount) + revenue.Sum(row => row.entry.Amount);
+        return new ItemReportView(item.Id, item.Name, categoryName, total, columns.Select(column => column.Name).ToList(), subgroups, contractViews) { ShowsTablePercentages = item.ShowsTablePercentages, Type = item.Type };
     }
 }
 
@@ -86,6 +102,9 @@ public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, 
 {
     /// <summary>True when its sheet calculates each table's percentage (AC-46.9); false in a report issued before the choice existed.</summary>
     public bool ShowsTablePercentages { get; init; }
+
+    /// <summary>What the item is for, which says its side (FR-38).</summary>
+    public ItemType Type { get; init; }
 }
 
 /// <summary>One subgroup's purchases.</summary>
