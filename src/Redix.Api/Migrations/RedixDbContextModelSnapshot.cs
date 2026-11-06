@@ -1739,7 +1739,7 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b81ba454-4df5-80d1-864d-e2b27314cc73"),
                             DataType = (byte)0,
                             IsCore = true,
-                            IsRequired = true,
+                            IsRequired = false,
                             ItemType = (byte)0,
                             Key = "invoiceNumber",
                             Name = "رقم الفاتورة",
@@ -2117,7 +2117,7 @@ namespace Redix.Api.Migrations
                             Id = new Guid("c9a5b977-5bcd-ab11-87f3-2fd7c0175290"),
                             DataType = (byte)0,
                             IsCore = true,
-                            IsRequired = true,
+                            IsRequired = false,
                             ItemType = (byte)2,
                             Key = "invoiceNumber",
                             Name = "رقم الفاتورة",
@@ -10628,14 +10628,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("6769ad18-ba6b-1d75-48b3-b9f952eafe9a"),
                             Language = "en",
                             TranslationKeyId = new Guid("f485b7b5-ba1f-693e-f534-5e6933c75122"),
-                            Value = "Type the invoice's number."
+                            Value = "Write the invoice number in 50 characters at most."
                         },
                         new
                         {
                             Id = new Guid("c5f504de-55e1-85b2-62f9-b10a34461abe"),
                             Language = "ar",
                             TranslationKeyId = new Guid("f485b7b5-ba1f-693e-f534-5e6933c75122"),
-                            Value = "اكتب رقم الفاتورة."
+                            Value = "اكتب رقم الفاتورة في 50 حرفاً على الأكثر."
                         },
                         new
                         {

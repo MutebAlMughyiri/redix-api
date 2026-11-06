@@ -537,7 +537,7 @@ public static class TranslationSeed
         ("share.unknownAttachment", "The file was not found. Share it again.", "لم يُعثر على الملف. شاركه مجدداً."),
         ("share.invoiceAlreadyAttached", "This file is already on an expense.", "هذا الملف مرفق بمصروف آخر."),
         ("share.duplicateInvoice", "This invoice is already on another expense.", "هذه الفاتورة مرفقة بمصروف آخر."),
-        ("share.invalidInvoiceNumber", "Type the invoice's number.", "اكتب رقم الفاتورة."),
+        ("share.invalidInvoiceNumber", "Write the invoice number in 50 characters at most.", "اكتب رقم الفاتورة في 50 حرفاً على الأكثر."),
         ("share.invalidInvoiceDate", "The invoice's date is outside the project's period.", "تاريخ الفاتورة خارج فترة المشروع."),
         ("share.invalidVatNumber", "The VAT number on this invoice cannot be read.", "تعذرت قراءة الرقم الضريبي في هذه الفاتورة."),
         ("share.invalidAmount", "The invoice's total is not valid.", "إجمالي الفاتورة غير صحيح."),

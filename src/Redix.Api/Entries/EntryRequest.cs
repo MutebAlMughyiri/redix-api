@@ -6,7 +6,7 @@ namespace Redix.Api.Entries;
 /// <param name="Id">The entry's id, made on the phone.</param>
 public abstract record EntryRequest(Guid Id)
 {
-    /// <summary>The invoice's number; left out when there is no invoice.</summary>
+    /// <summary>The invoice's number; left out when there is no invoice, or the invoice shows none.</summary>
     public string InvoiceNumber { get; init; } = "";
 
     /// <summary>The invoice's date; left out when there is no invoice.</summary>

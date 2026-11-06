@@ -135,7 +135,7 @@ public static class InvoiceAttachEndpoints
 
     private static string RefusalOfTyped(AttachInvoiceRequest request, string number, DateOnly projectStart, DateOnly today)
     {
-        if (number.Length is 0 or > Invoice.NumberMaxLength)
+        if (number.Length > Invoice.NumberMaxLength)
         {
             return "InvalidInvoiceNumber";
         }

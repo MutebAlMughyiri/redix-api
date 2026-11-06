@@ -105,6 +105,19 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AnInvoiceWithNoNumberIsAttached()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var request = ledger.WithoutInvoice() with { Submit = true };
+        await ledger.RecordAsync(request);
+
+        var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, await ledger.FileAsync(), ""));
+
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        Assert.Empty((await ledger.ReadAsync(db => db.Invoices.SingleAsync(row => row.EntryId == request.Id))).Number);
+    }
+
+    [Fact]
     public async Task AWaitingEntryStaysWaitingAndADraftStaysADraft()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
@@ -230,7 +243,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         await ledger.RecordAsync(request);
         var file = await ledger.FileAsync();
 
-        Assert.Equal("invalidInvoiceNumber", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file, "  "))));
+        Assert.Equal("invalidInvoiceNumber", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file, new string('1', Redix.Api.Entries.Invoice.NumberMaxLength + 1)))));
         Assert.Equal("invalidInvoiceDate", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file) with { InvoiceDate = new DateOnly(2000, 1, 1) })));
         Assert.Equal("invalidAmount", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file, total: -1))));
         Assert.Equal("invalidVatNumber", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file, sellerVatNumber: "3000000000000030"))));

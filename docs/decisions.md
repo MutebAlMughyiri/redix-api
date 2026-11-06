@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-07 | An invoice's number is optional on a purchase, a credit note and an invoice attached later; at most 50 characters when given, and an invoice with none is never a duplicate | Muteb: "bill number is not required" |
 | 2026-11-05 | PDFs come from QuestPDF under its Community licence, workbooks from ClosedXML | QuestPDF shapes Arabic and lays out right to left; its Community licence is free below 1M USD a year of revenue, which Muteb should confirm holds |
 | 2026-11-05 | Every report file is for whoever holds `SeeAllCapital` | Muteb's rule: exporting stays the owner's and Finance's; a file would show every partner |
 | 2026-11-05 | The periodic report's words are the statement's own Arabic, in the files | Report 23 is Arabic, and the files are matched against it page for page |

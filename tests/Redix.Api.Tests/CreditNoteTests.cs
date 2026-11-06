@@ -240,12 +240,12 @@ public class CreditNoteTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ACreditNoteHasAnInvoiceNumberAndIsTypedAsAPlainAmount()
+    public async Task ACreditNoteHasAnInvoiceAndIsTypedAsAPlainAmount()
     {
         var ledger = await LedgerAsync();
 
         await ledger.AssertRefusedAsync(ledger.WithoutInvoice() with { IsCreditNote = true }, "creditNoteNeedsInvoice");
-        await ledger.AssertRefusedAsync(CreditNote(ledger, 10m) with { InvoiceNumber = " " }, "invalidInvoiceNumber");
+        await ledger.AssertRefusedAsync(CreditNote(ledger, 10m) with { InvoiceNumber = new string('1', Invoice.NumberMaxLength + 1) }, "invalidInvoiceNumber");
         await ledger.AssertRefusedAsync(CreditNote(ledger, -10m), "deductionNeedsReason");
     }
 

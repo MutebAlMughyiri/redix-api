@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-`ExpensesEndpoints.Record` looks for the invoice's number from the same supplier before it saves. An expense with a match answers `409 duplicateInvoice` with the earlier entry, and saves only when the request says `confirmDuplicate`.
+`ExpensesEndpoints.Record` looks for the invoice's number from the same supplier before it saves. An expense with a match answers `409 duplicateInvoice` with the earlier entry, and saves only when the request says `confirmDuplicate`. An invoice's number is optional (Muteb, 7 November 2026: "bill number is not required"), and an invoice with none has nothing to match, so it never warns (`AnInvoiceWithNoNumberIsKeptAndNeverWarnsOfAnother`).
 
 "The same supplier in every project" needs a reading, because each project now has its own register (BR-33), so one company is a different row in each. The same supplier is the same row, or in another project whoever holds the same VAT number. A supplier with no VAT number has nothing to compare, so only its own row matches.
 

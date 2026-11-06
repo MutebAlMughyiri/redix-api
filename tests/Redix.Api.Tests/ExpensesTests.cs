@@ -596,7 +596,6 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        await AssertRefusedAsync(setup, Expense(setup) with { InvoiceNumber = "  " }, "invalidInvoiceNumber");
         await AssertRefusedAsync(setup, Expense(setup) with { InvoiceNumber = new string('1', Invoice.NumberMaxLength + 1) }, "invalidInvoiceNumber");
         await AssertRefusedAsync(setup, Expense(setup) with { Product = new string('م', PurchaseDetails.ProductMaxLength + 1) }, "invalidProduct");
         await AssertRefusedAsync(setup, Expense(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");

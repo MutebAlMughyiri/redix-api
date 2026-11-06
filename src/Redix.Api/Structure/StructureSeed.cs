@@ -34,7 +34,7 @@ public static class StructureSeed
     [
         ("date", "التاريخ", ColumnDataType.Date, true, true, true),
         ("supplier", "المورد", ColumnDataType.List, true, true, false),
-        ("invoiceNumber", "رقم الفاتورة", ColumnDataType.Text, true, true, true),
+        ("invoiceNumber", "رقم الفاتورة", ColumnDataType.Text, true, false, true),
         ("unit", "الوحدة", ColumnDataType.List, false, false, false),
         ("product", "الصنف", ColumnDataType.Text, false, false, true),
         ("unitPrice", "سعر الوحدة", ColumnDataType.Amount, false, false, true),

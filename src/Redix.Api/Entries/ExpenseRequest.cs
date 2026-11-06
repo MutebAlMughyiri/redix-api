@@ -88,7 +88,7 @@ public record ExpenseRequest(Guid Id) : EntryRequest(Id)
         {
             return "UnknownOriginalInvoice";
         }
-        if (!IsWithoutInvoice() && InvoiceNumber.Trim().Length is 0 or > Invoice.NumberMaxLength)
+        if (InvoiceNumber.Trim().Length > Invoice.NumberMaxLength)
         {
             return "InvalidInvoiceNumber";
         }

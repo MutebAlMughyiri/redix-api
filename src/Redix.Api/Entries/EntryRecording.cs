@@ -47,9 +47,13 @@ public static class EntryRecording
         return await db.EntryAttachments.AnyAsync(link => link.EntryId != editing && db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
     }
 
-    /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/>, or from whoever holds its VAT number in another project the caller can read (AC-17.1); null when there is none, so nothing about a project they cannot read shows (BR-33). The supplier of an invoice is the purchase's, or the contract's on a contractor payment.</summary>
+    /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/>, or from whoever holds its VAT number in another project the caller can read (AC-17.1); null when there is none, or the invoice has no number to match, so nothing about a project they cannot read shows (BR-33). The supplier of an invoice is the purchase's, or the contract's on a contractor payment.</summary>
     public static async Task<EarlierEntryView?> EarlierEntryAsync(Supplier supplier, string number, UserAccess access, RedixDbContext db, Guid editing = default)
     {
+        if (number.Length == 0)
+        {
+            return null;
+        }
         var parties = db.PurchaseDetails.Select(purchase => new { purchase.EntryId, purchase.SupplierId }).Concat(
             from payment in db.ContractorPaymentDetails
             join contract in db.Contracts on payment.ContractId equals contract.Id

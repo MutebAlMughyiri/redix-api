@@ -92,6 +92,17 @@ public class DuplicateInvoiceTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AnInvoiceWithNoNumberIsKeptAndNeverWarnsOfAnother()
+    {
+        var setup = await FinanceAsync();
+        (await PostAsync(setup, Expense(setup, ""))).EnsureSuccessStatusCode();
+
+        (await PostAsync(setup, Expense(setup, ""))).EnsureSuccessStatusCode();
+
+        Assert.Equal(2, await EntriesNamedAsync(setup.Project.Id));
+    }
+
+    [Fact]
     public async Task AC_17_1_ConfirmingTheWarningSavesIt()
     {
         var setup = await FinanceAsync();
