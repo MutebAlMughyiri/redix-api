@@ -13,14 +13,13 @@ public record StatementSheet(string Name, List<StatementTable> Tables, string Pe
 /// <param name="Columns">Its columns before the amount, the first being the one that stretches when the sheet is wider than the table.</param>
 /// <param name="Amount">Its amount column, always the sheet's last.</param>
 /// <param name="Rows">Its rows, in order.</param>
-/// <param name="Agreement">What was agreed for it, which puts المتبقي and مبلغ الاتفاق under it (AC-46.2).</param>
-public record StatementTable(string Title, List<StatementColumn> Columns, StatementColumn Amount, List<StatementRow> Rows, Agreement Agreement);
+/// <param name="AgreedAmount">What a contract agreed, which puts المتبقي and مبلغ الاتفاق under it (AC-46.2); zero when nothing was agreed, which shows neither.</param>
+public record StatementTable(string Title, List<StatementColumn> Columns, StatementColumn Amount, List<StatementRow> Rows, decimal AgreedAmount);
 
 /// <summary>A column of a table.</summary>
 /// <param name="Header">Its header.</param>
-/// <param name="Width">How wide it is, in characters, when its table is the sheet's widest.</param>
 /// <param name="Kind">How its cells are written.</param>
-public record StatementColumn(string Header, double Width, CellKind Kind);
+public record StatementColumn(string Header, CellKind Kind);
 
 /// <summary>A row of a table.</summary>
 /// <param name="Cells">Its cells, one for each column before the amount.</param>
@@ -47,32 +46,4 @@ public enum CellKind : byte
 
     /// <summary>An amount, centred: the price of one.</summary>
     Price,
-}
-
-/// <summary>What was agreed for a table: a contract's value, which puts المتبقي and مبلغ الاتفاق under it, or an open value, which puts مبلغ الاتفاق alone.</summary>
-/// <param name="Kind">Whether anything was agreed.</param>
-/// <param name="Amount">How much, when fixed.</param>
-public record Agreement(AgreementKind Kind, decimal Amount)
-{
-    /// <summary>Nothing agreed: every table but a contract's.</summary>
-    public static readonly Agreement None = new(AgreementKind.None, 0);
-
-    /// <summary>A contract with no fixed value.</summary>
-    public static readonly Agreement Open = new(AgreementKind.Open, 0);
-
-    /// <summary>A contract worth <paramref name="amount"/>.</summary>
-    public static Agreement Of(decimal amount) => new(AgreementKind.Fixed, amount);
-}
-
-/// <summary>Whether anything was agreed for a table.</summary>
-public enum AgreementKind : byte
-{
-    /// <summary>Nothing.</summary>
-    None,
-
-    /// <summary>A contract with no fixed value.</summary>
-    Open,
-
-    /// <summary>A contract with a value.</summary>
-    Fixed,
 }

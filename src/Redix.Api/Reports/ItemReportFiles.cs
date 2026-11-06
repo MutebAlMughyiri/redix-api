@@ -16,11 +16,11 @@ public static class ItemReportFiles
         return Document.Create(document => PeriodicReportFiles.Page(document, page => ItemPage(page, item))).GeneratePdf();
     }
 
-    private static readonly StatementColumn Cost = new("التكلفة", 10.88, CellKind.Text);
+    private static readonly StatementColumn Cost = new("التكلفة", CellKind.Text);
 
-    private static readonly StatementColumn Payment = new("الدفعة", 10.88, CellKind.Text);
+    private static readonly StatementColumn Payment = new("الدفعة", CellKind.Text);
 
-    private static readonly List<StatementColumn> PaymentColumns = [new("الوصف", 39.13, CellKind.Text), new("التاريخ", 11.13, CellKind.Date)];
+    private static readonly List<StatementColumn> PaymentColumns = [new("الوصف", CellKind.Text), new("التاريخ", CellKind.Date)];
 
     /// <summary>One item's report as a workbook, its sheet as the periodic report's.</summary>
     public static byte[] Excel(ItemReportView item)
@@ -38,19 +38,19 @@ public static class ItemReportFiles
     {
         List<StatementColumn> purchaseColumns =
         [
-            new("الوصف", 39.13, CellKind.Text),
-            new("رقم الفاتورة", 10.38, CellKind.Centred),
-            new("التاريخ", 11.13, CellKind.Date),
-            new("سعر الحبة", 8.75, CellKind.Price),
-            new("العدد", 5.25, CellKind.Centred),
-            .. item.Columns.Select(name => new StatementColumn(name, 12, CellKind.Centred)),
+            new("الوصف", CellKind.Text),
+            new("رقم الفاتورة", CellKind.Centred),
+            new("التاريخ", CellKind.Date),
+            new("سعر الحبة", CellKind.Price),
+            new("العدد", CellKind.Centred),
+            .. item.Columns.Select(name => new StatementColumn(name, CellKind.Centred)),
         ];
         List<StatementTable> tables =
         [
-            .. item.Subgroups.Select(subgroup => new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, purchaseColumns, Cost, subgroup.Rows.Select(PurchaseRow).ToList(), Agreement.None)),
-            .. item.Contracts.Select(contract => new StatementTable($"دفعات {contract.ContractorName}", PaymentColumns, Payment, contract.Payments.Select(PaymentRow).ToList(), contract.IsOpenValue ? Agreement.Open : Agreement.Of(contract.Value))),
+            .. item.Subgroups.Select(subgroup => new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, purchaseColumns, Cost, subgroup.Rows.Select(PurchaseRow).ToList(), 0)),
+            .. item.Contracts.Select(contract => new StatementTable($"دفعات {contract.ContractorName}", PaymentColumns, Payment, contract.Payments.Select(PaymentRow).ToList(), contract.IsOpenValue ? 0 : contract.Value)),
         ];
-        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [new StatementTable(item.ItemName, purchaseColumns, Cost, [], Agreement.None)], item.ShowsTablePercentages ? "النسبة" : "");
+        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [new StatementTable(item.ItemName, purchaseColumns, Cost, [], 0)], item.ShowsTablePercentages ? "النسبة" : "");
     }
 
     private static StatementRow PurchaseRow(ItemEntryRow line) => new(

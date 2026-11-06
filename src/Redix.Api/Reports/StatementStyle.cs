@@ -21,6 +21,10 @@ public static class StatementStyle
 
     private const double FontSize = 10;
 
+    private const double MaxWidth = 45;
+
+    private const double Padding = 1.5;
+
     /// <summary>An empty workbook in the statement's font.</summary>
     public static XLWorkbook NewWorkbook()
     {
@@ -43,6 +47,20 @@ public static class StatementStyle
             sheet.Column(column + 1).Width = widths[column];
         }
         return sheet;
+    }
+
+    /// <summary>
+    /// Fits every column to its content, never narrower than it was set and at most <see cref="MaxWidth"/> characters, past which its text wraps. Rows keep no height of their own, so
+    /// Excel grows each to its wrapped text. Nothing is cut on screen or on paper, and nobody resizes a column.
+    /// </summary>
+    public static void Fit(IXLWorksheet sheet)
+    {
+        foreach (var column in sheet.ColumnsUsed())
+        {
+            var least = column.Width;
+            column.AdjustToContents();
+            column.Width = Math.Min(MaxWidth, Math.Max(least, column.Width + Padding));
+        }
     }
 
     /// <summary>The address of <paramref name="cell"/> on <paramref name="sheet"/>, as another sheet's formula names it.</summary>
@@ -74,9 +92,10 @@ public static class StatementStyle
         return range;
     }
 
-    /// <summary>Lines of a table: hair lines all round.</summary>
+    /// <summary>Lines of a table: hair lines all round, text wrapping where its column is full.</summary>
     public static IXLRange AsBody(this IXLRange range)
     {
+        range.Style.Alignment.WrapText = true;
         range.Style.Border.OutsideBorder = XLBorderStyleValues.Hair;
         range.Style.Border.InsideBorder = XLBorderStyleValues.Hair;
         return range;

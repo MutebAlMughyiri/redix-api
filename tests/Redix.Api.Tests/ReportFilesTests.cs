@@ -163,15 +163,15 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public void AC_46_2_AnOpenContractShowsItsAgreedAmountAsOpenAndNothingRemaining()
+    public void AC_46_2_AContractWithNoAgreedAmountShowsOnlyItsTotal()
     {
         var item = new ItemReportView(Guid.NewGuid(), "الحراسة", "العظم", 200, [], [], [new ContractReportView(Guid.NewGuid(), "الحارس", 0, true, 200, 0, false, 200, [Row(200, "")])]);
 
         using var workbook = ItemWorkbook(item);
 
         var sheet = workbook.Worksheet(1);
-        Assert.Equal(("الاجمالي", "مبلغ الاتفاق", "مفتوح"), (sheet.Cell("A4").GetString(), sheet.Cell("A5").GetString(), sheet.Cell("D5").GetString()));
-        Assert.DoesNotContain(sheet.CellsUsed(), cell => cell.GetString() == "المتبقي");
+        Assert.Equal(("الاجمالي", 200m), (sheet.Cell("A4").GetString(), sheet.Cell("D4").GetValue<decimal>()));
+        Assert.DoesNotContain(sheet.CellsUsed(), cell => cell.GetString() is "المتبقي" or "مبلغ الاتفاق");
     }
 
     [Fact]
@@ -263,6 +263,20 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var summary = workbook.Worksheet("الخلاصة");
         Assert.Equal(("'الرسوم'!G11", 120m), (summary.Cell("E10").FormulaA1, summary.Cell("E10").GetValue<decimal>()));
         Assert.Equal("تفاصيل تكلفة التشطيب:", Assert.Single(summary.CellsUsed(), cell => cell.GetString().StartsWith("تفاصيل ")).GetString());
+    }
+
+    [Fact]
+    public void AC_46_11_EveryColumnFitsItsContentAndTextPastFortyFiveCharactersWraps()
+    {
+        var longText = string.Join(" ", Enumerable.Repeat("دفعات المكتب الهندسي", 6));
+        using var workbook = ItemWorkbook(Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), longText, "", "A-1", 0, 0, 590400, false, [], false))));
+
+        var sheet = workbook.Worksheet(1);
+        Assert.Equal((45d, true), (sheet.Column(2).Width, sheet.Cell("B3").Style.Alignment.WrapText));
+        using var file = new ZipArchive(new MemoryStream(ItemReportFiles.Excel(Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), longText, "", "A-1", 0, 0, 590400, false, [], false))))));
+        using var sheetXml = new StreamReader(file.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+        Assert.DoesNotContain("customHeight", sheetXml.ReadToEnd());
+        Assert.True(sheet.Column(4).Width >= 10 && sheet.Column(7).Width >= 10, "a date and an amount show whole");
     }
 
     private static XLWorkbook Workbook(PeriodicReportSnapshot report)

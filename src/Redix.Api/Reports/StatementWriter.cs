@@ -4,7 +4,7 @@ namespace Redix.Api.Reports;
 
 /// <summary>
 /// The one layout of a statement sheet other than the summary (FR-46). Tables go one under another with a blank row between. Each table has a title row, a header and its numbered rows,
-/// then its lines, each on a row of its own: الاجمالي; المتبقي and مبلغ الاتفاق when it has an agreed amount; its percentage when the sheet calculates one. With more than one table come
+/// then its lines, each on a row of its own: الاجمالي; المتبقي and مبلغ الاتفاق when an agreed amount was filled in; its percentage when the sheet calculates one. With more than one table come
 /// اجمالي الكل and, with percentages, نسبة الكل. Every amount sits in the sheet's last column. A builder says what a table holds; only this places a cell.
 /// </summary>
 public static class StatementWriter
@@ -18,7 +18,7 @@ public static class StatementWriter
     public static string Add(XLWorkbook workbook, StatementSheet content, HashSet<string> taken)
     {
         var widest = content.Tables.MaxBy(table => table.Columns.Count)!;
-        var sheet = StatementStyle.AddSheet(workbook, content.Name, taken, [NumberWidth, .. widest.Columns.Select(column => column.Width), widest.Amount.Width]);
+        var sheet = StatementStyle.AddSheet(workbook, content.Name, taken, NumberWidth);
         var last = widest.Columns.Count + 2;
         var hasWhole = content.Tables.Count > 1;
         var totals = new List<string>();
@@ -27,15 +27,11 @@ public static class StatementWriter
         foreach (var table in content.Tables)
         {
             var (total, first) = Table(sheet, ref row, last, table);
-            if (table.Agreement.Kind == AgreementKind.Fixed)
+            if (table.AgreedAmount != 0)
             {
-                var agreed = Line(sheet, row + 1, last, "مبلغ الاتفاق").SetMoney(table.Agreement.Amount).Address.ToStringRelative();
+                var agreed = Line(sheet, row + 1, last, "مبلغ الاتفاق").SetMoney(table.AgreedAmount).Address.ToStringRelative();
                 Line(sheet, row, last, "المتبقي").SetMoneyFormula($"{agreed}-{InsideOf(table, total, first, last)}");
                 row += 2;
-            }
-            if (table.Agreement.Kind == AgreementKind.Open)
-            {
-                Line(sheet, row++, last, "مبلغ الاتفاق").SetCentred("مفتوح");
             }
             if (hasWhole && content.PercentLabel.Length > 0)
             {
@@ -46,6 +42,7 @@ public static class StatementWriter
         }
         if (!hasWhole)
         {
+            StatementStyle.Fit(sheet);
             return StatementStyle.Reference(sheet, totals[0]);
         }
         var whole = Line(sheet, row, last, "اجمالي الكل").SetMoneyFormula(string.Join("+", totals)).Address.ToStringRelative();
@@ -57,6 +54,7 @@ public static class StatementWriter
         {
             Line(sheet, row + 1, last, "نسبة الكل").SetPercentFormula(string.Join("+", percents.Select(cell => cell.Address.ToStringRelative())));
         }
+        StatementStyle.Fit(sheet);
         return StatementStyle.Reference(sheet, whole);
     }
 

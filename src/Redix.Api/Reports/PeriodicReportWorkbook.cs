@@ -20,13 +20,13 @@ public static class PeriodicReportWorkbook
 
     private static readonly (RevenueType Type, string Name)[] RevenueSheets = [(RevenueType.Sale, "البيع"), (RevenueType.VatRefund, "استرجاع الضرائب"), (RevenueType.Other, "إيرادات أخرى")];
 
-    private static readonly StatementColumn MovementAmount = new("المبلغ", 13, CellKind.Text);
+    private static readonly StatementColumn MovementAmount = new("المبلغ", CellKind.Text);
 
-    private static readonly List<StatementColumn> MovementColumns = [new("النوع", 11, CellKind.Centred), new("التاريخ", 13, CellKind.Date), new("الوصف", 27.25, CellKind.Linked)];
+    private static readonly List<StatementColumn> MovementColumns = [new("النوع", CellKind.Centred), new("التاريخ", CellKind.Date), new("الوصف", CellKind.Linked)];
 
-    private static readonly StatementColumn RevenueAmount = new("المبلغ", 13, CellKind.Text);
+    private static readonly StatementColumn RevenueAmount = new("المبلغ", CellKind.Text);
 
-    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", 39.13, CellKind.Text), new("التاريخ", 11.13, CellKind.Date)];
+    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", CellKind.Text), new("التاريخ", CellKind.Date)];
 
     /// <summary>The workbook of <paramref name="report"/>, each partner's receipt a link under <paramref name="receiptsAddress"/>.</summary>
     public static byte[] Of(PeriodicReportSnapshot report, string receiptsAddress)
@@ -40,6 +40,7 @@ public static class PeriodicReportWorkbook
         var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
         var itemTotals = report.Items.ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, names));
         FillSummary(summary, report, capitalTotal, revenueTotals, itemTotals);
+        StatementStyle.Fit(summary);
         return StatementStyle.Bytes(workbook);
     }
 
@@ -58,7 +59,7 @@ public static class PeriodicReportWorkbook
         return new StatementSheet("راس المال", tables.Count > 0 ? tables : [Movements("الشركاء", [])], "نسبة المشاركة");
     }
 
-    private static StatementTable Movements(string title, IEnumerable<StatementRow> rows) => new(title, MovementColumns, MovementAmount, rows.ToList(), Agreement.None);
+    private static StatementTable Movements(string title, IEnumerable<StatementRow> rows) => new(title, MovementColumns, MovementAmount, rows.ToList(), 0);
 
     private static StatementRow MovementRow(CapitalMovementView movement, string receiptsAddress) => new(
         [
@@ -70,7 +71,7 @@ public static class PeriodicReportWorkbook
 
     /// <summary>A sheet of one kind of revenue, named <paramref name="name"/>: its entries oldest first, new ones green (BR-26).</summary>
     private static StatementSheet RevenueOf(string name, IEnumerable<ReportRevenueView> rows) =>
-        new(name, [new StatementTable(name, RevenueColumns, RevenueAmount, rows.Select(row => new StatementRow([row.Description, row.Date.ToDateTime(TimeOnly.MinValue)], row.Amount, "", row.IsNew, true)).ToList(), Agreement.None)], "");
+        new(name, [new StatementTable(name, RevenueColumns, RevenueAmount, rows.Select(row => new StatementRow([row.Description, row.Date.ToDateTime(TimeOnly.MinValue)], row.Amount, "", row.IsNew, true)).ToList(), 0)], "");
 
     private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, string capitalTotal, Dictionary<RevenueType, string> revenueTotals, Dictionary<Guid, string> itemTotals)
     {
