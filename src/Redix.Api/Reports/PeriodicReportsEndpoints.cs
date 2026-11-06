@@ -6,6 +6,7 @@ using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
+using Redix.Api.Revenue;
 
 namespace Redix.Api.Reports;
 
@@ -134,9 +135,15 @@ public static class PeriodicReportsEndpoints
             itemReports.Add(await ItemReportEndpoints.OfAsync(projectId, items[id], previous.IssuedAt, db));
         }
         var accounts = reconciliation.Balances.Select(row => new ReportAccountView(row.AccountName, row.Type, row.ActualBalance)).ToList();
+        var revenue = await (
+            from details in db.Set<RevenueDetails>()
+            join entry in db.Entries on details.EntryId equals entry.Id
+            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved
+            orderby entry.EntryDate, entry.Id
+            select new ReportRevenueView(details.Type, entry.EntryDate, entry.Notes, entry.Amount, entry.ApprovedAt > previous.IssuedAt)).ToListAsync();
         return new PeriodicReportSnapshot(
             project.Name, number, at, previous.ExpensesTotal, figures.Expenses, figures.Capital, figures.VatRefunds, figures.Sales, figures.OtherRevenue, figures.Surplus, figures.SurplusWithoutSales, figures.Liquidation,
-            dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.PendingCount, dashboard.PendingAmount, capital.Total, partnerViews, itemReports);
+            dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.PendingCount, dashboard.PendingAmount, capital.Total, partnerViews, itemReports, revenue);
     }
 }
 

@@ -1,5 +1,6 @@
 using Redix.Api.Accounts;
 using Redix.Api.Partners;
+using Redix.Api.Revenue;
 
 namespace Redix.Api.Reports;
 
@@ -25,6 +26,7 @@ namespace Redix.Api.Reports;
 /// <param name="CapitalTotal">All partners' capital.</param>
 /// <param name="Partners">Each partner's capital, share and movements.</param>
 /// <param name="Items">Each item's report, new rows marked.</param>
+/// <param name="RevenueRows">Each sale, VAT refund and other revenue, oldest first, new ones marked.</param>
 public record PeriodicReportSnapshot(
     string ProjectName,
     int Number,
@@ -46,7 +48,8 @@ public record PeriodicReportSnapshot(
     decimal PendingAmount,
     decimal CapitalTotal,
     List<ReportPartnerView> Partners,
-    List<ItemReportView> Items)
+    List<ItemReportView> Items,
+    List<ReportRevenueView> RevenueRows)
 {
     /// <summary>Expenses less the previous report's (BR-09).</summary>
     public decimal ExpensesDifference => Expenses - PreviousExpenses;
@@ -60,6 +63,14 @@ public record PeriodicReportSnapshot(
     /// <summary>The same report for someone who sees only their own capital (BR-31): the total, and no partner but theirs.</summary>
     public PeriodicReportSnapshot ForPartnerOf(Guid userId) => this with { Partners = Partners.Where(partner => partner.UserId == userId).ToList() };
 }
+
+/// <summary>One revenue entry in a report.</summary>
+/// <param name="Type">What it is.</param>
+/// <param name="Date">The day it came in.</param>
+/// <param name="Description">What was said about it.</param>
+/// <param name="Amount">How much.</param>
+/// <param name="IsNew">True when it was approved after the previous report, shaded green (BR-26).</param>
+public record ReportRevenueView(RevenueType Type, DateOnly Date, string Description, decimal Amount, bool IsNew);
 
 /// <summary>An account's balance in a report.</summary>
 /// <param name="Name">Its name.</param>

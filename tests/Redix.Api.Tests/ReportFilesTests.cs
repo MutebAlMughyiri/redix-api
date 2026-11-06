@@ -124,8 +124,8 @@ public class ReportFilesTests(MigratedApiFactory factory)
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
         workbook.RecalculateAllFormulas();
 
-        var itemSheet = workbook.Worksheet(3);
-        Assert.Equal(["الخلاصة", "راس المال"], workbook.Worksheets.Take(2).Select(sheet => sheet.Name));
+        var itemSheet = workbook.Worksheet(4);
+        Assert.Equal(["الخلاصة", "راس المال", "الإيرادات"], workbook.Worksheets.Take(3).Select(sheet => sheet.Name));
         Assert.All(workbook.Worksheets, sheet => Assert.True(sheet.RightToLeft && sheet.PageSetup.PagesWide == 1 && sheet.PageSetup.PaperSize == XLPaperSize.A4Paper));
         var summary = workbook.Worksheet("الخلاصة");
         Assert.Equal(("رقم التقرير:", "1", "غصون 6"), (summary.Cell("A2").GetString(), summary.Cell("B2").GetString(), summary.Cell("A1").GetString()));
@@ -164,11 +164,27 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public void AC_46_3_ItemsOfOneNameInTwoCategoriesEachNameTheirCategoryOnTheirSheet()
     {
         ItemReportView Plumbing(string category) => new(Guid.NewGuid(), "السباكة", category, 100, [], [new SubgroupReportView(Guid.NewGuid(), "", 100, [Row(100, "P1")])], []);
-        var report = new PeriodicReportSnapshot("غصون 6", 1, new DateTime(2026, 11, 5), 0, 200, 0, 0, 0, 0, -200, -200, 0, [], [], 0, 200, 0, 0, 0, [], [Plumbing("العظم"), Plumbing("التشطيب")]);
+        var report = new PeriodicReportSnapshot("غصون 6", 1, new DateTime(2026, 11, 5), 0, 200, 0, 0, 0, 0, -200, -200, 0, [], [], 0, 200, 0, 0, 0, [], [Plumbing("العظم"), Plumbing("التشطيب")], []);
 
         using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, "")));
 
-        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(2).Select(sheet => sheet.Name));
+        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(3).Select(sheet => sheet.Name));
+    }
+
+    [Fact]
+    public void AC_46_4_SalesAndVatRefundsAreListedOnTheirSheetAndTheSummaryPointsAtTheirTotals()
+    {
+        var report = new PeriodicReportSnapshot("غصون 6", 1, new DateTime(2026, 11, 5), 0, 0, 1000, 300, 0, 0, 1300, 1300, 0, [], [], 0, 0, 0, 0, 1000, [], [],
+            [new ReportRevenueView(RevenueType.VatRefund, new DateOnly(2026, 10, 1), "استرجاع الربع الثالث", 200, false), new ReportRevenueView(RevenueType.VatRefund, new DateOnly(2026, 10, 20), "استرجاع الربع الرابع", 100, true)]);
+
+        using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, "")));
+        workbook.RecalculateAllFormulas();
+
+        var revenue = workbook.Worksheet("الإيرادات");
+        var summary = workbook.Worksheet("الخلاصة");
+        Assert.Equal(("المبيعات", "استرجاع الضرائب"), (revenue.Cell("A1").GetString(), revenue.Cell("A6").GetString()));
+        Assert.Equal(StatementStyle.Green, revenue.Cell("B9").Style.Fill.BackgroundColor);
+        Assert.Equal(("'الإيرادات'!D10", 300m, 0m), (summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>(), summary.Cell("B12").GetValue<decimal>()));
     }
 
     private static ItemEntryRow Row(decimal amount, string invoiceNumber, bool isNew = false, bool isOutside = false) =>

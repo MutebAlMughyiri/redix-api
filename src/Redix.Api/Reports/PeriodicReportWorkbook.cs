@@ -2,18 +2,21 @@ using System.Globalization;
 using System.Text.Json;
 using ClosedXML.Excel;
 using Redix.Api.Accounts;
+using Redix.Api.Revenue;
 using Redix.Api.Translations;
 
 namespace Redix.Api.Reports;
 
 /// <summary>
 /// The periodic report as a workbook laid out as the project's own statement (UC-055, FR-46): الخلاصة with the revenue on one side and the expenses on the other, راس المال with a block of
-/// movements per partner, then a sheet per item. Every total is a live formula that points at the sheet it adds, and new rows are green (BR-26).
+/// movements per partner, الإيرادات with each sale and VAT refund, then a sheet per item. Every total is a live formula that points at the sheet it adds, and new rows are green (BR-26).
 /// </summary>
 public static class PeriodicReportWorkbook
 {
     private const int Revenue = 1;
     private const int Expenses = 4;
+
+    private static readonly (RevenueType Type, string Title)[] RevenueBlocks = [(RevenueType.Sale, "المبيعات"), (RevenueType.VatRefund, "استرجاع الضرائب"), (RevenueType.Other, "إيرادات أخرى")];
 
     /// <summary>The workbook of <paramref name="report"/>, each partner's receipt a link under <paramref name="receiptsAddress"/>.</summary>
     public static byte[] Of(PeriodicReportSnapshot report, string receiptsAddress)
@@ -22,6 +25,8 @@ public static class PeriodicReportWorkbook
         var names = new HashSet<string>();
         var summary = StatementStyle.AddSheet(workbook, "الخلاصة", names, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
         var capital = StatementStyle.AddSheet(workbook, "راس المال", names, 4.63, 11, 13, 27.25, 13, 2.88, 4.38, 10.63, 11, 27, 13);
+        var revenueSheet = StatementStyle.AddSheet(workbook, "الإيرادات", names, 4.25, 39.13, 11.13, 13);
+        var revenueTotals = FillRevenue(revenueSheet, report).ToDictionary(pair => pair.Key, pair => StatementStyle.Reference(revenueSheet, pair.Value));
         var itemTotals = new Dictionary<Guid, string>();
         var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
         foreach (var item in report.Items)
@@ -30,11 +35,11 @@ public static class PeriodicReportWorkbook
             itemTotals[item.ItemId] = StatementStyle.Reference(sheet, ItemReportFiles.FillSheet(sheet, item));
         }
         var capitalTotal = StatementStyle.Reference(capital, FillCapital(capital, report, receiptsAddress));
-        FillSummary(summary, report, capitalTotal, itemTotals);
+        FillSummary(summary, report, capitalTotal, revenueTotals, itemTotals);
         return StatementStyle.Bytes(workbook);
     }
 
-    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, string capitalTotal, Dictionary<Guid, string> itemTotals)
+    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, string capitalTotal, Dictionary<RevenueType, string> revenueTotals, Dictionary<Guid, string> itemTotals)
     {
         var title = sheet.Range(1, 1, 1, 5).Merge();
         title.FirstCell().Value = report.ProjectName;
@@ -70,13 +75,13 @@ public static class PeriodicReportWorkbook
 
         var row = top + 1;
         Line(sheet, row++, Revenue, "رأس المال", capitalTotal).AsBody();
-        Line(sheet, row++, Revenue, "استرجاع ضرائب", report.VatRefunds).AsBody();
-        if (report.OtherRevenue != 0)
+        Line(sheet, row++, Revenue, "استرجاع ضرائب", revenueTotals[RevenueType.VatRefund]).AsBody();
+        if (revenueTotals.TryGetValue(RevenueType.Other, out var other))
         {
-            Line(sheet, row++, Revenue, "إيرادات أخرى", report.OtherRevenue).AsBody();
+            Line(sheet, row++, Revenue, "إيرادات أخرى", other).AsBody();
         }
         var sales = row++;
-        Line(sheet, sales, Revenue, "فلوس البيع المودعة بالحساب", report.Sales).AsMutedTotal();
+        Line(sheet, sales, Revenue, "فلوس البيع المودعة بالحساب", revenueTotals[RevenueType.Sale]).AsMutedTotal();
         var revenue = row;
         Line(sheet, revenue, Revenue, "مجموع الايرادات", $"SUM(B{top + 1}:B{sales})").AsTotal();
         var withoutSales = revenue + 2;
@@ -105,6 +110,49 @@ public static class PeriodicReportWorkbook
         }
         sheet.Cell(6, 6).FormulaA1 = $"ROUND(F4,2)=ROUND(B{surplus},2)";
         sheet.Cell(7, 6).SetMoneyFormula($"F4-B{surplus}").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+    }
+
+    /// <summary>
+    /// Writes a block per kind of revenue, as the statement's sales sheet does: its title, a header, each entry oldest first, new ones green (BR-26), and its total. Sales and VAT refunds always have a
+    /// block, for the summary's lines to point at; other revenue only when there is some. Answers each block's total address.
+    /// </summary>
+    private static Dictionary<RevenueType, string> FillRevenue(IXLWorksheet sheet, PeriodicReportSnapshot report)
+    {
+        var totals = new Dictionary<RevenueType, string>();
+        var row = 1;
+        foreach (var (type, title) in RevenueBlocks.Where(block => block.Type != RevenueType.Other || report.RevenueRows.Any(entry => entry.Type == RevenueType.Other)))
+        {
+            var head = sheet.Range(row, 1, row, 4).Merge();
+            head.FirstCell().Value = title;
+            head.AsTotal();
+            var header = sheet.Range(row + 1, 1, row + 1, 4).AsHeader();
+            header.Cell(1, 2).Value = "الوصف";
+            header.Cell(1, 3).Value = "التاريخ";
+            header.Cell(1, 4).Value = "المبلغ";
+            row += 2;
+            var first = row;
+            var number = 1;
+            foreach (var entry in report.RevenueRows.Where(entry => entry.Type == type))
+            {
+                sheet.Cell(row, 1).SetCentred(number++);
+                sheet.Cell(row, 2).Value = entry.Description;
+                sheet.Cell(row, 3).SetDate(entry.Date);
+                sheet.Cell(row, 4).SetMoney(entry.Amount);
+                var line = sheet.Range(row, 1, row, 4).AsBody();
+                if (entry.IsNew)
+                {
+                    line.AsNew();
+                }
+                row++;
+            }
+            var total = sheet.Range(row, 1, row, 2).Merge();
+            total.FirstCell().Value = "الاجمالي";
+            sheet.Cell(row, 4).SetMoneyFormula(row > first ? $"SUM(D{first}:D{row - 1})" : "0");
+            sheet.Range(row, 1, row, 4).AsTotal();
+            totals[type] = $"D{row}";
+            row += 3;
+        }
+        return totals;
     }
 
     /// <summary>
