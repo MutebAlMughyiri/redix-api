@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -178,10 +179,7 @@ public class RolesTests(MigratedApiFactory factory)
     [Fact]
     public void EveryChangingRouteNamesAPolicy()
     {
-        var sources = factory.Services.GetRequiredService<IEnumerable<EndpointDataSource>>();
-        var routes = sources.SelectMany(source => source.Endpoints).OfType<RouteEndpoint>()
-            .Where(route => route.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Any(method => method != "GET" && method != "HEAD") == true)
-            .ToList();
+        var routes = Endpoints().Where(route => route.Metadata.GetOrderedMetadata<IHttpMethodMetadata>().SelectMany(metadata => metadata.HttpMethods).Any(method => method != "GET" && method != "HEAD")).ToList();
         Assert.NotEmpty(routes);
 
         var open = routes.Where(route =>
@@ -191,5 +189,96 @@ public class RolesTests(MigratedApiFactory factory)
             .Select(route => route.RoutePattern.RawText);
 
         Assert.Empty(open);
+    }
+
+    [Fact]
+    public void EveryRouteOfAProjectNamesAPermission()
+    {
+        var unguarded = Endpoints().Where(route => route.RoutePattern.GetParameter("projectId") is not null && PermissionsOf(route).Count == 0)
+            .Select(route => route.DisplayName);
+
+        Assert.Empty(unguarded);
+    }
+
+    [Fact]
+    public async Task EveryRouteRefusesWhoeverLacksItsPermissionAndOpensOnceItIsTicked()
+    {
+        var routes = Endpoints().SelectMany(route => route.Metadata.GetOrderedMetadata<IHttpMethodMetadata>().SelectMany(metadata => metadata.HttpMethods).Distinct()
+            .Select(method => new GatedRoute(method, route.RoutePattern, PermissionsOf(route)))).Where(route => route.Permissions.Count > 0).ToList();
+        var key = new TranslationKey { Key = "users.roleEveryPermission" };
+        var role = new Role { WordKey = key.Key, Scope = RoleScope.System, SortOrder = 99 };
+        var user = await factory.AddUserAsync(Password);
+        var wrong = new List<string>();
+
+        try
+        {
+            await factory.WithDatabaseAsync(db =>
+            {
+                db.TranslationKeys.Add(key);
+                db.Roles.Add(role);
+                db.RolePermissions.AddRange(Enum.GetValues<Permission>().Select(permission => new RolePermission { RoleId = role.Id, Permission = permission }));
+                db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
+                return db.SaveChangesAsync();
+            });
+            var client = await factory.ClientSignedInAsAsync(user, Password);
+
+            foreach (var permission in routes.SelectMany(route => route.Permissions).Distinct())
+            {
+                await factory.WithDatabaseAsync(db => db.RolePermissions.Where(row => row.RoleId == role.Id && row.Permission == permission).ExecuteDeleteAsync());
+                foreach (var route in routes.Where(route => route.Permissions.Contains(permission)))
+                {
+                    var status = (await client.SendAsync(route.Request())).StatusCode;
+                    wrong.AddRange(status == HttpStatusCode.Forbidden ? [] : [$"{route} without {permission} answered {status}"]);
+                }
+
+                await factory.WithDatabaseAsync(db =>
+                {
+                    db.RolePermissions.Add(new RolePermission { RoleId = role.Id, Permission = permission });
+                    return db.SaveChangesAsync();
+                });
+            }
+
+            foreach (var route in routes)
+            {
+                var status = (await client.SendAsync(route.Request())).StatusCode;
+                wrong.AddRange(status == HttpStatusCode.Forbidden ? [$"{route} with every permission answered {status}"] : []);
+            }
+        }
+        finally
+        {
+            await factory.WithDatabaseAsync(async db =>
+            {
+                await db.UserRoles.Where(row => row.RoleId == role.Id).ExecuteDeleteAsync();
+                await db.RolePermissions.Where(row => row.RoleId == role.Id).ExecuteDeleteAsync();
+                await db.Roles.Where(row => row.Id == role.Id).ExecuteDeleteAsync();
+                await db.TranslationKeys.Where(row => row.Id == key.Id).ExecuteDeleteAsync();
+            });
+        }
+
+        Assert.NotEmpty(routes);
+        Assert.Empty(wrong);
+    }
+
+    private IEnumerable<RouteEndpoint> Endpoints() =>
+        factory.Services.GetRequiredService<IEnumerable<EndpointDataSource>>().SelectMany(source => source.Endpoints).OfType<RouteEndpoint>();
+
+    private static List<Permission> PermissionsOf(RouteEndpoint route)
+    {
+        var policies = route.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy).ToList();
+        return Enum.GetValues<Permission>().Where(permission => policies.Contains(permission.ToString())).ToList();
+    }
+
+    /// <summary>One method of a route that names a permission, called with made-up ids and no body: the permission is checked before either is read.</summary>
+    private record GatedRoute(string Method, RoutePattern Pattern, List<Permission> Permissions)
+    {
+        public HttpRequestMessage Request() => new(new HttpMethod(Method), "/" + string.Join("/", Pattern.PathSegments.Select(segment => string.Concat(segment.Parts.Select(part => part switch
+        {
+            RoutePatternLiteralPart literal => literal.Content,
+            RoutePatternSeparatorPart separator => separator.Content,
+            RoutePatternParameterPart { ParameterPolicies: [{ Content: "guid" }] } => Guid.CreateVersion7().ToString(),
+            _ => "1",
+        })))));
+
+        public override string ToString() => $"{Method} {Pattern.RawText}";
     }
 }
