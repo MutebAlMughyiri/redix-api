@@ -70,7 +70,7 @@ public static class ItemReportEndpoints
         }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
         var categoryName = await db.Categories.Where(category => category.Id == item.CategoryId).Select(category => category.Name).SingleAsync();
         var total = rows.Sum(row => row.entry.Amount);
-        return new ItemReportView(item.Id, item.Name, categoryName, total, columns.Select(column => column.Name).ToList(), subgroups, contractViews);
+        return new ItemReportView(item.Id, item.Name, categoryName, total, columns.Select(column => column.Name).ToList(), subgroups, contractViews) { ShowsTablePercentages = item.ShowsTablePercentages };
     }
 }
 
@@ -82,7 +82,11 @@ public static class ItemReportEndpoints
 /// <param name="Columns">The names of its own columns that print in its report (FR-41), in the order of each row's values.</param>
 /// <param name="Subgroups">Its purchases, a table per subgroup.</param>
 /// <param name="Contracts">Its contracts, each with its payments.</param>
-public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, decimal Total, List<string> Columns, List<SubgroupReportView> Subgroups, List<ContractReportView> Contracts);
+public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, decimal Total, List<string> Columns, List<SubgroupReportView> Subgroups, List<ContractReportView> Contracts)
+{
+    /// <summary>True when its sheet calculates each table's percentage (AC-46.9); false in a report issued before the choice existed.</summary>
+    public bool ShowsTablePercentages { get; init; }
+}
 
 /// <summary>One subgroup's purchases.</summary>
 /// <param name="Id">The subgroup.</param>

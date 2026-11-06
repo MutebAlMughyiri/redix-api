@@ -29,6 +29,7 @@ public static class CategoriesEndpoints
         changes.MapPost("/items/{itemId:guid}/enable", EnableItem);
         changes.MapPost("/items/{itemId:guid}/subgroups", AddSubgroup);
         changes.MapPost("/items/{itemId:guid}/type", ChangeItemType);
+        changes.MapPost("/items/{itemId:guid}/table-percentages", SetTablePercentages);
         changes.MapPost("/items/{itemId:guid}/subgroups/reorder", ReorderSubgroups);
         changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}", RenameSubgroup);
         changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}/delete", DeleteSubgroup);
@@ -186,6 +187,26 @@ public static class CategoriesEndpoints
         return Results.Ok();
     }
 
+    /// <summary>Sets whether the item's sheet calculates each table's percentage of اجمالي الكل (AC-46.9), in the audit trail.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="itemId">The item.</param>
+    /// <param name="request">Whether it does.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the structure lives in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static async Task<IResult> SetTablePercentages(Guid projectId, Guid itemId, TablePercentagesRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
+        if (item is null)
+        {
+            return Results.NotFound();
+        }
+        item.ShowsTablePercentages = request.IsOn;
+        db.Audit(item, AuditAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
+
     /// <summary>Adds a named subgroup at the end of an item's list. An unacceptable name answers <c>invalidName</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
@@ -320,6 +341,10 @@ public record AddItemRequest(string Name, ItemType Type);
 /// <param name="Type">What it becomes.</param>
 public record ChangeItemTypeRequest(ItemType Type);
 
+/// <summary>What the app sends to choose whether an item's sheet calculates each table's percentage.</summary>
+/// <param name="IsOn">Whether it does.</param>
+public record TablePercentagesRequest(bool IsOn);
+
 /// <summary>What the app sends to put a list in a new order.</summary>
 /// <param name="Ids">Every row's id, in the new order.</param>
 public record ReorderRequest(List<Guid> Ids);
@@ -341,10 +366,11 @@ public record CategoryView(Guid Id, string Name, bool IsActive, List<ItemView> I
 /// <param name="Type">What it is for.</param>
 /// <param name="IsActive">False once disabled.</param>
 /// <param name="Subgroups">Its subgroups in order, the general one first, whose name is empty.</param>
-public record ItemView(Guid Id, string Name, ItemType Type, bool IsActive, List<SubgroupView> Subgroups)
+/// <param name="ShowsTablePercentages">True when its sheet calculates each table's percentage (AC-46.9).</param>
+public record ItemView(Guid Id, string Name, ItemType Type, bool IsActive, List<SubgroupView> Subgroups, bool ShowsTablePercentages)
 {
     /// <summary>The view of <paramref name="item"/>.</summary>
-    public static ItemView Of(Item item) => new(item.Id, item.Name, item.Type, item.IsActive, item.Subgroups.Select(subgroup => new SubgroupView(subgroup.Id, subgroup.Name)).ToList());
+    public static ItemView Of(Item item) => new(item.Id, item.Name, item.Type, item.IsActive, item.Subgroups.Select(subgroup => new SubgroupView(subgroup.Id, subgroup.Name)).ToList(), item.ShowsTablePercentages);
 }
 
 /// <summary>A subgroup as the app shows it.</summary>

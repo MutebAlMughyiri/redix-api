@@ -21,6 +21,9 @@ public class Item : IOrdered
     /// <summary>False once disabled: it disappears from entry and stays in the reports (BR-15).</summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>True when its sheet calculates each table's percentage of اجمالي الكل (AC-46.9); off until chosen.</summary>
+    public bool ShowsTablePercentages { get; set; }
+
     /// <summary>Its subgroups in order, the general one first.</summary>
     public List<Subgroup> Subgroups { get; init; } = [];
 
@@ -45,7 +48,7 @@ public class Item : IOrdered
     /// </summary>
     public Item CopyFor(Guid categoryId, List<DefaultColumn> defaults)
     {
-        var copy = new Item { CategoryId = categoryId, Name = Name, Type = Type, SortOrder = SortOrder };
+        var copy = new Item { CategoryId = categoryId, Name = Name, Type = Type, SortOrder = SortOrder, ShowsTablePercentages = ShowsTablePercentages };
         copy.Subgroups.AddRange(Subgroups.Select(subgroup => subgroup.CopyFor(copy.Id)));
         copy.Columns.AddRange(Columns.Where(column => !column.IsHidden).Select(column => ItemColumn.Of(column, copy.Id, column.SortOrder)));
         if (copy.Columns.Count == 0)

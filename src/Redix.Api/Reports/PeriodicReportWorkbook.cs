@@ -2,21 +2,31 @@ using System.Globalization;
 using System.Text.Json;
 using ClosedXML.Excel;
 using Redix.Api.Accounts;
+using Redix.Api.Partners;
 using Redix.Api.Revenue;
 using Redix.Api.Translations;
 
 namespace Redix.Api.Reports;
 
 /// <summary>
-/// The periodic report as a workbook laid out as the project's own statement (UC-055, FR-46): الخلاصة with the revenue on one side and the expenses on the other, راس المال with a block of
-/// movements per partner, الإيرادات with each sale and VAT refund, then a sheet per item. Every total is a live formula that points at the sheet it adds, and new rows are green (BR-26).
+/// The periodic report as a workbook laid out as the project's own statement (UC-055, FR-46): الخلاصة with the revenue on one side and the expenses on the other, then a sheet for every
+/// other line of it, each written by <see cref="StatementWriter"/>: راس المال with a table per partner, a sheet per kind of revenue, and a sheet per item. Every line of the summary points at
+/// its own sheets, and no sheet serves two lines (AC-46.10). Every total is a live formula, and new rows are green (BR-26).
 /// </summary>
 public static class PeriodicReportWorkbook
 {
     private const int Revenue = 1;
     private const int Expenses = 4;
 
-    private static readonly (RevenueType Type, string Title)[] RevenueBlocks = [(RevenueType.Sale, "المبيعات"), (RevenueType.VatRefund, "استرجاع الضرائب"), (RevenueType.Other, "إيرادات أخرى")];
+    private static readonly (RevenueType Type, string Name)[] RevenueSheets = [(RevenueType.Sale, "البيع"), (RevenueType.VatRefund, "استرجاع الضرائب"), (RevenueType.Other, "إيرادات أخرى")];
+
+    private static readonly StatementColumn MovementAmount = new("المبلغ", 13, CellKind.Text);
+
+    private static readonly List<StatementColumn> MovementColumns = [new("النوع", 11, CellKind.Centred), new("التاريخ", 13, CellKind.Date), new("الوصف", 27.25, CellKind.Linked)];
+
+    private static readonly StatementColumn RevenueAmount = new("المبلغ", 13, CellKind.Text);
+
+    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", 39.13, CellKind.Text), new("التاريخ", 11.13, CellKind.Date)];
 
     /// <summary>The workbook of <paramref name="report"/>, each partner's receipt a link under <paramref name="receiptsAddress"/>.</summary>
     public static byte[] Of(PeriodicReportSnapshot report, string receiptsAddress)
@@ -24,20 +34,43 @@ public static class PeriodicReportWorkbook
         using var workbook = StatementStyle.NewWorkbook();
         var names = new HashSet<string>();
         var summary = StatementStyle.AddSheet(workbook, "الخلاصة", names, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
-        var capital = StatementStyle.AddSheet(workbook, "راس المال", names, 4.63, 11, 13, 27.25, 13, 2.88, 4.38, 10.63, 11, 27, 13);
-        var revenueSheet = StatementStyle.AddSheet(workbook, "الإيرادات", names, 4.25, 39.13, 11.13, 13);
-        var revenueTotals = FillRevenue(revenueSheet, report).ToDictionary(pair => pair.Key, pair => StatementStyle.Reference(revenueSheet, pair.Value));
-        var itemTotals = new Dictionary<Guid, string>();
+        var capitalTotal = StatementWriter.Add(workbook, CapitalOf(report, receiptsAddress), names);
+        var revenueTotals = RevenueSheets.Where(kind => kind.Type != RevenueType.Other || report.RevenueRows.Any(row => row.Type == RevenueType.Other))
+            .ToDictionary(kind => kind.Type, kind => StatementWriter.Add(workbook, RevenueOf(kind.Name, report.RevenueRows.Where(row => row.Type == kind.Type)), names));
         var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
-        foreach (var item in report.Items)
-        {
-            var sheet = StatementStyle.AddSheet(workbook, repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName, names);
-            itemTotals[item.ItemId] = StatementStyle.Reference(sheet, ItemReportFiles.FillSheet(sheet, item));
-        }
-        var capitalTotal = StatementStyle.Reference(capital, FillCapital(capital, report, receiptsAddress));
+        var itemTotals = report.Items.ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, names));
         FillSummary(summary, report, capitalTotal, revenueTotals, itemTotals);
         return StatementStyle.Bytes(workbook);
     }
+
+    /// <summary>
+    /// The capital sheet (AC-46.6): a table per partner, their movements oldest first, each receipt a link under <paramref name="receiptsAddress"/>, and their share under their total. Someone
+    /// who sees only their own line (BR-31) gets the other partners as one table of one row, so اجمالي الكل is still the project's capital.
+    /// </summary>
+    private static StatementSheet CapitalOf(PeriodicReportSnapshot report, string receiptsAddress)
+    {
+        List<StatementTable> tables = [.. report.Partners.Select(partner => Movements(partner.Name, Enumerable.Reverse(partner.Movements).Select(movement => MovementRow(movement, receiptsAddress))))];
+        var others = report.CapitalTotal - report.Partners.Sum(partner => partner.Balance);
+        if (others != 0)
+        {
+            tables.Add(Movements("باقي الشركاء", [new StatementRow(["", Blank.Value, "رأس مال باقي الشركاء"], others, "", false, true)]));
+        }
+        return new StatementSheet("راس المال", tables.Count > 0 ? tables : [Movements("الشركاء", [])], "نسبة المشاركة");
+    }
+
+    private static StatementTable Movements(string title, IEnumerable<StatementRow> rows) => new(title, MovementColumns, MovementAmount, rows.ToList(), Agreement.None);
+
+    private static StatementRow MovementRow(CapitalMovementView movement, string receiptsAddress) => new(
+        [
+            TranslationSeed.Arabic($"capital.{JsonNamingPolicy.CamelCase.ConvertName(movement.Type.ToString())}"),
+            movement.Date.ToDateTime(TimeOnly.MinValue),
+            movement.Description.Length > 0 || movement.AttachmentId.Length == 0 ? movement.Description : "الإيصال",
+        ],
+        movement.Amount, movement.AttachmentId.Length > 0 ? receiptsAddress + movement.AttachmentId : "", false, true);
+
+    /// <summary>A sheet of one kind of revenue, named <paramref name="name"/>: its entries oldest first, new ones green (BR-26).</summary>
+    private static StatementSheet RevenueOf(string name, IEnumerable<ReportRevenueView> rows) =>
+        new(name, [new StatementTable(name, RevenueColumns, RevenueAmount, rows.Select(row => new StatementRow([row.Description, row.Date.ToDateTime(TimeOnly.MinValue)], row.Amount, "", row.IsNew, true)).ToList(), Agreement.None)], "");
 
     private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, string capitalTotal, Dictionary<RevenueType, string> revenueTotals, Dictionary<Guid, string> itemTotals)
     {
@@ -113,49 +146,6 @@ public static class PeriodicReportWorkbook
     }
 
     /// <summary>
-    /// Writes a block per kind of revenue, as the statement's sales sheet does: its title, a header, each entry oldest first, new ones green (BR-26), and its total. Sales and VAT refunds always have a
-    /// block, for the summary's lines to point at; other revenue only when there is some. Answers each block's total address.
-    /// </summary>
-    private static Dictionary<RevenueType, string> FillRevenue(IXLWorksheet sheet, PeriodicReportSnapshot report)
-    {
-        var totals = new Dictionary<RevenueType, string>();
-        var row = 1;
-        foreach (var (type, title) in RevenueBlocks.Where(block => block.Type != RevenueType.Other || report.RevenueRows.Any(entry => entry.Type == RevenueType.Other)))
-        {
-            var head = sheet.Range(row, 1, row, 4).Merge();
-            head.FirstCell().Value = title;
-            head.AsTotal();
-            var header = sheet.Range(row + 1, 1, row + 1, 4).AsHeader();
-            header.Cell(1, 2).Value = "الوصف";
-            header.Cell(1, 3).Value = "التاريخ";
-            header.Cell(1, 4).Value = "المبلغ";
-            row += 2;
-            var first = row;
-            var number = 1;
-            foreach (var entry in report.RevenueRows.Where(entry => entry.Type == type))
-            {
-                sheet.Cell(row, 1).SetCentred(number++);
-                sheet.Cell(row, 2).Value = entry.Description;
-                sheet.Cell(row, 3).SetDate(entry.Date);
-                sheet.Cell(row, 4).SetMoney(entry.Amount);
-                var line = sheet.Range(row, 1, row, 4).AsBody();
-                if (entry.IsNew)
-                {
-                    line.AsNew();
-                }
-                row++;
-            }
-            var total = sheet.Range(row, 1, row, 2).Merge();
-            total.FirstCell().Value = "الاجمالي";
-            sheet.Cell(row, 4).SetMoneyFormula(row > first ? $"SUM(D{first}:D{row - 1})" : "0");
-            sheet.Range(row, 1, row, 4).AsTotal();
-            totals[type] = $"D{row}";
-            row += 3;
-        }
-        return totals;
-    }
-
-    /// <summary>
     /// Writes a block per category of more than one item, each item pointing at its sheet, under whichever side of the summary ends higher, starting from <paramref name="bottoms"/>: the last row of the revenue
     /// side, then of the expenses side. Answers the address of each block's total.
     /// </summary>
@@ -181,83 +171,6 @@ public static class PeriodicReportWorkbook
             bottoms[side] = row;
         }
         return totals;
-    }
-
-    /// <summary>
-    /// Writes the partners' table and a block of movements per partner, the first under the table and each next one under whichever side ends higher, as the statement lays them out, and answers the
-    /// address of the capital's total. Someone who sees only their own line
-    /// (BR-31) still reads the whole total: the other partners are one line between them.
-    /// </summary>
-    private static string FillCapital(IXLWorksheet sheet, PeriodicReportSnapshot report, string receiptsAddress)
-    {
-        sheet.Range(1, 2, 1, 4).AsHeader().Style.Font.Bold = true;
-        sheet.Cell(1, 3).Value = "راس المال";
-        sheet.Cell(1, 4).Value = "نسبة المشاركة";
-        var others = report.CapitalTotal - report.Partners.Sum(partner => partner.Balance);
-        var total = 2 + report.Partners.Count + (others != 0 ? 1 : 0);
-        int[] bottoms = [total + 1, 0];
-        var row = 2;
-        foreach (var partner in report.Partners)
-        {
-            var side = row == 2 || bottoms[0] <= bottoms[1] ? 0 : 1;
-            var block = Movements(sheet, bottoms[side] + 1, side == 0 ? 1 : 7, partner, receiptsAddress);
-            bottoms[side] = block + 1;
-            Share(sheet, row++, total, partner.Name).SetMoneyFormula($"{(side == 0 ? "E" : "K")}{block}");
-        }
-        if (others != 0)
-        {
-            Share(sheet, row, total, "باقي الشركاء").SetMoney(others);
-        }
-        sheet.Cell(total, 2).SetCentred("الإجمالي");
-        sheet.Cell(total, 3).SetMoneyFormula(total > 2 ? $"SUM(C2:C{total - 1})" : "0");
-        sheet.Cell(total, 4).FormulaA1 = total > 2 ? $"SUM(D2:D{total - 1})" : "0";
-        sheet.Cell(total, 4).Style.NumberFormat.Format = "0.00";
-        sheet.Range(total, 2, total, 4).AsTotal();
-        return $"C{total}";
-    }
-
-    /// <summary>A partner's line in the table, its share a formula of the total; answers the cell its capital goes in.</summary>
-    private static IXLCell Share(IXLWorksheet sheet, int row, int total, string name)
-    {
-        sheet.Cell(row, 2).SetCentred(name);
-        sheet.Cell(row, 4).FormulaA1 = $"IF(C{total}=0,0,C{row}/C{total}*100)";
-        sheet.Cell(row, 4).Style.NumberFormat.Format = "0.0000000000";
-        sheet.Range(row, 2, row, 4).AsBody();
-        return sheet.Cell(row, 3);
-    }
-
-    /// <summary>Writes a partner's block from <paramref name="start"/> at <paramref name="column"/>: their name, then their movements oldest first, then their total; answers the total's row.</summary>
-    private static int Movements(IXLWorksheet sheet, int start, int column, ReportPartnerView partner, string receiptsAddress)
-    {
-        var name = sheet.Range(start, column + 1, start, column + 4).Merge();
-        name.FirstCell().SetCentred(partner.Name);
-        name.Style.Font.Bold = true;
-        sheet.Range(start + 1, column, start + 1, column + 4).AsHeader();
-        sheet.Cell(start + 1, column + 2).Value = "التاريخ";
-        sheet.Cell(start + 1, column + 3).Value = "الوصف";
-        sheet.Cell(start + 1, column + 4).Value = "المبلغ";
-        var row = start + 2;
-        var number = 1;
-        foreach (var movement in Enumerable.Reverse(partner.Movements))
-        {
-            sheet.Cell(row, column).SetCentred(number++);
-            sheet.Cell(row, column + 1).SetCentred(TranslationSeed.Arabic($"capital.{JsonNamingPolicy.CamelCase.ConvertName(movement.Type.ToString())}"));
-            sheet.Cell(row, column + 2).SetDate(movement.Date);
-            var description = sheet.Cell(row, column + 3);
-            description.Value = movement.Description.Length > 0 || movement.AttachmentId.Length == 0 ? movement.Description : "الإيصال";
-            if (movement.AttachmentId.Length > 0)
-            {
-                description.SetHyperlink(new XLHyperlink(receiptsAddress + movement.AttachmentId));
-            }
-            sheet.Cell(row, column + 4).SetMoney(movement.Amount);
-            sheet.Range(row, column, row, column + 4).AsBody();
-            row++;
-        }
-        var letter = sheet.Cell(row, column + 4).Address.ColumnLetter;
-        sheet.Cell(row, column).Value = "الاجمالي";
-        sheet.Cell(row, column + 4).SetMoneyFormula(row > start + 2 ? $"SUM({letter}{start + 2}:{letter}{row - 1})" : "0");
-        sheet.Range(row, column, row, column + 4).AsTotal();
-        return row;
     }
 
     /// <summary>A label in <paramref name="column"/> and an amount beside it; answers the two cells.</summary>

@@ -608,6 +608,7 @@ public static class TranslationSeed
         ("categories.typePurchases", "Purchases", "مشتريات"),
         ("categories.typeContractorPayments", "Contractor payments", "دفعات مقاولين"),
         ("categories.typeBoth", "Purchases + contractor payments", "مشتريات + دفعات مقاولين"),
+        ("categories.tablePercentages", "Calculate a percentage for each table", "حساب النسبة لكل جدول"),
         ("categories.rename", "Rename", "إعادة تسمية"),
         ("categories.disable", "Disable", "تعطيل"),
         ("categories.enable", "Enable", "تفعيل"),

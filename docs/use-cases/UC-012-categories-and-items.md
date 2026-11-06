@@ -31,6 +31,7 @@ A project's structure is copied **when the admin approves it** (`ProjectStructur
 | `POST /projects/{projectId}/items/{itemId}/subgroups/reorder` with `{ ids }`, the named ones | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}/delete` | `ManageStructure` | `200`; `404`; `409` `generalSubgroup` or `subgroupInUse` |
 | `POST /projects/{projectId}/items/{itemId}/type` with `{ type }` | `ManageStructure` | `200`; `404`; `409` `itemHasEntries` |
+| `POST /projects/{projectId}/items/{itemId}/table-percentages` with `{ isOn }` | `ManageStructure` | `200`; `404`. Whether the item's sheet in the periodic report calculates each table's percentage (AC-46.9); off until chosen, in the audit trail |
 
 Every change also answers `409` `projectFinished` in a finished project. `type` is `purchases`, `contractorPayments` or `both`.
 

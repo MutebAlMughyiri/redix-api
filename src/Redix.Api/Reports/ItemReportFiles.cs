@@ -16,13 +16,60 @@ public static class ItemReportFiles
         return Document.Create(document => PeriodicReportFiles.Page(document, page => ItemPage(page, item))).GeneratePdf();
     }
 
+    private static readonly StatementColumn Cost = new("التكلفة", 10.88, CellKind.Text);
+
+    private static readonly StatementColumn Payment = new("الدفعة", 10.88, CellKind.Text);
+
+    private static readonly List<StatementColumn> PaymentColumns = [new("الوصف", 39.13, CellKind.Text), new("التاريخ", 11.13, CellKind.Date)];
+
     /// <summary>One item's report as a workbook, its sheet as the periodic report's.</summary>
     public static byte[] Excel(ItemReportView item)
     {
         using var workbook = StatementStyle.NewWorkbook();
-        FillSheet(StatementStyle.AddSheet(workbook, item.ItemName, []), item);
+        StatementWriter.Add(workbook, SheetOf(item), []);
         return StatementStyle.Bytes(workbook);
     }
+
+    /// <summary>
+    /// An item's sheet (FR-46): a table of purchases per subgroup that has any, titled with its name or, for the general one, the item's, the item's own report columns before the cost (AC-46.8);
+    /// then a table of payments per contract, its agreed amount under it (AC-46.2). The item's choice says whether each table's percentage is calculated (AC-46.9).
+    /// </summary>
+    public static StatementSheet SheetOf(ItemReportView item)
+    {
+        List<StatementColumn> purchaseColumns =
+        [
+            new("الوصف", 39.13, CellKind.Text),
+            new("رقم الفاتورة", 10.38, CellKind.Centred),
+            new("التاريخ", 11.13, CellKind.Date),
+            new("سعر الحبة", 8.75, CellKind.Price),
+            new("العدد", 5.25, CellKind.Centred),
+            .. item.Columns.Select(name => new StatementColumn(name, 12, CellKind.Centred)),
+        ];
+        List<StatementTable> tables =
+        [
+            .. item.Subgroups.Select(subgroup => new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, purchaseColumns, Cost, subgroup.Rows.Select(PurchaseRow).ToList(), Agreement.None)),
+            .. item.Contracts.Select(contract => new StatementTable($"دفعات {contract.ContractorName}", PaymentColumns, Payment, contract.Payments.Select(PaymentRow).ToList(), contract.IsOpenValue ? Agreement.Open : Agreement.Of(contract.Value))),
+        ];
+        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [new StatementTable(item.ItemName, purchaseColumns, Cost, [], Agreement.None)], item.ShowsTablePercentages ? "النسبة" : "");
+    }
+
+    private static StatementRow PurchaseRow(ItemEntryRow line) => new(
+        [
+            string.Join(" · ", new[] { line.Description, line.SupplierName }.Where(text => text.Length > 0)),
+            line.InvoiceNumber,
+            line.Date.ToDateTime(TimeOnly.MinValue),
+            line.Quantity == 0 ? Blank.Value : line.UnitPrice,
+            line.Quantity == 0 ? Blank.Value : line.Quantity,
+            .. line.Values.Select(value => (XLCellValue)value),
+        ],
+        line.Amount, "", line.IsNew, true);
+
+    private static StatementRow PaymentRow(ItemEntryRow payment) => new(
+        [
+            string.Join(" · ", new[] { payment.Description, payment.IsOutsideContract ? "خارج العقد" : "" }.Concat(payment.Values).Where(text => text.Length > 0)),
+            payment.Date.ToDateTime(TimeOnly.MinValue),
+        ],
+        payment.Amount, "", payment.IsNew, !payment.IsOutsideContract);
 
     /// <summary>An item's page: a table per subgroup in the statement's columns, then each contract with its value in the head, its payments, their total, what remains and the total of all; new rows green (FR-45).</summary>
     public static void ItemPage(ColumnDescriptor page, ItemReportView item)
@@ -86,126 +133,6 @@ public static class ItemReportFiles
         row.Quantity == 0 ? "" : $"{row.Quantity:0.##}",
         ReportFormats.Money(row.Amount),
     ];
-
-    /// <summary>
-    /// Fills a sheet as the statement's item sheet: the purchases in one table oldest first, the item's own report columns before the cost, and their total; then a block per contract with its value,
-    /// its payments, what remains after each, and their total; then the total of all. New rows are green (BR-26). Answers the address of the total of all, for the summary to point at (FR-46).
-    /// </summary>
-    public static string FillSheet(IXLWorksheet sheet, ItemReportView item)
-    {
-        string[] titles = [.. Titles[..^1], .. item.Columns, Titles[^1]];
-        double[] widths = [4.25, 39.13, 10.38, 11.13, 11.5, 8.75, 5.25, .. item.Columns.Select(_ => 12.0), 10.88];
-        for (var column = 0; column < widths.Length; column++)
-        {
-            sheet.Column(column + 1).Width = widths[column];
-        }
-        var cost = titles.Length;
-        var costLetter = sheet.Cell(1, cost).Address.ColumnLetter;
-        var parts = new List<string>();
-        var row = 1;
-        var purchases = item.Subgroups.SelectMany(subgroup => subgroup.Rows.Select(line => (Line: line, Item: subgroup.Name.Length > 0 ? $"{item.ItemName} · {subgroup.Name}" : item.ItemName))).OrderBy(purchase => purchase.Line.Date).ToList();
-        if (purchases.Count > 0 || item.Contracts.Count == 0)
-        {
-            var header = sheet.Range(row, 1, row, cost).AsHeader();
-            for (var column = 0; column < cost; column++)
-            {
-                header.Cell(1, column + 1).Value = titles[column];
-            }
-            row++;
-            var number = 1;
-            foreach (var (line, itemName) in purchases)
-            {
-                sheet.Cell(row, 1).SetCentred(number++);
-                sheet.Cell(row, 2).Value = string.Join(" · ", new[] { line.Description, line.SupplierName }.Where(text => text.Length > 0));
-                sheet.Cell(row, 3).SetCentred(line.InvoiceNumber);
-                sheet.Cell(row, 4).SetDate(line.Date);
-                sheet.Cell(row, 5).SetCentred(itemName);
-                if (line.Quantity != 0)
-                {
-                    sheet.Cell(row, 6).SetMoney(line.UnitPrice).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    sheet.Cell(row, 7).Value = line.Quantity;
-                    sheet.Cell(row, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                }
-                for (var value = 0; value < line.Values.Count; value++)
-                {
-                    sheet.Cell(row, 8 + value).SetCentred(line.Values[value]);
-                }
-                sheet.Cell(row, cost).SetMoney(line.Amount);
-                Mark(sheet.Range(row, 1, row, cost).AsBody(), line.IsNew);
-                row++;
-            }
-            var total = sheet.Range(row, 1, row, 2).Merge();
-            total.FirstCell().Value = "الاجمالي";
-            sheet.Cell(row, cost).SetMoneyFormula(row > 2 ? $"SUM({costLetter}2:{costLetter}{row - 1})" : "0");
-            sheet.Range(row, 1, row, cost).AsTotal();
-            parts.Add($"{costLetter}{row}");
-            row += 3;
-        }
-        foreach (var contract in item.Contracts)
-        {
-            parts.Add(Contract(sheet, row, contract));
-            row += contract.Payments.Count + 4;
-        }
-        var all = sheet.Range(row, 1, row, 2).Merge();
-        all.FirstCell().Value = "اجمالي الكل";
-        sheet.Cell(row, cost).SetMoneyFormula(parts.Count > 0 ? string.Join("+", parts) : "0");
-        sheet.Range(row, 1, row, cost).AsTotal();
-        return $"{costLetter}{row}";
-    }
-
-    /// <summary>
-    /// Writes a contract's block from <paramref name="start"/>, as the statement's payment blocks: its title and value, a header, each payment with what remains of a fixed value after it (a payment
-    /// outside the contract leaves that as it was, BR-04), and the payments' total down the side. Answers the total's address.
-    /// </summary>
-    private static string Contract(IXLWorksheet sheet, int start, ContractReportView contract)
-    {
-        var title = sheet.Range(start, 1, start, 2).Merge();
-        title.FirstCell().SetCentred($"دفعات {contract.ContractorName}");
-        var value = sheet.Range(start, 3, start, 5).Merge();
-        if (contract.IsOpenValue)
-        {
-            value.FirstCell().SetCentred("قيمة مفتوحة");
-        }
-        else
-        {
-            value.FirstCell().SetMoney(contract.Value).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        }
-        sheet.Range(start, 1, start, 5).Style.Fill.SetBackgroundColor(StatementStyle.Grey).Border.SetOutsideBorder(XLBorderStyleValues.Medium);
-        var header = sheet.Range(start + 1, 1, start + 1, 5).AsHeader();
-        header.Cell(1, 2).Value = "الوصف";
-        header.Cell(1, 3).Value = "التاريخ";
-        header.Cell(1, 4).Value = "الدفعة";
-        header.Cell(1, 5).Value = "المتبقي";
-        var row = start + 2;
-        var remaining = $"C{start}";
-        var number = 1;
-        foreach (var payment in contract.Payments)
-        {
-            sheet.Cell(row, 1).SetCentred(number++);
-            sheet.Cell(row, 2).Value = string.Join(" · ", new[] { payment.Description, payment.IsOutsideContract ? "خارج العقد" : "" }.Concat(payment.Values).Where(text => text.Length > 0));
-            sheet.Cell(row, 3).SetDate(payment.Date);
-            sheet.Cell(row, 4).SetMoney(payment.Amount);
-            if (!contract.IsOpenValue)
-            {
-                sheet.Cell(row, 5).SetMoneyFormula(payment.IsOutsideContract ? remaining : $"{remaining}-D{row}");
-                remaining = $"E{row}";
-            }
-            Mark(sheet.Range(row, 1, row, 5).AsBody(), payment.IsNew);
-            row++;
-        }
-        var total = sheet.Range(start, 6, Math.Max(row - 1, start + 1), 6).Merge();
-        total.FirstCell().SetMoneyFormula(row > start + 2 ? $"SUM(D{start + 2}:D{row - 1})" : "0");
-        total.Style.Border.SetOutsideBorder(XLBorderStyleValues.Medium);
-        return $"F{start}";
-    }
-
-    private static void Mark(IXLRange row, bool isNew)
-    {
-        if (isNew)
-        {
-            row.AsNew();
-        }
-    }
 
     /// <summary>The contracts report as a PDF: each contract's value, paid, remaining, and an alert where more was paid (FR-31, FR-33).</summary>
     public static byte[] ContractsPdf(string projectName, List<ContractView> contracts)

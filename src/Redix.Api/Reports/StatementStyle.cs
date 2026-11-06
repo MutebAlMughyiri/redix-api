@@ -56,6 +56,15 @@ public static class StatementStyle
         return stream.ToArray();
     }
 
+    /// <summary>A table's title row: grey, a medium line round it, centred.</summary>
+    public static IXLRange AsTitle(this IXLRange range)
+    {
+        range.Style.Fill.BackgroundColor = Grey;
+        range.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+        range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        return range;
+    }
+
     /// <summary>A header row: grey, a hair line under it, centred.</summary>
     public static IXLRange AsHeader(this IXLRange range)
     {
@@ -107,6 +116,15 @@ public static class StatementStyle
     {
         cell.FormulaA1 = formula;
         return cell.AsMoney();
+    }
+
+    /// <summary>Writes <paramref name="formula"/> shown as a percentage with two decimals, to the left as an amount is.</summary>
+    public static IXLCell SetPercentFormula(this IXLCell cell, string formula)
+    {
+        cell.FormulaA1 = formula;
+        cell.Style.NumberFormat.Format = "0.00%";
+        cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+        return cell;
     }
 
     /// <summary>Writes <paramref name="date"/> as the statement does, centred.</summary>

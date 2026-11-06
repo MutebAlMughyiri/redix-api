@@ -2324,6 +2324,9 @@ namespace Redix.Api.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<bool>("ShowsTablePercentages")
+                        .HasColumnType("bit");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
@@ -2343,6 +2346,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("c4aece2a-cb9d-fb1d-ae30-dce8baba5959"),
                             IsActive = true,
                             Name = "تكلفة الأرض",
+                            ShowsTablePercentages = false,
                             SortOrder = 0,
                             Type = (byte)2
                         },
@@ -2352,6 +2356,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b0d24870-bb67-9c79-b0bd-ec7fef769cde"),
                             IsActive = true,
                             Name = "المكتب الهندسي",
+                            ShowsTablePercentages = false,
                             SortOrder = 0,
                             Type = (byte)2
                         },
@@ -2361,6 +2366,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b0d24870-bb67-9c79-b0bd-ec7fef769cde"),
                             IsActive = true,
                             Name = "رسوم الأمانة",
+                            ShowsTablePercentages = false,
                             SortOrder = 1,
                             Type = (byte)2
                         },
@@ -2370,6 +2376,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b0d24870-bb67-9c79-b0bd-ec7fef769cde"),
                             IsActive = true,
                             Name = "المكتب المشرف",
+                            ShowsTablePercentages = false,
                             SortOrder = 2,
                             Type = (byte)2
                         },
@@ -2379,6 +2386,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b0d24870-bb67-9c79-b0bd-ec7fef769cde"),
                             IsActive = true,
                             Name = "التأمين",
+                            ShowsTablePercentages = false,
                             SortOrder = 3,
                             Type = (byte)2
                         },
@@ -2388,6 +2396,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b0d24870-bb67-9c79-b0bd-ec7fef769cde"),
                             IsActive = true,
                             Name = "المحاسب",
+                            ShowsTablePercentages = false,
                             SortOrder = 4,
                             Type = (byte)2
                         },
@@ -2397,6 +2406,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b0d24870-bb67-9c79-b0bd-ec7fef769cde"),
                             IsActive = true,
                             Name = "أخرى",
+                            ShowsTablePercentages = false,
                             SortOrder = 5,
                             Type = (byte)2
                         },
@@ -2406,6 +2416,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "الحفر",
+                            ShowsTablePercentages = false,
                             SortOrder = 0,
                             Type = (byte)2
                         },
@@ -2415,6 +2426,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "الحديد",
+                            ShowsTablePercentages = false,
                             SortOrder = 1,
                             Type = (byte)0
                         },
@@ -2424,6 +2436,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "الخرسانة",
+                            ShowsTablePercentages = false,
                             SortOrder = 2,
                             Type = (byte)0
                         },
@@ -2433,6 +2446,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "البناء",
+                            ShowsTablePercentages = false,
                             SortOrder = 3,
                             Type = (byte)2
                         },
@@ -2442,6 +2456,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "دفعات العظم",
+                            ShowsTablePercentages = false,
                             SortOrder = 4,
                             Type = (byte)1
                         },
@@ -2451,6 +2466,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "الكهرباء",
+                            ShowsTablePercentages = false,
                             SortOrder = 5,
                             Type = (byte)2
                         },
@@ -2460,6 +2476,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "السباكة",
+                            ShowsTablePercentages = false,
                             SortOrder = 6,
                             Type = (byte)2
                         },
@@ -2469,6 +2486,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "ردود الماء",
+                            ShowsTablePercentages = false,
                             SortOrder = 7,
                             Type = (byte)2
                         },
@@ -2478,6 +2496,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("b66bf15d-0e06-7bae-0877-bdf852e93dad"),
                             IsActive = true,
                             Name = "أغراض الموقع",
+                            ShowsTablePercentages = false,
                             SortOrder = 8,
                             Type = (byte)2
                         },
@@ -2487,6 +2506,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "السباكة",
+                            ShowsTablePercentages = false,
                             SortOrder = 0,
                             Type = (byte)2
                         },
@@ -2496,6 +2516,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "الكهرباء",
+                            ShowsTablePercentages = false,
                             SortOrder = 1,
                             Type = (byte)2
                         },
@@ -2505,6 +2526,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "أبواب خارجية",
+                            ShowsTablePercentages = false,
                             SortOrder = 2,
                             Type = (byte)2
                         },
@@ -2514,6 +2536,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "لياسة",
+                            ShowsTablePercentages = false,
                             SortOrder = 3,
                             Type = (byte)2
                         },
@@ -2523,6 +2546,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "جبس",
+                            ShowsTablePercentages = false,
                             SortOrder = 4,
                             Type = (byte)2
                         },
@@ -2532,6 +2556,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "بلاط",
+                            ShowsTablePercentages = false,
                             SortOrder = 5,
                             Type = (byte)2
                         },
@@ -2541,6 +2566,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "بويه",
+                            ShowsTablePercentages = false,
                             SortOrder = 6,
                             Type = (byte)2
                         },
@@ -2550,6 +2576,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "ألمنيوم",
+                            ShowsTablePercentages = false,
                             SortOrder = 7,
                             Type = (byte)2
                         },
@@ -2559,6 +2586,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "درابزين",
+                            ShowsTablePercentages = false,
                             SortOrder = 8,
                             Type = (byte)2
                         },
@@ -2568,6 +2596,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "حجر الواجهة",
+                            ShowsTablePercentages = false,
                             SortOrder = 9,
                             Type = (byte)2
                         },
@@ -2577,6 +2606,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "أبواب داخلية",
+                            ShowsTablePercentages = false,
                             SortOrder = 10,
                             Type = (byte)2
                         },
@@ -2586,6 +2616,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "العوازل",
+                            ShowsTablePercentages = false,
                             SortOrder = 11,
                             Type = (byte)2
                         },
@@ -2595,6 +2626,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "معدات تشطيب",
+                            ShowsTablePercentages = false,
                             SortOrder = 12,
                             Type = (byte)2
                         },
@@ -2604,6 +2636,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("a3ccf054-ca23-f401-5b42-d8522b8cef2d"),
                             IsActive = true,
                             Name = "رواتب الحارس",
+                            ShowsTablePercentages = false,
                             SortOrder = 13,
                             Type = (byte)2
                         },
@@ -2613,6 +2646,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("122410be-d98a-5b8c-6cac-4843b313db40"),
                             IsActive = true,
                             Name = "إشراف مالي",
+                            ShowsTablePercentages = false,
                             SortOrder = 0,
                             Type = (byte)2
                         },
@@ -2622,6 +2656,7 @@ namespace Redix.Api.Migrations
                             CategoryId = new Guid("122410be-d98a-5b8c-6cac-4843b313db40"),
                             IsActive = true,
                             Name = "إشراف ميداني",
+                            ShowsTablePercentages = false,
                             SortOrder = 1,
                             Type = (byte)2
                         });
@@ -11497,6 +11532,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("55a55129-cf99-6c5e-9c96-0492a445c900"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("be2b4779-1157-7818-3138-61de471fdb61"),
+                            Value = "Calculate a percentage for each table"
+                        },
+                        new
+                        {
+                            Id = new Guid("c4f98685-f8b8-3f24-613b-cee24f2327f6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("be2b4779-1157-7818-3138-61de471fdb61"),
+                            Value = "حساب النسبة لكل جدول"
+                        },
+                        new
+                        {
                             Id = new Guid("fd72c743-bed0-ba53-dea8-fd727c7907c0"),
                             Language = "en",
                             TranslationKeyId = new Guid("33d64ff3-e7e3-f272-c07d-a0b66e6a99f3"),
@@ -19470,6 +19519,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("53a15eb4-21d2-2df7-92c6-6ff00ad5f433"),
                             Description = "",
                             Key = "categories.typeBoth"
+                        },
+                        new
+                        {
+                            Id = new Guid("be2b4779-1157-7818-3138-61de471fdb61"),
+                            Description = "",
+                            Key = "categories.tablePercentages"
                         },
                         new
                         {

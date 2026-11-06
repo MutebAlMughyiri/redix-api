@@ -735,4 +735,33 @@ public class CategoriesTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, (await ChangeTypeAsync(await MemberAsync(project, Field), project.Id, item.Id, ItemType.Both)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await ChangeTypeAsync(otherClient, other.Id, item.Id, ItemType.Both)).StatusCode);
     }
+
+    private static Task<HttpResponseMessage> TablePercentagesAsync(HttpClient client, Guid projectId, Guid itemId, bool isOn) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/table-percentages", new TablePercentagesRequest(isOn), Json);
+
+    [Fact]
+    public async Task AC_46_9_AnItemsChoiceToCalculateEachTablesPercentageIsKeptAndInTheAuditTrail()
+    {
+        var (user, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[2].Items[1];
+        Assert.False(item.ShowsTablePercentages);
+
+        (await TablePercentagesAsync(client, project.Id, item.Id, true)).EnsureSuccessStatusCode();
+
+        Assert.True((await CategoriesOf(client, project.Id))[2].Items[1].ShowsTablePercentages);
+        var record = Assert.Single(await factory.AuditTrailOfAsync(item.Id));
+        Assert.Equal((AuditAction.Update, user.Id), (record.Action, record.UserId));
+        Assert.True(JsonDocument.Parse(record.After).RootElement.GetProperty("ShowsTablePercentages").GetBoolean());
+    }
+
+    [Fact]
+    public async Task OnlyFinanceChoosesTablePercentagesAndNeverInAnotherProject()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = (await CategoriesOf(client, project.Id))[2].Items[1];
+        var (_, otherClient, other) = await FinanceAsync();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await TablePercentagesAsync(await MemberAsync(project, Field), project.Id, item.Id, true)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await TablePercentagesAsync(otherClient, other.Id, item.Id, true)).StatusCode);
+    }
 }
