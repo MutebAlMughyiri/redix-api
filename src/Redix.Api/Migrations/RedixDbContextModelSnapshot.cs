@@ -902,6 +902,10 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("LinkedEntryId");
 
+                    b.HasIndex(new[] { "LinkedEntryId" }, "IX_EntryLinks_OneReversal")
+                        .IsUnique()
+                        .HasFilter("[Type] = 2");
+
                     b.ToTable("EntryLinks");
                 });
 

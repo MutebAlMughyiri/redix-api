@@ -249,6 +249,21 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task TwoReversalsSentAtOnceReverseTheEntryOnce()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var request = ledger.WithoutInvoice() with { Submit = true };
+        await ledger.RecordAsync(request);
+        await ApproveAsync(ledger, request.Id);
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => ReverseAsync(ledger.Client, ledger, request.Id)));
+
+        Assert.Single(answers, answer => answer.StatusCode == HttpStatusCode.Created);
+        Assert.All(answers.Where(answer => answer.StatusCode != HttpStatusCode.Created), answer => Assert.Equal(HttpStatusCode.Conflict, answer.StatusCode));
+        Assert.Equal(1, await ledger.ReadAsync(db => db.EntryLinks.CountAsync(link => link.LinkedEntryId == request.Id && link.Type == EntryLinkType.Reversal)));
+    }
+
+    [Fact]
     public async Task EveryoneInTheProjectSeesItsEntriesWithTheirStatusAndOnlyTheirOwnDrafts()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

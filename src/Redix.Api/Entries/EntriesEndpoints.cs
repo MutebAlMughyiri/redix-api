@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
@@ -216,7 +217,15 @@ public static class EntriesEndpoints
         {
             await EntryReversal.AddAsync(other, reason, userId, at, today, db);
         }
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 })
+        {
+            // A second request for the same entry passed the check above before the first was saved: the one-reversal index refuses it.
+            return Refusal.Of(StatusCodes.Status409Conflict, "AlreadyReversed");
+        }
         return Results.Created($"/projects/{projectId}/entries/{reversal.Id}", new EntryStatusView(reversal.Id, reversal.Status, ""));
     }
 
