@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
+using Redix.Api.Partners;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Projects;
@@ -122,13 +123,20 @@ public static class ProjectsEndpoints
         return await ChangeAsync(projectId, principal, db, time, AuditAction.Delete, project => project.RemoveUnit(unitId, isUsed));
     }
 
-    /// <summary>Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>; one with entries waiting for approval, <c>pendingEntries</c> (BR-35). A draft waits for nobody, so it holds nothing open.</summary>
+    /// <summary>
+    /// Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>; one with entries waiting for approval, <c>pendingEntries</c> (BR-35).
+    /// A draft waits for nobody, so it holds nothing open. One whose surplus would still be shared among partners answers <c>liquidateFirst</c>: only its liquidation closes it (BR-27).
+    /// </summary>
     /// <param name="projectId">The project to close.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
     /// <param name="time">The current time, for the audit record.</param>
     public static async Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
+        if ((await LiquidationEndpoints.ViewOfAsync(projectId, db)).Parts.Any(part => part.Amount != 0))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "LiquidateFirst");
+        }
         var hasEntriesWaiting = await db.Entries.AnyAsync(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval);
         return await ChangeAsync(projectId, principal, db, time, AuditAction.CloseProject, project => project.Close(hasEntriesWaiting));
     }

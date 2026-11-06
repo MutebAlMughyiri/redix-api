@@ -1,10 +1,14 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Redix.Api.Accounts;
+using Redix.Api.Attachments;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
+using Redix.Api.Revenue;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Partners;
 
@@ -16,12 +20,130 @@ public static class LiquidationEndpoints
 {
     private const string Description = "تصفية المشروع";
 
+    private const string LateReason = "مصروف متأخر بعد إغلاق المشروع";
+
     /// <summary>Maps the routes, for whoever holds <see cref="Permission.MoveMoney"/>.</summary>
     /// <param name="app">The app.</param>
     public static void MapLiquidation(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/liquidation", Liquidation).RequireAuthorization(nameof(Permission.MoveMoney));
         app.MapProjectChanges(Permission.MoveMoney).MapPost("/liquidation", Liquidate);
+        app.MapPost("/projects/{projectId:guid}/liquidation/{entryId:guid}/receipt", AttachReceipt).RequireAuthorization(nameof(Permission.MoveMoney)).DisableAntiforgery();
+        app.MapPost("/projects/{projectId:guid}/liquidation/late", RecordLate).RequireAuthorization(nameof(Permission.MoveMoney));
+    }
+
+    /// <summary>
+    /// Attaches the bank receipt of a partner's part, after the transfer that follows the liquidation; the project may already be closed. One that is not a part of the project's liquidation is
+    /// not found; one that already has its receipt answers <c>receiptAlreadyAttached</c>; a file that cannot be kept answers as the attachment store does.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="entryId">The partner's part.</param>
+    /// <param name="file">The receipt.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="options">The folder files are kept under.</param>
+    /// <param name="time">The current time.</param>
+    public static async Task<IResult> AttachReceipt(Guid projectId, Guid entryId, IFormFile file, ClaimsPrincipal principal, RedixDbContext db, IOptions<AttachmentOptions> options, TimeProvider time)
+    {
+        var isPart = await (
+            from details in db.CapitalMovementDetails
+            join entry in db.Entries on details.EntryId equals entry.Id
+            where entry.Id == entryId && entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && details.Type == CapitalMovementType.Liquidation
+            select entry).AnyAsync();
+        if (!isPart)
+        {
+            return Results.NotFound();
+        }
+        if (await db.EntryAttachments.AnyAsync(row => row.EntryId == entryId && row.Role == EntryAttachmentRole.BankReceipt))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "ReceiptAlreadyAttached");
+        }
+        var userId = AccessTokens.UserIdOf(principal);
+        var (refusal, attachment, _) = await AttachmentsEndpoints.KeepAsync(projectId, file, userId, db, options.Value, time);
+        if (refusal.Length > 0)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+        }
+        var receipt = new EntryAttachment { EntryId = entryId, AttachmentId = attachment.Id, Role = EntryAttachmentRole.BankReceipt };
+        db.Add(receipt);
+        db.Audit(receipt, AuditAction.Attach, userId, time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
+        return Results.Ok(await ViewOfAsync(projectId, db));
+    }
+
+    /// <summary>
+    /// Records an expense or revenue that came after the project closed (FR-51), approved at once, and shares it among the partners by the shares frozen at closing (BR-27): each pays in their part
+    /// of a late expense and takes their part of late revenue, through the same account, so the surplus stays nothing. A project not closed answers <c>projectNotClosed</c>; an expense on an item
+    /// that takes no purchases, <c>unknownItem</c>; no partner to share it among, <c>noPartners</c>; otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="request">What came, and for an expense, its item.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="time">The current time.</param>
+    public static async Task<IResult> RecordLate(Guid projectId, LateEntryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var project = await db.Projects.Include(row => row.Units).SingleAsync(row => row.Id == projectId);
+        if (!project.IsReadOnly)
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "ProjectNotClosed");
+        }
+        var items = await db.Items.Include(row => row.Subgroups)
+            .Where(row => row.Id == request.ItemId && row.Type != ItemType.ContractorPayments && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId)).ToListAsync();
+        if (request.IsExpense && items.Count == 0)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownItem");
+        }
+        var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, [request.AccountId], Guid.Empty, time, db);
+        if (refusal.Length > 0)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+        }
+        var partners = (await CapitalEndpoints.ViewOfAsync(projectId, Guid.Empty, true, db)).Partners.Where(partner => partner.SharePercent > 0).ToList();
+        if (partners.Count == 0)
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "NoPartners");
+        }
+
+        var userId = AccessTokens.UserIdOf(principal);
+        var at = time.GetUtcNow().UtcDateTime;
+        var description = request.Description.Trim();
+        if (request.IsExpense)
+        {
+            var item = items.Single();
+            var entry = DirectEntries.New(projectId, EntryKind.Purchase, request.Date, request.Amount, request.AccountId, description, userId, at);
+            var method = await db.PaymentMethods.Where(row => row.ProjectId == projectId && row.IsActive).OrderBy(row => row.SortOrder).Select(row => row.Id).FirstAsync();
+            var supplier = await db.Suppliers.Where(row => row.ProjectId == projectId && row.IsGeneralCash).Select(row => row.Id).FirstAsync();
+            DirectEntries.Add(entry, [
+                new ExpenseDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = item.Subgroups.Single(subgroup => subgroup.Name == Subgroup.GeneralName).Id, UnitId = project.Units.Single(unit => unit.IsShared).Id, PaymentMethodId = method, WithoutInvoiceReason = LateReason },
+                new PurchaseDetails { EntryId = entry.Id, SupplierId = supplier, Product = description[..Math.Min(description.Length, PurchaseDetails.ProductMaxLength)] },
+            ], userId, at, db);
+        }
+        else
+        {
+            var entry = DirectEntries.New(projectId, EntryKind.Revenue, request.Date, request.Amount, request.AccountId, description, userId, at);
+            DirectEntries.Add(entry, [new RevenueDetails { EntryId = entry.Id, Type = RevenueType.Other, PeriodStart = request.Date, PeriodEnd = request.Date }], userId, at, db);
+        }
+        var kind = request.IsExpense ? EntryKind.CapitalIn : EntryKind.CapitalOut;
+        foreach (var (partner, part) in PartsOf(request.Amount, partners).Where(share => share.Part != 0))
+        {
+            var entry = DirectEntries.New(projectId, kind, request.Date, part, request.AccountId, description, userId, at);
+            DirectEntries.Add(entry, [new CapitalMovementDetails { EntryId = entry.Id, PartnerId = partner.Id, Type = CapitalMovementType.Liquidation, Description = description }], userId, at, db);
+        }
+        await db.SaveChangesAsync();
+        return Results.Ok(await ViewOfAsync(projectId, db));
+    }
+
+    /// <summary>[amount] shared among [partners] by their shares to two decimals, the last taking what rounding left so the parts make it exactly (BR-27, BR-28).</summary>
+    private static List<(PartnerCapitalView Partner, decimal Part)> PartsOf(decimal amount, List<PartnerCapitalView> partners)
+    {
+        var parts = new List<(PartnerCapitalView Partner, decimal Part)>();
+        foreach (var partner in partners)
+        {
+            var part = parts.Count == partners.Count - 1 ? amount - parts.Sum(share => share.Part) : decimal.Round(amount * partner.SharePercent / 100, 2, MidpointRounding.AwayFromZero);
+            parts.Add((partner, part));
+        }
+        return parts;
     }
 
     /// <summary>What closing now would share out, and what was shared out when it closed.</summary>
@@ -100,12 +222,7 @@ public static class LiquidationEndpoints
     {
         var surplus = (await ProjectFigures.OfAsync(projectId, db)).Surplus;
         var partners = (await CapitalEndpoints.ViewOfAsync(projectId, Guid.Empty, true, db)).Partners.Where(partner => partner.SharePercent > 0).ToList();
-        var parts = new List<LiquidationPartView>();
-        foreach (var partner in partners)
-        {
-            var amount = parts.Count == partners.Count - 1 ? surplus - parts.Sum(part => part.Amount) : decimal.Round(surplus * partner.SharePercent / 100, 2, MidpointRounding.AwayFromZero);
-            parts.Add(new LiquidationPartView(partner.Id, partner.Name, partner.SharePercent, amount));
-        }
+        var parts = PartsOf(surplus, partners).Select(share => new LiquidationPartView(share.Partner.Id, share.Partner.Name, share.Partner.SharePercent, share.Part)).ToList();
         var pending = await db.Entries.CountAsync(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval);
         var shared = await (
             from details in db.CapitalMovementDetails
@@ -115,7 +232,7 @@ public static class LiquidationEndpoints
             orderby entry.EntryDate, entry.Id
             select new { entry, partner.Name }).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, shared.Select(row => row.entry).ToList(), db);
-        var distributed = shared.Select(row => new LiquidationShareView(row.entry.Id, row.Name, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalOut ? row.entry.Amount : -row.entry.Amount, facts.AccountNameOf(row.entry))).ToList();
+        var distributed = shared.Select(row => new LiquidationShareView(row.entry.Id, row.Name, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalOut ? row.entry.Amount : -row.entry.Amount, facts.AccountNameOf(row.entry), row.entry.Notes, facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry))).ToList();
         return new LiquidationView(surplus, pending, parts, distributed);
     }
 
@@ -170,4 +287,19 @@ public record LiquidationPartView(Guid PartnerId, string Name, decimal SharePerc
 /// <param name="Date">The day.</param>
 /// <param name="Amount">What they took; negative for what they paid in.</param>
 /// <param name="AccountName">The account it went through.</param>
-public record LiquidationShareView(Guid EntryId, string PartnerName, DateOnly Date, decimal Amount, string AccountName);
+/// <param name="Description">What it was for: the liquidation, or a late expense or revenue.</param>
+/// <param name="ReceiptId">Its bank receipt; empty until attached.</param>
+/// <param name="ReceiptType">What the receipt is; empty until attached.</param>
+public record LiquidationShareView(Guid EntryId, string PartnerName, DateOnly Date, decimal Amount, string AccountName, string Description, string ReceiptId, string ReceiptType);
+
+/// <summary>An expense or revenue that came after the project closed.</summary>
+/// <param name="IsExpense">True for an expense, false for revenue.</param>
+/// <param name="Date">The day.</param>
+/// <param name="Amount">How much, above zero.</param>
+/// <param name="AccountId">The account it went through.</param>
+/// <param name="Description">What it was.</param>
+public record LateEntryRequest(bool IsExpense, DateOnly Date, decimal Amount, Guid AccountId, string Description)
+{
+    /// <summary>The item of an expense; left out for revenue.</summary>
+    public Guid ItemId { get; init; }
+}

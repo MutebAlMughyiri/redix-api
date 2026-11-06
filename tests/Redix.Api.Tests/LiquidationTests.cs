@@ -142,4 +142,66 @@ public class LiquidationTests(MigratedApiFactory factory)
 
         Assert.Equal("useLiquidation", await Ledger.CodeOf(refused));
     }
+
+    private async Task<(Ledger Ledger, Guid First, Guid Second)> LiquidatedAsync()
+    {
+        var (ledger, first, second) = await TwoPartnersAsync(factory);
+        (await LiquidateAsync(ledger, new LiquidationLineRequest(first, ledger.AccountId), new LiquidationLineRequest(second, ledger.AccountId))).EnsureSuccessStatusCode();
+        return (ledger, first, second);
+    }
+
+    private static Task<HttpResponseMessage> LateAsync(Ledger ledger, LateEntryRequest request) => ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/liquidation/late", request, Json);
+
+    [Fact]
+    public async Task BR_27_ALateExpenseIsPaidInAndLateRevenueTakenByTheSharesAtClosingAndTheSurplusStaysNothing()
+    {
+        var (ledger, _, _) = await LiquidatedAsync();
+
+        (await LateAsync(ledger, new LateEntryRequest(true, ledger.Today, 100, ledger.AccountId, "فاتورة كهرباء متأخرة") { ItemId = ledger.ItemId })).EnsureSuccessStatusCode();
+        (await LateAsync(ledger, new LateEntryRequest(false, ledger.Today, 50, ledger.AccountId, "استرداد تأمين"))).EnsureSuccessStatusCode();
+
+        var figures = await ledger.ReadAsync(db => ProjectFigures.OfAsync(ledger.ProjectId, db));
+        Assert.Equal((200m, 850m, 0m), (figures.Expenses, figures.Liquidation, figures.Surplus));
+        var shared = (await ViewAsync(ledger)).Distributed.Where(share => share.Description != "تصفية المشروع").Select(share => share.Amount).Order();
+        Assert.Equal([-60m, -40m, 20m, 30m], shared);
+    }
+
+    [Fact]
+    public async Task FR_51_ALateEntryNeedsAClosedProjectAndAnItemThatTakesPurchases()
+    {
+        var (ledger, _, _) = await TwoPartnersAsync(factory);
+        Assert.Equal("projectNotClosed", await Ledger.CodeOf(await LateAsync(ledger, new LateEntryRequest(false, ledger.Today, 50, ledger.AccountId, "إيراد"))));
+        var (closed, _, _) = await LiquidatedAsync();
+
+        Assert.Equal("unknownItem", await Ledger.CodeOf(await LateAsync(closed, new LateEntryRequest(true, closed.Today, 50, closed.AccountId, "مصروف"))));
+    }
+
+    [Fact]
+    public async Task BR_23_APayoutsReceiptIsAttachedAfterTheProjectClosesAndOnlyOnce()
+    {
+        var (ledger, _, _) = await LiquidatedAsync();
+        var part = (await ViewAsync(ledger)).Distributed.First();
+        Assert.Equal("", part.ReceiptId);
+
+        Task<HttpResponseMessage> AttachAsync()
+        {
+            var file = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0, .. Guid.NewGuid().ToByteArray()]);
+            file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+            return ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/liquidation/{part.EntryId}/receipt", new MultipartFormDataContent { { file, "file", "receipt.jpg" } });
+        }
+
+        (await AttachAsync()).EnsureSuccessStatusCode();
+        Assert.NotEqual("", (await ViewAsync(ledger)).Distributed.Single(share => share.EntryId == part.EntryId).ReceiptId);
+        Assert.Equal("receiptAlreadyAttached", await Ledger.CodeOf(await AttachAsync()));
+    }
+
+    [Fact]
+    public async Task BR_27_APlainCloseIsRefusedWhileThereIsASurplusToShare()
+    {
+        var (ledger, _, _) = await TwoPartnersAsync(factory);
+
+        var refused = await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/close", null);
+
+        Assert.Equal((HttpStatusCode.Conflict, "liquidateFirst"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+    }
 }

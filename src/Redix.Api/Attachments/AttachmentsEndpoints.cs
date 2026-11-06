@@ -37,31 +37,44 @@ public static class AttachmentsEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Upload(Guid projectId, IFormFile file, ClaimsPrincipal principal, RedixDbContext db, IOptions<AttachmentOptions> options, TimeProvider time)
     {
+        var (refusal, attachment, isNew) = await KeepAsync(projectId, file, AccessTokens.UserIdOf(principal), db, options.Value, time);
+        if (refusal.Length > 0)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+        }
+        await db.SaveChangesAsync();
+        return isNew ? Results.Created($"/projects/{projectId}/attachments/{attachment.Id}", AttachmentView.Of(attachment)) : Results.Ok(AttachmentView.Of(attachment));
+    }
+
+    /// <summary>
+    /// Keeps <paramref name="file"/> for the project, its file written and its record added with its audit, saved with the change; the same file from the same person answers the one already kept.
+    /// Answers why it cannot be kept, as <see cref="Attachment.RefusalOf"/> does, with no attachment; otherwise the attachment and whether it is new.
+    /// </summary>
+    public static async Task<(string Refusal, Attachment Attachment, bool IsNew)> KeepAsync(Guid projectId, IFormFile file, Guid userId, RedixDbContext db, AttachmentOptions options, TimeProvider time)
+    {
         using var read = new MemoryStream();
         await file.CopyToAsync(read);
         var content = read.ToArray();
         var refusal = Attachment.RefusalOf(content);
         if (refusal.Length > 0)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+            return (refusal, Attachment.Of(projectId, [], "", userId, default), false);
         }
 
         var at = time.GetUtcNow().UtcDateTime;
-        var userId = AccessTokens.UserIdOf(principal);
         var attachment = Attachment.Of(projectId, content, file.FileName, userId, at);
         var sent = await db.Attachments.FirstOrDefaultAsync(row => row.ProjectId == projectId && row.UploadedByUserId == userId && row.Sha256 == attachment.Sha256);
         if (sent is not null)
         {
-            return Results.Ok(AttachmentView.Of(sent));
+            return ("", sent, false);
         }
 
-        var path = options.Value.PathOf(attachment);
+        var path = options.PathOf(attachment);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllBytesAsync(path, content);
         db.Attachments.Add(attachment);
         db.Audit(attachment, AuditAction.Attach, userId, at);
-        await db.SaveChangesAsync();
-        return Results.Created($"/projects/{projectId}/attachments/{attachment.Id}", AttachmentView.Of(attachment));
+        return ("", attachment, true);
     }
 }
 

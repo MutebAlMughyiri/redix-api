@@ -3741,6 +3741,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("563031c8-7783-4fd3-17f1-347183abac42"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9ecb3887-438b-b959-0225-ac73ebde0ecd"),
+                            Value = "Its surplus is still to be shared among the partners, so liquidate it instead: that closes it."
+                        },
+                        new
+                        {
+                            Id = new Guid("212a14f2-8c5b-8d45-3922-803079bbbe83"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9ecb3887-438b-b959-0225-ac73ebde0ecd"),
+                            Value = "لا يزال فائضه لم يوزَّع على الشركاء، فصفِّه بدلاً من ذلك، وبالتصفية يُغلق."
+                        },
+                        new
+                        {
                             Id = new Guid("09e93ad6-ebbc-9c19-bcbf-4bb788b171c5"),
                             Language = "en",
                             TranslationKeyId = new Guid("f70404cd-3040-ad17-8cc8-d1e06ac3acef"),
@@ -9845,6 +9859,244 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("9e32ae9f-a44c-e641-bb1e-cf6ac533cd5a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3e7c8c12-6059-c2cf-2217-dc01f51ea080"),
+                            Value = "Record a late expense or revenue"
+                        },
+                        new
+                        {
+                            Id = new Guid("c4cf616f-c659-2528-4a37-add2c38c517a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3e7c8c12-6059-c2cf-2217-dc01f51ea080"),
+                            Value = "تسجيل مصروف أو إيراد متأخر"
+                        },
+                        new
+                        {
+                            Id = new Guid("1f0d6a28-50c8-e164-4d9c-6afaacb7ab6f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fb4170e6-bff8-ba29-5fa3-bcef4ce1358c"),
+                            Value = "It is shared among the partners by their shares at closing: each pays in their part of an expense, and takes their part of revenue."
+                        },
+                        new
+                        {
+                            Id = new Guid("fbf13a83-0fb7-e7ee-c1c4-be3662b83aed"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fb4170e6-bff8-ba29-5fa3-bcef4ce1358c"),
+                            Value = "يوزَّع على الشركاء بنسبهم عند الإغلاق: يدفع كل شريك حصته من المصروف، ويأخذ حصته من الإيراد."
+                        },
+                        new
+                        {
+                            Id = new Guid("d7e78449-1936-2343-6d0d-32746aea4c38"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c36a0dcc-1dd3-e179-ea3e-08d00755251f"),
+                            Value = "Late expense"
+                        },
+                        new
+                        {
+                            Id = new Guid("cd475901-fd44-ee35-8327-3249d52c2b5f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c36a0dcc-1dd3-e179-ea3e-08d00755251f"),
+                            Value = "مصروف متأخر"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce1c860d-79f0-de5e-905d-ccf1a261c251"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("93a5fc72-0f6b-6f24-03e8-5f5850de5ccb"),
+                            Value = "Late revenue"
+                        },
+                        new
+                        {
+                            Id = new Guid("59b7b483-20e6-0d4f-320c-f22efaad162b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("93a5fc72-0f6b-6f24-03e8-5f5850de5ccb"),
+                            Value = "إيراد متأخر"
+                        },
+                        new
+                        {
+                            Id = new Guid("f4024adf-fa8b-16a0-53de-8eff92ced802"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a2b0ccd0-6829-ec5e-1f22-2a5eb525479d"),
+                            Value = "Item"
+                        },
+                        new
+                        {
+                            Id = new Guid("b9d61caa-18aa-7ce7-fd0a-131060a36c1f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a2b0ccd0-6829-ec5e-1f22-2a5eb525479d"),
+                            Value = "البند"
+                        },
+                        new
+                        {
+                            Id = new Guid("8596d182-7f81-6a2b-2fce-9bbc7d13d7fd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("53d96146-35f2-ff26-1a30-34f622ea0f6e"),
+                            Value = "Amount"
+                        },
+                        new
+                        {
+                            Id = new Guid("cb98a194-5e2e-835b-b8d4-48b0211043b0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("53d96146-35f2-ff26-1a30-34f622ea0f6e"),
+                            Value = "المبلغ"
+                        },
+                        new
+                        {
+                            Id = new Guid("c6dcd7cb-1528-75bb-8bf5-ef15fef83753"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aaf37bef-eaac-bcff-806c-474a60d7981a"),
+                            Value = "Description"
+                        },
+                        new
+                        {
+                            Id = new Guid("e6c9a973-faab-0d72-d84f-e5e24076c644"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aaf37bef-eaac-bcff-806c-474a60d7981a"),
+                            Value = "الوصف"
+                        },
+                        new
+                        {
+                            Id = new Guid("a87ee58e-7104-6b53-261f-8755ad423a9d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("26492bd0-3bfc-4b14-dc48-ae331b07f456"),
+                            Value = "Record"
+                        },
+                        new
+                        {
+                            Id = new Guid("cc181cbf-7679-59ce-f35b-37a08964c41e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("26492bd0-3bfc-4b14-dc48-ae331b07f456"),
+                            Value = "تسجيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("e3d3b7a3-6c14-faf6-89c8-5b1ece5ab024"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c70850d4-ac42-0cfc-4e09-b7311dc82aac"),
+                            Value = "Recorded and shared among the partners."
+                        },
+                        new
+                        {
+                            Id = new Guid("1b5dbc82-9bd5-f67f-8799-878a34237c99"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c70850d4-ac42-0cfc-4e09-b7311dc82aac"),
+                            Value = "سُجِّل ووُزِّع على الشركاء."
+                        },
+                        new
+                        {
+                            Id = new Guid("4956f064-b12d-28e0-c5b1-051a0dd60c3a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2be0475f-6671-2bd8-5206-cdf82bba7fc4"),
+                            Value = "Attach receipt"
+                        },
+                        new
+                        {
+                            Id = new Guid("41c24de3-a743-2d2a-9616-80e737b7c9e0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2be0475f-6671-2bd8-5206-cdf82bba7fc4"),
+                            Value = "إرفاق الإيصال"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0316e5c-38cd-6872-2e27-955e56fb4f41"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b37d5cd8-a532-c8da-e119-a2851c3dc58b"),
+                            Value = "No receipt yet"
+                        },
+                        new
+                        {
+                            Id = new Guid("45429a16-2a16-915f-3882-28f0f2bfed99"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b37d5cd8-a532-c8da-e119-a2851c3dc58b"),
+                            Value = "لا يوجد إيصال بعد"
+                        },
+                        new
+                        {
+                            Id = new Guid("8ec1c022-ae64-86dd-b9dd-73e7480594a3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6677ac85-94ad-7cd6-dab3-5f601539c3be"),
+                            Value = "The receipt is attached."
+                        },
+                        new
+                        {
+                            Id = new Guid("5eec2fad-14c6-5123-1f1f-8a0c748fcbde"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6677ac85-94ad-7cd6-dab3-5f601539c3be"),
+                            Value = "تم إرفاق الإيصال."
+                        },
+                        new
+                        {
+                            Id = new Guid("e6890e09-24b3-4e3a-72aa-7fadb095f251"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("18635f0c-752f-7e03-65f7-a738c2cfdcf0"),
+                            Value = "This part already has its receipt."
+                        },
+                        new
+                        {
+                            Id = new Guid("686132ab-e386-4220-ca42-12480a98d8e0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("18635f0c-752f-7e03-65f7-a738c2cfdcf0"),
+                            Value = "لهذه الحصة إيصالها من قبل."
+                        },
+                        new
+                        {
+                            Id = new Guid("b887bc1c-1a29-1677-556e-bb69f35e23cb"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("54d7466b-07c3-fecc-2029-80a607b67cdd"),
+                            Value = "Only a closed project takes a late expense or revenue."
+                        },
+                        new
+                        {
+                            Id = new Guid("d0cb2bda-d4e3-b3d0-97bb-77e0b228d33a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("54d7466b-07c3-fecc-2029-80a607b67cdd"),
+                            Value = "لا يُسجَّل مصروف أو إيراد متأخر إلا في مشروع مغلق."
+                        },
+                        new
+                        {
+                            Id = new Guid("ba23d8c5-6e94-4825-6fce-77c835560065"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("40137928-dfde-90c3-74c1-245a0a374a1e"),
+                            Value = "Choose an item that takes purchases."
+                        },
+                        new
+                        {
+                            Id = new Guid("d0c57f3c-deab-8bba-ec5f-faabfc51c1fd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("40137928-dfde-90c3-74c1-245a0a374a1e"),
+                            Value = "اختر بنداً يقبل المشتريات."
+                        },
+                        new
+                        {
+                            Id = new Guid("e461b3d6-12af-fcae-11cc-2783ac594cae"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7e9ea7f0-6d30-5238-6983-354604749559"),
+                            Value = "Choose a picture or a PDF."
+                        },
+                        new
+                        {
+                            Id = new Guid("8974ef2b-80b2-37ab-7465-c3a72c4d72ef"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7e9ea7f0-6d30-5238-6983-354604749559"),
+                            Value = "اختر صورة أو ملف PDF."
+                        },
+                        new
+                        {
+                            Id = new Guid("ddbdacd8-3021-3287-d720-ad056334d754"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c5514c54-33b7-fc1d-25c8-13ba413cd0e1"),
+                            Value = "The picture is too large; it must be under 1 MB."
+                        },
+                        new
+                        {
+                            Id = new Guid("b8e00284-3351-ecbf-a316-01198df27aee"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c5514c54-33b7-fc1d-25c8-13ba413cd0e1"),
+                            Value = "الصورة كبيرة جداً؛ يجب أن تكون أصغر من 1 ميغابايت."
+                        },
+                        new
+                        {
                             Id = new Guid("92dbd782-4b36-fc8e-72ca-c99499fe348c"),
                             Language = "en",
                             TranslationKeyId = new Guid("2ede21ba-9b50-aad9-9df0-48059892c06b"),
@@ -15897,6 +16149,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("9ecb3887-438b-b959-0225-ac73ebde0ecd"),
+                            Description = "",
+                            Key = "projects.liquidateFirst"
+                        },
+                        new
+                        {
                             Id = new Guid("f70404cd-3040-ad17-8cc8-d1e06ac3acef"),
                             Description = "",
                             Key = "projects.closeExplain"
@@ -18510,6 +18768,108 @@ namespace Redix.Api.Migrations
                             Id = new Guid("fd379b83-1e61-3eb8-4370-fa0efbce9ef6"),
                             Description = "",
                             Key = "liquidation.nothing"
+                        },
+                        new
+                        {
+                            Id = new Guid("3e7c8c12-6059-c2cf-2217-dc01f51ea080"),
+                            Description = "",
+                            Key = "liquidation.late"
+                        },
+                        new
+                        {
+                            Id = new Guid("fb4170e6-bff8-ba29-5fa3-bcef4ce1358c"),
+                            Description = "",
+                            Key = "liquidation.lateExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("c36a0dcc-1dd3-e179-ea3e-08d00755251f"),
+                            Description = "",
+                            Key = "liquidation.lateExpense"
+                        },
+                        new
+                        {
+                            Id = new Guid("93a5fc72-0f6b-6f24-03e8-5f5850de5ccb"),
+                            Description = "",
+                            Key = "liquidation.lateRevenue"
+                        },
+                        new
+                        {
+                            Id = new Guid("a2b0ccd0-6829-ec5e-1f22-2a5eb525479d"),
+                            Description = "",
+                            Key = "liquidation.item"
+                        },
+                        new
+                        {
+                            Id = new Guid("53d96146-35f2-ff26-1a30-34f622ea0f6e"),
+                            Description = "",
+                            Key = "liquidation.amount"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaf37bef-eaac-bcff-806c-474a60d7981a"),
+                            Description = "",
+                            Key = "liquidation.description"
+                        },
+                        new
+                        {
+                            Id = new Guid("26492bd0-3bfc-4b14-dc48-ae331b07f456"),
+                            Description = "",
+                            Key = "liquidation.record"
+                        },
+                        new
+                        {
+                            Id = new Guid("c70850d4-ac42-0cfc-4e09-b7311dc82aac"),
+                            Description = "",
+                            Key = "liquidation.lateRecorded"
+                        },
+                        new
+                        {
+                            Id = new Guid("2be0475f-6671-2bd8-5206-cdf82bba7fc4"),
+                            Description = "",
+                            Key = "liquidation.attachReceipt"
+                        },
+                        new
+                        {
+                            Id = new Guid("b37d5cd8-a532-c8da-e119-a2851c3dc58b"),
+                            Description = "",
+                            Key = "liquidation.noReceipt"
+                        },
+                        new
+                        {
+                            Id = new Guid("6677ac85-94ad-7cd6-dab3-5f601539c3be"),
+                            Description = "",
+                            Key = "liquidation.receiptAttached"
+                        },
+                        new
+                        {
+                            Id = new Guid("18635f0c-752f-7e03-65f7-a738c2cfdcf0"),
+                            Description = "",
+                            Key = "capital.receiptAlreadyAttached"
+                        },
+                        new
+                        {
+                            Id = new Guid("54d7466b-07c3-fecc-2029-80a607b67cdd"),
+                            Description = "",
+                            Key = "capital.projectNotClosed"
+                        },
+                        new
+                        {
+                            Id = new Guid("40137928-dfde-90c3-74c1-245a0a374a1e"),
+                            Description = "",
+                            Key = "capital.unknownItem"
+                        },
+                        new
+                        {
+                            Id = new Guid("7e9ea7f0-6d30-5238-6983-354604749559"),
+                            Description = "",
+                            Key = "capital.invalidFileType"
+                        },
+                        new
+                        {
+                            Id = new Guid("c5514c54-33b7-fc1d-25c8-13ba413cd0e1"),
+                            Description = "",
+                            Key = "capital.imageTooLarge"
                         },
                         new
                         {
