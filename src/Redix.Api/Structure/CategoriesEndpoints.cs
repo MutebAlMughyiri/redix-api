@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
+using Redix.Api.Entries;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
@@ -15,6 +16,7 @@ public static class CategoriesEndpoints
         var reads = app.MapGroup("/projects/{projectId:guid}/categories").RequireAuthorization(nameof(Permission.ReadProject));
         reads.MapGet("/", List);
         reads.MapGet("/offered", Offered);
+        app.MapGet("/projects/{projectId:guid}/items/{itemId:guid}/tables", Tables).RequireAuthorization(nameof(Permission.ReadProject));
 
         var changes = app.MapProjectChanges(Permission.ManageStructure);
         changes.MapPost("/categories", AddCategory);
@@ -30,7 +32,7 @@ public static class CategoriesEndpoints
         changes.MapPost("/items/{itemId:guid}/subgroups", AddSubgroup);
         changes.MapPost("/items/{itemId:guid}/type", ChangeItemType);
         changes.MapPost("/items/{itemId:guid}/table-percentages", SetTablePercentages);
-        changes.MapPost("/items/{itemId:guid}/subgroups/reorder", ReorderSubgroups);
+        changes.MapPost("/items/{itemId:guid}/tables/reorder", ReorderTables);
         changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}", RenameSubgroup);
         changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}/delete", DeleteSubgroup);
     }
@@ -219,25 +221,54 @@ public static class CategoriesEndpoints
             {
                 return Results.NotFound();
             }
-            db.Subgroups.Add(new Subgroup { ItemId = itemId, Name = name, SortOrder = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).MaxAsync(subgroup => subgroup.SortOrder) + 1 });
+            db.Subgroups.Add(new Subgroup { ItemId = itemId, Name = name, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) });
             await db.SaveChangesAsync();
             return Results.Ok();
         });
 
-    /// <summary>Puts an item's named subgroups in the order given, which is their order in the report, the general group staying first. A list that is not exactly the named ones answers <c>invalidOrder</c>.</summary>
+    /// <summary>
+    /// An item's tables in the order its sheet prints them (AC-46.8): its general table, named after the item, each named subgroup, and each contract's payments, named after its
+    /// contractor, with how many approved entries each holds.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
-    /// <param name="request">Every named subgroup's id, in the new order.</param>
     /// <param name="db">The database the structure lives in.</param>
-    public static async Task<IResult> ReorderSubgroups(Guid projectId, Guid itemId, ReorderRequest request, RedixDbContext db)
+    public static async Task<IResult> Tables(Guid projectId, Guid itemId, RedixDbContext db)
+    {
+        var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
+        if (item is null)
+        {
+            return Results.NotFound();
+        }
+        var approved = db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.Approved);
+        var purchases = await (from details in db.ExpenseDetails join entry in approved on details.EntryId equals entry.Id where details.ItemId == itemId && entry.Kind == EntryKind.Purchase select details.SubgroupId)
+            .Concat(from details in db.Set<Revenue.RevenueDetails>() join entry in approved on details.EntryId equals entry.Id where details.ItemId == itemId select details.SubgroupId)
+            .GroupBy(subgroupId => subgroupId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count);
+        var payments = await (from payment in db.ContractorPaymentDetails join entry in approved on payment.EntryId equals entry.Id select payment.ContractId)
+            .GroupBy(contractId => contractId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count);
+        var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
+        var contracts = await (from contract in db.Contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id where contract.ItemId == itemId select new { contract.Id, contract.SortOrder, supplier.Name }).ToListAsync();
+        return Results.Ok(subgroups
+            .Select(subgroup => (subgroup.SortOrder, Table: new ItemTableView(subgroup.Id, subgroup.Name == Subgroup.GeneralName ? ItemTableKind.General : ItemTableKind.Subgroup, subgroup.Name == Subgroup.GeneralName ? item.Name : subgroup.Name, purchases.GetValueOrDefault(subgroup.Id))))
+            .Concat(contracts.Select(contract => (contract.SortOrder, Table: new ItemTableView(contract.Id, ItemTableKind.Contract, contract.Name, payments.GetValueOrDefault(contract.Id)))))
+            .OrderBy(table => table.SortOrder)
+            .Select(table => table.Table)
+            .ToList());
+    }
+
+    /// <summary>Puts all an item's tables, its subgroups and its contracts alike, in the order given, which is the order of its sheet (AC-46.8). A list that is not exactly them answers <c>invalidOrder</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="itemId">The item.</param>
+    /// <param name="request">Every table's id, in the new order.</param>
+    /// <param name="db">The database the structure lives in.</param>
+    public static async Task<IResult> ReorderTables(Guid projectId, Guid itemId, ReorderRequest request, RedixDbContext db)
     {
         if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
         {
             return Results.NotFound();
         }
-        var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
-        var general = subgroups.Single(subgroup => subgroup.Name == Subgroup.GeneralName).Id;
-        return await ReorderAsync(subgroups, new ReorderRequest([general, .. request.Ids]), db);
+        List<IOrdered> tables = [.. await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync(), .. await db.Contracts.Where(contract => contract.ItemId == itemId).ToListAsync()];
+        return await ReorderAsync(tables, request, db);
     }
 
     /// <summary>Removes a subgroup no entry uses. One an entry uses answers <c>subgroupInUse</c>; the item's general group, <c>generalSubgroup</c>.</summary>
@@ -371,6 +402,26 @@ public record ItemView(Guid Id, string Name, ItemType Type, bool IsActive, List<
 {
     /// <summary>The view of <paramref name="item"/>.</summary>
     public static ItemView Of(Item item) => new(item.Id, item.Name, item.Type, item.IsActive, item.Subgroups.Select(subgroup => new SubgroupView(subgroup.Id, subgroup.Name)).ToList(), item.ShowsTablePercentages);
+}
+
+/// <summary>One table of an item's sheet, as the app lists them.</summary>
+/// <param name="Id">The subgroup or contract it prints.</param>
+/// <param name="Kind">What it prints.</param>
+/// <param name="Name">The item's name for its general table, the subgroup's, or the contractor's.</param>
+/// <param name="Count">How many approved entries it holds.</param>
+public record ItemTableView(Guid Id, ItemTableKind Kind, string Name, int Count);
+
+/// <summary>What a table of an item's sheet prints.</summary>
+public enum ItemTableKind : byte
+{
+    /// <summary>The item's general group.</summary>
+    General,
+
+    /// <summary>A named subgroup.</summary>
+    Subgroup,
+
+    /// <summary>A contract's payments.</summary>
+    Contract,
 }
 
 /// <summary>A subgroup as the app shows it.</summary>

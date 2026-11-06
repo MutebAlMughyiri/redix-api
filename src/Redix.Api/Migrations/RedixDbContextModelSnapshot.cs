@@ -637,6 +637,9 @@ namespace Redix.Api.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("SupplierId")
                         .HasColumnType("uniqueidentifier");
 
@@ -11712,6 +11715,76 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("9a3c784d-2c8b-7ba4-ce2e-f1628ae9d6e6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("350662dd-a114-636f-e070-06a358c487b9"),
+                            Value = "Tables"
+                        },
+                        new
+                        {
+                            Id = new Guid("946bb534-8991-a648-dd54-288248c4eeff"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("350662dd-a114-636f-e070-06a358c487b9"),
+                            Value = "جداول البند"
+                        },
+                        new
+                        {
+                            Id = new Guid("62004d03-a8ee-83c5-3037-6918571c762a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2da0e6fa-d310-9d09-498d-8987765ec375"),
+                            Value = "The item's sheet prints its tables in this order. Drag a table to move it."
+                        },
+                        new
+                        {
+                            Id = new Guid("c0dac685-2657-4194-7881-9d6e1a67aa95"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2da0e6fa-d310-9d09-498d-8987765ec375"),
+                            Value = "تُطبع جداول البند في ورقته بهذا الترتيب. اسحب الجدول لتغيير مكانه."
+                        },
+                        new
+                        {
+                            Id = new Guid("77d396c5-4df5-b053-ca34-0cc68a360bc1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ed206502-29cb-47eb-d3da-50081a18dc80"),
+                            Value = "Purchases"
+                        },
+                        new
+                        {
+                            Id = new Guid("df521f26-396a-8be5-8eee-ad658f66c2af"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ed206502-29cb-47eb-d3da-50081a18dc80"),
+                            Value = "مشتريات"
+                        },
+                        new
+                        {
+                            Id = new Guid("4f2eb84e-eaaf-aebd-a72e-d21a44f6fee0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bcbf7000-c209-ad82-7ae1-64f73a1a8699"),
+                            Value = "Revenue"
+                        },
+                        new
+                        {
+                            Id = new Guid("885236d2-1ea5-dd20-cb66-d1efc37f2970"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bcbf7000-c209-ad82-7ae1-64f73a1a8699"),
+                            Value = "إيرادات"
+                        },
+                        new
+                        {
+                            Id = new Guid("7578fbbd-7e55-11e4-5b50-403bed9e3cc2"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a44971ad-e0b8-c94d-db39-ec5f7ef189c7"),
+                            Value = "Contract payments"
+                        },
+                        new
+                        {
+                            Id = new Guid("04765bdd-0b0e-34a1-7da3-17a41856b902"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a44971ad-e0b8-c94d-db39-ec5f7ef189c7"),
+                            Value = "دفعات عقد"
+                        },
+                        new
+                        {
                             Id = new Guid("fd72c743-bed0-ba53-dea8-fd727c7907c0"),
                             Language = "en",
                             TranslationKeyId = new Guid("33d64ff3-e7e3-f272-c07d-a0b66e6a99f3"),
@@ -11779,48 +11852,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("da7a2b71-6655-c965-411b-18f830383110"),
                             Value = "حفظ"
-                        },
-                        new
-                        {
-                            Id = new Guid("161d8696-af3d-d208-7c39-9b6b65cda057"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e261048d-9d0e-adfc-47d7-c94b165fb8dc"),
-                            Value = "Subgroups"
-                        },
-                        new
-                        {
-                            Id = new Guid("54ecf1ad-1033-8a8f-b26f-ae5546ceafca"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e261048d-9d0e-adfc-47d7-c94b165fb8dc"),
-                            Value = "المجموعات الفرعية"
-                        },
-                        new
-                        {
-                            Id = new Guid("cc8c938f-db5f-9c86-8816-7a2ef1af490f"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("25297a4f-30c0-9a5a-da50-56f37976040a"),
-                            Value = "Each subgroup prints as its own table in the item's report. An entry with no subgroup goes to the item's general group."
-                        },
-                        new
-                        {
-                            Id = new Guid("eb46ecc9-bc7f-cba1-b232-bea10ee8b09b"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("25297a4f-30c0-9a5a-da50-56f37976040a"),
-                            Value = "تُطبع كل مجموعة فرعية جدولاً مستقلاً في تقرير البند. والقيد بلا مجموعة يدخل في المجموعة العامة للبند."
-                        },
-                        new
-                        {
-                            Id = new Guid("f0ab1024-2f96-9cf1-926e-57734e20391c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("a7b41bf3-08cf-eee5-462d-c4852658a6ea"),
-                            Value = "This item has no subgroups."
-                        },
-                        new
-                        {
-                            Id = new Guid("fde190f4-ccbb-ddb4-3d7c-9863cc08a7ca"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("a7b41bf3-08cf-eee5-462d-c4852658a6ea"),
-                            Value = "لا توجد مجموعات فرعية لهذا البند."
                         },
                         new
                         {
@@ -19744,6 +19775,36 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("350662dd-a114-636f-e070-06a358c487b9"),
+                            Description = "",
+                            Key = "categories.tables"
+                        },
+                        new
+                        {
+                            Id = new Guid("2da0e6fa-d310-9d09-498d-8987765ec375"),
+                            Description = "",
+                            Key = "categories.tablesHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("ed206502-29cb-47eb-d3da-50081a18dc80"),
+                            Description = "",
+                            Key = "categories.tablePurchases"
+                        },
+                        new
+                        {
+                            Id = new Guid("bcbf7000-c209-ad82-7ae1-64f73a1a8699"),
+                            Description = "",
+                            Key = "categories.tableRevenue"
+                        },
+                        new
+                        {
+                            Id = new Guid("a44971ad-e0b8-c94d-db39-ec5f7ef189c7"),
+                            Description = "",
+                            Key = "categories.tableContract"
+                        },
+                        new
+                        {
                             Id = new Guid("33d64ff3-e7e3-f272-c07d-a0b66e6a99f3"),
                             Description = "",
                             Key = "categories.rename"
@@ -19771,24 +19832,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("da7a2b71-6655-c965-411b-18f830383110"),
                             Description = "",
                             Key = "categories.save"
-                        },
-                        new
-                        {
-                            Id = new Guid("e261048d-9d0e-adfc-47d7-c94b165fb8dc"),
-                            Description = "",
-                            Key = "categories.subgroups"
-                        },
-                        new
-                        {
-                            Id = new Guid("25297a4f-30c0-9a5a-da50-56f37976040a"),
-                            Description = "",
-                            Key = "categories.subgroupsHint"
-                        },
-                        new
-                        {
-                            Id = new Guid("a7b41bf3-08cf-eee5-462d-c4852658a6ea"),
-                            Description = "",
-                            Key = "categories.noSubgroups"
                         },
                         new
                         {

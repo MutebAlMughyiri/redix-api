@@ -65,7 +65,7 @@ public static class ContractsEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
         }
 
-        var contract = new Contract { ProjectId = projectId, ItemId = request.ItemId, UnitId = request.UnitId, SupplierId = request.SupplierId };
+        var contract = new Contract { ProjectId = projectId, ItemId = request.ItemId, UnitId = request.UnitId, SupplierId = request.SupplierId, SortOrder = await ProjectStructure.NextTablePlaceAsync(request.ItemId, db) };
         request.ApplyTo(contract);
         db.Contracts.Add(contract);
         var userId = AccessTokens.UserIdOf(principal);
@@ -112,7 +112,12 @@ public static class ContractsEndpoints
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
             }
         }
-        return await ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Update, request.ApplyAllTo, request.AttachmentIds);
+        var place = request.ItemOf(contract) == contract.ItemId ? contract.SortOrder : await ProjectStructure.NextTablePlaceAsync(request.ItemOf(contract), db);
+        return await ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Update, changed =>
+        {
+            request.ApplyAllTo(changed);
+            changed.SortOrder = place;
+        }, request.AttachmentIds);
     }
 
     /// <summary>Disables a contract: no new payment can name it, and it stays in the reports.</summary>

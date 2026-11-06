@@ -28,7 +28,8 @@ A project's structure is copied **when the admin approves it** (`ProjectStructur
 | `POST /projects/{projectId}/items/{itemId}/disable`, `/enable` | `ManageStructure` | `200`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/subgroups` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `generalSubgroup` |
-| `POST /projects/{projectId}/items/{itemId}/subgroups/reorder` with `{ ids }`, the named ones | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
+| `GET /projects/{projectId}/items/{itemId}/tables` | `ReadProject` | `200` the item's tables in the order its sheet prints them: its general table (named after the item), each named subgroup, each contract's payments (named after its contractor), with how many approved entries each holds; `404` |
+| `POST /projects/{projectId}/items/{itemId}/tables/reorder` with `{ ids }`, every subgroup and contract of the item | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}/delete` | `ManageStructure` | `200`; `404`; `409` `generalSubgroup` or `subgroupInUse` |
 | `POST /projects/{projectId}/items/{itemId}/type` with `{ type }` | `ManageStructure` | `200`; `404`; `409` `itemHasEntries` |
 | `POST /projects/{projectId}/items/{itemId}/table-percentages` with `{ isOn }` | `ManageStructure` | `200`; `404`. Whether the item's sheet in the periodic report calculates each table's percentage (AC-46.9); off until chosen, in the audit trail |
@@ -41,7 +42,8 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | --- | --- |
 | `Categories` | A project's categories: name, place in the report, whether active |
 | `Items` | A category's items: name, type, place in the report, whether active |
-| `Subgroups` | An item's groups, a general one named `''` in each, so an entry always has a subgroup and reports never special-case it |
+| `Subgroups` | An item's groups, a general one named `''` in each, so an entry always has a subgroup and reports never special-case it; its place among the item's tables |
+| `Contracts.SortOrder` | A contract's place among its item's tables, in the same order as the item's subgroups (migration `ContractTableOrder`: after the subgroups, in the order the contracts were added) |
 | `Projects.IsTemplate` | The default template |
 | `Projects.StructureSourceId` | The earlier project to copy from on approval; `Guid.Empty` for the template |
 
@@ -53,7 +55,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | The template holds the categories and items of BRS section 3 | `StructureSeed` | `CategoriesTests.TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
 | The category تكلفة الأراضي holds one item, تكلفة الأرض, of both types, because an entry needs an item (BRS section 3 lists it empty) | `StructureSeed` | `CategoriesTests.LandCostCanBeRecordedBecauseItsCategoryHoldsOneItemOfBothTypes` |
 | A subgroup no entry uses is removed, and one added later still goes last; the general one is never removed | `CategoriesEndpoints.DeleteSubgroup`, `AddSubgroup` | `CategoriesTests.ASubgroupNoEntryUsesIsRemoved`, `ASubgroupAddedAfterARemovalStillGoesLast`, `ASubgroupAnEntryUsesIsNotRemoved`, `TheGeneralSubgroupIsNeverRemoved` |
-| Subgroups reorder as items do, the general one staying first | `CategoriesEndpoints.ReorderSubgroups`, `ProjectStructure.PutInOrder` | `CategoriesTests.SubgroupsAreReorderedAndTheGeneralOneStaysFirst`, `AnOrderOfSubgroupsNamesEveryNamedOneOnceAndNeverTheGeneralOne`, `OneProjectsRoutesNeverReachAnothersSubgroups` |
+| An item's tables, its general one, its subgroups and its contracts, reorder as one list, which is the order of its sheet; a new subgroup or contract goes last (AC-46.8) | `CategoriesEndpoints.ReorderTables`, `Tables`, `ProjectStructure.NextTablePlaceAsync` | `CategoriesTests.AC_46_8_AnItemsTablesAreReorderedAsOneListTheGeneralOneToo`, `AC_46_8_AnItemListsItsGeneralTableEachSubgroupAndEachContractWithTheirEntriesAndANewTableGoesLast`, `AnOrderOfTablesNamesEveryTableExactlyOnce`, `OneProjectsRoutesNeverReachAnothersSubgroups` |
 | An item's type changes while no entry names it, in the audit trail, old and new | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AnItemsTypeChangesWhileItHasNoEntriesAndIsOfferedAsItsNewTypeIs`, `AChangedTypeIsInTheAuditTrailOldAndNew`, `AnItemWithAnEntryKeepsItsType`, `OnlyFinanceChangesATypeAndNeverAnotherProjects` |
 | A changed type asks the default columns of the new type, and keeps what a person added | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AChangedTypeAsksTheColumnsOfTheNewTypeAndKeepsWhatAPersonAdded`, `ChangingATypeThereAndBackLeavesOneOfEachColumn` |
 | FR-38: an item is added on its side, and revenue entry offers every revenue item and no expense one | `Item.IsOfferedFor` | `CategoriesTests.FR_38_AnItemIsAddedOnItsSideAndRevenueEntryOffersEveryRevenueItemAndNoExpenseOne` |

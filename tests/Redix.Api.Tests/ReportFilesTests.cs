@@ -244,6 +244,17 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public void AC_46_8_TheSheetPrintsTheItemsTablesInTheOrderTheyWerePutIn()
+    {
+        var item = new ItemReportView(Guid.NewGuid(), "الحفر", "العظم", 300, [], [new SubgroupReportView(Guid.NewGuid(), "", 100, [Row(100, "H1")]) { SortOrder = 1 }],
+            [new ContractReportView(Guid.NewGuid(), "مقاول الحفر", 0, true, 200, 0, false, 200, [Row(200, "")]) { SortOrder = 0 }]);
+
+        using var workbook = ItemWorkbook(item);
+
+        Assert.Equal(("دفعات مقاول الحفر", "الحفر"), (workbook.Worksheet(1).Cell("A1").GetString(), workbook.Worksheet(1).Cell("A6").GetString()));
+    }
+
+    [Fact]
     public void AC_46_9_AnItemThatChoosesPercentagesShowsEachTablesShareUnderItsTotalAndTheWholeUnderTheGrandTotal()
     {
         using var workbook = ItemWorkbook(Item("بلاط", "التشطيب", Subgroup("", Row(300, "B1")), Subgroup("الفلة الجنوبية", Row(100, "B2"))) with { ShowsTablePercentages = true });

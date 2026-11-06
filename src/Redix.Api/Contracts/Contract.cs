@@ -1,7 +1,9 @@
+using Redix.Api.Structure;
+
 namespace Redix.Api.Contracts;
 
 /// <summary>What a contractor was promised in one project, for an item and a unit (FR-07), to follow what is paid and what remains (BR-04). It is disabled rather than deleted, and owns the rule of its remaining.</summary>
-public class Contract
+public class Contract : IOrdered
 {
     /// <summary>The longest notes a contract may have.</summary>
     public const int NotesMaxLength = 1000;
@@ -14,6 +16,9 @@ public class Contract
 
     /// <summary>The item it is for; it changes only while no payment names the contract.</summary>
     public Guid ItemId { get; set; }
+
+    /// <summary>Its place among its item's tables, beside the item's subgroups: the order of the item's sheet (AC-46.8).</summary>
+    public int SortOrder { get; set; }
 
     /// <summary>The unit it is for, which may be the shared one; it changes only while no payment names the contract.</summary>
     public Guid UnitId { get; set; }

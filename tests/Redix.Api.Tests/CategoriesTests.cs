@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
+using Redix.Api.Entries;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
@@ -542,8 +543,11 @@ public class CategoriesTests(MigratedApiFactory factory)
         return (client, project.Id, (await CategoriesOf(client, project.Id))[3].Items[5]);
     }
 
-    private static Task<HttpResponseMessage> ReorderSubgroupsAsync(HttpClient client, Guid projectId, Guid itemId, params IEnumerable<Guid> ids) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/subgroups/reorder", new { ids });
+    private static Task<HttpResponseMessage> ReorderTablesAsync(HttpClient client, Guid projectId, Guid itemId, params IEnumerable<Guid> ids) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/tables/reorder", new { ids });
+
+    private static async Task<List<ItemTableView>> TablesOf(HttpClient client, Guid projectId, Guid itemId) =>
+        (await client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{projectId}/items/{itemId}/tables", Json))!;
 
     private static Task<HttpResponseMessage> DeleteSubgroupAsync(HttpClient client, Guid projectId, Guid itemId, Guid subgroupId) =>
         client.PostAsync($"/projects/{projectId}/items/{itemId}/subgroups/{subgroupId}/delete", null);
@@ -596,23 +600,42 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task SubgroupsAreReorderedAndTheGeneralOneStaysFirst()
+    public async Task AC_46_8_AnItemsTablesAreReorderedAsOneListTheGeneralOneToo()
     {
         var (client, projectId, item) = await ItemWithSubgroupsAsync("مواد", "دفان", "أسمنت");
 
-        (await ReorderSubgroupsAsync(client, projectId, item.Id, item.Subgroups[3].Id, item.Subgroups[1].Id, item.Subgroups[2].Id)).EnsureSuccessStatusCode();
+        (await ReorderTablesAsync(client, projectId, item.Id, item.Subgroups[3].Id, item.Subgroups[0].Id, item.Subgroups[1].Id, item.Subgroups[2].Id)).EnsureSuccessStatusCode();
 
-        Assert.Equal(["", "أسمنت", "مواد", "دفان"], (await CategoriesOf(client, projectId))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
+        Assert.Equal(["أسمنت", "", "مواد", "دفان"], (await CategoriesOf(client, projectId))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
     }
 
     [Fact]
-    public async Task AnOrderOfSubgroupsNamesEveryNamedOneOnceAndNeverTheGeneralOne()
+    public async Task AC_46_8_AnItemListsItsGeneralTableEachSubgroupAndEachContractWithTheirEntriesAndANewTableGoesLast()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var contractor = (await ledger.Client.GetFromJsonAsync<List<SupplierView>>($"/projects/{ledger.ProjectId}/suppliers", Json))!.Single(supplier => supplier.Name == Supplier.GeneralCashSupplierName);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, ledger.ItemId, ledger.Project.Units[0].Id, 1000m, false), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("مواد"), Json)).EnsureSuccessStatusCode();
+        var purchase = ledger.WithoutInvoice(70) with { Submit = true };
+        await ledger.RecordAsync(purchase);
+        await ledger.SetStatusAsync(purchase.Id, EntryStatus.Approved);
+
+        var tables = await TablesOf(ledger.Client, ledger.ProjectId, ledger.ItemId);
+
+        Assert.Equal([ItemTableKind.General, ItemTableKind.Contract, ItemTableKind.Subgroup], tables.Select(table => table.Kind));
+        Assert.Equal((Supplier.GeneralCashSupplierName, "مواد"), (tables[1].Name, tables[2].Name));
+        Assert.Equal([1, 0, 0], tables.Select(table => table.Count));
+    }
+
+    [Fact]
+    public async Task AnOrderOfTablesNamesEveryTableExactlyOnce()
     {
         var (client, projectId, item) = await ItemWithSubgroupsAsync("مواد", "دفان");
+        List<Guid> every = [.. item.Subgroups.Select(subgroup => subgroup.Id)];
 
-        foreach (var ids in new[] { [item.Subgroups[1].Id], [item.Subgroups[1].Id, item.Subgroups[1].Id], [item.Subgroups[0].Id, item.Subgroups[1].Id, item.Subgroups[2].Id], new[] { item.Subgroups[1].Id, Guid.NewGuid() } })
+        foreach (var ids in new List<Guid>[] { [.. every.Skip(1)], [.. every, every[1]], [.. every.Skip(1), Guid.NewGuid()] })
         {
-            var refused = await ReorderSubgroupsAsync(client, projectId, item.Id, ids);
+            var refused = await ReorderTablesAsync(client, projectId, item.Id, ids);
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
             Assert.Equal("invalidOrder", await CodeOf(refused));
         }
@@ -625,7 +648,8 @@ public class CategoriesTests(MigratedApiFactory factory)
         var (_, otherProjectId, other) = await ItemWithSubgroupsAsync("مواد");
 
         Assert.Equal(HttpStatusCode.NotFound, (await DeleteSubgroupAsync(client, projectId, other.Id, other.Subgroups[1].Id)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await ReorderSubgroupsAsync(client, projectId, other.Id, other.Subgroups[1].Id)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await ReorderTablesAsync(client, projectId, other.Id, other.Subgroups.Select(subgroup => subgroup.Id))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/projects/{projectId}/items/{other.Id}/tables")).StatusCode);
         Assert.Equal(["", "مواد"], (await CategoriesOf(await MemberOfAsync(otherProjectId), otherProjectId))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
     }
 

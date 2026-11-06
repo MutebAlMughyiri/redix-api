@@ -73,16 +73,16 @@ public static class ItemReportEndpoints
         {
             var lines = rows.Where(row => row.entry.Kind == EntryKind.Purchase && row.expense.SubgroupId == subgroup.Id).Select(row => RowOf(row.entry, row.expense))
                 .Concat(revenue.Where(row => row.details.SubgroupId == subgroup.Id).Select(row => RevenueRowOf(row.entry))).ToList();
-            return new SubgroupReportView(subgroup.Id, subgroup.Name, lines.Sum(line => line.Amount), lines);
+            return new SubgroupReportView(subgroup.Id, subgroup.Name, lines.Sum(line => line.Amount), lines) { SortOrder = subgroup.SortOrder };
         }).Where(subgroup => subgroup.Rows.Count > 0).ToList();
         var money = await ContractMoney.OfProjectAsync(projectId, db);
-        var contracts = await (from contract in db.Contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id where contract.ProjectId == projectId && contract.ItemId == item.Id orderby contract.Id select new { contract, supplier.Name }).ToListAsync();
+        var contracts = await (from contract in db.Contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id where contract.ProjectId == projectId && contract.ItemId == item.Id orderby contract.SortOrder, contract.Id select new { contract, supplier.Name }).ToListAsync();
         var paymentRows = rows.Where(row => row.entry.Kind == EntryKind.ContractorPayment).ToList();
         var contractViews = contracts.Select(row =>
         {
             var lines = paymentRows.Where(payment => (payments.GetValueOrDefault(payment.entry.Id) ?? new ContractorPaymentDetails()).ContractId == row.contract.Id).Select(payment => RowOf(payment.entry, payment.expense)).ToList();
             var paid = money.GetValueOrDefault(row.contract.Id).Paid;
-            return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.Value - paid, !row.contract.IsOpenValue && paid > row.contract.Value, lines.Sum(line => line.Amount), lines);
+            return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.Value - paid, !row.contract.IsOpenValue && paid > row.contract.Value, lines.Sum(line => line.Amount), lines) { SortOrder = row.contract.SortOrder };
         }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
         var categoryName = await db.Categories.Where(category => category.Id == item.CategoryId).Select(category => category.Name).SingleAsync();
         var total = rows.Sum(row => row.entry.Amount) + revenue.Sum(row => row.entry.Amount);
@@ -112,7 +112,11 @@ public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, 
 /// <param name="Name">Its name; empty for the general one.</param>
 /// <param name="Total">Its purchases.</param>
 /// <param name="Rows">Each purchase.</param>
-public record SubgroupReportView(Guid Id, string Name, decimal Total, List<ItemEntryRow> Rows);
+public record SubgroupReportView(Guid Id, string Name, decimal Total, List<ItemEntryRow> Rows)
+{
+    /// <summary>Its place among the item's tables (AC-46.8); zero in a report issued before tables had one.</summary>
+    public int SortOrder { get; init; }
+}
 
 /// <summary>One contract with its payments.</summary>
 /// <param name="Id">The contract.</param>
@@ -124,7 +128,11 @@ public record SubgroupReportView(Guid Id, string Name, decimal Total, List<ItemE
 /// <param name="IsOverrun">True when more was paid than it is worth (AC-31.1).</param>
 /// <param name="PaymentsTotal">Every payment on it, outside the contract too: what counts in the item.</param>
 /// <param name="Payments">Each payment.</param>
-public record ContractReportView(Guid Id, string ContractorName, decimal Value, bool IsOpenValue, decimal Paid, decimal Remaining, bool IsOverrun, decimal PaymentsTotal, List<ItemEntryRow> Payments);
+public record ContractReportView(Guid Id, string ContractorName, decimal Value, bool IsOpenValue, decimal Paid, decimal Remaining, bool IsOverrun, decimal PaymentsTotal, List<ItemEntryRow> Payments)
+{
+    /// <summary>Its place among the item's tables (AC-46.8); zero in a report issued before tables had one.</summary>
+    public int SortOrder { get; init; }
+}
 
 /// <summary>One purchase or payment in an item's report, in the columns of the current statement.</summary>
 /// <param name="EntryId">The entry.</param>

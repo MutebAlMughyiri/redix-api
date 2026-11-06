@@ -37,7 +37,7 @@ public static class ItemReportFiles
 
     /// <summary>
     /// An item's sheet (FR-46): a table of purchases per subgroup that has any, titled with its name or, for the general one, the item's, the item's own report columns before the cost (AC-46.8);
-    /// then a table of payments per contract, its agreed amount under it (AC-46.2). A revenue item's tables list what came in: the description and buyer, the invoice, the day and the
+    /// and a table of payments per contract, its agreed amount under it (AC-46.2); all in the order the item's tables were put in. A revenue item's tables list what came in: the description and buyer, the invoice, the day and the
     /// amount. The item's choice says whether each table's percentage is calculated (AC-46.9).
     /// </summary>
     public static StatementSheet SheetOf(ItemReportView item)
@@ -58,8 +58,10 @@ public static class ItemReportFiles
         ];
         List<StatementTable> tables =
         [
-            .. item.Subgroups.Select(subgroup => new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, purchaseColumns, Cost, subgroup.Rows.Select(PurchaseRow).ToList(), 0)),
-            .. item.Contracts.Select(contract => new StatementTable($"دفعات {contract.ContractorName}", PaymentColumns, Payment, contract.Payments.Select(PaymentRow).ToList(), contract.IsOpenValue ? 0 : contract.Value)),
+            .. item.Subgroups.Select(subgroup => (subgroup.SortOrder, Table: new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, purchaseColumns, Cost, subgroup.Rows.Select(PurchaseRow).ToList(), 0)))
+                .Concat(item.Contracts.Select(contract => (contract.SortOrder, Table: new StatementTable($"دفعات {contract.ContractorName}", PaymentColumns, Payment, contract.Payments.Select(PaymentRow).ToList(), contract.IsOpenValue ? 0 : contract.Value))))
+                .OrderBy(table => table.SortOrder)
+                .Select(table => table.Table),
         ];
         return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [new StatementTable(item.ItemName, purchaseColumns, Cost, [], 0)], item.ShowsTablePercentages ? "النسبة" : "");
     }
