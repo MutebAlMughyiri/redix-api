@@ -4,7 +4,7 @@ namespace Redix.Api.Projects;
 public enum ProjectStatus : byte
 {
     /// <summary>Entries are recorded and approved.</summary>
-    Running,
+    Active,
 
     /// <summary>Finished: read-only, with its reports still available (AC-04.1).</summary>
     Finished,

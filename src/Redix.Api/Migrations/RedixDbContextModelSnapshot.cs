@@ -349,9 +349,6 @@ namespace Redix.Api.Migrations
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("OpenDefaultProject")
-                        .HasColumnType("bit");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -3210,17 +3207,17 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("af44cf6f-a01a-577d-cf6b-64f7e72348cb"),
+                            Id = new Guid("c6b0a403-2128-32cd-ce1a-8f6af5c8f074"),
                             Language = "en",
-                            TranslationKeyId = new Guid("8fc41031-0fe8-d5de-4bc7-5e612d15d4ab"),
-                            Value = "Running"
+                            TranslationKeyId = new Guid("58bcb203-6d38-d376-4cb1-1db18f028703"),
+                            Value = "Active"
                         },
                         new
                         {
-                            Id = new Guid("d10ee5f4-88f7-6fb3-3dca-042147cde652"),
+                            Id = new Guid("b8395f34-5f8a-c127-d6ec-9feca2e315b6"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("8fc41031-0fe8-d5de-4bc7-5e612d15d4ab"),
-                            Value = "جارٍ"
+                            TranslationKeyId = new Guid("58bcb203-6d38-d376-4cb1-1db18f028703"),
+                            Value = "نشط"
                         },
                         new
                         {
@@ -3403,20 +3400,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("71587926-7cf3-5cd6-d3a0-8142b33ee5a4"),
                             Value = "إغلاق هذا المشروع؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("563031c8-7783-4fd3-17f1-347183abac42"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9ecb3887-438b-b959-0225-ac73ebde0ecd"),
-                            Value = "Its surplus is still to be shared among the partners, so liquidate it instead: that closes it."
-                        },
-                        new
-                        {
-                            Id = new Guid("212a14f2-8c5b-8d45-3922-803079bbbe83"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9ecb3887-438b-b959-0225-ac73ebde0ecd"),
-                            Value = "لا يزال فائضه لم يوزَّع على الشركاء، فصفِّه بدلاً من ذلك، وبالتصفية يُغلق."
                         },
                         new
                         {
@@ -4445,14 +4428,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9bc1cbe4-3f74-a139-cbde-1ea35a8b1bbb"),
                             Language = "en",
                             TranslationKeyId = new Guid("950d578b-60be-173b-32f6-2f91ed0565c5"),
-                            Value = "Transfers, capital movements, revenue, reconciling, the periodic report and liquidation."
+                            Value = "Transfers, capital movements, revenue, reconciling and the periodic report."
                         },
                         new
                         {
                             Id = new Guid("c4ba7de7-217d-f868-d3cc-259546894792"),
                             Language = "ar",
                             TranslationKeyId = new Guid("950d578b-60be-173b-32f6-2f91ed0565c5"),
-                            Value = "التحويلات وحركات رأس المال والإيرادات والمطابقة والتقرير الدوري والتصفية."
+                            Value = "التحويلات وحركات رأس المال والإيرادات والمطابقة والتقرير الدوري."
                         },
                         new
                         {
@@ -4848,31 +4831,45 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("1b204491-bfd5-d807-4748-9e68b7189da5"),
+                            Id = new Guid("3e53413a-f45c-c5a7-f646-c88e19bf6d4f"),
                             Language = "en",
-                            TranslationKeyId = new Guid("41f08b4f-d262-8f6b-05cb-3a7b21532454"),
-                            Value = "Open the default project directly"
+                            TranslationKeyId = new Guid("4827533f-5397-6f3f-72bc-b000f2264a9f"),
+                            Value = "{0} is now your default project. It opens when you sign in."
                         },
                         new
                         {
-                            Id = new Guid("42c1a391-380a-2b1d-abb2-6b5dd5285825"),
+                            Id = new Guid("39882be5-77c6-ee30-84b4-0396ba31a973"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("41f08b4f-d262-8f6b-05cb-3a7b21532454"),
-                            Value = "فتح المشروع الافتراضي مباشرة"
+                            TranslationKeyId = new Guid("4827533f-5397-6f3f-72bc-b000f2264a9f"),
+                            Value = "{0} هو مشروعك الافتراضي الآن، ويُفتح عند الدخول."
                         },
                         new
                         {
-                            Id = new Guid("8c9ae49b-64f3-b76e-753a-d982f4845c44"),
+                            Id = new Guid("b08f3025-6404-a6ac-ff51-83cd50007fd5"),
                             Language = "en",
-                            TranslationKeyId = new Guid("be963f70-31fd-15f5-e72e-8e15162a53e2"),
-                            Value = "This screen will not show at sign-in."
+                            TranslationKeyId = new Guid("c75a69df-d529-56c2-3263-f4d0508ca209"),
+                            Value = "Default project"
                         },
                         new
                         {
-                            Id = new Guid("01fa9773-222c-dea8-68a7-92b0d7ea490b"),
+                            Id = new Guid("401e8689-1f2c-5e6c-fb9e-e4d60525e39d"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("be963f70-31fd-15f5-e72e-8e15162a53e2"),
-                            Value = "لن تظهر هذه الشاشة عند الدخول"
+                            TranslationKeyId = new Guid("c75a69df-d529-56c2-3263-f4d0508ca209"),
+                            Value = "المشروع الافتراضي"
+                        },
+                        new
+                        {
+                            Id = new Guid("d9f3ffef-aafb-df6b-916a-04d7458fa652"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7f6e7447-8283-655a-3b1a-54520b2d1b2d"),
+                            Value = "Tick the project that opens when you sign in. Untick it to see the list instead."
+                        },
+                        new
+                        {
+                            Id = new Guid("c15f7bde-7cd3-96b1-e563-5b90f8b3fd04"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7f6e7447-8283-655a-3b1a-54520b2d1b2d"),
+                            Value = "اختر المشروع الذي يُفتح عند الدخول، أو ألغِ اختياره لتظهر القائمة."
                         },
                         new
                         {
@@ -6038,20 +6035,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c859bdac-e662-373f-60ee-7ba8a6d733c7"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("36387219-5110-e631-5aed-f9636ed99d65"),
-                            Value = "Liquidation"
-                        },
-                        new
-                        {
-                            Id = new Guid("4a0a5a42-b0a2-d246-1638-baebdcff664e"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("36387219-5110-e631-5aed-f9636ed99d65"),
-                            Value = "التصفية"
-                        },
-                        new
-                        {
                             Id = new Guid("88604375-6641-00e0-c3a3-001883a46a1f"),
                             Language = "en",
                             TranslationKeyId = new Guid("f850bed2-134d-1998-8332-e2fa4bfa7c0e"),
@@ -6637,20 +6620,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("b26762bb-2b76-6156-fbed-21e028bd794f"),
                             Value = "المصروفات حسب التصنيف"
-                        },
-                        new
-                        {
-                            Id = new Guid("3b814a1d-0103-ae4a-865f-6e94a1776f43"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("bec51f8c-2fde-78a4-2b2a-8d7fb5664d3c"),
-                            Value = "Revenue by category"
-                        },
-                        new
-                        {
-                            Id = new Guid("5cf73c67-94e3-866c-fa78-d1e14fc0bceb"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("bec51f8c-2fde-78a4-2b2a-8d7fb5664d3c"),
-                            Value = "الإيرادات حسب التصنيف"
                         },
                         new
                         {
@@ -8684,34 +8653,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c1d9d47a-9e2c-d240-e10c-55fa1d7d9511"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c47c7453-9601-018e-53e4-e368bd4cad38"),
-                            Value = "Liquidation share"
-                        },
-                        new
-                        {
-                            Id = new Guid("3647c8d9-e49c-f00d-18d5-5d19e0a2d315"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c47c7453-9601-018e-53e4-e368bd4cad38"),
-                            Value = "حصة التصفية"
-                        },
-                        new
-                        {
-                            Id = new Guid("8305d368-a0f5-cb42-e001-99fa61d1d928"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("94f31a2a-95ea-4b2b-db84-0994898bc99d"),
-                            Value = "A partner's part of the liquidation is shared out when the project is liquidated."
-                        },
-                        new
-                        {
-                            Id = new Guid("b6c1b002-3319-e673-2dbb-96145536ba2a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("94f31a2a-95ea-4b2b-db84-0994898bc99d"),
-                            Value = "تُوزَّع حصة الشريك من التصفية عند تصفية المشروع."
-                        },
-                        new
-                        {
                             Id = new Guid("a2ffb9aa-64df-334d-989d-5dbb53b48a4d"),
                             Language = "en",
                             TranslationKeyId = new Guid("75c17f5e-cb87-87cc-3022-bcf9fa626525"),
@@ -8737,20 +8678,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("8fa855b8-82dd-277c-08c9-23f47523cf46"),
                             Value = "لا يوجد شريك لتوزيعه عليه."
-                        },
-                        new
-                        {
-                            Id = new Guid("20985fbe-18e1-b140-a6b6-daa2cbc16d1a"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("17398f8a-5f3d-21b0-d9d6-5507f99c5528"),
-                            Value = "Say how each partner's part goes."
-                        },
-                        new
-                        {
-                            Id = new Guid("2bb823a4-afcf-2e9f-4a01-b05f06dd0ffd"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("17398f8a-5f3d-21b0-d9d6-5507f99c5528"),
-                            Value = "حدّد طريقة صرف حصة كل شريك."
                         },
                         new
                         {
@@ -9087,426 +9014,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("d3393a2e-74f3-b29e-c4cf-3a5c6ab27c56"),
                             Value = "هذا الملف محفوظ كمستند من قبل."
-                        },
-                        new
-                        {
-                            Id = new Guid("e15589c7-490a-092d-ab41-1c40e3f42479"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("0213446a-8644-d22f-874f-cc35f2c9c3e6"),
-                            Value = "Liquidate and close"
-                        },
-                        new
-                        {
-                            Id = new Guid("c546ba65-ee62-a31e-8428-74795869a8d0"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("0213446a-8644-d22f-874f-cc35f2c9c3e6"),
-                            Value = "التصفية والإغلاق"
-                        },
-                        new
-                        {
-                            Id = new Guid("a1a21a02-a134-acb8-3b1b-19e9d83dd2c0"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f4ea1db4-4a12-4857-656b-5d3ac1ec96b5"),
-                            Value = "Final surplus"
-                        },
-                        new
-                        {
-                            Id = new Guid("94f02ac4-ec30-8fa3-5376-2582adc9640c"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f4ea1db4-4a12-4857-656b-5d3ac1ec96b5"),
-                            Value = "الفائض النهائي"
-                        },
-                        new
-                        {
-                            Id = new Guid("7ec270f0-6548-4ff6-7457-249ed8b5a14c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("0db62c42-0434-bf8e-1965-63cbabee6752"),
-                            Value = "Final deficit"
-                        },
-                        new
-                        {
-                            Id = new Guid("3063c96f-4f0c-3bde-9bea-d30f29fcd9b1"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("0db62c42-0434-bf8e-1965-63cbabee6752"),
-                            Value = "العجز النهائي"
-                        },
-                        new
-                        {
-                            Id = new Guid("7532f470-f8ef-fa47-5363-eaab93a7fa8a"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3f071fbc-e41a-3b0e-820d-a5b00e168bf1"),
-                            Value = "Each partner takes their share of the surplus, paid out or carried to a later project, and the project closes. Nothing in it changes after that."
-                        },
-                        new
-                        {
-                            Id = new Guid("42eff101-5d18-09b7-d5bf-2f564301086e"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3f071fbc-e41a-3b0e-820d-a5b00e168bf1"),
-                            Value = "يأخذ كل شريك نسبته من الفائض صرفاً أو ترحيلاً إلى مشروع لاحق، ثم يُغلق المشروع ولا يتغير فيه شيء بعدها."
-                        },
-                        new
-                        {
-                            Id = new Guid("52b1c353-bd46-1428-11f1-1b3654f1c102"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ee439aba-83f4-d59c-5de0-222b3b9e65e2"),
-                            Value = "Each partner pays their share of the deficit in, or it comes off their balance in a later project, and the project closes."
-                        },
-                        new
-                        {
-                            Id = new Guid("5e8362bc-1f01-cc74-1b3d-161a7827f2a6"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ee439aba-83f4-d59c-5de0-222b3b9e65e2"),
-                            Value = "يدفع كل شريك نسبته من العجز، أو تُخصم من رصيده في مشروع لاحق، ثم يُغلق المشروع."
-                        },
-                        new
-                        {
-                            Id = new Guid("f8474702-408e-9dd4-cd19-5698355a707a"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("af285bfa-936f-201a-6605-7c062c92be61"),
-                            Value = "Waiting for approval: {0}. Approve or reject them before liquidating."
-                        },
-                        new
-                        {
-                            Id = new Guid("376a6684-a674-8e61-0c34-eca05c7c1b06"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("af285bfa-936f-201a-6605-7c062c92be61"),
-                            Value = "بانتظار الاعتماد: {0}. اعتمدها أو ارفضها قبل التصفية."
-                        },
-                        new
-                        {
-                            Id = new Guid("4da6f79c-4986-37e0-98e1-328596f3b55e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d274cd87-fc95-0149-b7c5-984ad5e89340"),
-                            Value = "Pay out"
-                        },
-                        new
-                        {
-                            Id = new Guid("0f3ef5ac-285e-6176-5d27-e41f86a03114"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d274cd87-fc95-0149-b7c5-984ad5e89340"),
-                            Value = "صرف"
-                        },
-                        new
-                        {
-                            Id = new Guid("fbf55fae-4cce-ff38-2b99-a7f44e017c8b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("649ac112-55cc-0d09-f17b-82cf6972af58"),
-                            Value = "Carry"
-                        },
-                        new
-                        {
-                            Id = new Guid("9eb1d243-636e-5012-8903-fa6691d2f679"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("649ac112-55cc-0d09-f17b-82cf6972af58"),
-                            Value = "ترحيل"
-                        },
-                        new
-                        {
-                            Id = new Guid("77afa977-3682-1324-dc25-4f56ec1ddd60"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("46e98734-759f-aaa8-7c76-50ba076086d9"),
-                            Value = "Date"
-                        },
-                        new
-                        {
-                            Id = new Guid("eb5e77f8-6c3f-a041-4f0f-bbfd223f18aa"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("46e98734-759f-aaa8-7c76-50ba076086d9"),
-                            Value = "التاريخ"
-                        },
-                        new
-                        {
-                            Id = new Guid("413c8e33-9074-1d4c-1e52-584a3c9f462b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b3a43f40-9310-b867-5316-82973dcf8fcb"),
-                            Value = "Liquidate and close"
-                        },
-                        new
-                        {
-                            Id = new Guid("14a6e1bd-5a0b-ddc1-e316-abd553c87aae"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b3a43f40-9310-b867-5316-82973dcf8fcb"),
-                            Value = "تصفية وإغلاق"
-                        },
-                        new
-                        {
-                            Id = new Guid("d3747326-e320-f435-dd51-daa3a64575f4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("1493cf6e-a2fe-3b06-9120-ecb9f84aaec0"),
-                            Value = "Liquidate and close this project?"
-                        },
-                        new
-                        {
-                            Id = new Guid("2209644f-178c-a172-79c2-a88e66753697"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("1493cf6e-a2fe-3b06-9120-ecb9f84aaec0"),
-                            Value = "تصفية هذا المشروع وإغلاقه؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("b416538d-88e1-08f4-6422-1d4ece5060e4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("59e02361-2efd-6c13-e10b-31dd51827e33"),
-                            Value = "Each part is entered as chosen and the project closes. This cannot be undone."
-                        },
-                        new
-                        {
-                            Id = new Guid("c40f40f1-bb3b-f76b-2cf0-fcea961fdc5a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("59e02361-2efd-6c13-e10b-31dd51827e33"),
-                            Value = "تُقيَّد كل حصة كما اخترت ويُغلق المشروع. لا يمكن التراجع عن ذلك."
-                        },
-                        new
-                        {
-                            Id = new Guid("50902e08-40f5-85e9-a14d-51ec013dbdaf"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("244400f9-b98c-3570-42df-a9205dd5c843"),
-                            Value = "The project is liquidated and closed."
-                        },
-                        new
-                        {
-                            Id = new Guid("62d178e3-514f-a6ee-b465-2e04df9276c4"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("244400f9-b98c-3570-42df-a9205dd5c843"),
-                            Value = "تمت تصفية المشروع وإغلاقه."
-                        },
-                        new
-                        {
-                            Id = new Guid("181d8abb-b72e-4b6d-ee30-3f8143a778f2"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("1659585e-040c-53cb-aa54-a6c9b25ec2d5"),
-                            Value = "Shared out"
-                        },
-                        new
-                        {
-                            Id = new Guid("e4dc9526-3c24-7c38-24f8-52f2208c67da"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("1659585e-040c-53cb-aa54-a6c9b25ec2d5"),
-                            Value = "ما وُزِّع"
-                        },
-                        new
-                        {
-                            Id = new Guid("1d276a2e-693a-2f80-32e0-7fa56ccaa2f4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("fd379b83-1e61-3eb8-4370-fa0efbce9ef6"),
-                            Value = "Nothing is left to share out."
-                        },
-                        new
-                        {
-                            Id = new Guid("1476922c-1699-51ad-ec2f-703d2d5d4acd"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("fd379b83-1e61-3eb8-4370-fa0efbce9ef6"),
-                            Value = "لا يوجد ما يُوزَّع."
-                        },
-                        new
-                        {
-                            Id = new Guid("9e32ae9f-a44c-e641-bb1e-cf6ac533cd5a"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3e7c8c12-6059-c2cf-2217-dc01f51ea080"),
-                            Value = "Record a late expense or revenue"
-                        },
-                        new
-                        {
-                            Id = new Guid("c4cf616f-c659-2528-4a37-add2c38c517a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3e7c8c12-6059-c2cf-2217-dc01f51ea080"),
-                            Value = "تسجيل مصروف أو إيراد متأخر"
-                        },
-                        new
-                        {
-                            Id = new Guid("1f0d6a28-50c8-e164-4d9c-6afaacb7ab6f"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("fb4170e6-bff8-ba29-5fa3-bcef4ce1358c"),
-                            Value = "It is shared among the partners by their shares at closing: each pays in their part of an expense, and takes their part of revenue."
-                        },
-                        new
-                        {
-                            Id = new Guid("fbf13a83-0fb7-e7ee-c1c4-be3662b83aed"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("fb4170e6-bff8-ba29-5fa3-bcef4ce1358c"),
-                            Value = "يوزَّع على الشركاء بنسبهم عند الإغلاق: يدفع كل شريك حصته من المصروف، ويأخذ حصته من الإيراد."
-                        },
-                        new
-                        {
-                            Id = new Guid("d7e78449-1936-2343-6d0d-32746aea4c38"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c36a0dcc-1dd3-e179-ea3e-08d00755251f"),
-                            Value = "Late expense"
-                        },
-                        new
-                        {
-                            Id = new Guid("cd475901-fd44-ee35-8327-3249d52c2b5f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c36a0dcc-1dd3-e179-ea3e-08d00755251f"),
-                            Value = "مصروف متأخر"
-                        },
-                        new
-                        {
-                            Id = new Guid("ce1c860d-79f0-de5e-905d-ccf1a261c251"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("93a5fc72-0f6b-6f24-03e8-5f5850de5ccb"),
-                            Value = "Late revenue"
-                        },
-                        new
-                        {
-                            Id = new Guid("59b7b483-20e6-0d4f-320c-f22efaad162b"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("93a5fc72-0f6b-6f24-03e8-5f5850de5ccb"),
-                            Value = "إيراد متأخر"
-                        },
-                        new
-                        {
-                            Id = new Guid("f4024adf-fa8b-16a0-53de-8eff92ced802"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("a2b0ccd0-6829-ec5e-1f22-2a5eb525479d"),
-                            Value = "Item"
-                        },
-                        new
-                        {
-                            Id = new Guid("b9d61caa-18aa-7ce7-fd0a-131060a36c1f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("a2b0ccd0-6829-ec5e-1f22-2a5eb525479d"),
-                            Value = "البند"
-                        },
-                        new
-                        {
-                            Id = new Guid("8596d182-7f81-6a2b-2fce-9bbc7d13d7fd"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("53d96146-35f2-ff26-1a30-34f622ea0f6e"),
-                            Value = "Amount"
-                        },
-                        new
-                        {
-                            Id = new Guid("cb98a194-5e2e-835b-b8d4-48b0211043b0"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("53d96146-35f2-ff26-1a30-34f622ea0f6e"),
-                            Value = "المبلغ"
-                        },
-                        new
-                        {
-                            Id = new Guid("c6dcd7cb-1528-75bb-8bf5-ef15fef83753"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("aaf37bef-eaac-bcff-806c-474a60d7981a"),
-                            Value = "Description"
-                        },
-                        new
-                        {
-                            Id = new Guid("e6c9a973-faab-0d72-d84f-e5e24076c644"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("aaf37bef-eaac-bcff-806c-474a60d7981a"),
-                            Value = "الوصف"
-                        },
-                        new
-                        {
-                            Id = new Guid("a87ee58e-7104-6b53-261f-8755ad423a9d"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("26492bd0-3bfc-4b14-dc48-ae331b07f456"),
-                            Value = "Record"
-                        },
-                        new
-                        {
-                            Id = new Guid("cc181cbf-7679-59ce-f35b-37a08964c41e"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("26492bd0-3bfc-4b14-dc48-ae331b07f456"),
-                            Value = "تسجيل"
-                        },
-                        new
-                        {
-                            Id = new Guid("e3d3b7a3-6c14-faf6-89c8-5b1ece5ab024"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c70850d4-ac42-0cfc-4e09-b7311dc82aac"),
-                            Value = "Recorded and shared among the partners."
-                        },
-                        new
-                        {
-                            Id = new Guid("1b5dbc82-9bd5-f67f-8799-878a34237c99"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c70850d4-ac42-0cfc-4e09-b7311dc82aac"),
-                            Value = "سُجِّل ووُزِّع على الشركاء."
-                        },
-                        new
-                        {
-                            Id = new Guid("4956f064-b12d-28e0-c5b1-051a0dd60c3a"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("2be0475f-6671-2bd8-5206-cdf82bba7fc4"),
-                            Value = "Attach receipt"
-                        },
-                        new
-                        {
-                            Id = new Guid("41c24de3-a743-2d2a-9616-80e737b7c9e0"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("2be0475f-6671-2bd8-5206-cdf82bba7fc4"),
-                            Value = "إرفاق الإيصال"
-                        },
-                        new
-                        {
-                            Id = new Guid("a0316e5c-38cd-6872-2e27-955e56fb4f41"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b37d5cd8-a532-c8da-e119-a2851c3dc58b"),
-                            Value = "No receipt yet"
-                        },
-                        new
-                        {
-                            Id = new Guid("45429a16-2a16-915f-3882-28f0f2bfed99"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b37d5cd8-a532-c8da-e119-a2851c3dc58b"),
-                            Value = "لا يوجد إيصال بعد"
-                        },
-                        new
-                        {
-                            Id = new Guid("8ec1c022-ae64-86dd-b9dd-73e7480594a3"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("6677ac85-94ad-7cd6-dab3-5f601539c3be"),
-                            Value = "The receipt is attached."
-                        },
-                        new
-                        {
-                            Id = new Guid("5eec2fad-14c6-5123-1f1f-8a0c748fcbde"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("6677ac85-94ad-7cd6-dab3-5f601539c3be"),
-                            Value = "تم إرفاق الإيصال."
-                        },
-                        new
-                        {
-                            Id = new Guid("e6890e09-24b3-4e3a-72aa-7fadb095f251"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("18635f0c-752f-7e03-65f7-a738c2cfdcf0"),
-                            Value = "This part already has its receipt."
-                        },
-                        new
-                        {
-                            Id = new Guid("686132ab-e386-4220-ca42-12480a98d8e0"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("18635f0c-752f-7e03-65f7-a738c2cfdcf0"),
-                            Value = "لهذه الحصة إيصالها من قبل."
-                        },
-                        new
-                        {
-                            Id = new Guid("b887bc1c-1a29-1677-556e-bb69f35e23cb"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("54d7466b-07c3-fecc-2029-80a607b67cdd"),
-                            Value = "Only a closed project takes a late expense or revenue."
-                        },
-                        new
-                        {
-                            Id = new Guid("d0cb2bda-d4e3-b3d0-97bb-77e0b228d33a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("54d7466b-07c3-fecc-2029-80a607b67cdd"),
-                            Value = "لا يُسجَّل مصروف أو إيراد متأخر إلا في مشروع مغلق."
-                        },
-                        new
-                        {
-                            Id = new Guid("ba23d8c5-6e94-4825-6fce-77c835560065"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("40137928-dfde-90c3-74c1-245a0a374a1e"),
-                            Value = "Choose an expense item that takes purchases, or a revenue item."
-                        },
-                        new
-                        {
-                            Id = new Guid("d0c57f3c-deab-8bba-ec5f-faabfc51c1fd"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("40137928-dfde-90c3-74c1-245a0a374a1e"),
-                            Value = "اختر بند مصروفات يقبل المشتريات، أو بند إيرادات."
                         },
                         new
                         {
@@ -14784,9 +14291,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("8fc41031-0fe8-d5de-4bc7-5e612d15d4ab"),
+                            Id = new Guid("58bcb203-6d38-d376-4cb1-1db18f028703"),
                             Description = "",
-                            Key = "projects.running"
+                            Key = "projects.active"
                         },
                         new
                         {
@@ -14865,12 +14372,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("71587926-7cf3-5cd6-d3a0-8142b33ee5a4"),
                             Description = "",
                             Key = "projects.closeQuestion"
-                        },
-                        new
-                        {
-                            Id = new Guid("9ecb3887-438b-b959-0225-ac73ebde0ecd"),
-                            Description = "",
-                            Key = "projects.liquidateFirst"
                         },
                         new
                         {
@@ -15486,15 +14987,21 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("41f08b4f-d262-8f6b-05cb-3a7b21532454"),
+                            Id = new Guid("4827533f-5397-6f3f-72bc-b000f2264a9f"),
                             Description = "",
-                            Key = "projects.openDefault"
+                            Key = "projects.defaultSet"
                         },
                         new
                         {
-                            Id = new Guid("be963f70-31fd-15f5-e72e-8e15162a53e2"),
+                            Id = new Guid("c75a69df-d529-56c2-3263-f4d0508ca209"),
                             Description = "",
-                            Key = "projects.openDefaultHint"
+                            Key = "settings.defaultProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("7f6e7447-8283-655a-3b1a-54520b2d1b2d"),
+                            Description = "",
+                            Key = "settings.defaultProjectHint"
                         },
                         new
                         {
@@ -15996,12 +15503,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("36387219-5110-e631-5aed-f9636ed99d65"),
-                            Description = "",
-                            Key = "reports.liquidation"
-                        },
-                        new
-                        {
                             Id = new Guid("f850bed2-134d-1998-8332-e2fa4bfa7c0e"),
                             Description = "",
                             Key = "reports.save"
@@ -16251,12 +15752,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b26762bb-2b76-6156-fbed-21e028bd794f"),
                             Description = "",
                             Key = "dashboard.byCategory"
-                        },
-                        new
-                        {
-                            Id = new Guid("bec51f8c-2fde-78a4-2b2a-8d7fb5664d3c"),
-                            Description = "",
-                            Key = "dashboard.revenueByCategory"
                         },
                         new
                         {
@@ -17130,18 +16625,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c47c7453-9601-018e-53e4-e368bd4cad38"),
-                            Description = "",
-                            Key = "capital.liquidation"
-                        },
-                        new
-                        {
-                            Id = new Guid("94f31a2a-95ea-4b2b-db84-0994898bc99d"),
-                            Description = "",
-                            Key = "capital.useLiquidation"
-                        },
-                        new
-                        {
                             Id = new Guid("75c17f5e-cb87-87cc-3022-bcf9fa626525"),
                             Description = "",
                             Key = "capital.pendingEntries"
@@ -17151,12 +16634,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("8fa855b8-82dd-277c-08c9-23f47523cf46"),
                             Description = "",
                             Key = "capital.noPartners"
-                        },
-                        new
-                        {
-                            Id = new Guid("17398f8a-5f3d-21b0-d9d6-5507f99c5528"),
-                            Description = "",
-                            Key = "capital.incompleteLiquidation"
                         },
                         new
                         {
@@ -17301,186 +16778,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d3393a2e-74f3-b29e-c4cf-3a5c6ab27c56"),
                             Description = "",
                             Key = "documents.documentAlreadyKept"
-                        },
-                        new
-                        {
-                            Id = new Guid("0213446a-8644-d22f-874f-cc35f2c9c3e6"),
-                            Description = "",
-                            Key = "liquidation.title"
-                        },
-                        new
-                        {
-                            Id = new Guid("f4ea1db4-4a12-4857-656b-5d3ac1ec96b5"),
-                            Description = "",
-                            Key = "liquidation.surplus"
-                        },
-                        new
-                        {
-                            Id = new Guid("0db62c42-0434-bf8e-1965-63cbabee6752"),
-                            Description = "",
-                            Key = "liquidation.deficit"
-                        },
-                        new
-                        {
-                            Id = new Guid("3f071fbc-e41a-3b0e-820d-a5b00e168bf1"),
-                            Description = "",
-                            Key = "liquidation.explain"
-                        },
-                        new
-                        {
-                            Id = new Guid("ee439aba-83f4-d59c-5de0-222b3b9e65e2"),
-                            Description = "",
-                            Key = "liquidation.deficitExplain"
-                        },
-                        new
-                        {
-                            Id = new Guid("af285bfa-936f-201a-6605-7c062c92be61"),
-                            Description = "",
-                            Key = "liquidation.pending"
-                        },
-                        new
-                        {
-                            Id = new Guid("d274cd87-fc95-0149-b7c5-984ad5e89340"),
-                            Description = "",
-                            Key = "liquidation.payOut"
-                        },
-                        new
-                        {
-                            Id = new Guid("649ac112-55cc-0d09-f17b-82cf6972af58"),
-                            Description = "",
-                            Key = "liquidation.carry"
-                        },
-                        new
-                        {
-                            Id = new Guid("46e98734-759f-aaa8-7c76-50ba076086d9"),
-                            Description = "",
-                            Key = "liquidation.date"
-                        },
-                        new
-                        {
-                            Id = new Guid("b3a43f40-9310-b867-5316-82973dcf8fcb"),
-                            Description = "",
-                            Key = "liquidation.confirm"
-                        },
-                        new
-                        {
-                            Id = new Guid("1493cf6e-a2fe-3b06-9120-ecb9f84aaec0"),
-                            Description = "",
-                            Key = "liquidation.question"
-                        },
-                        new
-                        {
-                            Id = new Guid("59e02361-2efd-6c13-e10b-31dd51827e33"),
-                            Description = "",
-                            Key = "liquidation.questionExplain"
-                        },
-                        new
-                        {
-                            Id = new Guid("244400f9-b98c-3570-42df-a9205dd5c843"),
-                            Description = "",
-                            Key = "liquidation.done"
-                        },
-                        new
-                        {
-                            Id = new Guid("1659585e-040c-53cb-aa54-a6c9b25ec2d5"),
-                            Description = "",
-                            Key = "liquidation.distributed"
-                        },
-                        new
-                        {
-                            Id = new Guid("fd379b83-1e61-3eb8-4370-fa0efbce9ef6"),
-                            Description = "",
-                            Key = "liquidation.nothing"
-                        },
-                        new
-                        {
-                            Id = new Guid("3e7c8c12-6059-c2cf-2217-dc01f51ea080"),
-                            Description = "",
-                            Key = "liquidation.late"
-                        },
-                        new
-                        {
-                            Id = new Guid("fb4170e6-bff8-ba29-5fa3-bcef4ce1358c"),
-                            Description = "",
-                            Key = "liquidation.lateExplain"
-                        },
-                        new
-                        {
-                            Id = new Guid("c36a0dcc-1dd3-e179-ea3e-08d00755251f"),
-                            Description = "",
-                            Key = "liquidation.lateExpense"
-                        },
-                        new
-                        {
-                            Id = new Guid("93a5fc72-0f6b-6f24-03e8-5f5850de5ccb"),
-                            Description = "",
-                            Key = "liquidation.lateRevenue"
-                        },
-                        new
-                        {
-                            Id = new Guid("a2b0ccd0-6829-ec5e-1f22-2a5eb525479d"),
-                            Description = "",
-                            Key = "liquidation.item"
-                        },
-                        new
-                        {
-                            Id = new Guid("53d96146-35f2-ff26-1a30-34f622ea0f6e"),
-                            Description = "",
-                            Key = "liquidation.amount"
-                        },
-                        new
-                        {
-                            Id = new Guid("aaf37bef-eaac-bcff-806c-474a60d7981a"),
-                            Description = "",
-                            Key = "liquidation.description"
-                        },
-                        new
-                        {
-                            Id = new Guid("26492bd0-3bfc-4b14-dc48-ae331b07f456"),
-                            Description = "",
-                            Key = "liquidation.record"
-                        },
-                        new
-                        {
-                            Id = new Guid("c70850d4-ac42-0cfc-4e09-b7311dc82aac"),
-                            Description = "",
-                            Key = "liquidation.lateRecorded"
-                        },
-                        new
-                        {
-                            Id = new Guid("2be0475f-6671-2bd8-5206-cdf82bba7fc4"),
-                            Description = "",
-                            Key = "liquidation.attachReceipt"
-                        },
-                        new
-                        {
-                            Id = new Guid("b37d5cd8-a532-c8da-e119-a2851c3dc58b"),
-                            Description = "",
-                            Key = "liquidation.noReceipt"
-                        },
-                        new
-                        {
-                            Id = new Guid("6677ac85-94ad-7cd6-dab3-5f601539c3be"),
-                            Description = "",
-                            Key = "liquidation.receiptAttached"
-                        },
-                        new
-                        {
-                            Id = new Guid("18635f0c-752f-7e03-65f7-a738c2cfdcf0"),
-                            Description = "",
-                            Key = "capital.receiptAlreadyAttached"
-                        },
-                        new
-                        {
-                            Id = new Guid("54d7466b-07c3-fecc-2029-80a607b67cdd"),
-                            Description = "",
-                            Key = "capital.projectNotClosed"
-                        },
-                        new
-                        {
-                            Id = new Guid("40137928-dfde-90c3-74c1-245a0a374a1e"),
-                            Description = "",
-                            Key = "capital.unknownItem"
                         },
                         new
                         {

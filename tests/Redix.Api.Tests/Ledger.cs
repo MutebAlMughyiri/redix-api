@@ -13,7 +13,7 @@ using Redix.Api.Suppliers;
 
 namespace Redix.Api.Tests;
 
-/// <summary>What the ledger's test classes share: a running project with Finance signed in, and the way to enter into it and read it back.</summary>
+/// <summary>What the ledger's test classes share: an active project with Finance signed in, and the way to enter into it and read it back.</summary>
 public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, ProjectView Project, Guid ItemId, Guid SupplierId, Guid MethodId, Guid AccountId)
 {
     public const string Password = "Ledger-pass-1";

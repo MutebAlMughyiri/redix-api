@@ -115,7 +115,6 @@ app.MapCapital();
 app.MapRevenue();
 app.MapDashboard();
 app.MapItemReport();
-app.MapLiquidation();
 app.MapDocuments();
 app.MapPeriodicReports();
 app.MapReportFiles();

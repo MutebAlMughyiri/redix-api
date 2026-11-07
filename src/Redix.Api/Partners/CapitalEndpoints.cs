@@ -64,13 +64,13 @@ public static class CapitalEndpoints
         return Results.Ok(await MovementsOfAsync(projectId, partnerId, db));
     }
 
-    /// <summary>One partner's movements of capital, newest first: what the capital screen and the periodic report both show. Their part of a liquidation is not capital, so it shows with the liquidation (BR-27).</summary>
+    /// <summary>One partner's movements of capital, newest first: what the capital screen and the periodic report both show.</summary>
     public static async Task<List<CapitalMovementView>> MovementsOfAsync(Guid projectId, Guid partnerId, RedixDbContext db)
     {
         var rows = await (
             from details in db.CapitalMovementDetails
             join entry in db.Entries on details.EntryId equals entry.Id
-            where details.PartnerId == partnerId && entry.Status == EntryStatus.Approved && details.Type != CapitalMovementType.Liquidation
+            where details.PartnerId == partnerId && entry.Status == EntryStatus.Approved
             orderby entry.EntryDate descending, entry.Id descending
             select new { entry, details }).ToListAsync();
         var entries = rows.Select(row => row.entry).ToList();
@@ -81,7 +81,7 @@ public static class CapitalEndpoints
     }
 
     /// <summary>
-    /// Enters a capital movement, approved at once (BR-30). It needs its bank receipt, unless paid in cash with a reason (BR-23), otherwise <c>receiptRequired</c>; a reason too long answers <c>invalidReason</c>, and something in kind with no reason <c>receiptRequired</c>. A carry here answers <c>useCarry</c>, and a part of a liquidation <c>useLiquidation</c>, since each has its own route.
+    /// Enters a capital movement, approved at once (BR-30). It needs its bank receipt, unless paid in cash with a reason (BR-23), otherwise <c>receiptRequired</c>; a reason too long answers <c>invalidReason</c>, and something in kind with no reason <c>receiptRequired</c>. A carry here answers <c>useCarry</c>, since it has its own route.
     /// A settlement must take all the partner holds, otherwise <c>settlementNotFull</c>, and then they are no longer active. A partner not in the project answers <c>unknownPartner</c>; one who left <c>partnerLeft</c>. Otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does.
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -91,9 +91,9 @@ public static class CapitalEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Record(Guid projectId, CapitalMovementRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        if (request.Type is CapitalMovementType.CarryIn or CapitalMovementType.CarryOut or CapitalMovementType.Liquidation)
+        if (request.Type is CapitalMovementType.CarryIn or CapitalMovementType.CarryOut)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, request.Type == CapitalMovementType.Liquidation ? "UseLiquidation" : "UseCarry");
+            return Refusal.Of(StatusCodes.Status400BadRequest, "UseCarry");
         }
         var partnerRefusal = await RefusalOfPartnerAsync(projectId, request.PartnerId, db);
         if (partnerRefusal.Length > 0)
@@ -171,7 +171,7 @@ public static class CapitalEndpoints
         {
             return (StatusCodes.Status403Forbidden, "TargetProjectRefused");
         }
-        if (!await db.Projects.AnyAsync(project => project.Id == request.TargetProjectId && project.Status == ProjectStatus.Running))
+        if (!await db.Projects.AnyAsync(project => project.Id == request.TargetProjectId && project.Status == ProjectStatus.Active))
         {
             return (StatusCodes.Status409Conflict, "TargetProjectFinished");
         }
@@ -216,7 +216,7 @@ public static class CapitalEndpoints
         var rows = await (
             from details in db.CapitalMovementDetails
             join entry in db.Entries on details.EntryId equals entry.Id
-            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && details.Type != CapitalMovementType.Liquidation
+            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved
             group entry by new { details.PartnerId, entry.Kind } into moved
             select new { moved.Key.PartnerId, moved.Key.Kind, Total = moved.Sum(entry => entry.Amount) }).ToListAsync();
         return rows.GroupBy(row => row.PartnerId).ToDictionary(group => group.Key, group => group.Sum(row => row.Kind == EntryKind.CapitalIn ? row.Total : -row.Total));

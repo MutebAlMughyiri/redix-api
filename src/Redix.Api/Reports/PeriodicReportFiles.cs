@@ -78,7 +78,6 @@ public static class PeriodicReportFiles
         page.Item().PaddingTop(6).Text("الفائض").Bold();
         Line(page, "الفائض", report.Surplus, true);
         Line(page, "الفائض بدون البيع", report.SurplusWithoutSales);
-        Line(page, "التصفية", report.Liquidation);
         Line(page, "فرق المطابقة", report.ReconciliationDifference, true);
         if (report.PendingCount > 0)
         {

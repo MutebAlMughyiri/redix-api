@@ -205,7 +205,7 @@ public static class EntriesEndpoints
         var tied = await EntryReversal.TiedToAsync(entryId, db);
         var access = await UserAccess.OfAsync(userId, db);
         var otherProjects = tied.Select(row => row.ProjectId).Where(id => id != projectId).ToList();
-        if (otherProjects.Any(id => !access.In(id).Contains(Permission.ApproveEntries)) || await db.Projects.AnyAsync(project => otherProjects.Contains(project.Id) && project.Status != ProjectStatus.Running))
+        if (otherProjects.Any(id => !access.In(id).Contains(Permission.ApproveEntries)) || await db.Projects.AnyAsync(project => otherProjects.Contains(project.Id) && project.Status != ProjectStatus.Active))
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "TiedProjectRefused");
         }

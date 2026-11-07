@@ -124,7 +124,7 @@ public static class ProjectsEndpoints
 
     /// <summary>
     /// Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>; one with entries waiting for approval, <c>pendingEntries</c> (BR-35).
-    /// A draft waits for nobody, so it holds nothing open. One whose surplus would still be shared among partners answers <c>liquidateFirst</c>: only its liquidation closes it (BR-27).
+    /// A draft waits for nobody, so it holds nothing open.
     /// </summary>
     /// <param name="projectId">The project to close.</param>
     /// <param name="principal">The caller's session.</param>
@@ -132,20 +132,18 @@ public static class ProjectsEndpoints
     /// <param name="time">The current time, for the audit record.</param>
     public static async Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        if ((await LiquidationEndpoints.ViewOfAsync(projectId, db)).Parts.Any(part => part.Amount != 0))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "LiquidateFirst");
-        }
         var hasEntriesWaiting = await db.Entries.AnyAsync(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval);
         return await ChangeAsync(projectId, principal, db, time, AuditAction.CloseProject, project => project.Close(hasEntriesWaiting));
     }
 
-    /// <summary>Makes a project the caller's default, replacing any other, and says whether sign-in opens it directly (FR-37). It applies from the next sign-in (AC-37.1).</summary>
+    /// <summary>
+    /// Makes a project the caller's default, replacing any other (FR-37). From the next sign-in it opens directly, skipping the list (AC-37.1): a default always opens directly
+    /// (Muteb, 8 Nov 2026).
+    /// </summary>
     /// <param name="projectId">The project, which the caller must be able to read.</param>
-    /// <param name="request">Whether sign-in opens it directly.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the choice lives in.</param>
-    public static async Task<DefaultProjectView> SetDefault(Guid projectId, SetDefaultProjectRequest request, ClaimsPrincipal principal, RedixDbContext db)
+    public static async Task<DefaultProjectView> SetDefault(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
         var chosen = await db.UserDefaultProjects.SingleOrDefaultAsync(row => row.UserId == userId);
@@ -157,21 +155,18 @@ public static class ProjectsEndpoints
         {
             chosen.ProjectId = projectId;
         }
-        (await db.Users.SingleAsync(user => user.Id == userId)).OpenDefaultProject = request.OpenDirectly;
         await db.SaveChangesAsync();
-        return new DefaultProjectView(projectId.ToString(), request.OpenDirectly);
+        return new DefaultProjectView(projectId.ToString());
     }
 
-    /// <summary>Clears the caller's default, which also turns "open directly" off.</summary>
+    /// <summary>Clears the caller's default, so sign-in shows the list.</summary>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the choice lives in.</param>
     public static async Task<DefaultProjectView> RemoveDefault(ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
         await db.UserDefaultProjects.Where(row => row.UserId == userId).ExecuteDeleteAsync();
-        (await db.Users.SingleAsync(user => user.Id == userId)).OpenDefaultProject = false;
-        await db.SaveChangesAsync();
-        return new DefaultProjectView("", false);
+        return new DefaultProjectView("");
     }
 
     private static async Task<IResult> ChangeAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Func<Project, ProjectChangeOutcome> change)
@@ -216,14 +211,9 @@ public record CreateProjectRequest(string Name, DateOnly StartDate, List<string>
     public Guid StructureSourceId { get; init; }
 }
 
-/// <summary>What the app sends to set the default project.</summary>
-/// <param name="OpenDirectly">Whether sign-in skips the list and opens it.</param>
-public record SetDefaultProjectRequest(bool OpenDirectly);
-
 /// <summary>The caller's default project, as a session says it.</summary>
-/// <param name="DefaultProjectId">The project; empty when none.</param>
-/// <param name="OpenDefaultProject">Whether sign-in opens it directly.</param>
-public record DefaultProjectView(string DefaultProjectId, bool OpenDefaultProject);
+/// <param name="DefaultProjectId">The project sign-in opens directly; empty when none.</param>
+public record DefaultProjectView(string DefaultProjectId);
 
 /// <summary>What the app sends to add a unit.</summary>
 /// <param name="Name">The unit's name.</param>
@@ -233,7 +223,7 @@ public record AddUnitRequest(string Name);
 /// <param name="Id">The project's id.</param>
 /// <param name="Name">The project's name.</param>
 /// <param name="StartDate">The day the project started.</param>
-/// <param name="Status"><c>pendingApproval</c>, <c>rejected</c>, <c>running</c>, or <c>finished</c> once read-only.</param>
+/// <param name="Status"><c>pendingApproval</c>, <c>rejected</c>, <c>active</c>, or <c>finished</c> once read-only.</param>
 /// <param name="RejectionReason">Why the admin refused it; empty otherwise.</param>
 /// <param name="Units">The project's units, in order.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>

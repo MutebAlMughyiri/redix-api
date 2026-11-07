@@ -175,7 +175,7 @@ public class RegistrationTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
         var listed = await ListedAsync(client, projectId);
-        Assert.Equal(ProjectStatus.Running, listed.Status);
+        Assert.Equal(ProjectStatus.Active, listed.Status);
         Assert.Contains(Permission.ManageUsers, listed.Permissions);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/projects/{projectId}/users")).StatusCode);
     }

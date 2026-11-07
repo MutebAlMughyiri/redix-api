@@ -102,8 +102,7 @@ public static class PeriodicReportWorkbook
 
         var revenue = top + 2 + report.RevenueCategories.Count;
         var withoutSales = revenue + 2;
-        var liquidation = withoutSales + 1;
-        var surplus = liquidation + 2;
+        var surplus = withoutSales + 2;
         var details = Details(sheet, [.. report.Categories, .. report.RevenueCategories], itemTotals, [surplus, expensesTotal]);
         string ValueOf(CategoryTotalView category) => category.Items.Count > 1 ? details[category.Id] : category.Items.Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).FirstOrDefault("0");
 
@@ -124,9 +123,8 @@ public static class PeriodicReportWorkbook
         Line(sheet, revenue, Revenue, "مجموع الايرادات", $"SUM(B{top + 1}:B{revenue - 1})").AsTotal();
         var sales = report.RevenueCategories.SelectMany(category => category.Items).Where(item => item.Type == ItemType.Sale).Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).ToList();
         Line(sheet, withoutSales, Revenue, "مجموع الايرادات بدون البيع", sales.Count > 0 ? $"B{revenue}-({string.Join("+", sales)})" : $"B{revenue}").AsMutedTotal();
-        Line(sheet, liquidation, Revenue, "التصفية", report.Liquidation).AsMutedTotal();
-        Line(sheet, liquidation + 1, Revenue, "الفائض بدون البيع", $"B{withoutSales}-E{expensesTotal}").AsMutedTotal();
-        Line(sheet, surplus, Revenue, "الفائض\n( المبلغ المفروض بالحساب)", $"B{revenue}-(E{expensesTotal}+B{liquidation})").AsTotal().Style.Alignment.WrapText = true;
+        Line(sheet, withoutSales + 1, Revenue, "الفائض بدون البيع", $"B{withoutSales}-E{expensesTotal}").AsMutedTotal();
+        Line(sheet, surplus, Revenue, "الفائض\n( المبلغ المفروض بالحساب)", $"B{revenue}-E{expensesTotal}").AsTotal().Style.Alignment.WrapText = true;
 
         row = top + 1;
         foreach (var category in report.Categories)

@@ -47,9 +47,6 @@ public class User
     /// <summary>True while the password is a temporary one the user must change before anything else.</summary>
     public bool MustChangePassword { get; set; }
 
-    /// <summary>True when sign-in skips the project list and opens the default project (FR-37).</summary>
-    public bool OpenDefaultProject { get; set; }
-
     /// <summary>False once the user is disabled, and can no longer sign in (AC-01.3).</summary>
     public bool IsActive { get; set; } = true;
 

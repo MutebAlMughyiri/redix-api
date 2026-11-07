@@ -18,7 +18,7 @@
 | `POST /projects/{projectId}/units/{unitId}/delete` | Deletes a unit while the project is open: nothing spends against a unit, since expenses and contracts belong to the project (BR-38, redix-api #96) | `200` the project; `409` `projectFinished`; `404` outside the project |
 | `POST /projects/{projectId}/close` | Closes a finished project | `200` the project; `409` `projectFinished` when already closed, or `pendingEntries` while entries wait for approval; `403` without `ManageProject` in it |
 
-A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ id, name }], permissions }`, with `status` `pendingApproval`, `rejected`, `running` or `finished`.
+A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ id, name }], permissions }`, with `status` `pendingApproval`, `rejected`, `active` or `finished`.
 
 ## Rules and where they live
 
@@ -34,7 +34,7 @@ A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ 
 | A unit added after a deletion still goes last | `Project.AddUnit` | `AUnitAddedAfterADeletionStillGoesLast` |
 | A finished project refuses them all, a unit of another project is 404, and only whoever holds `ManageProject` does them | `Project.IsReadOnly`, `ProjectsEndpoints.MapProjects` | `BR_38_AFinishedProjectRefusesRenamesAndDeletions`, `BR_33_AUnitOfAnotherProjectIsNotFound`, `BR_38_OnlyWhoeverManagesTheProjectRenamesAndDeletes` |
 | A project with entries waiting for approval cannot be closed; drafts and decided entries hold nothing open, and another project's entries nothing here (BR-35) | `Project.Close`, `ProjectsEndpoints.Close` | `ProjectsTests.BR_35_AProjectWithEntriesWaitingForApprovalCannotBeClosed`, `BR_35_OnlyEntriesWaitingForApprovalHoldAProjectOpen`, `BR_35_AnEntryWaitingInAnotherProjectHoldsNothingOpen` |
-| The status travels by its glossary name, `running` or `finished` | `ConfigureHttpJsonOptions`, `ProjectStatus` | `ProjectsTests.TheStatusTravelsAsItsGlossaryName` |
+| The status travels by its glossary name, `active` or `finished` | `ConfigureHttpJsonOptions`, `ProjectStatus` | `ProjectsTests.TheStatusTravelsAsItsGlossaryName` |
 | A unit's name cannot repeat inside its project, compared trimmed; projects may repeat a name, because each is separate (BR-37, BR-33) | `Project.AddUnit` | `ProjectsTests.BR_37_AUnitsNameCannotRepeatInItsProjectComparedTrimmed`, `BR_37_NoUnitTakesTheSharedUnitsName`, `BR_37_ANewProjectCannotRepeatAUnitsNameAndSavesNothing`, `BR_37_ProjectsMayRepeatANameAndEachTheirUnitsNames`; `RegistrationTests.BR_37_ARegistrationCannotRepeatAUnitsName` |
 | A project or a unit needs a name of 1 to 100 characters, spaces around it trimmed | `Project.IsAcceptableName` | `ProjectsTests.AProjectOrAUnitNeedsANameOfAtMost100Characters` |
 | Whoever registers a project manages it | `ProjectsEndpoints.AddWithManagerAsync` | `ProjectsTests.WhoeverStartsAProjectManagesIt` |

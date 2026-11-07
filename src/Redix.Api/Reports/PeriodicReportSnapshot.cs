@@ -15,7 +15,6 @@ namespace Redix.Api.Reports;
 /// <param name="OtherRevenue">Anything else that came in.</param>
 /// <param name="Surplus">Revenue less expenses.</param>
 /// <param name="SurplusWithoutSales">The same without sales.</param>
-/// <param name="Liquidation">What was distributed when the project closed (BR-27); zero until then.</param>
 /// <param name="Categories">Each category of expense items, its total with its items'.</param>
 /// <param name="Accounts">Each account's real balance at the latest reconciliation.</param>
 /// <param name="AccountsTotal">Their total.</param>
@@ -38,7 +37,6 @@ public record PeriodicReportSnapshot(
     decimal OtherRevenue,
     decimal Surplus,
     decimal SurplusWithoutSales,
-    decimal Liquidation,
     List<CategoryTotalView> Categories,
     List<ReportAccountView> Accounts,
     decimal AccountsTotal,

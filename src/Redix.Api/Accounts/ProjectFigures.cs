@@ -1,19 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Entries;
-using Redix.Api.Partners;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Accounts;
 
 /// <summary>A project's money as the BRS reckons it, only ever from what is approved (BR-10): the one owner of capital, revenue and surplus, so the dashboard, the reconciliation and the report cannot disagree.</summary>
-/// <param name="Capital">What partners put in, less what they took out (BR-05); their parts of the liquidation are not capital.</param>
+/// <param name="Capital">What partners put in, less what they took out (BR-05).</param>
 /// <param name="VatRefunds">VAT that came back.</param>
 /// <param name="Sales">What units sold for.</param>
 /// <param name="OtherRevenue">Anything else that came in.</param>
 /// <param name="Expenses">Purchases and contractor payments, by what was paid (BR-24).</param>
-/// <param name="Liquidation">What was distributed to the partners when the project closed, less what they paid in for a deficit (BR-27); zero until then.</param>
-public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds, decimal Sales, decimal OtherRevenue, decimal Expenses, decimal Liquidation)
+public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds, decimal Sales, decimal OtherRevenue, decimal Expenses)
 {
     /// <summary>Capital, VAT refunds and sales (BR-06).</summary>
     public decimal Revenue => RevenueWithoutSales + Sales;
@@ -21,10 +19,10 @@ public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds
     /// <summary>All revenue but sales.</summary>
     public decimal RevenueWithoutSales => Capital + VatRefunds + OtherRevenue;
 
-    /// <summary>Revenue less expenses and what was distributed (BR-07, BR-27): what the accounts should hold, nothing once the project is liquidated.</summary>
-    public decimal Surplus => Revenue - (Expenses + Liquidation);
+    /// <summary>Revenue less expenses (BR-07): what the accounts should hold.</summary>
+    public decimal Surplus => Revenue - Expenses;
 
-    /// <summary>The surplus without sales (BR-07), as the statement reckons it: before the liquidation.</summary>
+    /// <summary>The surplus without sales (BR-07), as the statement reckons it.</summary>
     public decimal SurplusWithoutSales => RevenueWithoutSales - Expenses;
 
     /// <summary>How far the work has come (UC-063): expenses as a percentage of revenue, to two decimals; 0 while nothing came in, and over 100 once expenses pass revenue.</summary>
@@ -44,17 +42,11 @@ public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds
             join item in db.Items on details.ItemId equals item.Id
             group entry.Amount by item.Type into amounts
             select new { Type = amounts.Key, Total = amounts.Sum() }).ToDictionaryAsync(row => row.Type, row => row.Total);
-        var liquidation = await (
-            from details in db.CapitalMovementDetails
-            join entry in approved on details.EntryId equals entry.Id
-            where details.Type == CapitalMovementType.Liquidation
-            select entry.Kind == EntryKind.CapitalOut ? entry.Amount : -entry.Amount).SumAsync();
         return new ProjectFigures(
-            totals.GetValueOrDefault(EntryKind.CapitalIn) - totals.GetValueOrDefault(EntryKind.CapitalOut) + liquidation,
+            totals.GetValueOrDefault(EntryKind.CapitalIn) - totals.GetValueOrDefault(EntryKind.CapitalOut),
             revenue.GetValueOrDefault(ItemType.VatRefund),
             revenue.GetValueOrDefault(ItemType.Sale),
             revenue.GetValueOrDefault(ItemType.OtherRevenue),
-            totals.GetValueOrDefault(EntryKind.Purchase) + totals.GetValueOrDefault(EntryKind.ContractorPayment),
-            liquidation);
+            totals.GetValueOrDefault(EntryKind.Purchase) + totals.GetValueOrDefault(EntryKind.ContractorPayment));
     }
 }

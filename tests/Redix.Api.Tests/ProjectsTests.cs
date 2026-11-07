@@ -69,7 +69,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var project = await factory.ApprovedProjectAsync(client, "  غصون 7  ", " الفلة الغربية ", "الفلة الجنوبية");
 
         Assert.Equal("غصون 7", project.Name);
-        Assert.Equal(ProjectStatus.Running, project.Status);
+        Assert.Equal(ProjectStatus.Active, project.Status);
         Assert.Equal(["الفلة الغربية", "الفلة الجنوبية"], project.Units.Select(unit => unit.Name));
         var listed = (await ListAsync(client))!.Single(listed => listed.Id == project.Id);
         Assert.Equal((project.Name, project.StartDate, project.Status), (listed.Name, listed.StartDate, listed.Status));
@@ -273,19 +273,18 @@ public class ProjectsTests(MigratedApiFactory factory)
 
     private async Task<Session> SessionOfAsync(User user) => (await (await SignInAsync(user)).Content.ReadFromJsonAsync<Session>(Json))!;
 
-    private static Task<HttpResponseMessage> SetDefaultAsync(HttpClient client, Guid projectId, bool openDirectly = true) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/default", new SetDefaultProjectRequest(openDirectly));
+    private static Task<HttpResponseMessage> SetDefaultAsync(HttpClient client, Guid projectId) => client.PostAsync($"/projects/{projectId}/default", null);
 
     [Fact]
     public async Task NoDefaultProjectAtFirst()
     {
         var session = await SessionOfAsync(await factory.AddUserAsync(Password));
 
-        Assert.Equal(("", false), (session.DefaultProjectId, session.OpenDefaultProject));
+        Assert.Equal("", session.DefaultProjectId);
     }
 
     [Fact]
-    public async Task ADefaultProjectIsKeptForTheNextSession()
+    public async Task AC_37_1_ADefaultProjectIsKeptForTheNextSessionWhichOpensIt()
     {
         var user = await StarterAsync();
         var client = await ClientOfAsync(user);
@@ -294,8 +293,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var answer = await SetDefaultAsync(client, project.Id);
 
         Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
-        var session = await SessionOfAsync(user);
-        Assert.Equal((project.Id.ToString(), true), (session.DefaultProjectId, session.OpenDefaultProject));
+        Assert.Equal(project.Id.ToString(), (await SessionOfAsync(user)).DefaultProjectId);
     }
 
     [Fact]
@@ -307,14 +305,13 @@ public class ProjectsTests(MigratedApiFactory factory)
         var second = await factory.ApprovedProjectAsync(client, "غصون 7");
         await SetDefaultAsync(client, first.Id);
 
-        await SetDefaultAsync(client, second.Id, openDirectly: false);
+        await SetDefaultAsync(client, second.Id);
 
-        var session = await SessionOfAsync(user);
-        Assert.Equal((second.Id.ToString(), false), (session.DefaultProjectId, session.OpenDefaultProject));
+        Assert.Equal(second.Id.ToString(), (await SessionOfAsync(user)).DefaultProjectId);
     }
 
     [Fact]
-    public async Task RemovingTheDefaultTurnsOpenDirectlyOff()
+    public async Task RemovingTheDefaultLeavesNoneSoSignInShowsTheList()
     {
         var user = await StarterAsync();
         var client = await ClientOfAsync(user);
@@ -324,8 +321,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var answer = await client.PostAsync("/projects/default/remove", null);
 
         Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
-        var session = await SessionOfAsync(user);
-        Assert.Equal(("", false), (session.DefaultProjectId, session.OpenDefaultProject));
+        Assert.Equal("", (await SessionOfAsync(user)).DefaultProjectId);
     }
 
     [Fact]
@@ -377,8 +373,7 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         await SetDefaultAsync(client, project.Id);
 
-        var session = await SessionOfAsync(other);
-        Assert.Equal(("", false), (session.DefaultProjectId, session.OpenDefaultProject));
+        Assert.Equal("", (await SessionOfAsync(other)).DefaultProjectId);
     }
 
     [Fact]
@@ -425,7 +420,7 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
         Assert.Equal(AuditAction.CloseProject, record.Action);
-        Assert.Equal((int)ProjectStatus.Running, ValuesOf(record.Before).GetProperty("Status").GetInt32());
+        Assert.Equal((int)ProjectStatus.Active, ValuesOf(record.Before).GetProperty("Status").GetInt32());
         Assert.Equal((int)ProjectStatus.Finished, ValuesOf(record.After).GetProperty("Status").GetInt32());
     }
 
@@ -440,7 +435,7 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Equal("pendingEntries", await CodeOf(refused));
-        Assert.Equal(ProjectStatus.Running, (await ListAsync(ledger.Client))!.Single(project => project.Id == ledger.ProjectId).Status);
+        Assert.Equal(ProjectStatus.Active, (await ListAsync(ledger.Client))!.Single(project => project.Id == ledger.ProjectId).Status);
     }
 
     [Theory]

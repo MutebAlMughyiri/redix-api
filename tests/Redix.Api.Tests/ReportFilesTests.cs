@@ -131,8 +131,8 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var summary = workbook.Worksheet("الخلاصة");
         Assert.Equal(("رقم التقرير:", "1", "غصون 6"), (summary.Cell("A2").GetString(), summary.Cell("B2").GetString(), summary.Cell("A1").GetString()));
         Assert.Equal(("ايرادات", "مصروفات", "رأس المال", "'راس المال'!E4"), (summary.Cell("A9").GetString(), summary.Cell("D9").GetString(), summary.Cell("A10").GetString(), summary.Cell("B10").FormulaA1));
-        Assert.Equal(("مجموع الايرادات", 1000m, 115m, 885m), (summary.Cell("A14").GetString(), summary.Cell("B14").GetValue<decimal>(), summary.Cell("E15").GetValue<decimal>(), summary.Cell("B19").GetValue<decimal>()));
-        Assert.Equal(("تفاصيل العظم:", "B32"), (summary.Cell("A22").GetString(), summary.Cell("E12").FormulaA1));
+        Assert.Equal(("مجموع الايرادات", 1000m, 115m, 885m), (summary.Cell("A14").GetString(), summary.Cell("B14").GetValue<decimal>(), summary.Cell("E15").GetValue<decimal>(), summary.Cell("B18").GetValue<decimal>()));
+        Assert.Equal(("تفاصيل العظم:", "B31"), (summary.Cell("A21").GetString(), summary.Cell("E12").FormulaA1));
         Assert.Equal(["استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], new[] { 11, 12, 13 }.Select(line => summary.Cell(line, 1).GetString()));
         Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains($"'{itemSheet.Name}'!"));
         var capital = workbook.Worksheet("راس المال");
@@ -307,7 +307,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     private static PeriodicReportSnapshot Report(List<ItemReportView> items) =>
-        new("غصون 6", 1, new DateTime(2026, 11, 5), 0, items.Sum(item => item.Total), 0, 0, 0, 0, 0, 0, 0, [], [], 0, 0, 0, 0, 0, [], items, []);
+        new("غصون 6", 1, new DateTime(2026, 11, 5), 0, items.Sum(item => item.Total), 0, 0, 0, 0, 0, 0, [], [], 0, 0, 0, 0, 0, [], items, []);
 
     private static ItemReportView Item(string name, string category, params SubgroupReportView[] subgroups) => new(Guid.NewGuid(), name, category, subgroups.Sum(subgroup => subgroup.Total), [], [.. subgroups], []);
 

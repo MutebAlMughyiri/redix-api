@@ -65,7 +65,7 @@ public class DashboardTests(MigratedApiFactory factory)
     [InlineData(100, 150, 150)]
     [InlineData(0, 200, 0)]
     public void UC_063_CompletionIsExpensesAsAPercentageOfRevenue(decimal capital, decimal expenses, decimal percent) =>
-        Assert.Equal(percent, new ProjectFigures(capital, 0, 0, 0, expenses, 0).CompletionPercent);
+        Assert.Equal(percent, new ProjectFigures(capital, 0, 0, 0, expenses).CompletionPercent);
 
     [Fact]
     public async Task UC_063_EveryoneSeesTheCompletionAndTheCostAndNobodyTypesIt()

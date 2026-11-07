@@ -45,7 +45,7 @@ public class Project
     public bool IsReadOnly => Status == ProjectStatus.Finished;
 
     /// <summary>True once the admin has let it in, so permissions count in it (BR-34).</summary>
-    public bool IsApproved => Status is ProjectStatus.Running or ProjectStatus.Finished;
+    public bool IsApproved => Status is ProjectStatus.Active or ProjectStatus.Finished;
 
     /// <summary>A new project waiting for approval, with its units in order; the outcome says whether its name and every unit's are acceptable.</summary>
     public static (Project Project, ProjectChangeOutcome Outcome) New(string name, DateOnly startDate, IEnumerable<string> units)
@@ -67,7 +67,7 @@ public class Project
         {
             return ProjectChangeOutcome.NotPending;
         }
-        Status = ProjectStatus.Running;
+        Status = ProjectStatus.Active;
         return ProjectChangeOutcome.Done;
     }
 
