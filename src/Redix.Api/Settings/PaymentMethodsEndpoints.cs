@@ -5,7 +5,7 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Settings;
 
-/// <summary>A project's payment methods (UC-014, FR-40). There is no delete: what is no longer wanted is disabled.</summary>
+/// <summary>A project's payment methods (UC-014, FR-40): added, renamed, disabled and enabled, and deleted while no expense was paid with them.</summary>
 public static class PaymentMethodsEndpoints
 {
     /// <summary>Maps the routes that read a project's payment methods, for anyone who reads the project, and those that change them, for whoever holds <see cref="Permission.ManageSettings"/>.</summary>
@@ -20,6 +20,7 @@ public static class PaymentMethodsEndpoints
         changes.MapPost("/payment-methods/{paymentMethodId:guid}", Rename);
         changes.MapPost("/payment-methods/{paymentMethodId:guid}/disable", Disable);
         changes.MapPost("/payment-methods/{paymentMethodId:guid}/enable", Enable);
+        changes.MapPost("/payment-methods/{paymentMethodId:guid}/delete", Delete);
     }
 
     /// <summary>Every payment method of the project, disabled ones included, in order.</summary>
@@ -63,6 +64,26 @@ public static class PaymentMethodsEndpoints
     /// <param name="paymentMethodId">The method.</param>
     /// <param name="db">The database they live in.</param>
     public static Task<IResult> Enable(Guid projectId, Guid paymentMethodId, RedixDbContext db) => ChangeAsync(projectId, paymentMethodId, db, method => method.IsActive = true);
+
+    /// <summary>Deletes a payment method no expense was paid with. One an expense was paid with answers <c>paymentMethodUsed</c>, since the expense keeps it: disabling it takes it out of entry instead.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="paymentMethodId">The method.</param>
+    /// <param name="db">The database they live in.</param>
+    public static async Task<IResult> Delete(Guid projectId, Guid paymentMethodId, RedixDbContext db)
+    {
+        var paymentMethod = await db.PaymentMethods.SingleOrDefaultAsync(method => method.Id == paymentMethodId && method.ProjectId == projectId);
+        if (paymentMethod is null)
+        {
+            return Results.NotFound();
+        }
+        if (await db.ExpenseDetails.AnyAsync(details => details.PaymentMethodId == paymentMethodId))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "PaymentMethodUsed");
+        }
+        db.PaymentMethods.Remove(paymentMethod);
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
 
     private static Task<List<PaymentMethodView>> ReadAsync(IQueryable<PaymentMethod> methods) =>
         methods.OrderBy(method => method.SortOrder).Select(method => new PaymentMethodView(method.Id, method.Name, method.IsActive)).ToListAsync();

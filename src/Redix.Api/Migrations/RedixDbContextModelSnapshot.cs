@@ -12495,6 +12495,62 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("cee8b3b7-7ded-97ac-6fd6-88da5ae90030"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e1df62d4-0bfe-c696-74e2-130d142c5624"),
+                            Value = "Delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("2551a7f7-7bad-e207-94fb-5f8b82826080"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e1df62d4-0bfe-c696-74e2-130d142c5624"),
+                            Value = "حذف"
+                        },
+                        new
+                        {
+                            Id = new Guid("2ebc8975-4868-0691-9f4d-ec60f4ae9464"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("67c23c81-f71f-5d99-2fd2-b6f0e4c72978"),
+                            Value = "Delete this payment method?"
+                        },
+                        new
+                        {
+                            Id = new Guid("5b7d4119-911c-89ed-de40-8264f72b4b80"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("67c23c81-f71f-5d99-2fd2-b6f0e4c72978"),
+                            Value = "حذف طريقة الدفع هذه؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("1dce543d-8dfb-f3c4-c97b-8bb193c5b7f0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7934c26c-1710-2aab-355c-df6a49ddf926"),
+                            Value = "It leaves the list for good. A method an expense was paid with is not deleted: disable it instead."
+                        },
+                        new
+                        {
+                            Id = new Guid("0f61202b-d205-523e-3593-54f90ea4d69d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7934c26c-1710-2aab-355c-df6a49ddf926"),
+                            Value = "تُحذف من القائمة نهائياً. الطريقة التي دُفع بها مصروف لا تُحذف، بل تُعطَّل."
+                        },
+                        new
+                        {
+                            Id = new Guid("f59132b7-d118-05d5-e3fc-823af0df4506"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("15b622c9-20e3-855c-21c4-24453272e534"),
+                            Value = "An expense was paid with this method, so it is not deleted. Disable it instead."
+                        },
+                        new
+                        {
+                            Id = new Guid("a72b8281-60b9-f850-ca0a-8aecd004292a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("15b622c9-20e3-855c-21c4-24453272e534"),
+                            Value = "دُفع بهذه الطريقة مصروف، فلا تُحذف. عطّلها بدلاً من ذلك."
+                        },
+                        new
+                        {
                             Id = new Guid("419eb08a-a2ed-58e3-0fd4-e61caf5bab35"),
                             Language = "en",
                             TranslationKeyId = new Guid("d0321e9a-7916-a2a8-6f05-552739279ca7"),
@@ -19932,6 +19988,30 @@ namespace Redix.Api.Migrations
                             Id = new Guid("523c58cf-8a55-99a1-d45a-b56f130afad6"),
                             Description = "",
                             Key = "paymentMethods.disabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("e1df62d4-0bfe-c696-74e2-130d142c5624"),
+                            Description = "",
+                            Key = "paymentMethods.delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("67c23c81-f71f-5d99-2fd2-b6f0e4c72978"),
+                            Description = "",
+                            Key = "paymentMethods.deleteQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("7934c26c-1710-2aab-355c-df6a49ddf926"),
+                            Description = "",
+                            Key = "paymentMethods.deleteExplain"
+                        },
+                        new
+                        {
+                            Id = new Guid("15b622c9-20e3-855c-21c4-24453272e534"),
+                            Description = "",
+                            Key = "paymentMethods.paymentMethodUsed"
                         },
                         new
                         {

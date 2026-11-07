@@ -22,6 +22,7 @@ The VAT rate is a column of the project, `Projects.VatRate`, a fraction that sta
 | `POST /projects/{projectId}/payment-methods/{id}` with `{ name }` | `ManageSettings` | `200`; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/payment-methods/{id}/disable` | `ManageSettings` | `200`; `404` |
 | `POST /projects/{projectId}/payment-methods/{id}/enable` | `ManageSettings` | `200`; `404` |
+| `POST /projects/{projectId}/payment-methods/{id}/delete` | `ManageSettings` | `200`; `409` `paymentMethodUsed` when an expense was paid with it; `404` |
 | `POST /projects/{projectId}/vat-rate` with `{ vatPercent }` | `ManageSettings` | `200` the project, with the rate old and new in the audit trail (`AChangedVatRateIsInTheAuditTrailOldAndNew`); `400` `invalidVatRate`; `404` |
 
 Every change also answers `409` `projectFinished` in a finished project.
@@ -44,6 +45,7 @@ Every change also answers `409` `projectFinished` in a finished project.
 | A method needs a name of 1 to 100 characters | `ProjectChanges.WithNameAsync`, `Project.IsAcceptableName` | `PaymentMethodsTests.AMethodNeedsANameOfAtMost100Characters` |
 | A disabled method leaves entry and stays on the list (AC-40.1) | `PaymentMethodsEndpoints.Offered`, `List` | `PaymentMethodsTests.ADisabledMethodLeavesEntryAndStaysOnTheList` |
 | Enabling brings it back | `PaymentMethodsEndpoints.Enable` | `PaymentMethodsTests.EnablingBringsAMethodBackIntoEntry` |
+| A method no expense was paid with is deleted; one an expense was paid with is refused and stays, to be disabled instead | `PaymentMethodsEndpoints.Delete` | `PaymentMethodsTests.FinanceDeletesAMethodNoExpenseWasPaidWith`, `AMethodAnExpenseWasPaidWithIsNotDeleted` |
 | One project's methods and rate change no other, nor the template (BR-33) | `PaymentMethod.ProjectId`, `Project.VatRate` | `PaymentMethodsTests.AChangeInOneProjectLeavesTheTemplateAndOtherProjectsAlone` |
 | One project's route never reaches another's methods (BR-33) | `PaymentMethodsEndpoints.ChangeAsync`, `PermissionHandler` | `PaymentMethodsTests.ARouteOfOneProjectNeverReachesAnothersMethods` |
 | Everyone with access reads; only Finance changes | `Permission.ManageSettings` | `PaymentMethodsTests.EveryoneWithAccessReadsMethodsAndOnlyFinanceChangesThem`, `FinanceHoldsTheSettingsPermissionAndNoOtherRoleDoes` |
