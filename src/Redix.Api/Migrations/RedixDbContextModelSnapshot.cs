@@ -6632,28 +6632,28 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9374cee1-f7fb-03a2-2b0b-c3a69d22343b"),
                             Language = "en",
                             TranslationKeyId = new Guid("5d82c713-7243-60fc-fdc2-7434c99bab87"),
-                            Value = "Total revenue"
+                            Value = "Revenue"
                         },
                         new
                         {
                             Id = new Guid("b85220d6-eb1f-f65c-0549-2cc171cae932"),
                             Language = "ar",
                             TranslationKeyId = new Guid("5d82c713-7243-60fc-fdc2-7434c99bab87"),
-                            Value = "مجموع الإيرادات"
+                            Value = "الإيرادات"
                         },
                         new
                         {
                             Id = new Guid("e0eeb6f4-1e7d-6e35-6b3f-5d5d99d032af"),
                             Language = "en",
                             TranslationKeyId = new Guid("21aca3f3-82e3-592b-81b3-6245694cad25"),
-                            Value = "Total expenses"
+                            Value = "Expenses"
                         },
                         new
                         {
                             Id = new Guid("e2e72137-d344-f48e-440b-4fb203a802f4"),
                             Language = "ar",
                             TranslationKeyId = new Guid("21aca3f3-82e3-592b-81b3-6245694cad25"),
-                            Value = "مجموع المصروفات"
+                            Value = "المصروفات"
                         },
                         new
                         {
