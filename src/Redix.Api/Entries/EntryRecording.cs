@@ -110,7 +110,6 @@ public static class EntryRecording
         ItemId = itemId,
         SubgroupId = subgroupId,
         PaymentMethodId = request.PaymentMethodId,
-        BankFees = request.BankFees,
         WithoutInvoiceReason = request.WithoutInvoiceReason.Trim(),
         CustomValues = JsonSerializer.Serialize(request.CustomValuesKept()),
     };

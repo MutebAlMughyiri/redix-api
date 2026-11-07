@@ -40,9 +40,6 @@ public record ExpenseRequest(Guid Id) : EntryRequest(Id)
     /// <summary>True for an invoice not taxable, whose VAT is zero (BR-14).</summary>
     public bool IsNotTaxable { get; init; }
 
-    /// <summary>What was paid; left out when it is the invoice's total (BR-24).</summary>
-    public decimal PaymentAmount { get; init; }
-
     /// <summary>Whether this is a deduction: a negative amount, which FR-14 allows and which comes off the item.</summary>
     public bool IsDeduction() => Amount < 0;
 
@@ -51,16 +48,6 @@ public record ExpenseRequest(Guid Id) : EntryRequest(Id)
 
     /// <summary>Whether <see cref="EnteredAmount"/> includes VAT: a unit price always does (BR-01).</summary>
     public bool EnteredAmountIncludesVat() => Amount == 0 || AmountIncludesVat;
-
-    /// <summary>What was paid, given the <paramref name="kept"/> figures: the invoice's total unless the payment differs (BR-24). A credit note's payment is money coming back, so it is negative as its figures are.</summary>
-    public decimal PaidOf(InvoiceFigures kept)
-    {
-        if (PaymentAmount == 0)
-        {
-            return kept.Total;
-        }
-        return IsCreditNote ? -PaymentAmount : PaymentAmount;
-    }
 
     /// <summary>Why the texts and typed amounts cannot be kept: each amount is not negative, has at most two decimals and stays within <see cref="Money.Largest"/>. Empty when they can.</summary>
     public string RefusalOfTyped()
@@ -102,11 +89,7 @@ public record ExpenseRequest(Guid Id) : EntryRequest(Id)
         {
             return "InvalidAmount";
         }
-        if (Discount < 0 || !Money.IsAcceptable(Discount) || (IsDeduction() && Discount > 0))
-        {
-            return "InvalidDiscount";
-        }
-        return PaymentAmount < 0 || !Money.IsAcceptable(PaymentAmount) || (IsDeduction() && PaymentAmount > 0) ? "InvalidPaymentAmount" : "";
+        return Discount < 0 || !Money.IsAcceptable(Discount) || (IsDeduction() && Discount > 0) ? "InvalidDiscount" : "";
     }
 
     /// <summary>Why <paramref name="figures"/> cannot be kept: a discount above the amount, or a total beyond <see cref="Money.Largest"/> either way. Empty when they can.</summary>

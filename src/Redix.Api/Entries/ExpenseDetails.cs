@@ -17,9 +17,6 @@ public class ExpenseDetails
     /// <summary>How it was paid.</summary>
     public Guid PaymentMethodId { get; init; }
 
-    /// <summary>What the bank charged on top; 0 when nothing (BR-24).</summary>
-    public decimal BankFees { get; init; }
-
     /// <summary>Why there is no invoice; empty when there is one (FR-09).</summary>
     public string WithoutInvoiceReason { get; set; } = "";
 

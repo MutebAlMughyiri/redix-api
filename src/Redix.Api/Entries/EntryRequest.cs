@@ -21,11 +21,8 @@ public abstract record EntryRequest(Guid Id)
     /// <summary>The account it was paid from.</summary>
     public Guid AccountId { get; init; }
 
-    /// <summary>The day it was paid; a purchase with an invoice may leave it out when it is the invoice's date (BR-24).</summary>
+    /// <summary>The day it was paid: a contractor payment's date, and a purchase's when it has no invoice. A purchase with an invoice is paid on the invoice's date (redix-api #96, D10).</summary>
     public DateOnly PaymentDate { get; init; }
-
-    /// <summary>What the bank charged on top; left out when nothing (BR-24).</summary>
-    public decimal BankFees { get; init; }
 
     /// <summary>Notes on it; left out when none.</summary>
     public string Notes { get; init; } = "";
@@ -51,7 +48,7 @@ public abstract record EntryRequest(Guid Id)
     /// <summary>What this holds that an item's columns can require.</summary>
     public abstract EntryAnswers Answers();
 
-    /// <summary>Why what every expense has cannot be kept: a reason too long or beside a file, notes too long, or bank fees not acceptable. Empty when it can.</summary>
+    /// <summary>Why what every expense has cannot be kept: a reason too long or beside a file, or notes too long. Empty when it can.</summary>
     protected string RefusalOfCommon()
     {
         if (WithoutInvoiceReason.Trim().Length > Project.ReasonMaxLength)
@@ -62,10 +59,6 @@ public abstract record EntryRequest(Guid Id)
         {
             return "InvoiceAndReason";
         }
-        if (Notes.Trim().Length > Entry.NotesMaxLength)
-        {
-            return "InvalidNotes";
-        }
-        return BankFees < 0 || !Money.IsAcceptable(BankFees) ? "InvalidBankFees" : "";
+        return Notes.Trim().Length > Entry.NotesMaxLength ? "InvalidNotes" : "";
     }
 }

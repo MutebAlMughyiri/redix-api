@@ -206,18 +206,6 @@ public class CreditNoteTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_24_ACreditNotesOwnPaymentIsMoneyComingBackSoItIsNegativeToo()
-    {
-        var ledger = await LedgerAsync();
-        var note = CreditNote(ledger, 115m) with { PaymentAmount = 100m };
-
-        var view = await ledger.RecordAsync(note);
-
-        Assert.Equal(-100m, view.Amount);
-        Assert.Equal(-115m, view.Total);
-    }
-
-    [Fact]
     public async Task OnlyAnInvoiceOfTheSameSupplierThatWasSentCanBeReturned()
     {
         var ledger = await LedgerAsync();
@@ -297,12 +285,11 @@ public class CreditNoteTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ADeductionHasNoDiscountAndNoSeparatePayment()
+    public async Task ADeductionHasNoDiscount()
     {
         var ledger = await LedgerAsync();
 
         await ledger.AssertRefusedAsync(ledger.WithoutInvoice(-136m) with { Discount = 1m }, "invalidDiscount");
-        await ledger.AssertRefusedAsync(ledger.WithoutInvoice(-136m) with { PaymentAmount = 1m }, "invalidPaymentAmount");
         await ledger.AssertRefusedAsync(ledger.WithoutInvoice(-1.234m), "invalidAmount");
     }
 

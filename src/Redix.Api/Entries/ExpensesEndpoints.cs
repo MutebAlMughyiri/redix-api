@@ -57,8 +57,8 @@ public static class ExpensesEndpoints
 
     /// <summary>
     /// Records a purchase as a draft, or sent for approval, and answers its figures. The same id from whoever recorded it answers that entry, so a retried upload lands once (AC-16.3); from anyone else <c>entryExists</c>, and an empty one <c>invalidEntryId</c>. What it names has to be on offer to the caller: otherwise <c>itemNotOffered</c>, <c>unknownSubgroup</c>,
-    /// <c>unknownSupplier</c> (BR-19), <c>unknownPaymentMethod</c> or <c>accountNotOffered</c> (BRS open question 4). What was typed answers <c>invalidInvoiceNumber</c>, <c>invalidProduct</c>, <c>invalidNotes</c>, <c>invalidUnitPrice</c>, <c>invalidQuantity</c>, <c>invalidAmount</c>, <c>invalidDiscount</c>,
-    /// <c>invalidPaymentAmount</c> or <c>invalidBankFees</c>. A date outside the project's period or in the future answers <c>invalidInvoiceDate</c> or <c>invalidPaymentDate</c> (BR-12). A file of no such attachment answers <c>unknownAttachment</c>. A custom value answers <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>.
+    /// <c>unknownSupplier</c> (BR-19), <c>unknownPaymentMethod</c> or <c>accountNotOffered</c> (BRS open question 4). What was typed answers <c>invalidInvoiceNumber</c>, <c>invalidProduct</c>, <c>invalidNotes</c>, <c>invalidUnitPrice</c>, <c>invalidQuantity</c>, <c>invalidAmount</c> or <c>invalidDiscount</c>.
+    /// A date outside the project's period or in the future answers <c>invalidInvoiceDate</c>, or <c>invalidPaymentDate</c> for one without an invoice (BR-12). A file of no such attachment answers <c>unknownAttachment</c>. A custom value answers <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>.
     /// Sending also needs the required columns, <c>requiredColumnMissing</c> with its <c>columnKey</c> (FR-41), and the invoice's file or why there is none, <c>invoiceRequired</c> (FR-09); a draft can wait for them. A reason too long answers <c>invalidWithoutInvoiceReason</c>, and a reason beside a file <c>invoiceAndReason</c>.
     /// A negative amount is a deduction (FR-14): it has no invoice, so with no reason it answers <c>deductionNeedsReason</c>. A credit note (BR-18) with a reason answers <c>creditNoteNeedsInvoice</c>; one naming what it cannot return <c>unknownOriginalInvoice</c>; and one above what is left of that invoice <c>creditNoteAboveOriginal</c>.
     /// A file already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). The same supplier's invoice number in this project or another the caller can read answers <c>duplicateInvoice</c>, with the earlier entry as <c>earlier</c>, until the request says <c>confirmDuplicate</c> (UC-023, FR-17).
@@ -188,13 +188,13 @@ public static class ExpensesEndpoints
         {
             return "InvalidInvoiceDate";
         }
-        return (request.PaymentDate == default && !request.IsWithoutInvoice()) || Entry.IsAcceptableDate(request.PaymentDate, projectStart, today) ? "" : "InvalidPaymentDate";
+        return !request.IsWithoutInvoice() || Entry.IsAcceptableDate(request.PaymentDate, projectStart, today) ? "" : "InvalidPaymentDate";
     }
 
     private static (Entry Entry, List<object> Details) Build(ExpenseRequest request, Guid projectId, Guid subgroupId, InvoiceFigures kept, Guid userId, DateTime at)
     {
-        var entryDate = request.PaymentDate == default ? request.InvoiceDate : request.PaymentDate;
-        var entry = EntryRecording.EntryOf(request, projectId, EntryKind.Purchase, entryDate, request.PaidOf(kept), userId, at);
+        var entryDate = request.IsWithoutInvoice() ? request.PaymentDate : request.InvoiceDate;
+        var entry = EntryRecording.EntryOf(request, projectId, EntryKind.Purchase, entryDate, kept.Total, userId, at);
         List<object> details =
         [
             EntryRecording.ExpenseDetailsOf(request, request.ItemId, subgroupId),

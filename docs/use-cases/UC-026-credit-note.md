@@ -37,7 +37,6 @@ Tests are in `CreditNoteTests`.
 | BR-18: a linked one cannot go above the value, alone or together | `ExpensesEndpoints.Record`, `Creditable` | `BR_18_ALinkedCreditNoteCannotGoAboveTheInvoicesValueAfterItsDiscount`, `BR_18_TheCreditNotesOfOneInvoiceTogetherCannotGoAboveItsValue`, `ARejectedCreditNoteNoLongerTakesFromItsInvoiceAndADraftOneDoes` |
 | It follows its invoice's rate | `InvoiceFigures.RateOf` | `ALinkedCreditNoteFollowsTheRateItsInvoiceWasComputedAtNotTodays`, `ACreditNoteOfAnInvoiceWithNoVatHasNoVat`, `TheRateOfAnInvoiceComesBackFromItsKeptFigures` |
 | Only the same supplier's sent invoice | `Creditable` | `OnlyAnInvoiceOfTheSameSupplierThatWasSentCanBeReturned` |
-| BR-24: its own payment is negative too | `ExpenseRequest.PaidOf` | `BR_24_ACreditNotesOwnPaymentIsMoneyComingBackSoItIsNegativeToo` |
 | FR-09, FR-17: its file and its number as an invoice's | `Record` | `FR_09_ACreditNoteIsSentWithItsFile`, `AC_17_1_ACreditNotesNumberEnteredAgainWarnsAsAnInvoicesDoes`, `ACreditNoteHasAnInvoiceAndIsTypedAsAPlainAmount` |
 | AC-14.1: a deduction of 136 reduces the item total, with no invoice | `ExpenseRequest.IsDeduction` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndHasNoInvoice` |
 | A deduction says why, and is an exception | `RefusalOfTyped` | `ADeductionSaysWhyAndGoesOnTheExceptionsListHavingNoInvoice`, `ADeductionHasNoDiscountAndNoSeparatePayment` |

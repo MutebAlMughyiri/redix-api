@@ -313,7 +313,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_24_APaymentLeftOutIsTheInvoicesDateAndTotal()
+    public async Task D10_AnExpenseIsPaidItsInvoicesTotalOnTheInvoicesDate()
     {
         var setup = await FinanceAsync();
         var request = Expense(setup);
@@ -322,23 +322,6 @@ public class ExpensesTests(MigratedApiFactory factory)
 
         Assert.Equal(request.InvoiceDate, entry.EntryDate);
         Assert.Equal(6000m, entry.Amount);
-    }
-
-    [Fact]
-    public async Task BR_24_APaymentThatDiffersKeepsItsOwnDateAndAmountBesideTheInvoicesAndItsFees()
-    {
-        var setup = await FinanceAsync();
-        var request = Expense(setup) with { PaymentDate = setup.Project.StartDate, PaymentAmount = 6001.50m, BankFees = 1.50m };
-
-        var view = await RecordAsync(setup.Client, setup.Project.Id, request);
-
-        var entry = await EntryOfAsync(view.Id);
-        var invoice = await InvoiceOfAsync(view.Id);
-        Assert.Equal(setup.Project.StartDate, entry.EntryDate);
-        Assert.Equal(6001.50m, entry.Amount);
-        Assert.Equal(request.InvoiceDate, invoice.InvoiceDate);
-        Assert.Equal(6000m, invoice.Total);
-        Assert.Equal(1.50m, (await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == view.Id))).BankFees);
     }
 
     [Fact]
@@ -559,8 +542,6 @@ public class ExpensesTests(MigratedApiFactory factory)
         await AssertRefusedAsync(setup, Expense(setup) with { InvoiceDate = today.AddDays(1) }, "invalidInvoiceDate");
         await AssertRefusedAsync(setup, Expense(setup) with { InvoiceDate = setup.Project.StartDate.AddDays(-1) }, "invalidInvoiceDate");
         await AssertRefusedAsync(setup, Expense(setup) with { InvoiceDate = default }, "invalidInvoiceDate");
-        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = today.AddDays(1) }, "invalidPaymentDate");
-        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = setup.Project.StartDate.AddDays(-1) }, "invalidPaymentDate");
     }
 
     [Fact]
@@ -596,8 +577,6 @@ public class ExpensesTests(MigratedApiFactory factory)
         await AssertRefusedAsync(setup, Expense(setup, Money.Largest) with { AmountIncludesVat = false }, "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup) with { Discount = -1m }, "invalidDiscount");
         await AssertRefusedAsync(setup, Expense(setup, 100m) with { Discount = 100.01m, AmountIncludesVat = false }, "invalidDiscount");
-        await AssertRefusedAsync(setup, Expense(setup) with { PaymentAmount = -1m }, "invalidPaymentAmount");
-        await AssertRefusedAsync(setup, Expense(setup) with { BankFees = 0.123m }, "invalidBankFees");
     }
 
     [Fact]

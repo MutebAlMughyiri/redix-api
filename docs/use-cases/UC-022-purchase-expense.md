@@ -14,7 +14,7 @@ The app sends what was typed and never a figure. `InvoiceFigures.Of` is the one 
 
 The rate is the project's at the moment of saving, 0 for a supplier not VAT-registered or an invoice not taxable. It is stored as the VAT and never recomputed, so a later change of the rate leaves the entry alone (findings row 6).
 
-`Entries.EntryDate` and `Entries.Amount` are what the periodic report goes by, and `Invoices` is what the VAT statement goes by (BR-24). Left out, the payment is the invoice's date and total.
+`Entries.EntryDate` and `Entries.Amount` are what the periodic report goes by, and `Invoices` is what the VAT statement goes by. An expense is paid its total on its own date: the invoice's, or the payment date of one without an invoice (redix-api #96, D10). BR-24's payment that differs from its invoice, with its amount paid and bank fees, went on 7 November 2026; an older bill whose payment differed keeps the amount it stored.
 
 The id is made on the phone (the database design's principle 4, AC-16.3), so an offline entry has one before it reaches the server. An id already used saves nothing new. UC-029 "Accept offline uploads exactly once" builds on that.
 
@@ -45,7 +45,7 @@ Tests are in `ExpensesTests`.
 | BR-13: no figure is rounded to two decimals before it is stored; a total rounds once | `InvoiceFigures.Kept`, `RedixDbContext.ConfigureConventions` | `AFigureIsNeverRoundedToTwoDecimalsBeforeItIsStored`, `BR_13_VatStaysUnroundedOnEachRowSoATotalRoundsOnlyOnce` |
 | BR-14: a supplier not VAT-registered, or an invoice not taxable, has no VAT | `ExpensesEndpoints.Record` | `BR_14_ASupplierNotVatRegisteredHasNoVatAndTheAmountStaysWhole`, `BR_14_AnInvoiceNotTaxableHasNoVat` |
 | BR-01: price × quantity includes VAT; a typed amount wins | `ExpenseRequest.EnteredAmount` | `BR_01_LeftWithoutAnAmountThePriceTimesTheQuantityIncludesVat`, `AnAmountTypedWinsOverThePriceAndQuantityWhichStayAsTyped` |
-| BR-24: payment and invoice may differ | `ExpensesEndpoints.Build` | `BR_24_APaymentLeftOutIsTheInvoicesDateAndTotal`, `BR_24_APaymentThatDiffersKeepsItsOwnDateAndAmountBesideTheInvoicesAndItsFees` |
+| D10: an expense is paid its total on its own date | `ExpensesEndpoints.Build` | `D10_AnExpenseIsPaidItsInvoicesTotalOnTheInvoicesDate` |
 | BR-17: the VAT period is the quarter of the invoice | `Invoice.QuarterStartOf` | `BR_17_TheVatPeriodIsTheQuarterOfTheInvoicesDate` |
 | BR-12: a date inside the project's period, not in the future, in Saudi time | `Entry.IsAcceptableDate`, `Entry.Today` | `BR_12_ADateOutsideTheProjectsPeriodOrInTheFutureIsRefused`, `BR_12_TheProjectsFirstDayAndTodayAreAccepted`, `BR_12_TodayIsTheDateInSaudiArabiaNotOnTheServer` |
 | BR-19: a supplier from the register, never free text | `Supplier.OfferedTo` | `BR_19_ASupplierNotInTheRegisterIsRefused`, `ADisabledSupplierIsRefused`, `FR_44_FieldUsesTheirOwnPendingSupplierAndNotAnothers` |

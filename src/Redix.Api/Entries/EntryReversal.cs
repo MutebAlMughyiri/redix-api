@@ -25,7 +25,7 @@ public static class EntryReversal
         var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (expense is not null)
         {
-            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, PaymentMethodId = expense.PaymentMethodId, BankFees = -expense.BankFees, WithoutInvoiceReason = reason, CustomValues = expense.CustomValues });
+            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, PaymentMethodId = expense.PaymentMethodId, WithoutInvoiceReason = reason, CustomValues = expense.CustomValues });
         }
         var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (purchase is not null)

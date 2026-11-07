@@ -725,10 +725,6 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("EntryId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal>("BankFees")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("decimal(19,4)");
-
                     b.Property<string>("CustomValues")
                         .IsRequired()
                         .HasColumnType("json");
@@ -14665,20 +14661,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c118522f-5873-dd12-6e69-9dd875544b89"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ff093f4b-41d2-37dc-03d6-323291864bd3"),
-                            Value = "The payment differs from the invoice"
-                        },
-                        new
-                        {
-                            Id = new Guid("33da3f4e-3b46-9511-9b44-823e41d0a288"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ff093f4b-41d2-37dc-03d6-323291864bd3"),
-                            Value = "الدفع يختلف عن الفاتورة"
-                        },
-                        new
-                        {
                             Id = new Guid("d994c2f3-f8af-b180-fb12-1a40fa8d64e9"),
                             Language = "en",
                             TranslationKeyId = new Guid("a3d53521-72fe-698b-c0b6-667e1b8dcce4"),
@@ -14690,34 +14672,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("a3d53521-72fe-698b-c0b6-667e1b8dcce4"),
                             Value = "تاريخ الدفع"
-                        },
-                        new
-                        {
-                            Id = new Guid("f5000d02-b4c6-1fde-1f9a-b17edf5da1a2"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("44e256b4-f64b-09db-e5aa-d3c79a63ad7a"),
-                            Value = "Amount paid"
-                        },
-                        new
-                        {
-                            Id = new Guid("8a79de21-2d68-ea09-dab8-7587dc173831"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("44e256b4-f64b-09db-e5aa-d3c79a63ad7a"),
-                            Value = "المبلغ المدفوع"
-                        },
-                        new
-                        {
-                            Id = new Guid("ac478550-e87f-db96-6a74-cda8f49eccbd"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("a3da815d-fa5c-9317-c319-7d7c45f2619b"),
-                            Value = "Bank fees"
-                        },
-                        new
-                        {
-                            Id = new Guid("7362e7d5-1e75-db2f-a9c5-aeb170f5aba9"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("a3da815d-fa5c-9317-c319-7d7c45f2619b"),
-                            Value = "رسوم بنكية"
                         },
                         new
                         {
@@ -15040,34 +14994,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("9d56be88-02dd-b860-fb24-03d8bc0f2f1d"),
                             Value = "أدخل خصماً لا يتجاوز المبلغ، بخانتين عشريتين كحد أقصى."
-                        },
-                        new
-                        {
-                            Id = new Guid("82fb32a3-d7b6-6047-2289-8461dee7459d"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("318c1e7b-c0ec-4def-53d8-fae8cd46c56e"),
-                            Value = "Enter the amount paid, with at most two decimals."
-                        },
-                        new
-                        {
-                            Id = new Guid("6eed0024-7660-1862-1b0b-04620a0a1c8a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("318c1e7b-c0ec-4def-53d8-fae8cd46c56e"),
-                            Value = "أدخل المبلغ المدفوع، بخانتين عشريتين كحد أقصى."
-                        },
-                        new
-                        {
-                            Id = new Guid("6168034f-99eb-5f12-333a-1a9cc2057e84"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("75d05756-a223-4e00-4d44-08e85c749ce2"),
-                            Value = "Enter bank fees of zero or more, with at most two decimals."
-                        },
-                        new
-                        {
-                            Id = new Guid("97f65854-495a-9aa0-316b-e3eb8f7f1700"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("75d05756-a223-4e00-4d44-08e85c749ce2"),
-                            Value = "أدخل رسوماً بنكية صفراً أو أكثر، بخانتين عشريتين كحد أقصى."
                         },
                         new
                         {
@@ -20921,27 +20847,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("ff093f4b-41d2-37dc-03d6-323291864bd3"),
-                            Description = "",
-                            Key = "expenses.paymentDiffers"
-                        },
-                        new
-                        {
                             Id = new Guid("a3d53521-72fe-698b-c0b6-667e1b8dcce4"),
                             Description = "",
                             Key = "expenses.paymentDate"
-                        },
-                        new
-                        {
-                            Id = new Guid("44e256b4-f64b-09db-e5aa-d3c79a63ad7a"),
-                            Description = "",
-                            Key = "expenses.paymentAmount"
-                        },
-                        new
-                        {
-                            Id = new Guid("a3da815d-fa5c-9317-c319-7d7c45f2619b"),
-                            Description = "",
-                            Key = "expenses.bankFees"
                         },
                         new
                         {
@@ -21080,18 +20988,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9d56be88-02dd-b860-fb24-03d8bc0f2f1d"),
                             Description = "",
                             Key = "expenses.invalidDiscount"
-                        },
-                        new
-                        {
-                            Id = new Guid("318c1e7b-c0ec-4def-53d8-fae8cd46c56e"),
-                            Description = "",
-                            Key = "expenses.invalidPaymentAmount"
-                        },
-                        new
-                        {
-                            Id = new Guid("75d05756-a223-4e00-4d44-08e85c749ce2"),
-                            Description = "",
-                            Key = "expenses.invalidBankFees"
                         },
                         new
                         {
