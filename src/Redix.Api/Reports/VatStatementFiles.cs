@@ -24,9 +24,7 @@ public static class VatStatementFiles
             var sheet = workbook.Worksheets.Add(ReportFormats.SheetName($"ضريبة الربع {ordinal} {quarter.Start.Year}", names));
             FillQuarter(sheet, quarter, ordinal, ratePercent.ToString(CultureInfo.InvariantCulture));
         }
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
+        return StatementStyle.Bytes(workbook);
     }
 
     private static void FillQuarter(IXLWorksheet sheet, VatQuarterView quarter, string ordinal, string rate)

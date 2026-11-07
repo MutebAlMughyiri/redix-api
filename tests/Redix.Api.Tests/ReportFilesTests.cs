@@ -376,6 +376,21 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal("العقود", contracts.Worksheet(1).Name);
     }
 
+    [Fact]
+    public async Task Findings131_TheContractsWorkbookIsOneStatementTableOfWhatEachContractHasLeft()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new Contracts.AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000m, false), Json)).EnsureSuccessStatusCode();
+
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/contracts/xlsx")));
+        var sheet = workbook.Worksheet(1);
+
+        Assert.Equal("العقود", sheet.Cell(1, 1).GetString());
+        Assert.Equal(["المقاول", "البند", "قيمة العقد", "المدفوع", "المتبقي"], Enumerable.Range(2, 5).Select(column => sheet.Cell(2, column).GetString()));
+        Assert.Equal((1000m, 0m, 1000m), (sheet.Cell(3, 4).GetValue<decimal>(), sheet.Cell(3, 5).GetValue<decimal>(), sheet.Cell(3, 6).GetValue<decimal>()));
+        Assert.Equal(("الاجمالي", "SUM(F3:F3)"), (sheet.Cell(4, 1).GetString(), sheet.Cell(4, 6).FormulaA1));
+    }
+
     private static async Task<Guid> PartnerAsync(Ledger ledger, string name, Guid userId = default)
     {
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name) { UserId = userId }, Json)).EnsureSuccessStatusCode();

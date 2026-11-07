@@ -1,6 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Redix.Api.Attachments;
 using Redix.Api.Documents;
 using Xunit;
@@ -74,6 +78,15 @@ public class DocumentsTests(MigratedApiFactory factory)
         Assert.Equal("fileTooLarge", await Ledger.CodeOf(await AddAsync(ledger.Client, ledger.ProjectId, "مستند", "", new byte[Attachment.AnyFileLimitBytes + 1], "big.zip")));
         (await AddAsync(ledger.Client, ledger.ProjectId, "مستند", "", file, "a.docx")).EnsureSuccessStatusCode();
         Assert.Equal("documentAlreadyKept", await Ledger.CodeOf(await AddAsync(ledger.Client, ledger.ProjectId, "مستند آخر", "", file, "a.docx")));
+    }
+
+    [Fact]
+    public void Findings137_ADocumentsRequestMayHoldAsMuchAsAFormSoAFileOver25MbIsAnsweredRatherThanCutOff()
+    {
+        var add = factory.Services.GetRequiredService<IEnumerable<EndpointDataSource>>().SelectMany(source => source.Endpoints).OfType<RouteEndpoint>()
+            .Single(route => route.RoutePattern.RawText!.EndsWith("/documents") && route.Metadata.GetOrderedMetadata<IHttpMethodMetadata>().Any(metadata => metadata.HttpMethods.Contains("POST")));
+
+        Assert.Equal(FormOptions.DefaultMultipartBodyLengthLimit, add.Metadata.GetMetadata<IRequestSizeLimitMetadata>()!.MaxRequestBodySize);
     }
 
     [Fact]

@@ -182,36 +182,18 @@ public static class ItemReportFiles
         })).GeneratePdf();
     }
 
-    /// <summary>The contracts report as a workbook, its remaining a live formula, an overrun in red.</summary>
+    /// <summary>The contracts report as a workbook: one statement table (UC-067, findings row 131) of each contract's contractor, item, value and what was paid, its amount what is
+    /// left of it, an overrun negative and an open value nothing.</summary>
     public static byte[] ContractsExcel(List<ContractView> contracts)
     {
         using var workbook = new XLWorkbook();
-        var sheet = workbook.Worksheets.Add("العقود");
-        sheet.RightToLeft = true;
-        string[] titles = ["المقاول", "البند", "قيمة العقد", "المدفوع", "المتبقي"];
-        for (var column = 0; column < titles.Length; column++)
-        {
-            sheet.Cell(1, column + 1).Value = titles[column];
-            sheet.Cell(1, column + 1).Style.Font.Bold = true;
-        }
-        var row = 2;
-        foreach (var contract in contracts)
-        {
-            sheet.Cell(row, 1).Value = contract.SupplierName;
-            sheet.Cell(row, 2).Value = contract.ItemName;
-            sheet.Cell(row, 3).Value = contract.Value;
-            sheet.Cell(row, 4).Value = contract.Paid;
-            sheet.Cell(row, 5).FormulaA1 = contract.IsOpenValue ? "0" : $"C{row}-D{row}";
-            sheet.Range(row, 3, row, 5).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
-            if (contract.IsOverrun)
-            {
-                sheet.Range(row, 1, row, 5).Style.Font.FontColor = XLColor.Red;
-            }
-            row++;
-        }
-        sheet.Columns().AdjustToContents();
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
+        var table = new StatementTable(
+            "العقود",
+            [new StatementColumn("المقاول", CellKind.Text), new StatementColumn("البند", CellKind.Text), new StatementColumn("قيمة العقد", CellKind.Price), new StatementColumn("المدفوع", CellKind.Price)],
+            new StatementColumn("المتبقي", CellKind.Price),
+            contracts.Select(contract => new StatementRow([contract.SupplierName, contract.ItemName, contract.IsOpenValue ? "مفتوحة" : contract.Value, contract.Paid], contract.IsOpenValue ? 0 : contract.Remaining, "", false, true)).ToList(),
+            0);
+        StatementWriter.Add(workbook, new StatementSheet("العقود", [table], ""), []);
+        return StatementStyle.Bytes(workbook);
     }
 }

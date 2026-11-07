@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -12,13 +13,16 @@ namespace Redix.Api.Documents;
 /// <summary>A project's documents (UC-064): the manager keeps any file under a name, in a group when he gives one, and everyone who reads the project opens them through the attachment store.</summary>
 public static class DocumentsEndpoints
 {
-    /// <summary>Maps the list, for anyone who reads the project, and the changes, for whoever holds <see cref="Permission.ManageProject"/>.</summary>
+    /// <summary>
+    /// Maps the list, for anyone who reads the project, and the changes, for whoever holds <see cref="Permission.ManageProject"/>. A document's request may hold as much as a form
+    /// may, not the server's 28 MB, so a file over 25 MB reaches <see cref="Add"/> and is answered <c>fileTooLarge</c> rather than cut off (findings row 137).
+    /// </summary>
     /// <param name="app">The app.</param>
     public static void MapDocuments(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/documents", List).RequireAuthorization(nameof(Permission.ReadProject));
         var changes = app.MapProjectChanges(Permission.ManageProject);
-        changes.MapPost("/documents", Add).DisableAntiforgery();
+        changes.MapPost("/documents", Add).DisableAntiforgery().WithMetadata(new RequestSizeLimitAttribute(FormOptions.DefaultMultipartBodyLengthLimit));
         changes.MapPost("/documents/{documentId:guid}/delete", Remove);
     }
 
