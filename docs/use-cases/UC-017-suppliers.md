@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is optional: empty when the supplier has none, and then its purchases have no VAT in the VAT statement's workbook (AC-06.2); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
+A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is optional, and empty means nothing more than that none was given (Muteb, 7 Nov 2026: "if no vat number added when adding new supplier that is means nothing"); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
 
 A VAT number is optional and, when given, any number of at most 20 digits (BR-16; Muteb, 7 Nov 2026: "just a number has max 20 digit numbers and not required and can keep it empty with remove toogle not vat registered"). Two suppliers of a project still cannot share one.
 
@@ -66,4 +66,4 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 | What | Use case |
 | --- | --- |
 | A purchase saved only with a supplier from the register (BR-19) | UC-022 "Record a purchase expense" |
-| A supplier with no number having no VAT in the VAT statement's workbook (AC-06.2) | UC-056, built: the workbook's formula gives 0 when the VAT number is empty (redix-api #96, D19) |
+| A supplier with no number having no VAT in the VAT statement's workbook (AC-06.2) | Retired 7 Nov 2026: an empty number means nothing, so the workbook works the VAT out of every total |

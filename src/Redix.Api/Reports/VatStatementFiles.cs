@@ -5,7 +5,7 @@ using Redix.Api.Revenue;
 namespace Redix.Api.Reports;
 
 /// <summary>
-/// The كشف الضريبة as the accountant's workbook: a sheet per quarter, its purchases then its sales, each row's VAT and amount before VAT as formulas on its total at the configured rate, and the net due at the foot (redix-api #96, D5, D19). A party with no VAT number gives no VAT.
+/// The كشف الضريبة as the accountant's workbook: a sheet per quarter, its purchases then its sales, each row's VAT and amount before VAT as formulas on its total at the configured rate, and the net due at the foot (redix-api #96, D5, D19). Every total gives its VAT, whether its party has a VAT number or not: an empty number means nothing (Muteb, 7 Nov 2026).
 /// </summary>
 public static class VatStatementFiles
 {
@@ -68,7 +68,7 @@ public static class VatStatementFiles
             sheet.Cell(row, 3).Value = line.Description;
             sheet.Cell(row, 4).Value = line.VatNumber;
             sheet.Cell(row, 5).Value = line.Total;
-            sheet.Cell(row, 6).FormulaA1 = $"IF(D{row}=\"\",0,E{row}*{rate}/(100+{rate}))";
+            sheet.Cell(row, 6).FormulaA1 = $"E{row}*{rate}/(100+{rate})";
             sheet.Cell(row, 7).FormulaA1 = $"E{row}-F{row}";
             sheet.Range(row, 5, row, 7).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
             row++;

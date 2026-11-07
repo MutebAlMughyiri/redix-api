@@ -159,7 +159,7 @@ public static class SuppliersEndpoints
 /// <param name="Name">The supplier's name.</param>
 public record SupplierRequest(string Name)
 {
-    /// <summary>Its VAT number; left out when it has none (AC-06.2).</summary>
+    /// <summary>Its VAT number; left out when none is given.</summary>
     public string VatNumber { get; init; } = "";
 
     /// <summary>Its mobile; left out when none.</summary>

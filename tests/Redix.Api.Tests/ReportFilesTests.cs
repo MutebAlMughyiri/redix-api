@@ -336,7 +336,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.StartsWith("ضريبة الربع", sheet.Name);
         Assert.True(sheet.Cell(1, 1).IsMerged());
         Assert.Equal((115, "شركة النخيل"), (sheet.Cell(3, 5).GetValue<int>(), sheet.Cell(3, 2).GetString()));
-        Assert.Equal("IF(D3=\"\",0,E3*15/(100+15))", sheet.Cell(3, 6).FormulaA1);
+        Assert.Equal("E3*15/(100+15)", sheet.Cell(3, 6).FormulaA1);
         Assert.Equal("E3-F3", sheet.Cell(3, 7).FormulaA1);
         Assert.Equal("SUM(F3:F3)", sheet.Cell(4, 6).FormulaA1);
     }
@@ -353,7 +353,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         try
         {
             using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync(address)));
-            Assert.Equal("IF(D3=\"\",0,E3*5/(100+5))", workbook.Worksheet(1).Cell(3, 6).FormulaA1);
+            Assert.Equal("E3*5/(100+5)", workbook.Worksheet(1).Cell(3, 6).FormulaA1);
         }
         finally
         {
