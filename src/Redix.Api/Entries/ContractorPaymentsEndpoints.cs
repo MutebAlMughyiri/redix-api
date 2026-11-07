@@ -20,8 +20,7 @@ public static class ContractorPaymentsEndpoints
 
     /// <summary>
     /// Records a payment as a draft, or sent for approval, and answers what the contract stands at with it, an overrun included: going beyond the value is saved, with an alert (AC-07.1). A contract not active in the project answers <c>unknownContract</c>; its item no longer taking contractor payments, <c>itemNotOffered</c> (AC-38.1).
-    /// What it names and what was typed answer as a purchase's do, and an amount of zero <c>invalidAmount</c>. A negative amount is a deduction (FR-14), which has neither receipt nor tax invoice and has to say why: otherwise <c>deductionNeedsReason</c>, and a reason on anything else <c>invalidWithoutInvoiceReason</c>. Sending needs the receipt, <c>receiptRequired</c> (AC-12.1), and the required columns.
-    /// A tax invoice is optional, and answers <c>invalidInvoiceNumber</c>, <c>invalidInvoiceDate</c>, <c>invalidInvoiceAmount</c> and <c>duplicateInvoice</c> as a purchase's does.
+    /// What it names and what was typed answer as a purchase's do, and an amount of zero <c>invalidAmount</c>. A negative amount is a deduction (FR-14), which says why in its notes or answers <c>deductionNeedsNotes</c> (D14). Sending needs the required columns; the receipt is optional (D16).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">What was typed and chosen.</param>
@@ -84,7 +83,7 @@ public static class ContractorPaymentsEndpoints
         var refusal = await EntryRecording.RefusalOfPaymentAsync(projectId, request, userId, access.In(projectId), db);
         refusal = refusal.Length > 0 ? refusal : request.RefusalOfTyped();
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
-        refusal = refusal.Length > 0 ? refusal : request.RefusalOfDates(project.StartDate, Entry.Today(time));
+        refusal = refusal.Length > 0 || Entry.IsAcceptableDate(request.PaymentDate, project.StartDate, Entry.Today(time)) ? refusal : "InvalidPaymentDate";
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
@@ -94,35 +93,15 @@ public static class ContractorPaymentsEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, reason, "columnKey", columnKey);
         }
-        if (request.Submit && request.AttachmentId == Guid.Empty && !request.IsWithoutInvoice())
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "ReceiptRequired");
-        }
         if (request.AttachmentId != Guid.Empty && await EntryRecording.IsFileOnAnEntryAsync(projectId, request.AttachmentId, db, editing))
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
         }
 
-        var contractor = await db.Suppliers.SingleAsync(row => row.Id == contract.SupplierId);
-        var figures = default(InvoiceFigures);
-        if (request.HasInvoice())
-        {
-            figures = InvoiceFigures.Of(request.InvoiceAmountBeforeVat, includesVat: false, discount: 0, contractor.VatNumber.Length == 0 ? 0 : project.VatRate);
-            if (figures.Total > Money.Largest)
-            {
-                return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidInvoiceAmount");
-            }
-            var earlier = request.ConfirmDuplicate ? null : await EntryRecording.EarlierEntryAsync(contractor, request.InvoiceNumber.Trim(), access, db, editing);
-            if (earlier is not null)
-            {
-                return Refusal.Of(StatusCodes.Status409Conflict, "DuplicateInvoice", "earlier", earlier);
-            }
-        }
-
         var money = (await ContractMoney.OfProjectAsync(projectId, db)).GetValueOrDefault(contract.Id);
         var at = time.GetUtcNow().UtcDateTime;
         var entry = EntryRecording.EntryOf(request, projectId, EntryKind.ContractorPayment, request.PaymentDate, request.Amount, userId, at);
-        var details = DetailsOf(request, contract, subgroup.Id, figures);
+        var details = DetailsOf(request, contract, subgroup.Id);
         if (existing is not null)
         {
             await EntryChanges.ReplaceAsync(existing, entry, details, userId, at, db);
@@ -133,20 +112,16 @@ public static class ContractorPaymentsEndpoints
             await EntryRecording.SaveAsync(entry, details, userId, db);
         }
         var counted = money.Paid + money.Pending + (request.IsOutsideContract ? 0 : request.Amount);
-        return Results.Created($"/projects/{projectId}/entries/{entry.Id}", new ContractorPaymentView(entry.Id, entry.Status, entry.Amount, figures.Vat, money.Paid, money.Pending, contract.RemainingAfter(counted), contract.IsOverrunBy(counted)));
+        return Results.Created($"/projects/{projectId}/entries/{entry.Id}", new ContractorPaymentView(entry.Id, entry.Status, entry.Amount, money.Paid, money.Pending, contract.RemainingAfter(counted), contract.IsOverrunBy(counted)));
     }
 
-    private static List<object> DetailsOf(ContractorPaymentRequest request, Contract contract, Guid subgroupId, InvoiceFigures figures)
+    private static List<object> DetailsOf(ContractorPaymentRequest request, Contract contract, Guid subgroupId)
     {
         List<object> details =
         [
             EntryRecording.ExpenseDetailsOf(request, contract.ItemId, subgroupId),
             new ContractorPaymentDetails { EntryId = request.Id, ContractId = contract.Id, IsOutsideContract = request.IsOutsideContract },
         ];
-        if (request.HasInvoice())
-        {
-            details.Add(EntryRecording.InvoiceOf(request.Id, request.InvoiceNumber.Trim(), request.InvoiceDate, figures, isCreditNote: false));
-        }
         if (request.AttachmentId != Guid.Empty)
         {
             details.Add(new EntryAttachment { EntryId = request.Id, AttachmentId = request.AttachmentId, Role = EntryAttachmentRole.Receipt });
@@ -159,9 +134,8 @@ public static class ContractorPaymentsEndpoints
 /// <param name="Id">The entry's id.</param>
 /// <param name="Status">Where it stands.</param>
 /// <param name="Amount">What was paid.</param>
-/// <param name="Vat">The VAT of its tax invoice; 0 with none.</param>
 /// <param name="Paid">What was approved inside the contract before it.</param>
 /// <param name="Pending">What waited for approval inside the contract before it.</param>
 /// <param name="RemainingAfter">The value less everything paid or waiting, with this payment if inside the contract; 0 for an open-value contract.</param>
 /// <param name="IsOverrun">Whether that goes beyond the value, which shows an alert.</param>
-public record ContractorPaymentView(Guid Id, EntryStatus Status, decimal Amount, decimal Vat, decimal Paid, decimal Pending, decimal RemainingAfter, bool IsOverrun);
+public record ContractorPaymentView(Guid Id, EntryStatus Status, decimal Amount, decimal Paid, decimal Pending, decimal RemainingAfter, bool IsOverrun);

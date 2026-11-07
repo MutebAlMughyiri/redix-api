@@ -38,7 +38,7 @@ public class NotificationsTests(MigratedApiFactory factory)
         var (field, userId) = await ledger.MemberAsync("Field");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
-        var request = ledger.WithoutInvoice() with { AccountId = account.Id, Submit = true };
+        var request = ledger.Purchase(200m) with { AccountId = account.Id, Submit = true };
         (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/expenses", request, Json)).EnsureSuccessStatusCode();
         return (field, request);
     }
@@ -63,7 +63,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ledger.MemberAsync("Finance");
-        await ledger.RecordAsync(ledger.WithoutInvoice());
+        await ledger.RecordAsync(ledger.Purchase(200m));
 
         Assert.Empty(await ledger.ReadAsync(db => db.Notifications.Where(row => row.ProjectId == ledger.ProjectId).ToListAsync()));
     }
@@ -73,7 +73,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (other, _) = await ledger.MemberAsync("Finance");
-        var draft = ledger.WithoutInvoice();
+        var draft = ledger.Purchase(200m);
         await ledger.RecordAsync(draft);
 
         (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{draft.Id}/submit", null)).EnsureSuccessStatusCode();
@@ -108,7 +108,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     public async Task NobodyIsToldOfTheirOwnDecision()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.WithoutInvoice() with { Submit = true };
+        var request = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(request);
 
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/approve", new ApproveEntriesRequest([request.Id]), Json)).EnsureSuccessStatusCode();
@@ -136,7 +136,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (other, _) = await ledger.MemberAsync("Finance");
-        var request = ledger.WithoutInvoice() with { Submit = true };
+        var request = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(request);
         Assert.NotEmpty((await MineAsync(other))!);
         (await other.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/reject", new RejectEntryRequest("الصورة غير واضحة"), Json)).EnsureSuccessStatusCode();

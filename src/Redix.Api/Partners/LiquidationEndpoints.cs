@@ -20,8 +20,6 @@ public static class LiquidationEndpoints
 {
     private const string Description = "تصفية المشروع";
 
-    private const string LateReason = "مصروف متأخر بعد إغلاق المشروع";
-
     /// <summary>Maps the routes, for whoever holds <see cref="Permission.MoveMoney"/>.</summary>
     /// <param name="app">The app.</param>
     public static void MapLiquidation(this WebApplication app)
@@ -116,7 +114,7 @@ public static class LiquidationEndpoints
             var method = await db.PaymentMethods.Where(row => row.ProjectId == projectId && row.IsActive).OrderBy(row => row.SortOrder).Select(row => row.Id).FirstAsync();
             var supplier = await db.Suppliers.Where(row => row.ProjectId == projectId && row.IsGeneralCash).Select(row => row.Id).FirstAsync();
             DirectEntries.Add(entry, [
-                new ExpenseDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = general, PaymentMethodId = method, WithoutInvoiceReason = LateReason },
+                new ExpenseDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = general, PaymentMethodId = method },
                 new PurchaseDetails { EntryId = entry.Id, SupplierId = supplier, Product = description[..Math.Min(description.Length, PurchaseDetails.ProductMaxLength)] },
             ], userId, at, db);
         }

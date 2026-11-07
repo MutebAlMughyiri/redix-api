@@ -12,9 +12,6 @@ namespace Redix.Api.Entries;
 /// <summary>What any entry shares once it is in the ledger: reading it, and sending it for approval (UC-028).</summary>
 public static class EntriesEndpoints
 {
-    /// <summary>The key a refusal gives for a file an entry lacks, which is the file's own column.</summary>
-    public const string FileKey = "attachment";
-
     /// <summary>Maps the route that reads an entry, for anyone who reads the project, and the one that sends it, for whoever holds <see cref="Permission.RecordEntries"/>.</summary>
     public static void MapEntries(this WebApplication app)
     {
@@ -233,10 +230,9 @@ public static class EntriesEndpoints
     {
         var expense = await db.ExpenseDetails.SingleAsync(row => row.EntryId == entry.Id);
         var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new PurchaseDetails();
-        var hasFile = await db.EntryAttachments.AnyAsync(row => row.EntryId == entry.Id);
         var columns = await db.Set<ItemColumn>().Where(column => column.ItemId == expense.ItemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync();
         var answers = new EntryAnswers(entry.Kind, purchase.Product, purchase.UnitPrice, purchase.Quantity, entry.Notes, expense.CustomValuesByKey());
-        return [.. hasFile || expense.WithoutInvoiceReason.Length > 0 ? [] : new[] { FileKey }, .. answers.MissingOf(columns)];
+        return answers.MissingOf(columns);
     }
 
     private static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db) => new(

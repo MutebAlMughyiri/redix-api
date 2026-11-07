@@ -8,10 +8,10 @@
 
 | Route | What it answers |
 | --- | --- |
-| `GET /projects/{id}/entries/pending` | What waits, oldest first: its item, supplier, invoice number, VAT, account, notes and author, with its file or why it has none |
+| `GET /projects/{id}/entries/pending` | What waits, oldest first: its date, total, item, supplier, an older bill's number, account, notes and author, with its file when it has one |
 
 | Rule | Code | Test |
 | --- | --- | --- |
-| AC-18.1: oldest first, with the file or why there is none | `ApprovalsEndpoints.Pending` | `ApprovalsTests.AC_18_1_TheInboxIsOldestFirstWithTheFileOrWhyThereIsNone` |
+| AC-18.1: oldest first, with the file when there is one | `ApprovalsEndpoints.Pending` | `ApprovalsTests.AC_18_1_TheInboxIsOldestFirstWithTheFileWhenThereIsOne` |
 | A draft and what is decided are not in it | `ApprovalsEndpoints.Pending` | `ApprovalsTests.ADraftAndWhatIsDecidedAreNotInTheInbox` |
 | Only whoever decides entries sees it | The `ApproveEntries` policy | `ApprovalsTests.OnlyWhoeverDecidesEntriesSeesTheInboxOrDecides` |

@@ -316,7 +316,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<ExpenseDetails>(details =>
         {
             details.HasKey(d => d.EntryId);
-            details.Property(d => d.WithoutInvoiceReason).HasMaxLength(Project.ReasonMaxLength);
             details.Property(d => d.CustomValues).HasColumnType("json");
             details.HasOne<Entry>().WithOne().HasForeignKey<ExpenseDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Item>().WithMany().HasForeignKey(d => d.ItemId).OnDelete(DeleteBehavior.Restrict);
@@ -341,7 +340,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             invoice.HasKey(i => i.EntryId);
             invoice.Property(i => i.Number).HasMaxLength(Invoice.NumberMaxLength);
-            invoice.Property(i => i.SellerVatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
         });

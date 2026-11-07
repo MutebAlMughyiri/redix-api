@@ -2,7 +2,7 @@
 
 # UC-053 to UC-058: The periodic report and the report files
 
-**Purpose:** issue the numbered periodic report that replaces the manual statement, and give it and the other reports as files: the periodic report as a PDF laid out as report 23 and as a workbook with live totals; the VAT statement as the accountant's workbook, a PDF and a ZIP of its invoices; an item's report and the contracts report as a PDF and a workbook.
+**Purpose:** issue the numbered periodic report that replaces the manual statement, and give it and the other reports as files: the periodic report as a PDF laid out as report 23 and as a workbook with live totals; the VAT statement as the accountant's workbook; an item's report and the contracts report as a PDF and a workbook.
 
 **Who uses it:** whoever holds `MoveMoney` issues. Everyone who reads the project reads a report, seeing only their own partner line (BR-31). Only whoever holds `SeeAllCapital` gets the files: "exporting stays theirs alone".
 
@@ -13,7 +13,7 @@
 | `POST /projects/{id}/periodic-reports` | Issues the next report as a snapshot that never changes |
 | `GET /projects/{id}/periodic-reports/{number}` | A report as issued |
 | `GET /projects/{id}/periodic-reports/{number}/pdf`, `/xlsx` | Its files |
-| `GET /projects/{id}/vat-statement/xlsx`, `/pdf`, `/zip?from=&to=` | The VAT statement's files |
+| `GET /projects/{id}/vat-statement/xlsx?from=&to=` | The VAT statement's workbook, its VAT a formula on each total at `vatRatePercent` (redix-api #96, D19, D20) |
 | `GET /projects/{id}/reports/items/{itemId}/pdf`, `/xlsx` | An item's report as files |
 | `GET /projects/{id}/reports/contracts/pdf`, `/xlsx` | The contracts report as files |
 
@@ -40,6 +40,6 @@ A report keeps every figure as issued, in `PeriodicReports.Snapshot`. What was a
 | AC-46.9: an item that chooses it shows each table's percentage under its total and نسبة الكل under اجمالي الكل | `StatementWriter.Add`, `CategoriesEndpoints.SetTablePercentages` | `ReportFilesTests.AC_46_9_AnItemThatChoosesPercentagesShowsEachTablesShareUnderItsTotalAndTheWholeUnderTheGrandTotal`, `CategoriesTests.AC_46_9_AnItemsChoiceToCalculateEachTablesPercentageIsKeptAndInTheAuditTrail` |
 | AC-46.11: every column fits its content up to 45 characters, past which its text wraps; no row keeps a height of its own, so Excel grows it to its wrapped text | `StatementStyle.Fit`, `StatementStyle.AsBody` | `ReportFilesTests.AC_46_11_EveryColumnFitsItsContentAndTextPastFortyFiveCharactersWraps` |
 | AC-46.10: every line of the summary has its own sheets; a category of one item is one line, only one of more items has a detail table | `PeriodicReportWorkbook.FillSummary` | `ReportFilesTests.AC_46_10_ACategoryOfOneItemIsOneLineAndOnlyACategoryOfMoreItemsHasADetailTable` |
-| AC-47.1: the VAT workbook is the accountant's file | `VatStatementFiles.Excel` | `ReportFilesTests.AC_47_1_TheVatWorkbookIsTheAccountantsFile` |
-| UC-058: the ZIP holds each invoice named by its row | `VatStatementFiles.Zip` | `ReportFilesTests.UC_058_TheZipHoldsEachInvoiceNamedByItsRow` |
+| AC-47.1, D19: the VAT workbook works the VAT out of each total at the configured rate, and none for a party with no VAT number | `VatStatementFiles.Excel` | `ReportFilesTests.AC_47_1_D19_TheVatWorkbookWorksVatOutOfEachTotalAtTheConfiguredRate` |
+| D18: the rate is the config value `vatRatePercent` | `ReportFilesEndpoints.VatExcel` | `ReportFilesTests.D18_TheRateIsTheConfigValueOfVatRatePercent` |
 | AC-33.1: the item and contracts reports export | `ItemReportFiles` | `ReportFilesTests.AC_33_1_TheItemAndContractsReportsExport` |

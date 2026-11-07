@@ -35,7 +35,7 @@ Each use case adds its own actions; entries, users and attachments join the trai
 | `RegisterProject` | A project is registered (UC-006, UC-066) | The project | Every value of the new record |
 | `Create` | A unit is added (UC-006) | The unit | Every value of the new record |
 | `CloseProject` | A project is closed (UC-006) | The project | Its status, old and new |
-| `Update` | A project is renamed or its VAT rate changes (UC-006, UC-014), a unit is renamed (UC-006), an item's type changes (UC-012), or an account is edited (UC-015) | The project, the unit, the item, or the account | The values changed, old and new |
+| `Update` | A project is renamed (UC-006), a unit is renamed (UC-006), an item's type changes (UC-012), or an account is edited (UC-015) | The project, the unit, the item, or the account | The values changed, old and new |
 | `Delete` | A unit nothing used is deleted (BR-38) | The unit | Every value of the removed record in `Before` |
 
 ## How a use case records an action

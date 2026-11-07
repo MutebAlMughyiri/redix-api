@@ -4,11 +4,10 @@ using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
 using Redix.Api.Structure;
-using Redix.Api.Suppliers;
 
 namespace Redix.Api.Entries;
 
-/// <summary>What recording any expense shares, a purchase or a contractor payment: the rules of what it names, its columns, its file and its invoice's number, and the way it reaches the ledger.</summary>
+/// <summary>What recording any expense shares, a purchase or a contractor payment: the rules of what it names, its columns and its file, and the way it reaches the ledger.</summary>
 public static class EntryRecording
 {
     /// <summary>Why <paramref name="id"/> cannot be a new entry's: empty, or used already, which saves nothing new (AC-16.3). An empty reason when it can.</summary>
@@ -45,28 +44,6 @@ public static class EntryRecording
     {
         var hash = await db.Attachments.Where(attachment => attachment.Id == attachmentId).Select(attachment => attachment.Sha256).SingleAsync();
         return await db.EntryAttachments.AnyAsync(link => link.EntryId != editing && db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
-    }
-
-    /// <summary>The first entry with <paramref name="number"/> from <paramref name="supplier"/>, or from whoever holds its VAT number in another project the caller can read (AC-17.1); null when there is none, or the invoice has no number to match, so nothing about a project they cannot read shows (BR-33). The supplier of an invoice is the purchase's, or the contract's on a contractor payment.</summary>
-    public static async Task<EarlierEntryView?> EarlierEntryAsync(Supplier supplier, string number, UserAccess access, RedixDbContext db, Guid editing = default)
-    {
-        if (number.Length == 0)
-        {
-            return null;
-        }
-        var parties = db.PurchaseDetails.Select(purchase => new { purchase.EntryId, purchase.SupplierId }).Concat(
-            from payment in db.ContractorPaymentDetails
-            join contract in db.Contracts on payment.ContractId equals contract.Id
-            select new { payment.EntryId, contract.SupplierId });
-        var rows = await (
-            from invoice in db.Invoices
-            join party in parties on invoice.EntryId equals party.EntryId
-            join named in db.Suppliers on party.SupplierId equals named.Id
-            join project in db.Projects on named.ProjectId equals project.Id
-            where invoice.EntryId != editing && invoice.Number == number && (named.Id == supplier.Id || (supplier.VatNumber != "" && named.VatNumber == supplier.VatNumber))
-            select new { ProjectId = project.Id, ProjectName = project.Name, invoice.EntryId, invoice.InvoiceDate, invoice.Total }).ToListAsync();
-        var earlier = rows.OrderBy(row => row.EntryId).FirstOrDefault(row => row.ProjectId == supplier.ProjectId || access.In(row.ProjectId).Contains(Permission.ReadProject));
-        return earlier is null ? null : new EarlierEntryView(earlier.ProjectName, earlier.InvoiceDate, earlier.Total);
     }
 
     /// <summary>Why the custom values of <paramref name="request"/> do not fit <paramref name="columns"/> or, when sending, a required one is empty (FR-41), and the column's key. An empty reason when they fit.</summary>
@@ -110,24 +87,7 @@ public static class EntryRecording
         ItemId = itemId,
         SubgroupId = subgroupId,
         PaymentMethodId = request.PaymentMethodId,
-        WithoutInvoiceReason = request.WithoutInvoiceReason.Trim(),
         CustomValues = JsonSerializer.Serialize(request.CustomValuesKept()),
-    };
-
-    /// <summary>The invoice of <paramref name="entryId"/>, with its <paramref name="kept"/> figures, declared in the quarter of its date by default (BR-17).</summary>
-    public static Invoice InvoiceOf(Guid entryId, string number, DateOnly date, InvoiceFigures kept, bool isCreditNote, string sellerVatNumber = "") => new()
-    {
-        EntryId = entryId,
-        Number = number,
-        InvoiceDate = date,
-        AmountBeforeDiscount = kept.AmountBeforeDiscount,
-        Discount = kept.Discount,
-        AmountAfterDiscount = kept.AmountAfterDiscount,
-        Vat = kept.Vat,
-        Total = kept.Total,
-        IsCreditNote = isCreditNote,
-        SellerVatNumber = sellerVatNumber,
-        VatPeriodStart = Invoice.QuarterStartOf(date),
     };
 
     /// <summary>Saves <paramref name="entry"/> with its <paramref name="details"/> and the audit record of each (FR-21).</summary>

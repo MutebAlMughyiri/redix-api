@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Redix.Api.Tests;
 
-/// <summary>UC-039: an invoice that arrived after the expense was entered.</summary>
+/// <summary>UC-039: a file that arrived after the expense was entered goes on it, and nothing else changes (redix-api #96, D15).</summary>
 [Collection(DatabaseCollection.Name)]
 public class InvoiceAttachTests(MigratedApiFactory factory)
 {
@@ -22,8 +22,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     private static async Task<List<AttachableEntryView>> AttachableAsync(HttpClient client, Ledger ledger, string vatNumber = "", decimal total = 0, string date = "") =>
         (await client.GetFromJsonAsync<List<AttachableEntryView>>(Address(ledger, vatNumber, total, date), Json))!;
 
-    private static AttachInvoiceRequest Invoice(Ledger ledger, Guid attachmentId, string number = "2617", decimal total = 0, string sellerVatNumber = "") =>
-        new(attachmentId, number, ledger.Today, total, sellerVatNumber);
+    private static AttachInvoiceRequest Invoice(Guid attachmentId) => new(attachmentId);
 
     private static Task<string> SupplierVatNumberAsync(Ledger ledger) =>
         ledger.ReadAsync(db => db.Suppliers.Where(row => row.Id == ledger.SupplierId).Select(row => row.VatNumber).SingleAsync());
@@ -36,18 +35,18 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var (field, userId) = await ledger.MemberAsync("Field");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
-        var request = ledger.WithoutInvoice() with { AccountId = account.Id, Submit = true };
+        var request = ledger.Purchase(200m) with { AccountId = account.Id, Submit = true };
         (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/expenses", request, Json)).EnsureSuccessStatusCode();
         return (field, request);
     }
 
     [Fact]
-    public async Task OnlyAnExpenseWithoutAnInvoiceInThatItemIsOffered()
+    public async Task OnlyAnExpenseWithNoFileInThatItemIsOffered()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var without = ledger.WithoutInvoice() with { Submit = true };
+        var without = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(without);
-        await ledger.RecordAsync(ledger.Purchase());
+        await ledger.RecordAsync(ledger.Purchase() with { AttachmentId = await ledger.FileAsync() });
 
         var offered = await AttachableAsync(ledger.Client, ledger);
 
@@ -60,9 +59,9 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         await factory.WithDatabaseAsync(db => db.Projects.Where(row => row.Id == ledger.ProjectId).ExecuteUpdateAsync(row => row.SetProperty(project => project.StartDate, ledger.Today.AddMonths(-1))));
         var vatNumber = await SupplierVatNumberAsync(ledger);
-        var matching = ledger.WithoutInvoice() with { Submit = true, Amount = 6000, PaymentDate = ledger.Today.AddDays(-3) };
-        var far = ledger.WithoutInvoice() with { Submit = true, Amount = 6002, PaymentDate = ledger.Today };
-        var late = ledger.WithoutInvoice() with { Submit = true, Amount = 6000, PaymentDate = ledger.Today.AddDays(-4) };
+        var matching = ledger.Purchase(200m) with { Submit = true, Amount = 6000, PaymentDate = ledger.Today.AddDays(-3) };
+        var far = ledger.Purchase(200m) with { Submit = true, Amount = 6002, PaymentDate = ledger.Today };
+        var late = ledger.Purchase(200m) with { Submit = true, Amount = 6000, PaymentDate = ledger.Today.AddDays(-4) };
         await ledger.RecordAsync(matching);
         await ledger.RecordAsync(far);
         await ledger.RecordAsync(late);
@@ -79,7 +78,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     public async Task AC_49_4_FieldSeesOnlyTheirOwn()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.RecordAsync(ledger.WithoutInvoice() with { Submit = true });
+        await ledger.RecordAsync(ledger.Purchase(200m) with { Submit = true });
         var (field, own) = await FieldRecordsAsync(ledger);
 
         Assert.Equal(own.Id, Assert.Single(await AttachableAsync(field, ledger)).Id);
@@ -87,110 +86,70 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AttachingPutsTheInvoiceOnTheEntryAndWritesItInTheTrail()
+    public async Task D15_AttachingPutsOnlyTheFileOnTheEntryAndWritesItInTheTrail()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.WithoutInvoice() with { Submit = true, Amount = 115 };
+        var request = ledger.Purchase(115m) with { Submit = true };
         await ledger.RecordAsync(request);
         var file = await ledger.FileAsync();
+        var trailBefore = (await factory.AuditTrailOfAsync(request.Id)).Count;
 
-        var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file));
-
-        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
-        var invoice = await ledger.ReadAsync(db => db.Invoices.SingleAsync(row => row.EntryId == request.Id));
-        Assert.Equal(("2617", 115m, 15m), (invoice.Number, invoice.Total, invoice.Vat));
-        Assert.Equal(file, (await ledger.ReadAsync(db => db.EntryAttachments.SingleAsync(row => row.EntryId == request.Id))).AttachmentId);
-        Assert.Empty((await ledger.ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == request.Id))).WithoutInvoiceReason);
-        Assert.Contains(await factory.AuditTrailOfAsync(request.Id), row => row.Action == AuditAction.Update);
-    }
-
-    [Fact]
-    public async Task AnInvoiceWithNoNumberIsAttached()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.WithoutInvoice() with { Submit = true };
-        await ledger.RecordAsync(request);
-
-        var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, await ledger.FileAsync(), ""));
+        var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(file));
 
         Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
-        Assert.Empty((await ledger.ReadAsync(db => db.Invoices.SingleAsync(row => row.EntryId == request.Id))).Number);
+        var link = await ledger.ReadAsync(db => db.EntryAttachments.SingleAsync(row => row.EntryId == request.Id));
+        Assert.Equal((file, EntryAttachmentRole.Invoice), (link.AttachmentId, link.Role));
+        Assert.False(await ledger.ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id)));
+        Assert.Equal(115m, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id))).Amount);
+        Assert.Equal(AuditAction.Create, Assert.Single((await factory.AuditTrailOfAsync(request.Id)).Skip(trailBefore)).Action);
     }
 
     [Fact]
     public async Task AWaitingEntryStaysWaitingAndADraftStaysADraft()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var waiting = ledger.WithoutInvoice() with { Submit = true };
-        var draft = ledger.WithoutInvoice();
+        var waiting = ledger.Purchase(200m) with { Submit = true };
+        var draft = ledger.Purchase(200m);
         await ledger.RecordAsync(waiting);
         await ledger.RecordAsync(draft);
 
-        await AttachAsync(ledger.Client, ledger, waiting.Id, Invoice(ledger, await ledger.FileAsync(), "1", 999));
-        await AttachAsync(ledger.Client, ledger, draft.Id, Invoice(ledger, await ledger.FileAsync(), "2", 999));
+        await AttachAsync(ledger.Client, ledger, waiting.Id, Invoice(await ledger.FileAsync()));
+        await AttachAsync(ledger.Client, ledger, draft.Id, Invoice(await ledger.FileAsync()));
 
         Assert.Equal(EntryStatus.PendingApproval, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == waiting.Id))).Status);
         Assert.Equal(EntryStatus.Draft, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == draft.Id))).Status);
     }
 
     [Fact]
-    public async Task AC_49_3_AnApprovedEntryGoesBackToApprovalAndFinanceIsTold()
+    public async Task D15_AnApprovedEntryStaysApprovedAndNobodyIsAskedAgain()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (other, _) = await ledger.MemberAsync("Finance");
-        var request = ledger.WithoutInvoice() with { Submit = true };
+        var request = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(request);
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
 
-        var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, await ledger.FileAsync()));
+        var toldBefore = (await other.GetFromJsonAsync<List<NotificationView>>("/notifications", Json))!.Count;
 
-        Assert.Equal(EntryStatus.PendingApproval, (await answer.Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Status);
-        Assert.Equal(Entry.NotApproved, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id))).ApprovedAt);
-        Assert.Contains((await other.GetFromJsonAsync<List<NotificationView>>("/notifications", Json))!, row => row.EntryId == request.Id && row.Kind == NotificationKind.EntrySubmitted);
-    }
+        var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(await ledger.FileAsync()));
 
-    [Fact]
-    public async Task AC_49_3_FinanceSeesTheDifferenceWhenItDecides()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var vatNumber = await SupplierVatNumberAsync(ledger);
-        var request = ledger.WithoutInvoice() with { Submit = true, Amount = 100 };
-        await ledger.RecordAsync(request);
-
-        await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, await ledger.FileAsync(), total: 150, sellerVatNumber: "300000000000099"));
-
-        var pending = (await ledger.Client.GetFromJsonAsync<List<PendingEntryView>>($"/projects/{ledger.ProjectId}/entries/pending", Json))!.Single(row => row.Id == request.Id);
-        Assert.Equal((100m, 150m, "300000000000099", vatNumber), (pending.Amount, pending.InvoiceTotal, pending.SellerVatNumber, pending.SupplierVatNumber));
-    }
-
-    [Fact]
-    public async Task AC_49_3_TheSameInvoiceCannotGoOnTwoExpensesEvenIfConfirmed()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var first = ledger.WithoutInvoice() with { Submit = true };
-        var second = ledger.WithoutInvoice() with { Submit = true };
-        await ledger.RecordAsync(first);
-        await ledger.RecordAsync(second);
-        await AttachAsync(ledger.Client, ledger, first.Id, Invoice(ledger, await ledger.FileAsync(), "2617"));
-
-        var repeated = await AttachAsync(ledger.Client, ledger, second.Id, Invoice(ledger, await ledger.FileAsync(), "2617"));
-
-        Assert.Equal(HttpStatusCode.Conflict, repeated.StatusCode);
-        Assert.Equal("duplicateInvoice", await Ledger.CodeOf(repeated));
+        Assert.Equal(EntryStatus.Approved, (await answer.Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Status);
+        Assert.Equal(EntryStatus.Approved, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id))).Status);
+        Assert.Equal(toldBefore, (await other.GetFromJsonAsync<List<NotificationView>>("/notifications", Json))!.Count);
     }
 
     [Fact]
     public async Task AFileAlreadyOnAnEntryIsRefused()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var first = ledger.WithoutInvoice() with { Submit = true };
-        var second = ledger.WithoutInvoice() with { Submit = true };
+        var first = ledger.Purchase(200m) with { Submit = true };
+        var second = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(first);
         await ledger.RecordAsync(second);
         var file = await ledger.FileAsync();
-        await AttachAsync(ledger.Client, ledger, first.Id, Invoice(ledger, file, "1"));
+        await AttachAsync(ledger.Client, ledger, first.Id, Invoice(file));
 
-        var repeated = await AttachAsync(ledger.Client, ledger, second.Id, Invoice(ledger, file, "2"));
+        var repeated = await AttachAsync(ledger.Client, ledger, second.Id, Invoice(file));
 
         Assert.Equal("invoiceAlreadyAttached", await Ledger.CodeOf(repeated));
     }
@@ -199,27 +158,27 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     public async Task SomeoneElsesEntryIsRefusedToField()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.WithoutInvoice() with { Submit = true };
+        var request = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(request);
         var (field, _) = await ledger.MemberAsync("Field");
 
-        var refused = await AttachAsync(field, ledger, request.Id, Invoice(ledger, await ledger.FileAsync()));
+        var refused = await AttachAsync(field, ledger, request.Id, Invoice(await ledger.FileAsync()));
 
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
         Assert.Equal("notYourEntry", await Ledger.CodeOf(refused));
     }
 
     [Fact]
-    public async Task WhatCannotTakeAnInvoiceIsRefused()
+    public async Task WhatCannotTakeAFileIsRefused()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var hasOne = ledger.Purchase();
+        var hasOne = ledger.Purchase() with { AttachmentId = await ledger.FileAsync() };
         await ledger.RecordAsync(hasOne);
-        var deduction = ledger.WithoutInvoice() with { Amount = -50 };
+        var deduction = ledger.Deduction(-50m);
         await ledger.RecordAsync(deduction);
 
-        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, hasOne.Id, Invoice(ledger, await ledger.FileAsync()))));
-        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, deduction.Id, Invoice(ledger, await ledger.FileAsync()))));
+        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, hasOne.Id, Invoice(await ledger.FileAsync()))));
+        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, deduction.Id, Invoice(await ledger.FileAsync()))));
         Assert.DoesNotContain(await AttachableAsync(ledger.Client, ledger), row => row.Id == deduction.Id);
     }
 
@@ -227,7 +186,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     public async Task AReversedEntryIsNotOffered()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.WithoutInvoice() with { Submit = true };
+        var request = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(request);
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
@@ -236,17 +195,12 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task WhatWasTypedIsChecked()
+    public async Task AFileOfNoSuchAttachmentIsRefused()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.WithoutInvoice() with { Submit = true };
+        var request = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(request);
-        var file = await ledger.FileAsync();
 
-        Assert.Equal("invalidInvoiceNumber", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file, new string('1', Redix.Api.Entries.Invoice.NumberMaxLength + 1)))));
-        Assert.Equal("invalidInvoiceDate", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file) with { InvoiceDate = new DateOnly(2000, 1, 1) })));
-        Assert.Equal("invalidAmount", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file, total: -1))));
-        Assert.Equal("invalidVatNumber", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, file, sellerVatNumber: "3000000000000030"))));
-        Assert.Equal("unknownAttachment", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(ledger, Guid.NewGuid()))));
+        Assert.Equal("unknownAttachment", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, request.Id, Invoice(Guid.NewGuid()))));
     }
 }

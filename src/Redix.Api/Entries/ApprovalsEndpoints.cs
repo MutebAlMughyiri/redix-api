@@ -25,14 +25,14 @@ public static class ApprovalsEndpoints
         changes.MapPost("/entries/{entryId:guid}/reject", Reject);
     }
 
-    /// <summary>What waits for a decision in the project, oldest first, each with its file or why it has none (AC-18.1).</summary>
+    /// <summary>What waits for a decision in the project, oldest first, each with its file when it has one (AC-18.1).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<List<PendingEntryView>> Pending(Guid projectId, RedixDbContext db)
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.InvoiceOf(entry).Vat, facts.AccountNameOf(entry), entry.Notes, facts.ExpenseOf(entry).WithoutInvoiceReason, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry), facts.InvoiceOf(entry).Total, facts.InvoiceOf(entry).SellerVatNumber, facts.SupplierVatNumberOf(entry))).ToList();
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry))).ToList();
     }
 
     /// <summary>
@@ -133,18 +133,13 @@ public static class ApprovalsEndpoints
 /// <param name="Amount">What was paid.</param>
 /// <param name="ItemName">Its item.</param>
 /// <param name="SupplierName">Its supplier, or the contract's contractor.</param>
-/// <param name="InvoiceNumber">Its invoice's number; empty when it has none.</param>
-/// <param name="Vat">Its invoice's VAT.</param>
+/// <param name="InvoiceNumber">The number of an older bill that had one; empty for the rest.</param>
 /// <param name="AccountName">What paid it.</param>
 /// <param name="Notes">What was noted.</param>
-/// <param name="WithoutInvoiceReason">Why it has no invoice; empty when it has one.</param>
 /// <param name="AttachmentId">Its file; empty when it has none.</param>
 /// <param name="ContentType">What the file is; empty when it has none.</param>
 /// <param name="AuthorName">Who entered it.</param>
-/// <param name="InvoiceTotal">Its invoice's total, which may differ from what was paid (AC-49.3).</param>
-/// <param name="SellerVatNumber">The seller's VAT number on an invoice attached later; empty otherwise.</param>
-/// <param name="SupplierVatNumber">Its supplier's VAT number, to compare with that.</param>
-public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, decimal Vat, string AccountName, string Notes, string WithoutInvoiceReason, string AttachmentId, string ContentType, string AuthorName, decimal InvoiceTotal, string SellerVatNumber, string SupplierVatNumber);
+public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string AuthorName);
 
 /// <summary>The entries to approve.</summary>
 /// <param name="EntryIds">Their ids.</param>

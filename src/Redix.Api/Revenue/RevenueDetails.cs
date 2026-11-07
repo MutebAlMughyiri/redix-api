@@ -19,22 +19,9 @@ public class RevenueDetails
     public DateOnly PeriodEnd { get; init; }
 }
 
-/// <summary>Which tax a sale carries. BRS open question 6 waits for the accountant, so both exist, the real estate transaction tax being the default.</summary>
-public enum SaleTaxType : byte
-{
-    /// <summary>The real estate transaction tax, which is not VAT, so it stays out of the net VAT due.</summary>
-    RealEstateTransaction,
-
-    /// <summary>VAT, at the project's rate.</summary>
-    Vat,
-}
-
-/// <summary>The invoice of a sale, which feeds the sales section of the VAT statement (FR-42). It belongs to the sale's revenue entry, so its amount is counted once.</summary>
+/// <summary>The invoice of a sale, which feeds the sales section of the كشف الضريبة (FR-42, D22). It belongs to the sale's revenue entry, so its total is counted once.</summary>
 public class SalesInvoice
 {
-    /// <summary>The real estate transaction tax's rate.</summary>
-    public const decimal RealEstateTransactionRate = 0.05m;
-
     /// <summary>The longest buyer's name.</summary>
     public const int BuyerNameMaxLength = 200;
 
@@ -53,24 +40,6 @@ public class SalesInvoice
     /// <summary>Its date.</summary>
     public DateOnly InvoiceDate { get; init; }
 
-    /// <summary>The amount before tax and before the discount.</summary>
-    public decimal AmountBeforeDiscount { get; init; }
-
-    /// <summary>The discount.</summary>
-    public decimal Discount { get; init; }
-
-    /// <summary>The amount before tax, after the discount.</summary>
-    public decimal AmountAfterDiscount { get; init; }
-
-    /// <summary>The tax of this row, never recomputed.</summary>
-    public decimal Tax { get; init; }
-
-    /// <summary>The amount after the discount, with tax.</summary>
+    /// <summary>What the buyer paid.</summary>
     public decimal Total { get; init; }
-
-    /// <summary>Which tax it carries.</summary>
-    public SaleTaxType TaxType { get; init; }
-
-    /// <summary>The first day of the quarter it is declared in.</summary>
-    public DateOnly VatPeriodStart { get; init; }
 }

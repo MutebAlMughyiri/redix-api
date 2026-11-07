@@ -28,7 +28,7 @@ public class LiquidationTests(MigratedApiFactory factory)
 
     private static async Task SpendAsync(Ledger ledger, decimal amount)
     {
-        var expense = ledger.WithoutInvoice(amount) with { Submit = true };
+        var expense = ledger.Purchase(amount) with { Submit = true };
         await ledger.RecordAsync(expense);
         await ledger.SetStatusAsync(expense.Id, EntryStatus.Approved);
     }
@@ -127,7 +127,7 @@ public class LiquidationTests(MigratedApiFactory factory)
         Assert.Equal("incompleteLiquidation", await Ledger.CodeOf(await LiquidateAsync(ledger, new LiquidationLineRequest(first, ledger.AccountId))));
         Assert.Equal("incompleteLiquidation", await Ledger.CodeOf(await LiquidateAsync(ledger, new LiquidationLineRequest(first, ledger.AccountId), new LiquidationLineRequest(first, ledger.AccountId), new LiquidationLineRequest(second, ledger.AccountId))));
         Assert.Equal("unknownAccount", await Ledger.CodeOf(await LiquidateAsync(ledger, new LiquidationLineRequest(first, Guid.NewGuid()), new LiquidationLineRequest(second, ledger.AccountId))));
-        await ledger.RecordAsync(ledger.WithoutInvoice(5) with { Submit = true });
+        await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
         var waiting = await LiquidateAsync(ledger, new LiquidationLineRequest(first, ledger.AccountId), new LiquidationLineRequest(second, ledger.AccountId));
 
         Assert.Equal((HttpStatusCode.Conflict, "pendingEntries"), (waiting.StatusCode, await Ledger.CodeOf(waiting)));

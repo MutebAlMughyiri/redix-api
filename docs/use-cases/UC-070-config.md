@@ -13,7 +13,8 @@
 | Key | Starts at | Means |
 | --- | --- | --- |
 | `requestTimeoutSeconds` | `10` | How long the app waits for any answer before it says there is no connection and offers to try again |
-| `fileTimeoutSeconds` | `120` | How long it waits for a file sent or read: an invoice, a document, a report's PDF, workbook or ZIP |
+| `fileTimeoutSeconds` | `120` | How long it waits for a file sent or read: an invoice, a document, a report's PDF or workbook |
+| `vatRatePercent` | `15` | The VAT rate, as a percentage, the VAT statement's workbook works the VAT out of each total at; REDIX stores no VAT (redix-api #96, D18) |
 
 Muteb, 7 November 2026: "add time out 10 second for all request. add config table in db to set the time out. later we will use this config table to add any configurable value"; files wait longer, since a 25 MB document or a report built on the server cannot answer in 10 seconds on a phone's network.
 

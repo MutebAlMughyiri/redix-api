@@ -55,31 +55,18 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_09_1_ADraftWithNoFileAndNoReasonIsRefusedNamingTheFile()
+    public async Task D3_ADraftWithNoFileIsSent()
     {
         var ledger = await LedgerAsync();
         var entryId = await DraftAsync(ledger, ledger.Purchase());
 
-        var missing = await MissingOfAsync(await SubmitAsync(ledger, entryId));
-
-        Assert.Equal(["attachment"], missing);
-        Assert.Equal(EntryStatus.Draft, (await EntryOfAsync(ledger, entryId)).Status);
-    }
-
-    [Fact]
-    public async Task AC_09_1_ADraftThatSaysWhyThereIsNoInvoiceIsSentAndJoinsTheExceptionsList()
-    {
-        var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice());
-
         (await SubmitAsync(ledger, entryId)).EnsureSuccessStatusCode();
 
-        var exceptions = (await ledger.Client.GetFromJsonAsync<List<ExceptionView>>($"/projects/{ledger.ProjectId}/expenses/exceptions", Ledger.Json))!;
-        Assert.Equal(entryId, Assert.Single(exceptions).EntryId);
+        Assert.Equal(EntryStatus.PendingApproval, (await EntryOfAsync(ledger, entryId)).Status);
     }
 
     [Fact]
-    public async Task FR_41_EveryRequiredColumnLeftEmptyIsNamedWithTheFile()
+    public async Task FR_41_EveryRequiredColumnLeftEmptyIsNamed()
     {
         var ledger = await LedgerAsync();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("المرحلة", ColumnDataType.Text, true, false, []), Ledger.Json)).EnsureSuccessStatusCode();
@@ -89,10 +76,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
 
         var missing = await MissingOfAsync(await SubmitAsync(ledger, entryId));
 
-        Assert.Equal("attachment", missing[0]);
-        Assert.Contains("product", missing);
-        Assert.Contains(custom, missing);
-        Assert.Equal(3, missing.Count);
+        Assert.Equal(["product", custom], missing);
     }
 
     [Fact]
@@ -108,7 +92,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ADraftContractorPaymentNeedsItsReceiptAndOnceSentWaitsOnItsContract()
+    public async Task D16_ADraftContractorPaymentIsSentWithOrWithoutItsReceiptAndWaitsOnItsContract()
     {
         var ledger = await LedgerAsync();
         var item = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType={ItemType.ContractorPayments}", Ledger.Json))!.SelectMany(category => category.Items).First();
@@ -120,11 +104,11 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         var withReceipt = Payment() with { AttachmentId = await ledger.FileAsync() };
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", withReceipt, Ledger.Json)).EnsureSuccessStatusCode();
 
-        Assert.Equal(["attachment"], await MissingOfAsync(await SubmitAsync(ledger, noReceipt.Id)));
+        (await SubmitAsync(ledger, noReceipt.Id)).EnsureSuccessStatusCode();
         (await SubmitAsync(ledger, withReceipt.Id)).EnsureSuccessStatusCode();
 
         var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Ledger.Json))!.Single();
-        Assert.Equal(3000m, contract.Pending);
+        Assert.Equal(6000m, contract.Pending);
         Assert.Equal(0m, contract.Paid);
     }
 
@@ -132,7 +116,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task UC_033_ARejectedEntryCanBeSentAgain()
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice() with { Submit = true });
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m) with { Submit = true });
         await ledger.SetStatusAsync(entryId, EntryStatus.Rejected);
 
         (await SubmitAsync(ledger, entryId)).EnsureSuccessStatusCode();
@@ -146,7 +130,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task AnEntryAlreadySentCannotBeSentAgain(EntryStatus status)
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice());
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m));
         await ledger.SetStatusAsync(entryId, status);
 
         var response = await SubmitAsync(ledger, entryId);
@@ -160,7 +144,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
         var (field, fieldId) = await ledger.MemberAsync("Field");
-        var financeEntry = await DraftAsync(ledger, ledger.WithoutInvoice());
+        var financeEntry = await DraftAsync(ledger, ledger.Purchase(200m));
 
         var refused = await SubmitAsync(ledger, financeEntry, field);
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
@@ -175,7 +159,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
             foreach (var entryId in fieldEntries)
             {
                 db.Add(new Entry { Id = entryId, ProjectId = source.ProjectId, Kind = source.Kind, Status = EntryStatus.Draft, EntryDate = source.EntryDate, Amount = source.Amount, AccountId = source.AccountId, CreatedByUserId = fieldId, CreatedAt = source.CreatedAt });
-                db.Add(new ExpenseDetails { EntryId = entryId, ItemId = details.ItemId, SubgroupId = details.SubgroupId, PaymentMethodId = details.PaymentMethodId, WithoutInvoiceReason = "نقدي" });
+                db.Add(new ExpenseDetails { EntryId = entryId, ItemId = details.ItemId, SubgroupId = details.SubgroupId, PaymentMethodId = details.PaymentMethodId });
             }
             await db.SaveChangesAsync();
         });
@@ -191,7 +175,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task WhoHoldsNoRecordEntriesCannotSendAnEntry(string role)
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice());
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m));
         var (client, _) = await ledger.MemberAsync(role);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await SubmitAsync(ledger, entryId, client)).StatusCode);
@@ -202,7 +186,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
         var other = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice());
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m));
 
         Assert.Equal(HttpStatusCode.NotFound, (await SubmitAsync(other, entryId)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await other.Client.GetAsync($"/projects/{other.ProjectId}/entries/{entryId}")).StatusCode);
@@ -214,7 +198,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task AC_04_1_AFinishedProjectSendsNothing()
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice());
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m));
         (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/close", null)).EnsureSuccessStatusCode();
 
         var response = await SubmitAsync(ledger, entryId);
@@ -227,8 +211,9 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task FR_21_SendingIsInTheAuditTrailAndARefusalIsNot()
     {
         var ledger = await LedgerAsync();
+        await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == ledger.ItemId && column.Key == "product").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
         var refused = await DraftAsync(ledger, ledger.Purchase());
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice());
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m) with { Product = "أسمنت" });
 
         await SubmitAsync(ledger, refused);
         await SubmitAsync(ledger, entryId);
@@ -242,7 +227,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest()
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.Purchase(1150m, "F-55") with { Product = "أسمنت", AttachmentId = await ledger.FileAsync() });
+        var entryId = await DraftAsync(ledger, ledger.Purchase(1150m) with { Product = "أسمنت", AttachmentId = await ledger.FileAsync() });
         var (reader, _) = await ledger.MemberAsync("Reader");
 
         var entry = await ReadAsync(ledger, entryId, reader);
@@ -250,21 +235,19 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         Assert.Equal("draft", entry.GetProperty("entry").GetProperty("status").GetString());
         Assert.Equal(1150m, entry.GetProperty("entry").GetProperty("amount").GetDecimal());
         Assert.Equal("أسمنت", entry.GetProperty("purchase").GetProperty("product").GetString());
-        Assert.Equal("F-55", entry.GetProperty("invoice").GetProperty("number").GetString());
-        Assert.Equal(150m, entry.GetProperty("invoice").GetProperty("vat").GetDecimal());
+        Assert.Equal(Guid.Empty, entry.GetProperty("invoice").GetProperty("entryId").GetGuid());
         Assert.Equal(Guid.Empty, entry.GetProperty("contractorPayment").GetProperty("entryId").GetGuid());
         Assert.Equal("invoice", Assert.Single(entry.GetProperty("attachments").EnumerateArray()).GetProperty("role").GetString());
     }
 
     [Fact]
-    public async Task ReadingAnExpenseWithoutAnInvoiceAnswersItsReasonAndAnEmptyInvoice()
+    public async Task D11_ReadingANewExpenseAnswersAnEmptyInvoice()
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.WithoutInvoice());
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m));
 
         var entry = await ReadAsync(ledger, entryId);
 
-        Assert.Equal("شراء نقدي من السوق", entry.GetProperty("expense").GetProperty("withoutInvoiceReason").GetString());
         Assert.Equal(Guid.Empty, entry.GetProperty("invoice").GetProperty("entryId").GetGuid());
     }
 
@@ -277,7 +260,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
 
         var entry = await ReadAsync(ledger, note);
 
-        Assert.True(entry.GetProperty("invoice").GetProperty("isCreditNote").GetBoolean());
-        Assert.Equal(original, Assert.Single(entry.GetProperty("links").EnumerateArray()).GetProperty("linkedEntryId").GetGuid());
+        var link = Assert.Single(entry.GetProperty("links").EnumerateArray());
+        Assert.Equal(("creditNoteOf", original), (link.GetProperty("type").GetString(), link.GetProperty("linkedEntryId").GetGuid()));
     }
 }

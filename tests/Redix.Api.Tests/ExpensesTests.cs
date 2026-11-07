@@ -62,8 +62,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         ItemId = setup.ItemId,
         SupplierId = setup.SupplierId,
-        InvoiceNumber = "2617",
-        InvoiceDate = Entry.Today(factory.Time),
+        PaymentDate = Entry.Today(factory.Time),
         Amount = amount,
         PaymentMethodId = setup.MethodId,
         AccountId = setup.AccountId,
@@ -92,8 +91,6 @@ public class ExpensesTests(MigratedApiFactory factory)
         return result;
     }
 
-    private Task<Invoice> InvoiceOfAsync(Guid entryId) => ReadAsync(db => db.Invoices.SingleAsync(row => row.EntryId == entryId));
-
     private Task<Entry> EntryOfAsync(Guid entryId) => ReadAsync(db => db.Entries.SingleAsync(row => row.Id == entryId));
 
     private static async Task<Guid> ImageAsync(HttpClient client, Guid projectId)
@@ -111,191 +108,13 @@ public class ExpensesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public void AC_08_1_AnAmountIncludingVatKeepsFourDecimalsAndAddsUpToWhatWasTyped()
-    {
-        var figures = InvoiceFigures.Of(6000m, includesVat: true, discount: 0m, vatRate: 0.15m);
-
-        Assert.Equal(5217.3913m, figures.AmountBeforeDiscount);
-        Assert.Equal(5217.3913m, figures.AmountAfterDiscount);
-        Assert.Equal(782.6087m, figures.Vat);
-        Assert.Equal(6000.0000m, figures.Total);
-    }
-
-    [Fact]
-    public void AC_08_2_VatOnAnAmountBeforeVatIsNotRounded()
-    {
-        var figures = InvoiceFigures.Of(2569.90m, includesVat: false, discount: 0m, vatRate: 0.15m);
-
-        Assert.Equal(385.485m, figures.Vat);
-        Assert.Equal(2955.385m, figures.Total);
-    }
-
-    [Fact]
-    public void AC_08_3_TheDiscountComesOffBeforeVat()
-    {
-        var figures = InvoiceFigures.Of(1000m, includesVat: false, discount: 100m, vatRate: 0.15m);
-
-        Assert.Equal(900m, figures.AmountAfterDiscount);
-        Assert.Equal(135m, figures.Vat);
-        Assert.Equal(1035m, figures.Total);
-    }
-
-    [Fact]
-    public void ADiscountOnAnAmountIncludingVatComesOffTheAmountBeforeVat()
-    {
-        var figures = InvoiceFigures.Of(1150m, includesVat: true, discount: 100m, vatRate: 0.15m);
-
-        Assert.Equal(1000m, figures.AmountBeforeDiscount);
-        Assert.Equal(900m, figures.AmountAfterDiscount);
-        Assert.Equal(135m, figures.Vat);
-        Assert.Equal(1035m, figures.Total);
-    }
-
-    [Theory]
-    [InlineData(1000, false, 0.05, 1000, 50, 1050)]
-    [InlineData(1000, false, 0.10, 1000, 100, 1100)]
-    [InlineData(1000, false, 0.125, 1000, 125, 1125)]
-    [InlineData(1050, true, 0.05, 1000, 50, 1050)]
-    [InlineData(1125, true, 0.125, 1000, 125, 1125)]
-    [InlineData(1234.57, false, 0.05, 1234.57, 61.7285, 1296.2985)]
-    [InlineData(1234.57, false, 0.125, 1234.57, 154.3213, 1388.8913)]
-    [InlineData(500, true, 0, 500, 0, 500)]
-    [InlineData(500, false, 0, 500, 0, 500)]
-    public void TheVatFollowsTheRateOfTheProject(double amount, bool includesVat, double rate, double before, double vat, double total)
-    {
-        var figures = InvoiceFigures.Of((decimal)amount, includesVat, 0m, (decimal)rate);
-
-        Assert.Equal((decimal)before, figures.AmountBeforeDiscount);
-        Assert.Equal((decimal)vat, figures.Vat);
-        Assert.Equal((decimal)total, figures.Total);
-    }
-
-    [Fact]
-    public void AWholeInvoiceWithNoCreditNoteAddsUpFromItsTypedAmountsToItsTotals()
-    {
-        InvoiceFigures[] rows =
-        [
-            InvoiceFigures.Of(6000m, true, 0m, 0.15m),
-            InvoiceFigures.Of(2569.90m, false, 0m, 0.15m),
-            InvoiceFigures.Of(1000m, false, 100m, 0.15m),
-        ];
-
-        Assert.Equal(1303.0937m, rows.Sum(row => row.Vat));
-        Assert.Equal(9990.385m, rows.Sum(row => row.Total));
-        Assert.Equal(8687.2913m, rows.Sum(row => row.AmountAfterDiscount));
-    }
-
-    [Theory]
-    [InlineData(0.05)]
-    [InlineData(0.10)]
-    [InlineData(0.125)]
-    [InlineData(0.15)]
-    public void AtEveryRateTheStoredFiguresAddUpAndAnAmountIncludingVatStaysExactly(double rate)
-    {
-        for (var halalas = 1; halalas < 2_000_000; halalas += 977)
-        {
-            var amount = halalas / 100m;
-
-            var figures = InvoiceFigures.Of(amount, true, 0m, (decimal)rate);
-
-            Assert.Equal(amount, figures.Total);
-            Assert.Equal(figures.Total, figures.AmountAfterDiscount + figures.Vat);
-        }
-    }
-
-    [Fact]
-    public async Task AC_08_1_TheFiguresReachTheDatabaseWithTheirFourDecimals()
+    public async Task BR_01_LeftWithoutAnAmountTheTotalIsThePriceTimesTheQuantity()
     {
         var setup = await FinanceAsync();
 
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup));
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 0m) with { UnitPrice = 230m, Quantity = 5m });
 
-        var invoice = await InvoiceOfAsync(view.Id);
-        Assert.Equal(5217.3913m, invoice.AmountBeforeDiscount);
-        Assert.Equal(5217.3913m, invoice.AmountAfterDiscount);
-        Assert.Equal(782.6087m, invoice.Vat);
-        Assert.Equal(6000m, invoice.Total);
-        Assert.Equal(6000m, (await EntryOfAsync(view.Id)).Amount);
-    }
-
-    [Fact]
-    public async Task AFigureIsNeverRoundedToTwoDecimalsBeforeItIsStored()
-    {
-        var setup = await FinanceAsync();
-
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 2569.90m) with { AmountIncludesVat = false });
-
-        var invoice = await InvoiceOfAsync(view.Id);
-        Assert.Equal(385.4850m, invoice.Vat);
-        Assert.Equal(2955.3850m, invoice.Total);
-        Assert.Equal(2955.3850m, (await EntryOfAsync(view.Id)).Amount);
-        Assert.Equal(385.485m, view.Vat);
-        Assert.Equal(2955.385m, view.Total);
-    }
-
-    [Fact]
-    public async Task BR_13_VatStaysUnroundedOnEachRowSoATotalRoundsOnlyOnce()
-    {
-        var setup = await FinanceAsync();
-        List<Guid> ids = [];
-        for (var row = 0; row < 3; row++)
-        {
-            ids.Add((await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 10.03m) with { AmountIncludesVat = false, InvoiceNumber = $"F{row}" })).Id);
-        }
-
-        var vat = await ReadAsync(db => db.Invoices.Where(invoice => ids.Contains(invoice.EntryId)).SumAsync(invoice => invoice.Vat));
-
-        Assert.Equal(4.5135m, vat);
-        Assert.Equal(4.51m, decimal.Round(vat, 2));
-        Assert.NotEqual(decimal.Round(1.5045m, 2) * 3, decimal.Round(vat, 2));
-    }
-
-    [Fact]
-    public async Task BR_14_TheRateIsTheProjectsAndAnEarlierEntryKeepsTheVatItWasSavedWith()
-    {
-        var setup = await FinanceAsync();
-        var earlier = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1000m) with { AmountIncludesVat = false });
-
-        (await setup.Client.PostAsJsonAsync($"/projects/{setup.Project.Id}/vat-rate", new SetVatRateRequest(5m), Json)).EnsureSuccessStatusCode();
-        var later = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1000m) with { AmountIncludesVat = false, InvoiceNumber = "2618" });
-
-        Assert.Equal(150m, (await InvoiceOfAsync(earlier.Id)).Vat);
-        Assert.Equal(50m, (await InvoiceOfAsync(later.Id)).Vat);
-    }
-
-    [Fact]
-    public async Task BR_14_ASupplierNotVatRegisteredHasNoVatAndTheAmountStaysWhole()
-    {
-        var setup = await FinanceAsync();
-
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = setup.CashSupplierId });
-
-        Assert.Equal(6000m, view.AmountBeforeDiscount);
-        Assert.Equal(0m, view.Vat);
-        Assert.Equal(6000m, view.Total);
-    }
-
-    [Fact]
-    public async Task BR_14_AnInvoiceNotTaxableHasNoVat()
-    {
-        var setup = await FinanceAsync();
-
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { IsNotTaxable = true });
-
-        Assert.Equal(0m, view.Vat);
-        Assert.Equal(6000m, view.Total);
-    }
-
-    [Fact]
-    public async Task BR_01_LeftWithoutAnAmountThePriceTimesTheQuantityIncludesVat()
-    {
-        var setup = await FinanceAsync();
-
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 0m) with { UnitPrice = 230m, Quantity = 5m, AmountIncludesVat = false });
-
-        Assert.Equal(1000m, view.AmountBeforeDiscount);
-        Assert.Equal(150m, view.Vat);
-        Assert.Equal(1150m, view.Total);
+        Assert.Equal(1150m, view.Amount);
     }
 
     [Fact]
@@ -305,7 +124,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { UnitPrice = 999m, Quantity = 2m, Product = " مواد لياسة " });
 
-        Assert.Equal(1150m, view.Total);
+        Assert.Equal(1150m, view.Amount);
         var purchase = await ReadAsync(db => db.PurchaseDetails.SingleAsync(row => row.EntryId == view.Id));
         Assert.Equal(999m, purchase.UnitPrice);
         Assert.Equal(2m, purchase.Quantity);
@@ -313,28 +132,15 @@ public class ExpensesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task D10_AnExpenseIsPaidItsInvoicesTotalOnTheInvoicesDate()
+    public async Task D10_AnExpenseIsItsTotalOnItsOneDate()
     {
         var setup = await FinanceAsync();
         var request = Expense(setup);
 
         var entry = await EntryOfAsync((await RecordAsync(setup.Client, setup.Project.Id, request)).Id);
 
-        Assert.Equal(request.InvoiceDate, entry.EntryDate);
+        Assert.Equal(request.PaymentDate, entry.EntryDate);
         Assert.Equal(6000m, entry.Amount);
-    }
-
-    [Fact]
-    public async Task BR_17_TheVatPeriodIsTheQuarterOfTheInvoicesDate()
-    {
-        Assert.Equal(new DateOnly(2026, 10, 1), Invoice.QuarterStartOf(new DateOnly(2026, 11, 5)));
-        Assert.Equal(new DateOnly(2026, 1, 1), Invoice.QuarterStartOf(new DateOnly(2026, 3, 31)));
-        Assert.Equal(new DateOnly(2026, 4, 1), Invoice.QuarterStartOf(new DateOnly(2026, 4, 1)));
-
-        var setup = await FinanceAsync();
-        var request = Expense(setup);
-        var view = await RecordAsync(setup.Client, setup.Project.Id, request);
-        Assert.Equal(Invoice.QuarterStartOf(request.InvoiceDate), (await InvoiceOfAsync(view.Id)).VatPeriodStart);
     }
 
     [Fact]
@@ -354,7 +160,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var expense = await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == request.Id));
         Assert.Equal(setup.ItemId, expense.ItemId);
         Assert.Equal(setup.SupplierId, (await ReadAsync(db => db.PurchaseDetails.SingleAsync(row => row.EntryId == request.Id))).SupplierId);
-        Assert.Equal("2617", (await InvoiceOfAsync(request.Id)).Number);
+        Assert.False(await ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id)));
     }
 
     [Fact]
@@ -365,7 +171,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var subgroups = (await PurchaseItemAsync(setup.Client, setup.Project.Id)).Subgroups;
 
         var general = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup));
-        var named = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { InvoiceNumber = "2618", SubgroupId = subgroups.Single(row => row.Name == "مواد").Id });
+        var named = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SubgroupId = subgroups.Single(row => row.Name == "مواد").Id });
 
         Assert.Equal(subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, (await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == general.Id))).SubgroupId);
         Assert.Equal(subgroups.Single(row => row.Name == "مواد").Id, (await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == named.Id))).SubgroupId);
@@ -384,21 +190,11 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
 
         var draft = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup));
-        var sent = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { InvoiceNumber = "2618", Submit = true, AttachmentId = await ImageAsync(setup.Client, setup.Project.Id) });
+        var sent = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = await ImageAsync(setup.Client, setup.Project.Id) });
 
         Assert.Equal(EntryStatus.Draft, draft.Status);
         Assert.Equal(EntryStatus.PendingApproval, sent.Status);
         Assert.Equal(EntryStatus.PendingApproval, (await EntryOfAsync(sent.Id)).Status);
-    }
-
-    [Fact]
-    public async Task FR_09_SendingNeedsTheInvoicesFileAndADraftCanWaitForIt()
-    {
-        var setup = await FinanceAsync();
-
-        await AssertRefusedAsync(setup, Expense(setup) with { Submit = true }, "invoiceRequired");
-
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup))).StatusCode);
     }
 
     [Fact]
@@ -521,7 +317,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { AccountId = custody })).StatusCode);
         (await setup.Client.PostAsync($"/projects/{setup.Project.Id}/accounts/{custody}/disable", null)).EnsureSuccessStatusCode();
-        await AssertRefusedAsync(setup, Expense(setup) with { AccountId = custody, InvoiceNumber = "2618" }, "accountNotOffered");
+        await AssertRefusedAsync(setup, Expense(setup) with { AccountId = custody }, "accountNotOffered");
     }
 
     [Fact]
@@ -539,9 +335,9 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var today = Entry.Today(factory.Time);
 
-        await AssertRefusedAsync(setup, Expense(setup) with { InvoiceDate = today.AddDays(1) }, "invalidInvoiceDate");
-        await AssertRefusedAsync(setup, Expense(setup) with { InvoiceDate = setup.Project.StartDate.AddDays(-1) }, "invalidInvoiceDate");
-        await AssertRefusedAsync(setup, Expense(setup) with { InvoiceDate = default }, "invalidInvoiceDate");
+        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = today.AddDays(1) }, "invalidPaymentDate");
+        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = setup.Project.StartDate.AddDays(-1) }, "invalidPaymentDate");
+        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = default }, "invalidPaymentDate");
     }
 
     [Fact]
@@ -549,8 +345,8 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { InvoiceDate = setup.Project.StartDate })).StatusCode);
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { InvoiceNumber = "2618", InvoiceDate = Entry.Today(factory.Time) })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { PaymentDate = setup.Project.StartDate })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { PaymentDate = Entry.Today(factory.Time) })).StatusCode);
     }
 
     [Fact]
@@ -565,18 +361,15 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        await AssertRefusedAsync(setup, Expense(setup) with { InvoiceNumber = new string('1', Invoice.NumberMaxLength + 1) }, "invalidInvoiceNumber");
         await AssertRefusedAsync(setup, Expense(setup) with { Product = new string('م', PurchaseDetails.ProductMaxLength + 1) }, "invalidProduct");
         await AssertRefusedAsync(setup, Expense(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");
         await AssertRefusedAsync(setup, Expense(setup) with { UnitPrice = -1m }, "invalidUnitPrice");
         await AssertRefusedAsync(setup, Expense(setup) with { Quantity = 1.234m }, "invalidQuantity");
         await AssertRefusedAsync(setup, Expense(setup, 0m), "invalidAmount");
-        await AssertRefusedAsync(setup, Expense(setup, -5m), "deductionNeedsReason");
+        await AssertRefusedAsync(setup, Expense(setup, -5m), "deductionNeedsNotes");
         await AssertRefusedAsync(setup, Expense(setup, 1.234m), "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, 0m) with { UnitPrice = Money.Largest, Quantity = Money.Largest }, "invalidAmount");
-        await AssertRefusedAsync(setup, Expense(setup, Money.Largest) with { AmountIncludesVat = false }, "invalidAmount");
-        await AssertRefusedAsync(setup, Expense(setup) with { Discount = -1m }, "invalidDiscount");
-        await AssertRefusedAsync(setup, Expense(setup, 100m) with { Discount = 100.01m, AmountIncludesVat = false }, "invalidDiscount");
+        await AssertRefusedAsync(setup, Expense(setup, Money.Largest + 1m), "invalidAmount");
     }
 
     [Fact]
@@ -613,7 +406,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var attachmentId = await ImageAsync(setup.Client, setup.Project.Id);
 
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = attachmentId, CustomValues = new() { [key] = " 125.5 " } });
-        await AssertRefusedAsync(setup, Expense(setup) with { InvoiceNumber = "2618", Submit = true, AttachmentId = attachmentId, CustomValues = new() { [key] = "  " } }, "requiredColumnMissing");
+        await AssertRefusedAsync(setup, Expense(setup) with { Submit = true, AttachmentId = attachmentId, CustomValues = new() { [key] = "  " } }, "requiredColumnMissing");
 
         var stored = JsonSerializer.Deserialize<Dictionary<string, string>>((await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == view.Id))).CustomValues)!;
         Assert.Equal("125.5", stored[key]);
@@ -672,7 +465,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = await ImageAsync(setup.Client, setup.Project.Id) });
 
         Assert.Equal(EntryStatus.PendingApproval, view.Status);
-        Assert.Equal("unknownColumn", await CodeOf(await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { InvoiceNumber = "2618", CustomValues = new() { [key] = "1" } })));
+        Assert.Equal("unknownColumn", await CodeOf(await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { CustomValues = new() { [key] = "1" } })));
     }
 
     [Theory]
@@ -760,7 +553,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task FR_21_AnExpenseIsInTheAuditTrailWithWhoAndItsFigures()
+    public async Task FR_21_AnExpenseIsInTheAuditTrailWithWhoAndItsTotal()
     {
         var setup = await FinanceAsync();
         var attachmentId = await ImageAsync(setup.Client, setup.Project.Id);
@@ -768,9 +561,9 @@ public class ExpensesTests(MigratedApiFactory factory)
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = attachmentId });
 
         var trail = await factory.AuditTrailOfAsync(view.Id);
-        Assert.Equal(["Entries", "ExpenseDetails", "PurchaseDetails", "Invoices", "EntryAttachments"], trail.Select(record => record.TableName));
+        Assert.Equal(["Entries", "ExpenseDetails", "PurchaseDetails", "EntryAttachments"], trail.Select(record => record.TableName));
         Assert.Equal(AuditAction.Submit, trail[0].Action);
-        Assert.Equal(782.6087m, JsonDocument.Parse(trail.Single(record => record.TableName == "Invoices").After).RootElement.GetProperty("Vat").GetDecimal());
+        Assert.Equal(6000m, JsonDocument.Parse(trail[0].After).RootElement.GetProperty("Amount").GetDecimal());
         Assert.Contains(attachmentId.ToString(), trail.Single(record => record.TableName == "EntryAttachments").After);
     }
 
@@ -790,8 +583,8 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var other = await SupplierAsync(setup.Client, setup.Project.Id, "مؤسسة الواحة", MigratedApiFactory.NewVatNumber());
         await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = other.Id });
-        await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = other.Id, InvoiceNumber = "2618" });
-        await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { InvoiceNumber = "2619" });
+        await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = other.Id });
+        await RecordAsync(setup.Client, setup.Project.Id, Expense(setup));
 
         var found = (await setup.Client.GetFromJsonAsync<List<SupplierView>>($"/projects/{setup.Project.Id}/suppliers/search", Json))!;
 

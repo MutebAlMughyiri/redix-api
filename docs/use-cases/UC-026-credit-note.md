@@ -4,22 +4,22 @@
 
 **What it is for:** recording money coming back as a negative entry.
 **Who uses it:** whoever holds `RecordEntries` in the project, which is Finance and Field. Anyone who reads the project can read what can be returned.
-**Issue:** redix-api #43; the app side is redix-app #44.
+**Issue:** redix-api #43; the app side is redix-app #44. Simplified by redix-api #96 "Simple expense".
 
 ## How it fits together
 
-**A credit note** (BR-18) is a purchase with `isCreditNote`, its own number and date, and an amount typed as a plain amount. `InvoiceFigures.Negated` is the one owner of its sign: all five figures in `Invoices` and `Entries.Amount` are stored negative, and each still adds up as an invoice's do. So anything that adds up figures, an item total or a VAT statement, takes away what the original counted with no check of what a row is. `Invoices.IsCreditNote` only says what it is.
+**A credit note** (BR-18) is a purchase with `isCreditNote`, typed as a plain amount and kept as a negative `Entries.Amount`, so anything that adds up totals, an item total or the VAT statement, takes away what the bill counted. It always names the bill it returns, `originalEntryId`, kept as an `EntryLinks` row of type `CreditNoteOf` (D13). Only a credit note names a bill.
 
-It may name its original invoice, `originalEntryId`, kept as an `EntryLinks` row of type `CreditNoteOf`. The invoice has to be the same supplier's in the same project, sent or approved, and not itself a credit note. Its value is its `Total`, which is after its discount and with VAT. What the credit notes naming it hold together cannot go above that: `ExpensesEndpoints.Creditable` reckons what is left, counting every credit note but a rejected one. A linked credit note is computed at the rate of its invoice, `InvoiceFigures.RateOf`, not today's, so it takes back the VAT that was counted. Its date may be before the invoice's. An unlinked one follows the same rate as any new expense.
+The bill has to be the same supplier's in the same project, sent or approved, and positive. What the credit notes naming it hold together cannot go above its total: `ExpensesEndpoints.Creditable` reckons what is left, counting every credit note but a rejected one. A credit note's date may be before its bill's.
 
-**A deduction** (FR-14) is a negative amount. It has no tax document, because that is what a credit note is for, so it goes the way of an expense without an invoice (UC-025): it says why in `withoutInvoiceReason`, has no `Invoices` row and no VAT, and shows in the exceptions list. `Entries.Amount` carries the negative, which reduces the item total.
+**A deduction** (FR-14) is a negative amount with no bill. It says why in its notes (D14), and `Entries.Amount` carries the negative, which reduces the item total.
 
 ## Endpoints
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/expenses` | `RecordEntries` | Now takes `isCreditNote`, `originalEntryId` and a negative `amount`. Answers `creditNoteAboveOriginal`, `unknownOriginalInvoice`, `creditNoteNeedsInvoice` and `deductionNeedsReason` |
-| `GET /projects/{id}/expenses/creditable?supplierId=` | `ReadProject` | That supplier's invoices a credit note can return, each with what is left and its rate |
+| `POST /projects/{id}/expenses` | `RecordEntries` | Takes `isCreditNote`, `originalEntryId` and a negative `amount`. Answers `creditNoteNeedsOriginal`, `unknownOriginalInvoice`, `creditNoteAboveOriginal` and `deductionNeedsNotes` |
+| `GET /projects/{id}/expenses/creditable?supplierId=` | `ReadProject` | That supplier's bills a credit note can return, each as `{ entryId, number, date, returnable }`: the number of an older bill that had one, empty for the rest |
 
 ## Tables
 
@@ -31,15 +31,14 @@ Tests are in `CreditNoteTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| AC-14.2: a credit note with its own number and an earlier date is saved, and adds up negative | `InvoiceFigures.Negated`, `Build` | `AC_14_2_ACreditNoteOf320WithItsOwnNumberAndAnEarlierDateIsSavedAndShowsNegativeInTheVatStatement`, `BR_18_EveryFigureOfACreditNoteIsNegativeAndStillAddsUp` |
-| BR-18: linking is optional | `CreditableInvoiceView.None` | `BR_18_ACreditNoteNeedNotBeLinked` |
-| A credit note takes away what the original counted, on a partly discounted invoice too | `InvoiceFigures.Negated` | `BR_18_AWholeCreditNoteOnAPartlyDiscountedInvoiceTakesAwayExactlyWhatItCounted`, `BR_18_APartCreditNoteOnAPartlyDiscountedInvoiceLeavesTheRestCounted` |
-| BR-18: a linked one cannot go above the value, alone or together | `ExpensesEndpoints.Record`, `Creditable` | `BR_18_ALinkedCreditNoteCannotGoAboveTheInvoicesValueAfterItsDiscount`, `BR_18_TheCreditNotesOfOneInvoiceTogetherCannotGoAboveItsValue`, `ARejectedCreditNoteNoLongerTakesFromItsInvoiceAndADraftOneDoes` |
-| It follows its invoice's rate | `InvoiceFigures.RateOf` | `ALinkedCreditNoteFollowsTheRateItsInvoiceWasComputedAtNotTodays`, `ACreditNoteOfAnInvoiceWithNoVatHasNoVat`, `TheRateOfAnInvoiceComesBackFromItsKeptFigures` |
-| Only the same supplier's sent invoice | `Creditable` | `OnlyAnInvoiceOfTheSameSupplierThatWasSentCanBeReturned` |
-| FR-09, FR-17: its file and its number as an invoice's | `Record` | `FR_09_ACreditNoteIsSentWithItsFile`, `AC_17_1_ACreditNotesNumberEnteredAgainWarnsAsAnInvoicesDoes`, `ACreditNoteHasAnInvoiceAndIsTypedAsAPlainAmount` |
-| AC-14.1: a deduction of 136 reduces the item total, with no invoice | `ExpenseRequest.IsDeduction` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndHasNoInvoice` |
-| A deduction says why, and is an exception | `RefusalOfTyped` | `ADeductionSaysWhyAndGoesOnTheExceptionsListHavingNoInvoice`, `ADeductionHasNoDiscountAndNoSeparatePayment` |
+| AC-14.2: a credit note is a negative total, linked to its bill, and takes from the item | `ExpenseRequest.KeptTotal`, `ExpensesEndpoints.SaveAsync` | `AC_14_2_ACreditNoteIsANegativeTotalLinkedToItsBillAndTakesFromTheItem` |
+| D13: a credit note needs its bill, and only a credit note names one | `ExpenseRequest.RefusalOfTyped` | `D13_ACreditNoteNeedsItsBillAndOnlyACreditNoteNamesOne` |
+| D13: a credit note cannot go above what is left of its bill, alone or together | `ExpensesEndpoints.SaveAsync`, `Creditable` | `D13_ACreditNoteCannotGoAboveItsBill`, `D13_TheCreditNotesOfOneBillTogetherCannotGoAboveIt`, `ARejectedCreditNoteNoLongerTakesFromItsBillAndADraftOneDoes` |
+| Only the same supplier's sent bill | `Creditable` | `OnlyABillOfTheSameSupplierThatWasSentCanBeReturned` |
+| A credit note is typed as a plain amount | `ExpenseRequest.RefusalOfTyped` | `ACreditNoteIsTypedAsAPlainAmount` |
+| AC-14.1: a deduction of 136 reduces the item total and names no bill | `EntryRequest.IsDeduction` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndNamesNoBill` |
+| BR-31: anyone who reads the project sees what can be returned | `Creditable` | `BR_31_AnyoneWhoReadsTheProjectSeesWhatCanBeReturned` |
 | FR-21: the link is in the audit trail | `RedixDbContext.Audit` | `FR_21_TheLinkIsInTheAuditTrail` |
+| AC-04.1: a finished project records no credit note | `ProjectChanges` | `AFinishedProjectRecordsNoCreditNote` |
 
-The item total and the VAT statement are not built yet (UC-050 "Item report", UC-056 "Build the VAT statement for a period"). The tests add figures up as the database design defines them, which is what those use cases will do.
+D14, a deduction saying why in its notes, is proved in `SimpleExpenseTests.D14_ADeductionSaysWhyInItsNotes`.

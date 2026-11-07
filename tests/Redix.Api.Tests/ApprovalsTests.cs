@@ -18,7 +18,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
 
     private static async Task<Guid> SentAsync(Ledger ledger, decimal amount = 1150m)
     {
-        var request = ledger.WithoutInvoice(amount) with { Submit = true };
+        var request = ledger.Purchase(amount) with { Submit = true };
         await ledger.RecordAsync(request);
         return request.Id;
     }
@@ -38,7 +38,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
     private static async Task<EntryStatus> StatusOfAsync(Ledger ledger, Guid id) => await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == id).Select(row => row.Status).SingleAsync());
 
     [Fact]
-    public async Task AC_18_1_TheInboxIsOldestFirstWithTheFileOrWhyThereIsNone()
+    public async Task AC_18_1_TheInboxIsOldestFirstWithTheFileWhenThereIsOne()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var older = await SentAsync(ledger, 100m);
@@ -50,19 +50,18 @@ public class ApprovalsTests(MigratedApiFactory factory)
         var pending = (await PendingAsync(ledger.Client, ledger.ProjectId))!;
 
         Assert.Equal([older, newer.Id], pending.Select(row => row.Id));
-        Assert.Equal("شراء نقدي من السوق", pending[0].WithoutInvoiceReason);
         Assert.Equal("", pending[0].AttachmentId);
         Assert.Equal(file.ToString(), pending[1].AttachmentId);
         Assert.Equal("image/jpeg", pending[1].ContentType);
         Assert.Equal("شركة النخيل", pending[1].SupplierName);
-        Assert.Equal(150m, pending[1].Vat);
+        Assert.Equal(1150m, pending[1].Amount);
     }
 
     [Fact]
     public async Task ADraftAndWhatIsDecidedAreNotInTheInbox()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.RecordAsync(ledger.WithoutInvoice());
+        await ledger.RecordAsync(ledger.Purchase(200m));
         var approved = await SentAsync(ledger);
         await ApproveAsync(ledger, approved);
 
@@ -108,7 +107,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}", new EditAccountRequest("حساب المؤسسة", 1000m), Json)).EnsureSuccessStatusCode();
         var approved = await SentAsync(ledger, 300m);
         await SentAsync(ledger, 50m);
-        await ledger.RecordAsync(ledger.WithoutInvoice(70m));
+        await ledger.RecordAsync(ledger.Purchase(70m));
 
         await ApproveAsync(ledger, approved);
 
@@ -123,7 +122,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var first = await SentAsync(ledger);
         var second = await SentAsync(ledger);
-        var draft = ledger.WithoutInvoice();
+        var draft = ledger.Purchase(200m);
         await ledger.RecordAsync(draft);
         var unknown = Guid.CreateVersion7();
 
@@ -205,7 +204,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
     public async Task AC_44_1_ApprovingTheFirstExpenseOnAPendingSupplierApprovesItToo()
     {
         var (ledger, _, supplierId) = await PendingSupplierAsync();
-        var request = ledger.WithoutInvoice() with { SupplierId = supplierId, Submit = true };
+        var request = ledger.Purchase(200m) with { SupplierId = supplierId, Submit = true };
         await ledger.RecordAsync(request);
 
         await ApproveAsync(ledger, request.Id);
@@ -217,7 +216,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
     public async Task AC_44_1_RejectingItLeavesTheSupplierPending()
     {
         var (ledger, _, supplierId) = await PendingSupplierAsync();
-        var request = ledger.WithoutInvoice() with { SupplierId = supplierId, Submit = true };
+        var request = ledger.Purchase(200m) with { SupplierId = supplierId, Submit = true };
         await ledger.RecordAsync(request);
 
         (await RejectAsync(ledger, request.Id, "البند غير صحيح")).EnsureSuccessStatusCode();

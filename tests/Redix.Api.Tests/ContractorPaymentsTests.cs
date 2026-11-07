@@ -187,7 +187,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     {
         var setup = await ContractAsync();
         await ApprovedAsync(setup, 1000m);
-        var deduction = Payment(setup, -136m) with { WithoutInvoiceReason = "خصم من المبلط", Submit = true };
+        var deduction = Payment(setup, -136m) with { Notes = "خصم من المبلط", Submit = true };
 
         await RecordAsync(setup, deduction);
         await setup.Ledger.SetStatusAsync(deduction.Id, EntryStatus.Approved);
@@ -199,25 +199,22 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ADeductionSaysWhyInPlaceOfAReceiptAndOnlyADeductionMay()
+    public async Task D14_ADeductionSaysWhyInItsNotes()
     {
         var setup = await ContractAsync();
 
-        await AssertRefusedAsync(setup, Payment(setup, -136m), "deductionNeedsReason");
-        await AssertRefusedAsync(setup, Payment(setup, 136m) with { WithoutInvoiceReason = "نسيت الإيصال" }, "invalidWithoutInvoiceReason");
-        await AssertRefusedAsync(setup, Payment(setup, -136m) with { WithoutInvoiceReason = "خصم", AttachmentId = await setup.Ledger.FileAsync() }, "invoiceAndReason");
-        await AssertRefusedAsync(setup, Payment(setup, -136m) with { WithoutInvoiceReason = "خصم", InvoiceNumber = "F-1", InvoiceDate = setup.Ledger.Today, InvoiceAmountBeforeVat = 100m }, "invalidInvoiceNumber");
+        await AssertRefusedAsync(setup, Payment(setup, -136m), "deductionNeedsNotes");
+        Assert.Equal(-136m, (await RecordAsync(setup, Payment(setup, -136m) with { Notes = "خصم" })).Amount);
     }
 
     [Fact]
-    public async Task AC_12_1_SendingNeedsTheReceiptAndADraftCanWaitForIt()
+    public async Task D16_APaymentIsSentWithNoReceipt()
     {
         var setup = await ContractAsync();
 
-        await AssertRefusedAsync(setup, Payment(setup) with { Submit = true }, "receiptRequired");
+        var sent = await RecordAsync(setup, Payment(setup) with { Submit = true });
 
-        var draft = await RecordAsync(setup, Payment(setup));
-        Assert.Equal(EntryStatus.Draft, draft.Status);
+        Assert.Equal(EntryStatus.PendingApproval, sent.Status);
     }
 
     [Fact]
@@ -294,48 +291,14 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ATaxInvoiceEntersTheStatementWithItsVatComputedHereAndTheContractorAsItsSupplier()
-    {
-        var setup = await ContractAsync();
-        var request = Payment(setup, 1150m) with { InvoiceNumber = "T-1", InvoiceDate = setup.Ledger.Today, InvoiceAmountBeforeVat = 1000m };
-
-        var view = await RecordAsync(setup, request);
-
-        Assert.Equal(150m, view.Vat);
-        var invoice = await setup.Ledger.ReadAsync(db => db.Invoices.SingleAsync(row => row.EntryId == request.Id));
-        Assert.Equal("T-1", invoice.Number);
-        Assert.Equal(1000m, invoice.AmountAfterDiscount);
-        Assert.Equal(150m, invoice.Vat);
-        Assert.Equal(1150m, invoice.Total);
-        Assert.Equal(Invoice.QuarterStartOf(setup.Ledger.Today), invoice.VatPeriodStart);
-    }
-
-    [Fact]
-    public async Task APaymentWithNoTaxInvoiceHasNoInvoiceRow()
+    public async Task D16_APaymentWritesNoInvoiceRow()
     {
         var setup = await ContractAsync();
         var request = Payment(setup);
 
-        var view = await RecordAsync(setup, request);
+        await RecordAsync(setup, request);
 
-        Assert.Equal(0m, view.Vat);
         Assert.False(await setup.Ledger.ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id)));
-    }
-
-    [Fact]
-    public async Task AC_17_1_TheSameInvoiceNumberFromTheContractorWarnsOnAPaymentAndOnAPurchase()
-    {
-        var setup = await ContractAsync();
-        var first = Payment(setup) with { InvoiceNumber = "T-2", InvoiceDate = setup.Ledger.Today, InvoiceAmountBeforeVat = 100m };
-        await RecordAsync(setup, first);
-
-        var again = await PostAsync(setup, first with { Id = Guid.CreateVersion7() });
-        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
-        Assert.Equal("duplicateInvoice", await Ledger.CodeOf(again));
-        await RecordAsync(setup, first with { Id = Guid.CreateVersion7(), ConfirmDuplicate = true });
-
-        var purchase = await setup.Ledger.PostAsync(setup.Ledger.Purchase(100m, "T-2"));
-        Assert.Equal(HttpStatusCode.Conflict, purchase.StatusCode);
     }
 
     [Fact]
@@ -349,10 +312,6 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         await AssertRefusedAsync(setup, Payment(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");
         await AssertRefusedAsync(setup, Payment(setup) with { PaymentDate = default }, "invalidPaymentDate");
         await AssertRefusedAsync(setup, Payment(setup) with { PaymentDate = today.AddDays(1) }, "invalidPaymentDate");
-        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = new string('1', Invoice.NumberMaxLength + 1), InvoiceDate = today, InvoiceAmountBeforeVat = 1m }, "invalidInvoiceNumber");
-        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = "T-3", InvoiceDate = today.AddDays(1), InvoiceAmountBeforeVat = 1m }, "invalidInvoiceDate");
-        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = "T-3", InvoiceDate = today }, "invalidInvoiceAmount");
-        await AssertRefusedAsync(setup, Payment(setup) with { InvoiceNumber = "T-3", InvoiceDate = today, InvoiceAmountBeforeVat = Money.Largest }, "invalidInvoiceAmount");
     }
 
     [Fact]

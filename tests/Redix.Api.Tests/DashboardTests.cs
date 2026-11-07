@@ -21,7 +21,7 @@ public class DashboardTests(MigratedApiFactory factory)
 
     private static async Task<Guid> ApprovedAsync(Ledger ledger, ExpenseRequest request)
     {
-        await ledger.RecordAsync(request with { Submit = true, AttachmentId = request.WithoutInvoiceReason.Length > 0 ? Guid.Empty : await ledger.FileAsync() });
+        await ledger.RecordAsync(request with { Submit = true, AttachmentId = await ledger.FileAsync() });
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
         return request.Id;
     }
@@ -30,7 +30,7 @@ public class DashboardTests(MigratedApiFactory factory)
     public async Task AC_34_1_AnApprovalShowsAtOnceInTheSurplusThePendingAndTheCategories()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var waiting = ledger.WithoutInvoice(300) with { Submit = true };
+        var waiting = ledger.Purchase(300) with { Submit = true };
         await ledger.RecordAsync(waiting);
 
         var before = await DashboardAsync(ledger.Client, ledger.ProjectId);
@@ -71,7 +71,7 @@ public class DashboardTests(MigratedApiFactory factory)
     public async Task UC_063_EveryoneSeesTheCompletionAndTheCostAndNobodyTypesIt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.WithoutInvoice(200));
+        await ApprovedAsync(ledger, ledger.Purchase(200));
         var (reader, _) = await ledger.MemberAsync("Reader");
 
         var seen = await DashboardAsync(reader, ledger.ProjectId);
@@ -86,8 +86,8 @@ public class DashboardTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var item = await ledger.ReadAsync(db => db.Items.Include(row => row.Subgroups).SingleAsync(row => row.Id == ledger.ItemId));
         await factory.WithDatabaseAsync(db => db.Items.Where(row => row.Id == ledger.ItemId).ExecuteUpdateAsync(row => row.SetProperty(entry => entry.Type, ItemType.Both)));
-        await ApprovedAsync(ledger, ledger.Purchase(115, "P1") with { Product = "بلاط" });
-        await ApprovedAsync(ledger, ledger.WithoutInvoice(50));
+        await ApprovedAsync(ledger, ledger.Purchase(115) with { Product = "بلاط" });
+        await ApprovedAsync(ledger, ledger.Purchase(50));
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000, false), Json)).EnsureSuccessStatusCode();
         var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Json))!.Single();
         var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, AttachmentId = await ledger.FileAsync(), PaymentDate = ledger.Today, Amount = 300, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId, Submit = true };
@@ -98,7 +98,7 @@ public class DashboardTests(MigratedApiFactory factory)
 
         Assert.Equal(465m, report.Total);
         Assert.Equal(report.Total, report.Subgroups.Sum(row => row.Total) + report.Contracts.Sum(row => row.PaymentsTotal));
-        var purchase = report.Subgroups.SelectMany(row => row.Rows).Single(row => row.InvoiceNumber == "P1");
+        var purchase = report.Subgroups.SelectMany(row => row.Rows).Single(row => row.Description == "بلاط");
         Assert.Equal(("بلاط", "شركة النخيل", 115m), (purchase.Description, purchase.SupplierName, purchase.Amount));
         var contractRow = Assert.Single(report.Contracts);
         Assert.Equal((1000m, 300m, 700m, false), (contractRow.Value, contractRow.Paid, contractRow.Remaining, contractRow.IsOverrun));
@@ -124,7 +124,7 @@ public class DashboardTests(MigratedApiFactory factory)
             db.Add(column);
             await db.SaveChangesAsync();
         });
-        await ApprovedAsync(ledger, ledger.WithoutInvoice(50) with { CustomValues = new Dictionary<string, string> { [column.Key] = "أبيض" } });
+        await ApprovedAsync(ledger, ledger.Purchase(50) with { CustomValues = new Dictionary<string, string> { [column.Key] = "أبيض" } });
 
         var report = (await ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}", Json))!;
 

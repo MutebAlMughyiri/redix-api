@@ -16,7 +16,7 @@ public class ColumnsTests(MigratedApiFactory factory)
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
-    private static readonly List<string> CoreColumns = ["date", "supplier", "invoiceNumber", "amountBeforeDiscount", "discount", "vat", "total", "account", "attachment"];
+    private static readonly List<string> CoreColumns = ["date", "supplier", "invoiceNumber", "total", "account", "attachment"];
 
     private static AddColumnRequest AreaColumn => new("المساحة م²", ColumnDataType.Number, true, true, []);
 
@@ -58,7 +58,7 @@ public class ColumnsTests(MigratedApiFactory factory)
     private static EditDefaultColumnRequest Renamed(ColumnView column, string name, bool applyToAllItems) => new(name, column.IsRequired, column.ShowInReports, applyToAllItems);
 
     [Fact]
-    public async Task TheCoreColumnsOfAPurchaseAreTheNineOfBr20()
+    public async Task TheCoreColumnsOfAPurchaseAreTheSixLeftOfBr20()
     {
         var (_, client, project) = await FinanceAsync();
 
@@ -255,9 +255,6 @@ public class ColumnsTests(MigratedApiFactory factory)
     [InlineData("date")]
     [InlineData("supplier")]
     [InlineData("invoiceNumber")]
-    [InlineData("amountBeforeDiscount")]
-    [InlineData("discount")]
-    [InlineData("vat")]
     [InlineData("total")]
     [InlineData("account")]
     [InlineData("attachment")]

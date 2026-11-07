@@ -616,7 +616,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var contractor = (await ledger.Client.GetFromJsonAsync<List<SupplierView>>($"/projects/{ledger.ProjectId}/suppliers", Json))!.Single(supplier => supplier.Name == Supplier.GeneralCashSupplierName);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, ledger.ItemId, 1000m, false), Json)).EnsureSuccessStatusCode();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("مواد"), Json)).EnsureSuccessStatusCode();
-        var purchase = ledger.WithoutInvoice(70) with { Submit = true };
+        var purchase = ledger.Purchase(70) with { Submit = true };
         await ledger.RecordAsync(purchase);
         await ledger.SetStatusAsync(purchase.Id, EntryStatus.Approved);
 

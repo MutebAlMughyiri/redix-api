@@ -25,7 +25,7 @@ public static class EntryReversal
         var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (expense is not null)
         {
-            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, PaymentMethodId = expense.PaymentMethodId, WithoutInvoiceReason = reason, CustomValues = expense.CustomValues });
+            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, PaymentMethodId = expense.PaymentMethodId, CustomValues = expense.CustomValues });
         }
         var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (purchase is not null)
@@ -36,11 +36,6 @@ public static class EntryReversal
         if (payment is not null)
         {
             details.Add(new ContractorPaymentDetails { EntryId = reversal.Id, ContractId = payment.ContractId, IsOutsideContract = payment.IsOutsideContract });
-        }
-        var invoice = await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
-        if (invoice is not null)
-        {
-            details.Add(new Invoice { EntryId = reversal.Id, Number = invoice.Number, InvoiceDate = invoice.InvoiceDate, AmountBeforeDiscount = -invoice.AmountBeforeDiscount, Discount = -invoice.Discount, AmountAfterDiscount = -invoice.AmountAfterDiscount, Vat = -invoice.Vat, Total = -invoice.Total, IsCreditNote = invoice.IsCreditNote, VatPeriodStart = Invoice.QuarterStartOf(reversal.EntryDate) });
         }
         var capital = await db.CapitalMovementDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (capital is not null)
@@ -56,7 +51,7 @@ public static class EntryReversal
         var sale = await db.Set<SalesInvoice>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (sale is not null)
         {
-            details.Add(new SalesInvoice { EntryId = reversal.Id, BuyerName = sale.BuyerName, BuyerVatNumber = sale.BuyerVatNumber, Number = sale.Number, InvoiceDate = sale.InvoiceDate, AmountBeforeDiscount = -sale.AmountBeforeDiscount, Discount = -sale.Discount, AmountAfterDiscount = -sale.AmountAfterDiscount, Tax = -sale.Tax, Total = -sale.Total, TaxType = sale.TaxType, VatPeriodStart = sale.VatPeriodStart });
+            details.Add(new SalesInvoice { EntryId = reversal.Id, BuyerName = sale.BuyerName, BuyerVatNumber = sale.BuyerVatNumber, Number = sale.Number, InvoiceDate = sale.InvoiceDate, Total = -sale.Total });
         }
         DirectEntries.Add(reversal, details, userId, at, db);
         return reversal;

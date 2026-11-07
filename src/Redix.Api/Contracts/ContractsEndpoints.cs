@@ -33,7 +33,7 @@ public static class ContractsEndpoints
             join supplier in db.Suppliers on contract.SupplierId equals supplier.Id
             join item in db.Items on contract.ItemId equals item.Id
             where contract.ProjectId == projectId
-            select new { Contract = contract, SupplierName = supplier.Name, supplier.VatNumber, ItemName = item.Name }).ToListAsync();
+            select new { Contract = contract, SupplierName = supplier.Name, ItemName = item.Name }).ToListAsync();
         var documents = (await (
             from link in db.Set<ContractAttachment>()
             join attachment in db.Attachments on link.AttachmentId equals attachment.Id
@@ -42,7 +42,7 @@ public static class ContractsEndpoints
         var money = await ContractMoney.OfProjectAsync(projectId, db);
         var withPayments = await db.ContractorPaymentDetails.Where(payment => db.Contracts.Any(contract => contract.Id == payment.ContractId && contract.ProjectId == projectId)).Select(payment => payment.ContractId).Distinct().ToListAsync();
         return rows.OrderBy(row => row.Contract.Id)
-            .Select(row => ContractView.Of(row.Contract, money.GetValueOrDefault(row.Contract.Id), row.SupplierName, row.ItemName) with { SupplierVatNumber = row.VatNumber, HasPayments = withPayments.Contains(row.Contract.Id), Documents = [.. documents[row.Contract.Id]] }).ToList();
+            .Select(row => ContractView.Of(row.Contract, money.GetValueOrDefault(row.Contract.Id), row.SupplierName, row.ItemName) with { HasPayments = withPayments.Contains(row.Contract.Id), Documents = [.. documents[row.Contract.Id]] }).ToList();
     }
 
     /// <summary>
@@ -261,9 +261,6 @@ public record ContractView(Guid Id, Guid ItemId, string SupplierName, string Ite
 
     /// <summary>Whether any payment names it, whatever became of that payment: its contractor and item then stay as they are.</summary>
     public bool HasPayments { get; init; }
-
-    /// <summary>The contractor's VAT number, empty for none, which decides the VAT of a payment's tax invoice.</summary>
-    public string SupplierVatNumber { get; init; } = "";
 
     /// <summary>The documents it carries, in the order they were kept.</summary>
     public List<AttachmentView> Documents { get; init; } = [];

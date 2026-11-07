@@ -40,7 +40,7 @@ docs/                   these pages
 
 | Rule | Where it lives |
 | --- | --- |
-| Money is `decimal(19,4)`; VAT per row, rounding only in totals (BR-13) | `RedixDbContext.ConfigureConventions` |
+| Money is `decimal(19,4)`, rounding only in totals (BR-13); no VAT is stored, the VAT workbook works it out (redix-api #96, D4) | `RedixDbContext.ConfigureConventions`, `VatStatementFiles` |
 | Every table has a required `rowversion`, for sync and concurrency | `RedixDbContext.OnModelCreating` |
 | Ids are time-ordered GUIDs (`Guid.CreateVersion7`) made in code, never by the database | Each entity's `Id`; `RedixDbContext.OnModelCreating` |
 | No NULL column: an optional value is an empty value of its own type or a row in a link table | Each entity |

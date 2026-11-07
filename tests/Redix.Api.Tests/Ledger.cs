@@ -50,27 +50,19 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     public async Task<Guid> RevenueItemAsync(ItemType type) =>
         (await Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ProjectId}/categories", Json))!.SelectMany(category => category.Items).First(item => item.Type == type).Id;
 
-    public ExpenseRequest Purchase(decimal amount = 1150m, string number = "") => new(Guid.CreateVersion7())
+    /// <summary>A purchase of <paramref name="amount"/> today, on the ledger's item, supplier, method and account (redix-api #96).</summary>
+    public ExpenseRequest Purchase(decimal amount = 1150m) => new(Guid.CreateVersion7())
     {
         ItemId = ItemId,
         SupplierId = SupplierId,
-        InvoiceNumber = number.Length > 0 ? number : Guid.NewGuid().ToString("N")[..12],
-        InvoiceDate = Today,
-        Amount = amount,
-        PaymentMethodId = MethodId,
-        AccountId = AccountId,
-    };
-
-    public ExpenseRequest WithoutInvoice(decimal amount = 200m, string reason = "شراء نقدي من السوق") => new(Guid.CreateVersion7())
-    {
-        ItemId = ItemId,
-        SupplierId = SupplierId,
-        WithoutInvoiceReason = reason,
         PaymentDate = Today,
         Amount = amount,
         PaymentMethodId = MethodId,
         AccountId = AccountId,
     };
+
+    /// <summary>A deduction of <paramref name="amount"/>, below zero, saying why in its notes (D14).</summary>
+    public ExpenseRequest Deduction(decimal amount, string notes = "خصم من المورد") => Purchase(amount) with { Notes = notes };
 
     public Task<HttpResponseMessage> PostAsync(ExpenseRequest request) => Client.PostAsJsonAsync($"/projects/{ProjectId}/expenses", request, Json);
 

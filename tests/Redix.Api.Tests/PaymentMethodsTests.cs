@@ -22,8 +22,6 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
 
     public static TheoryData<string> UnacceptableNames => ["   ", new string('x', Project.NameMaxLength + 1)];
 
-    public static TheoryData<decimal> UnacceptablePercents => [-1m, 100.01m, 15.555m];
-
     private async Task<(HttpClient Client, ProjectView Project)> FinanceAsync(string name = "غصون 6")
     {
         var user = await factory.AddUserAsync(Password);
@@ -42,9 +40,6 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
 
     private static async Task<List<PaymentMethodView>> MethodsOf(HttpClient client, Guid projectId, string path = "") =>
         (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{projectId}/payment-methods{path}", Json))!;
-
-    private static async Task<ProjectView> ProjectOf(HttpClient client, Guid projectId) =>
-        (await client.GetFromJsonAsync<List<ProjectView>>("/projects", Json))!.Single(project => project.Id == projectId);
 
     private static async Task<string> CodeOf(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
@@ -73,7 +68,6 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
     {
         var (client, earlier) = await FinanceAsync();
         (await client.PostAsJsonAsync($"/projects/{earlier.Id}/payment-methods", new NameRequest("مدى"))).EnsureSuccessStatusCode();
-        (await client.PostAsJsonAsync($"/projects/{earlier.Id}/vat-rate", new SetVatRateRequest(5))).EnsureSuccessStatusCode();
         var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 7", new DateOnly(2026, 11, 1), []) { StructureSourceId = earlier.Id });
         var later = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
 
@@ -81,7 +75,6 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         (await admin.PostAsync($"/projects/{later.Id}/approve", null)).EnsureSuccessStatusCode();
 
         Assert.Equal(["شبكة", "تحويل", "كاش"], (await MethodsOf(client, later.Id)).Select(method => method.Name));
-        Assert.Equal(15m, (await ProjectOf(client, later.Id)).VatPercent);
     }
 
     [Fact]
@@ -178,15 +171,9 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         var (otherClient, other) = await FinanceAsync("غصون 5");
 
         (await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest("مدى"))).EnsureSuccessStatusCode();
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/vat-rate", new SetVatRateRequest(5))).EnsureSuccessStatusCode();
 
         Assert.DoesNotContain(await MethodsOf(otherClient, other.Id), method => method.Name == "مدى");
-        Assert.Equal(15m, (await ProjectOf(otherClient, other.Id)).VatPercent);
-        await factory.WithDatabaseAsync(async db =>
-        {
-            Assert.False(await db.PaymentMethods.AnyAsync(method => method.ProjectId == StructureSeed.TemplateId && method.Name == "مدى"));
-            Assert.Equal(Project.StartingVatRate, (await db.Projects.SingleAsync(row => row.Id == StructureSeed.TemplateId)).VatRate);
-        });
+        await factory.WithDatabaseAsync(async db => Assert.False(await db.PaymentMethods.AnyAsync(method => method.ProjectId == StructureSeed.TemplateId && method.Name == "مدى")));
     }
 
     [Fact]
@@ -225,7 +212,6 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
             await member.PostAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("مدى")),
             await member.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/disable", null),
             await member.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/delete", null),
-            await member.PostAsJsonAsync($"/projects/{project.Id}/vat-rate", new SetVatRateRequest(5)),
         })
         {
             Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
@@ -245,62 +231,11 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
             await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("مدى")),
             await client.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/disable", null),
             await client.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/delete", null),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/vat-rate", new SetVatRateRequest(5)),
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
             Assert.Equal("projectFinished", await CodeOf(refused));
         }
         Assert.Equal(3, (await MethodsOf(client, project.Id)).Count);
-        Assert.Equal(15m, (await ProjectOf(client, project.Id)).VatPercent);
-    }
-
-    [Fact]
-    public async Task ANewProjectsVatRateIsFifteenPercent()
-    {
-        var (client, project) = await FinanceAsync();
-
-        Assert.Equal(15m, (await ProjectOf(client, project.Id)).VatPercent);
-    }
-
-    [Theory]
-    [InlineData(5)]
-    [InlineData(0)]
-    [InlineData(100)]
-    [InlineData(7.25)]
-    public async Task FinanceSetsTheVatRate(double percent)
-    {
-        var (client, project) = await FinanceAsync();
-
-        var answer = await client.PostAsJsonAsync($"/projects/{project.Id}/vat-rate", new SetVatRateRequest((decimal)percent));
-
-        Assert.Equal((decimal)percent, (await answer.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!.VatPercent);
-        await factory.WithDatabaseAsync(async db => Assert.Equal((decimal)percent / 100, (await db.Projects.SingleAsync(row => row.Id == project.Id)).VatRate));
-    }
-
-    [Fact]
-    public async Task AChangedVatRateIsInTheAuditTrailOldAndNew()
-    {
-        var (client, project) = await FinanceAsync();
-
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/vat-rate", new SetVatRateRequest(5))).EnsureSuccessStatusCode();
-
-        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
-        Assert.Equal(AuditAction.Update, record.Action);
-        Assert.Equal(0.15m, JsonDocument.Parse(record.Before).RootElement.GetProperty("VatRate").GetDecimal());
-        Assert.Equal(0.05m, JsonDocument.Parse(record.After).RootElement.GetProperty("VatRate").GetDecimal());
-    }
-
-    [Theory]
-    [MemberData(nameof(UnacceptablePercents))]
-    public async Task TheVatRateIsFrom0To100WithAtMostTwoDecimals(decimal percent)
-    {
-        var (client, project) = await FinanceAsync();
-
-        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/vat-rate", new SetVatRateRequest(percent));
-
-        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidVatRate", await CodeOf(refused));
-        Assert.Equal(15m, (await ProjectOf(client, project.Id)).VatPercent);
     }
 }

@@ -1,7 +1,7 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Redix.Api.Attachments;
 using Redix.Api.Auth;
+using Redix.Api.Config;
 using Redix.Api.Contracts;
 using Redix.Api.Revenue;
 
@@ -18,28 +18,21 @@ public static class ReportFilesEndpoints
     {
         var files = app.MapGroup("/projects/{projectId:guid}").RequireAuthorization(nameof(Permission.SeeAllCapital));
         files.MapGet("/vat-statement/xlsx", VatExcel);
-        files.MapGet("/vat-statement/pdf", VatPdf);
-        files.MapGet("/vat-statement/zip", VatZip);
         files.MapGet("/reports/items/{itemId:guid}/pdf", (Guid projectId, Guid itemId, RedixDbContext db) => ItemFileAsync(projectId, itemId, db, true));
         files.MapGet("/reports/items/{itemId:guid}/xlsx", (Guid projectId, Guid itemId, RedixDbContext db) => ItemFileAsync(projectId, itemId, db, false));
         files.MapGet("/reports/contracts/pdf", ContractsPdf);
         files.MapGet("/reports/contracts/xlsx", ContractsExcel);
     }
 
-    /// <summary>The VAT statement from <paramref name="from"/> to <paramref name="to"/> as the accountant's workbook.</summary>
-    public static async Task<IResult> VatExcel(Guid projectId, DateOnly from, DateOnly to, RedixDbContext db) =>
-        Results.File(VatStatementFiles.Excel(await VatStatement.OfAsync(projectId, from, to, db)), ExcelType, $"vat-{from:yyyy-MM-dd}-{to:yyyy-MM-dd}.xlsx");
-
-    /// <summary>The VAT statement from <paramref name="from"/> to <paramref name="to"/> as a PDF.</summary>
-    public static async Task<IResult> VatPdf(Guid projectId, DateOnly from, DateOnly to, RedixDbContext db) =>
-        Results.File(VatStatementFiles.Pdf(await VatStatement.OfAsync(projectId, from, to, db)), "application/pdf", $"vat-{from:yyyy-MM-dd}-{to:yyyy-MM-dd}.pdf");
-
-    /// <summary>The invoice files of the VAT statement from <paramref name="from"/> to <paramref name="to"/>, one ZIP.</summary>
-    public static async Task<IResult> VatZip(Guid projectId, DateOnly from, DateOnly to, RedixDbContext db, IOptions<AttachmentOptions> options)
+    /// <summary>The كشف الضريبة from <paramref name="from"/> to <paramref name="to"/> as the accountant's workbook, at the rate of the config value <c>vatRatePercent</c> (D18, D19). A period ending before it starts answers <c>invalidPeriod</c>.</summary>
+    public static async Task<IResult> VatExcel(Guid projectId, DateOnly from, DateOnly to, RedixDbContext db)
     {
-        var statement = await VatStatement.OfAsync(projectId, from, to, db);
-        var attachments = await db.Attachments.Where(attachment => attachment.ProjectId == projectId).ToDictionaryAsync(attachment => attachment.Id.ToString());
-        return Results.File(VatStatementFiles.Zip(statement, id => (options.Value.PathOf(attachments[id]), attachments[id].FileName)), "application/zip", $"vat-invoices-{from:yyyy-MM-dd}-{to:yyyy-MM-dd}.zip");
+        if (to < from)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPeriod");
+        }
+        var rate = decimal.Parse(await db.ConfigValues.Where(row => row.Key == ConfigValue.VatRatePercent).Select(row => row.Value).SingleAsync(), CultureInfo.InvariantCulture);
+        return Results.File(VatStatementFiles.Excel(await VatStatement.OfAsync(projectId, from, to, db), rate), ExcelType, $"vat-{from:yyyy-MM-dd}-{to:yyyy-MM-dd}.xlsx");
     }
 
     /// <summary>The contracts report as a PDF.</summary>

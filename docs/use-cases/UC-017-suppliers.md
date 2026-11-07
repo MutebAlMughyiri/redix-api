@@ -67,4 +67,4 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 | What | Use case |
 | --- | --- |
 | A purchase saved only with a supplier from the register (BR-19) | UC-022 "Record a purchase expense" |
-| Invoices of a supplier with no number staying out of the VAT statement (AC-06.2) | UC-056 "Build the VAT statement for a period" |
+| A supplier with no number having no VAT in the VAT statement's workbook (AC-06.2) | UC-056, built: the workbook's formula gives 0 when the VAT number is empty (redix-api #96, D19) |

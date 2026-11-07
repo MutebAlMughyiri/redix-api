@@ -12,11 +12,15 @@ public class ConfigValue
     /// <summary>The longest a value is.</summary>
     public const int ValueMaxLength = 500;
 
+    /// <summary>The key of the VAT rate the كشف الضريبة works VAT out at, as a percentage: 15 for 15% (redix-api #96, D18).</summary>
+    public const string VatRatePercent = "vatRatePercent";
+
     /// <summary>The values every database starts with; after the first migration they are data.</summary>
     public static IReadOnlyList<ConfigValue> Seeded { get; } =
     [
         Of("requestTimeoutSeconds", "10"),
         Of("fileTimeoutSeconds", "120"),
+        Of(VatRatePercent, "15"),
     ];
 
     /// <summary>The row's id, the same in every database for a seeded value.</summary>

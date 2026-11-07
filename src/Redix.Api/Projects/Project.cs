@@ -14,9 +14,6 @@ public class Project
     /// <summary>The longest reason a rejection may give.</summary>
     public const int ReasonMaxLength = 500;
 
-    /// <summary>The VAT rate a project starts with (BR-14).</summary>
-    public const decimal StartingVatRate = 0.15m;
-
     /// <summary>The project's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
@@ -40,9 +37,6 @@ public class Project
 
     /// <summary>The project its structure is copied from when it is approved.</summary>
     public Guid StructureSource => StructureSourceId == Guid.Empty ? StructureSeed.TemplateId : StructureSourceId;
-
-    /// <summary>The fraction its new entries' VAT is computed at (BR-14); each project keeps its own (BR-33). An entry keeps the VAT it was saved with.</summary>
-    public decimal VatRate { get; private set; } = StartingVatRate;
 
     /// <summary>The project's units, in the order they were added.</summary>
     public List<Unit> Units { get; } = [];
@@ -172,22 +166,6 @@ public class Project
     }
 
     private bool IsUnitNameTaken(string name, Guid unitId = default) => Units.Any(unit => unit.Name == name && unit.Id != unitId);
-
-    /// <summary>Sets the VAT rate to <paramref name="percent"/>, from 0 to 100 with at most two decimals, which the column keeps exactly, unless the project is finished.</summary>
-    public ProjectChangeOutcome SetVatPercent(decimal percent)
-    {
-        if (IsReadOnly)
-        {
-            return ProjectChangeOutcome.ProjectFinished;
-        }
-        var rate = percent / 100;
-        if (rate is < 0 or > 1 || decimal.Round(rate, 4) != rate)
-        {
-            return ProjectChangeOutcome.InvalidVatRate;
-        }
-        VatRate = rate;
-        return ProjectChangeOutcome.Done;
-    }
 
     /// <summary>Closes the finished project, which is read-only from then on (AC-04.1); a finished project cannot be closed again, nor one with <paramref name="hasEntriesWaiting"/> for approval (BR-35).</summary>
     public ProjectChangeOutcome Close(bool hasEntriesWaiting)

@@ -21,7 +21,6 @@ public static class ProjectsEndpoints
         app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}", RenameUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}/delete", DeleteUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/close", Close).RequireAuthorization(nameof(Permission.ManageProject));
-        app.MapPost("/projects/{projectId:guid}/vat-rate", SetVatRate).RequireAuthorization(nameof(Permission.ManageSettings));
         app.MapPost("/projects/{projectId:guid}/default", SetDefault).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapPost("/projects/default/remove", RemoveDefault).RequireAuthorization(SessionPolicies.Working);
     }
@@ -141,15 +140,6 @@ public static class ProjectsEndpoints
         return await ChangeAsync(projectId, principal, db, time, AuditAction.CloseProject, project => project.Close(hasEntriesWaiting));
     }
 
-    /// <summary>Sets the rate new entries' VAT is computed at (BR-14); saved entries keep theirs. A finished project answers <c>projectFinished</c>; a percentage outside 0 to 100, or with more than two decimals, <c>invalidVatRate</c>.</summary>
-    /// <param name="projectId">The project.</param>
-    /// <param name="request">The rate, as a percentage.</param>
-    /// <param name="principal">The caller's session.</param>
-    /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
-    public static Task<IResult> SetVatRate(Guid projectId, SetVatRateRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.SetVatPercent(request.VatPercent));
-
     /// <summary>Makes a project the caller's default, replacing any other, and says whether sign-in opens it directly (FR-37). It applies from the next sign-in (AC-37.1).</summary>
     /// <param name="projectId">The project, which the caller must be able to read.</param>
     /// <param name="request">Whether sign-in opens it directly.</param>
@@ -199,7 +189,7 @@ public static class ProjectsEndpoints
         }
         if (outcome != ProjectChangeOutcome.Done)
         {
-            var status = outcome is ProjectChangeOutcome.InvalidName or ProjectChangeOutcome.InvalidVatRate ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;
+            var status = outcome is ProjectChangeOutcome.InvalidName ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;
             return Refusal.Of(status, outcome.ToString());
         }
         var userId = AccessTokens.UserIdOf(principal);
@@ -226,10 +216,6 @@ public record CreateProjectRequest(string Name, DateOnly StartDate, List<string>
     public Guid StructureSourceId { get; init; }
 }
 
-/// <summary>What the app sends to set the VAT rate.</summary>
-/// <param name="VatPercent">The rate, as a percentage: 15 for 15%.</param>
-public record SetVatRateRequest(decimal VatPercent);
-
 /// <summary>What the app sends to set the default project.</summary>
 /// <param name="OpenDirectly">Whether sign-in skips the list and opens it.</param>
 public record SetDefaultProjectRequest(bool OpenDirectly);
@@ -251,12 +237,11 @@ public record AddUnitRequest(string Name);
 /// <param name="RejectionReason">Why the admin refused it; empty otherwise.</param>
 /// <param name="Units">The project's units, in order.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
-/// <param name="VatPercent">The VAT rate of its new entries, as a percentage.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<Permission> Permissions, decimal VatPercent)
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<Permission> Permissions)
 {
     /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="permissions"/> in it.</summary>
     public static ProjectView Of(Project project, List<Permission> permissions) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Select(UnitView.Of).ToList(), permissions, project.VatRate * 100);
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Select(UnitView.Of).ToList(), permissions);
 }
 
 /// <summary>A unit as the app shows it.</summary>

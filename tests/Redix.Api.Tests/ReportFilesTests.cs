@@ -21,7 +21,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
     private async Task<Guid> ApprovedAsync(Ledger ledger, ExpenseRequest request)
     {
-        await ledger.RecordAsync(request with { Submit = true, AttachmentId = request.WithoutInvoiceReason.Length > 0 ? Guid.Empty : await ledger.FileAsync() });
+        await ledger.RecordAsync(request with { Submit = true, AttachmentId = await ledger.FileAsync() });
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
         await factory.WithDatabaseAsync(db => db.Entries.Where(entry => entry.Id == request.Id).ExecuteUpdateAsync(entry => entry.SetProperty(row => row.ApprovedAt, factory.Time.GetUtcNow().UtcDateTime)));
         return request.Id;
@@ -37,7 +37,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public async Task AC_29_3_ReportsAreNumberedWithNoGapsAndTheNextSaysWhatWaits()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.RecordAsync(ledger.WithoutInvoice(70) with { Submit = true });
+        await ledger.RecordAsync(ledger.Purchase(70) with { Submit = true });
 
         var next = await ledger.Client.GetFromJsonAsync<NextReportView>($"/projects/{ledger.ProjectId}/periodic-reports/next", Json);
         Assert.Equal((1, 1, 70m), (next!.Number, next.PendingCount, next.PendingAmount));
@@ -51,10 +51,10 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public async Task AC_29_2_AnEntryApprovedLaterLeavesTheIssuedReportAndIsNewInTheNext()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.WithoutInvoice(100));
+        await ApprovedAsync(ledger, ledger.Purchase(100));
         await IssueAsync(ledger);
         factory.Time.Advance(TimeSpan.FromMinutes(1));
-        var late = await ApprovedAsync(ledger, ledger.WithoutInvoice(40));
+        var late = await ApprovedAsync(ledger, ledger.Purchase(40));
 
         await IssueAsync(ledger);
 
@@ -73,8 +73,8 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 1000, ledger.AccountId, "") { CashReason = "نقداً" }, Json)).EnsureSuccessStatusCode();
-        await ApprovedAsync(ledger, ledger.WithoutInvoice(300));
-        await ledger.RecordAsync(ledger.WithoutInvoice(5) with { Submit = true });
+        await ApprovedAsync(ledger, ledger.Purchase(300));
+        await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
 
         await IssueAsync(ledger);
 
@@ -104,7 +104,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public async Task AC_45_1_ThePdfIsAPdfWithAPagePerItemAfterTheSummaryAndPartners()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.Purchase(115, "P1"));
+        await ApprovedAsync(ledger, ledger.Purchase(115));
         await IssueAsync(ledger);
 
         var pdf = await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/pdf");
@@ -119,7 +119,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 1000, ledger.AccountId, "") { CashReason = "نقداً" }, Json)).EnsureSuccessStatusCode();
-        await ApprovedAsync(ledger, ledger.Purchase(115, "P1"));
+        await ApprovedAsync(ledger, ledger.Purchase(115) with { Product = "P1" });
         await IssueAsync(ledger);
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
@@ -138,7 +138,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var capital = workbook.Worksheet("راس المال");
         Assert.Equal(("شريك", "إضافة مبلغ", 1000m), (capital.Cell("A1").GetString(), capital.Cell("B3").GetString(), capital.Cell("E3").GetValue<decimal>()));
         Assert.Equal(("الاجمالي", 1000m), (capital.Cell("A4").GetString(), capital.Cell("E4").GetValue<decimal>()));
-        var row = itemSheet.CellsUsed().First(cell => cell.GetString() == "P1").Address.RowNumber;
+        var row = itemSheet.CellsUsed().First(cell => cell.GetString().StartsWith("P1 ·")).Address.RowNumber;
         Assert.True(itemSheet.Cell(row, 5).IsEmpty() && itemSheet.Cell(row, 6).IsEmpty(), "a price and a quantity nobody entered stay blank, as in the PDF");
         Assert.Equal((itemSheet.Name, "الوصف", 115m), (itemSheet.Cell("A1").GetString(), itemSheet.Cell("B2").GetString(), itemSheet.Cell(row + 1, 7).GetValue<decimal>()));
     }
@@ -323,42 +323,49 @@ public class ReportFilesTests(MigratedApiFactory factory)
         new(Guid.NewGuid(), new DateOnly(2026, 9, 1), "دفعة", "", invoiceNumber, 0, 0, amount, isOutside, [], isNew);
 
     [Fact]
-    public async Task AC_47_1_TheVatWorkbookIsTheAccountantsFile()
+    public async Task AC_47_1_D19_TheVatWorkbookWorksVatOutOfEachTotalAtTheConfiguredRate()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.Purchase(115, "P1"));
-        var start = Invoice.QuarterStartOf(ledger.Today);
+        await ApprovedAsync(ledger, ledger.Purchase(115));
+        var start = VatStatement.QuarterStartOf(ledger.Today);
         var address = $"/projects/{ledger.ProjectId}/vat-statement/xlsx?from={start:yyyy-MM-dd}&to={VatStatement.NextQuarter(start).AddDays(-1):yyyy-MM-dd}";
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync(address)));
 
         var sheet = Assert.Single(workbook.Worksheets);
-        Assert.StartsWith($"ضريبة الربع {VatStatementFiles.OrdinalOf(start)}", sheet.Name);
-        Assert.Equal($"ضريبة المشتريات عن الربع {VatStatementFiles.OrdinalOf(start)} سنة {start.Year}", sheet.Cell(1, 1).GetString());
+        Assert.StartsWith("ضريبة الربع", sheet.Name);
         Assert.True(sheet.Cell(1, 1).IsMerged());
+        Assert.Equal((115, "شركة النخيل"), (sheet.Cell(3, 5).GetValue<int>(), sheet.Cell(3, 2).GetString()));
+        Assert.Equal("IF(D3=\"\",0,E3*15/(100+15))", sheet.Cell(3, 6).FormulaA1);
         Assert.Equal("E3-F3", sheet.Cell(3, 7).FormulaA1);
-        Assert.Equal("G3*0.15", sheet.Cell(3, 8).FormulaA1);
-        Assert.Equal("G3+H3", sheet.Cell(3, 9).FormulaA1);
-        Assert.Equal("SUM(H3:H3)", sheet.Cell(4, 8).FormulaA1);
+        Assert.Equal("SUM(F3:F3)", sheet.Cell(4, 6).FormulaA1);
     }
 
     [Fact]
-    public async Task UC_058_TheZipHoldsEachInvoiceNamedByItsRow()
+    public async Task D18_TheRateIsTheConfigValueOfVatRatePercent()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.Purchase(115, "P1"));
-        var start = Invoice.QuarterStartOf(ledger.Today);
+        await ApprovedAsync(ledger, ledger.Purchase(115));
+        var start = VatStatement.QuarterStartOf(ledger.Today);
+        var address = $"/projects/{ledger.ProjectId}/vat-statement/xlsx?from={start:yyyy-MM-dd}&to={VatStatement.NextQuarter(start).AddDays(-1):yyyy-MM-dd}";
+        await factory.WithDatabaseAsync(db => db.ConfigValues.Where(row => row.Key == "vatRatePercent").ExecuteUpdateAsync(row => row.SetProperty(value => value.Value, "5")));
 
-        using var zip = new ZipArchive(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/vat-statement/zip?from={start:yyyy-MM-dd}&to={VatStatement.NextQuarter(start).AddDays(-1):yyyy-MM-dd}")));
-
-        Assert.Equal($"Q{(start.Month - 1) / 3 + 1}-{start.Year}-001.jpg", Assert.Single(zip.Entries).Name);
+        try
+        {
+            using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync(address)));
+            Assert.Equal("IF(D3=\"\",0,E3*5/(100+5))", workbook.Worksheet(1).Cell(3, 6).FormulaA1);
+        }
+        finally
+        {
+            await factory.WithDatabaseAsync(db => db.ConfigValues.Where(row => row.Key == "vatRatePercent").ExecuteUpdateAsync(row => row.SetProperty(value => value.Value, "15")));
+        }
     }
 
     [Fact]
     public async Task AC_33_1_TheItemAndContractsReportsExport()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.Purchase(115, "P1"));
+        await ApprovedAsync(ledger, ledger.Purchase(115));
 
         var pdf = await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}/pdf");
         using var item = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}/xlsx")));

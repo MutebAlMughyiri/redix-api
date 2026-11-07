@@ -38,13 +38,10 @@ public static class StructureSeed
         ("product", "الصنف", ColumnDataType.Text, false, false, true),
         ("unitPrice", "سعر الوحدة", ColumnDataType.Amount, false, false, true),
         ("quantity", "العدد", ColumnDataType.Number, false, false, true),
-        ("amountBeforeDiscount", "المبلغ قبل الخصم", ColumnDataType.Amount, true, true, false),
-        ("discount", "الخصم", ColumnDataType.Amount, true, false, false),
-        ("vat", "الضريبة", ColumnDataType.Amount, true, false, false),
-        ("total", "الإجمالي", ColumnDataType.Amount, true, false, true),
+        ("total", "الإجمالي", ColumnDataType.Amount, true, true, true),
         ("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, false),
         ("account", "الحساب", ColumnDataType.List, true, true, false),
-        ("attachment", "المرفق", ColumnDataType.File, true, true, false),
+        ("attachment", "المرفق", ColumnDataType.File, true, false, false),
         ("notes", "ملاحظات", ColumnDataType.Text, false, false, false),
     ];
 
@@ -57,11 +54,8 @@ public static class StructureSeed
         ("account", "الحساب", ColumnDataType.List, true, true, false),
         ("outsideContract", "داخل أو خارج العقد", ColumnDataType.List, true, false, false),
         ("notes", "ملاحظات", ColumnDataType.Text, false, false, true),
-        ("attachment", "المرفق", ColumnDataType.File, true, true, false),
+        ("attachment", "المرفق", ColumnDataType.File, true, false, false),
         ("supplier", "المورد", ColumnDataType.List, true, false, false),
-        ("invoiceNumber", "رقم الفاتورة", ColumnDataType.Text, true, false, false),
-        ("amountBeforeDiscount", "المبلغ قبل الخصم", ColumnDataType.Amount, true, false, false),
-        ("vat", "الضريبة", ColumnDataType.Amount, true, false, false),
     ];
 
     /// <summary>The id of the default template, the same in every database.</summary>
