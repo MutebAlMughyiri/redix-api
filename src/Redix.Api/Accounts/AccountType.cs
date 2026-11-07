@@ -8,7 +8,4 @@ public enum AccountType : byte
 
     /// <summary>Cash held by one person (عهدة نقدية).</summary>
     CashCustody,
-
-    /// <summary>What a partner paid from their own pocket (BR-25): made with the partner, never by hand, and left out of the reconciliation (BR-08).</summary>
-    PartnerPocket,
 }

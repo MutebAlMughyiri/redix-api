@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-07 | Partner pockets go: adding a partner makes no account, the reconciliation has no "owed to partners", and the migration deletes every pocket and its account | Muteb, from the deep review: "Remove pockets completely"; redix-api #99. No pocket held an entry or an opening balance in any database |
 | 2026-11-07 | One route answers which tables an expense may go into, by category and item, in each item's sheet order; one method names and orders an item's tables for it and for the tables screen | redix-app #84, D9: the app's إضافة قيد picks a table, and the API keeps owning what is on offer (AC-05.3, AC-38.1) |
 | 2026-11-07 | A contractor payment names no subgroup and goes under its item's general one | redix-app #84, R11: its contract is its table, and no report read a payment's subgroup; the real project had none on a named subgroup |
 | 2026-11-07 | No VAT value is stored or shown anywhere; only the amount is kept. An old bill's `Invoices` row keeps its number alone, and its VAT, discount, amounts, date and the QR seller's number go | Muteb: "I do not want to see or store the VAT value except when printing the VAT report; it is printed in the reports without storing it, and only the invoice amount is stored" |

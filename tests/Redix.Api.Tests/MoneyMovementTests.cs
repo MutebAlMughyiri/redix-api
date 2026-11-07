@@ -141,16 +141,13 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AReconciliationNeedsEveryActiveAccountAndNoPocket()
+    public async Task AReconciliationNeedsEveryActiveAccountAndNoOtherProjects()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await AccountAsync(ledger, "كاش");
-        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
-        var pocket = (await AccountsAsync(ledger)).Single(row => row.Type == AccountType.PartnerPocket).Id;
 
         Assert.Equal("accountMissing", await Ledger.CodeOf(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 1)]), Json)));
-        Assert.Equal("unknownAccount", await Ledger.CodeOf(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(pocket, 1)]), Json)));
-        Assert.NotEqual(Guid.Empty, partner);
+        Assert.Equal("unknownAccount", await Ledger.CodeOf(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(Guid.CreateVersion7(), 1)]), Json)));
     }
 
     [Fact]
@@ -341,38 +338,14 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         Assert.Equal((-100m, $"{file}", "حساب المؤسسة"), (row.Amount, row.AttachmentId, row.AccountName));
     }
 
-    private static async Task<(Guid PartnerId, Guid PocketId)> PocketAsync(Ledger ledger, string name = "نواف")
-    {
-        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, name);
-        return (partner, (await AccountsAsync(ledger)).Single(row => row.Type == AccountType.PartnerPocket && row.Name == name).Id);
-    }
-
     [Fact]
-    public async Task D24_APartnersPocketPaysNoExpenseEvenForWhoChargesAnyAccount()
+    public async Task R99_APartnerAddedMakesNoAccountSoTheAccountsAreOnlyThoseAddedInAccounts()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (_, pocket) = await PocketAsync(ledger);
+        var before = (await AccountsAsync(ledger)).Select(row => row.Id).ToList();
 
-        Assert.DoesNotContain((await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts/offered", Json))!, row => row.Id == pocket);
-        var refused = await ledger.PostAsync(ledger.Purchase(115) with { AccountId = pocket, Submit = true });
+        await PartnerAsync(ledger.Client, ledger.ProjectId, "نواف");
 
-        Assert.Equal("accountNotOffered", await Ledger.CodeOf(refused));
-    }
-
-    [Fact]
-    public async Task APocketIsHiddenFromFieldAndFollowsThePartner()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (partner, pocket) = await PocketAsync(ledger);
-        var (field, _) = await ledger.MemberAsync("Field");
-
-        Assert.DoesNotContain((await field.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts/offered", Json))!, row => row.Id == pocket);
-        Assert.DoesNotContain((await field.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!, row => row.Id == pocket);
-
-        Assert.Equal("pocketFollowsPartner", await Ledger.CodeOf(await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{pocket}/disable", null)));
-        Assert.Equal("invalidType", await Ledger.CodeOf(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("يدوي", AccountType.PartnerPocket, 0), Json)));
-
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{partner}", new PartnerRequest("نواف الأول"), Json)).EnsureSuccessStatusCode();
-        Assert.Equal("نواف الأول", (await AccountsAsync(ledger)).Single(row => row.Id == pocket).Name);
+        Assert.Equal(before, (await AccountsAsync(ledger)).Select(row => row.Id));
     }
 }

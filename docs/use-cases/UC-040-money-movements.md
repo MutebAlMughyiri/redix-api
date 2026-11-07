@@ -19,7 +19,7 @@
 
 `ProjectFigures` is the one owner of capital, revenue and surplus. `DirectEntries` is the one way an entry counts with no approval. `EntryReversal` is the one way to reverse: what was entered as one reverses as one, a transfer's two sides, or a carry's two sides.
 
-**A partner's pocket.** Every partner has an account of type `PartnerPocket`, made with them and named after them. It pays no expense: an expense is paid only from an account added in Accounts (redix-api #96, D24), so UC-045 "Expense paid from a partner's money" went on 7 November 2026 (D27). It stays out of the reconciliation (BR-08).
+**No partner's pocket.** An expense is paid only from an account added in Accounts (redix-api #96, D24), and a partner paying with their own money is a capital movement (D27), so UC-045 "Expense paid from a partner's money" went on 7 November 2026. The pocket account each partner used to get went with it (redix-api #99): adding a partner makes no account, and the reconciliation has no "owed to partners" line.
 
 | Rule | Code | Test |
 | --- | --- | --- |
@@ -29,7 +29,7 @@
 | Only whoever moves money enters one | `MapProjectChanges(MoveMoney)` | `MoneyMovementTests.OnlyWhoeverMovesMoneyEntersOne` |
 | Reversing a transfer reverses both sides | `EntryReversal` | `MoneyMovementTests.ReversingATransferReversesBothSides` |
 | AC-24.1: the difference is the actual balances less the surplus | `ReconciliationsEndpoints`, `ProjectFigures` | `MoneyMovementTests.AC_24_1_TheDifferenceIsTheActualBalancesLessTheSurplus` |
-| A reconciliation needs every active account, and no pocket | `ReconciliationsEndpoints.Enter` | `MoneyMovementTests.AReconciliationNeedsEveryActiveAccountAndNoPocket` |
+| A reconciliation needs every active account, and none of another project | `ReconciliationsEndpoints.Enter` | `MoneyMovementTests.AReconciliationNeedsEveryActiveAccountAndNoOtherProjects` |
 | AC-25.1: no receipt is refused; cash with a reason is not | `CapitalEndpoints.Record` | `MoneyMovementTests.AC_25_1_AMovementWithNoReceiptIsRefusedAndCashWithAReasonIsNot` |
 | Something in kind needs its reason | `CapitalEndpoints.Record` | `MoneyMovementTests.SomethingInKindNeedsItsReason` |
 | A settlement takes all they hold, and they leave; reversing brings them back | `CapitalEndpoints.Record`, `EntryReversal` | `MoneyMovementTests.ASettlementTakesAllTheyHoldAndTheyLeave`, `ReversingASettlementBringsThePartnerBack` |
@@ -38,5 +38,4 @@
 | Reversing a carry reverses both projects | `EntryReversal` | `MoneyMovementTests.ReversingACarryReversesBothProjects` |
 | AC-25.2, AC-27.1: balances are movements, and the shares add up to 100 | `CapitalEndpoints.Capital` | `MoneyMovementTests.AC_25_2_AC_27_1_EachBalanceIsTheirMovementsAndTheSharesAddUpTo100` |
 | BR-31: a partner sees the total and their own line, nobody else's | `CapitalEndpoints` | `MoneyMovementTests.BR_31_APartnerSeesTheTotalAndTheirOwnLineAndNoOneElses` |
-| A partner's pocket pays no expense, whoever records it (D24) | `Account.IsOfferedTo` | `MoneyMovementTests.D24_APartnersPocketPaysNoExpenseEvenForWhoChargesAnyAccount` |
-| A pocket is hidden from Field and follows the partner | `AccountsEndpoints`, `PartnersEndpoints` | `MoneyMovementTests.APocketIsHiddenFromFieldAndFollowsThePartner` |
+| redix-api #99: a partner added makes no account, so the accounts are only those added in Accounts | `PartnersEndpoints.Add` | `MoneyMovementTests.R99_APartnerAddedMakesNoAccountSoTheAccountsAreOnlyThoseAddedInAccounts` |

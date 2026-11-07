@@ -53,4 +53,4 @@ The capital use cases read their figures through the same link: a partner's row 
 | --- | --- |
 | Capital movements, and a withdrawn partner's zero balance and `IsActive = false` (FR-25) | The capital movement use cases |
 | Each partner's capital and share, and someone seeing only their own (BR-05, BR-31) | UC-044 "Compute partner shares" |
-| A partner's pocket account | UC-040 to UC-044, where it pays no expense (redix-api #96, D24) |
+| A partner's pocket account | Retired by redix-api #99: adding a partner makes no account |

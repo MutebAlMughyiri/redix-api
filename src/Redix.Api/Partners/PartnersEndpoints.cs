@@ -47,11 +47,7 @@ public static class PartnersEndpoints
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
             }
-            var partner = new Partner { ProjectId = projectId, UserId = request.UserId, Name = name };
-            var pocket = new Account { ProjectId = projectId, Type = AccountType.PartnerPocket, Name = name };
-            db.Partners.Add(partner);
-            db.Accounts.Add(pocket);
-            db.PartnerPockets.Add(new PartnerPocket { AccountId = pocket.Id, PartnerId = partner.Id });
+            db.Partners.Add(new Partner { ProjectId = projectId, UserId = request.UserId, Name = name });
             await db.SaveChangesAsync();
             return Results.Ok();
         });
@@ -76,8 +72,6 @@ public static class PartnersEndpoints
             }
             partner.Name = name;
             partner.UserId = request.UserId;
-            var pockets = await (from pocket in db.PartnerPockets join account in db.Accounts on pocket.AccountId equals account.Id where pocket.PartnerId == partnerId select account).ToListAsync();
-            pockets.ForEach(account => account.Name = name);
             await db.SaveChangesAsync();
             return Results.Ok();
         });

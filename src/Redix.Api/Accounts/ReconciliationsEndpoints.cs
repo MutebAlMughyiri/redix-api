@@ -28,14 +28,13 @@ public static class ReconciliationsEndpoints
         var accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToListAsync();
         var moved = await AccountMoney.MovementsOfProjectAsync(projectId, db);
         var actual = latest.Balances.ToDictionary(row => row.AccountId, row => row.ActualBalance);
-        var rows = accounts.Where(account => account.Type != AccountType.PartnerPocket && (account.IsActive || actual.ContainsKey(account.Id))).OrderBy(account => account.Type).ThenBy(account => account.Id)
+        var rows = accounts.Where(account => account.IsActive || actual.ContainsKey(account.Id)).OrderBy(account => account.Type).ThenBy(account => account.Id)
             .Select(account => new ReconciliationBalanceView(account.Id, account.Name, account.Type, account.OpeningBalance + moved.GetValueOrDefault(account.Id), actual.GetValueOrDefault(account.Id))).ToList();
         var total = actual.Values.Sum();
-        var owed = -accounts.Where(account => account.Type == AccountType.PartnerPocket).Sum(account => account.OpeningBalance + moved.GetValueOrDefault(account.Id));
-        return new ReconciliationView(latest.At, surplus, total, total - surplus, owed, rows);
+        return new ReconciliationView(latest.At, surplus, total, total - surplus, rows);
     }
 
-    /// <summary>Keeps what each bank account and custody really holds, and answers the difference. An account not in the project, or a partner's pocket, answers <c>unknownAccount</c>; an amount beyond the limit <c>invalidAmount</c>; an active account left out <c>accountMissing</c>.</summary>
+    /// <summary>Keeps what each bank account and custody really holds, and answers the difference. An account not in the project answers <c>unknownAccount</c>; an amount beyond the limit <c>invalidAmount</c>; an active account left out <c>accountMissing</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">What each holds.</param>
     /// <param name="principal">The caller's session.</param>
@@ -43,7 +42,7 @@ public static class ReconciliationsEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Enter(Guid projectId, ReconcileRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var accounts = await db.Accounts.Where(account => account.ProjectId == projectId && account.Type != AccountType.PartnerPocket).ToListAsync();
+        var accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToListAsync();
         if (request.Balances.Any(row => accounts.All(account => account.Id != row.AccountId)))
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownAccount");
@@ -82,9 +81,8 @@ public record ActualBalanceRequest(Guid AccountId, decimal ActualBalance);
 /// <param name="Surplus">What the books say the accounts should hold (BR-07).</param>
 /// <param name="ActualTotal">What they really held at the latest check.</param>
 /// <param name="Difference">That total less the surplus (BR-08).</param>
-/// <param name="OwedToPartners">What the project owes partners who paid from their pockets, a reason for a difference.</param>
 /// <param name="Balances">Each bank account and custody.</param>
-public record ReconciliationView(DateTime At, decimal Surplus, decimal ActualTotal, decimal Difference, decimal OwedToPartners, List<ReconciliationBalanceView> Balances);
+public record ReconciliationView(DateTime At, decimal Surplus, decimal ActualTotal, decimal Difference, List<ReconciliationBalanceView> Balances);
 
 /// <summary>One account against the books.</summary>
 /// <param name="AccountId">The account.</param>

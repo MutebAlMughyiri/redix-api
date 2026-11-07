@@ -52,13 +52,3 @@ public class CapitalMovementDetails
     /// <summary>Whether it adds to the partner's capital.</summary>
     public static bool IsInflow(CapitalMovementType type) => type is CapitalMovementType.Contribution or CapitalMovementType.CarryIn or CapitalMovementType.InKind;
 }
-
-/// <summary>The account that holds what a partner paid from their own pocket (BR-25). It is created with the partner, so every list of accounts offers it unasked.</summary>
-public class PartnerPocket
-{
-    /// <summary>The account.</summary>
-    public Guid AccountId { get; init; }
-
-    /// <summary>The partner.</summary>
-    public Guid PartnerId { get; init; }
-}

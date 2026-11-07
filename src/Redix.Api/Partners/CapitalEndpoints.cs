@@ -197,14 +197,8 @@ public static class CapitalEndpoints
         return here;
     }
 
-    /// <summary>Marks a partner as still in or as gone, with their pocket, so it stops being offered; saved with the change.</summary>
-    public static async Task SetActiveAsync(Guid partnerId, bool isActive, RedixDbContext db)
-    {
-        var partner = await db.Partners.SingleAsync(row => row.Id == partnerId);
-        partner.IsActive = isActive;
-        var pockets = await (from pocket in db.PartnerPockets join account in db.Accounts on pocket.AccountId equals account.Id where pocket.PartnerId == partnerId select account).ToListAsync();
-        pockets.ForEach(account => account.IsActive = isActive);
-    }
+    /// <summary>Marks a partner as still in or as gone; saved with the change.</summary>
+    public static async Task SetActiveAsync(Guid partnerId, bool isActive, RedixDbContext db) => (await db.Partners.SingleAsync(row => row.Id == partnerId)).IsActive = isActive;
 
     /// <summary>Why <paramref name="partnerId"/> cannot move money in <paramref name="projectId"/>: <c>unknownPartner</c> when not a partner of it, <c>partnerLeft</c> once gone; empty when they can.</summary>
     public static async Task<string> RefusalOfPartnerAsync(Guid projectId, Guid partnerId, RedixDbContext db)

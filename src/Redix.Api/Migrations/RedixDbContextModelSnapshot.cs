@@ -922,28 +922,6 @@ namespace Redix.Api.Migrations
                     b.ToTable("Partners");
                 });
 
-            modelBuilder.Entity("Redix.Api.Partners.PartnerPocket", b =>
-                {
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("PartnerId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.HasKey("AccountId");
-
-                    b.HasIndex("PartnerId")
-                        .IsUnique();
-
-                    b.ToTable("PartnerPockets");
-                });
-
             modelBuilder.Entity("Redix.Api.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7334,48 +7312,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("2de57f71-b125-f830-cce1-d9acfe45a9ea"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("79264bd1-93d2-1f9e-0e14-4e4cdb1a0410"),
-                            Value = "From a partner"
-                        },
-                        new
-                        {
-                            Id = new Guid("20ae5177-1128-f50d-dec6-edf0138c926a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("79264bd1-93d2-1f9e-0e14-4e4cdb1a0410"),
-                            Value = "من شريك"
-                        },
-                        new
-                        {
-                            Id = new Guid("3fdeabd3-789a-f9da-6d6a-07c4249b8bb7"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d641f5c0-dfb4-5bc6-1d54-406312602368"),
-                            Value = "This kind of account comes with its partner."
-                        },
-                        new
-                        {
-                            Id = new Guid("90f43dca-e1ec-8d3c-8414-d54bb088b575"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d641f5c0-dfb4-5bc6-1d54-406312602368"),
-                            Value = "هذا النوع من الحسابات يأتي مع شريكه."
-                        },
-                        new
-                        {
-                            Id = new Guid("447a8b30-8528-f56c-4696-db39d6f11178"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e72bd3ff-914a-fef7-a59d-dbdbb9bbb42c"),
-                            Value = "A partner's pocket follows the partner."
-                        },
-                        new
-                        {
-                            Id = new Guid("1ee041aa-9dc1-8d41-3e06-a22ff68ebaf6"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e72bd3ff-914a-fef7-a59d-dbdbb9bbb42c"),
-                            Value = "حساب الشريك يتبع الشريك."
-                        },
-                        new
-                        {
                             Id = new Guid("d615c164-349f-8abb-3bf9-1816e56250e9"),
                             Language = "en",
                             TranslationKeyId = new Guid("df8ddbc3-91ab-4e33-46e0-c213e9972453"),
@@ -7751,20 +7687,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("ae277cab-a814-238a-ccce-45a1d5483326"),
                             Value = "الفرق يعني مصروفاً لم يُسجَّل أو رسوماً بنكية. راجع حركات الحسابات منذ آخر مطابقة."
-                        },
-                        new
-                        {
-                            Id = new Guid("98a581ea-5c05-c066-de09-cea8bcf61958"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("5d720efc-9e93-5c44-e1f3-eeddac22505f"),
-                            Value = "Owed to partners"
-                        },
-                        new
-                        {
-                            Id = new Guid("8e485542-fdb9-ffb2-62a8-034488d54cb9"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("5d720efc-9e93-5c44-e1f3-eeddac22505f"),
-                            Value = "مستحق للشركاء"
                         },
                         new
                         {
@@ -16592,24 +16514,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("79264bd1-93d2-1f9e-0e14-4e4cdb1a0410"),
-                            Description = "",
-                            Key = "accounts.typePartnerPocket"
-                        },
-                        new
-                        {
-                            Id = new Guid("d641f5c0-dfb4-5bc6-1d54-406312602368"),
-                            Description = "",
-                            Key = "accounts.invalidType"
-                        },
-                        new
-                        {
-                            Id = new Guid("e72bd3ff-914a-fef7-a59d-dbdbb9bbb42c"),
-                            Description = "",
-                            Key = "accounts.pocketFollowsPartner"
-                        },
-                        new
-                        {
                             Id = new Guid("df8ddbc3-91ab-4e33-46e0-c213e9972453"),
                             Description = "",
                             Key = "accounts.transfer"
@@ -16769,12 +16673,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("ae277cab-a814-238a-ccce-45a1d5483326"),
                             Description = "",
                             Key = "reconciliations.differenceExplain"
-                        },
-                        new
-                        {
-                            Id = new Guid("5d720efc-9e93-5c44-e1f3-eeddac22505f"),
-                            Description = "",
-                            Key = "reconciliations.owed"
                         },
                         new
                         {
@@ -20014,21 +19912,6 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Redix.Api.Partners.PartnerPocket", b =>
-                {
-                    b.HasOne("Redix.Api.Accounts.Account", null)
-                        .WithOne()
-                        .HasForeignKey("Redix.Api.Partners.PartnerPocket", "AccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Redix.Api.Partners.Partner", null)
-                        .WithOne()
-                        .HasForeignKey("Redix.Api.Partners.PartnerPocket", "PartnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

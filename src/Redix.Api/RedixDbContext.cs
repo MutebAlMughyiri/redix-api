@@ -105,9 +105,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What only a capital movement has.</summary>
     public DbSet<Redix.Api.Partners.CapitalMovementDetails> CapitalMovementDetails => Set<Redix.Api.Partners.CapitalMovementDetails>();
 
-    /// <summary>The account of each partner's pocket.</summary>
-    public DbSet<Redix.Api.Partners.PartnerPocket> PartnerPockets => Set<Redix.Api.Partners.PartnerPocket>();
-
     /// <summary>Each periodic report as it was issued.</summary>
     public DbSet<Redix.Api.Reports.PeriodicReport> PeriodicReports => Set<Redix.Api.Reports.PeriodicReport>();
 
@@ -367,13 +364,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             details.HasIndex(d => d.PartnerId);
             details.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Partners.CapitalMovementDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Partner>().WithMany().HasForeignKey(d => d.PartnerId).OnDelete(DeleteBehavior.Restrict);
-        });
-        modelBuilder.Entity<Redix.Api.Partners.PartnerPocket>(pocket =>
-        {
-            pocket.HasKey(p => p.AccountId);
-            pocket.HasIndex(p => p.PartnerId).IsUnique();
-            pocket.HasOne<Account>().WithOne().HasForeignKey<Redix.Api.Partners.PartnerPocket>(p => p.AccountId).OnDelete(DeleteBehavior.Restrict);
-            pocket.HasOne<Partner>().WithOne().HasForeignKey<Redix.Api.Partners.PartnerPocket>(p => p.PartnerId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Redix.Api.Reports.PeriodicReport>(report =>
         {
