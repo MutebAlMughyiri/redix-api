@@ -59,20 +59,25 @@ public class DashboardTests(MigratedApiFactory factory)
         Assert.Equal(25m, dashboard.ReconciliationDifference);
     }
 
+    [Theory]
+    [InlineData(800, 200, 25)]
+    [InlineData(300, 100, 33.33)]
+    [InlineData(100, 150, 150)]
+    [InlineData(0, 200, 0)]
+    public void UC_063_CompletionIsExpensesAsAPercentageOfRevenue(decimal capital, decimal expenses, decimal percent) =>
+        Assert.Equal(percent, new ProjectFigures(capital, 0, 0, 0, expenses, 0).CompletionPercent);
+
     [Fact]
-    public async Task UC_063_TheManagerSetsTheCompletionAndEveryoneSeesItAndTheCost()
+    public async Task UC_063_EveryoneSeesTheCompletionAndTheCostAndNobodyTypesIt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ApprovedAsync(ledger, ledger.WithoutInvoice(200));
         var (reader, _) = await ledger.MemberAsync("Reader");
 
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/completion", new CompletionRequest(42.5m), Json)).EnsureSuccessStatusCode();
-
         var seen = await DashboardAsync(reader, ledger.ProjectId);
-        Assert.Equal((42.5m, 200m), (seen.CompletionPercent, seen.Expenses));
-        Assert.Equal(HttpStatusCode.Forbidden, (await reader.PostAsJsonAsync($"/projects/{ledger.ProjectId}/completion", new CompletionRequest(50), Json)).StatusCode);
-        Assert.Equal("invalidCompletion", await Ledger.CodeOf(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/completion", new CompletionRequest(101), Json)));
-        Assert.Equal("invalidCompletion", await Ledger.CodeOf(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/completion", new CompletionRequest(10.555m), Json)));
+
+        Assert.Equal((0m, 200m), (seen.CompletionPercent, seen.Expenses));
+        Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/completion", new { percent = 50 }, Json)).StatusCode);
     }
 
     [Fact]

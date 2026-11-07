@@ -26,7 +26,7 @@ Holding `ReadProject` is being in the project. Whoever registers a project holds
 | `ReadProject` | A project | Opening the project and reading everything in it |
 | `ManageUsers` | A project | Adding people to the project and ticking their permissions |
 | `SeeAllCapital` | A project | Seeing every partner's capital, and the report files |
-| `ManageProject` | A project | Its name, units, documents and completion, and closing it |
+| `ManageProject` | A project | Its name, units and documents, and closing it |
 | `ManageStructure` | A project | Categories, items, subgroups and columns |
 | `ManageSettings` | A project | Payment methods, VAT rate, accounts, partners, suppliers and contracts |
 | `AddSupplier` | A project | Adding a supplier while entering; without `ManageSettings` it waits for approval |

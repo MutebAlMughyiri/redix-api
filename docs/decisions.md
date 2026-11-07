@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-07 | Completion is computed: approved expenses as a percentage of revenue, to two decimals; 0 while nothing came in, over 100 once expenses pass revenue. Nobody types it any more, and `Projects.CompletionPercent` goes | Muteb: "حساب نسبة الانجاز يكون بشكل آالي — المصروفات / الايرادات * 100". Revenue and expenses are the dashboard's own, from `ProjectFigures`, so the three cannot disagree |
 | 2026-11-07 | An expense is paid only from an account added in Accounts, never a partner's pocket; what a partner paid no longer becomes capital or an amount owed (UC-045 goes), the payment source picker goes, and so does the payment method سداد | Muteb: "remove source payment also in add expanse ... remove it from code completely", "remove the option سداد", and accounts "show the options as what added in الحسابات" (redix-api #96, D6, D24, D25, D27) |
 | 2026-11-07 | Expenses and contracts belong to the project, not a unit; the split of a shared expense (UC-060), the shared unit and the unit cost report go, and a unit can always be deleted | Muteb: "expanses will belong to the project itself. no need to link it to a unit"; contracts too (redix-api #96) |
 | 2026-11-07 | An invoice's number is optional on a purchase, a credit note and an invoice attached later; at most 50 characters when given, and an invoice with none is never a duplicate | Muteb: "bill number is not required" |
@@ -14,7 +15,6 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 | 2026-11-05 | The periodic report's words are the statement's own Arabic, in the files | Report 23 is Arabic, and the files are matched against it page for page |
 | 2026-11-05 | A contractor payment's one file goes into the invoices' ZIP as its invoice | Row 108: a second file on a payment would be a new field nobody enters today; the receipt is what the accountant has |
 | 2026-11-05 | The summary page details only the items that have money | Listing every empty item ran the summary onto a second page, unlike report 23 |
-| 2026-11-05 | UC-063: completion is one percentage for the project, typed by whoever holds `ManageProject`, in the audit trail; cost is the approved expenses; everyone sees both | Its five open questions were Muteb's, and he asked for features without decisions tonight. One typed figure needs no budget the BRS lacks, and these are the smallest answers to reverse |
 | 2026-11-05 | The contracts report is the contracts list of UC-020, which already has value, paid, remaining and the overrun alert | A second route would answer the same thing twice |
 | 2026-11-05 | Two old migration tests write their project as that schema had it | They inserted through today's model, so any column added to projects broke them |
 | 2026-11-05 | A sale carries the real estate transaction tax by default, at 5%, outside the net VAT due, or VAT at the project's rate | Open question 6 waits for the accountant. Both are kept, so the answer needs no change to recorded sales, only the default |

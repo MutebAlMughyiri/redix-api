@@ -27,6 +27,9 @@ public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds
     /// <summary>The surplus without sales (BR-07), as the statement reckons it: before the liquidation.</summary>
     public decimal SurplusWithoutSales => RevenueWithoutSales - Expenses;
 
+    /// <summary>How far the work has come (UC-063): expenses as a percentage of revenue, to two decimals; 0 while nothing came in, and over 100 once expenses pass revenue.</summary>
+    public decimal CompletionPercent => Revenue == 0 ? 0 : decimal.Round(Expenses / Revenue * 100, 2);
+
     /// <summary>The figures of the project <paramref name="projectId"/> now.</summary>
     public static async Task<ProjectFigures> OfAsync(Guid projectId, RedixDbContext db)
     {
