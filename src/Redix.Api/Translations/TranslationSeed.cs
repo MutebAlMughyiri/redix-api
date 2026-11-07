@@ -195,6 +195,8 @@ public static class TranslationSeed
         ("entries.empty", "No entries yet.", "لا قيود بعد."),
         ("entries.new", "Add entry", "إضافة قيد"),
         ("entries.table", "Table", "الجدول"),
+        ("entries.tableSearchHint", "Search by item or contractor", "بحث بالبند أو المقاول"),
+        ("entries.noTableMatch", "No table matches the search.", "لا جدول يطابق البحث."),
         ("entries.search", "Search entries", "البحث في القيود"),
         ("entries.searchHint", "Item, supplier, who entered it, number or amount", "البند أو المورد أو من أدخله أو الرقم أو المبلغ"),
         ("entries.purchases", "Purchases", "مشتريات"),

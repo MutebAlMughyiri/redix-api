@@ -5366,6 +5366,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("711df39f-5dbc-5c25-7d1b-e77a43111bb5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("133520ba-c89a-4c91-3190-0369147b3f45"),
+                            Value = "Search by item or contractor"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab67a1c3-cee3-5c60-5257-9ec07bab9e7c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("133520ba-c89a-4c91-3190-0369147b3f45"),
+                            Value = "بحث بالبند أو المقاول"
+                        },
+                        new
+                        {
+                            Id = new Guid("e1f5a845-9682-8efa-0269-5929fc8776cc"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f199e153-a803-98f3-82ad-fa9cbca08c22"),
+                            Value = "No table matches the search."
+                        },
+                        new
+                        {
+                            Id = new Guid("0b0b8889-94ab-cda6-eeae-99a0fc39b180"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f199e153-a803-98f3-82ad-fa9cbca08c22"),
+                            Value = "لا جدول يطابق البحث."
+                        },
+                        new
+                        {
                             Id = new Guid("844f5420-59c6-f292-73c8-444e7caf41dd"),
                             Language = "en",
                             TranslationKeyId = new Guid("9459e6ec-8ea8-9189-851a-1927ebfa815d"),
@@ -15663,6 +15691,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("2b172b5d-394e-1ae8-51c2-c06c285eda7b"),
                             Description = "",
                             Key = "entries.table"
+                        },
+                        new
+                        {
+                            Id = new Guid("133520ba-c89a-4c91-3190-0369147b3f45"),
+                            Description = "",
+                            Key = "entries.tableSearchHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("f199e153-a803-98f3-82ad-fa9cbca08c22"),
+                            Description = "",
+                            Key = "entries.noTableMatch"
                         },
                         new
                         {
