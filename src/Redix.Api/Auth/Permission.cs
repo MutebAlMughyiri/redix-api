@@ -24,7 +24,7 @@ public enum Permission
     /// <summary>Shapes one project's expense structure: its categories, items, subgroups and columns (FR-05, FR-38, FR-39, FR-41).</summary>
     ManageStructure,
 
-    /// <summary>Keeps one project's payment methods, VAT rate, accounts, partners, suppliers and contracts (FR-40, BR-14, FR-22, UC-016, FR-06, FR-07).</summary>
+    /// <summary>Keeps one project's payment methods, accounts, partners, suppliers and contracts (FR-40, FR-22, UC-016, FR-06, FR-07).</summary>
     ManageSettings,
 
     /// <summary>Adds a supplier to one project's register; without <see cref="ManageSettings"/> it waits for approval (FR-44, BR-30).</summary>

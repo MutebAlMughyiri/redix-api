@@ -269,7 +269,7 @@ public record ChangeNotesRequest(string Notes);
 /// <param name="Expense">What every expense has.</param>
 /// <param name="Purchase">What only a purchase has.</param>
 /// <param name="ContractorPayment">What only a contractor payment has.</param>
-/// <param name="Invoice">Its invoice, which the VAT statement goes by.</param>
+/// <param name="Invoice">The bill number it was entered with before REDIX stopped asking for one; empty on a newer entry (redix-api #96, D2).</param>
 /// <param name="Attachments">The files it carries.</param>
 /// <param name="Links">What ties it to other entries.</param>
 public record EntryView(Entry Entry, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments, List<EntryLink> Links);

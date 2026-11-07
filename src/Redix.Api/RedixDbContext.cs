@@ -96,7 +96,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What only a contractor payment has.</summary>
     public DbSet<ContractorPaymentDetails> ContractorPaymentDetails => Set<ContractorPaymentDetails>();
 
-    /// <summary>The invoices of the expenses, which the VAT statement goes by.</summary>
+    /// <summary>The bill numbers of expenses entered before REDIX stopped asking for one (redix-api #96, D2).</summary>
     public DbSet<Invoice> Invoices => Set<Invoice>();
 
     /// <summary>What ties one entry to another.</summary>

@@ -15,7 +15,7 @@ public enum ItemType : byte
     /// <summary>Revenue: a unit sold, which carries its sales invoice (FR-42).</summary>
     Sale,
 
-    /// <summary>Revenue: VAT refunded for a quarter, checked against that quarter's statement (FR-28).</summary>
+    /// <summary>Revenue: VAT refunded, recorded like any other revenue (redix-api #96, D23).</summary>
     VatRefund,
 
     /// <summary>Revenue: anything else that comes in.</summary>

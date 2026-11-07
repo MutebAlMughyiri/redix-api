@@ -39,7 +39,7 @@ public class Supplier
     /// <summary>The name as a search reads it (FR-43).</summary>
     public string NormalizedName { get; private set; } = "";
 
-    /// <summary>Its VAT number; empty for a supplier not VAT-registered, whose invoices stay out of the VAT statement (AC-06.2).</summary>
+    /// <summary>Its VAT number; empty for a supplier not VAT-registered, whose purchases have no VAT in the VAT statement's workbook (AC-06.2).</summary>
     public string VatNumber { get; set; } = "";
 
     /// <summary>Its mobile; empty when none.</summary>
@@ -63,7 +63,7 @@ public class Supplier
     /// <summary>That item's id; <see cref="Guid.Empty"/> when it has none.</summary>
     public Guid DefaultItemId => DefaultItems.Select(row => row.ItemId).FirstOrDefault();
 
-    /// <summary>The supplier <paramref name="projectId"/> starts with, for expenses with no supplier: approved at once, and not VAT-registered, so nothing on it reaches the VAT statement.</summary>
+    /// <summary>The supplier <paramref name="projectId"/> starts with, for expenses with no supplier: approved at once, and not VAT-registered, so nothing on it has VAT in the VAT statement's workbook.</summary>
     public static Supplier GeneralCashSupplier(Guid projectId, Guid createdByUserId) => new() { ProjectId = projectId, Name = GeneralCashSupplierName, IsGeneralCash = true, CreatedByUserId = createdByUserId };
 
     /// <summary>What <paramref name="userId"/> may pick: active suppliers that are approved or that they added themselves (UC-019 step 3), and any pending one if they <paramref name="seePending"/>.</summary>

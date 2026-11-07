@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is empty for a supplier not VAT-registered, whose invoices stay out of the VAT statement (AC-06.2); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
+A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is empty for a supplier not VAT-registered, whose purchases have no VAT in the VAT statement's workbook (AC-06.2); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
 
 Whoever sends a supplier says either its number or `notVatRegistered`, so a number forgotten by mistake is refused rather than saved as "not registered".
 

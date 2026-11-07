@@ -8,10 +8,10 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Projects;
 
-/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), renames them, adds, renames and deletes units and closes them (UC-006, FR-04, BR-38), sets their VAT rate (UC-014, BR-14), and keeps each user's default (UC-010, FR-37).</summary>
+/// <summary>Lists each user's projects (UC-008, FR-36), registers one for someone signed in (UC-066), renames them, adds, renames and deletes units and closes them (UC-006, FR-04, BR-38), and keeps each user's default (UC-010, FR-37).</summary>
 public static class ProjectsEndpoints
 {
-    /// <summary>Maps <c>GET /projects</c>, <c>POST /projects</c>, and under <c>POST /projects/{projectId}</c> the rename, <c>/units</c>, <c>/units/{unitId}</c>, <c>/units/{unitId}/delete</c>, <c>/close</c> and <c>/vat-rate</c>.</summary>
+    /// <summary>Maps <c>GET /projects</c>, <c>POST /projects</c>, and under <c>POST /projects/{projectId}</c> the rename, <c>/units</c>, <c>/units/{unitId}</c>, <c>/units/{unitId}/delete</c>, <c>/close</c> and <c>/default</c>, and <c>POST /projects/default/remove</c>.</summary>
     public static void MapProjects(this WebApplication app)
     {
         app.MapGet("/projects", List);

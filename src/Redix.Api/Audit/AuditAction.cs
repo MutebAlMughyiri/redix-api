@@ -21,7 +21,7 @@ public enum AuditAction
     /// <summary>A project manager created a user (UC-007, UC-009), Finance added a unit (UC-006) or a contract (UC-020), or someone saved an entry as a draft, or the parts of a new entry (UC-022).</summary>
     Create,
 
-    /// <summary>A user's name or mobile was changed (UC-007), a project's VAT rate (UC-014), an account (UC-015), or a contract amended (UC-020).</summary>
+    /// <summary>A user's name or mobile was changed (UC-007), an account (UC-015), or a contract amended (UC-020).</summary>
     Update,
 
     /// <summary>A user was given a new temporary password (UC-007).</summary>
