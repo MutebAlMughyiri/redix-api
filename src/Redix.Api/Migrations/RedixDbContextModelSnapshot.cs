@@ -459,9 +459,6 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("SupplierId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("UnitId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<decimal>("UnitPrice")
                         .HasPrecision(19, 4)
                         .HasColumnType("decimal(19,4)");
@@ -477,8 +474,6 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ProjectId");
 
                     b.HasIndex("SupplierId");
-
-                    b.HasIndex("UnitId");
 
                     b.ToTable("Contracts");
                 });
@@ -741,9 +736,6 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<byte>("PartnerTreatment")
-                        .HasColumnType("tinyint");
-
                     b.Property<Guid>("PaymentMethodId")
                         .HasColumnType("uniqueidentifier");
 
@@ -754,9 +746,6 @@ namespace Redix.Api.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<Guid>("SubgroupId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("UnitId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("WithoutInvoiceReason")
@@ -771,8 +760,6 @@ namespace Redix.Api.Migrations
                     b.HasIndex("PaymentMethodId");
 
                     b.HasIndex("SubgroupId");
-
-                    b.HasIndex("UnitId");
 
                     b.ToTable("ExpenseDetails");
                 });
@@ -867,31 +854,6 @@ namespace Redix.Api.Migrations
                     b.HasIndex("SupplierId");
 
                     b.ToTable("PurchaseDetails");
-                });
-
-            modelBuilder.Entity("Redix.Api.Entries.UnitShare", b =>
-                {
-                    b.Property<Guid>("EntryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("UnitId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("Percent")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.HasKey("EntryId", "UnitId");
-
-                    b.HasIndex("UnitId");
-
-                    b.ToTable("UnitShares", (string)null);
                 });
 
             modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
@@ -1120,9 +1082,6 @@ namespace Redix.Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsShared")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1366,14 +1325,6 @@ namespace Redix.Api.Migrations
                             Name = "كاش",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             SortOrder = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("c1112bdf-cdf2-e0c5-efd6-9b34a0c26c18"),
-                            IsActive = true,
-                            Name = "سداد",
-                            ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
-                            SortOrder = 3
                         });
                 });
 
@@ -1574,20 +1525,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("59042844-8ddf-6aaa-b31d-fe2c6886cb71"),
-                            DataType = (byte)4,
-                            IsCore = false,
-                            IsRequired = false,
-                            ItemType = (byte)0,
-                            Key = "unit",
-                            Name = "الوحدة",
-                            Options = "[]",
-                            ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
-                            ShowInReports = false,
-                            SortOrder = 3
-                        },
-                        new
-                        {
                             Id = new Guid("3a69be0b-a697-4a48-2dc0-c70a043a7389"),
                             DataType = (byte)0,
                             IsCore = false,
@@ -1598,7 +1535,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 4
+                            SortOrder = 3
                         },
                         new
                         {
@@ -1612,7 +1549,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 5
+                            SortOrder = 4
                         },
                         new
                         {
@@ -1626,7 +1563,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 6
+                            SortOrder = 5
                         },
                         new
                         {
@@ -1640,7 +1577,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 7
+                            SortOrder = 6
                         },
                         new
                         {
@@ -1654,7 +1591,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 8
+                            SortOrder = 7
                         },
                         new
                         {
@@ -1668,7 +1605,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 9
+                            SortOrder = 8
                         },
                         new
                         {
@@ -1682,7 +1619,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 10
+                            SortOrder = 9
                         },
                         new
                         {
@@ -1696,7 +1633,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 11
+                            SortOrder = 10
                         },
                         new
                         {
@@ -1710,7 +1647,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 12
+                            SortOrder = 11
                         },
                         new
                         {
@@ -1724,7 +1661,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 13
+                            SortOrder = 12
                         },
                         new
                         {
@@ -1738,7 +1675,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 14
+                            SortOrder = 13
                         },
                         new
                         {
@@ -1952,20 +1889,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("9a6b3b3a-b69f-31db-e5e5-8183084d9db5"),
-                            DataType = (byte)4,
-                            IsCore = false,
-                            IsRequired = false,
-                            ItemType = (byte)2,
-                            Key = "unit",
-                            Name = "الوحدة",
-                            Options = "[]",
-                            ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
-                            ShowInReports = false,
-                            SortOrder = 3
-                        },
-                        new
-                        {
                             Id = new Guid("4c9d7893-60b7-58aa-d675-486e13466312"),
                             DataType = (byte)0,
                             IsCore = false,
@@ -1976,7 +1899,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 4
+                            SortOrder = 3
                         },
                         new
                         {
@@ -1990,7 +1913,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 5
+                            SortOrder = 4
                         },
                         new
                         {
@@ -2004,7 +1927,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 6
+                            SortOrder = 5
                         },
                         new
                         {
@@ -2018,7 +1941,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 7
+                            SortOrder = 6
                         },
                         new
                         {
@@ -2032,7 +1955,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 8
+                            SortOrder = 7
                         },
                         new
                         {
@@ -2046,7 +1969,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 9
+                            SortOrder = 8
                         },
                         new
                         {
@@ -2060,7 +1983,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 10
+                            SortOrder = 9
                         },
                         new
                         {
@@ -2074,7 +1997,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 11
+                            SortOrder = 10
                         },
                         new
                         {
@@ -2088,7 +2011,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 12
+                            SortOrder = 11
                         },
                         new
                         {
@@ -2102,7 +2025,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 13
+                            SortOrder = 12
                         },
                         new
                         {
@@ -2116,7 +2039,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 14
+                            SortOrder = 13
                         },
                         new
                         {
@@ -2130,7 +2053,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 15
+                            SortOrder = 14
                         },
                         new
                         {
@@ -2144,7 +2067,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
-                            SortOrder = 16
+                            SortOrder = 15
                         },
                         new
                         {
@@ -2158,7 +2081,7 @@ namespace Redix.Api.Migrations
                             Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
-                            SortOrder = 17
+                            SortOrder = 16
                         });
                 });
 
@@ -3785,34 +3708,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a43e219c-95b9-8a61-0643-8744929da343"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("46d6661d-ea85-afec-5ce0-df44c4c9d2e7"),
-                            Value = "Entries or contracts use this unit, so it cannot be deleted."
-                        },
-                        new
-                        {
-                            Id = new Guid("e0c936f7-6e01-fc2c-ea48-dbdee78b66b8"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("46d6661d-ea85-afec-5ce0-df44c4c9d2e7"),
-                            Value = "هذه الوحدة عليها قيود أو عقود، فلا تُحذف."
-                        },
-                        new
-                        {
-                            Id = new Guid("6cb36bdf-aabd-ddf0-ffb6-dd62b558e5dd"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c11644b9-5e78-0b99-05ba-004904ce9afd"),
-                            Value = "The shared unit cannot be renamed or deleted."
-                        },
-                        new
-                        {
-                            Id = new Guid("cae4d12f-1e01-bfe4-a70c-239463019d5f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c11644b9-5e78-0b99-05ba-004904ce9afd"),
-                            Value = "الوحدة المشتركة لا يُعدَّل اسمها ولا تُحذف."
-                        },
-                        new
-                        {
                             Id = new Guid("5232747e-71ea-3536-984e-a2d41608aca4"),
                             Language = "en",
                             TranslationKeyId = new Guid("b431f747-6e0e-242d-4abb-474876efeeb4"),
@@ -3858,14 +3753,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9774b8eb-6c82-b6f0-b56b-92a58fb57467"),
                             Language = "en",
                             TranslationKeyId = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
-                            Value = "It leaves this project. A unit that entries or contracts use cannot be deleted."
+                            Value = "It leaves this project."
                         },
                         new
                         {
                             Id = new Guid("b0777b87-cdcc-965d-80a4-b5f3a843b845"),
                             Language = "ar",
                             TranslationKeyId = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
-                            Value = "تُحذف من هذا المشروع. ولا تُحذف وحدة عليها قيود أو عقود."
+                            Value = "تُحذف من هذا المشروع."
                         },
                         new
                         {
@@ -6246,146 +6141,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("0f5fb0bc-426d-b1d1-e736-373393389502"),
                             Value = "الفائض"
-                        },
-                        new
-                        {
-                            Id = new Guid("d8550351-2c7d-269e-e937-4a6ae40fa623"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("24c97faf-6d73-138a-41dc-e553fbb9f911"),
-                            Value = "Units"
-                        },
-                        new
-                        {
-                            Id = new Guid("9fcd217a-deb1-4746-1356-42cdb2da6483"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("24c97faf-6d73-138a-41dc-e553fbb9f911"),
-                            Value = "الوحدات"
-                        },
-                        new
-                        {
-                            Id = new Guid("9173b557-7307-37cc-b3df-38dffe17dfdd"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f6f5effc-4a2c-2758-dc54-25d329e013de"),
-                            Value = "Recorded against it"
-                        },
-                        new
-                        {
-                            Id = new Guid("c66f177c-45b2-510c-7c58-7bd04c48131f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f6f5effc-4a2c-2758-dc54-25d329e013de"),
-                            Value = "مسجل عليها"
-                        },
-                        new
-                        {
-                            Id = new Guid("09885d93-5575-7bfa-d422-967cef0197e4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c5af721d-05bd-b90d-05fa-5241236275a0"),
-                            Value = "Its part of the shared"
-                        },
-                        new
-                        {
-                            Id = new Guid("0522d40b-3c09-0198-c0c0-1f1e0c53f9df"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c5af721d-05bd-b90d-05fa-5241236275a0"),
-                            Value = "نصيبها من المشترك"
-                        },
-                        new
-                        {
-                            Id = new Guid("e2e2ee96-23d6-6b7b-0413-c5763ad858a0"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("edf8c6e8-f53b-4645-bad3-292aef0dd0c4"),
-                            Value = "Shared, not split"
-                        },
-                        new
-                        {
-                            Id = new Guid("4d5643ba-31a5-7f4f-902d-a3f629ab61cc"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("edf8c6e8-f53b-4645-bad3-292aef0dd0c4"),
-                            Value = "مشترك غير موزع"
-                        },
-                        new
-                        {
-                            Id = new Guid("6c3a122a-1b5b-ea1e-cb78-4f556010bf27"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("73893fbc-38ce-5ea2-b40f-9421d9439be3"),
-                            Value = "Split between the units"
-                        },
-                        new
-                        {
-                            Id = new Guid("b8c673c5-e255-a104-1008-40364934f72d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("73893fbc-38ce-5ea2-b40f-9421d9439be3"),
-                            Value = "توزيع على الوحدات"
-                        },
-                        new
-                        {
-                            Id = new Guid("5550d815-7059-892f-79d5-5d81b347dafa"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("0df52050-b16c-725c-2f99-5ef4fc859aed"),
-                            Value = "Equally"
-                        },
-                        new
-                        {
-                            Id = new Guid("2416b1fd-1f6c-084d-7124-a7d0d9d400e7"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("0df52050-b16c-725c-2f99-5ef4fc859aed"),
-                            Value = "بالتساوي"
-                        },
-                        new
-                        {
-                            Id = new Guid("83ef785c-9ff0-5788-9b5a-928ea809ab67"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("aadc5b20-cca1-e823-9000-188fb4269be1"),
-                            Value = "By percentage"
-                        },
-                        new
-                        {
-                            Id = new Guid("0c16bf37-bcca-0e62-d6a7-37e6efcadb13"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("aadc5b20-cca1-e823-9000-188fb4269be1"),
-                            Value = "بالنسبة"
-                        },
-                        new
-                        {
-                            Id = new Guid("29911313-8522-e2f1-e809-7b2f0cf7fdba"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("a972c947-2698-eb26-a30f-ed0d1d6d6e0f"),
-                            Value = "Together"
-                        },
-                        new
-                        {
-                            Id = new Guid("4d093e97-07b2-aa82-392b-52b64676e11e"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("a972c947-2698-eb26-a30f-ed0d1d6d6e0f"),
-                            Value = "المجموع"
-                        },
-                        new
-                        {
-                            Id = new Guid("4e97d436-e047-7d8a-fb97-6ba86e827eb7"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("093181e1-3f51-88c3-d596-265935a828c1"),
-                            Value = "Only an expense on the shared unit is split."
-                        },
-                        new
-                        {
-                            Id = new Guid("619f5014-ad63-3cf1-64b9-5281580d66e9"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("093181e1-3f51-88c3-d596-265935a828c1"),
-                            Value = "لا يوزَّع إلا المصروف المسجل على المشترك."
-                        },
-                        new
-                        {
-                            Id = new Guid("0884b375-fee8-e6c5-265e-73ea132d60a1"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("99d2c12b-b195-dbcf-6613-49181cbee1e5"),
-                            Value = "Give each unit a part above zero, together 100%."
-                        },
-                        new
-                        {
-                            Id = new Guid("03ef1711-7dda-1d9d-5da3-f27542b20c7a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("99d2c12b-b195-dbcf-6613-49181cbee1e5"),
-                            Value = "أعطِ كل وحدة نسبة أكبر من الصفر، مجموعها 100%."
                         },
                         new
                         {
@@ -10421,76 +10176,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("92dbd782-4b36-fc8e-72ca-c99499fe348c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("2ede21ba-9b50-aad9-9df0-48059892c06b"),
-                            Value = "Paid by"
-                        },
-                        new
-                        {
-                            Id = new Guid("eca259fc-c4b5-87ce-1c0b-864dd60f2ad4"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("2ede21ba-9b50-aad9-9df0-48059892c06b"),
-                            Value = "دفعه"
-                        },
-                        new
-                        {
-                            Id = new Guid("0c01fce5-3d51-8aa0-2a5c-a50452f4252e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("1691bde4-ce40-e8af-94c4-29b36ba82263"),
-                            Value = "Add to capital"
-                        },
-                        new
-                        {
-                            Id = new Guid("543184d3-ee5b-cf4f-a6f5-138fd410f649"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("1691bde4-ce40-e8af-94c4-29b36ba82263"),
-                            Value = "يُضاف إلى رأس المال"
-                        },
-                        new
-                        {
-                            Id = new Guid("acf71d90-fd30-2fc7-42d9-d0590588bf22"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("87a76df0-b568-62a1-1c52-6861cb5ced94"),
-                            Value = "Owed back"
-                        },
-                        new
-                        {
-                            Id = new Guid("905a100a-a19a-d676-d359-f4925baf4cd8"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("87a76df0-b568-62a1-1c52-6861cb5ced94"),
-                            Value = "مستحق له"
-                        },
-                        new
-                        {
-                            Id = new Guid("21ba1404-a7f0-25d2-d982-e500627dad9e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ddd9dc40-dd7b-761b-0768-0d5cbcd55821"),
-                            Value = "Choose what becomes of it."
-                        },
-                        new
-                        {
-                            Id = new Guid("c511fa6f-7451-64e6-3eda-51a76fc8b563"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ddd9dc40-dd7b-761b-0768-0d5cbcd55821"),
-                            Value = "اختر ما يترتب عليه."
-                        },
-                        new
-                        {
-                            Id = new Guid("2ed1793f-4d04-1d7c-3010-a9f805f79d32"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f95556a3-c419-6ae3-2fa2-2e0e58b3c093"),
-                            Value = "No partner paid this."
-                        },
-                        new
-                        {
-                            Id = new Guid("fc50eeb5-a80f-20eb-413d-6259a1e1c88d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f95556a3-c419-6ae3-2fa2-2e0e58b3c093"),
-                            Value = "لم يدفعه شريك."
-                        },
-                        new
-                        {
                             Id = new Guid("b0f7b8d5-978c-bc00-135f-c8e18d3c6d5d"),
                             Language = "en",
                             TranslationKeyId = new Guid("9a500d31-c9d4-87a3-0f52-be7ba38c43b4"),
@@ -14106,14 +13791,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("08f5d8be-844d-c493-94ba-a5ffe9a7e853"),
                             Language = "en",
                             TranslationKeyId = new Guid("9acc9a21-9abe-5e0b-3c47-5a58043dd712"),
-                            Value = "This contract has payments, so its contractor, item and unit cannot change."
+                            Value = "This contract has payments, so its contractor and item cannot change."
                         },
                         new
                         {
                             Id = new Guid("4bc91b90-0791-5b58-c656-fb2f12c46a47"),
                             Language = "ar",
                             TranslationKeyId = new Guid("9acc9a21-9abe-5e0b-3c47-5a58043dd712"),
-                            Value = "لهذا العقد دفعات، فلا يتغير مقاوله ولا بنده ولا وحدته."
+                            Value = "لهذا العقد دفعات، فلا يتغير مقاوله ولا بنده."
                         },
                         new
                         {
@@ -14142,20 +13827,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("29ec94e3-2193-25b2-910d-684e12785662"),
                             Value = "اختر بنداً يقبل دفعات المقاولين."
-                        },
-                        new
-                        {
-                            Id = new Guid("997d342f-967d-1e2a-e8b2-18ab1eb903a0"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("91bb55ac-5d59-91e6-e7cc-c307f336a941"),
-                            Value = "Choose a unit of this project."
-                        },
-                        new
-                        {
-                            Id = new Guid("9f0f8df4-d525-0dbc-65ef-680f3759746e"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("91bb55ac-5d59-91e6-e7cc-c307f336a941"),
-                            Value = "اختر وحدة من هذا المشروع."
                         },
                         new
                         {
@@ -14282,20 +13953,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("7dcd7eb5-e6f8-611b-d54e-f013824c52ed"),
                             Value = "البند"
-                        },
-                        new
-                        {
-                            Id = new Guid("fb473810-2457-12d5-52e9-99469cc261d4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c96bdf63-848a-9489-58d4-69828fe27483"),
-                            Value = "Unit"
-                        },
-                        new
-                        {
-                            Id = new Guid("783c3df5-020d-dbe4-b741-e43bad28a1ad"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c96bdf63-848a-9489-58d4-69828fe27483"),
-                            Value = "الوحدة"
                         },
                         new
                         {
@@ -14803,20 +14460,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("56c9c8cc-c8c9-038d-11d8-5c045fcb0503"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d6d1034b-6dcd-15b5-84f6-f3214c4a2b02"),
-                            Value = "Unit"
-                        },
-                        new
-                        {
-                            Id = new Guid("6efc9471-fe5d-676a-95e4-1a65063ad0eb"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d6d1034b-6dcd-15b5-84f6-f3214c4a2b02"),
-                            Value = "الوحدة"
-                        },
-                        new
-                        {
                             Id = new Guid("7755f159-824e-6727-668c-be21e71aa518"),
                             Language = "en",
                             TranslationKeyId = new Guid("5d71b29b-07f6-26ba-a47d-d6a100c2d513"),
@@ -15024,20 +14667,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("bd47da61-ded7-c7d8-447a-ea0c154a1bc7"),
                             Value = "الإجمالي"
-                        },
-                        new
-                        {
-                            Id = new Guid("468bdf08-324e-e5b1-02aa-834e4fad5745"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9fc7231e-3919-cb42-5bd5-703d0dafd9bf"),
-                            Value = "Payment source"
-                        },
-                        new
-                        {
-                            Id = new Guid("d8908226-2e4b-3e46-01ad-6660928b3556"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9fc7231e-3919-cb42-5bd5-703d0dafd9bf"),
-                            Value = "مصدر الدفع"
                         },
                         new
                         {
@@ -15304,20 +14933,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
                             Value = "اختر مجموعة فرعية من هذا البند."
-                        },
-                        new
-                        {
-                            Id = new Guid("f55728f6-77e7-00eb-ae1c-b3cff8380629"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3b05c94c-c35e-6e4f-acda-a0d83eafcc11"),
-                            Value = "Choose a unit."
-                        },
-                        new
-                        {
-                            Id = new Guid("024fc536-6032-372a-0cc7-47527306116f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3b05c94c-c35e-6e4f-acda-a0d83eafcc11"),
-                            Value = "اختر الوحدة."
                         },
                         new
                         {
@@ -16655,18 +16270,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("46d6661d-ea85-afec-5ce0-df44c4c9d2e7"),
-                            Description = "",
-                            Key = "projects.unitInUse"
-                        },
-                        new
-                        {
-                            Id = new Guid("c11644b9-5e78-0b99-05ba-004904ce9afd"),
-                            Description = "",
-                            Key = "projects.sharedUnit"
-                        },
-                        new
-                        {
                             Id = new Guid("b431f747-6e0e-242d-4abb-474876efeeb4"),
                             Description = "",
                             Key = "projects.rename"
@@ -17708,66 +17311,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("0f5fb0bc-426d-b1d1-e736-373393389502"),
                             Description = "",
                             Key = "reports.surplus"
-                        },
-                        new
-                        {
-                            Id = new Guid("24c97faf-6d73-138a-41dc-e553fbb9f911"),
-                            Description = "",
-                            Key = "reports.units"
-                        },
-                        new
-                        {
-                            Id = new Guid("f6f5effc-4a2c-2758-dc54-25d329e013de"),
-                            Description = "",
-                            Key = "reports.unitDirect"
-                        },
-                        new
-                        {
-                            Id = new Guid("c5af721d-05bd-b90d-05fa-5241236275a0"),
-                            Description = "",
-                            Key = "reports.unitFromShared"
-                        },
-                        new
-                        {
-                            Id = new Guid("edf8c6e8-f53b-4645-bad3-292aef0dd0c4"),
-                            Description = "",
-                            Key = "reports.unsplit"
-                        },
-                        new
-                        {
-                            Id = new Guid("73893fbc-38ce-5ea2-b40f-9421d9439be3"),
-                            Description = "",
-                            Key = "expenses.split"
-                        },
-                        new
-                        {
-                            Id = new Guid("0df52050-b16c-725c-2f99-5ef4fc859aed"),
-                            Description = "",
-                            Key = "expenses.splitEqual"
-                        },
-                        new
-                        {
-                            Id = new Guid("aadc5b20-cca1-e823-9000-188fb4269be1"),
-                            Description = "",
-                            Key = "expenses.splitPercent"
-                        },
-                        new
-                        {
-                            Id = new Guid("a972c947-2698-eb26-a30f-ed0d1d6d6e0f"),
-                            Description = "",
-                            Key = "expenses.splitTotal"
-                        },
-                        new
-                        {
-                            Id = new Guid("093181e1-3f51-88c3-d596-265935a828c1"),
-                            Description = "",
-                            Key = "expenses.splitNeedsSharedUnit"
-                        },
-                        new
-                        {
-                            Id = new Guid("99d2c12b-b195-dbcf-6613-49181cbee1e5"),
-                            Description = "",
-                            Key = "expenses.invalidSplit"
                         },
                         new
                         {
@@ -19499,36 +19042,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("2ede21ba-9b50-aad9-9df0-48059892c06b"),
-                            Description = "",
-                            Key = "approvals.paidBy"
-                        },
-                        new
-                        {
-                            Id = new Guid("1691bde4-ce40-e8af-94c4-29b36ba82263"),
-                            Description = "",
-                            Key = "approvals.addToCapital"
-                        },
-                        new
-                        {
-                            Id = new Guid("87a76df0-b568-62a1-1c52-6861cb5ced94"),
-                            Description = "",
-                            Key = "approvals.owedBack"
-                        },
-                        new
-                        {
-                            Id = new Guid("ddd9dc40-dd7b-761b-0768-0d5cbcd55821"),
-                            Description = "",
-                            Key = "approvals.invalidTreatment"
-                        },
-                        new
-                        {
-                            Id = new Guid("f95556a3-c419-6ae3-2fa2-2e0e58b3c093"),
-                            Description = "",
-                            Key = "approvals.notPaidByPartner"
-                        },
-                        new
-                        {
                             Id = new Guid("9a500d31-c9d4-87a3-0f52-be7ba38c43b4"),
                             Description = "",
                             Key = "entries.tiedProjectRefused"
@@ -21095,12 +20608,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("91bb55ac-5d59-91e6-e7cc-c307f336a941"),
-                            Description = "",
-                            Key = "contracts.unknownUnit"
-                        },
-                        new
-                        {
                             Id = new Guid("3fcd9339-243f-3cbe-fd7b-5b5ecafffb95"),
                             Description = "",
                             Key = "contracts.invalidValue"
@@ -21152,12 +20659,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("7dcd7eb5-e6f8-611b-d54e-f013824c52ed"),
                             Description = "",
                             Key = "contracts.item"
-                        },
-                        new
-                        {
-                            Id = new Guid("c96bdf63-848a-9489-58d4-69828fe27483"),
-                            Description = "",
-                            Key = "contracts.unit"
                         },
                         new
                         {
@@ -21377,12 +20878,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("d6d1034b-6dcd-15b5-84f6-f3214c4a2b02"),
-                            Description = "",
-                            Key = "expenses.unit"
-                        },
-                        new
-                        {
                             Id = new Guid("5d71b29b-07f6-26ba-a47d-d6a100c2d513"),
                             Description = "",
                             Key = "expenses.supplier"
@@ -21470,12 +20965,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("bd47da61-ded7-c7d8-447a-ea0c154a1bc7"),
                             Description = "",
                             Key = "expenses.total"
-                        },
-                        new
-                        {
-                            Id = new Guid("9fc7231e-3919-cb42-5bd5-703d0dafd9bf"),
-                            Description = "",
-                            Key = "expenses.paymentSource"
                         },
                         new
                         {
@@ -21590,12 +21079,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
                             Description = "",
                             Key = "expenses.unknownSubgroup"
-                        },
-                        new
-                        {
-                            Id = new Guid("3b05c94c-c35e-6e4f-acda-a0d83eafcc11"),
-                            Description = "",
-                            Key = "expenses.unknownUnit"
                         },
                         new
                         {
@@ -22128,12 +21611,6 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Redix.Api.Projects.Unit", null)
-                        .WithMany()
-                        .HasForeignKey("UnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Contracts.ContractAttachment", b =>
@@ -22278,12 +21755,6 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("SubgroupId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Redix.Api.Projects.Unit", null)
-                        .WithMany()
-                        .HasForeignKey("UnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.Invoice", b =>
@@ -22306,21 +21777,6 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Suppliers.Supplier", null)
                         .WithMany()
                         .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Redix.Api.Entries.UnitShare", b =>
-                {
-                    b.HasOne("Redix.Api.Entries.Entry", null)
-                        .WithMany()
-                        .HasForeignKey("EntryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Redix.Api.Projects.Unit", null)
-                        .WithMany()
-                        .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

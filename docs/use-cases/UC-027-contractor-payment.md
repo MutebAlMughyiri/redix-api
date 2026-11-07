@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-A payment is a row in `Entries` of kind `ContractorPayment`, one in `ExpenseDetails` and one in `ContractorPaymentDetails`. The contract says the item, the unit and the contractor. It goes to the item's general subgroup, because neither the issue nor the canvas asks for another.
+A payment is a row in `Entries` of kind `ContractorPayment`, one in `ExpenseDetails` and one in `ContractorPaymentDetails`. The contract says the item and the contractor. It goes to the item's general subgroup, because neither the issue nor the canvas asks for another.
 
 Both kinds of expense share `EntryRequest` and `EntryRecording`: the payment method, the account (`ChargeAnyAccount` and `AccountCustodians`, BRS open question 4), the file, the custom columns, the invoice's number, and how an entry reaches the ledger with its audit records. `EntryAnswers` owns which column a kind of entry answers, so what only a purchase holds is never asked of a payment.
 

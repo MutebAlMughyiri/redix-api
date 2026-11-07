@@ -83,7 +83,7 @@ public class DashboardTests(MigratedApiFactory factory)
         await factory.WithDatabaseAsync(db => db.Items.Where(row => row.Id == ledger.ItemId).ExecuteUpdateAsync(row => row.SetProperty(entry => entry.Type, ItemType.Both)));
         await ApprovedAsync(ledger, ledger.Purchase(115, "P1") with { Product = "بلاط" });
         await ApprovedAsync(ledger, ledger.WithoutInvoice(50));
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, ledger.Project.Units[0].Id, 1000, false), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000, false), Json)).EnsureSuccessStatusCode();
         var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Json))!.Single();
         var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, AttachmentId = await ledger.FileAsync(), PaymentDate = ledger.Today, Amount = 300, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId, Submit = true };
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();

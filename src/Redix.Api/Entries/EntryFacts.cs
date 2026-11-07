@@ -14,12 +14,10 @@ public sealed class EntryFacts
     private ILookup<Guid, EntryAttachment> _files = Array.Empty<EntryAttachment>().ToLookup(row => row.EntryId);
     private Dictionary<Guid, string> _contentTypes = [];
     private Dictionary<Guid, string> _items = [];
-    private Dictionary<Guid, string> _units = [];
     private Dictionary<Guid, string> _accounts = [];
     private Dictionary<Guid, Supplier> _suppliers = [];
     private Dictionary<Guid, Guid> _contractors = [];
     private Dictionary<Guid, string> _authors = [];
-    private Dictionary<Guid, string> _pockets = [];
 
     /// <summary>The facts of <paramref name="entries"/> of the project <paramref name="projectId"/>.</summary>
     public static async Task<EntryFacts> OfAsync(Guid projectId, List<Entry> entries, RedixDbContext db)
@@ -35,12 +33,10 @@ public sealed class EntryFacts
             _files = (await db.EntryAttachments.Where(row => ids.Contains(row.EntryId)).ToListAsync()).ToLookup(row => row.EntryId),
             _contentTypes = await db.Attachments.Where(row => row.ProjectId == projectId).ToDictionaryAsync(row => row.Id, row => row.ContentType),
             _items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)).ToDictionaryAsync(item => item.Id, item => item.Name),
-            _units = await db.Set<Unit>().Where(unit => unit.ProjectId == projectId).ToDictionaryAsync(unit => unit.Id, unit => unit.Name),
             _accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name),
             _suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id),
             _contractors = await db.Contracts.Where(contract => contract.ProjectId == projectId).ToDictionaryAsync(contract => contract.Id, contract => contract.SupplierId),
             _authors = await db.Users.Where(user => authorIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName),
-            _pockets = await (from pocket in db.PartnerPockets join partner in db.Partners on pocket.PartnerId equals partner.Id where partner.ProjectId == projectId select new { pocket.AccountId, partner.Name }).ToDictionaryAsync(row => row.AccountId, row => row.Name),
         };
     }
 
@@ -52,12 +48,6 @@ public sealed class EntryFacts
 
     /// <summary>The entry's item.</summary>
     public string ItemNameOf(Entry entry) => _items.GetValueOrDefault(ExpenseOf(entry).ItemId, "");
-
-    /// <summary>The entry's unit.</summary>
-    public string UnitNameOf(Entry entry) => _units.GetValueOrDefault(ExpenseOf(entry).UnitId, "");
-
-    /// <summary>The partner who paid it from their pocket; empty when none did (BR-25).</summary>
-    public string PartnerNameOf(Entry entry) => _pockets.GetValueOrDefault(entry.AccountId, "");
 
     /// <summary>The account that paid it.</summary>
     public string AccountNameOf(Entry entry) => _accounts.GetValueOrDefault(entry.AccountId, "");

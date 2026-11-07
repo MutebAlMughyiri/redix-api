@@ -55,7 +55,6 @@ public class ApprovalsTests(MigratedApiFactory factory)
         Assert.Equal(file.ToString(), pending[1].AttachmentId);
         Assert.Equal("image/jpeg", pending[1].ContentType);
         Assert.Equal("شركة النخيل", pending[1].SupplierName);
-        Assert.Equal("الفلة الغربية", pending[1].UnitName);
         Assert.Equal(150m, pending[1].Vat);
     }
 

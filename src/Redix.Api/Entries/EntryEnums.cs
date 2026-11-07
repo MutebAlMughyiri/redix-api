@@ -84,20 +84,4 @@ public enum EntryLinkType : byte
 
     /// <summary>The credit note of an invoice (BR-18).</summary>
     CreditNoteOf,
-
-    /// <summary>The capital a partner gained from the expense they paid (BR-25).</summary>
-    ContributionOf,
-}
-
-/// <summary>What becomes of an expense paid from a partner's money (BR-25), decided when it is approved.</summary>
-public enum PartnerTreatment : byte
-{
-    /// <summary>The expense was not paid from a partner's money.</summary>
-    Empty,
-
-    /// <summary>It adds to the partner's capital.</summary>
-    Capital,
-
-    /// <summary>It is owed back to the partner.</summary>
-    AmountDue,
 }

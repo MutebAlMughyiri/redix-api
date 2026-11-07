@@ -22,7 +22,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-003](use-cases/UC-003-change-password.md) | Change the password, and secure every request | Every signed-in user |
 | UC-004 | Switching the app language is the app's use case; the API's part is the words of My account, added with the `LanguageSwitch` migration | Every signed-in user |
 | [UC-005](use-cases/UC-005-audit-trail.md) | The audit trail: who did what to which record, when, with the values before and after; never changed or deleted | The API, on its own |
-| [UC-006](use-cases/UC-006-projects.md) | A project and its units: rename them, delete a unit nothing uses, and close the project when finished | Whoever does the project's finance |
+| [UC-006](use-cases/UC-006-projects.md) | A project and its units: rename them, delete a unit, and close the project when finished | Whoever does the project's finance |
 | [UC-007](use-cases/UC-007-users.md) | Correct, disable and reset logins | A project manager, for someone only in projects they manage |
 | [UC-008](use-cases/UC-008-project-people.md) | Add people to a project and tick their permissions, and show each person only their projects | Whoever manages its users adds and ticks; everyone reads |
 | [UC-009](use-cases/UC-009-permissions.md) | Keep what each person may do in the database, keep projects separate, and enforce both on the server | Every request |
@@ -51,13 +51,12 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-033, UC-034, UC-035](use-cases/UC-033-change-entry.md) | Change an unapproved entry, keep the approved version, reverse an approved one | Who entered it, and whoever decides entries |
 | [UC-036](use-cases/UC-036-notifications.md) | Tell people what happened to an entry or a project | Everyone signed in |
 | [UC-039](use-cases/UC-039-attach-invoice.md) | Attach an invoice to an expense entered without one | Whoever enters expenses |
-| [UC-060](use-cases/UC-060-unit-split.md) | Split a shared expense across units, and each unit's cost | Whoever enters expenses; everyone reads |
 | [UC-061](use-cases/UC-061-liquidation.md) | Share out the final surplus by shares and close the project | Whoever does the project's finance |
 | [UC-064](use-cases/UC-064-documents.md) | Keep a project's documents, any file, in optional groups | The manager keeps them; everyone reads |
 | [UC-053 to UC-058](use-cases/UC-053-reports.md) | The numbered periodic report, and every report as PDF, workbook and the invoices' ZIP | Finance issues; everyone reads; whoever sees all capital exports |
 | [UC-049, UC-050, UC-051, UC-063](use-cases/UC-049-dashboard-and-reports.md) | The dashboard, an item's report, the contracts, completion and cost | Everyone in the project; the manager sets completion |
 | [UC-047, UC-048, UC-056](use-cases/UC-047-revenue-and-vat.md) | Revenue, sales invoices, and the VAT statement for any period | Whoever does the project's finance; everyone reads |
-| [UC-040 to UC-045](use-cases/UC-040-money-movements.md) | Transfers, reconciliation, capital movements, carrying a balance, shares, and expenses a partner paid | Whoever does the project's finance; everyone reads |
+| [UC-040 to UC-044](use-cases/UC-040-money-movements.md) | Transfers, reconciliation, capital movements, carrying a balance, and shares | Whoever does the project's finance; everyone reads |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-070](use-cases/UC-070-config.md) | Keep configurable values in one table, starting with how long the app waits for an answer | The app, before sign-in |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

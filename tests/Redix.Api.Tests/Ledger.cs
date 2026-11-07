@@ -53,7 +53,6 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     public ExpenseRequest Purchase(decimal amount = 1150m, string number = "") => new(Guid.CreateVersion7())
     {
         ItemId = ItemId,
-        UnitId = Project.Units[0].Id,
         SupplierId = SupplierId,
         InvoiceNumber = number.Length > 0 ? number : Guid.NewGuid().ToString("N")[..12],
         InvoiceDate = Today,
@@ -65,7 +64,6 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     public ExpenseRequest WithoutInvoice(decimal amount = 200m, string reason = "شراء نقدي من السوق") => new(Guid.CreateVersion7())
     {
         ItemId = ItemId,
-        UnitId = Project.Units[0].Id,
         SupplierId = SupplierId,
         WithoutInvoiceReason = reason,
         PaymentDate = Today,

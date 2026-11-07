@@ -65,7 +65,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var template = await TemplateOf(client, project.Id, "purchases");
 
         Assert.Equal(CoreColumns.Order(), template.Where(column => column.IsCore).Select(column => column.Key).Order());
-        Assert.Equal(["unit", "product", "unitPrice", "quantity", "paymentMethod", "notes"], template.Where(column => !column.IsCore).Select(column => column.Key));
+        Assert.Equal(["product", "unitPrice", "quantity", "paymentMethod", "notes"], template.Where(column => !column.IsCore).Select(column => column.Key));
     }
 
     [Fact]
@@ -231,12 +231,12 @@ public class ColumnsTests(MigratedApiFactory factory)
     {
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
-        var unit = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "unit");
+        var method = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{unit.Id}", new EditColumnRequest("الفلة", true, true))).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}", new EditColumnRequest("وسيلة الدفع", true, true))).EnsureSuccessStatusCode();
 
-        var changed = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "unit");
-        Assert.Equal(("الفلة", true, true), (changed.Name, changed.IsRequired, changed.ShowInReports));
+        var changed = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
+        Assert.Equal(("وسيلة الدفع", true, true), (changed.Name, changed.IsRequired, changed.ShowInReports));
     }
 
     [Fact]
@@ -295,11 +295,11 @@ public class ColumnsTests(MigratedApiFactory factory)
     {
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
-        var unit = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "unit");
+        var method = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
 
-        (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{unit.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}/delete", null)).EnsureSuccessStatusCode();
 
-        Assert.DoesNotContain(await ColumnsOf(client, project.Id, item.Id), column => column.Key == "unit");
+        Assert.DoesNotContain(await ColumnsOf(client, project.Id, item.Id), column => column.Key == "paymentMethod");
     }
 
     [Fact]
@@ -307,11 +307,11 @@ public class ColumnsTests(MigratedApiFactory factory)
     {
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
-        var unit = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "unit");
-        await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{unit.Id}/delete", null);
+        var method = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
+        await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}/delete", null);
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{unit.Id}/delete", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{unit.Id}", new EditColumnRequest("الوحدة", false, false))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}/delete", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}", new EditColumnRequest("الوحدة", false, false))).StatusCode);
     }
 
     [Fact]
@@ -338,8 +338,8 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         (await AddToTemplateAsync(client, project.Id, applyToAllItems: false)).EnsureSuccessStatusCode();
         var template = await TemplateOf(client, project.Id);
-        var unit = template.Single(column => column.Key == "unit");
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{unit.Id}", Renamed(unit, "الفلة", false))).EnsureSuccessStatusCode();
+        var method = template.Single(column => column.Key == "paymentMethod");
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{method.Id}", Renamed(method, "وسيلة الدفع", false))).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/reorder", new ReorderDefaultColumnsRequest([.. template.Select(column => column.Id).Reverse()], false))).EnsureSuccessStatusCode();
         var notes = template.Single(column => column.Key == "notes");
         (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}/delete", new ApplyToAllItemsRequest(false))).EnsureSuccessStatusCode();
@@ -445,8 +445,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (user, client, earlier) = await FinanceAsync();
         var item = await ItemOfType(client, earlier.Id, ItemType.Both);
         (await client.PostAsJsonAsync($"/projects/{earlier.Id}/items/{item.Id}/columns", AreaColumn)).EnsureSuccessStatusCode();
-        var unit = (await ColumnsOf(client, earlier.Id, item.Id)).Single(column => column.Key == "unit");
-        await client.PostAsync($"/projects/{earlier.Id}/items/{item.Id}/columns/{unit.Id}/delete", null);
+        var method = (await ColumnsOf(client, earlier.Id, item.Id)).Single(column => column.Key == "paymentMethod");
+        await client.PostAsync($"/projects/{earlier.Id}/items/{item.Id}/columns/{method.Id}/delete", null);
         (await AddToTemplateAsync(client, earlier.Id, applyToAllItems: false)).EnsureSuccessStatusCode();
 
         var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 7", new DateOnly(2026, 11, 1), []) { StructureSourceId = earlier.Id });
@@ -458,7 +458,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var copy = await ItemOfType(client, project.Id, ItemType.Both);
         var columns = await ColumnsOf(client, project.Id, copy.Id);
         Assert.Contains(columns, column => column.Name == "المساحة م²");
-        Assert.DoesNotContain(columns, column => column.Key == "unit");
+        Assert.DoesNotContain(columns, column => column.Key == "paymentMethod");
         Assert.Contains(await TemplateOf(client, project.Id), column => column.Name == "رقم أمر الشراء");
     }
 
@@ -484,8 +484,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var (_, otherClient, other) = await FinanceAsync("غصون 5");
         var item = await ItemOfType(otherClient, other.Id, ItemType.Both);
-        var column = (await ColumnsOf(otherClient, other.Id, item.Id)).Single(row => row.Key == "unit");
-        var inTemplate = (await TemplateOf(otherClient, other.Id)).Single(row => row.Key == "unit");
+        var column = (await ColumnsOf(otherClient, other.Id, item.Id)).Single(row => row.Key == "paymentMethod");
+        var inTemplate = (await TemplateOf(otherClient, other.Id)).Single(row => row.Key == "paymentMethod");
 
         foreach (var missed in new[]
         {
@@ -583,7 +583,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var area = (await ColumnsOf(client, project.Id, item.Id)).Last();
 
         Assert.Equal("invalidOptions", await CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, area, "شمال")));
-        Assert.Equal("invalidOptions", await CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, columns.Single(column => column.Key == "unit"), "شمال")));
+        Assert.Equal("invalidOptions", await CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, columns.Single(column => column.Key == "paymentMethod"), "شمال")));
     }
 
     [Fact]

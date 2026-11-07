@@ -246,8 +246,7 @@ public static class EntriesEndpoints
         await db.ContractorPaymentDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ContractorPaymentDetails(),
         await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new Invoice(),
         await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync(),
-        await db.EntryLinks.Where(row => row.EntryId == entry.Id).ToListAsync(),
-        await db.Set<UnitShare>().Where(row => row.EntryId == entry.Id).ToListAsync());
+        await db.EntryLinks.Where(row => row.EntryId == entry.Id).ToListAsync());
 }
 
 /// <summary>An entry on a list.</summary>
@@ -277,5 +276,4 @@ public record ChangeNotesRequest(string Notes);
 /// <param name="Invoice">Its invoice, which the VAT statement goes by.</param>
 /// <param name="Attachments">The files it carries.</param>
 /// <param name="Links">What ties it to other entries.</param>
-/// <param name="UnitShares">Each unit's part, when it is split (FR-15); empty otherwise.</param>
-public record EntryView(Entry Entry, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments, List<EntryLink> Links, List<UnitShare> UnitShares);
+public record EntryView(Entry Entry, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments, List<EntryLink> Links);

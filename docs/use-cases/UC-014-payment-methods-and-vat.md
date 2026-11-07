@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-The seeded template project holds the four payment methods of FR-40. When a project is approved it takes its own copy of them, always from the template: what registration chooses is where the categories and items come from, and it says so on the form. So one project's change touches no other (BR-33).
+The seeded template project holds three payment methods: شبكة, تحويل and كاش. FR-40 named a fourth, سداد, which went on 7 November 2026 (redix-api #96, D25). When a project is approved it takes its own copy of them, always from the template: what registration chooses is where the categories and items come from, and it says so on the form. So one project's change touches no other (BR-33).
 
 The VAT rate is a column of the project, `Projects.VatRate`, a fraction that starts at 0.15, and every `ProjectView` carries it as a percentage in `vatPercent`, so the entry use cases need no second call. It is not copied from an earlier project, so a new project never inherits a rate from one that finished years ago.
 
@@ -37,7 +37,7 @@ Every change also answers `409` `projectFinished` in a finished project.
 
 | Rule | Code | Test |
 | --- | --- | --- |
-| An approved project starts with the four methods of FR-40 | `PaymentMethodSeed`, `ProjectStructure.ApproveAsync` | `PaymentMethodsTests.AnApprovedProjectStartsWithTheFourMethodsOfFr40` |
+| An approved project starts with the three methods | `PaymentMethodSeed`, `ProjectStructure.ApproveAsync` | `PaymentMethodsTests.AnApprovedProjectStartsWithTheThreeMethods` |
 | They are rows of its own | `PaymentMethod.CopyFor` | `PaymentMethodsTests.ProjectsTakeTheirOwnRowsOfTheTemplatesMethods` |
 | A project copied from an earlier one still starts from the seed, with the starting rate | `ProjectStructure.ApproveAsync`, `Project.StartingVatRate` | `PaymentMethodsTests.AProjectCopiedFromAnEarlierOneStillStartsFromTheSeed` |
 | A method is added at the end, and renamed | `PaymentMethodsEndpoints.Add`, `Rename` | `PaymentMethodsTests.FinanceAddsAMethodAtTheEndOfTheList`, `FinanceRenamesAMethod` |

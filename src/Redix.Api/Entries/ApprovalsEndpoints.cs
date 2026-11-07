@@ -23,7 +23,6 @@ public static class ApprovalsEndpoints
         var changes = app.MapProjectChanges(Permission.ApproveEntries);
         changes.MapPost("/entries/approve", Approve);
         changes.MapPost("/entries/{entryId:guid}/reject", Reject);
-        changes.MapPost("/entries/{entryId:guid}/partner-treatment", SetPartnerTreatment);
     }
 
     /// <summary>What waits for a decision in the project, oldest first, each with its file or why it has none (AC-18.1).</summary>
@@ -33,7 +32,7 @@ public static class ApprovalsEndpoints
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.UnitNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.InvoiceOf(entry).Vat, facts.AccountNameOf(entry), entry.Notes, facts.ExpenseOf(entry).WithoutInvoiceReason, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry), facts.InvoiceOf(entry).Total, facts.InvoiceOf(entry).SellerVatNumber, facts.SupplierVatNumberOf(entry), facts.PartnerNameOf(entry), facts.ExpenseOf(entry).PartnerTreatment == PartnerTreatment.AmountDue ? PartnerTreatment.AmountDue : PartnerTreatment.Capital)).ToList();
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.InvoiceOf(entry).Vat, facts.AccountNameOf(entry), entry.Notes, facts.ExpenseOf(entry).WithoutInvoiceReason, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry), facts.InvoiceOf(entry).Total, facts.InvoiceOf(entry).SellerVatNumber, facts.SupplierVatNumberOf(entry))).ToList();
     }
 
     /// <summary>
@@ -67,7 +66,6 @@ public static class ApprovalsEndpoints
             db.Audit(entry, AuditAction.Approve, userId, at);
             NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryApproved, userId, at, db);
             await ApproveItsSupplierAsync(id, userId, at, db);
-            await PartnerExpenses.WhenApprovedAsync(entry, userId, at, db);
             approved.Add(id);
         }
         await db.SaveChangesAsync();
@@ -108,35 +106,6 @@ public static class ApprovalsEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Says whether what a partner paid adds to their capital or is owed back to them, as Finance chooses (BR-25). Anything but those answers <c>invalidTreatment</c>; an entry nobody is waiting on <c>entryNotPending</c>; one no partner paid <c>notPaidByPartner</c>.</summary>
-    /// <param name="projectId">The project.</param>
-    /// <param name="entryId">The entry.</param>
-    /// <param name="request">What Finance chose.</param>
-    /// <param name="db">The database the ledger lives in.</param>
-    public static async Task<IResult> SetPartnerTreatment(Guid projectId, Guid entryId, PartnerTreatmentRequest request, RedixDbContext db)
-    {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
-        {
-            return Results.NotFound();
-        }
-        if (request.Treatment == PartnerTreatment.Empty)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidTreatment");
-        }
-        if (entry.Status != EntryStatus.PendingApproval)
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "EntryNotPending");
-        }
-        if (!await db.PartnerPockets.AnyAsync(pocket => pocket.AccountId == entry.AccountId))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "NotPaidByPartner");
-        }
-        (await db.ExpenseDetails.SingleAsync(row => row.EntryId == entryId)).PartnerTreatment = request.Treatment;
-        await db.SaveChangesAsync();
-        return Results.Ok();
-    }
-
     private static async Task<string> RefusalOfOriginalAsync(Guid entryId, List<Guid> named, RedixDbContext db)
     {
         var originals = await db.EntryLinks.Where(link => link.EntryId == entryId && link.Type == EntryLinkType.CreditNoteOf).Select(link => link.LinkedEntryId).ToListAsync();
@@ -163,7 +132,6 @@ public static class ApprovalsEndpoints
 /// <param name="EntryDate">Its date.</param>
 /// <param name="Amount">What was paid.</param>
 /// <param name="ItemName">Its item.</param>
-/// <param name="UnitName">Its unit.</param>
 /// <param name="SupplierName">Its supplier, or the contract's contractor.</param>
 /// <param name="InvoiceNumber">Its invoice's number; empty when it has none.</param>
 /// <param name="Vat">Its invoice's VAT.</param>
@@ -176,13 +144,7 @@ public static class ApprovalsEndpoints
 /// <param name="InvoiceTotal">Its invoice's total, which may differ from what was paid (AC-49.3).</param>
 /// <param name="SellerVatNumber">The seller's VAT number on an invoice attached later; empty otherwise.</param>
 /// <param name="SupplierVatNumber">Its supplier's VAT number, to compare with that.</param>
-/// <param name="PartnerName">The partner who paid it from their pocket; empty when none did.</param>
-/// <param name="PartnerTreatment">What becomes of that, as it stands.</param>
-public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string UnitName, string SupplierName, string InvoiceNumber, decimal Vat, string AccountName, string Notes, string WithoutInvoiceReason, string AttachmentId, string ContentType, string AuthorName, decimal InvoiceTotal, string SellerVatNumber, string SupplierVatNumber, string PartnerName, PartnerTreatment PartnerTreatment);
-
-/// <summary>What becomes of what a partner paid.</summary>
-/// <param name="Treatment">Capital, or an amount due.</param>
-public record PartnerTreatmentRequest(PartnerTreatment Treatment);
+public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, decimal Vat, string AccountName, string Notes, string WithoutInvoiceReason, string AttachmentId, string ContentType, string AuthorName, decimal InvoiceTotal, string SellerVatNumber, string SupplierVatNumber);
 
 /// <summary>The entries to approve.</summary>
 /// <param name="EntryIds">Their ids.</param>

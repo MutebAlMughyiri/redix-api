@@ -44,7 +44,7 @@ public class Project
     /// <summary>The fraction its new entries' VAT is computed at (BR-14); each project keeps its own (BR-33). An entry keeps the VAT it was saved with.</summary>
     public decimal VatRate { get; private set; } = StartingVatRate;
 
-    /// <summary>The project's units, in the order they were added, and once approved the shared one.</summary>
+    /// <summary>The project's units, in the order they were added.</summary>
     public List<Unit> Units { get; } = [];
 
     /// <summary>How far the work has come, as a percentage from 0 to 100 (UC-063); 0 until someone says.</summary>
@@ -144,7 +144,7 @@ public class Project
         return ProjectChangeOutcome.Done;
     }
 
-    /// <summary>Renames one of the project's own units while the project is open (BR-38), unless the name is not acceptable or another unit holds it (BR-37).</summary>
+    /// <summary>Renames one of the project's units while the project is open (BR-38), unless the name is not acceptable or another unit holds it (BR-37).</summary>
     public ProjectChangeOutcome RenameUnit(Guid unitId, string name)
     {
         var refusal = RefusalOfChangingUnit(unitId);
@@ -164,17 +164,13 @@ public class Project
         return ProjectChangeOutcome.Done;
     }
 
-    /// <summary>Removes one of the project's own units while the project is open, unless <paramref name="isUsed"/> by an entry or a contract (BR-38).</summary>
-    public ProjectChangeOutcome RemoveUnit(Guid unitId, bool isUsed)
+    /// <summary>Removes one of the project's units while the project is open (BR-38).</summary>
+    public ProjectChangeOutcome RemoveUnit(Guid unitId)
     {
         var refusal = RefusalOfChangingUnit(unitId);
         if (refusal != ProjectChangeOutcome.Done)
         {
             return refusal;
-        }
-        if (isUsed)
-        {
-            return ProjectChangeOutcome.UnitInUse;
         }
         Units.RemoveAll(unit => unit.Id == unitId);
         return ProjectChangeOutcome.Done;
@@ -186,18 +182,10 @@ public class Project
         {
             return ProjectChangeOutcome.ProjectFinished;
         }
-        var unit = Units.SingleOrDefault(row => row.Id == unitId);
-        if (unit is null)
-        {
-            return ProjectChangeOutcome.UnknownUnit;
-        }
-        return unit.IsShared ? ProjectChangeOutcome.SharedUnit : ProjectChangeOutcome.Done;
+        return Units.Any(unit => unit.Id == unitId) ? ProjectChangeOutcome.Done : ProjectChangeOutcome.UnknownUnit;
     }
 
-    private bool IsUnitNameTaken(string name, Guid unitId = default) => name == Unit.SharedName || Units.Any(unit => unit.Name == name && unit.Id != unitId);
-
-    /// <summary>Adds the shared unit, which an entry or a contract may name instead of one of the project's units.</summary>
-    public void AddSharedUnit() => Units.Add(new Unit { ProjectId = Id, Name = Unit.SharedName, IsShared = true });
+    private bool IsUnitNameTaken(string name, Guid unitId = default) => Units.Any(unit => unit.Name == name && unit.Id != unitId);
 
     /// <summary>Sets the VAT rate to <paramref name="percent"/>, from 0 to 100 with at most two decimals, which the column keeps exactly, unless the project is finished.</summary>
     public ProjectChangeOutcome SetVatPercent(decimal percent)

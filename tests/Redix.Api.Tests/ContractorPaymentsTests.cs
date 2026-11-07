@@ -24,7 +24,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     private static async Task<Setup> ContractOfAsync(Ledger ledger, decimal value, bool isOpenValue)
     {
         var item = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType={ItemType.ContractorPayments}", Ledger.Json))!.SelectMany(category => category.Items).First();
-        var response = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, ledger.Project.Units[0].Id, value, isOpenValue), Ledger.Json);
+        var response = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, value, isOpenValue), Ledger.Json);
         response.EnsureSuccessStatusCode();
         var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Ledger.Json))!.Last();
         return new Setup(ledger, contract.Id, item.Id);
@@ -287,7 +287,6 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         Assert.Equal(3000m, entry.Amount);
         Assert.Equal(setup.Ledger.Today, entry.EntryDate);
         Assert.Equal(setup.ItemId, details.ItemId);
-        Assert.Equal(setup.Ledger.Project.Units[0].Id, details.UnitId);
         Assert.Equal(setup.ContractId, payment.ContractId);
         Assert.False(payment.IsOutsideContract);
         var subgroup = await setup.Ledger.ReadAsync(db => db.Set<Subgroup>().SingleAsync(row => row.Id == details.SubgroupId));

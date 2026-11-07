@@ -44,7 +44,6 @@ public class DuplicateInvoiceTests(MigratedApiFactory factory)
     private ExpenseRequest Expense(Setup setup, string number = "F4858") => new(Guid.CreateVersion7())
     {
         ItemId = setup.ItemId,
-        UnitId = setup.Project.Units[0].Id,
         SupplierId = setup.SupplierId,
         InvoiceNumber = number,
         InvoiceDate = Entry.Today(factory.Time),

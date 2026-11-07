@@ -614,7 +614,7 @@ public class CategoriesTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var contractor = (await ledger.Client.GetFromJsonAsync<List<SupplierView>>($"/projects/{ledger.ProjectId}/suppliers", Json))!.Single(supplier => supplier.Name == Supplier.GeneralCashSupplierName);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, ledger.ItemId, ledger.Project.Units[0].Id, 1000m, false), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, ledger.ItemId, 1000m, false), Json)).EnsureSuccessStatusCode();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("مواد"), Json)).EnsureSuccessStatusCode();
         var purchase = ledger.WithoutInvoice(70) with { Submit = true };
         await ledger.RecordAsync(purchase);
@@ -712,7 +712,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var contractor = (await ledger.Client.GetFromJsonAsync<List<SupplierView>>($"/projects/{ledger.ProjectId}/suppliers", Json))!.Single(supplier => supplier.Name == Supplier.GeneralCashSupplierName);
         var item = (await OfferedFor(ledger.Client, ledger.ProjectId, "contractorPayments")).SelectMany(category => category.Items).First();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, item.Id, ledger.Project.Units[0].Id, 34000m, false), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, item.Id, 34000m, false), Json)).EnsureSuccessStatusCode();
 
         var refused = await ChangeTypeAsync(ledger.Client, ledger.ProjectId, item.Id, ItemType.Purchases);
 

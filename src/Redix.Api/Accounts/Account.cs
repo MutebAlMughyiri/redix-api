@@ -32,8 +32,11 @@ public class Account
     /// <summary>Whether <paramref name="userId"/> holds it.</summary>
     public bool IsHeldBy(Guid userId) => Custodians.Any(custodian => custodian.UserId == userId);
 
-    /// <summary>Whether <paramref name="userId"/> may spend from it: only while it is active, and only if they hold it unless <paramref name="chargesAny"/> (BRS open question 4). Anyone may say a partner paid (BR-25).</summary>
-    public bool IsOfferedTo(Guid userId, bool chargesAny) => IsActive && (chargesAny || IsHeldBy(userId) || Type == AccountType.PartnerPocket);
+    /// <summary>
+    /// Whether <paramref name="userId"/> may spend from it: only an account added in Accounts, never a partner's pocket, which the app makes by itself (redix-api #96, D24); only
+    /// while it is active; and only if they hold it unless <paramref name="chargesAny"/> (BRS open question 4).
+    /// </summary>
+    public bool IsOfferedTo(Guid userId, bool chargesAny) => IsActive && Type != AccountType.PartnerPocket && (chargesAny || IsHeldBy(userId));
 
     /// <summary>Why an account with these values cannot be kept: a name outside its limits, an opening balance beyond its limit or with more than two decimals, or a cash custody with nobody holding it. Empty when it can.</summary>
     public static string RefusalOf(string name, AccountType type, decimal openingBalance, Guid custodianId)

@@ -8,7 +8,7 @@
 
 | Route | What it answers |
 | --- | --- |
-| `GET /projects/{id}/entries/pending` | What waits, oldest first: its item, unit, supplier, invoice number, VAT, account, notes and author, with its file or why it has none |
+| `GET /projects/{id}/entries/pending` | What waits, oldest first: its item, supplier, invoice number, VAT, account, notes and author, with its file or why it has none |
 
 | Rule | Code | Test |
 | --- | --- | --- |

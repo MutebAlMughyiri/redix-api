@@ -7,7 +7,7 @@ namespace Redix.Api.Entries;
 /// <summary>Reversing what is approved (UC-035, FR-50): an opposite entry of the same amount, tied to the original and approved at once, so both show in the reports and the net effect is zero. What was entered as one reverses as one, in whichever project it stands.</summary>
 public static class EntryReversal
 {
-    private static readonly EntryLinkType[] Ties = [EntryLinkType.TransferPair, EntryLinkType.CarryPair, EntryLinkType.ContributionOf];
+    private static readonly EntryLinkType[] Ties = [EntryLinkType.TransferPair, EntryLinkType.CarryPair];
 
     /// <summary>What was entered together with <paramref name="entryId"/>, and reverses with it.</summary>
     public static Task<List<Entry>> TiedToAsync(Guid entryId, RedixDbContext db)
@@ -25,7 +25,7 @@ public static class EntryReversal
         var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (expense is not null)
         {
-            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, UnitId = expense.UnitId, PaymentMethodId = expense.PaymentMethodId, BankFees = -expense.BankFees, WithoutInvoiceReason = reason, PartnerTreatment = expense.PartnerTreatment, CustomValues = expense.CustomValues });
+            details.Add(new ExpenseDetails { EntryId = reversal.Id, ItemId = expense.ItemId, SubgroupId = expense.SubgroupId, PaymentMethodId = expense.PaymentMethodId, BankFees = -expense.BankFees, WithoutInvoiceReason = reason, CustomValues = expense.CustomValues });
         }
         var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (purchase is not null)
@@ -48,7 +48,6 @@ public static class EntryReversal
             details.Add(new CapitalMovementDetails { EntryId = reversal.Id, PartnerId = capital.PartnerId, Type = capital.Type, Description = reason });
             await BringBackIfSettledAsync(capital, db);
         }
-        details.AddRange(await db.Set<UnitShare>().Where(row => row.EntryId == entry.Id).Select(share => new UnitShare { EntryId = reversal.Id, UnitId = share.UnitId, Percent = share.Percent }).ToListAsync());
         var revenue = await db.Set<RevenueDetails>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (revenue is not null)
         {

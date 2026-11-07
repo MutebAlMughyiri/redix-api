@@ -112,7 +112,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
         var item = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType={ItemType.ContractorPayments}", Ledger.Json))!.SelectMany(category => category.Items).First();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, ledger.Project.Units[0].Id, 34000m, false), Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, 34000m, false), Ledger.Json)).EnsureSuccessStatusCode();
         var contractId = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Ledger.Json))!.Single().Id;
         ContractorPaymentRequest Payment() => new(Guid.CreateVersion7()) { ContractId = contractId, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
         var noReceipt = Payment();
@@ -175,7 +175,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
             foreach (var entryId in fieldEntries)
             {
                 db.Add(new Entry { Id = entryId, ProjectId = source.ProjectId, Kind = source.Kind, Status = EntryStatus.Draft, EntryDate = source.EntryDate, Amount = source.Amount, AccountId = source.AccountId, CreatedByUserId = fieldId, CreatedAt = source.CreatedAt });
-                db.Add(new ExpenseDetails { EntryId = entryId, ItemId = details.ItemId, SubgroupId = details.SubgroupId, UnitId = details.UnitId, PaymentMethodId = details.PaymentMethodId, WithoutInvoiceReason = "نقدي" });
+                db.Add(new ExpenseDetails { EntryId = entryId, ItemId = details.ItemId, SubgroupId = details.SubgroupId, PaymentMethodId = details.PaymentMethodId, WithoutInvoiceReason = "نقدي" });
             }
             await db.SaveChangesAsync();
         });

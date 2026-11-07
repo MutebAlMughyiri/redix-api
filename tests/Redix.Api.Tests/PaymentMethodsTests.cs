@@ -50,11 +50,11 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
 
     [Fact]
-    public async Task AnApprovedProjectStartsWithTheFourMethodsOfFr40()
+    public async Task AnApprovedProjectStartsWithTheThreeMethods()
     {
         var (client, project) = await FinanceAsync();
 
-        Assert.Equal(["شبكة", "تحويل", "كاش", "سداد"], (await MethodsOf(client, project.Id)).Select(method => method.Name));
+        Assert.Equal(["شبكة", "تحويل", "كاش"], (await MethodsOf(client, project.Id)).Select(method => method.Name));
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         var admin = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password, isAdmin: true), Password);
         (await admin.PostAsync($"/projects/{later.Id}/approve", null)).EnsureSuccessStatusCode();
 
-        Assert.Equal(["شبكة", "تحويل", "كاش", "سداد"], (await MethodsOf(client, later.Id)).Select(method => method.Name));
+        Assert.Equal(["شبكة", "تحويل", "كاش"], (await MethodsOf(client, later.Id)).Select(method => method.Name));
         Assert.Equal(15m, (await ProjectOf(client, later.Id)).VatPercent);
     }
 
@@ -121,7 +121,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
             Assert.Equal("invalidName", await CodeOf(refused));
         }
-        Assert.Equal(4, (await MethodsOf(client, project.Id)).Count);
+        Assert.Equal(3, (await MethodsOf(client, project.Id)).Count);
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         var card = (await MethodsOf(client, project.Id))[0];
         var member = await MemberAsync(project, role);
 
-        Assert.Equal(4, (await MethodsOf(member, project.Id)).Count);
+        Assert.Equal(3, (await MethodsOf(member, project.Id)).Count);
         foreach (var refused in new[]
         {
             await member.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest("مدى")),
@@ -225,7 +225,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
             Assert.Equal("projectFinished", await CodeOf(refused));
         }
-        Assert.Equal(4, (await MethodsOf(client, project.Id)).Count);
+        Assert.Equal(3, (await MethodsOf(client, project.Id)).Count);
         Assert.Equal(15m, (await ProjectOf(client, project.Id)).VatPercent);
     }
 

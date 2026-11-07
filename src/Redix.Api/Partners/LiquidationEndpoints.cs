@@ -83,7 +83,7 @@ public static class LiquidationEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> RecordLate(Guid projectId, LateEntryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var project = await db.Projects.Include(row => row.Units).SingleAsync(row => row.Id == projectId);
+        var project = await db.Projects.SingleAsync(row => row.Id == projectId);
         if (!project.IsReadOnly)
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "ProjectNotClosed");
@@ -116,7 +116,7 @@ public static class LiquidationEndpoints
             var method = await db.PaymentMethods.Where(row => row.ProjectId == projectId && row.IsActive).OrderBy(row => row.SortOrder).Select(row => row.Id).FirstAsync();
             var supplier = await db.Suppliers.Where(row => row.ProjectId == projectId && row.IsGeneralCash).Select(row => row.Id).FirstAsync();
             DirectEntries.Add(entry, [
-                new ExpenseDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = general, UnitId = project.Units.Single(unit => unit.IsShared).Id, PaymentMethodId = method, WithoutInvoiceReason = LateReason },
+                new ExpenseDetails { EntryId = entry.Id, ItemId = item.Id, SubgroupId = general, PaymentMethodId = method, WithoutInvoiceReason = LateReason },
                 new PurchaseDetails { EntryId = entry.Id, SupplierId = supplier, Product = description[..Math.Min(description.Length, PurchaseDetails.ProductMaxLength)] },
             ], userId, at, db);
         }

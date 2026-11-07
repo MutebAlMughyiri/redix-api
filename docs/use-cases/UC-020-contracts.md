@@ -10,11 +10,9 @@
 
 A contractor is a supplier of the project (the database design's decision 2), so a contractor payment's tax invoice has the contractor's VAT number. A contract is for one item that takes contractor payments, and one unit, which may be the shared one.
 
-`Units.IsShared` marks the shared unit (مشترك), a row added when the admin approves the project (open question 3). `ProjectView.units` keeps the project's own units; `entryUnits` is what an entry or a contract may name, the shared one last.
-
 The remaining lives on the contract: `Contract.RemainingAfter(paid)` and `IsOverrunBy(paid)`. What was paid comes from the ledger through `ContractMoney`, since UC-027 "Record a contractor payment".
 
-An amendment is an edit of the terms: the value, open value, unit price, quantity and notes. The contractor, item and unit change too while no payment names the contract, whatever became of that payment; once one does they stay, because a payment's VAT follows the contractor and its row holds the item and the unit.
+An amendment is an edit of the terms: the value, open value, unit price, quantity and notes. The contractor and item change too while no payment names the contract, whatever became of that payment; once one does they stay, because a payment's VAT follows the contractor and its row holds the item and the unit.
 
 ## Endpoints
 
@@ -31,14 +29,13 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 
 | Table | Holds |
 | --- | --- |
-| `Contracts` | Each project's contracts, with their contractor, item, unit and terms |
-| `Units` | Gains `IsShared`, for the shared unit |
+| `Contracts` | Each project's contracts, with their contractor, item and terms |
 
 ## Rules and where they live
 
 | Rule | Code | Test in `ContractsTests` |
 | --- | --- | --- |
-| Finance adds a contract with its contractor, item, unit and value (FR-07) | `ContractsEndpoints.Add` | `FinanceAddsAContractWithItsContractorItemUnitAndValue` |
+| Finance adds a contract with its contractor, item and value (FR-07) | `ContractsEndpoints.Add` | `FinanceAddsAContractWithItsContractorItemAndValue` |
 | A new contract has its whole value remaining | `ContractMoney` | `ANewContractHasItsWholeValueRemaining` |
 | The remaining is the value less what was paid inside (AC-07.1, BR-04) | `Contract.RemainingAfter` | `TheRemainingIsTheValueLessWhatWasPaidInsideTheContract` |
 | A payment beyond the value leaves a negative remaining, with an alert (AC-07.1) | `Contract.IsOverrunBy` | `APaymentBeyondTheValueLeavesANegativeRemainingWithAnAlert` |
@@ -49,12 +46,9 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | Notes have at most 1000 characters | `Contract.RefusalOf` | `NotesHaveAtMost1000Characters` |
 | The contractor is an active supplier of the project (BR-15, BR-33) | `ContractsEndpoints.RefusalOfPartiesAsync` | `TheContractorIsAnActiveSupplierOfTheProject` |
 | The item takes contractor payments (the issue's precondition) | `Category.ItemsOfferedFor` | `TheItemTakesContractorPayments`, `ADisabledItemTakesNoNewContract` |
-| The unit is in the project (BR-33) | `ContractsEndpoints.RefusalOfPartiesAsync` | `TheUnitIsInTheProject` |
-| A contract may be for the shared unit (open question 3) | `Project.AddSharedUnit` | `AContractMayBeForTheSharedUnit` |
-| An approved project offers its units, then the shared one | `ProjectView.Of` | `AnApprovedProjectOffersItsUnitsAndThenTheSharedOne` |
 | An amendment changes the terms and keeps the contractor | `ContractsEndpoints.Amend` | `AnAmendmentChangesTheTermsAndKeepsTheContractor`, `AnAmendmentCanMakeAContractOpenValue`, `AnAmendmentAnswersAsAddingDoes` |
 | A contract answers its parties, and whether any payment names it | `ContractView`, `ContractsEndpoints.List` | `AContractAnswersItsPartiesAndThatItHasNoPayments` |
-| A contract's contractor, item and unit change while it has no payments, in the audit trail, old and new; new ones answer as adding does | `ContractsEndpoints.Amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheAuditTrailShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
+| A contract's contractor and item change while it has no payments, in the audit trail, old and new; new ones answer as adding does | `ContractsEndpoints.Amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheAuditTrailShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
 | Any payment, even a draft or a rejected one, holds them, and a refusal changes nothing; the terms can still change | `ContractsEndpoints.Amend` | `AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing`, `AContractWithAPaymentStillChangesItsTerms` |
 | Every change of a contract is in the audit trail | `ContractsEndpoints` | `EveryChangeOfAContractIsInTheAuditTrail` |
 | Disabled, it stays on the list, never deleted | No delete route | `ADisabledContractStaysOnTheListAndCanBeEnabled` |
@@ -70,3 +64,5 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | --- | --- |
 | The contract's document, through `ContractAttachments` | UC-021 "Store an invoice or receipt attachment" |
 | The contracts report | UC-051 "Contracts report" |
+
+A contract is for an item of the project, not a unit, since 7 November 2026 (redix-api #96): the unit, the shared unit and their tests went with it.

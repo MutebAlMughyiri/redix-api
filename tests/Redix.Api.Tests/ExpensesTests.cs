@@ -61,7 +61,6 @@ public class ExpensesTests(MigratedApiFactory factory)
     private ExpenseRequest Expense(Setup setup, decimal amount = 6000m) => new(Guid.CreateVersion7())
     {
         ItemId = setup.ItemId,
-        UnitId = setup.Project.Units[0].Id,
         SupplierId = setup.SupplierId,
         InvoiceNumber = "2617",
         InvoiceDate = Entry.Today(factory.Time),
@@ -371,7 +370,6 @@ public class ExpensesTests(MigratedApiFactory factory)
         Assert.Equal(Entry.NotApproved, entry.ApprovedAt);
         var expense = await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == request.Id));
         Assert.Equal(setup.ItemId, expense.ItemId);
-        Assert.Equal(request.UnitId, expense.UnitId);
         Assert.Equal(setup.SupplierId, (await ReadAsync(db => db.PurchaseDetails.SingleAsync(row => row.EntryId == request.Id))).SupplierId);
         Assert.Equal("2617", (await InvoiceOfAsync(request.Id)).Number);
     }
@@ -491,16 +489,6 @@ public class ExpensesTests(MigratedApiFactory factory)
         await AssertRefusedAsync(setup, Expense(setup) with { ItemId = other.ItemId }, "itemNotOffered");
         (await setup.Client.PostAsync($"/projects/{setup.Project.Id}/items/{setup.ItemId}/disable", null)).EnsureSuccessStatusCode();
         await AssertRefusedAsync(setup, Expense(setup), "itemNotOffered");
-    }
-
-    [Fact]
-    public async Task OpenQuestion3_TheSharedUnitIsAllowedAndAUnitOfAnotherProjectIsNot()
-    {
-        var setup = await FinanceAsync();
-        var other = await FinanceAsync("غصون 7");
-
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { UnitId = setup.Project.EntryUnits[^1].Id })).StatusCode);
-        await AssertRefusedAsync(setup, Expense(setup) with { UnitId = other.Project.Units[0].Id }, "unknownUnit");
     }
 
     [Fact]

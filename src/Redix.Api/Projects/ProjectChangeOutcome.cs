@@ -29,10 +29,4 @@ public enum ProjectChangeOutcome
 
     /// <summary>No such unit in this project, which answers 404.</summary>
     UnknownUnit,
-
-    /// <summary>The shared unit is never renamed or deleted (BR-38).</summary>
-    SharedUnit,
-
-    /// <summary>An entry or a contract uses the unit, so it stays (BR-38).</summary>
-    UnitInUse,
 }

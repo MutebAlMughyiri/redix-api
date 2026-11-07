@@ -277,7 +277,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             contract.Property(c => c.Notes).HasMaxLength(Contract.NotesMaxLength);
             contract.HasOne<Project>().WithMany().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Restrict);
             contract.HasOne<Item>().WithMany().HasForeignKey(c => c.ItemId).OnDelete(DeleteBehavior.Restrict);
-            contract.HasOne<Unit>().WithMany().HasForeignKey(c => c.UnitId).OnDelete(DeleteBehavior.Restrict);
             contract.HasOne<Supplier>().WithMany().HasForeignKey(c => c.SupplierId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Attachment>(attachment =>
@@ -322,7 +321,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             details.HasOne<Entry>().WithOne().HasForeignKey<ExpenseDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Item>().WithMany().HasForeignKey(d => d.ItemId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Subgroup>().WithMany().HasForeignKey(d => d.SubgroupId).OnDelete(DeleteBehavior.Restrict);
-            details.HasOne<Unit>().WithMany().HasForeignKey(d => d.UnitId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<PaymentMethod>().WithMany().HasForeignKey(d => d.PaymentMethodId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<PurchaseDetails>(details =>
@@ -346,14 +344,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.Property(i => i.SellerVatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
-        });
-        modelBuilder.Entity<UnitShare>(share =>
-        {
-            share.ToTable("UnitShares");
-            share.HasKey(s => new { s.EntryId, s.UnitId });
-            share.Property(s => s.Percent).HasPrecision(5, 2);
-            share.HasOne<Entry>().WithMany().HasForeignKey(s => s.EntryId).OnDelete(DeleteBehavior.Restrict);
-            share.HasOne<Unit>().WithMany().HasForeignKey(s => s.UnitId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Redix.Api.Revenue.RevenueDetails>(details =>
         {

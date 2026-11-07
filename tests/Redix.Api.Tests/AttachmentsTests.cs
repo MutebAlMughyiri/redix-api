@@ -265,7 +265,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
     {
         var contractor = (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers", Json))!.Single(supplier => supplier.Name == Supplier.GeneralCashSupplierName);
         var item = (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories/offered?itemType={ItemType.ContractorPayments}", Json))!.SelectMany(category => category.Items).First();
-        return new AddContractRequest(contractor.Id, item.Id, project.Units[0].Id, 34000m, false);
+        return new AddContractRequest(contractor.Id, item.Id, 34000m, false);
     }
 
     private static async Task<List<ContractView>> ContractsOf(HttpClient client, Guid projectId) =>

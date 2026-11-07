@@ -140,7 +140,7 @@ public static class ContractorPaymentsEndpoints
     {
         List<object> details =
         [
-            EntryRecording.ExpenseDetailsOf(request, contract.ItemId, subgroupId, contract.UnitId),
+            EntryRecording.ExpenseDetailsOf(request, contract.ItemId, subgroupId),
             new ContractorPaymentDetails { EntryId = request.Id, ContractId = contract.Id, IsOutsideContract = request.IsOutsideContract },
         ];
         if (request.HasInvoice())

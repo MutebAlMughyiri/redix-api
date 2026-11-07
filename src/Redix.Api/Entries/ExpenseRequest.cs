@@ -10,9 +10,6 @@ public record ExpenseRequest(Guid Id) : EntryRequest(Id)
     /// <summary>The group inside the item; left out for its general group.</summary>
     public Guid SubgroupId { get; init; }
 
-    /// <summary>The unit.</summary>
-    public Guid UnitId { get; init; }
-
     /// <summary>The supplier, from the project's register.</summary>
     public Guid SupplierId { get; init; }
 
@@ -45,9 +42,6 @@ public record ExpenseRequest(Guid Id) : EntryRequest(Id)
 
     /// <summary>What was paid; left out when it is the invoice's total (BR-24).</summary>
     public decimal PaymentAmount { get; init; }
-
-    /// <summary>Each unit's part, for an expense recorded against the shared unit (FR-15); left out when it is not split.</summary>
-    public List<UnitShareRequest> UnitShares { get; init; } = [];
 
     /// <summary>Whether this is a deduction: a negative amount, which FR-14 allows and which comes off the item.</summary>
     public bool IsDeduction() => Amount < 0;

@@ -104,7 +104,7 @@ public static class ProjectsEndpoints
     public static Task<IResult> Rename(Guid projectId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.Rename(request.Name.Trim()));
 
-    /// <summary>Renames a unit while its project is open (BR-38). It answers as <see cref="AddUnit"/> does; the shared unit answers <c>sharedUnit</c>, and one outside the project 404.</summary>
+    /// <summary>Renames a unit while its project is open (BR-38). It answers as <see cref="AddUnit"/> does, and one outside the project 404.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="unitId">The unit.</param>
     /// <param name="request">Its new name.</param>
@@ -114,17 +114,14 @@ public static class ProjectsEndpoints
     public static Task<IResult> RenameUnit(Guid projectId, Guid unitId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.RenameUnit(unitId, request.Name.Trim()));
 
-    /// <summary>Deletes a unit while its project is open (BR-38). One an entry or a contract uses answers <c>unitInUse</c>; the shared unit, <c>sharedUnit</c>; a finished project, <c>projectFinished</c>; one outside the project 404.</summary>
+    /// <summary>Deletes a unit while its project is open (BR-38). A finished project answers <c>projectFinished</c>; one outside the project 404.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="unitId">The unit.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
     /// <param name="time">The current time, for the audit record.</param>
-    public static async Task<IResult> DeleteUnit(Guid projectId, Guid unitId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var isUsed = await db.ExpenseDetails.AnyAsync(details => details.UnitId == unitId) || await db.Contracts.AnyAsync(contract => contract.UnitId == unitId);
-        return await ChangeAsync(projectId, principal, db, time, AuditAction.Delete, project => project.RemoveUnit(unitId, isUsed));
-    }
+    public static Task<IResult> DeleteUnit(Guid projectId, Guid unitId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        ChangeAsync(projectId, principal, db, time, AuditAction.Delete, project => project.RemoveUnit(unitId));
 
     /// <summary>
     /// Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>; one with entries waiting for approval, <c>pendingEntries</c> (BR-35).
@@ -255,12 +252,11 @@ public record AddUnitRequest(string Name);
 /// <param name="Units">The project's units, in order.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
 /// <param name="VatPercent">The VAT rate of its new entries, as a percentage.</param>
-/// <param name="EntryUnits">What an entry or a contract may name: the project's units in order, and the shared one last.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<Permission> Permissions, decimal VatPercent, List<UnitView> EntryUnits)
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<Permission> Permissions, decimal VatPercent)
 {
     /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="permissions"/> in it.</summary>
     public static ProjectView Of(Project project, List<Permission> permissions) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Where(unit => !unit.IsShared).Select(UnitView.Of).ToList(), permissions, project.VatRate * 100, project.Units.OrderBy(unit => unit.IsShared).Select(UnitView.Of).ToList());
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Select(UnitView.Of).ToList(), permissions, project.VatRate * 100);
 }
 
 /// <summary>A unit as the app shows it.</summary>

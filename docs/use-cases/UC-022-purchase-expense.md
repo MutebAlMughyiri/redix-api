@@ -50,7 +50,6 @@ Tests are in `ExpensesTests`.
 | BR-12: a date inside the project's period, not in the future, in Saudi time | `Entry.IsAcceptableDate`, `Entry.Today` | `BR_12_ADateOutsideTheProjectsPeriodOrInTheFutureIsRefused`, `BR_12_TheProjectsFirstDayAndTodayAreAccepted`, `BR_12_TodayIsTheDateInSaudiArabiaNotOnTheServer` |
 | BR-19: a supplier from the register, never free text | `Supplier.OfferedTo` | `BR_19_ASupplierNotInTheRegisterIsRefused`, `ADisabledSupplierIsRefused`, `FR_44_FieldUsesTheirOwnPendingSupplierAndNotAnothers` |
 | Open question 4: Field charges only what they hold; `ChargeAnyAccount` lets Finance charge any active account | `Account.IsOfferedTo` | `OpenQuestion4_FieldChargesAnAccountTheyAreACustodianOf`, `OpenQuestion4_FieldCannotChargeAnAccountTheyAreNotACustodianOf`, `ChargeAnyAccountLetsFinanceChargeAnyActiveAccountAndNotADisabledOne` |
-| Open question 3: the shared unit is allowed | The `Units` row | `OpenQuestion3_TheSharedUnitIsAllowedAndAUnitOfAnotherProjectIsNot` |
 | AC-38.1: only an item that takes purchases | `ProjectStructure.OfferedItemAsync` | `AC_38_1_AnItemThatTakesNoPurchasesOrIsDisabledOrOfAnotherProjectIsRefused` |
 | AC-40.1: a disabled payment method is refused | `ExpensesEndpoints` | `AC_40_1_ADisabledPaymentMethodIsRefused` |
 | FR-41, AC-41.1: a required column is asked when sending, of its own item only | `ExpenseRequest.Answers` | `AC_41_1_ARequiredCustomColumnIsAskedOnlyOfItsItemWhenSending`, `ADraftCanWaitForARequiredColumn`, `FR_41_ABuiltInColumnMadeRequiredIsAskedWhenSending` |

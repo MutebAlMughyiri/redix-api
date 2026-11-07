@@ -52,7 +52,7 @@ public class ContractsTests(MigratedApiFactory factory)
         (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{projectId}/categories/offered?itemType={itemType}", Json))!.SelectMany(category => category.Items).First();
 
     private static async Task<AddContractRequest> RequestFor(HttpClient client, ProjectView project, decimal value = 34000m, bool isOpenValue = false) =>
-        new((await ContractorOf(client, project.Id)).Id, (await ItemOf(client, project.Id)).Id, project.Units[0].Id, value, isOpenValue);
+        new((await ContractorOf(client, project.Id)).Id, (await ItemOf(client, project.Id)).Id, value, isOpenValue);
 
     private static Task<HttpResponseMessage> PostAsync(HttpClient client, Guid projectId, AddContractRequest request) =>
         client.PostAsJsonAsync($"/projects/{projectId}/contracts", request, Json);
@@ -74,7 +74,7 @@ public class ContractsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task FinanceAddsAContractWithItsContractorItemUnitAndValue()
+    public async Task FinanceAddsAContractWithItsContractorItemAndValue()
     {
         var (client, project) = await FinanceAsync();
         var request = await RequestFor(client, project) with { UnitPrice = 380m, Quantity = 89.47m, Notes = " دفعات شهرية " };
@@ -84,7 +84,6 @@ public class ContractsTests(MigratedApiFactory factory)
         var contract = Assert.Single(await ContractsOf(client, project.Id));
         Assert.Equal(Supplier.GeneralCashSupplierName, contract.SupplierName);
         Assert.Equal((await ItemOf(client, project.Id)).Name, contract.ItemName);
-        Assert.Equal("الفلة الغربية", contract.UnitName);
         Assert.Equal(34000m, contract.Value);
         Assert.Equal(380m, contract.UnitPrice);
         Assert.Equal(89.47m, contract.Quantity);
@@ -117,7 +116,7 @@ public class ContractsTests(MigratedApiFactory factory)
     [Fact]
     public void APaymentBeyondTheValueLeavesANegativeRemainingWithAnAlert()
     {
-        var view = ContractView.Of(ContractOf(34000m), new ContractMoney(35000m, 0), "مبلط", "البلاط", "الفلة الغربية");
+        var view = ContractView.Of(ContractOf(34000m), new ContractMoney(35000m, 0), "مبلط", "البلاط");
 
         Assert.Equal(-1000m, view.Remaining);
         Assert.True(view.IsOverrun);
@@ -126,7 +125,7 @@ public class ContractsTests(MigratedApiFactory factory)
     [Fact]
     public void AnOpenValueContractAddsUpWithNoRemainingAndNoAlert()
     {
-        var view = ContractView.Of(ContractOf(0m, isOpenValue: true), new ContractMoney(12000m, 0), "دهان", "بويه", "الفلة الغربية");
+        var view = ContractView.Of(ContractOf(0m, isOpenValue: true), new ContractMoney(12000m, 0), "دهان", "بويه");
 
         Assert.Equal(12000m, view.Paid);
         Assert.Equal(0m, view.Remaining);
@@ -219,36 +218,11 @@ public class ContractsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task TheUnitIsInTheProject()
-    {
-        var (client, project) = await FinanceAsync();
-        var (_, other) = await FinanceAsync("غصون 5");
-        var request = await RequestFor(client, project);
-
-        foreach (var unitId in new[] { other.Units[0].Id, Guid.Empty })
-        {
-            Assert.Equal("unknownUnit", await CodeOf(await PostAsync(client, project.Id, request with { UnitId = unitId })));
-        }
-    }
-
-    [Fact]
-    public async Task AContractMayBeForTheSharedUnit()
-    {
-        var (client, project) = await FinanceAsync();
-        var shared = project.EntryUnits.Last();
-
-        (await PostAsync(client, project.Id, await RequestFor(client, project) with { UnitId = shared.Id })).EnsureSuccessStatusCode();
-
-        Assert.Equal(Unit.SharedName, Assert.Single(await ContractsOf(client, project.Id)).UnitName);
-    }
-
-    [Fact]
-    public async Task AnApprovedProjectOffersItsUnitsAndThenTheSharedOne()
+    public async Task AnApprovedProjectHasOnlyItsOwnUnits()
     {
         var (_, project) = await FinanceAsync();
 
         Assert.Equal(["الفلة الغربية"], project.Units.Select(unit => unit.Name));
-        Assert.Equal(["الفلة الغربية", Unit.SharedName], project.EntryUnits.Select(unit => unit.Name));
     }
 
     [Fact]
@@ -418,7 +392,7 @@ public class ContractsTests(MigratedApiFactory factory)
 
         var contract = Assert.Single(await ContractsOf(client, project.Id));
 
-        Assert.Equal((request.SupplierId, request.ItemId, request.UnitId, false), (contract.SupplierId, contract.ItemId, contract.UnitId, contract.HasPayments));
+        Assert.Equal((request.SupplierId, request.ItemId, false), (contract.SupplierId, contract.ItemId, contract.HasPayments));
     }
 
     [Fact]
@@ -430,20 +404,17 @@ public class ContractsTests(MigratedApiFactory factory)
         var contract = Assert.Single(await ContractsOf(client, project.Id));
         var contractor = await AnotherContractorAsync(client, project.Id);
         var item = await AnotherItemAsync(client, project.Id, request.ItemId);
-        var shared = project.EntryUnits.Single(unit => unit.Name == Unit.SharedName);
 
-        (await AmendAsync(client, project.Id, contract.Id, new { value = 34000m, isOpenValue = false, supplierId = contractor.Id, itemId = item.Id, unitId = shared.Id })).EnsureSuccessStatusCode();
+        (await AmendAsync(client, project.Id, contract.Id, new { value = 34000m, isOpenValue = false, supplierId = contractor.Id, itemId = item.Id })).EnsureSuccessStatusCode();
 
         var amended = Assert.Single(await ContractsOf(client, project.Id));
-        Assert.Equal((contractor.Name, item.Name, Unit.SharedName), (amended.SupplierName, amended.ItemName, amended.UnitName));
+        Assert.Equal((contractor.Name, item.Name), (amended.SupplierName, amended.ItemName));
         var record = (await factory.AuditTrailOfAsync(contract.Id)).Last();
         Assert.Equal(AuditAction.Update, record.Action);
         Assert.Equal(request.SupplierId, JsonDocument.Parse(record.Before).RootElement.GetProperty("SupplierId").GetGuid());
         Assert.Equal(contractor.Id, JsonDocument.Parse(record.After).RootElement.GetProperty("SupplierId").GetGuid());
         Assert.Equal(request.ItemId, JsonDocument.Parse(record.Before).RootElement.GetProperty("ItemId").GetGuid());
         Assert.Equal(item.Id, JsonDocument.Parse(record.After).RootElement.GetProperty("ItemId").GetGuid());
-        Assert.Equal(request.UnitId, JsonDocument.Parse(record.Before).RootElement.GetProperty("UnitId").GetGuid());
-        Assert.Equal(shared.Id, JsonDocument.Parse(record.After).RootElement.GetProperty("UnitId").GetGuid());
     }
 
     [Theory]
@@ -455,7 +426,7 @@ public class ContractsTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var item = await ItemOf(ledger.Client, ledger.ProjectId);
-        (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, ledger.Project.Units[0].Id, 34000m, false))).EnsureSuccessStatusCode();
+        (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, 34000m, false))).EnsureSuccessStatusCode();
         var contract = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
         var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();
@@ -463,7 +434,7 @@ public class ContractsTests(MigratedApiFactory factory)
         Assert.True(Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId)).HasPayments);
         var contractor = await AnotherContractorAsync(ledger.Client, ledger.ProjectId);
 
-        var refused = await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 99000m, isOpenValue = false, supplierId = contractor.Id, itemId = item.Id, unitId = contract.UnitId });
+        var refused = await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 99000m, isOpenValue = false, supplierId = contractor.Id, itemId = item.Id });
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Equal("contractHasPayments", await CodeOf(refused));
@@ -476,13 +447,13 @@ public class ContractsTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var item = await ItemOf(ledger.Client, ledger.ProjectId);
-        (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, ledger.Project.Units[0].Id, 34000m, false))).EnsureSuccessStatusCode();
+        (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, 34000m, false))).EnsureSuccessStatusCode();
         var contract = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
         var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();
 
         (await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 40000m, isOpenValue = false })).EnsureSuccessStatusCode();
-        (await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 41000m, isOpenValue = false, supplierId = contract.SupplierId, itemId = contract.ItemId, unitId = contract.UnitId })).EnsureSuccessStatusCode();
+        (await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 41000m, isOpenValue = false, supplierId = contract.SupplierId, itemId = contract.ItemId })).EnsureSuccessStatusCode();
 
         Assert.Equal(41000m, Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId)).Value);
     }
@@ -498,7 +469,6 @@ public class ContractsTests(MigratedApiFactory factory)
 
         Assert.Equal("unknownSupplier", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, supplierId = Guid.NewGuid() })));
         Assert.Equal("itemNotOffered", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, itemId = purchasesOnly.Id })));
-        Assert.Equal("unknownUnit", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, unitId = Guid.NewGuid() })));
         Assert.Equal(34000m, Assert.Single(await ContractsOf(client, project.Id)).Value);
     }
 }

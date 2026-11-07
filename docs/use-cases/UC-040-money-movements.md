@@ -1,6 +1,6 @@
-[Documentation](../README.md) › [Use cases](../README.md) › UC-040 to UC-045
+[Documentation](../README.md) › [Use cases](../README.md) › UC-040 to UC-044
 
-# UC-040 to UC-045: Money that moves without an expense
+# UC-040 to UC-044: Money that moves without an expense
 
 **Purpose:** move money between accounts, check the accounts against the books, record what partners put in and take out, and reckon each partner's share.
 
@@ -16,11 +16,10 @@
 | `GET /projects/{id}/partners/{partnerId}/movements` | One partner's movements |
 | `POST /projects/{id}/capital-movements` | Enters a movement |
 | `POST /projects/{id}/capital-movements/carry` | Carries a balance to another project |
-| `POST /projects/{id}/entries/{entryId}/partner-treatment` | Says whether what a partner paid is capital or owed back |
 
-`ProjectFigures` is the one owner of capital, revenue and surplus. `DirectEntries` is the one way an entry counts with no approval. `EntryReversal` is the one way to reverse: what was entered as one reverses as one, a transfer's two sides, a carry's two sides, or an expense and the capital it gave.
+`ProjectFigures` is the one owner of capital, revenue and surplus. `DirectEntries` is the one way an entry counts with no approval. `EntryReversal` is the one way to reverse: what was entered as one reverses as one, a transfer's two sides, or a carry's two sides.
 
-**A partner's pocket.** Every partner has an account of type `PartnerPocket`, made with them and named after them. So it is offered wherever an account is, and "paid from a partner" needed no field of its own. It stays out of the reconciliation (BR-08). A negative pocket is what the project owes that partner.
+**A partner's pocket.** Every partner has an account of type `PartnerPocket`, made with them and named after them. It pays no expense: an expense is paid only from an account added in Accounts (redix-api #96, D24), so UC-045 "Expense paid from a partner's money" went on 7 November 2026 (D27). It stays out of the reconciliation (BR-08).
 
 | Rule | Code | Test |
 | --- | --- | --- |
@@ -39,9 +38,5 @@
 | Reversing a carry reverses both projects | `EntryReversal` | `MoneyMovementTests.ReversingACarryReversesBothProjects` |
 | AC-25.2, AC-27.1: balances are movements, and the shares add up to 100 | `CapitalEndpoints.Capital` | `MoneyMovementTests.AC_25_2_AC_27_1_EachBalanceIsTheirMovementsAndTheSharesAddUpTo100` |
 | BR-31: a partner sees the total and their own line, nobody else's | `CapitalEndpoints` | `MoneyMovementTests.BR_31_APartnerSeesTheTotalAndTheirOwnLineAndNoOneElses` |
-| AC-25.3: approving what a partner paid adds it to their capital | `PartnerExpenses.WhenApprovedAsync` | `MoneyMovementTests.AC_25_3_ApprovingAnExpenseAPartnerPaidAddsTheSameAmountAndDateToTheirCapital` |
-| A rejected expense gives the partner nothing | `PartnerExpenses` | `MoneyMovementTests.ARejectedExpenseGivesThePartnerNothing` |
-| AC-25.3: Finance may say it is owed back | `ApprovalsEndpoints.SetPartnerTreatment` | `MoneyMovementTests.AC_25_3_FinanceMaySayItIsOwedBack`, `OnlyAnExpenseAPartnerPaidTakesATreatment` |
-| Approving again does not add the capital twice | `PartnerExpenses` | `MoneyMovementTests.ApprovingAgainAfterAnAttachedInvoiceDoesNotAddTheCapitalTwice` |
-| Reversing the expense takes back the capital it gave | `EntryReversal` | `MoneyMovementTests.ReversingTheExpenseTakesBackTheCapitalItGave` |
-| A pocket is offered to Field, hides its balance, and follows the partner | `Account.IsOfferedTo`, `AccountsEndpoints`, `PartnersEndpoints` | `MoneyMovementTests.APocketIsOfferedToFieldHidesItsBalanceAndFollowsThePartner` |
+| A partner's pocket pays no expense, whoever records it (D24) | `Account.IsOfferedTo` | `MoneyMovementTests.D24_APartnersPocketPaysNoExpenseEvenForWhoChargesAnyAccount` |
+| A pocket is hidden from Field and follows the partner | `AccountsEndpoints`, `PartnersEndpoints` | `MoneyMovementTests.APocketIsHiddenFromFieldAndFollowsThePartner` |

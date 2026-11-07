@@ -347,110 +347,26 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         return (partner, (await AccountsAsync(ledger)).Single(row => row.Type == AccountType.PartnerPocket && row.Name == name).Id);
     }
 
-    private static Task ApproveAsync(Ledger ledger, Guid entryId) => ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/approve", new ApproveEntriesRequest([entryId]), Json);
-
     [Fact]
-    public async Task AC_25_3_ApprovingAnExpenseAPartnerPaidAddsTheSameAmountAndDateToTheirCapital()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (partner, pocket) = await PocketAsync(ledger);
-        var expense = ledger.Purchase(115) with { AccountId = pocket, Submit = true, AttachmentId = await ledger.FileAsync() };
-        await ledger.RecordAsync(expense);
-        Assert.DoesNotContain((await CapitalAsync(ledger.Client, ledger.ProjectId)).Partners, row => row.Balance != 0);
-
-        await ApproveAsync(ledger, expense.Id);
-
-        Assert.Equal(115m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Partners.Single(row => row.Id == partner).Balance);
-        Assert.Equal(0m, await BalanceAsync(ledger, pocket));
-        var movement = Assert.Single((await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!);
-        Assert.Equal((CapitalMovementType.Contribution, ledger.Today), (movement.Type, movement.Date));
-    }
-
-    [Fact]
-    public async Task ARejectedExpenseGivesThePartnerNothing()
+    public async Task D24_APartnersPocketPaysNoExpenseEvenForWhoChargesAnyAccount()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (_, pocket) = await PocketAsync(ledger);
-        var expense = ledger.Purchase(115) with { AccountId = pocket, Submit = true, AttachmentId = await ledger.FileAsync() };
-        await ledger.RecordAsync(expense);
 
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{expense.Id}/reject", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
+        Assert.DoesNotContain((await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts/offered", Json))!, row => row.Id == pocket);
+        var refused = await ledger.PostAsync(ledger.Purchase(115) with { AccountId = pocket, Submit = true });
 
-        Assert.Equal(0m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
+        Assert.Equal("accountNotOffered", await Ledger.CodeOf(refused));
     }
 
     [Fact]
-    public async Task AC_25_3_FinanceMaySayItIsOwedBack()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (_, pocket) = await PocketAsync(ledger);
-        var expense = ledger.Purchase(115) with { AccountId = pocket, Submit = true, AttachmentId = await ledger.FileAsync() };
-        await ledger.RecordAsync(expense);
-
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{expense.Id}/partner-treatment", new PartnerTreatmentRequest(PartnerTreatment.AmountDue), Json)).EnsureSuccessStatusCode();
-        await ApproveAsync(ledger, expense.Id);
-
-        Assert.Equal(0m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
-        Assert.Equal(-115m, await BalanceAsync(ledger, pocket));
-        var view = await ledger.Client.GetFromJsonAsync<ReconciliationView>($"/projects/{ledger.ProjectId}/reconciliations/latest", Json);
-        Assert.Equal(115m, view!.OwedToPartners);
-    }
-
-    [Fact]
-    public async Task OnlyAnExpenseAPartnerPaidTakesATreatment()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var expense = ledger.WithoutInvoice() with { Submit = true };
-        await ledger.RecordAsync(expense);
-
-        var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{expense.Id}/partner-treatment", new PartnerTreatmentRequest(PartnerTreatment.Capital), Json);
-
-        Assert.Equal("notPaidByPartner", await Ledger.CodeOf(refused));
-    }
-
-    [Fact]
-    public async Task ApprovingAgainAfterAnAttachedInvoiceDoesNotAddTheCapitalTwice()
+    public async Task APocketIsHiddenFromFieldAndFollowsThePartner()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (partner, pocket) = await PocketAsync(ledger);
-        var expense = ledger.WithoutInvoice(100) with { AccountId = pocket, Submit = true };
-        await ledger.RecordAsync(expense);
-        await ApproveAsync(ledger, expense.Id);
-
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{expense.Id}/invoice", new AttachInvoiceRequest(await ledger.FileAsync(), "7", ledger.Today), Json)).EnsureSuccessStatusCode();
-        await ApproveAsync(ledger, expense.Id);
-
-        Assert.Equal(100m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Partners.Single(row => row.Id == partner).Balance);
-    }
-
-    [Fact]
-    public async Task ReversingTheExpenseTakesBackTheCapitalItGave()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (_, pocket) = await PocketAsync(ledger);
-        var expense = ledger.WithoutInvoice(100) with { AccountId = pocket, Submit = true };
-        await ledger.RecordAsync(expense);
-        await ApproveAsync(ledger, expense.Id);
-
-        await ReverseAsync(ledger.Client, ledger.ProjectId, expense.Id);
-
-        Assert.Equal(0m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
-        Assert.Equal(0m, await BalanceAsync(ledger, pocket));
-    }
-
-    [Fact]
-    public async Task APocketIsOfferedToFieldHidesItsBalanceAndFollowsThePartner()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (partner, pocket) = await PocketAsync(ledger);
-        var expense = ledger.WithoutInvoice(100) with { AccountId = pocket, Submit = true };
-        await ledger.RecordAsync(expense);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{expense.Id}/partner-treatment", new PartnerTreatmentRequest(PartnerTreatment.AmountDue), Json)).EnsureSuccessStatusCode();
-        await ApproveAsync(ledger, expense.Id);
         var (field, _) = await ledger.MemberAsync("Field");
 
-        var offered = (await field.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts/offered", Json))!;
-        Assert.Equal(0m, offered.Single(row => row.Id == pocket).Balance);
+        Assert.DoesNotContain((await field.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts/offered", Json))!, row => row.Id == pocket);
         Assert.DoesNotContain((await field.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!, row => row.Id == pocket);
 
         Assert.Equal("pocketFollowsPartner", await Ledger.CodeOf(await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{pocket}/disable", null)));

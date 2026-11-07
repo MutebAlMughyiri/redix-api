@@ -481,15 +481,6 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_37_NoUnitTakesTheSharedUnitsName()
-    {
-        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
-
-        Assert.Equal("unitNameTaken", await CodeOf(await AddUnitAsync(client, project.Id, Unit.SharedName)));
-        Assert.Equal("unitNameTaken", await CodeOf(await CreateAsync(client, "غصون 7", Unit.SharedName)));
-    }
-
-    [Fact]
     public async Task BR_37_ANewProjectCannotRepeatAUnitsNameAndSavesNothing()
     {
         var client = await ClientOfAsync(await StarterAsync());
@@ -598,35 +589,13 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_38_AUnitAnEntryUsesIsNotDeleted()
+    public async Task BR_38_ExpensesAndContractsBelongToTheProjectSoAUnitIsDeletedWhateverTheyHold()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ledger.RecordAsync(ledger.Purchase());
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000, false), Json)).EnsureSuccessStatusCode();
 
-        var refused = await DeleteUnitAsync(ledger.Client, ledger.ProjectId, ledger.Project.Units[0].Id);
-
-        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("unitInUse", await CodeOf(refused));
-    }
-
-    [Fact]
-    public async Task BR_38_AUnitAContractUsesIsNotDeleted()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var contract = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, ledger.Project.Units[0].Id, 1000, false), Json);
-        contract.EnsureSuccessStatusCode();
-
-        Assert.Equal("unitInUse", await CodeOf(await DeleteUnitAsync(ledger.Client, ledger.ProjectId, ledger.Project.Units[0].Id)));
-    }
-
-    [Fact]
-    public async Task BR_38_TheSharedUnitIsNeverRenamedOrDeleted()
-    {
-        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
-        var shared = project.EntryUnits.Single(unit => unit.Name == Unit.SharedName);
-
-        Assert.Equal("sharedUnit", await CodeOf(await RenameUnitAsync(client, project.Id, shared.Id, "الوحدات")));
-        Assert.Equal("sharedUnit", await CodeOf(await DeleteUnitAsync(client, project.Id, shared.Id)));
+        (await DeleteUnitAsync(ledger.Client, ledger.ProjectId, ledger.Project.Units[0].Id)).EnsureSuccessStatusCode();
     }
 
     [Fact]
