@@ -23,7 +23,7 @@ Telling Finance belongs to UC-036 "Send push notifications": nothing is faked he
 
 ## Tables
 
-No new table. `Permission.ManageAnyEntry` joins Finance's role, and the migration carries the row.
+No new table. `Permission.ManageAnyEntry` is ticked per person (UC-009).
 
 ## Rules
 

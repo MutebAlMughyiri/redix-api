@@ -21,7 +21,7 @@ public class UsersTests(MigratedApiFactory factory)
     {
         var manager = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
         var project = await factory.ApprovedProjectAsync(manager, $"project-{Guid.CreateVersion7()}");
-        await factory.GiveRoleAsync(user.Id, project.Id, "users.roleField");
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of("Field"));
         return manager;
     }
 
@@ -140,7 +140,7 @@ public class UsersTests(MigratedApiFactory factory)
         var client = await factory.ClientSignedInAsAsync(managerUser, Password);
         var project = await factory.ApprovedProjectAsync(client, $"project-{Guid.CreateVersion7()}");
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, "users.roleField");
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of("Field"));
 
         await client.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0500000000"));
         await ResetAsync(client, user.Id);

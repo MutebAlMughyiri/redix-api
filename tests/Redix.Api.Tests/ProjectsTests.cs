@@ -13,10 +13,10 @@ namespace Redix.Api.Tests;
 public class ProjectsTests(MigratedApiFactory factory)
 {
     private const string Password = "Projects-pass-1";
-    private const string Manager = "users.roleManager";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
+    private const string Manager = "Manager";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -32,7 +32,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var user = await StarterAsync();
         var client = await ClientOfAsync(user);
         var project = await factory.ApprovedProjectAsync(client, name, units);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (client, project);
     }
 
@@ -83,9 +83,7 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         var project = await factory.ApprovedProjectAsync(client, "غصون 7");
 
-        Assert.Equal([Manager], project.Roles);
-        Assert.Contains(Permission.ManageUsers, project.Permissions);
-        Assert.Contains(Permission.ReadProject, project.Permissions);
+        Assert.Equal(ProjectPermission.InAProject.Order(), project.Permissions.Order());
     }
 
     [Fact]
@@ -173,7 +171,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var theirs = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var other = await factory.ApprovedProjectAsync(starter, "غصون 5");
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, theirs.Id, Field);
+        await factory.GiveAsync(user.Id, theirs.Id, Holds.Of(Field));
 
         var listed = await ListAsync(await ClientOfAsync(user));
 
@@ -188,7 +186,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var theirs = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var other = await factory.ApprovedProjectAsync(starter, "غصون 5");
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, theirs.Id, Finance);
+        await factory.GiveAsync(user.Id, theirs.Id, Holds.Of(Finance));
         var client = await ClientOfAsync(user);
 
         Assert.Equal(HttpStatusCode.OK, (await AddUnitAsync(client, theirs.Id)).StatusCode);
@@ -205,21 +203,19 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task PermissionsFollowTheRoleInEachProject()
+    public async Task PermissionsFollowWhatIsTickedInEachProject()
     {
         var starter = await ClientOfAsync(await StarterAsync());
         var financeProject = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var fieldProject = await factory.ApprovedProjectAsync(starter, "غصون 7");
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, financeProject.Id, Finance);
-        await factory.GiveRoleAsync(user.Id, fieldProject.Id, Field);
+        await factory.GiveAsync(user.Id, financeProject.Id, Holds.Of(Finance));
+        await factory.GiveAsync(user.Id, fieldProject.Id, Holds.Of(Field));
         var client = await ClientOfAsync(user);
 
         var listed = (await ListAsync(client))!;
 
-        Assert.Equal([Finance], listed.Single(project => project.Id == financeProject.Id).Roles);
         Assert.Contains(Permission.ManageProject, listed.Single(project => project.Id == financeProject.Id).Permissions);
-        Assert.Equal([Field], listed.Single(project => project.Id == fieldProject.Id).Roles);
         Assert.DoesNotContain(Permission.ManageProject, listed.Single(project => project.Id == fieldProject.Id).Permissions);
         Assert.Contains(Permission.ReadProject, listed.Single(project => project.Id == fieldProject.Id).Permissions);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/projects/{financeProject.Id}/close", null)).StatusCode);
@@ -234,7 +230,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var starter = await ClientOfAsync(await StarterAsync());
         var project = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         var client = await ClientOfAsync(user);
 
         Assert.Equal([project.Id], (await ListAsync(client))!.Select(listed => listed.Id));
@@ -243,18 +239,12 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AManagerChangesAProjectOnlyWithFinanceToo()
+    public async Task WhoeverStartsAProjectChangesItWithNothingMoreTicked()
     {
-        var user = await StarterAsync();
-        var client = await ClientOfAsync(user);
+        var client = await ClientOfAsync(await StarterAsync());
         var project = await factory.ApprovedProjectAsync(client, "غصون 6");
-        Assert.Equal(HttpStatusCode.Forbidden, (await AddUnitAsync(client, project.Id)).StatusCode);
-
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
 
         Assert.Equal(HttpStatusCode.OK, (await AddUnitAsync(client, project.Id)).StatusCode);
-        var listed = (await ListAsync(client))!.Single(listed => listed.Id == project.Id);
-        Assert.Equal([Manager, Finance], listed.Roles);
     }
 
     [Fact]
@@ -272,7 +262,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var starter = await ClientOfAsync(await StarterAsync());
         var project = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var user = await factory.AddUserAsync(Password, mustChangePassword: true);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         var client = await ClientOfAsync(user);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await AddUnitAsync(client, project.Id)).StatusCode);
@@ -344,12 +334,12 @@ public class ProjectsTests(MigratedApiFactory factory)
         var starter = await ClientOfAsync(await StarterAsync());
         var project = await factory.ApprovedProjectAsync(starter, "غصون 6");
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, Reader);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Reader));
         var client = await ClientOfAsync(user);
         await SetDefaultAsync(client, project.Id);
         Assert.Equal(project.Id.ToString(), (await SessionOfAsync(user)).DefaultProjectId);
 
-        await starter.PostAsync($"/projects/{project.Id}/users/{user.Id}/roles/{RoleSeed.IdOf(Reader)}/remove", null);
+        await starter.PostAsync($"/projects/{project.Id}/users/{user.Id}/permissions/readProject/remove", null);
 
         Assert.Equal("", (await SessionOfAsync(user)).DefaultProjectId);
     }
@@ -383,7 +373,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var client = await ClientOfAsync(user);
         var project = await factory.ApprovedProjectAsync(client, "غصون 6");
         var other = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(other.Id, project.Id, Reader);
+        await factory.GiveAsync(other.Id, project.Id, Holds.Of(Reader));
 
         await SetDefaultAsync(client, project.Id);
 
@@ -668,7 +658,7 @@ public class ProjectsTests(MigratedApiFactory factory)
     {
         var (_, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية");
         var member = await StarterAsync();
-        await factory.GiveRoleAsync(member.Id, project.Id, role);
+        await factory.GiveAsync(member.Id, project.Id, Holds.Of(role));
         var client = await ClientOfAsync(member);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await RenameAsync(client, project.Id, "غصون 7")).StatusCode);

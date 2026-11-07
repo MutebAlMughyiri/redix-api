@@ -34,7 +34,7 @@ No new table: it uses `Suppliers.Status` and `Suppliers.CreatedByUserId`. Field 
 | A pending supplier already holds its number | The same | `APendingSupplierAlreadyHoldsItsVatNumber` |
 | A pending supplier is offered to who added it and to Finance only (step 3) | `Supplier.OfferedTo` | `APendingSupplierIsOfferedToWhoAddedItAndToFinanceOnly` |
 | Everyone with access sees it in the register, marked (BR-31) | `SuppliersEndpoints.List` | `EveryoneWithAccessSeesAPendingSupplierInTheRegister` |
-| Only Finance and Field add suppliers | `Permission.AddSupplier`, `RoleSeed` | `OnlyFinanceAndFieldAddSuppliers` |
+| Only Finance and Field add suppliers | `Permission.AddSupplier` | `OnlyFinanceAndFieldAddSuppliers` |
 | Field changes nothing else | `Permission.ManageSettings` | `OnlyFinanceChangesSuppliers` |
 | A finished project refuses it (AC-04.1) | `ProjectChanges.MapProjectChanges` | `AFinishedProjectRefusesWhatFieldAdds` |
 

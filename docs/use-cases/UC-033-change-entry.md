@@ -7,7 +7,7 @@
 | Route | Who | What it does |
 | --- | --- | --- |
 | `POST /projects/{id}/expenses/{entryId}`, `/contractor-payments/{entryId}` | `RecordEntries` | Replaces what it holds, through every check a new one passes |
-| `POST /projects/{id}/entries/{entryId}/delete` | `RecordEntries` | Removes one never approved |
+| `POST /projects/{id}/entries/{entryId}/delete` | `DeleteEntries` | Removes one never approved: one's own draft or rejected entry, or with `ManageAnyEntry` anyone's or one waiting |
 | `POST /projects/{id}/entries/{entryId}/notes` | `RecordEntries` | Changes its notes, even once approved |
 | `POST /projects/{id}/entries/{entryId}/reverse` | `ApproveEntries` | Adds an opposite entry tied to the original, approved at once |
 
@@ -24,6 +24,9 @@
 | AC-16.2: an edit arriving after approval is refused, and the server's version stays | `EntryChanges.RefusalOf` | `EntryChangesTests.AC_16_2_AnOfflineEditOfAnApprovedEntryIsRefusedAndTheServersVersionStays` |
 | AC-50.2: an approved entry's notes may change, and it is not deleted | `EntriesEndpoints.ChangeNotes`, `Delete` | `EntryChangesTests.AC_50_2_AnApprovedEntrysNotesMayChangeAndItIsNotDeleted` |
 | A deleted entry leaves only the audit trail | `EntryChanges.DeleteAsync` | `EntryChangesTests.ADeletedEntryLeavesNothingButTheAuditTrail` |
+| A bill not approved is removed, whether a draft, waiting or rejected | `EntriesEndpoints.Delete` | `EntryChangesTests.ABillNotApprovedIsRemoved` |
+| An approved bill is not removed but reversed, both staying with a net of zero | `EntriesEndpoints.Delete`, `Reverse` | `EntryChangesTests.AnApprovedBillIsNotRemovedButReversedAndBothStayWithANetOfZero` |
+| Deleting is its own permission | The route | `EntryChangesTests.DeletingIsItsOwnPermission` |
 | An invoice a credit note returns is not deleted | `EntriesEndpoints.Delete` | `EntryChangesTests.AnInvoiceACreditNoteReturnsIsNotDeleted` |
 | AC-50.1: a reversal is opposite and tied, the net is zero, and the original stays | `EntriesEndpoints.Reverse` | `EntryChangesTests.AC_50_1_AReversalIsAnOppositeEntryTiedToTheOriginalAndTheNetEffectIsZero` |
 | Only an approved entry is reversed, once, with a reason | `EntriesEndpoints.Reverse` | `EntryChangesTests.OnlyAnApprovedEntryIsReversedOnceAndWithAReason` |

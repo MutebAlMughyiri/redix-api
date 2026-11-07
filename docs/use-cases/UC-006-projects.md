@@ -18,7 +18,7 @@
 | `POST /projects/{projectId}/units/{unitId}/delete` | Deletes a unit no entry and no contract uses (BR-38) | `200` the project; `409` `projectFinished`, `unitInUse` or `sharedUnit`; `404` outside the project; `403` as above |
 | `POST /projects/{projectId}/close` | Closes a finished project | `200` the project; `409` `projectFinished` when already closed, or `pendingEntries` while entries wait for approval; `403` without `ManageProject` in it |
 
-A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ id, name }], roles, permissions }`, with `status` `pendingApproval`, `rejected`, `running` or `finished`.
+A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ id, name }], permissions }`, with `status` `pendingApproval`, `rejected`, `running` or `finished`.
 
 ## Rules and where they live
 

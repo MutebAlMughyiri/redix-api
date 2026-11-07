@@ -25,7 +25,7 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
 
     /// <summary>
     /// A signed access token for <paramref name="user"/> on the device <paramref name="deviceId"/>, carrying whether the password must be changed first.
-    /// Nothing about roles is in it: they are read on each request, so a change counts at once.
+    /// Nothing about permissions is in it: they are read on each request, so a change counts at once.
     /// </summary>
     public string Create(User user, Guid deviceId)
     {

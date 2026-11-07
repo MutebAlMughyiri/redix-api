@@ -15,10 +15,10 @@ namespace Redix.Api.Tests;
 public class ContractsTests(MigratedApiFactory factory)
 {
     private const string Password = "Contracts-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
-    private const string Manager = "users.roleManager";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
+    private const string Manager = "Manager";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -31,14 +31,14 @@ public class ContractsTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name, "الفلة الغربية");
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (client, project);
     }
 
     private async Task<HttpClient> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return await factory.ClientSignedInAsAsync(user, Password);
     }
 

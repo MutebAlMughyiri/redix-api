@@ -325,7 +325,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
         var other = await LedgerAsync();
-        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+        var (reader, _) = await ledger.MemberAsync("Reader");
         var original = await DiscountedInvoiceAsync(ledger);
 
         var row = Assert.Single(await CreditableAsync(ledger, reader));

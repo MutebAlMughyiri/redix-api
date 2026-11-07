@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -62,6 +63,14 @@ public class RegistrationTests(MigratedApiFactory factory)
     private static Task<HttpResponseMessage> RejectAsync(HttpClient client, Guid projectId, string reason = "الاسم مكرر") =>
         client.PostAsJsonAsync($"/projects/{projectId}/reject", new RejectProjectRequest(reason));
 
+    /// <summary>How many permissions are held in <paramref name="projectId"/>: all of them its registrant's, before anyone else is added.</summary>
+    private async Task<int> HeldInAsync(Guid projectId)
+    {
+        var count = 0;
+        await factory.WithDatabaseAsync(async db => count = await db.ProjectPermissions.CountAsync(row => row.ProjectId == projectId));
+        return count;
+    }
+
     [Fact]
     public async Task ARegisteredProjectHasItsManager()
     {
@@ -71,7 +80,7 @@ public class RegistrationTests(MigratedApiFactory factory)
 
         Assert.Equal(("غصون 8", ProjectStatus.PendingApproval), (project.Name, project.Status));
         Assert.Equal(["الفلة الغربية"], project.Units.Select(unit => unit.Name));
-        Assert.Equal(["users.roleManager"], project.Roles);
+        Assert.Equal(ProjectPermission.InAProject.Count, await HeldInAsync(project.Id));
         var client = factory.CreateClient();
         var session = (await (await client.PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, Password))).Content.ReadFromJsonAsync<Session>(Json))!;
         Assert.False(session.MustChangePassword);
@@ -139,7 +148,7 @@ public class RegistrationTests(MigratedApiFactory factory)
 
         var project = await ProjectOf(created);
         Assert.Equal(ProjectStatus.PendingApproval, project.Status);
-        Assert.Equal(["users.roleManager"], project.Roles);
+        Assert.Equal(ProjectPermission.InAProject.Count, await HeldInAsync(project.Id));
         Assert.Empty(project.Permissions);
     }
 

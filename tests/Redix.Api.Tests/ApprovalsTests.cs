@@ -71,9 +71,9 @@ public class ApprovalsTests(MigratedApiFactory factory)
     }
 
     [Theory]
-    [InlineData("users.roleField")]
-    [InlineData("users.roleReader")]
-    [InlineData("users.roleManager")]
+    [InlineData("Field")]
+    [InlineData("Reader")]
+    [InlineData("Manager")]
     public async Task OnlyWhoeverDecidesEntriesSeesTheInboxOrDecides(string role)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
@@ -195,7 +195,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
     private async Task<(Ledger Ledger, HttpClient Field, Guid SupplierId)> PendingSupplierAsync()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
         var added = await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/suppliers", new SupplierRequest("مورد من الموقع") { NotVatRegistered = true }, Json);
         var supplier = (await added.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!;
         Assert.Equal(SupplierStatus.PendingApproval, await ledger.ReadAsync(db => db.Suppliers.Where(row => row.Id == supplier.Id).Select(row => row.Status).SingleAsync()));

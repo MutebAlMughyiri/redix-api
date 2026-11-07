@@ -8,7 +8,7 @@
 
 ## Endpoints
 
-A login is shared across projects, so changing one needs `ManageUsers` in every project it is in, and a login holding a system-wide role can never be changed here. Otherwise it answers `403` `otherProject`, because a reset could let a manager sign in to another project or as the admin.
+A login is shared across projects, so changing one needs `ManageUsers` in every project it is in, and a login holding a system permission can never be changed here. Otherwise it answers `403` `otherProject`, because a reset could let a manager sign in to another project or as the admin.
 
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ A user answers as `{ id, username, displayName, mobile, isActive, mustChangePass
 
 | Rule | Code | Test |
 | --- | --- | --- |
-| A new user can sign in and must change the temporary password (AC-02.1) | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AManagerCreatesALoginInTheProjectWhoStartsAsTheLastRoleAndMustChangeThePassword` |
+| A new user can sign in and must change the temporary password (AC-02.1) | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AManagerCreatesALoginHoldingWhatWasTickedAndSeeingTheProjectWhoMustChangeThePassword` |
 | A username is unique, whatever its case | The unique index, `ProjectUsersEndpoints.Create` | `ProjectUsersTests.ARepeatedUsernameIsRefusedWhateverItsCase` |
 | Each field has its limit | `User.RefusalOfNew`, `User.RefusalOfDetails` | `ProjectUsersTests.AFieldOutsideItsLimitIsRefused` |
 | Editing changes the name and mobile, and nothing else | `UsersEndpoints.Edit` | `UsersTests.EditingChangesTheNameAndMobile` |

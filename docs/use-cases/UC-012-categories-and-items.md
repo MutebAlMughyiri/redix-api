@@ -66,7 +66,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | A project copies an earlier one's structure, and nothing else (AC-05.2) | `ProjectStructure.ApproveAsync`, `Category.CopyFor` | `CategoriesTests.AProjectCopiedFromAnEarlierOneTakesItsStructureAtApproval` |
 | What was disabled is not copied | `Category.CopyFor` | `CategoriesTests.WhatWasDisabledInTheEarlierProjectIsNotCopied` |
 | Only a project the caller reads can be copied (BR-33) | `ProjectsEndpoints.Create` | `CategoriesTests.AnEarlierProjectTheCallerCannotReadCannotBeCopied`, `TheTemplateItselfCannotBeNamedAsAnEarlierProject` |
-| Nobody sees the template | No member holds a role in it | `CategoriesTests.NobodySeesTheTemplate` |
+| Nobody sees the template | Nobody holds a permission in it | `CategoriesTests.NobodySeesTheTemplate` |
 | A change in one project touches nothing else (BR-33) | Each project's own rows | `CategoriesTests.AChangeInOneProjectLeavesTheTemplateAndOtherProjectsAlone` |
 | One project's route never reaches another's rows (BR-33) | `ProjectStructure.ItemOfAsync` and the category lookups | `CategoriesTests.ARouteOfOneProjectNeverReachesAnothersRows` |
 | The order set here is the order of the report (AC-39.1) | `IOrdered`, `CategoriesEndpoints.ReorderCategories`, `ReorderItems` | `CategoriesTests.TheOrderOfCategoriesIsTheOrderTheReportReads`, `TheOrderOfItemsIsTheOrderTheReportReads` |
@@ -78,7 +78,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | A new item reaches Field at their next read (AC-05.1) | `CategoriesEndpoints.Offered` | `CategoriesTests.ANewItemIsOfferedToFieldAtOnce` |
 | A name has 1 to 100 characters, spaces around it trimmed | `Project.IsAcceptableName` | `CategoriesTests.ACategoryAnItemOrASubgroupNeedsANameOfAtMost100Characters` |
 | The general subgroup has no name to change | `CategoriesEndpoints.RenameSubgroup` | `CategoriesTests.TheGeneralSubgroupHasNoNameToChange` |
-| Everyone with access reads; only Finance changes | `Permission.ManageStructure`, `RoleSeed` | `CategoriesTests.EveryoneWithAccessReadsTheStructureAndOnlyFinanceChangesIt` |
+| Everyone with access reads; only Finance changes | `Permission.ManageStructure` | `CategoriesTests.EveryoneWithAccessReadsTheStructureAndOnlyFinanceChangesIt` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectStructure.MapStructureChanges`, an endpoint filter | `CategoriesTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 
 ## Left to later use cases

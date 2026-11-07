@@ -33,10 +33,10 @@ public enum AuditAction
     /// <summary>A disabled user or contract was enabled (UC-007, UC-020).</summary>
     Enable,
 
-    /// <summary>A user was given a role in a project (UC-008, UC-009).</summary>
+    /// <summary>A user was given a permission in a project (UC-008, UC-009).</summary>
     AssignProject,
 
-    /// <summary>A user's role in a project was taken away (UC-008, UC-009).</summary>
+    /// <summary>A user's permission in a project was taken away (UC-008, UC-009).</summary>
     RemoveProject,
 
     /// <summary>A project was registered, and waits for the admin (UC-066).</summary>

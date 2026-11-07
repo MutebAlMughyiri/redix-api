@@ -8,7 +8,7 @@ namespace Redix.Api.Auth;
 
 /// <summary>
 /// The logins (UC-007, FR-02): corrects, disables and resets them. A login is shared across projects, so one project's manager may change it only if they manage every
-/// project it is in, and never one holding a system-wide role; otherwise a reset could let them sign in to another project or as the admin (BR-33). Every change is saved
+/// project it is in, and never one holding a system permission; otherwise a reset could let them sign in to another project or as the admin (BR-33). Every change is saved
 /// with its audit record.
 /// </summary>
 public static class UsersEndpoints
@@ -23,14 +23,14 @@ public static class UsersEndpoints
         users.MapPost("/enable", Enable);
     }
 
-    /// <summary>The projects and roles in <paramref name="members"/>, by user: one line per role, by project name and then the role's order.</summary>
-    public static async Task<ILookup<Guid, UserProjectView>> ProjectsByUserAsync(IQueryable<ProjectMember> members, RedixDbContext db)
+    /// <summary>The projects and permissions in <paramref name="held"/>, by user: one line per project, by its name, with what the user holds there in the permissions' order.</summary>
+    public static async Task<ILookup<Guid, UserProjectView>> ProjectsByUserAsync(IQueryable<ProjectPermission> held, RedixDbContext db)
     {
-        var rows = await members
-            .Join(db.Projects, member => member.ProjectId, project => project.Id, (member, project) => new { member.UserId, member.RoleId, ProjectId = project.Id, project.Name })
-            .Join(db.Roles, row => row.RoleId, role => role.Id, (row, role) => new { row.UserId, row.ProjectId, row.Name, role.Id, role.WordKey, role.SortOrder })
-            .OrderBy(row => row.Name).ThenBy(row => row.SortOrder).ToListAsync();
-        return rows.ToLookup(row => row.UserId, row => new UserProjectView(row.ProjectId, row.Name, new RoleView(row.Id, row.WordKey)));
+        var rows = await held
+            .Join(db.Projects, row => row.ProjectId, project => project.Id, (row, project) => new { row.UserId, row.ProjectId, project.Name, row.Permission })
+            .ToListAsync();
+        return rows.GroupBy(row => (row.UserId, row.ProjectId, row.Name)).OrderBy(line => line.Key.Name)
+            .ToLookup(line => line.Key.UserId, line => new UserProjectView(line.Key.ProjectId, line.Key.Name, line.Select(row => row.Permission).Order().ToList()));
     }
 
     /// <summary>Changes a user's name and mobile. A name outside its limit answers <c>invalidName</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>.</summary>
@@ -110,12 +110,12 @@ public static class UsersEndpoints
 
     private static async Task<bool> MayChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db)
     {
-        if (await db.UserRoles.AnyAsync(row => row.UserId == userId))
+        if (await db.SystemPermissions.AnyAsync(row => row.UserId == userId))
         {
             return false;
         }
         var access = await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db);
-        var theirProjects = await db.ProjectMembers.Where(member => member.UserId == userId).Select(member => member.ProjectId).Distinct().ToListAsync();
+        var theirProjects = await db.ProjectPermissions.Where(held => held.UserId == userId).Select(held => held.ProjectId).Distinct().ToListAsync();
         return theirProjects.Count > 0 && theirProjects.All(project => access.In(project).Contains(Permission.ManageUsers));
     }
 
@@ -138,7 +138,7 @@ public static class UsersEndpoints
         }
         db.Audit(user, action, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
-        var projects = await ProjectsByUserAsync(db.ProjectMembers.Where(member => member.UserId == userId), db);
+        var projects = await ProjectsByUserAsync(db.ProjectPermissions.Where(held => held.UserId == userId), db);
         return Results.Ok(UserView.Of(user, projects[userId].ToList()));
     }
 }
@@ -148,7 +148,11 @@ public static class UsersEndpoints
 /// <param name="Username">The name the user signs in with.</param>
 /// <param name="Mobile">The user's mobile; may be empty.</param>
 /// <param name="TemporaryPassword">The password the user changes at first sign-in.</param>
-public record CreateUserRequest(string DisplayName, string Username, string Mobile, string TemporaryPassword);
+public record CreateUserRequest(string DisplayName, string Username, string Mobile, string TemporaryPassword)
+{
+    /// <summary>What the user may do in the project, as ticked; <see cref="Permission.ReadProject"/> is held whatever is ticked.</summary>
+    public List<Permission> Permissions { get; init; } = [];
+}
 
 /// <summary>What the app sends to change a user.</summary>
 /// <param name="DisplayName">The name as it shows on entries.</param>
@@ -159,16 +163,11 @@ public record EditUserRequest(string DisplayName, string Mobile);
 /// <param name="TemporaryPassword">The password the user changes at the next sign-in.</param>
 public record ResetPasswordRequest(string TemporaryPassword);
 
-/// <summary>A role as the app shows it; the app names no role, so a new one appears with no release.</summary>
-/// <param name="Id">The role's id.</param>
-/// <param name="WordKey">The key of the word that names it.</param>
-public record RoleView(Guid Id, string WordKey);
-
-/// <summary>One role a user holds in one project, as their answer shows it.</summary>
+/// <summary>What a user holds in one project, as their answer shows it.</summary>
 /// <param name="ProjectId">The project's id.</param>
 /// <param name="Name">The project's name.</param>
-/// <param name="Role">The role.</param>
-public record UserProjectView(Guid ProjectId, string Name, RoleView Role);
+/// <param name="Permissions">What the user may do there.</param>
+public record UserProjectView(Guid ProjectId, string Name, List<Permission> Permissions);
 
 /// <summary>A user as the app shows them. It names its fields, so the password's hash and any new column stay out.</summary>
 /// <param name="Id">The user's id.</param>
@@ -177,7 +176,7 @@ public record UserProjectView(Guid ProjectId, string Name, RoleView Role);
 /// <param name="Mobile">The user's mobile; empty when none.</param>
 /// <param name="IsActive">False once disabled.</param>
 /// <param name="MustChangePassword">True while the password is temporary.</param>
-/// <param name="Projects">Their roles, one line per role, in the projects the caller may see.</param>
+/// <param name="Projects">What they hold, one line per project the caller may see.</param>
 public record UserView(Guid Id, string Username, string DisplayName, string Mobile, bool IsActive, bool MustChangePassword, List<UserProjectView> Projects)
 {
     /// <summary>The view of <paramref name="user"/>, with these <paramref name="projects"/>.</summary>

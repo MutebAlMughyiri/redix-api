@@ -16,9 +16,9 @@ namespace Redix.Api.Tests;
 public class CategoriesTests(MigratedApiFactory factory)
 {
     private const string Password = "Categories-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -30,7 +30,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (user, client, project);
     }
 
@@ -38,7 +38,7 @@ public class CategoriesTests(MigratedApiFactory factory)
     private async Task<HttpClient> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return await factory.ClientSignedInAsAsync(user, Password);
     }
 
@@ -183,7 +183,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var project = await RegisterAsync(client, earlier.Id);
         await ApproveAsAdminAsync(project.Id);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
 
         var copied = (await CategoriesOf(client, project.Id)).Last();
         Assert.Equal("الملاحق", copied.Name);
@@ -203,7 +203,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var project = await RegisterAsync(client, earlier.Id);
         await ApproveAsAdminAsync(project.Id);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
 
         var copied = await CategoriesOf(client, project.Id);
         Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], copied.Select(category => category.Name));
@@ -460,7 +460,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var (_, _, project) = await FinanceAsync();
         var category = (await CategoriesOf(await MemberAsync(project, Finance), project.Id))[2];
 
-        foreach (var role in new[] { Field, Reader, "users.roleManager" })
+        foreach (var role in new[] { Field, Reader, "Manager" })
         {
             var member = await MemberAsync(project, role);
             Assert.Equal(8, (await CategoriesOf(member, project.Id)).Count);
@@ -656,7 +656,7 @@ public class CategoriesTests(MigratedApiFactory factory)
     private async Task<HttpClient> MemberOfAsync(Guid projectId)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, projectId, Reader);
+        await factory.GiveAsync(user.Id, projectId, Holds.Of(Reader));
         return await factory.ClientSignedInAsAsync(user, Password);
     }
 

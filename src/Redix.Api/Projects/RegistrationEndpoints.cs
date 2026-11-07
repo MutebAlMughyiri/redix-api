@@ -57,7 +57,7 @@ public static class RegistrationEndpoints
         manager.SetPassword(request.Password, hasher);
         db.Users.Add(manager);
         db.Audit(manager, AuditAction.Create, manager.Id, now);
-        await ProjectsEndpoints.AddWithManagerAsync(project, manager.Id, db, now);
+        ProjectsEndpoints.AddWithManager(project, manager.Id, db, now);
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{project.Id}", await ProjectsEndpoints.ViewOfAsync(project, manager.Id, db));
     }
@@ -70,10 +70,10 @@ public static class RegistrationEndpoints
             .Where(project => project.Status == ProjectStatus.PendingApproval)
             .OrderBy(project => project.StartDate).ThenBy(project => project.Name)
             .ToListAsync();
-        var managers = await db.ProjectMembers
-            .Where(member => db.RolePermissions.Any(held => held.RoleId == member.RoleId && held.Permission == Permission.ManageUsers)
-                && db.Projects.Any(project => project.Id == member.ProjectId && project.Status == ProjectStatus.PendingApproval))
-            .Join(db.Users, member => member.UserId, user => user.Id, (member, user) => new { member.ProjectId, user.DisplayName, user.Username, user.Mobile })
+        var managers = await db.ProjectPermissions
+            .Where(held => held.Permission == Permission.ManageUsers
+                && db.Projects.Any(project => project.Id == held.ProjectId && project.Status == ProjectStatus.PendingApproval))
+            .Join(db.Users, held => held.UserId, user => user.Id, (held, user) => new { held.ProjectId, user.DisplayName, user.Username, user.Mobile })
             .ToListAsync();
         var managerOf = managers.ToLookup(manager => manager.ProjectId);
         return projects.Select(project =>
@@ -83,7 +83,7 @@ public static class RegistrationEndpoints
         }).ToList();
     }
 
-    /// <summary>Lets a registered project in, with its structure copied, so its roles count from the next request (BR-34). A decided project answers <c>notPending</c>.</summary>
+    /// <summary>Lets a registered project in, with its structure copied, so its permissions count from the next request (BR-34). A decided project answers <c>notPending</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The admin's session.</param>
     /// <param name="db">The database the project lives in.</param>

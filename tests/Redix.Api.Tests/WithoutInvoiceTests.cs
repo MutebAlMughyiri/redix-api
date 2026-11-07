@@ -115,7 +115,7 @@ public class WithoutInvoiceTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
         var other = await LedgerAsync();
-        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+        var (reader, _) = await ledger.MemberAsync("Reader");
         await ledger.RecordAsync(ledger.WithoutInvoice() with { Submit = true });
 
         Assert.Single((await reader.GetFromJsonAsync<List<ExceptionView>>($"/projects/{ledger.ProjectId}/expenses/exceptions", Ledger.Json))!);

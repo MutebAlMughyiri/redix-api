@@ -38,7 +38,7 @@ A contract's documents join here (UC-020 step 3): adding or amending a contract 
 | Files live outside the database, and come back unchanged | `AttachmentOptions.PathOf`, `AttachmentsEndpoints.Read` | `TheFileIsKeptOutsideTheDatabaseAndServedBackUnchanged` |
 | A typed name never reaches the disk | `Attachment.Of` | `ANameTheSenderChoseNeverReachesThePathOfTheFile` |
 | Only people with access to the project read a file (BR-33) | The `ReadProject` policy, `AttachmentsEndpoints.Read` | `SomeoneWithNoAccessToTheProjectCannotReadOrKeepAFile`, `AFileOfAnotherProjectIsNotFoundEvenForSomeoneInBoth`, `WithoutASessionNoFileIsServed` |
-| Field and Finance keep files; Reader and Project manager only read them | `RoleSeed` | `FieldAndFinanceKeepFiles`, `WhoHoldsNoAttachFilesCannotKeepAFileButReadsIt` |
+| Field and Finance keep files; Reader and Project manager only read them | `ProjectPermission` rows | `FieldAndFinanceKeepFiles`, `WhoHoldsNoAttachFilesCannotKeepAFileButReadsIt` |
 | A finished project keeps no new file and still serves its own (AC-04.1) | `MapProjectChanges` | `AFinishedProjectKeepsNoNewFileAndStillServesItsOwn` |
 | Keeping a file, and linking it to a contract, is in the audit trail with which file | `db.Audit` | `KeepingAFileIsInTheAuditTrail`, `LinkingADocumentToAContractIsInTheAuditTrailWithWhichOne` |
 | A contract carries its documents, each staying once attached, and only files of its project | `ContractsEndpoints` | `AContractCarriesItsDocumentFromWhenItIsAdded`, `AnAmendmentAddsADocumentAndKeepsThoseAlreadyCarried`, `ADocumentOfAnotherProjectIsRefusedOnAContract` |

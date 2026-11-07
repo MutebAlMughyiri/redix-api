@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Audit;
+using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Xunit;
 
@@ -33,15 +34,15 @@ public class EntryChangesTests(MigratedApiFactory factory)
         Assert.Equal(code, await Ledger.CodeOf(response));
     }
 
-    private static async Task<(HttpClient Client, ExpenseRequest Request)> FieldDraftAsync(Ledger ledger)
+    private static async Task<(HttpClient Client, ExpenseRequest Request, Guid UserId)> FieldDraftAsync(Ledger ledger)
     {
-        var (field, userId) = await ledger.MemberAsync("users.roleField");
+        var (field, userId) = await ledger.MemberAsync("Field");
         var custody = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json);
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         custody.EnsureSuccessStatusCode();
         var request = ledger.WithoutInvoice() with { AccountId = account.Id };
         (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/expenses", request, Json)).EnsureSuccessStatusCode();
-        return (field, request);
+        return (field, request, userId);
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     public async Task AChangeKeepsWhoEnteredItAndWhen()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (_, request) = await FieldDraftAsync(ledger);
+        var (_, request, _) = await FieldDraftAsync(ledger);
         var before = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
         factory.Time.Advance(TimeSpan.FromMinutes(1));
 
@@ -125,11 +126,62 @@ public class EntryChangesTests(MigratedApiFactory factory)
         (await EditAsync(ledger.Client, ledger, request with { Notes = "ملاحظة" })).EnsureSuccessStatusCode();
     }
 
+    [Theory]
+    [InlineData(EntryStatus.Draft)]
+    [InlineData(EntryStatus.PendingApproval)]
+    [InlineData(EntryStatus.Rejected)]
+    public async Task ABillNotApprovedIsRemoved(EntryStatus status)
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var request = ledger.WithoutInvoice() with { Submit = status != EntryStatus.Draft };
+        await ledger.RecordAsync(request);
+        if (status == EntryStatus.Rejected)
+        {
+            (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/reject", new RejectEntryRequest("المبلغ خطأ"), Json)).EnsureSuccessStatusCode();
+        }
+        Assert.Equal(status, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id))).Status);
+
+        (await DeleteAsync(ledger.Client, ledger, request.Id)).EnsureSuccessStatusCode();
+
+        Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(row => row.Id == request.Id)));
+    }
+
+    [Fact]
+    public async Task AnApprovedBillIsNotRemovedButReversedAndBothStayWithANetOfZero()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var request = ledger.WithoutInvoice() with { Submit = true };
+        await ledger.RecordAsync(request);
+        await ApproveAsync(ledger, request.Id);
+
+        await AssertRefused(await DeleteAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Conflict, "entryApproved");
+        var reversal = (await (await ReverseAsync(ledger.Client, ledger, request.Id)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!;
+
+        var both = await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == request.Id || row.Id == reversal.Id).ToListAsync());
+        Assert.Equal(2, both.Count);
+        Assert.All(both, row => Assert.Equal(EntryStatus.Approved, row.Status));
+        Assert.Equal(0m, both.Sum(row => row.Amount));
+    }
+
+    [Fact]
+    public async Task DeletingIsItsOwnPermission()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (field, request, fieldId) = await FieldDraftAsync(ledger);
+        await factory.WithDatabaseAsync(db => db.ProjectPermissions.Where(row => row.UserId == fieldId && row.Permission == Permission.DeleteEntries).ExecuteDeleteAsync());
+
+        (await EditAsync(field, ledger, request with { Notes = "تصحيح" })).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Forbidden, (await DeleteAsync(field, ledger, request.Id)).StatusCode);
+
+        await factory.GiveAsync(fieldId, ledger.ProjectId, [Permission.DeleteEntries]);
+        (await DeleteAsync(field, ledger, request.Id)).EnsureSuccessStatusCode();
+    }
+
     [Fact]
     public async Task TheFieldCannotChangeWhatWaitsForADecisionOrSomeoneElsesEntry()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, request) = await FieldDraftAsync(ledger);
+        var (field, request, _) = await FieldDraftAsync(ledger);
         var theirs = ledger.Purchase();
         await ledger.RecordAsync(theirs);
         await AssertRefused(await EditAsync(field, ledger, theirs with { Notes = "لي" }), HttpStatusCode.Forbidden, "notYourEntry");
@@ -144,7 +196,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     public async Task FinanceChangesAnyEntryBeforeApproval()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, request) = await FieldDraftAsync(ledger);
+        var (field, request, _) = await FieldDraftAsync(ledger);
         (await field.PostAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/submit", null)).EnsureSuccessStatusCode();
 
         (await EditAsync(ledger.Client, ledger, request with { Notes = "صححها المالي", AccountId = ledger.AccountId })).EnsureSuccessStatusCode();
@@ -271,7 +323,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         await ledger.RecordAsync(draft);
         var sent = ledger.WithoutInvoice(300m) with { Submit = true };
         await ledger.RecordAsync(sent);
-        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+        var (reader, _) = await ledger.MemberAsync("Reader");
 
         var seen = (await reader.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
         var own = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
@@ -302,7 +354,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     public async Task OnlyWhoeverDecidesEntriesReversesThem()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
         var request = ledger.WithoutInvoice() with { Submit = true };
         await ledger.RecordAsync(request);
         await ApproveAsync(ledger, request.Id);

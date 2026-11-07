@@ -36,7 +36,7 @@ public class DocumentsTests(MigratedApiFactory factory)
             (await AddAsync(ledger, name, group)).EnsureSuccessStatusCode();
             factory.Time.Advance(TimeSpan.FromMinutes(1));
         }
-        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+        var (reader, _) = await ledger.MemberAsync("Reader");
 
         var seen = await ListAsync(reader, ledger.ProjectId);
 

@@ -88,7 +88,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public async Task BR_31_EveryoneReadsTheReportAndSeesOnlyTheirOwnPartnerLineButNoOneElseExports()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (reader, readerId) = await ledger.MemberAsync("users.roleReader");
+        var (reader, readerId) = await ledger.MemberAsync("Reader");
         await PartnerAsync(ledger, "القارئ", readerId);
         await PartnerAsync(ledger, "غيره");
         await IssueAsync(ledger);

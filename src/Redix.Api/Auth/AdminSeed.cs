@@ -50,7 +50,7 @@ public static class AdminSeed
         };
         user.SetPassword(settings.Password, services.GetRequiredService<IPasswordHasher<User>>());
         context.Set<User>().Add(user);
-        context.Set<UserRole>().Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.AdminId });
+        context.Set<SystemPermission>().Add(new SystemPermission { UserId = user.Id, Permission = Permission.ApproveProjects });
     }
 }
 

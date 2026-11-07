@@ -14,9 +14,9 @@ namespace Redix.Api.Tests;
 public class PaymentMethodsTests(MigratedApiFactory factory)
 {
     private const string Password = "Payment-methods-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -29,14 +29,14 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (client, project);
     }
 
     private async Task<HttpClient> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return await factory.ClientSignedInAsAsync(user, Password);
     }
 
@@ -187,7 +187,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
     [Theory]
     [InlineData(Field)]
     [InlineData(Reader)]
-    [InlineData("users.roleManager")]
+    [InlineData("Manager")]
     public async Task EveryoneWithAccessReadsMethodsAndOnlyFinanceChangesThem(string role)
     {
         var (client, project) = await FinanceAsync();
@@ -276,15 +276,5 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         Assert.Equal("invalidVatRate", await CodeOf(refused));
         Assert.Equal(15m, (await ProjectOf(client, project.Id)).VatPercent);
-    }
-
-    [Fact]
-    public async Task FinanceHoldsTheSettingsPermissionAndNoOtherRoleDoes()
-    {
-        await factory.WithDatabaseAsync(async db =>
-        {
-            var holders = await db.RolePermissions.Where(held => held.Permission == Permission.ManageSettings).Select(held => held.RoleId).ToListAsync();
-            Assert.Equal([RoleSeed.IdOf(Finance)], holders);
-        });
     }
 }

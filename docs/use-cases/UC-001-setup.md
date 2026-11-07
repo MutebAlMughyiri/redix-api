@@ -3,7 +3,7 @@
 # UC-001: Set up the environment and base code
 
 **What it is for:** the base every later use case builds on: a running API on SQL Server, a health check, Swagger outside production, and the words the app shows.
-**Who uses it:** everyone, before sign-in. Nothing here needs a role.
+**Who uses it:** everyone, before sign-in. Nothing here needs a permission.
 **Issue:** redix-api #20
 
 ## Endpoints

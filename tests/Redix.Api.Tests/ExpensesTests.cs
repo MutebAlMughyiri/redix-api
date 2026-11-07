@@ -19,10 +19,10 @@ namespace Redix.Api.Tests;
 public class ExpensesTests(MigratedApiFactory factory)
 {
     private const string Password = "Expenses-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
-    private const string Manager = "users.roleManager";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
+    private const string Manager = "Manager";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -33,7 +33,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name, "الفلة الغربية");
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         var supplier = await SupplierAsync(client, project.Id, "شركة النخيل", MigratedApiFactory.NewVatNumber());
         var suppliers = (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers", Json))!;
         var methods = (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{project.Id}/payment-methods", Json))!;
@@ -54,7 +54,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     private async Task<(HttpClient Client, Guid UserId)> MemberAsync(Setup setup, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, setup.Project.Id, role);
+        await factory.GiveAsync(user.Id, setup.Project.Id, Holds.Of(role));
         return (await factory.ClientSignedInAsAsync(user, Password), user.Id);
     }
 
@@ -751,7 +751,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var request = Expense(setup);
         await RecordAsync(setup.Client, setup.Project.Id, request);
         var other = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(other.Id, setup.Project.Id, Finance);
+        await factory.GiveAsync(other.Id, setup.Project.Id, Holds.Of(Finance));
         var otherClient = await factory.ClientSignedInAsAsync(other, Password);
 
         var refused = await PostAsync(otherClient, setup.Project.Id, request);

@@ -380,7 +380,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     public async Task OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther()
     {
         var setup = await ContractAsync();
-        var (field, fieldId) = await setup.Ledger.MemberAsync("users.roleField");
+        var (field, fieldId) = await setup.Ledger.MemberAsync("Field");
 
         var refused = await PostAsync(setup, Payment(setup), field);
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);

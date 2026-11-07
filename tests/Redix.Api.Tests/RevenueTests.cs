@@ -84,7 +84,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task OnlyWhoeverMovesMoneyRecordsRevenue()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
 
         var refused = await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, ""), Json);
 

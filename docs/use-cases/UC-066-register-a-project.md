@@ -26,7 +26,7 @@ A project answers `status`, now also `pendingApproval` or `rejected`, and `rejec
 | Someone signed in registers with their own login | `ProjectsEndpoints.Create` | `RegistrationTests.SomeoneSignedInRegistersWithTheirOwnLogin` |
 | A waiting project gives no permission (BR-34) | `UserAccess.OfAsync` | `RegistrationTests.AWaitingProjectGivesNoPermission` |
 | Only the admin approves, and sees what is needed to decide | `Permission.ApproveProjects` | `RegistrationTests.OnlyTheAdminApproves`, `TheAdminSeesWhatIsNeededToDecide` |
-| The admin sees nothing inside a project (BR-29) | `RoleSeed` | `RegistrationTests.TheAdminSeesNothingInsideAProject` |
+| The admin sees nothing inside a project (BR-29) | `ProjectPermission` rows | `RegistrationTests.TheAdminSeesNothingInsideAProject` |
 | A rejection says why | `Project.Reject` | `RegistrationTests.ARejectionSaysWhy` |
 | A project is decided once | `Project.Approve`, `Project.Reject` | `RegistrationTests.AProjectIsDecidedOnce` |
 | A project manager cannot take over the admin | `UsersEndpoints.MayChangeAsync`, `ProjectUsersEndpoints.AddExisting` | `ProjectUsersTests.AManagerCannotTakeOverTheAdmin` |

@@ -94,7 +94,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var other = await AccountAsync(ledger, "كاش");
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
 
         var refused = await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/transfers", new TransferRequest(ledger.Today, ledger.AccountId, other, 10, ""), Json);
 
@@ -237,8 +237,8 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var sourcePartner = await PartnerAsync(source.Client, source.ProjectId, "شريك");
         await ContributeAsync(source, sourcePartner, 1000);
         var target = await factory.ApprovedProjectAsync(source.Client, "غصون 7", "الفلة");
-        var user = await source.ReadAsync(db => db.ProjectMembers.Where(row => row.ProjectId == source.ProjectId).Select(row => row.UserId).FirstAsync());
-        await factory.GiveRoleAsync(user, target.Id, "users.roleFinance");
+        var user = await source.ReadAsync(db => db.ProjectPermissions.Where(row => row.ProjectId == source.ProjectId).Select(row => row.UserId).FirstAsync());
+        await factory.GiveAsync(user, target.Id, Holds.Of("Finance"));
         var targetPartner = await PartnerAsync(source.Client, target.Id, "شريك");
         (await source.Client.PostAsJsonAsync($"/projects/{target.Id}/accounts", new AddAccountRequest("حساب", AccountType.Bank, 0), Json)).EnsureSuccessStatusCode();
         var account = (await source.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{target.Id}/accounts", Json))!.Single(row => row.Type == AccountType.Bank);
@@ -313,7 +313,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     public async Task BR_31_APartnerSeesTheTotalAndTheirOwnLineAndNoOneElses()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (reader, readerId) = await ledger.MemberAsync("users.roleReader");
+        var (reader, readerId) = await ledger.MemberAsync("Reader");
         var own = await PartnerAsync(ledger.Client, ledger.ProjectId, "القارئ", readerId);
         var other = await PartnerAsync(ledger.Client, ledger.ProjectId, "غيره");
         await ContributeAsync(ledger, own, 100);
@@ -447,7 +447,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         await ledger.RecordAsync(expense);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{expense.Id}/partner-treatment", new PartnerTreatmentRequest(PartnerTreatment.AmountDue), Json)).EnsureSuccessStatusCode();
         await ApproveAsync(ledger, expense.Id);
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
 
         var offered = (await field.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts/offered", Json))!;
         Assert.Equal(0m, offered.Single(row => row.Id == pocket).Balance);

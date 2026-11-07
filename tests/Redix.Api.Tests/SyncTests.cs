@@ -59,7 +59,7 @@ public class SyncTests(MigratedApiFactory factory)
     public async Task AC_05_1_AnItemFinanceAddedReachesTheFieldAtTheNextSync()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
         var before = await SyncAsync(field, ledger.ProjectId);
         var category = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories", Json))![0];
 
@@ -87,7 +87,7 @@ public class SyncTests(MigratedApiFactory factory)
     public async Task TheFieldKeepsOnlyTheAccountsTheyMayCharge()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
 
         var sync = await SyncAsync(field, ledger.ProjectId);
 
@@ -99,7 +99,7 @@ public class SyncTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var recorded = await ledger.RecordAsync(ledger.Purchase());
-        var (other, _) = await ledger.MemberAsync("users.roleFinance");
+        var (other, _) = await ledger.MemberAsync("Finance");
 
         var mine = await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries/mine", Json);
         var theirs = await other.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries/mine", Json);

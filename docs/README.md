@@ -24,8 +24,8 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-005](use-cases/UC-005-audit-trail.md) | The audit trail: who did what to which record, when, with the values before and after; never changed or deleted | The API, on its own |
 | [UC-006](use-cases/UC-006-projects.md) | A project and its units: rename them, delete a unit nothing uses, and close the project when finished | Whoever does the project's finance |
 | [UC-007](use-cases/UC-007-users.md) | Correct, disable and reset logins | A project manager, for someone only in projects they manage |
-| [UC-008](use-cases/UC-008-project-roles.md) | Add people to a project and give their roles, and show each person only their projects | The project manager adds and gives; everyone reads |
-| [UC-009](use-cases/UC-009-roles-and-permissions.md) | Keep every role in the database, keep projects separate, and enforce both on the server | Every request |
+| [UC-008](use-cases/UC-008-project-people.md) | Add people to a project and tick their permissions, and show each person only their projects | Whoever manages its users adds and ticks; everyone reads |
+| [UC-009](use-cases/UC-009-permissions.md) | Keep what each person may do in the database, keep projects separate, and enforce both on the server | Every request |
 | [UC-010](use-cases/UC-010-default-project.md) | Keep each person's default project, and open it at sign-in | Everyone, for themselves |
 | [UC-011](use-cases/UC-011-biometrics.md) | Keep a phone with fingerprint or face signed in | Everyone, for this phone |
 | [UC-012](use-cases/UC-012-categories-and-items.md) | Shape a project's categories, items and subgroups, and start each approved project with a copy | Finance changes; everyone with access reads |

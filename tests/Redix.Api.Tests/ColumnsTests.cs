@@ -12,7 +12,7 @@ namespace Redix.Api.Tests;
 public class ColumnsTests(MigratedApiFactory factory)
 {
     private const string Password = "Columns-pass-1";
-    private const string Finance = "users.roleFinance";
+    private const string Finance = "Finance";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -25,14 +25,14 @@ public class ColumnsTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (user, client, project);
     }
 
     private async Task<HttpClient> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return await factory.ClientSignedInAsAsync(user, Password);
     }
 
@@ -453,7 +453,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var project = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
         var admin = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password, isAdmin: true), Password);
         (await admin.PostAsync($"/projects/{project.Id}/approve", null)).EnsureSuccessStatusCode();
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
 
         var copy = await ItemOfType(client, project.Id, ItemType.Both);
         var columns = await ColumnsOf(client, project.Id, copy.Id);
@@ -468,7 +468,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
 
-        foreach (var role in new[] { "users.roleField", "users.roleReader", "users.roleManager" })
+        foreach (var role in new[] { "Field", "Reader", "Manager" })
         {
             var member = await MemberAsync(project, role);
             Assert.NotEmpty(await ColumnsOf(member, project.Id, item.Id));

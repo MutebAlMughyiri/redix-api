@@ -12,10 +12,10 @@ namespace Redix.Api.Tests;
 public class PartnersTests(MigratedApiFactory factory)
 {
     private const string Password = "Partners-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
-    private const string Manager = "users.roleManager";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
+    private const string Manager = "Manager";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -26,14 +26,14 @@ public class PartnersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (client, project);
     }
 
     private async Task<(User User, HttpClient Client)> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return (user, await factory.ClientSignedInAsAsync(user, Password));
     }
 
@@ -190,7 +190,7 @@ public class PartnersTests(MigratedApiFactory factory)
         foreach (var name in new[] { "غصون 6", "غصون 5" })
         {
             var project = await factory.ApprovedProjectAsync(client, name);
-            await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+            await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
             await AddAsync(client, project.Id, "متعب", user.Id);
         }
     }

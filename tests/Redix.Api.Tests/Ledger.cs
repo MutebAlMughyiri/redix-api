@@ -27,7 +27,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, "غصون 6", "الفلة الغربية");
-        await factory.GiveRoleAsync(user.Id, project.Id, "users.roleFinance");
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of("Finance"));
         var supplier = await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers", new SupplierRequest("شركة النخيل") { VatNumber = MigratedApiFactory.NewVatNumber() }, Json);
         var supplierId = (await supplier.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!.Id;
         var item = (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories/offered?itemType={ItemType.Purchases}", Json))!.SelectMany(category => category.Items).First();
@@ -39,10 +39,10 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
 
     public DateOnly Today => Entry.Today(Factory.Time);
 
-    public async Task<(HttpClient Client, Guid UserId)> MemberAsync(string role)
+    public async Task<(HttpClient Client, Guid UserId)> MemberAsync(string holds)
     {
         var user = await Factory.AddUserAsync(Password);
-        await Factory.GiveRoleAsync(user.Id, ProjectId, role);
+        await Factory.GiveAsync(user.Id, ProjectId, Holds.Of(holds));
         return (await Factory.ClientSignedInAsAsync(user, Password), user.Id);
     }
 

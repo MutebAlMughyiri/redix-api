@@ -31,7 +31,7 @@ Each use case adds its own actions; entries, users and attachments join the trai
 | `ChangePassword` | A user changes their password (UC-003) | The user | `MustChangePassword`, when a temporary password ends; never the password's hash |
 | `SignOut` | A user signs out of a device (UC-062) | The user | None: the record itself says it happened |
 | `Create`, `Update`, `ResetPassword`, `Disable`, `Enable` | A user is managed (UC-007, UC-008) | The user | What the action changed; never the password's hash |
-| `AssignProject`, `RemoveProject` | A role in a project is given or taken (UC-008, UC-009) | The `ProjectMembers` row | The role before and after; every value of a removed row in `Before` |
+| `AssignProject`, `RemoveProject` | A permission in a project is ticked or unticked (UC-008, UC-009) | The `ProjectPermissions` row | The permission; every value of a removed row in `Before` |
 | `RegisterProject` | A project is registered (UC-006, UC-066) | The project | Every value of the new record |
 | `Create` | A unit is added (UC-006) | The unit | Every value of the new record |
 | `CloseProject` | A project is closed (UC-006) | The project | Its status, old and new |

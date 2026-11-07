@@ -35,7 +35,7 @@ public class NotificationsTests(MigratedApiFactory factory)
 
     private static async Task<(HttpClient Client, ExpenseRequest Request)> FieldSendsAsync(Ledger ledger)
     {
-        var (field, userId) = await ledger.MemberAsync("users.roleField");
+        var (field, userId) = await ledger.MemberAsync("Field");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         var request = ledger.WithoutInvoice() with { AccountId = account.Id, Submit = true };
@@ -47,7 +47,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     public async Task AC_20_1_SendingAnEntryTellsWhoeverDecidesAndNotWhoSentIt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+        var (reader, _) = await ledger.MemberAsync("Reader");
         var (field, request) = await FieldSendsAsync(ledger);
 
         var told = Assert.Single((await MineAsync(ledger.Client))!);
@@ -62,7 +62,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     public async Task SavingADraftTellsNobody()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.MemberAsync("users.roleFinance");
+        await ledger.MemberAsync("Finance");
         await ledger.RecordAsync(ledger.WithoutInvoice());
 
         Assert.Empty(await ledger.ReadAsync(db => db.Notifications.Where(row => row.ProjectId == ledger.ProjectId).ToListAsync()));
@@ -72,7 +72,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     public async Task SendingADraftLaterTellsWhoeverDecides()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (other, _) = await ledger.MemberAsync("users.roleFinance");
+        var (other, _) = await ledger.MemberAsync("Finance");
         var draft = ledger.WithoutInvoice();
         await ledger.RecordAsync(draft);
 
@@ -135,7 +135,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     public async Task DeletingADraftTakesWhatWasToldAboutIt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (other, _) = await ledger.MemberAsync("users.roleFinance");
+        var (other, _) = await ledger.MemberAsync("Finance");
         var request = ledger.WithoutInvoice() with { Submit = true };
         await ledger.RecordAsync(request);
         Assert.NotEmpty((await MineAsync(other))!);
@@ -173,11 +173,11 @@ public class NotificationsTests(MigratedApiFactory factory)
     public async Task SomeoneWhoLeftAProjectIsNoLongerToldOfIt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (other, otherId) = await ledger.MemberAsync("users.roleFinance");
+        var (other, otherId) = await ledger.MemberAsync("Finance");
         await FieldSendsAsync(ledger);
         Assert.NotEmpty((await MineAsync(other))!);
 
-        await factory.WithDatabaseAsync(db => db.ProjectMembers.Where(row => row.UserId == otherId).ExecuteDeleteAsync());
+        await factory.WithDatabaseAsync(db => db.ProjectPermissions.Where(row => row.UserId == otherId).ExecuteDeleteAsync());
 
         Assert.Empty((await MineAsync(other))!);
     }}

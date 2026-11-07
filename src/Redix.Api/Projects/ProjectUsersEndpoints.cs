@@ -6,55 +6,50 @@ using Redix.Api.Auth;
 
 namespace Redix.Api.Projects;
 
-/// <summary>A project's people and their roles (UC-009, FR-02, FR-36), for its project manager. Every project keeps its own list (BR-33), and every change is saved with its audit record.</summary>
+/// <summary>A project's people and what each may do in it (UC-009, FR-02, FR-36), for whoever manages its users. Every project keeps its own list (BR-33), and every change is saved with its audit record.</summary>
 public static class ProjectUsersEndpoints
 {
-    /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for its manager <c>GET /roles</c>, <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, and giving and taking a role.</summary>
+    /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for whoever manages its users <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, and giving and taking a permission.</summary>
     public static void MapProjectUsers(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/members", Members).RequireAuthorization(nameof(Permission.ReadProject));
         var project = app.MapGroup("/projects/{projectId:guid}").RequireAuthorization(nameof(Permission.ManageUsers));
-        project.MapGet("/roles", Roles);
         project.MapGet("/users", List);
         project.MapPost("/users", Create);
         project.MapPost("/users/existing", AddExisting);
-        project.MapPost("/users/{userId:guid}/roles/{roleId:guid}", GiveRole);
-        project.MapPost("/users/{userId:guid}/roles/{roleId:guid}/remove", TakeRole);
+        project.MapPost("/users/{userId:guid}/permissions/{permission}", Give);
+        project.MapPost("/users/{userId:guid}/permissions/{permission}/remove", Take);
     }
 
     /// <summary>The active people of this project by name, once each, for choosing who holds something in it. Only their names show (BR-33).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database they live in.</param>
     public static Task<List<MemberView>> Members(Guid projectId, RedixDbContext db) =>
-        db.Users.Where(user => user.IsActive && db.ProjectMembers.Any(member => member.ProjectId == projectId && member.UserId == user.Id))
+        db.Users.Where(user => user.IsActive && db.ProjectPermissions.Any(held => held.ProjectId == projectId && held.UserId == user.Id))
             .OrderBy(user => user.DisplayName).Select(user => new MemberView(user.Id, user.DisplayName)).ToListAsync();
 
-    /// <summary>Whether <paramref name="userId"/> holds any role in <paramref name="projectId"/>.</summary>
-    public static Task<bool> IsMemberAsync(Guid projectId, Guid userId, RedixDbContext db) => db.ProjectMembers.AnyAsync(member => member.ProjectId == projectId && member.UserId == userId);
+    /// <summary>Whether <paramref name="userId"/> is in <paramref name="projectId"/>: holds anything there.</summary>
+    public static Task<bool> IsMemberAsync(Guid projectId, Guid userId, RedixDbContext db) => db.ProjectPermissions.AnyAsync(held => held.ProjectId == projectId && held.UserId == userId);
 
-    /// <summary>The roles that can be given in a project, in their order (BR-32).</summary>
-    /// <param name="db">The database the roles live in.</param>
-    public static Task<List<RoleView>> Roles(RedixDbContext db) =>
-        db.Roles.Where(role => role.Scope == RoleScope.Project).OrderBy(role => role.SortOrder).Select(role => new RoleView(role.Id, role.WordKey)).ToListAsync();
-
-    /// <summary>The people of this project and their roles in it, active users first, by name. Their other projects never show (BR-33).</summary>
+    /// <summary>The people of this project and what each may do in it, active users first, by name. Their other projects never show (BR-33).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database they live in.</param>
     public static async Task<List<UserView>> List(Guid projectId, RedixDbContext db)
     {
-        var members = db.ProjectMembers.Where(member => member.ProjectId == projectId);
-        var users = await db.Users.Where(user => members.Any(member => member.UserId == user.Id)).OrderByDescending(user => user.IsActive).ThenBy(user => user.DisplayName).ToListAsync();
-        var projects = await UsersEndpoints.ProjectsByUserAsync(members, db);
+        var held = db.ProjectPermissions.Where(row => row.ProjectId == projectId);
+        var users = await db.Users.Where(user => held.Any(row => row.UserId == user.Id)).OrderByDescending(user => user.IsActive).ThenBy(user => user.DisplayName).ToListAsync();
+        var projects = await UsersEndpoints.ProjectsByUserAsync(held, db);
         return users.Select(user => UserView.Of(user, projects[user.Id].ToList())).ToList();
     }
 
     /// <summary>
-    /// Creates a login in this project, as its last role, who must change the temporary password at first sign-in (AC-02.1). A field outside its limit answers its
-    /// code: <c>invalidName</c>, <c>invalidUsername</c>, <c>invalidMobile</c> or <c>weakPassword</c>; a username already taken, whatever its case, answers <c>usernameTaken</c>.
+    /// Creates a login in this project holding what was ticked and <see cref="Permission.ReadProject"/>, who must change the temporary password at first sign-in (AC-02.1). A field outside
+    /// its limit answers its code: <c>invalidName</c>, <c>invalidUsername</c>, <c>invalidMobile</c> or <c>weakPassword</c>; the system's own permission <c>invalidPermission</c>; a username
+    /// already taken, whatever its case, <c>usernameTaken</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
-    /// <param name="request">The user's name, username, mobile and temporary password.</param>
-    /// <param name="principal">The project manager's session.</param>
+    /// <param name="request">The user's name, username, mobile, temporary password and permissions.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database the user joins.</param>
     /// <param name="hasher">Hashes the temporary password.</param>
     /// <param name="time">The current time, for the user and the audit records.</param>
@@ -68,6 +63,10 @@ public static class ProjectUsersEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
         }
+        if (!request.Permissions.All(ProjectPermission.InAProject.Contains))
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPermission");
+        }
         if (await db.Users.AnyAsync(user => user.Username == username))
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "UsernameTaken");
@@ -78,107 +77,115 @@ public static class ProjectUsersEndpoints
         user.SetPassword(request.TemporaryPassword, hasher);
         db.Users.Add(user);
         db.Audit(user, AuditAction.Create, AccessTokens.UserIdOf(principal), now);
-        await AddAsTheLastRoleAsync(projectId, user.Id, principal, db, now);
+        foreach (var permission in request.Permissions.Prepend(Permission.ReadProject).Distinct())
+        {
+            Add(projectId, user.Id, permission, principal, db, now);
+        }
         await db.SaveChangesAsync();
         return Results.Created($"/users/{user.Id}", await ViewInProjectAsync(user, projectId, db));
     }
 
-    /// <summary>Adds someone who already has a login, named by their exact username, as this project's last role; nothing else about them shows (BR-33). An unknown username answers <c>unknownUser</c>, and so does the admin's, so a manager can never reach that login.</summary>
+    /// <summary>Adds someone who already has a login, named by their exact username, to this project holding <see cref="Permission.ReadProject"/>; nothing else about them shows (BR-33). An unknown username answers <c>unknownUser</c>, and so does the admin's, so a project can never reach that login.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The exact username.</param>
-    /// <param name="principal">The project manager's session.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database they live in.</param>
     /// <param name="time">The current time, for the audit record.</param>
     public static async Task<IResult> AddExisting(Guid projectId, AddExistingUserRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var username = request.Username.Trim();
-        var user = await db.Users.SingleOrDefaultAsync(user => user.Username == username && !db.UserRoles.Any(row => row.UserId == user.Id));
+        var user = await db.Users.SingleOrDefaultAsync(user => user.Username == username && !db.SystemPermissions.Any(row => row.UserId == user.Id));
         if (user is null)
         {
             return Refusal.Of(StatusCodes.Status404NotFound, "UnknownUser");
         }
 
-        if (!await db.ProjectMembers.AnyAsync(member => member.ProjectId == projectId && member.UserId == user.Id))
+        if (!await IsMemberAsync(projectId, user.Id, db))
         {
-            await AddAsTheLastRoleAsync(projectId, user.Id, principal, db, time.GetUtcNow().UtcDateTime);
+            Add(projectId, user.Id, Permission.ReadProject, principal, db, time.GetUtcNow().UtcDateTime);
             await db.SaveChangesAsync();
         }
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
-    /// <summary>Gives someone in this project a role; holding it already changes nothing. A role that cannot be given in a project answers <c>invalidRole</c>.</summary>
+    /// <summary>Gives someone in this project one permission; holding it already changes nothing. A name that is not a permission of a project answers <c>invalidPermission</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">The person, who must be in this project.</param>
-    /// <param name="roleId">The role.</param>
-    /// <param name="principal">The project manager's session.</param>
+    /// <param name="permission">The permission's name.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database they live in.</param>
     /// <param name="time">The current time, for the audit record.</param>
-    public static async Task<IResult> GiveRole(Guid projectId, Guid userId, Guid roleId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    public static async Task<IResult> Give(Guid projectId, Guid userId, string permission, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
         if (user is null)
         {
             return Results.NotFound();
         }
-        if (!await db.Roles.AnyAsync(role => role.Id == roleId && role.Scope == RoleScope.Project))
+        if (!ProjectPermission.TryOf(permission, out var given))
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidRole");
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPermission");
         }
 
-        if (!await db.ProjectMembers.AnyAsync(member => member.ProjectId == projectId && member.UserId == userId && member.RoleId == roleId))
+        if (!await db.ProjectPermissions.AnyAsync(held => held.ProjectId == projectId && held.UserId == userId && held.Permission == given))
         {
-            var member = new ProjectMember { ProjectId = projectId, UserId = userId, RoleId = roleId };
-            db.ProjectMembers.Add(member);
-            db.Audit(member, AuditAction.AssignProject, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+            Add(projectId, userId, given, principal, db, time.GetUtcNow().UtcDateTime);
             await db.SaveChangesAsync();
         }
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
-    /// <summary>Takes a role from someone in this project; their last role takes them out of it. The role of a project's last active manager answers <c>lastManager</c> (BR-29).</summary>
+    /// <summary>
+    /// Takes one permission from someone in this project; taking <see cref="Permission.ReadProject"/> takes every one of theirs, which takes them out of it. What would leave the project
+    /// with nobody active managing its users answers <c>lastManager</c> (BR-29); a name that is not a permission of a project, <c>invalidPermission</c>.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">The person, who must be in this project.</param>
-    /// <param name="roleId">The role.</param>
-    /// <param name="principal">The project manager's session.</param>
+    /// <param name="permission">The permission's name.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database they live in.</param>
     /// <param name="time">The current time, for the audit record.</param>
-    public static async Task<IResult> TakeRole(Guid projectId, Guid userId, Guid roleId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    public static async Task<IResult> Take(Guid projectId, Guid userId, string permission, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
         if (user is null)
         {
             return Results.NotFound();
         }
-
-        var member = await db.ProjectMembers.SingleOrDefaultAsync(member => member.ProjectId == projectId && member.UserId == userId && member.RoleId == roleId);
-        if (member is not null)
+        if (!ProjectPermission.TryOf(permission, out var taking))
         {
-            if (await ProjectManagers.WouldLoseTheLastAsync(member, db))
-            {
-                return Refusal.Of(StatusCodes.Status409Conflict, "LastManager");
-            }
-            db.ProjectMembers.Remove(member);
-            db.Audit(member, AuditAction.RemoveProject, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
-            await db.SaveChangesAsync();
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPermission");
         }
+
+        var taken = await db.ProjectPermissions.Where(held => held.ProjectId == projectId && held.UserId == userId && (taking == Permission.ReadProject || held.Permission == taking)).ToListAsync();
+        if (await ProjectManagers.WouldLoseTheLastAsync(taken, db))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "LastManager");
+        }
+        var now = time.GetUtcNow().UtcDateTime;
+        foreach (var held in taken)
+        {
+            db.ProjectPermissions.Remove(held);
+            db.Audit(held, AuditAction.RemoveProject, AccessTokens.UserIdOf(principal), now);
+        }
+        await db.SaveChangesAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
-    private static async Task AddAsTheLastRoleAsync(Guid projectId, Guid userId, ClaimsPrincipal principal, RedixDbContext db, DateTime now)
+    private static void Add(Guid projectId, Guid userId, Permission permission, ClaimsPrincipal principal, RedixDbContext db, DateTime now)
     {
-        var lastRoleId = await db.Roles.Where(role => role.Scope == RoleScope.Project).OrderByDescending(role => role.SortOrder).Select(role => role.Id).FirstAsync();
-        var member = new ProjectMember { ProjectId = projectId, UserId = userId, RoleId = lastRoleId };
-        db.ProjectMembers.Add(member);
-        db.Audit(member, AuditAction.AssignProject, AccessTokens.UserIdOf(principal), now);
+        var held = new ProjectPermission { ProjectId = projectId, UserId = userId, Permission = permission };
+        db.ProjectPermissions.Add(held);
+        db.Audit(held, AuditAction.AssignProject, AccessTokens.UserIdOf(principal), now);
     }
 
     private static Task<User?> InProjectAsync(Guid projectId, Guid userId, RedixDbContext db) =>
-        db.Users.SingleOrDefaultAsync(user => user.Id == userId && db.ProjectMembers.Any(member => member.ProjectId == projectId && member.UserId == userId));
+        db.Users.SingleOrDefaultAsync(user => user.Id == userId && db.ProjectPermissions.Any(held => held.ProjectId == projectId && held.UserId == userId));
 
     private static async Task<UserView> ViewInProjectAsync(User user, Guid projectId, RedixDbContext db)
     {
-        var members = db.ProjectMembers.Where(member => member.ProjectId == projectId && member.UserId == user.Id);
-        return UserView.Of(user, (await UsersEndpoints.ProjectsByUserAsync(members, db))[user.Id].ToList());
+        var held = db.ProjectPermissions.Where(row => row.ProjectId == projectId && row.UserId == user.Id);
+        return UserView.Of(user, (await UsersEndpoints.ProjectsByUserAsync(held, db))[user.Id].ToList());
     }
 }
 

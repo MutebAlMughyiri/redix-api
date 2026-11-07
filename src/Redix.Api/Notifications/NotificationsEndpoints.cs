@@ -28,7 +28,7 @@ public static class NotificationsEndpoints
     {
         var userId = AccessTokens.UserIdOf(principal);
         return await db.Notifications
-            .Where(row => row.UserId == userId && db.ProjectMembers.Any(member => member.UserId == userId && member.ProjectId == row.ProjectId))
+            .Where(row => row.UserId == userId && db.ProjectPermissions.Any(held => held.UserId == userId && held.ProjectId == row.ProjectId))
             .OrderByDescending(row => row.At).ThenByDescending(row => row.Id).Take(Latest)
             .Join(db.Projects, row => row.ProjectId, project => project.Id, (row, project) => new NotificationView(row.Id, row.Kind, row.ProjectId, project.Name, row.EntryId, row.At, row.IsRead))
             .ToListAsync();
@@ -75,7 +75,7 @@ public static class NotificationsEndpoints
     }
 
     private static Task<List<Guid>> HoldersOfAsync(Permission permission, Guid projectId, RedixDbContext db) =>
-        db.ProjectMembers.Where(member => member.ProjectId == projectId && db.RolePermissions.Any(held => held.RoleId == member.RoleId && held.Permission == permission)).Select(member => member.UserId).Distinct().ToListAsync();
+        db.ProjectPermissions.Where(held => held.ProjectId == projectId && held.Permission == permission).Select(held => held.UserId).ToListAsync();
 }
 
 /// <summary>Something a person was told.</summary>

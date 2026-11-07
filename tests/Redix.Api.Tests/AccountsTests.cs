@@ -13,9 +13,9 @@ namespace Redix.Api.Tests;
 public class AccountsTests(MigratedApiFactory factory)
 {
     private const string Password = "Accounts-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -28,14 +28,14 @@ public class AccountsTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (client, project);
     }
 
     private async Task<(User User, HttpClient Client)> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return (user, await factory.ClientSignedInAsAsync(user, Password));
     }
 
@@ -384,7 +384,7 @@ public class AccountsTests(MigratedApiFactory factory)
 
     [Theory]
     [InlineData(Reader)]
-    [InlineData("users.roleManager")]
+    [InlineData("Manager")]
     public async Task EveryoneWithAccessReadsAccountsAndOnlyFinanceChangesThem(string role)
     {
         var (client, project) = await FinanceAsync();
@@ -396,21 +396,11 @@ public class AccountsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task OnlyFinanceChargesAnyAccount()
-    {
-        await factory.WithDatabaseAsync(async db =>
-        {
-            var holders = await db.RolePermissions.Where(held => held.Permission == Permission.ChargeAnyAccount).Select(held => held.RoleId).ToListAsync();
-            Assert.Equal([RoleSeed.IdOf(Finance)], holders);
-        });
-    }
-
-    [Fact]
     public async Task TheMembersListNamesEachActivePersonOnceWithNothingElse()
     {
         var (client, project) = await FinanceAsync();
         var (nawaf, _) = await MemberAsync(project, Field);
-        await factory.GiveRoleAsync(nawaf.Id, project.Id, Reader);
+        await factory.GiveAsync(nawaf.Id, project.Id, Holds.Of(Reader));
         var (gone, _) = await MemberAsync(project, Field);
         await factory.DisableAsync(gone);
         var stranger = await factory.AddUserAsync(Password);

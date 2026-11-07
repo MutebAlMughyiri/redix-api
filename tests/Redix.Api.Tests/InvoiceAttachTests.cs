@@ -33,7 +33,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
 
     private static async Task<(HttpClient Client, ExpenseRequest Request)> FieldRecordsAsync(Ledger ledger)
     {
-        var (field, userId) = await ledger.MemberAsync("users.roleField");
+        var (field, userId) = await ledger.MemberAsync("Field");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         var request = ledger.WithoutInvoice() with { AccountId = account.Id, Submit = true };
@@ -137,7 +137,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     public async Task AC_49_3_AnApprovedEntryGoesBackToApprovalAndFinanceIsTold()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var (other, _) = await ledger.MemberAsync("users.roleFinance");
+        var (other, _) = await ledger.MemberAsync("Finance");
         var request = ledger.WithoutInvoice() with { Submit = true };
         await ledger.RecordAsync(request);
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
@@ -201,7 +201,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var request = ledger.WithoutInvoice() with { Submit = true };
         await ledger.RecordAsync(request);
-        var (field, _) = await ledger.MemberAsync("users.roleField");
+        var (field, _) = await ledger.MemberAsync("Field");
 
         var refused = await AttachAsync(field, ledger, request.Id, Invoice(ledger, await ledger.FileAsync()));
 

@@ -46,7 +46,7 @@ Every change also answers `409` `projectFinished` in a finished project.
 | Enabling brings it back | `PaymentMethodsEndpoints.Enable` | `PaymentMethodsTests.EnablingBringsAMethodBackIntoEntry` |
 | One project's methods and rate change no other, nor the template (BR-33) | `PaymentMethod.ProjectId`, `Project.VatRate` | `PaymentMethodsTests.AChangeInOneProjectLeavesTheTemplateAndOtherProjectsAlone` |
 | One project's route never reaches another's methods (BR-33) | `PaymentMethodsEndpoints.ChangeAsync`, `PermissionHandler` | `PaymentMethodsTests.ARouteOfOneProjectNeverReachesAnothersMethods` |
-| Everyone with access reads; only Finance changes | `Permission.ManageSettings`, `RoleSeed` | `PaymentMethodsTests.EveryoneWithAccessReadsMethodsAndOnlyFinanceChangesThem`, `FinanceHoldsTheSettingsPermissionAndNoOtherRoleDoes` |
+| Everyone with access reads; only Finance changes | `Permission.ManageSettings` | `PaymentMethodsTests.EveryoneWithAccessReadsMethodsAndOnlyFinanceChangesThem`, `FinanceHoldsTheSettingsPermissionAndNoOtherRoleDoes` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges`, `Project.SetVatPercent` | `PaymentMethodsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 | A new project's rate is 15% (BR-14) | `Project.StartingVatRate` | `PaymentMethodsTests.ANewProjectsVatRateIsFifteenPercent` |
 | Finance sets the rate | `Project.SetVatPercent` | `PaymentMethodsTests.FinanceSetsTheVatRate` |

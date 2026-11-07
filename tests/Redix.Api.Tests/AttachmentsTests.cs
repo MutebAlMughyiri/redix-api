@@ -19,10 +19,10 @@ namespace Redix.Api.Tests;
 public class AttachmentsTests(MigratedApiFactory factory)
 {
     private const string Password = "Attachments-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
-    private const string Manager = "users.roleManager";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
+    private const string Manager = "Manager";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -35,14 +35,14 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, "غصون 6", "الفلة الغربية");
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (client, project);
     }
 
     private async Task<HttpClient> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return await factory.ClientSignedInAsAsync(user, Password);
     }
 
@@ -306,8 +306,8 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var other = await factory.ApprovedProjectAsync(client, "غصون 7", "الفلة الشرقية");
         await factory.WithDatabaseAsync(async db =>
         {
-            var userId = await db.ProjectMembers.Where(member => member.ProjectId == project.Id).Select(member => member.UserId).FirstAsync();
-            await factory.GiveRoleAsync(userId, other.Id, Finance);
+            var userId = await db.ProjectPermissions.Where(held => held.ProjectId == project.Id).Select(held => held.UserId).FirstAsync();
+            await factory.GiveAsync(userId, other.Id, Holds.Of(Finance));
         });
         var document = await UploadedAsync(client, other.Id, Pdf);
         var request = await ContractRequestFor(client, project) with { AttachmentIds = [document.Id] };

@@ -159,14 +159,14 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task FieldSendsTheirOwnEntryAndNotAnothersAndFinanceSendsAnyones()
     {
         var ledger = await LedgerAsync();
-        var (field, fieldId) = await ledger.MemberAsync("users.roleField");
+        var (field, fieldId) = await ledger.MemberAsync("Field");
         var financeEntry = await DraftAsync(ledger, ledger.WithoutInvoice());
 
         var refused = await SubmitAsync(ledger, financeEntry, field);
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
         Assert.Equal("notYourEntry", await Ledger.CodeOf(refused));
 
-        var (other, otherId) = await ledger.MemberAsync("users.roleField");
+        var (other, otherId) = await ledger.MemberAsync("Field");
         var fieldEntries = new[] { Guid.CreateVersion7(), Guid.CreateVersion7() };
         await factory.WithDatabaseAsync(async db =>
         {
@@ -186,8 +186,8 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     }
 
     [Theory]
-    [InlineData("users.roleReader")]
-    [InlineData("users.roleManager")]
+    [InlineData("Reader")]
+    [InlineData("Manager")]
     public async Task WhoHoldsNoRecordEntriesCannotSendAnEntry(string role)
     {
         var ledger = await LedgerAsync();
@@ -243,7 +243,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
         var entryId = await DraftAsync(ledger, ledger.Purchase(1150m, "F-55") with { Product = "أسمنت", AttachmentId = await ledger.FileAsync() });
-        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+        var (reader, _) = await ledger.MemberAsync("Reader");
 
         var entry = await ReadAsync(ledger, entryId, reader);
 

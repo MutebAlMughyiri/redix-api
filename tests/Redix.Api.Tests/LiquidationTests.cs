@@ -89,8 +89,8 @@ public class LiquidationTests(MigratedApiFactory factory)
     {
         var (ledger, first, second) = await TwoPartnersAsync(factory);
         var later = await factory.ApprovedProjectAsync(ledger.Client, "غصون 7", "الفلة");
-        var user = await ledger.ReadAsync(db => db.ProjectMembers.Where(row => row.ProjectId == ledger.ProjectId).Select(row => row.UserId).FirstAsync());
-        await factory.GiveRoleAsync(user, later.Id, "users.roleFinance");
+        var user = await ledger.ReadAsync(db => db.ProjectPermissions.Where(row => row.ProjectId == ledger.ProjectId).Select(row => row.UserId).FirstAsync());
+        await factory.GiveAsync(user, later.Id, Holds.Of("Finance"));
         var laterPartner = await PartnerAsync(ledger.Client, later.Id, "سالم");
         (await ledger.Client.PostAsJsonAsync($"/projects/{later.Id}/accounts", new AddAccountRequest("حساب", AccountType.Bank, 0), Json)).EnsureSuccessStatusCode();
         var laterAccount = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{later.Id}/accounts", Json))!.Single(row => row.Type == AccountType.Bank).Id;

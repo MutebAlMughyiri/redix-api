@@ -15,10 +15,10 @@ namespace Redix.Api.Tests;
 public class SuppliersTests(MigratedApiFactory factory)
 {
     private const string Password = "Suppliers-pass-1";
-    private const string Finance = "users.roleFinance";
-    private const string Field = "users.roleField";
-    private const string Reader = "users.roleReader";
-    private const string Manager = "users.roleManager";
+    private const string Finance = "Finance";
+    private const string Field = "Field";
+    private const string Reader = "Reader";
+    private const string Manager = "Manager";
     private const string VatNumber = "300000000000003";
     private const string OtherVatNumber = "311111111111113";
 
@@ -29,14 +29,14 @@ public class SuppliersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(user, Password);
         var project = await factory.ApprovedProjectAsync(client, name);
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         return (client, project);
     }
 
     private async Task<HttpClient> MemberAsync(ProjectView project, string role)
     {
         var user = await factory.AddUserAsync(Password);
-        await factory.GiveRoleAsync(user.Id, project.Id, role);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return await factory.ClientSignedInAsAsync(user, Password);
     }
 
@@ -454,7 +454,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var userId = Guid.Empty;
         await factory.WithDatabaseAsync(async db =>
         {
-            userId = await db.ProjectMembers.Where(member => member.ProjectId == project.Id).Select(member => member.UserId).FirstAsync();
+            userId = await db.ProjectPermissions.Where(held => held.ProjectId == project.Id).Select(held => held.UserId).FirstAsync();
             db.Suppliers.AddRange(Enumerable.Range(0, 500).Select(number => new Supplier { ProjectId = project.Id, Name = $"مورد البناء {number}", CreatedByUserId = userId }));
             await db.SaveChangesAsync();
         });

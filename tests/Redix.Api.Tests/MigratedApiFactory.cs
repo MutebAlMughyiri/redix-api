@@ -85,7 +85,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         db.Users.Add(user);
         if (isAdmin)
         {
-            db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.AdminId });
+            db.SystemPermissions.Add(new SystemPermission { UserId = user.Id, Permission = Permission.ApproveProjects });
         }
         await db.SaveChangesAsync();
         return user;
@@ -114,19 +114,13 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return await scope.ServiceProvider.GetRequiredService<RedixDbContext>().AuditTrail.Where(record => record.RecordId == recordId).OrderBy(record => record.Id).ToListAsync();
     }
 
-    public async Task<Guid> ProjectMemberIdAsync(Guid userId, Guid projectId, Guid roleId)
-    {
-        using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
-        return await db.ProjectMembers.Where(member => member.UserId == userId && member.ProjectId == projectId && member.RoleId == roleId).Select(member => member.Id).SingleAsync();
-    }
-
-    /// <summary>Gives a role straight in the database, for a test whose subject is something else.</summary>
-    public Task GiveRoleAsync(Guid userId, Guid projectId, string wordKey) =>
-        WithDatabaseAsync(db =>
+    /// <summary>Gives <paramref name="permissions"/> in a project straight in the database, those not held already, for a test whose subject is something else.</summary>
+    public Task GiveAsync(Guid userId, Guid projectId, IEnumerable<Permission> permissions) =>
+        WithDatabaseAsync(async db =>
         {
-            db.ProjectMembers.Add(new ProjectMember { UserId = userId, ProjectId = projectId, RoleId = RoleSeed.IdOf(wordKey) });
-            return db.SaveChangesAsync();
+            var held = await db.ProjectPermissions.Where(row => row.UserId == userId && row.ProjectId == projectId).Select(row => row.Permission).ToListAsync();
+            db.ProjectPermissions.AddRange(permissions.Except(held).Select(permission => new ProjectPermission { UserId = userId, ProjectId = projectId, Permission = permission }));
+            await db.SaveChangesAsync();
         });
 
     /// <summary>Registers a project for <paramref name="client"/> and approves it straight in the database, for a test whose subject is something else.</summary>
@@ -136,7 +130,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var project = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
         await WithDatabaseAsync(async db =>
         {
-            var managerId = await db.ProjectMembers.Where(member => member.ProjectId == project.Id).Select(member => member.UserId).FirstAsync();
+            var managerId = await db.ProjectPermissions.Where(held => held.ProjectId == project.Id).Select(held => held.UserId).FirstAsync();
             await ProjectStructure.ApproveAsync(await db.Projects.SingleAsync(stored => stored.Id == project.Id), managerId, db);
             await db.SaveChangesAsync();
         });

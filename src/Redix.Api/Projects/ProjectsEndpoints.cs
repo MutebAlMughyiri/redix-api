@@ -27,8 +27,8 @@ public static class ProjectsEndpoints
     }
 
     /// <summary>
-    /// The projects the caller may read, and those they registered that are not approved, running ones first and then the newest (AC-36.1), each with their roles and
-    /// what they may do in it (AC-36.2). A finished project stays listed, with its reports (AC-04.1).
+    /// The projects the caller may read, and those they registered that are not approved, running ones first and then the newest (AC-36.1), each with what they may do
+    /// in it (AC-36.2). A finished project stays listed, with its reports (AC-04.1).
     /// </summary>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the projects live in.</param>
@@ -36,12 +36,12 @@ public static class ProjectsEndpoints
     {
         var userId = AccessTokens.UserIdOf(principal);
         var access = await UserAccess.OfAsync(userId, db);
-        var roles = await RolesByProjectAsync(userId, db);
+        var theirs = (await db.ProjectPermissions.Where(held => held.UserId == userId).Select(held => held.ProjectId).Distinct().ToListAsync()).ToHashSet();
         var projects = await db.Projects.Include(project => project.Units.OrderBy(unit => unit.SortOrder))
             .OrderBy(project => project.Status).ThenByDescending(project => project.StartDate)
             .ToListAsync();
-        return projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (!project.IsApproved && roles[project.Id].Any()))
-            .Select(project => ProjectView.Of(project, roles[project.Id].ToList(), access.In(project.Id))).ToList();
+        return projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (!project.IsApproved && theirs.Contains(project.Id)))
+            .Select(project => ProjectView.Of(project, access.In(project.Id))).ToList();
     }
 
     /// <summary>
@@ -68,19 +68,22 @@ public static class ProjectsEndpoints
         }
 
         project.StructureSourceId = request.StructureSourceId;
-        await AddWithManagerAsync(project, userId, db, time.GetUtcNow().UtcDateTime);
+        AddWithManager(project, userId, db, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{project.Id}", await ViewOfAsync(project, userId, db));
     }
 
-    /// <summary>Adds a registered <paramref name="project"/> with <paramref name="managerId"/> as its first manager, and their audit records; the caller saves them together.</summary>
-    public static async Task AddWithManagerAsync(Project project, Guid managerId, RedixDbContext db, DateTime now)
+    /// <summary>Adds a registered <paramref name="project"/> with <paramref name="managerId"/> holding every permission of a project in it, and their audit records; the caller saves them together.</summary>
+    public static void AddWithManager(Project project, Guid managerId, RedixDbContext db, DateTime now)
     {
-        var manager = new ProjectMember { ProjectId = project.Id, UserId = managerId, RoleId = await ProjectManagers.RoleIdAsync(db) };
         db.Projects.Add(project);
-        db.ProjectMembers.Add(manager);
         db.Audit(project, AuditAction.RegisterProject, managerId, now);
-        db.Audit(manager, AuditAction.AssignProject, managerId, now);
+        foreach (var permission in ProjectPermission.InAProject)
+        {
+            var held = new ProjectPermission { ProjectId = project.Id, UserId = managerId, Permission = permission };
+            db.ProjectPermissions.Add(held);
+            db.Audit(held, AuditAction.AssignProject, managerId, now);
+        }
     }
 
     /// <summary>Adds a unit at the end of the project's list. A finished project answers <c>projectFinished</c>; an unacceptable name, <c>invalidName</c>; a name another unit of the project holds, compared trimmed, <c>unitNameTaken</c> (BR-37).</summary>
@@ -208,20 +211,11 @@ public static class ProjectsEndpoints
         return Results.Ok(await ViewOfAsync(project, userId, db));
     }
 
-    private static async Task<ILookup<Guid, string>> RolesByProjectAsync(Guid userId, RedixDbContext db)
-    {
-        var rows = await db.ProjectMembers.Where(member => member.UserId == userId)
-            .Join(db.Roles, member => member.RoleId, role => role.Id, (member, role) => new { member.ProjectId, role.WordKey, role.SortOrder })
-            .OrderBy(row => row.SortOrder).ToListAsync();
-        return rows.ToLookup(row => row.ProjectId, row => row.WordKey);
-    }
-
     /// <summary>The view of <paramref name="project"/> for <paramref name="userId"/>.</summary>
     public static async Task<ProjectView> ViewOfAsync(Project project, Guid userId, RedixDbContext db)
     {
         var access = await UserAccess.OfAsync(userId, db);
-        var roles = await RolesByProjectAsync(userId, db);
-        return ProjectView.Of(project, roles[project.Id].ToList(), access.In(project.Id));
+        return ProjectView.Of(project, access.In(project.Id));
     }
 }
 
@@ -259,15 +253,14 @@ public record AddUnitRequest(string Name);
 /// <param name="Status"><c>pendingApproval</c>, <c>rejected</c>, <c>running</c>, or <c>finished</c> once read-only.</param>
 /// <param name="RejectionReason">Why the admin refused it; empty otherwise.</param>
 /// <param name="Units">The project's units, in order.</param>
-/// <param name="Roles">The keys of the words naming the caller's roles in this project.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
 /// <param name="VatPercent">The VAT rate of its new entries, as a percentage.</param>
 /// <param name="EntryUnits">What an entry or a contract may name: the project's units in order, and the shared one last.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<string> Roles, List<Permission> Permissions, decimal VatPercent, List<UnitView> EntryUnits)
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<Permission> Permissions, decimal VatPercent, List<UnitView> EntryUnits)
 {
-    /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="roles"/> and <paramref name="permissions"/> in it.</summary>
-    public static ProjectView Of(Project project, List<string> roles, List<Permission> permissions) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Where(unit => !unit.IsShared).Select(UnitView.Of).ToList(), roles, permissions, project.VatRate * 100, project.Units.OrderBy(unit => unit.IsShared).Select(UnitView.Of).ToList());
+    /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="permissions"/> in it.</summary>
+    public static ProjectView Of(Project project, List<Permission> permissions) =>
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Where(unit => !unit.IsShared).Select(UnitView.Of).ToList(), permissions, project.VatRate * 100, project.Units.OrderBy(unit => unit.IsShared).Select(UnitView.Of).ToList());
 }
 
 /// <summary>A unit as the app shows it.</summary>

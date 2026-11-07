@@ -17,7 +17,7 @@ namespace Redix.Api.Tests;
 public class DuplicateInvoiceTests(MigratedApiFactory factory)
 {
     private const string Password = "Duplicates-pass-1";
-    private const string Finance = "users.roleFinance";
+    private const string Finance = "Finance";
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
@@ -26,7 +26,7 @@ public class DuplicateInvoiceTests(MigratedApiFactory factory)
     private async Task<Setup> InProjectAsync(HttpClient client, Redix.Api.Auth.User user, string name, string vatNumber)
     {
         var project = await factory.ApprovedProjectAsync(client, name, "الفلة الغربية");
-        await factory.GiveRoleAsync(user.Id, project.Id, Finance);
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         var supplier = await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers", new SupplierRequest("شركة النخيل") { VatNumber = vatNumber }, Json);
         var item = (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories/offered?itemType={ItemType.Purchases}", Json))!.SelectMany(category => category.Items).First();
         var method = (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{project.Id}/payment-methods", Json))![0];

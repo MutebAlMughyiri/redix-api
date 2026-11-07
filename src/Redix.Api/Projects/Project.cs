@@ -64,7 +64,7 @@ public class Project
     /// <summary>True once the project is finished: nothing in it changes any more (AC-04.1).</summary>
     public bool IsReadOnly => Status == ProjectStatus.Finished;
 
-    /// <summary>True once the admin has let it in, so roles count in it (BR-34).</summary>
+    /// <summary>True once the admin has let it in, so permissions count in it (BR-34).</summary>
     public bool IsApproved => Status is ProjectStatus.Running or ProjectStatus.Finished;
 
     /// <summary>A new project waiting for approval, with its units in order; the outcome says whether its name and every unit's are acceptable.</summary>
@@ -80,7 +80,7 @@ public class Project
         return (project, outcome);
     }
 
-    /// <summary>Lets the project in; its roles count from then on (BR-34). A decided project answers <see cref="ProjectChangeOutcome.NotPending"/>.</summary>
+    /// <summary>Lets the project in; its permissions count from then on (BR-34). A decided project answers <see cref="ProjectChangeOutcome.NotPending"/>.</summary>
     public ProjectChangeOutcome Approve()
     {
         if (Status != ProjectStatus.PendingApproval)

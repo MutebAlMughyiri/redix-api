@@ -64,7 +64,7 @@ public class DashboardTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ApprovedAsync(ledger, ledger.WithoutInvoice(200));
-        var (reader, _) = await ledger.MemberAsync("users.roleReader");
+        var (reader, _) = await ledger.MemberAsync("Reader");
 
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/completion", new CompletionRequest(42.5m), Json)).EnsureSuccessStatusCode();
 
