@@ -43,77 +43,8 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
     private static Task<decimal> SurplusAsync(Ledger ledger) => ledger.ReadAsync(async db => (await ProjectFigures.OfAsync(ledger.ProjectId, db)).Surplus);
 
-    private static Task<HttpResponseMessage> TransferAsync(Ledger ledger, Guid from, Guid to, decimal amount) =>
-        ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/transfers", new TransferRequest(ledger.Today, from, to, amount, "تغذية العهدة"), Json);
-
     private static async Task ReverseAsync(HttpClient client, Guid projectId, Guid entryId) =>
         (await client.PostAsJsonAsync($"/projects/{projectId}/entries/{entryId}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
-
-    [Fact]
-    public async Task AC_23_1_ATransferMovesBothBalancesAndLeavesTheSurplus()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var other = await AccountAsync(ledger, "كاش", opening: 100);
-        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
-        await ContributeAsync(ledger, partner, 1000);
-        var surplus = await SurplusAsync(ledger);
-
-        (await TransferAsync(ledger, ledger.AccountId, other, 250)).EnsureSuccessStatusCode();
-
-        Assert.Equal(750m, await BalanceAsync(ledger, ledger.AccountId));
-        Assert.Equal(350m, await BalanceAsync(ledger, other));
-        Assert.Equal(surplus, await SurplusAsync(ledger));
-    }
-
-    [Fact]
-    public async Task ATransferIsApprovedAtOnceAndListedOnce()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var other = await AccountAsync(ledger, "كاش");
-
-        (await TransferAsync(ledger, ledger.AccountId, other, 250)).EnsureSuccessStatusCode();
-
-        var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<TransferView>>($"/projects/{ledger.ProjectId}/transfers", Json))!);
-        Assert.Equal((250m, "حساب المؤسسة", "كاش", "تغذية العهدة"), (row.Amount, row.FromAccountName, row.ToAccountName, row.Description));
-        Assert.All(await ledger.ReadAsync(db => db.Entries.Where(entry => entry.ProjectId == ledger.ProjectId).ToListAsync()), entry => Assert.Equal(EntryStatus.Approved, entry.Status));
-    }
-
-    [Fact]
-    public async Task WhatATransferCannotBeIsRefused()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var other = await AccountAsync(ledger, "كاش");
-
-        Assert.Equal("sameAccount", await Ledger.CodeOf(await TransferAsync(ledger, other, other, 10)));
-        Assert.Equal("invalidAmount", await Ledger.CodeOf(await TransferAsync(ledger, ledger.AccountId, other, 0)));
-        Assert.Equal("unknownAccount", await Ledger.CodeOf(await TransferAsync(ledger, ledger.AccountId, Guid.NewGuid(), 10)));
-    }
-
-    [Fact]
-    public async Task OnlyWhoeverMovesMoneyEntersOne()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var other = await AccountAsync(ledger, "كاش");
-        var (field, _) = await ledger.MemberAsync("Field");
-
-        var refused = await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/transfers", new TransferRequest(ledger.Today, ledger.AccountId, other, 10, ""), Json);
-
-        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
-    }
-
-    [Fact]
-    public async Task ReversingATransferReversesBothSides()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var other = await AccountAsync(ledger, "كاش");
-        (await TransferAsync(ledger, ledger.AccountId, other, 250)).EnsureSuccessStatusCode();
-        var row = (await ledger.Client.GetFromJsonAsync<List<TransferView>>($"/projects/{ledger.ProjectId}/transfers", Json))!.Single();
-
-        await ReverseAsync(ledger.Client, ledger.ProjectId, row.Id);
-
-        Assert.Equal(0m, await BalanceAsync(ledger, ledger.AccountId));
-        Assert.Equal(0m, await BalanceAsync(ledger, other));
-    }
 
     [Fact]
     public async Task AC_24_1_TheDifferenceIsTheActualBalancesLessTheSurplus()

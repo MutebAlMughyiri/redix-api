@@ -6,7 +6,7 @@ namespace Redix.Api.Accounts;
 /// <summary>What moved through a project's accounts: only what is approved counts (BR-10).</summary>
 public static class AccountMoney
 {
-    private static readonly EntryKind[] Inflows = [EntryKind.CapitalIn, EntryKind.Revenue, EntryKind.TransferIn];
+    private static readonly EntryKind[] Inflows = [EntryKind.CapitalIn, EntryKind.Revenue];
 
     /// <summary>The approved movement of each account of the project: what came in, less what went out.</summary>
     /// <param name="projectId">The project.</param>

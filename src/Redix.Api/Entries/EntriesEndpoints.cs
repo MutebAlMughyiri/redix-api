@@ -170,7 +170,7 @@ public static class EntriesEndpoints
 
     /// <summary>
     /// Reverses an approved entry (UC-035, FR-50): an opposite entry of the same amount, tied to the original and approved at once, so both show in the reports and the net effect is zero. The original does not change.
-    /// What was entered as one reverses as one, a transfer's two sides, a carry's two sides, or an expense and the capital it gave. No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; one already reversed, or itself a reversal, <c>alreadyReversed</c>; and one tied to a project the caller cannot change, <c>tiedProjectRefused</c>.
+    /// What was entered as one reverses as one, a carry's two sides, or an expense and the capital it gave. No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; one already reversed, or itself a reversal, <c>alreadyReversed</c>; and one tied to a project the caller cannot change, <c>tiedProjectRefused</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>

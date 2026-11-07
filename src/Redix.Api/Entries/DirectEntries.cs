@@ -4,7 +4,7 @@ using Redix.Api.Audit;
 
 namespace Redix.Api.Entries;
 
-/// <summary>What Finance enters and what counts at once, with no approval: transfers, capital movements, revenue and sales invoices (BR-30). What is approved never changes after that (BR-11).</summary>
+/// <summary>What Finance enters and what counts at once, with no approval: capital movements, revenue and sales invoices (BR-30). What is approved never changes after that (BR-11).</summary>
 public static class DirectEntries
 {
     /// <summary>A new approved entry.</summary>

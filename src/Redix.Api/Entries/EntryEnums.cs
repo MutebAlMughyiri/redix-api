@@ -17,12 +17,6 @@ public enum EntryKind : byte
 
     /// <summary>Revenue, such as a sale or a VAT refund.</summary>
     Revenue,
-
-    /// <summary>The side of a transfer that leaves an account.</summary>
-    TransferOut,
-
-    /// <summary>The side of a transfer that reaches an account.</summary>
-    TransferIn,
 }
 
 /// <summary>Where an entry stands. Only approved entries count in any total (BR-10).</summary>
@@ -70,18 +64,15 @@ public enum EntryDecisionAction : byte
     Reject,
 }
 
-/// <summary>What ties two entries.</summary>
+/// <summary>What ties two entries. Each keeps the number it is stored as, since the transfer's pair, once 0, was removed (Muteb, 8 Nov 2026).</summary>
 public enum EntryLinkType : byte
 {
-    /// <summary>The two sides of a transfer between accounts.</summary>
-    TransferPair,
-
     /// <summary>The two sides of a partner's balance carried between projects.</summary>
-    CarryPair,
+    CarryPair = 1,
 
     /// <summary>The entry that reverses an approved one (FR-50).</summary>
-    Reversal,
+    Reversal = 2,
 
     /// <summary>The credit note of an invoice (BR-18).</summary>
-    CreditNoteOf,
+    CreditNoteOf = 3,
 }

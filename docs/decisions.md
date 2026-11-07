@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-08 | Transfers between accounts are removed completely: the route, the two entry kinds, the transfer's link and its words. FR-23 (transfer between accounts and top up a custody) and AC-23.1 are retired, and BR-30 no longer names transfers. The other link types keep their stored numbers | Muteb: "remove this feature completely, تحويل بين الحسابات". RedixReal held no transfer, so no balance changes |
 | 2026-11-08 | A project has a description: optional, at most 2,000 characters, kept through `POST /projects/{id}/description` by `ManageProject` while the project is open, audited, also taken when a project is made or registered, and shown to the admin | redix-api 93, approved by Muteb on 8 Nov with the More info design |
 | 2026-11-08 | Liquidation and closing (التصفية والإغلاق) is removed: its four routes, `CapitalMovementType.Liquidation`, `ProjectFigures.Liquidation` (the surplus is revenue less expenses), the periodic report's التصفية line and its words; Close project no longer answers `liquidateFirst`. Retires BR-27 and UC-061 | Muteb: "remove the feature التصفية والإغلاق" |
 | 2026-11-08 | A project that is approved and not closed is **active** (`ProjectStatus.Active`, sent as `active`, word `projects.active`: Active, نشط), no longer running; its stored number stays 0, so the database is unchanged | Muteb: "change project enum status from running to active" |

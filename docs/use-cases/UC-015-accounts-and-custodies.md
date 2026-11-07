@@ -66,5 +66,5 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 | --- | --- |
 | An entry refusing an account its creator may not spend from, through `Account.IsOfferedTo` | The purchase and contractor payment entry use cases |
 | A balance that moves with approved entries, in `Account.Balance` | The same |
-| Transfers, custody top-ups and reconciliation, which the canvas draws on the same screen | Their own use cases |
+| Reconciliation, which the canvas draws on the same screen; transfers and custody top-ups were removed on 8 Nov 2026 | UC-040 |
 | A partner's pocket, a third type of account | Retired by redix-api #99: a partner paying with their own money is a capital movement (redix-api #96, D27), so no account holds it |

@@ -36,7 +36,7 @@ Holding `ReadProject` is being in the project. Whoever registers a project holds
 | `DeleteEntries` | A project | Deleting an entry not yet approved (UC-033) |
 | `AttachFiles` | A project | Keeping a picture or a file for an entry, a receipt or a contract |
 | `ApproveEntries` | A project | Approving or rejecting what waits, and reversing an approved entry |
-| `MoveMoney` | A project | Transfers, capital movements, revenue, reconciling and the periodic report |
+| `MoveMoney` | A project | Capital movements, revenue, reconciling and the periodic report |
 
 A new permission is code: a route has to name it, and a migration adds it. The database refuses a permission the code does not know.
 

@@ -7,7 +7,7 @@ namespace Redix.Api.Entries;
 /// <summary>Reversing what is approved (UC-035, FR-50): an opposite entry of the same amount, tied to the original and approved at once, so both show in the reports and the net effect is zero. What was entered as one reverses as one, in whichever project it stands.</summary>
 public static class EntryReversal
 {
-    private static readonly EntryLinkType[] Ties = [EntryLinkType.TransferPair, EntryLinkType.CarryPair];
+    private static readonly EntryLinkType[] Ties = [EntryLinkType.CarryPair];
 
     /// <summary>What was entered together with <paramref name="entryId"/>, and reverses with it.</summary>
     public static Task<List<Entry>> TiedToAsync(Guid entryId, RedixDbContext db)

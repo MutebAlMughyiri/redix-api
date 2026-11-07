@@ -109,7 +109,6 @@ app.MapEntries();
 app.MapApprovals();
 app.MapNotifications();
 app.MapInvoiceAttach();
-app.MapTransfers();
 app.MapReconciliations();
 app.MapCapital();
 app.MapRevenue();
