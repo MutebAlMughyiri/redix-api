@@ -16,7 +16,7 @@ public static class DashboardEndpoints
         app.MapGet("/projects/{projectId:guid}/dashboard", Dashboard).RequireAuthorization(nameof(Permission.ReadProject));
     }
 
-    /// <summary>Revenue, expenses, the surplus with and without sales, the reconciliation difference, what waits for approval, each category's total with its items', and the completion. Read on every request, so an approval shows at once (AC-34.1).</summary>
+    /// <summary>Revenue, expenses, the surplus, the reconciliation difference, what waits for approval, each category's total with its items', and the completion. Read on every request, so an approval shows at once (AC-34.1).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<DashboardView> Dashboard(Guid projectId, RedixDbContext db)
@@ -35,7 +35,7 @@ public static class DashboardEndpoints
             .Where(line => line.Items.Count > 0)
             .Select(line => new CategoryTotalView(line.Category.Id, line.Category.Name, line.Items.Sum(item => item.Total), line.Items))
             .ToList();
-        return new DashboardView(figures.Revenue, figures.Expenses, figures.Surplus, figures.SurplusWithoutSales, reconciliation.At != default, reconciliation.Difference, pendingCount, pendingAmount, figures.CompletionPercent, SideOf(false), SideOf(true));
+        return new DashboardView(figures.Revenue, figures.Expenses, figures.Surplus, reconciliation.At != default, reconciliation.Difference, pendingCount, pendingAmount, figures.CompletionPercent, SideOf(false), SideOf(true));
     }
 }
 
@@ -43,7 +43,6 @@ public static class DashboardEndpoints
 /// <param name="Revenue">Capital, VAT refunds and sales (BR-06).</param>
 /// <param name="Expenses">Every approved expense: the project's cost.</param>
 /// <param name="Surplus">Revenue less expenses (BR-07).</param>
-/// <param name="SurplusWithoutSales">The same without sales.</param>
 /// <param name="WasReconciled">True once the accounts were checked against the books.</param>
 /// <param name="ReconciliationDifference">The latest check's difference (BR-08).</param>
 /// <param name="PendingCount">How many entries wait for approval.</param>
@@ -51,7 +50,7 @@ public static class DashboardEndpoints
 /// <param name="CompletionPercent">How far the work has come: expenses as a percentage of revenue.</param>
 /// <param name="Categories">Each category holding expense items, its total with those items'.</param>
 /// <param name="RevenueCategories">Each category holding revenue items, its total with those items' (FR-38).</param>
-public record DashboardView(decimal Revenue, decimal Expenses, decimal Surplus, decimal SurplusWithoutSales, bool WasReconciled, decimal ReconciliationDifference, int PendingCount, decimal PendingAmount, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
+public record DashboardView(decimal Revenue, decimal Expenses, decimal Surplus, bool WasReconciled, decimal ReconciliationDifference, int PendingCount, decimal PendingAmount, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
 
 /// <summary>One category's total (BR-03).</summary>
 /// <param name="Id">The category.</param>

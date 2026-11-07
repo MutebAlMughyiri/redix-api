@@ -6685,6 +6685,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("3b814a1d-0103-ae4a-865f-6e94a1776f43"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bec51f8c-2fde-78a4-2b2a-8d7fb5664d3c"),
+                            Value = "Revenue by category"
+                        },
+                        new
+                        {
+                            Id = new Guid("5cf73c67-94e3-866c-fa78-d1e14fc0bceb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bec51f8c-2fde-78a4-2b2a-8d7fb5664d3c"),
+                            Value = "الإيرادات حسب التصنيف"
+                        },
+                        new
+                        {
                             Id = new Guid("eee79376-22ae-89c0-6768-76832ea9ac97"),
                             Language = "en",
                             TranslationKeyId = new Guid("5ea0b9ae-225b-160f-9c05-8cce74b9149c"),
@@ -6696,20 +6710,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("5ea0b9ae-225b-160f-9c05-8cce74b9149c"),
                             Value = "نسبة الإنجاز"
-                        },
-                        new
-                        {
-                            Id = new Guid("77083b08-3985-7d75-9099-9639cd7e831e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("344efc4d-554c-4f6d-3b07-6f93b6171921"),
-                            Value = "Cost"
-                        },
-                        new
-                        {
-                            Id = new Guid("71af5bb6-8cc2-7036-583a-61d5c4a48c73"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("344efc4d-554c-4f6d-3b07-6f93b6171921"),
-                            Value = "التكلفة"
                         },
                         new
                         {
@@ -17501,15 +17501,15 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("5ea0b9ae-225b-160f-9c05-8cce74b9149c"),
+                            Id = new Guid("bec51f8c-2fde-78a4-2b2a-8d7fb5664d3c"),
                             Description = "",
-                            Key = "dashboard.completion"
+                            Key = "dashboard.revenueByCategory"
                         },
                         new
                         {
-                            Id = new Guid("344efc4d-554c-4f6d-3b07-6f93b6171921"),
+                            Id = new Guid("5ea0b9ae-225b-160f-9c05-8cce74b9149c"),
                             Description = "",
-                            Key = "dashboard.cost"
+                            Key = "dashboard.completion"
                         },
                         new
                         {
