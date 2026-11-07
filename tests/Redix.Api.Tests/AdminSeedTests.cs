@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(FourthDatabaseCollection.Name)]
 public class AdminSeedTests(MigratedApiFactory factory)
 {
     private const string BeforeUsersExist = "20261101003509_InitialCreate";

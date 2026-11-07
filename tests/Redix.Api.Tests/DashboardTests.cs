@@ -12,7 +12,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-049, UC-050, UC-063: the dashboard, the item report, and completion and cost. No figure here is real.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(FourthDatabaseCollection.Name)]
 public class DashboardTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

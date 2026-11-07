@@ -14,7 +14,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-053 to UC-058: the periodic report and the report files. No figure here is real.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class ReportFilesTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

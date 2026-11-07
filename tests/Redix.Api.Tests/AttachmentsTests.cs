@@ -15,7 +15,7 @@ using Redix.Api.Suppliers;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class AttachmentsTests(MigratedApiFactory factory)
 {
     private const string Password = "Attachments-pass-1";

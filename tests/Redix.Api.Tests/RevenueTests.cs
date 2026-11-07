@@ -12,7 +12,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-047, UC-048, UC-056: revenue, sales invoices and the كشف الضريبة: totals, whose VAT the Excel works out (redix-api #96). No figure here is real.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class RevenueTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

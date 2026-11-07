@@ -12,7 +12,7 @@ using Redix.Api.Suppliers;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class CategoriesTests(MigratedApiFactory factory)
 {
     private const string Password = "Categories-pass-1";

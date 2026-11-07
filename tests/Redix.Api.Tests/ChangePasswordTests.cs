@@ -10,7 +10,7 @@ using Redix.Api.Auth;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class ChangePasswordTests(MigratedApiFactory factory)
 {
     private const string Password = "Temporary-pass-1";

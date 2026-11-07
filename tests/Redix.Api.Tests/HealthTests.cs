@@ -2,7 +2,7 @@ using System.Net;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class HealthTests(MigratedApiFactory factory)
 {
     [Fact]

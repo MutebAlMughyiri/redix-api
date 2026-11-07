@@ -12,7 +12,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-064: a project's documents, each any file under a name, in a group when one is given.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class DocumentsTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

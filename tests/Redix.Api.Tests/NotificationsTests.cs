@@ -12,7 +12,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-036: who is told what about an entry.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class NotificationsTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

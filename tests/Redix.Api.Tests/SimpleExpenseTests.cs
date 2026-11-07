@@ -9,7 +9,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>An expense is a total the project spent: on an item, from a supplier, on a day, paid one way from one account, with its file when there is one (redix-api #96). No figure here is real.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class SimpleExpenseTests(MigratedApiFactory factory)
 {
     private static async Task<Guid> FileOfAsync(Ledger ledger, byte[] bytes)

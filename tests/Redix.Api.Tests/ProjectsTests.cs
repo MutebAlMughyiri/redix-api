@@ -9,7 +9,7 @@ using Redix.Api.Projects;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(FourthDatabaseCollection.Name)]
 public class ProjectsTests(MigratedApiFactory factory)
 {
     private const string Password = "Projects-pass-1";

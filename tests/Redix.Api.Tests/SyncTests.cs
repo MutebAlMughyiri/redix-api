@@ -9,7 +9,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-030: what a phone keeps to work without a network.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(FourthDatabaseCollection.Name)]
 public class SyncTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

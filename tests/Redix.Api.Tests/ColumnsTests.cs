@@ -8,7 +8,7 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class ColumnsTests(MigratedApiFactory factory)
 {
     private const string Password = "Columns-pass-1";

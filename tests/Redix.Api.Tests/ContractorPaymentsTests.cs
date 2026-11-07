@@ -10,7 +10,7 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class ContractorPaymentsTests(MigratedApiFactory factory)
 {
     private sealed record Setup(Ledger Ledger, Guid ContractId, Guid ItemId);

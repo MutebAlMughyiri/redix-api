@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(FourthDatabaseCollection.Name)]
 public class SwaggerTests(MigratedApiFactory factory)
 {
     [Theory]

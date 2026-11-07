@@ -15,7 +15,7 @@ using Redix.Api.Suppliers;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class ExpensesTests(MigratedApiFactory factory)
 {
     private const string Password = "Expenses-pass-1";

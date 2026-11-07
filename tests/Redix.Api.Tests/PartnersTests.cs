@@ -8,7 +8,7 @@ using Redix.Api.Projects;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class PartnersTests(MigratedApiFactory factory)
 {
     private const string Password = "Partners-pass-1";

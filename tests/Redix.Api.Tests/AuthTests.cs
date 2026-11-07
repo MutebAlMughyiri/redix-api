@@ -8,7 +8,7 @@ using Redix.Api.Auth;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class AuthTests(MigratedApiFactory factory)
 {
     private const string Password = "Correct-horse-battery-1";

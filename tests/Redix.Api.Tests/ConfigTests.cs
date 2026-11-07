@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class ConfigTests(MigratedApiFactory factory)
 {
     [Fact]

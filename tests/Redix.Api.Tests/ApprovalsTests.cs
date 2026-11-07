@@ -11,7 +11,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-031 and UC-032: Finance's inbox and its decisions.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class ApprovalsTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

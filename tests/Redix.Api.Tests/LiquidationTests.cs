@@ -12,7 +12,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-061: liquidating and closing a project (FR-51, BR-27). No figure here is real.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(SecondDatabaseCollection.Name)]
 public class LiquidationTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

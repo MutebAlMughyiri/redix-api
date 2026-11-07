@@ -11,7 +11,7 @@ using Xunit;
 namespace Redix.Api.Tests;
 
 /// <summary>UC-033, UC-034 and UC-035: changing an entry before approval, and reversing one after.</summary>
-[Collection(DatabaseCollection.Name)]
+[Collection(ThirdDatabaseCollection.Name)]
 public class EntryChangesTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;

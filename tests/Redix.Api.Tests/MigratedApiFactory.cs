@@ -26,6 +26,11 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
 
+    private static int _instances;
+
+    /// <summary>This factory's own database: each collection of tests has one, so the collections run at once without seeing each other's rows.</summary>
+    private readonly string _database = $"RedixTests{Interlocked.Increment(ref _instances)}";
+
     public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
 
     /// <summary>A VAT number no other test holds, because a duplicate invoice is looked for across every project (FR-17).</summary>
@@ -35,7 +40,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["ConnectionStrings:Redix"] = ConnectionTo("RedixTests"),
+            ["ConnectionStrings:Redix"] = ConnectionTo(_database),
             ["Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
             ["Admin:Username"] = AdminUsername,
             ["Admin:Password"] = AdminPassword,
@@ -147,8 +152,33 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
 
+/// <summary>
+/// The test classes run in four collections at once, each with a factory and a database of its own; the tests of one collection run one after another, as they always did.
+/// A class goes in the collection with the least time in it.
+/// </summary>
 [CollectionDefinition(Name)]
 public class DatabaseCollection : ICollectionFixture<MigratedApiFactory>
 {
     public const string Name = "Database";
+}
+
+/// <summary>The second collection, on its own database.</summary>
+[CollectionDefinition(Name)]
+public class SecondDatabaseCollection : ICollectionFixture<MigratedApiFactory>
+{
+    public const string Name = "Database 2";
+}
+
+/// <summary>The third collection, on its own database.</summary>
+[CollectionDefinition(Name)]
+public class ThirdDatabaseCollection : ICollectionFixture<MigratedApiFactory>
+{
+    public const string Name = "Database 3";
+}
+
+/// <summary>The fourth collection, on its own database.</summary>
+[CollectionDefinition(Name)]
+public class FourthDatabaseCollection : ICollectionFixture<MigratedApiFactory>
+{
+    public const string Name = "Database 4";
 }

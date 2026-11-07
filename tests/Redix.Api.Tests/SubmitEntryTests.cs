@@ -9,7 +9,7 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
 
-[Collection(DatabaseCollection.Name)]
+[Collection(FourthDatabaseCollection.Name)]
 public class SubmitEntryTests(MigratedApiFactory factory)
 {
     private Task<Ledger> LedgerAsync() => Ledger.WithFinanceAsync(factory);
