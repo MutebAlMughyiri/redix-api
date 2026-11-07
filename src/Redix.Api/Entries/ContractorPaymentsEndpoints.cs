@@ -72,11 +72,7 @@ public static class ContractorPaymentsEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "ItemNotOffered");
         }
 
-        var subgroup = item.Subgroups.SingleOrDefault(row => request.SubgroupId == Guid.Empty ? row.Name == Subgroup.GeneralName : row.Id == request.SubgroupId);
-        if (subgroup is null)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownSubgroup");
-        }
+        var subgroup = item.Subgroups.Single(row => row.Name == Subgroup.GeneralName);
 
         var userId = AccessTokens.UserIdOf(principal);
         var access = await UserAccess.OfAsync(userId, db);

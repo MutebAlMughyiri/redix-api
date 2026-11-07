@@ -546,6 +546,46 @@ public class CategoriesTests(MigratedApiFactory factory)
     private static Task<HttpResponseMessage> ReorderTablesAsync(HttpClient client, Guid projectId, Guid itemId, params IEnumerable<Guid> ids) =>
         client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/tables/reorder", new { ids });
 
+    private static async Task<List<TableCategoryView>> EntryTablesOf(HttpClient client, Guid projectId) =>
+        (await client.GetFromJsonAsync<List<TableCategoryView>>($"/projects/{projectId}/entry-tables", Json))!;
+
+    [Fact]
+    public async Task R10_AnItemOffersAnExpenseItsGeneralTableEachNamedOneAndEachActiveContractInItsSheetsOrder()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var contractor = (await ledger.Client.GetFromJsonAsync<List<SupplierView>>($"/projects/{ledger.ProjectId}/suppliers", Json))!.Single(supplier => supplier.Name == Supplier.GeneralCashSupplierName);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(contractor.Id, ledger.ItemId, 1000m, false), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("مواد"), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, 2000m, false), Json)).EnsureSuccessStatusCode();
+        var disabled = await ledger.ReadAsync(db => db.Contracts.SingleAsync(contract => contract.SupplierId == ledger.SupplierId));
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/contracts/{disabled.Id}/disable", null)).EnsureSuccessStatusCode();
+
+        var item = (await EntryTablesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(row => row.Id == ledger.ItemId);
+
+        Assert.Equal([ItemTableKind.General, ItemTableKind.Contract, ItemTableKind.Subgroup], item.Tables.Select(table => table.Kind));
+        Assert.Equal([item.Name, Supplier.GeneralCashSupplierName, "مواد"], item.Tables.Select(table => table.Name));
+    }
+
+    [Fact]
+    public async Task R7_NoRevenueItemNoDisabledItemOrCategoryAndNoItemWithoutATableIsOffered()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var categories = await CategoriesOf(client, project.Id);
+        var revenue = await AddCategoryAsync(client, project.Id, "إيجارات");
+        var rent = await AddItemAsync(client, project.Id, revenue.Id, "إيجار المكتب", ItemType.OtherRevenue);
+        var contractsOnly = await AddItemAsync(client, project.Id, categories[2].Id, "أعمال بالعقد", ItemType.ContractorPayments);
+        var purchasesOnly = await AddItemAsync(client, project.Id, categories[2].Id, "مشتريات فقط", ItemType.Purchases);
+        (await client.PostAsync($"/projects/{project.Id}/items/{categories[3].Items[0].Id}/disable", null)).EnsureSuccessStatusCode();
+        (await client.PostAsync($"/projects/{project.Id}/categories/{categories[4].Id}/disable", null)).EnsureSuccessStatusCode();
+
+        var offered = await EntryTablesOf(client, project.Id);
+        var items = offered.SelectMany(category => category.Items).ToList();
+
+        Assert.DoesNotContain(offered, category => category.Id == revenue.Id || category.Id == categories[4].Id);
+        Assert.DoesNotContain(items, item => item.Id == rent.Id || item.Id == contractsOnly.Id || item.Id == categories[3].Items[0].Id);
+        Assert.Equal([ItemTableKind.General], items.Single(item => item.Id == purchasesOnly.Id).Tables.Select(table => table.Kind));
+    }
+
     private static async Task<List<ItemTableView>> TablesOf(HttpClient client, Guid projectId, Guid itemId) =>
         (await client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{projectId}/items/{itemId}/tables", Json))!;
 

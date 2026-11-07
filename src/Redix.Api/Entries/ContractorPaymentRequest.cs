@@ -1,14 +1,11 @@
 namespace Redix.Api.Entries;
 
-/// <summary>What the app sends to record a payment against a contract (FR-12): the contract says the item and the contractor. A deduction says why in its notes (D14), and the receipt is optional (D16). It owns which amounts and texts are acceptable.</summary>
+/// <summary>What the app sends to record a payment against a contract (FR-12): the contract says the item and the contractor, and the payment goes under the item's general group, its contract being its table (redix-app #84). A deduction says why in its notes (D14), and the receipt is optional (D16). It owns which amounts and texts are acceptable.</summary>
 /// <param name="Id">The entry's id, made on the phone.</param>
 public record ContractorPaymentRequest(Guid Id) : EntryRequest(Id)
 {
     /// <summary>The contract.</summary>
     public Guid ContractId { get; init; }
-
-    /// <summary>The subgroup of the contract's item; empty means its general group.</summary>
-    public Guid SubgroupId { get; init; }
 
     /// <summary>True for a payment outside the contract, which counts in the item's total and leaves the remaining alone (FR-13).</summary>
     public bool IsOutsideContract { get; init; }

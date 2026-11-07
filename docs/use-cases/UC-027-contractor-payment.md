@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-A payment is a row in `Entries` of kind `ContractorPayment`, one in `ExpenseDetails` and one in `ContractorPaymentDetails`. The contract says the item and the contractor. It goes under the subgroup it names, or the item's general one.
+A payment is a row in `Entries` of kind `ContractorPayment`, one in `ExpenseDetails` and one in `ContractorPaymentDetails`. The contract says the item and the contractor. It goes under the item's general subgroup: its contract is its table on the item's sheet, so it names no subgroup (redix-app #84, R11).
 
 Both kinds of expense share `EntryRequest` and `EntryRecording`: the payment method, the account (`ChargeAnyAccount` and `AccountCustodians`, BRS open question 4), the file, the custom columns, and how an entry reaches the ledger with its audit records. `EntryAnswers` owns which column a kind of entry answers, so what only a purchase holds is never asked of a payment.
 
@@ -24,7 +24,7 @@ Both kinds of expense share `EntryRequest` and `EntryRecording`: the payment met
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/contractor-payments` | `RecordEntries` | Records a payment as a draft, or sent, from `{ id, contractId, subgroupId, isOutsideContract, amount, paymentDate, accountId, paymentMethodId, notes, customValues, attachmentId, submit }`. Answers what the contract stands at with it |
+| `POST /projects/{id}/contractor-payments` | `RecordEntries` | Records a payment as a draft, or sent, from `{ id, contractId, isOutsideContract, amount, paymentDate, accountId, paymentMethodId, notes, customValues, attachmentId, submit }`. Answers what the contract stands at with it |
 | `GET /projects/{id}/contracts` | `ReadProject` | Answers real `paid`, `pending`, `remaining` and `isOverrun`, and `itemId` for the entry form |
 
 ## Tables
@@ -37,7 +37,7 @@ Tests are in `ContractorPaymentsTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A payment goes under the subgroup it names, of its contract's item, or the general one | `ContractorPaymentsEndpoints` | `APaymentGoesUnderTheSubgroupItNames`, `APaymentNamingASubgroupOfAnotherItemIsRefused`, `ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup` |
+| R11: a payment goes under its item's general subgroup, even when the item has named ones | `ContractorPaymentsEndpoints` | `R11_APaymentGoesUnderItsItemsGeneralSubgroupEvenWhenTheItemHasNamedOnes`, `ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup` |
 | AC-07.1: a real 30,000 leaves 4,000, and 5,000 more is saved with an alert and (1,000) | `ContractMoney`, `Contract.RemainingAfter`, `IsOverrunBy` | `AC_07_1_ThePaymentsOfA34000ContractLeaveItsRemainingAndOneMoreOverrunsItWithAnAlertAndIsSaved` |
 | AC-07.2: an open-value contract only adds up | `Contract` | `AC_07_2_AnOpenValueContractAddsUpWithNoRemainingAndNoAlert` |
 | BR-10: only an approved payment is paid; a pending one waits beside it | `ContractMoney` | `BR_10_OnlyAnApprovedPaymentIsPaidAndAPendingOneWaitsBesideIt`, `ADraftAndARejectedPaymentCountForNothing` |
