@@ -14348,20 +14348,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("2be95438-64af-07aa-0f70-3726bed1accf"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b2930b4f-5662-5caa-af13-08539cb21a06"),
-                            Value = "A negative amount is a deduction: say why in the notes."
-                        },
-                        new
-                        {
-                            Id = new Guid("aea6dc08-82c8-66dd-0b18-d8ffe2d56221"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b2930b4f-5662-5caa-af13-08539cb21a06"),
-                            Value = "المبلغ السالب خصم: اذكر سببه في الملاحظات."
-                        },
-                        new
-                        {
                             Id = new Guid("46fca222-75ab-9a64-f590-5d22e9323f40"),
                             Language = "en",
                             TranslationKeyId = new Guid("bd6c01ee-b87b-def0-a719-6f05a583e17d"),
@@ -14463,14 +14449,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("62a48d5e-9f21-2f32-bed4-30bbca2d8e16"),
                             Language = "en",
                             TranslationKeyId = new Guid("5e37fcb2-fe5d-a524-e249-ca1b8bd74518"),
-                            Value = "Receipt voucher or transfer receipt (required)"
+                            Value = "Receipt voucher or transfer receipt"
                         },
                         new
                         {
                             Id = new Guid("3444d843-0b82-f08c-f421-f027bf0cf64c"),
                             Language = "ar",
                             TranslationKeyId = new Guid("5e37fcb2-fe5d-a524-e249-ca1b8bd74518"),
-                            Value = "سند الاستلام أو إيصال التحويل (إلزامي)"
+                            Value = "سند الاستلام أو إيصال التحويل"
                         },
                         new
                         {
@@ -19609,12 +19595,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("59926246-1594-60fb-c542-7c8b332640fd"),
                             Description = "",
                             Key = "contracts.pending"
-                        },
-                        new
-                        {
-                            Id = new Guid("b2930b4f-5662-5caa-af13-08539cb21a06"),
-                            Description = "",
-                            Key = "contractorPayments.deductionNeedsNotes"
                         },
                         new
                         {
