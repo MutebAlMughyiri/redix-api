@@ -8,9 +8,9 @@
 
 ## How it fits together
 
-A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is empty for a supplier not VAT-registered, whose purchases have no VAT in the VAT statement's workbook (AC-06.2); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
+A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is optional: empty when the supplier has none, and then its purchases have no VAT in the VAT statement's workbook (AC-06.2); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
 
-Whoever sends a supplier says either its number or `notVatRegistered`, so a number forgotten by mistake is refused rather than saved as "not registered".
+A VAT number is optional and, when given, any number of at most 20 digits (BR-16; Muteb, 7 Nov 2026: "just a number has max 20 digit numbers and not required and can keep it empty with remove toogle not vat registered"). Two suppliers of a project still cannot share one.
 
 `SupplierDefaultItems` holds the item a supplier's expenses usually go to, one row at most. Its row has a foreign key to the item, which an empty value in a column could not have.
 
@@ -21,7 +21,7 @@ The register starts with the general cash supplier (`Supplier.GeneralCashSupplie
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
 | `GET /projects/{projectId}/suppliers` | `ReadProject` | `200` by name, disabled ones included, as `{ id, name, vatNumber, mobile, defaultItemId, defaultItemName, status, isActive }`. The empty string stands for no number, mobile or default item; `status` is `approved` or `pendingApproval` |
-| `POST /projects/{projectId}/suppliers` with `{ name, vatNumber, notVatRegistered, mobile, defaultItemId }` | `AddSupplier` (UC-019) | `201` with the supplier; `400` `invalidName`, `invalidVatNumber`, `invalidMobile` or `unknownItem`; `409` `vatNumberTaken`, naming the holder as `existing` |
+| `POST /projects/{projectId}/suppliers` with `{ name, vatNumber, mobile, defaultItemId }` | `AddSupplier` (UC-019) | `201` with the supplier; `400` `invalidName`, `invalidVatNumber`, `invalidMobile` or `unknownItem`; `409` `vatNumberTaken`, naming the holder as `existing` |
 | `POST /projects/{projectId}/suppliers/{id}` with the same | `ManageSettings` | `200`; the same refusals, leaving a supplier its own number; `404` |
 | `POST /projects/{projectId}/suppliers/{id}/disable`, `.../enable` | `ManageSettings` | `200`; `404`; disabling the general cash supplier `409` `generalCashSupplier` |
 
@@ -40,12 +40,11 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 | --- | --- | --- |
 | Finance adds a supplier with its name, VAT number, mobile and default item (FR-06) | `SuppliersEndpoints.Add` | `FinanceAddsASupplierWithAllItsDetails` |
 | A VAT number of 14 digits is refused (AC-06.1) | `Supplier.IsValidVatNumber` | `AVatNumberOf14DigitsIsRefused` |
-| A VAT number is 15 digits, starting and ending with 3 (BR-16) | `Supplier.IsValidVatNumber` | `AVatNumberMustBe15DigitsStartingAndEndingWith3` |
 | A number another supplier holds is refused, naming that supplier (AC-06.1) | `SuppliersEndpoints.IfAcceptableAsync` | `AVatNumberAnotherSupplierHoldsIsRefusedNamingThatSupplier`, `AnEditToANumberAnotherSupplierHoldsIsRefused` |
 | A disabled supplier still holds its number | `SuppliersEndpoints.IfAcceptableAsync` | `ADisabledSupplierStillHoldsItsVatNumber` |
 | The database holds a number to one supplier in a project | The index in `RedixDbContext` | `TheDatabaseHoldsAVatNumberToOneSupplierInAProject` |
 | One number may be in two projects (BR-33) | The index in `RedixDbContext` | `OneVatNumberMayBeInTwoProjects` |
-| A supplier not VAT-registered is saved with no number (AC-06.2) | `SupplierRequest.VatNumberKept` | `ASupplierNotVatRegisteredIsSavedWithNoNumber` |
+| BR-16: a VAT number is none, or any number of at most 20 digits; anything else is refused | `Supplier.IsValidVatNumber` | `BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused`, `BR_16_ASupplierWithNoVatNumberIsSavedWithNone` |
 | Any number of suppliers may have no number | The index in `RedixDbContext` | `AnyNumberOfSuppliersMayHaveNoVatNumber` |
 | An edit changes a supplier and leaves it its own number | `SuppliersEndpoints.Edit` | `AnEditChangesASupplierAndLeavesItItsOwnNumber` |
 | An edit can take the default item and the number away | `Supplier.DefaultTo`, `SupplierRequest.VatNumberKept` | `AnEditCanTakeTheDefaultItemAndTheVatNumberAway` |

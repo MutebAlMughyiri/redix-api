@@ -1149,9 +1149,9 @@ namespace Redix.Api.Migrations
 
                     b.Property<string>("BuyerVatNumber")
                         .IsRequired()
-                        .HasMaxLength(15)
+                        .HasMaxLength(20)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(15)");
+                        .HasColumnType("varchar(20)");
 
                     b.Property<DateOnly>("InvoiceDate")
                         .HasColumnType("date");
@@ -2632,9 +2632,9 @@ namespace Redix.Api.Migrations
 
                     b.Property<string>("VatNumber")
                         .IsRequired()
-                        .HasMaxLength(15)
+                        .HasMaxLength(20)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(15)");
+                        .HasColumnType("varchar(20)");
 
                     b.HasKey("Id");
 
@@ -7077,14 +7077,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("8251d222-f1df-c0f8-8570-a68bda92db04"),
                             Language = "en",
                             TranslationKeyId = new Guid("0447cea6-3786-1f47-5238-d936034b480c"),
-                            Value = "The VAT number is 15 digits, starting and ending with 3."
+                            Value = "A VAT number is a number of at most 20 digits."
                         },
                         new
                         {
                             Id = new Guid("0fec8f51-75ac-58d3-d747-d202f8d013e1"),
                             Language = "ar",
                             TranslationKeyId = new Guid("0447cea6-3786-1f47-5238-d936034b480c"),
-                            Value = "الرقم الضريبي 15 خانة، يبدأ وينتهي بالرقم 3."
+                            Value = "الرقم الضريبي رقم من 20 خانة على الأكثر."
                         },
                         new
                         {
@@ -12495,14 +12495,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("4bf7c0c2-aeb6-3336-fb8b-00349b3b63c4"),
                             Language = "en",
                             TranslationKeyId = new Guid("61e8b084-fc5d-d129-4eab-77ac71e6cee7"),
-                            Value = "A VAT number is 15 digits, starting and ending with 3."
+                            Value = "A VAT number is a number of at most 20 digits."
                         },
                         new
                         {
                             Id = new Guid("b8f89f3c-cc3f-066c-eb00-2997b444efaf"),
                             Language = "ar",
                             TranslationKeyId = new Guid("61e8b084-fc5d-d129-4eab-77ac71e6cee7"),
-                            Value = "الرقم الضريبي 15 رقماً، يبدأ بالرقم 3 وينتهي به."
+                            Value = "الرقم الضريبي رقم من 20 خانة على الأكثر."
                         },
                         new
                         {
@@ -12635,28 +12635,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("52bc5dd2-764d-ebd8-dbee-37a32bd0a6e2"),
                             Language = "en",
                             TranslationKeyId = new Guid("40f283f1-6f76-952a-01a6-fce856633438"),
-                            Value = "VAT number (15 digits)"
+                            Value = "VAT number (optional)"
                         },
                         new
                         {
                             Id = new Guid("89cf7cc3-dd8e-19b2-b9dd-eaccbf453565"),
                             Language = "ar",
                             TranslationKeyId = new Guid("40f283f1-6f76-952a-01a6-fce856633438"),
-                            Value = "الرقم الضريبي (15 رقماً)"
-                        },
-                        new
-                        {
-                            Id = new Guid("60383cf9-62ec-5f53-1e2b-6cff79449eb3"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f2b72244-b8ee-dde4-7e71-c447b7d73775"),
-                            Value = "Not VAT-registered"
-                        },
-                        new
-                        {
-                            Id = new Guid("48699ff2-feb6-f8a3-65b5-89452c221355"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f2b72244-b8ee-dde4-7e71-c447b7d73775"),
-                            Value = "غير مسجل بالضريبة"
+                            Value = "الرقم الضريبي (اختياري)"
                         },
                         new
                         {
@@ -18797,12 +18783,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("40f283f1-6f76-952a-01a6-fce856633438"),
                             Description = "",
                             Key = "suppliers.vatNumber"
-                        },
-                        new
-                        {
-                            Id = new Guid("f2b72244-b8ee-dde4-7e71-c447b7d73775"),
-                            Description = "",
-                            Key = "suppliers.notVatRegistered"
                         },
                         new
                         {

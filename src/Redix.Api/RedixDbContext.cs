@@ -256,7 +256,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             supplier.Property(s => s.Name).HasMaxLength(Project.NameMaxLength);
             supplier.Property(s => s.NormalizedName).HasMaxLength(Project.NameMaxLength);
-            supplier.Property(s => s.VatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
+            supplier.Property(s => s.VatNumber).HasMaxLength(Supplier.VatNumberMaxLength).IsUnicode(false);
             supplier.Property(s => s.Mobile).HasMaxLength(User.MobileMaxLength).IsUnicode(false);
             supplier.HasIndex(s => new { s.ProjectId, s.VatNumber }).IsUnique().HasFilter("[VatNumber] <> ''");
             supplier.HasIndex(s => new { s.ProjectId, s.Name });
@@ -351,7 +351,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             sale.HasKey(s => s.EntryId);
             sale.Property(s => s.BuyerName).HasMaxLength(Redix.Api.Revenue.SalesInvoice.BuyerNameMaxLength);
-            sale.Property(s => s.BuyerVatNumber).HasMaxLength(Supplier.VatNumberLength).IsUnicode(false);
+            sale.Property(s => s.BuyerVatNumber).HasMaxLength(Supplier.VatNumberMaxLength).IsUnicode(false);
             sale.Property(s => s.Number).HasMaxLength(Invoice.NumberMaxLength);
             sale.HasIndex(s => s.Number);
             sale.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Revenue.SalesInvoice>(s => s.EntryId).OnDelete(DeleteBehavior.Restrict);

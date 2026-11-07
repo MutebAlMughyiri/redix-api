@@ -10,8 +10,8 @@ public class Supplier
     /// <summary>The name of the supplier every approved project starts with, for expenses with no supplier (UC-017).</summary>
     public const string GeneralCashSupplierName = "مورد نقدي عام";
 
-    /// <summary>How many digits a VAT number has (BR-16).</summary>
-    public const int VatNumberLength = 15;
+    /// <summary>The most digits a VAT number may have (BR-16; Muteb, 7 Nov 2026: "just a number has max 20 numbers").</summary>
+    public const int VatNumberMaxLength = 20;
 
     /// <summary>How many letters a search needs before it narrows anything down (AC-43.1).</summary>
     public const int SearchMinLength = 3;
@@ -39,7 +39,7 @@ public class Supplier
     /// <summary>The name as a search reads it (FR-43).</summary>
     public string NormalizedName { get; private set; } = "";
 
-    /// <summary>Its VAT number; empty for a supplier not VAT-registered, whose purchases have no VAT in the VAT statement's workbook (AC-06.2).</summary>
+    /// <summary>Its VAT number; empty when it has none, and then its purchases have no VAT in the VAT statement's workbook (AC-06.2).</summary>
     public string VatNumber { get; set; } = "";
 
     /// <summary>Its mobile; empty when none.</summary>
@@ -70,17 +70,17 @@ public class Supplier
     public static Expression<Func<Supplier, bool>> OfferedTo(Guid userId, bool seePending) =>
         supplier => supplier.IsActive && (supplier.Status == SupplierStatus.Approved || supplier.CreatedByUserId == userId || seePending);
 
-    /// <summary>Whether <paramref name="vatNumber"/> is 15 digits, starting and ending with 3 (BR-16).</summary>
-    public static bool IsValidVatNumber(string vatNumber) => vatNumber.Length == VatNumberLength && vatNumber.All(char.IsAsciiDigit) && vatNumber[0] == '3' && vatNumber[^1] == '3';
+    /// <summary>Whether <paramref name="vatNumber"/> is acceptable (BR-16): none at all, or a number of at most <see cref="VatNumberMaxLength"/> digits.</summary>
+    public static bool IsValidVatNumber(string vatNumber) => vatNumber.Length <= VatNumberMaxLength && vatNumber.All(char.IsAsciiDigit);
 
-    /// <summary>Why a supplier with these values, already trimmed, cannot be kept: a name outside its limits, a VAT number breaking BR-16 unless <paramref name="isVatRegistered"/> is false, or a mobile <see cref="User.IsAcceptableMobile"/> refuses. Empty when it can.</summary>
-    public static string RefusalOf(string name, string vatNumber, bool isVatRegistered, string mobile)
+    /// <summary>Why a supplier with these values, already trimmed, cannot be kept: a name outside its limits, a VAT number breaking BR-16, or a mobile <see cref="User.IsAcceptableMobile"/> refuses. Empty when it can.</summary>
+    public static string RefusalOf(string name, string vatNumber, string mobile)
     {
         if (!Project.IsAcceptableName(name))
         {
             return "InvalidName";
         }
-        if (isVatRegistered && !IsValidVatNumber(vatNumber))
+        if (!IsValidVatNumber(vatNumber))
         {
             return "InvalidVatNumber";
         }

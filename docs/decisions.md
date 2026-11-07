@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-07 | A VAT number is optional and, when given, any number of at most 20 digits, for a supplier and a sale's buyer alike; the 15 digits starting and ending with 3, and the "not VAT-registered" switch, go. Two suppliers still cannot share one | Muteb: "just a number has max 20 digit numbers and not required and can keep it empty with remove toogle not vat registered" |
 | 2026-11-07 | Partner pockets go: adding a partner makes no account, the reconciliation has no "owed to partners", and the migration deletes every pocket and its account | Muteb, from the deep review: "Remove pockets completely"; redix-api #99. No pocket held an entry or an opening balance in any database |
 | 2026-11-07 | One route answers which tables an expense may go into, by category and item, in each item's sheet order; one method names and orders an item's tables for it and for the tables screen | redix-app #84, D9: the app's إضافة قيد picks a table, and the API keeps owning what is on offer (AC-05.3, AC-38.1) |
 | 2026-11-07 | A contractor payment names no subgroup and goes under its item's general one | redix-app #84, R11: its contract is its table, and no report read a payment's subgroup; the real project had none on a named subgroup |

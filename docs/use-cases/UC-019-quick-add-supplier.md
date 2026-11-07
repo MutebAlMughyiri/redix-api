@@ -16,7 +16,7 @@ A pending supplier already holds its VAT number, and is in the register for ever
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `POST /projects/{projectId}/suppliers` with `{ name, vatNumber, notVatRegistered }` | `AddSupplier` | `201` with the supplier and its `status`; the refusals of UC-017, `vatNumberTaken` naming the holder as `existing`; `409` `projectFinished` |
+| `POST /projects/{projectId}/suppliers` with `{ name, vatNumber }` | `AddSupplier` | `201` with the supplier and its `status`; the refusals of UC-017, `vatNumberTaken` naming the holder as `existing`; `409` `projectFinished` |
 | `GET /projects/{projectId}/suppliers/search?text=...` | `ReadProject` | UC-018's, with what is on offer to the caller |
 
 ## Tables

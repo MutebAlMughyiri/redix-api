@@ -118,7 +118,7 @@ public static class SuppliersEndpoints
     private static async Task<IResult> IfAcceptableAsync(Guid projectId, Guid supplierId, SupplierRequest request, RedixDbContext db, Func<Task<IResult>> change)
     {
         var vatNumber = request.VatNumberKept();
-        var refusal = Supplier.RefusalOf(request.Name.Trim(), vatNumber, !request.NotVatRegistered, request.Mobile.Trim());
+        var refusal = Supplier.RefusalOf(request.Name.Trim(), vatNumber, request.Mobile.Trim());
         if (refusal.Length == 0 && request.DefaultItemId != Guid.Empty && await ProjectStructure.ItemOfAsync(projectId, request.DefaultItemId, db) is null)
         {
             refusal = "UnknownItem";
@@ -159,11 +159,8 @@ public static class SuppliersEndpoints
 /// <param name="Name">The supplier's name.</param>
 public record SupplierRequest(string Name)
 {
-    /// <summary>Its VAT number; ignored when <see cref="NotVatRegistered"/>.</summary>
+    /// <summary>Its VAT number; left out when it has none (AC-06.2).</summary>
     public string VatNumber { get; init; } = "";
-
-    /// <summary>True for a supplier with no VAT number (AC-06.2).</summary>
-    public bool NotVatRegistered { get; init; }
 
     /// <summary>Its mobile; left out when none.</summary>
     public string Mobile { get; init; } = "";
@@ -171,8 +168,8 @@ public record SupplierRequest(string Name)
     /// <summary>The item its expenses usually go to; left out when none.</summary>
     public Guid DefaultItemId { get; init; }
 
-    /// <summary>The VAT number to keep: what was sent, trimmed, and empty for a supplier not VAT-registered.</summary>
-    public string VatNumberKept() => NotVatRegistered ? "" : VatNumber.Trim();
+    /// <summary>The VAT number to keep: what was sent, trimmed.</summary>
+    public string VatNumberKept() => VatNumber.Trim();
 }
 
 /// <summary>A supplier as the app shows it.</summary>

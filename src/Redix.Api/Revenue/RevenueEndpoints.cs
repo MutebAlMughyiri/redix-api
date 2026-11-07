@@ -181,7 +181,7 @@ public static class RevenueEndpoints
             return "InvalidBuyerName";
         }
         var vatNumber = request.BuyerVatNumber.Trim();
-        if (vatNumber.Length > 0 && !Supplier.IsValidVatNumber(vatNumber))
+        if (!Supplier.IsValidVatNumber(vatNumber))
         {
             return "InvalidVatNumber";
         }

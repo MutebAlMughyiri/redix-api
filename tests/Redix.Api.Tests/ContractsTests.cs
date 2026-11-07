@@ -378,7 +378,7 @@ public class ContractsTests(MigratedApiFactory factory)
         client.PostAsJsonAsync($"/projects/{projectId}/contracts/{contractId}", body, Json);
 
     private static async Task<SupplierView> AnotherContractorAsync(HttpClient client, Guid projectId) =>
-        (await (await client.PostAsJsonAsync($"/projects/{projectId}/suppliers", new SupplierRequest("مؤسسة الواحة") { NotVatRegistered = true }, Json)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!;
+        (await (await client.PostAsJsonAsync($"/projects/{projectId}/suppliers", new SupplierRequest("مؤسسة الواحة"), Json)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!;
 
     private static async Task<ItemView> AnotherItemAsync(HttpClient client, Guid projectId, Guid notThis) =>
         (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{projectId}/categories/offered?itemType={ItemType.ContractorPayments}", Json))!.SelectMany(category => category.Items).First(item => item.Id != notThis);

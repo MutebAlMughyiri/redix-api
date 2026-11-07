@@ -123,7 +123,7 @@ public class RevenueTests(MigratedApiFactory factory)
 
         Assert.Equal("duplicateInvoice", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-1"))));
         Assert.Equal("invalidBuyerName", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2") with { BuyerName = " " })));
-        Assert.Equal("invalidVatNumber", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2") with { BuyerVatNumber = "12345" })));
+        Assert.Equal("invalidVatNumber", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2") with { BuyerVatNumber = "12345a" })));
         Assert.Equal("invalidInvoiceNumber", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, " "))));
         Assert.Equal("invalidAmount", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2", 0))));
     }
