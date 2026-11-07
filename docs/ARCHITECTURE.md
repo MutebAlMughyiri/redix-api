@@ -46,7 +46,9 @@ docs/                   these pages
 | No NULL column: an optional value is an empty value of its own type or a row in a link table | Each entity |
 | The API sends codes, never words; the app shows the word for the code | `Refusal.Of`, and the words in `Translations` |
 | Enums travel as camelCase names, such as `running` | `ConfigureHttpJsonOptions` in `Program.cs` |
-| Secrets come from Windows user environment variables prefixed `REDIX_` | `Program.cs` |
+| The port (`Urls`) and where the database is (`ConnectionStrings:Redix`: server, port, database) are in `appsettings.json`, to change in one file when the server moves | `appsettings.json`, `DatabaseConnection` |
+| Secrets come from Windows user environment variables prefixed `REDIX_`, never a file: the sign-in key (`REDIX_Jwt__SigningKey`) and, where the database signs in with a SQL login rather than as Windows, that login (`REDIX_Database__User`, `REDIX_Database__Password`) | `Program.cs`, `DatabaseConnection` |
+| A business value someone may change while the API runs is a row of `ConfigValues` (UC-070), never a setting in a file | `ConfigValue`, `ConfigEndpoints` |
 | Every action a use case names is recorded in the audit trail, saved with the change itself; a secret is marked `[NotAudited]` | `RedixDbContext.Audit`, `AuditRecord` |
 
 The full data model is the pinned **Database design** issue; each use case builds the tables it needs.

@@ -57,7 +57,7 @@ builder.Services.AddRateLimiter(limiter =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("Registration:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
 });
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
-    .UseSqlServer(services.GetRequiredService<IConfiguration>().GetConnectionString("Redix"))
+    .UseSqlServer(DatabaseConnection.Of(services.GetRequiredService<IConfiguration>()))
     .UseSeeding((context, _) => AdminSeed.Seed(context, services))
     .UseAsyncSeeding((context, _, cancellation) => AdminSeed.SeedAsync(context, services, cancellation)));
 builder.Services.AddOptions<AttachmentOptions>().BindConfiguration("Attachments");
