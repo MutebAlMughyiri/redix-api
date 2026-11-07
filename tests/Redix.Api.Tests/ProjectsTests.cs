@@ -399,6 +399,97 @@ public class ProjectsTests(MigratedApiFactory factory)
         Assert.Equal("غصون 6", ValuesOf(record.After).GetProperty("Name").GetString());
     }
 
+    private static Task<HttpResponseMessage> DescribeAsync(HttpClient client, Guid projectId, string description) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/description", new DescriptionRequest(description));
+
+    [Fact]
+    public async Task More_info_ADescriptionIsKeptForEveryoneInTheProjectAndInTheAuditTrail()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+        var reader = await factory.AddUserAsync(Password);
+        await factory.GiveAsync(reader.Id, project.Id, Holds.Of(Reader));
+
+        var answer = await DescribeAsync(client, project.Id, "  فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027.  ");
+
+        Assert.Equal("فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027.", (await ProjectOf(answer)).Description);
+        Assert.Equal("فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027.", (await ListAsync(await ClientOfAsync(reader)))!.Single(each => each.Id == project.Id).Description);
+        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
+        Assert.Equal((AuditAction.Update, "فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027."), (record.Action, ValuesOf(record.After).GetProperty("Description").GetString()));
+    }
+
+    [Fact]
+    public async Task More_info_ADescriptionOf2000CharactersIsKeptAndOneLongerIsRefused()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+
+        (await DescribeAsync(client, project.Id, new string('و', Project.DescriptionMaxLength))).EnsureSuccessStatusCode();
+        var refused = await DescribeAsync(client, project.Id, new string('و', Project.DescriptionMaxLength + 1));
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("invalidDescription", await CodeOf(refused));
+        Assert.Equal(Project.DescriptionMaxLength, (await ListAsync(client))!.Single(each => each.Id == project.Id).Description.Length);
+    }
+
+    [Fact]
+    public async Task More_info_AnEmptyDescriptionClearsIt()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+        await DescribeAsync(client, project.Id, "فيلتان");
+
+        (await DescribeAsync(client, project.Id, "   ")).EnsureSuccessStatusCode();
+
+        Assert.Equal("", (await ListAsync(client))!.Single(each => each.Id == project.Id).Description);
+    }
+
+    [Fact]
+    public async Task More_info_OnlyWhoeverManagesTheProjectDescribesIt()
+    {
+        var (_, project) = await FinanceOfNewProjectAsync("غصون 6");
+        var reader = await factory.AddUserAsync(Password);
+        await factory.GiveAsync(reader.Id, project.Id, Holds.Of(Reader));
+
+        var refused = await DescribeAsync(await ClientOfAsync(reader), project.Id, "فيلتان");
+
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+    }
+
+    [Fact]
+    public async Task More_info_AFinishedProjectKeepsItsDescription()
+    {
+        var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
+        await DescribeAsync(client, project.Id, "فيلتان");
+        (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
+
+        var refused = await DescribeAsync(client, project.Id, "ثلاث فلل");
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("projectFinished", await CodeOf(refused));
+        Assert.Equal("فيلتان", (await ListAsync(client))!.Single(each => each.Id == project.Id).Description);
+    }
+
+    [Fact]
+    public async Task More_info_ADescriptionWrittenWhenTheProjectIsMadeIsKept()
+    {
+        var client = await ClientOfAsync(await StarterAsync());
+
+        var project = await ProjectOf(await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 7", new DateOnly(2026, 11, 1), []) { Description = "ثلاث فلل في حي الياسمين." }));
+
+        Assert.Equal("ثلاث فلل في حي الياسمين.", project.Description);
+    }
+
+    [Fact]
+    public async Task More_info_AProjectMadeWithADescriptionTooLongIsNotMade()
+    {
+        var client = await ClientOfAsync(await StarterAsync());
+        var name = $"project-{Guid.CreateVersion7()}";
+
+        var refused = await client.PostAsJsonAsync("/projects", new CreateProjectRequest(name, new DateOnly(2026, 11, 1), []) { Description = new string('و', Project.DescriptionMaxLength + 1) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("invalidDescription", await CodeOf(refused));
+        Assert.DoesNotContain((await ListAsync(client))!, each => each.Name == name);
+    }
+
     [Fact]
     public async Task AddingAUnitIsInTheAuditTrailWithItsName()
     {

@@ -26,4 +26,7 @@ public enum ProjectChangeOutcome
 
     /// <summary>No such unit in this project, which answers 404.</summary>
     UnknownUnit,
+
+    /// <summary>The description is longer than <see cref="Project.DescriptionMaxLength"/> characters.</summary>
+    InvalidDescription,
 }

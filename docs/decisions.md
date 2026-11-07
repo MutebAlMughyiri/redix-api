@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-08 | A project has a description: optional, at most 2,000 characters, kept through `POST /projects/{id}/description` by `ManageProject` while the project is open, audited, also taken when a project is made or registered, and shown to the admin | redix-api 93, approved by Muteb on 8 Nov with the More info design |
 | 2026-11-08 | Liquidation and closing (التصفية والإغلاق) is removed: its four routes, `CapitalMovementType.Liquidation`, `ProjectFigures.Liquidation` (the surplus is revenue less expenses), the periodic report's التصفية line and its words; Close project no longer answers `liquidateFirst`. Retires BR-27 and UC-061 | Muteb: "remove the feature التصفية والإغلاق" |
 | 2026-11-08 | A project that is approved and not closed is **active** (`ProjectStatus.Active`, sent as `active`, word `projects.active`: Active, نشط), no longer running; its stored number stays 0, so the database is unchanged | Muteb: "change project enum status from running to active" |
 | 2026-11-08 | A default project always opens directly at sign-in: `Users.OpenDefaultProject` and the `openDirectly` the app sent go; a session's `defaultProjectId` alone decides where sign-in lands | Muteb removed the app's "open the default project directly" switch and chose "Always open it directly"; the 2026-11-05 row on `Users.OpenDefaultProject` no longer holds |

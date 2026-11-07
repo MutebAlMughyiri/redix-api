@@ -14,16 +14,21 @@
 | `POST /projects` | Registers a project from a name, a start date and its units, all or nothing, with the caller as its first manager, waiting for approval. `structureSourceId`, left out for the default template, names an earlier project to copy the structure from (UC-012) | `201` the project; `400` `invalidName` or `unknownSource`; `400` for a missing field |
 | `POST /projects/{projectId}/units` | Adds a unit at the end of the project's list | `200` the project; `400` `invalidName`; `409` `projectFinished` or `unitNameTaken`; `403` without `ManageProject` in it |
 | `POST /projects/{projectId}` with `{ name }` | Renames the project while it is open (BR-38) | `200` the project; `400` `invalidName`; `409` `projectFinished`; `403` without `ManageProject` in it |
+| `POST /projects/{projectId}/description` with `{ description }` | Keeps the project's description while it is open, trimmed; empty clears it (redix-api 93) | `200` the project; `400` `invalidDescription` over 2,000 characters; `409` `projectFinished`; `403` without `ManageProject` in it |
 | `POST /projects/{projectId}/units/{unitId}` with `{ name }` | Renames a unit while the project is open (BR-38) | `200` the project; `400` `invalidName`; `409` `projectFinished`, `unitNameTaken` or `sharedUnit`; `404` outside the project; `403` as above |
 | `POST /projects/{projectId}/units/{unitId}/delete` | Deletes a unit while the project is open: nothing spends against a unit, since expenses and contracts belong to the project (BR-38, redix-api #96) | `200` the project; `409` `projectFinished`; `404` outside the project |
 | `POST /projects/{projectId}/close` | Closes a finished project | `200` the project; `409` `projectFinished` when already closed, or `pendingEntries` while entries wait for approval; `403` without `ManageProject` in it |
 
-A project answers as `{ id, name, startDate, status, rejectionReason, units: [{ id, name }], permissions }`, with `status` `pendingApproval`, `rejected`, `active` or `finished`.
+A project answers as `{ id, name, startDate, status, rejectionReason, description, units: [{ id, name }], permissions }`, with `status` `pendingApproval`, `rejected`, `active` or `finished`.
 
 ## Rules and where they live
 
 | Rule | Code | Test |
 | --- | --- | --- |
+| A project's description is kept for everyone in it, trimmed, and in the audit trail; an empty one clears it (redix-api 93) | `Project.Describe`, `ProjectsEndpoints.Describe` | `ProjectsTests.More_info_ADescriptionIsKeptForEveryoneInTheProjectAndInTheAuditTrail`, `More_info_AnEmptyDescriptionClearsIt` |
+| A description has at most 2,000 characters, when written and when the project is made or registered | `Project.DescriptionMaxLength` | `ProjectsTests.More_info_ADescriptionOf2000CharactersIsKeptAndOneLongerIsRefused`, `More_info_AProjectMadeWithADescriptionTooLongIsNotMade`; `RegistrationTests.More_info_ARegistrationWithADescriptionTooLongCreatesNothing` |
+| Only `ManageProject` describes a project, and only while it is open (AC-04.1) | `Permission.ManageProject`, `Project.Describe` | `ProjectsTests.More_info_OnlyWhoeverManagesTheProjectDescribesIt`, `More_info_AFinishedProjectKeepsItsDescription` |
+| A description can be written when a project is made, and the admin reads it before deciding | `CreateProjectRequest`, `RegisterProjectRequest`, `RegisteredProjectView` | `ProjectsTests.More_info_ADescriptionWrittenWhenTheProjectIsMadeIsKept`; `RegistrationTests.More_info_TheAdminReadsTheDescriptionBeforeDeciding` |
 | A project keeps its units, in the order given | `Project.New`, `Project.AddUnit` | `ProjectsTests.AProjectKeepsItsUnitsInOrder` |
 | A bad unit name refuses the whole project and saves nothing | `ProjectsEndpoints.Create` | `ProjectsTests.ABadUnitNameCreatesNothing` |
 | A request missing a field answers 400, in every environment | `ConfigureHttpJsonOptions` and `RouteHandlerOptions` in `Program.cs` | `ProjectsTests.ARequestMissingAFieldIsABadRequest` |

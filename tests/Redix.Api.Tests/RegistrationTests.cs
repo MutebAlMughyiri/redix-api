@@ -211,6 +211,30 @@ public class RegistrationTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task More_info_TheAdminReadsTheDescriptionBeforeDeciding()
+    {
+        var name = $"project-{Guid.CreateVersion7()}";
+        await ProjectOf(await RegisterAsync(Request(NewUsername(), name) with { Description = "ثلاث فلل في حي الياسمين، التمويل من الشركاء." }));
+        var (_, admin) = await AdminAsync();
+
+        var waiting = (await admin.GetFromJsonAsync<List<RegisteredProjectView>>("/projects/registered", Json))!.Single(project => project.Name == name);
+
+        Assert.Equal("ثلاث فلل في حي الياسمين، التمويل من الشركاء.", waiting.Description);
+    }
+
+    [Fact]
+    public async Task More_info_ARegistrationWithADescriptionTooLongCreatesNothing()
+    {
+        var username = NewUsername();
+
+        var refused = await RegisterAsync(Request(username) with { Description = new string('و', Project.DescriptionMaxLength + 1) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("invalidDescription", await CodeOf(refused));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, Password))).StatusCode);
+    }
+
+    [Fact]
     public async Task ADecidedProjectLeavesTheAdminsList()
     {
         var (_, _, projectId) = await RegisteredAsync();

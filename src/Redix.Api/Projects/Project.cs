@@ -14,6 +14,9 @@ public class Project
     /// <summary>The longest reason a rejection may give.</summary>
     public const int ReasonMaxLength = 500;
 
+    /// <summary>The longest description a project may have (Muteb, 8 Nov 2026, redix-api 93).</summary>
+    public const int DescriptionMaxLength = 2000;
+
     /// <summary>The project's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
@@ -28,6 +31,9 @@ public class Project
 
     /// <summary>Why the admin refused it; empty otherwise.</summary>
     public string RejectionReason { get; private set; } = "";
+
+    /// <summary>What the project is, as its manager wrote it, for everyone in it and for the admin who approves it; empty for none. It changes only through <see cref="Describe"/>.</summary>
+    public string Description { get; private set; } = "";
 
     /// <summary>True for the default template: a project nobody is a member of, whose structure a new project copies (FR-05).</summary>
     public bool IsTemplate { get; init; }
@@ -47,11 +53,11 @@ public class Project
     /// <summary>True once the admin has let it in, so permissions count in it (BR-34).</summary>
     public bool IsApproved => Status is ProjectStatus.Active or ProjectStatus.Finished;
 
-    /// <summary>A new project waiting for approval, with its units in order; the outcome says whether its name and every unit's are acceptable.</summary>
-    public static (Project Project, ProjectChangeOutcome Outcome) New(string name, DateOnly startDate, IEnumerable<string> units)
+    /// <summary>A new project waiting for approval, with its units in order and its <paramref name="description"/>; the outcome says whether its name, every unit's and the description are acceptable.</summary>
+    public static (Project Project, ProjectChangeOutcome Outcome) New(string name, DateOnly startDate, IEnumerable<string> units, string description)
     {
         var project = new Project { Name = name.Trim(), StartDate = startDate };
-        var outcome = IsAcceptableName(project.Name) ? ProjectChangeOutcome.Done : ProjectChangeOutcome.InvalidName;
+        var outcome = IsAcceptableName(project.Name) ? project.Describe(description.Trim()) : ProjectChangeOutcome.InvalidName;
         foreach (var unit in units)
         {
             var added = project.AddUnit(unit.Trim());
@@ -106,6 +112,21 @@ public class Project
             return ProjectChangeOutcome.UnitNameTaken;
         }
         Units.Add(new Unit { ProjectId = Id, Name = name, SortOrder = Units.Count == 0 ? 0 : Units.Max(unit => unit.SortOrder) + 1 });
+        return ProjectChangeOutcome.Done;
+    }
+
+    /// <summary>Keeps the project's description while it is open (AC-04.1): at most <see cref="DescriptionMaxLength"/> characters, empty for none (redix-api 93).</summary>
+    public ProjectChangeOutcome Describe(string description)
+    {
+        if (IsReadOnly)
+        {
+            return ProjectChangeOutcome.ProjectFinished;
+        }
+        if (description.Length > DescriptionMaxLength)
+        {
+            return ProjectChangeOutcome.InvalidDescription;
+        }
+        Description = description;
         return ProjectChangeOutcome.Done;
     }
 

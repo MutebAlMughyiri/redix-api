@@ -924,6 +924,11 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<bool>("IsTemplate")
                         .HasColumnType("bit");
 
@@ -960,6 +965,7 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
+                            Description = "",
                             IsTemplate = true,
                             Name = "القالب الافتراضي",
                             RejectionReason = "",
@@ -3288,6 +3294,132 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("4b62fddb-55f7-7d0e-fad6-616eb0ef753b"),
                             Value = "الوحدات"
+                        },
+                        new
+                        {
+                            Id = new Guid("5284c6cd-ad42-2fe2-758b-ab26b6604296"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e15cd528-79c3-d92c-d7c2-7146df9ad77d"),
+                            Value = "Description (optional)"
+                        },
+                        new
+                        {
+                            Id = new Guid("443a77c0-8ef8-fa94-ade1-6086bf39ab58"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e15cd528-79c3-d92c-d7c2-7146df9ad77d"),
+                            Value = "وصف المشروع (اختياري)"
+                        },
+                        new
+                        {
+                            Id = new Guid("dbca40e4-b309-7d4b-bfc1-ba2cc32c009a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8a1b4169-beca-c13f-9dd5-fb20b67be600"),
+                            Value = "Write at most 2,000 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("f6a9e449-4bfe-3b41-11e9-82896d45db61"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8a1b4169-beca-c13f-9dd5-fb20b67be600"),
+                            Value = "اكتب 2000 حرف على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("5adf10df-28fe-3666-c786-7971235bfff9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("889422c2-d45e-5ab0-4486-d40f6d2d6342"),
+                            Value = "Write at most 2,000 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("9670223c-b75d-cd3d-733e-8f7ed2affae2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("889422c2-d45e-5ab0-4486-d40f6d2d6342"),
+                            Value = "اكتب 2000 حرف على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("0dd3117a-bc8f-045b-0666-990256916994"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cb1a06dc-b074-b6b1-821e-2eaebcb11f5d"),
+                            Value = "More info"
+                        },
+                        new
+                        {
+                            Id = new Guid("9c0826bb-a284-807a-ab76-29915cc13f90"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cb1a06dc-b074-b6b1-821e-2eaebcb11f5d"),
+                            Value = "معلومات المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("c8c1fdac-7014-338a-4fae-9feecf7d82d7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f848d1b4-8f77-2fb9-acc7-2bd95c196747"),
+                            Value = "Description"
+                        },
+                        new
+                        {
+                            Id = new Guid("58ce52c3-cee6-964d-4d1f-94c1f0f198ac"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f848d1b4-8f77-2fb9-acc7-2bd95c196747"),
+                            Value = "وصف المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("c34eaa54-94a9-7c67-77c9-b947237ec412"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("06effe02-bdca-7e81-7f0d-7b4aa5ea5636"),
+                            Value = "What the project is, for everyone in it. Up to 2,000 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("fbdb6b97-7753-071c-aa8c-13a058488d70"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("06effe02-bdca-7e81-7f0d-7b4aa5ea5636"),
+                            Value = "ما هو المشروع، لكل من فيه. حتى 2000 حرف."
+                        },
+                        new
+                        {
+                            Id = new Guid("cca85eda-03bd-e0c3-b4b6-cf0f8333f803"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d0b175f8-91b1-2b54-f9be-fefa663a6bde"),
+                            Value = "No description yet."
+                        },
+                        new
+                        {
+                            Id = new Guid("93e20883-0a9f-f218-9a4c-4980016e9729"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d0b175f8-91b1-2b54-f9be-fefa663a6bde"),
+                            Value = "لا يوجد وصف بعد."
+                        },
+                        new
+                        {
+                            Id = new Guid("71291288-a49c-e478-8098-df8320952222"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("82816946-030f-2d29-a52b-2bb2c4b1020d"),
+                            Value = "Save description"
+                        },
+                        new
+                        {
+                            Id = new Guid("4dc21e06-42a9-6f17-d96f-ed405c48837b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("82816946-030f-2d29-a52b-2bb2c4b1020d"),
+                            Value = "حفظ الوصف"
+                        },
+                        new
+                        {
+                            Id = new Guid("35d9c4dd-ace8-15c7-6b9e-9eadb39adf1d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7ebeed80-b35a-7f5b-4f47-96ed95f3c879"),
+                            Value = "Description saved."
+                        },
+                        new
+                        {
+                            Id = new Guid("e0f53c3f-798a-5275-358b-7c227333fb0a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7ebeed80-b35a-7f5b-4f47-96ed95f3c879"),
+                            Value = "تم حفظ الوصف."
                         },
                         new
                         {
@@ -14324,6 +14456,60 @@ namespace Redix.Api.Migrations
                             Id = new Guid("4b62fddb-55f7-7d0e-fad6-616eb0ef753b"),
                             Description = "",
                             Key = "projects.units"
+                        },
+                        new
+                        {
+                            Id = new Guid("e15cd528-79c3-d92c-d7c2-7146df9ad77d"),
+                            Description = "",
+                            Key = "projects.description"
+                        },
+                        new
+                        {
+                            Id = new Guid("8a1b4169-beca-c13f-9dd5-fb20b67be600"),
+                            Description = "",
+                            Key = "projects.invalidDescription"
+                        },
+                        new
+                        {
+                            Id = new Guid("889422c2-d45e-5ab0-4486-d40f6d2d6342"),
+                            Description = "",
+                            Key = "register.invalidDescription"
+                        },
+                        new
+                        {
+                            Id = new Guid("cb1a06dc-b074-b6b1-821e-2eaebcb11f5d"),
+                            Description = "",
+                            Key = "projectInfo.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("f848d1b4-8f77-2fb9-acc7-2bd95c196747"),
+                            Description = "",
+                            Key = "projectInfo.description"
+                        },
+                        new
+                        {
+                            Id = new Guid("06effe02-bdca-7e81-7f0d-7b4aa5ea5636"),
+                            Description = "",
+                            Key = "projectInfo.descriptionHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0b175f8-91b1-2b54-f9be-fefa663a6bde"),
+                            Description = "",
+                            Key = "projectInfo.noDescription"
+                        },
+                        new
+                        {
+                            Id = new Guid("82816946-030f-2d29-a52b-2bb2c4b1020d"),
+                            Description = "",
+                            Key = "projectInfo.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("7ebeed80-b35a-7f5b-4f47-96ed95f3c879"),
+                            Description = "",
+                            Key = "projectInfo.saved"
                         },
                         new
                         {

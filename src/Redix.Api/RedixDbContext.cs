@@ -186,6 +186,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             project.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
             project.Property(p => p.RejectionReason).HasMaxLength(Project.ReasonMaxLength);
+            project.Property(p => p.Description).HasMaxLength(Project.DescriptionMaxLength);
             project.HasMany(p => p.Units).WithOne().HasForeignKey(u => u.ProjectId);
             project.HasData(StructureSeed.Template);
         });

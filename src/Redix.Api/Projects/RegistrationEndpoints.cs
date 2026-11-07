@@ -33,7 +33,7 @@ public static class RegistrationEndpoints
     /// <param name="time">The current time, for the user and the audit records.</param>
     public static async Task<IResult> Register(RegisterProjectRequest request, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
     {
-        var (project, outcome) = Project.New(request.Name, request.StartDate, request.Units);
+        var (project, outcome) = Project.New(request.Name, request.StartDate, request.Units, request.Description);
         if (outcome != ProjectChangeOutcome.Done)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, outcome.ToString());
@@ -79,7 +79,7 @@ public static class RegistrationEndpoints
         return projects.Select(project =>
         {
             var manager = managerOf[project.Id].First();
-            return new RegisteredProjectView(project.Id, project.Name, project.StartDate, project.Units.Select(unit => unit.Name).ToList(), manager.DisplayName, manager.Username, manager.Mobile);
+            return new RegisteredProjectView(project.Id, project.Name, project.StartDate, project.Units.Select(unit => unit.Name).ToList(), manager.DisplayName, manager.Username, manager.Mobile, project.Description);
         }).ToList();
     }
 
@@ -130,7 +130,11 @@ public static class RegistrationEndpoints
 /// <param name="Username">The name the manager signs in with.</param>
 /// <param name="Mobile">The manager's mobile; may be empty.</param>
 /// <param name="Password">The password the manager chose.</param>
-public record RegisterProjectRequest(string Name, DateOnly StartDate, List<string> Units, string DisplayName, string Username, string Mobile, string Password);
+public record RegisterProjectRequest(string Name, DateOnly StartDate, List<string> Units, string DisplayName, string Username, string Mobile, string Password)
+{
+    /// <summary>What the project is, for the admin who approves it; left out for none.</summary>
+    public string Description { get; init; } = "";
+}
 
 /// <summary>What the admin sends to refuse a project.</summary>
 /// <param name="Reason">Why, which its manager sees.</param>
@@ -144,4 +148,5 @@ public record RejectProjectRequest(string Reason);
 /// <param name="ManagerName">The name of whoever registered it.</param>
 /// <param name="ManagerUsername">Their username.</param>
 /// <param name="ManagerMobile">Their mobile; empty when none.</param>
-public record RegisteredProjectView(Guid Id, string Name, DateOnly StartDate, List<string> Units, string ManagerName, string ManagerUsername, string ManagerMobile);
+/// <param name="Description">What the project is, as its manager wrote it; empty for none.</param>
+public record RegisteredProjectView(Guid Id, string Name, DateOnly StartDate, List<string> Units, string ManagerName, string ManagerUsername, string ManagerMobile, string Description);

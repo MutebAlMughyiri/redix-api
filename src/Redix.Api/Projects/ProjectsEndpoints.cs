@@ -17,6 +17,7 @@ public static class ProjectsEndpoints
         app.MapGet("/projects", List);
         app.MapPost("/projects", Create).RequireAuthorization(SessionPolicies.Working);
         app.MapPost("/projects/{projectId:guid}", Rename).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPost("/projects/{projectId:guid}/description", Describe).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/units", AddUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}", RenameUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}/delete", DeleteUnit).RequireAuthorization(nameof(Permission.ManageProject));
@@ -54,7 +55,7 @@ public static class ProjectsEndpoints
     /// <param name="time">The current time, for the audit record.</param>
     public static async Task<IResult> Create(CreateProjectRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var (project, outcome) = Project.New(request.Name, request.StartDate, request.Units);
+        var (project, outcome) = Project.New(request.Name, request.StartDate, request.Units, request.Description);
         if (outcome != ProjectChangeOutcome.Done)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, outcome.ToString());
@@ -102,6 +103,15 @@ public static class ProjectsEndpoints
     /// <param name="time">The current time, for the audit record.</param>
     public static Task<IResult> Rename(Guid projectId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.Rename(request.Name.Trim()));
+
+    /// <summary>Keeps the project's description while it is open, in the audit trail as a rename is (redix-api 93). Over <see cref="Project.DescriptionMaxLength"/> characters it answers <c>invalidDescription</c>, and once finished <c>projectFinished</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="request">Its description; empty for none.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the project lives in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static Task<IResult> Describe(Guid projectId, DescriptionRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.Describe(request.Description.Trim()));
 
     /// <summary>Renames a unit while its project is open (BR-38). It answers as <see cref="AddUnit"/> does, and one outside the project 404.</summary>
     /// <param name="projectId">The project.</param>
@@ -184,7 +194,7 @@ public static class ProjectsEndpoints
         }
         if (outcome != ProjectChangeOutcome.Done)
         {
-            var status = outcome is ProjectChangeOutcome.InvalidName ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;
+            var status = outcome is ProjectChangeOutcome.InvalidName or ProjectChangeOutcome.InvalidDescription ? StatusCodes.Status400BadRequest : StatusCodes.Status409Conflict;
             return Refusal.Of(status, outcome.ToString());
         }
         var userId = AccessTokens.UserIdOf(principal);
@@ -209,7 +219,14 @@ public record CreateProjectRequest(string Name, DateOnly StartDate, List<string>
 {
     /// <summary>The earlier project to copy the structure from when it is approved; left out for the default template.</summary>
     public Guid StructureSourceId { get; init; }
+
+    /// <summary>What the project is; left out for none.</summary>
+    public string Description { get; init; } = "";
 }
+
+/// <summary>What the app sends to keep a project's description.</summary>
+/// <param name="Description">The description; empty for none.</param>
+public record DescriptionRequest(string Description);
 
 /// <summary>The caller's default project, as a session says it.</summary>
 /// <param name="DefaultProjectId">The project sign-in opens directly; empty when none.</param>
@@ -225,13 +242,14 @@ public record AddUnitRequest(string Name);
 /// <param name="StartDate">The day the project started.</param>
 /// <param name="Status"><c>pendingApproval</c>, <c>rejected</c>, <c>active</c>, or <c>finished</c> once read-only.</param>
 /// <param name="RejectionReason">Why the admin refused it; empty otherwise.</param>
+/// <param name="Description">What the project is; empty for none.</param>
 /// <param name="Units">The project's units, in order.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, List<UnitView> Units, List<Permission> Permissions)
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, string Description, List<UnitView> Units, List<Permission> Permissions)
 {
     /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="permissions"/> in it.</summary>
     public static ProjectView Of(Project project, List<Permission> permissions) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Units.Select(UnitView.Of).ToList(), permissions);
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(), permissions);
 }
 
 /// <summary>A unit as the app shows it.</summary>
