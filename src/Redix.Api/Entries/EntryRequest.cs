@@ -37,6 +37,9 @@ public abstract record EntryRequest(Guid Id)
     /// <summary>What this holds that an item's columns can require.</summary>
     public abstract EntryAnswers Answers();
 
+    /// <summary>Why what was typed cannot be kept: what every expense has (<see cref="RefusalOfCommon"/>), then what its kind has. Empty when it can.</summary>
+    public abstract string RefusalOfTyped();
+
     /// <summary>Why what every expense has cannot be kept: notes too long, or a deduction that does not say why in them (D14). Empty when it can.</summary>
     protected string RefusalOfCommon()
     {

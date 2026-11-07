@@ -48,6 +48,6 @@ Tests are in `ContractorPaymentsTests`.
 | D16: a payment is sent with no receipt, and writes no invoice row | `ContractorPaymentsEndpoints.Record` | `D16_APaymentIsSentWithNoReceipt`, `D16_APaymentWritesNoInvoiceRow` |
 | A receipt is linked as a receipt; a file already on an entry is refused | `EntryRecording` | `TheReceiptIsLinkedAsAReceiptAndAFileAlreadyOnAnEntryIsRefused` |
 | AC-38.1: an item that takes no contractor payments | `ProjectStructure.OfferedItemAsync` | `AC_38_1_AContractWhoseItemIsDisabledTakesNoPayment` |
-| Open question 4: only what the user may charge | `EntryRecording.RefusalOfPaymentAsync` | `OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther` |
+| Open question 4: only what the user may charge | `EntryRecording.RefusalOfAsync` | `OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther` |
 | FR-41: its columns, and never a purchase's | `EntryAnswers` | `FR_41_ARequiredCustomColumnIsAskedOfAPaymentWhenSending`, `FR_41_WhatOnlyAPurchaseHoldsIsNeverAskedOfAPayment` |
 | What was typed; a disabled contract; a finished project; the audit trail; an id sent twice | `ContractorPaymentRequest`, `ProjectChanges` | `WhatWasTypedIsRefusedWhenItCannotBeKept`, `ADisabledContractOrOneOfAnotherProjectIsRefused`, `AnEmptyIdIsRefused`, `AC_04_1_AFinishedProjectRecordsNoPayment`, `FR_21_APaymentIsInTheAuditTrail`, `AC_16_3_APaymentSentAgainLandsOnce` |

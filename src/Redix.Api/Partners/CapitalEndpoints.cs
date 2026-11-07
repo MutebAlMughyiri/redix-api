@@ -113,7 +113,7 @@ public static class CapitalEndpoints
         var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, [request.AccountId], request.AttachmentId, time, db);
         if (refusal.Length > 0)
         {
-            return Refusal.Of(refusal == "InvoiceAlreadyAttached" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, refusal);
+            return DirectEntries.AnswerOf(refusal);
         }
         if (request.Type == CapitalMovementType.SettlementAndExit && (await BalancesAsync(projectId, db)).GetValueOrDefault(request.PartnerId) != request.Amount)
         {

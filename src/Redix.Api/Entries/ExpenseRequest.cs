@@ -37,8 +37,8 @@ public record ExpenseRequest(Guid Id) : EntryRequest(Id)
     /// <summary>The total as the ledger keeps it: a credit note's is negative, so that wherever totals are added up it takes away what its bill counted.</summary>
     public decimal KeptTotal() => IsCreditNote ? -Total() : Total();
 
-    /// <summary>Why the texts and typed amounts cannot be kept: each amount is not negative, has at most two decimals and stays within <see cref="Money.Largest"/>. Empty when they can.</summary>
-    public string RefusalOfTyped()
+    /// <summary>Why the texts and typed amounts cannot be kept: a credit note names its bill and only a credit note does (D13), the unit price and the quantity are not negative, and every amount has at most two decimals and stays within <see cref="Money.Largest"/>. Empty when they can.</summary>
+    public override string RefusalOfTyped()
     {
         var common = RefusalOfCommon();
         if (common.Length > 0)

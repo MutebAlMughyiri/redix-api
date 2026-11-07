@@ -18,16 +18,15 @@ public static class EntryChanges
         {
             return (StatusCodes.Status409Conflict, "EntryApproved");
         }
-        if (held.Contains(Permission.ManageAnyEntry))
-        {
-            return (0, "");
-        }
-        if (entry.CreatedByUserId != userId)
+        if (!MayHandle(entry, userId, held))
         {
             return (StatusCodes.Status403Forbidden, "NotYourEntry");
         }
-        return entry.Status == EntryStatus.PendingApproval ? (StatusCodes.Status409Conflict, "EntryWaitingForDecision") : (0, "");
+        return entry.Status == EntryStatus.PendingApproval && !held.Contains(Permission.ManageAnyEntry) ? (StatusCodes.Status409Conflict, "EntryWaitingForDecision") : (0, "");
     }
+
+    /// <summary>Whether <paramref name="userId"/>, holding <paramref name="held"/>, may act on <paramref name="entry"/> at all: they entered it, or they hold <see cref="Permission.ManageAnyEntry"/>.</summary>
+    public static bool MayHandle(Entry entry, Guid userId, List<Permission> held) => entry.CreatedByUserId == userId || held.Contains(Permission.ManageAnyEntry);
 
     /// <summary>Replaces what <paramref name="existing"/> holds with <paramref name="edited"/> and <paramref name="details"/>, keeping who entered it and when, and its status unless it is sent now. The audit trail holds the values before and after.</summary>
     public static async Task ReplaceAsync(Entry existing, Entry edited, List<object> details, Guid userId, DateTime at, RedixDbContext db)

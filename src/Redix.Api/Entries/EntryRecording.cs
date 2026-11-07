@@ -1,31 +1,87 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
+using Redix.Api.Projects;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Entries;
 
-/// <summary>What recording any expense shares, a purchase or a contractor payment: the rules of what it names, its columns and its file, and the way it reaches the ledger.</summary>
+/// <summary>What recording any expense shares, a purchase or a contractor payment: recording it once, changing it before approval, the checks every one passes, and the way it reaches the ledger.</summary>
 public static class EntryRecording
 {
-    /// <summary>Why <paramref name="id"/> cannot be a new entry's: empty, or used already, which saves nothing new (AC-16.3). An empty reason when it can.</summary>
-    public static async Task<(int Status, string Reason)> RefusalOfIdAsync(Guid id, RedixDbContext db)
+    /// <summary>
+    /// Records <paramref name="request"/> as a new entry through <paramref name="save"/>. The same id from whoever recorded it answers that entry, so a retried upload lands once (AC-16.3,
+    /// UC-029); from anyone else <c>entryExists</c>, and an empty one <c>invalidEntryId</c>.
+    /// </summary>
+    public static async Task<IResult> RecordAsync(Guid projectId, EntryRequest request, ClaimsPrincipal principal, RedixDbContext db, Func<Task<IResult>> save)
     {
-        if (id == Guid.Empty)
+        var userId = AccessTokens.UserIdOf(principal);
+        var repeated = await db.Entries.Where(entry => entry.Id == request.Id && entry.ProjectId == projectId && entry.CreatedByUserId == userId)
+            .Select(entry => new EntryStatusView(entry.Id, entry.Status, "")).ToListAsync();
+        if (repeated.Count > 0)
         {
-            return (StatusCodes.Status400BadRequest, "InvalidEntryId");
+            return Results.Ok(repeated[0]);
         }
-        return await db.Entries.AnyAsync(entry => entry.Id == id) ? (StatusCodes.Status409Conflict, "EntryExists") : (0, "");
+        if (request.Id == Guid.Empty)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidEntryId");
+        }
+        return await db.Entries.AnyAsync(entry => entry.Id == request.Id) ? Refusal.Of(StatusCodes.Status409Conflict, "EntryExists") : await save();
     }
 
-    /// <summary>The entry <paramref name="id"/> if <paramref name="userId"/> already recorded it in the project: an upload that was cut and sent again lands once (AC-16.3, UC-029).</summary>
-    public static Task<EntryStatusView?> RepeatOfAsync(Guid id, Guid projectId, Guid userId, RedixDbContext db) =>
-        db.Entries.Where(entry => entry.Id == id && entry.ProjectId == projectId && entry.CreatedByUserId == userId).Select(entry => new EntryStatusView(entry.Id, entry.Status, "")).Cast<EntryStatusView?>().SingleOrDefaultAsync();
+    /// <summary>Changes the <paramref name="kind"/> entry <paramref name="entryId"/> through <paramref name="save"/> before it is approved (UC-033), with the refusals of <see cref="EntryChanges.RefusalOf"/>; one not in the project is not found.</summary>
+    public static async Task<IResult> ChangeAsync(Guid projectId, Guid entryId, EntryKind kind, ClaimsPrincipal principal, RedixDbContext db, Func<Entry, Task<IResult>> save)
+    {
+        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId && row.Kind == kind);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        var userId = AccessTokens.UserIdOf(principal);
+        var (status, refusal) = EntryChanges.RefusalOf(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId));
+        return refusal.Length > 0 ? Refusal.Of(status, refusal) : await save(entry);
+    }
+
+    /// <summary>
+    /// Why <paramref name="request"/>, on <paramref name="item"/>, cannot be kept as no expense can: a payment method, an account or a file <paramref name="userId"/>, holding
+    /// <paramref name="held"/>, may not use; what was typed; a date outside the project's period or in the future (BR-12); its item's columns (FR-41), naming the column; its file on
+    /// another entry than <paramref name="editing"/> (BR-22). An empty code when it can.
+    /// </summary>
+    public static async Task<(int Status, string Code, string ColumnKey)> RefusalOfAsync(Guid projectId, EntryRequest request, Item item, Guid userId, List<Permission> held, Guid editing, RedixDbContext db, TimeProvider time)
+    {
+        var refusal = await RefusalOfPaymentAsync(projectId, request, userId, held, db);
+        refusal = refusal.Length > 0 ? refusal : request.RefusalOfTyped();
+        var project = await db.Projects.SingleAsync(row => row.Id == projectId);
+        refusal = refusal.Length > 0 || Entry.IsAcceptableDate(request.PaymentDate, project.StartDate, Entry.Today(time)) ? refusal : "InvalidPaymentDate";
+        if (refusal.Length > 0)
+        {
+            return (StatusCodes.Status400BadRequest, refusal, "");
+        }
+        var (reason, columnKey) = RefusalOfColumns(request, item.Columns.Where(column => !column.IsHidden).ToList());
+        if (reason.Length > 0)
+        {
+            return (StatusCodes.Status400BadRequest, reason, columnKey);
+        }
+        return request.AttachmentId != Guid.Empty && await IsFileOnAnEntryAsync(projectId, request.AttachmentId, db, editing) ? (StatusCodes.Status409Conflict, "InvoiceAlreadyAttached", "") : (0, "", "");
+    }
+
+    /// <summary>Keeps <paramref name="entry"/> with its <paramref name="details"/>: as a new entry, or in place of <paramref name="existing"/> when one is being changed. Answers the entry kept.</summary>
+    public static async Task<Entry> KeepAsync(Entry entry, List<object> details, Entry? existing, Guid userId, RedixDbContext db)
+    {
+        if (existing is null)
+        {
+            await SaveAsync(entry, details, userId, db);
+            return entry;
+        }
+        await EntryChanges.ReplaceAsync(existing, entry, details, userId, entry.CreatedAt, db);
+        return existing;
+    }
 
     /// <summary>Why the payment method, the account or the file <paramref name="request"/> names cannot be used by <paramref name="userId"/>, who holds <paramref name="held"/>. Empty when they can.</summary>
-    public static async Task<string> RefusalOfPaymentAsync(Guid projectId, EntryRequest request, Guid userId, List<Permission> held, RedixDbContext db)
+    private static async Task<string> RefusalOfPaymentAsync(Guid projectId, EntryRequest request, Guid userId, List<Permission> held, RedixDbContext db)
     {
         if (!await db.PaymentMethods.AnyAsync(method => method.Id == request.PaymentMethodId && method.ProjectId == projectId && method.IsActive))
         {
@@ -47,7 +103,7 @@ public static class EntryRecording
     }
 
     /// <summary>Why the custom values of <paramref name="request"/> do not fit <paramref name="columns"/> or, when sending, a required one is empty (FR-41), and the column's key. An empty reason when they fit.</summary>
-    public static (string Reason, string ColumnKey) RefusalOfColumns(EntryRequest request, List<ItemColumn> columns)
+    private static (string Reason, string ColumnKey) RefusalOfColumns(EntryRequest request, List<ItemColumn> columns)
     {
         foreach (var (key, value) in request.CustomValuesKept())
         {
@@ -65,14 +121,14 @@ public static class EntryRecording
         return missing.Count == 0 ? ("", "") : ("RequiredColumnMissing", missing[0]);
     }
 
-    /// <summary>A new entry from <paramref name="request"/>: sent for approval, or else a draft.</summary>
-    public static Entry EntryOf(EntryRequest request, Guid projectId, EntryKind kind, DateOnly entryDate, decimal amount, Guid userId, DateTime at) => new()
+    /// <summary>A new entry from <paramref name="request"/>, on its one date (D10): sent for approval, or else a draft.</summary>
+    public static Entry EntryOf(EntryRequest request, Guid projectId, EntryKind kind, decimal amount, Guid userId, DateTime at) => new()
     {
         Id = request.Id,
         ProjectId = projectId,
         Kind = kind,
         Status = request.Submit ? EntryStatus.PendingApproval : EntryStatus.Draft,
-        EntryDate = entryDate,
+        EntryDate = request.PaymentDate,
         Amount = amount,
         AccountId = request.AccountId,
         Notes = request.Notes.Trim(),
@@ -91,7 +147,7 @@ public static class EntryRecording
     };
 
     /// <summary>Saves <paramref name="entry"/> with its <paramref name="details"/> and the audit record of each (FR-21).</summary>
-    public static async Task SaveAsync(Entry entry, List<object> details, Guid userId, RedixDbContext db)
+    private static async Task SaveAsync(Entry entry, List<object> details, Guid userId, RedixDbContext db)
     {
         db.Add(entry);
         details.ForEach(detail => db.Add(detail));

@@ -51,7 +51,7 @@ public static class TransfersEndpoints
         var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, [request.FromAccountId, request.ToAccountId], request.AttachmentId, time, db);
         if (refusal.Length > 0)
         {
-            return Refusal.Of(refusal == "InvoiceAlreadyAttached" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, refusal);
+            return DirectEntries.AnswerOf(refusal);
         }
 
         var userId = AccessTokens.UserIdOf(principal);

@@ -13,6 +13,6 @@
 
 | Rule | Code | Test |
 | --- | --- | --- |
-| AC-16.3: an upload sent again does not repeat the entry | `EntryRecording.RepeatOfAsync` | `ExpensesTests.AC_16_3_AnUploadSentAgainLandsOnceAndAnswersTheEntry`, `ContractorPaymentsTests.AC_16_3_APaymentSentAgainLandsOnce` |
-| Someone else's id is refused, and tells them nothing of it | `EntryRecording.RefusalOfIdAsync` | `ExpensesTests.AnIdSomeoneElseUsedIsRefusedAndTellsThemNothingOfIt` |
+| AC-16.3: an upload sent again does not repeat the entry | `EntryRecording.RecordAsync` | `ExpensesTests.AC_16_3_AnUploadSentAgainLandsOnceAndAnswersTheEntry`, `ContractorPaymentsTests.AC_16_3_APaymentSentAgainLandsOnce` |
+| Someone else's id is refused, and tells them nothing of it | `EntryRecording.RecordAsync` | `ExpensesTests.AnIdSomeoneElseUsedIsRefusedAndTellsThemNothingOfIt` |
 | A file sent again is kept once | `AttachmentsEndpoints.Upload` | `AttachmentsTests.TheSameFileSentAgainIsKeptOnce` |

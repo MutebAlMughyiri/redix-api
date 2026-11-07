@@ -19,8 +19,8 @@ public record ContractorPaymentRequest(Guid Id) : EntryRequest(Id)
     /// <inheritdoc />
     public override EntryAnswers Answers() => new(EntryKind.ContractorPayment, "", 0, 0, Notes.Trim(), CustomValuesKept());
 
-    /// <summary>Why the texts and the amount cannot be kept. Empty when they can.</summary>
-    public string RefusalOfTyped()
+    /// <summary>Why the texts and the amount cannot be kept: an amount of zero, or one with more than two decimals or beyond <see cref="Money.Largest"/>. Empty when they can.</summary>
+    public override string RefusalOfTyped()
     {
         var common = RefusalOfCommon();
         if (common.Length > 0)

@@ -36,6 +36,9 @@ public static class DirectEntries
         }
     }
 
+    /// <summary>The answer to <paramref name="refusal"/>, as <see cref="RefusalOfAsync"/> gives one: a conflict for a file already on an entry, a bad request for anything else.</summary>
+    public static IResult AnswerOf(string refusal) => Refusal.Of(refusal == "InvoiceAlreadyAttached" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, refusal);
+
     /// <summary>Why a money movement cannot be kept: <c>invalidDate</c> outside the project's period (BR-12), <c>invalidAmount</c> not above zero or beyond the limit, <c>invalidNotes</c> too long, <c>unknownAccount</c> for an account not active in the project, <c>unknownAttachment</c>, or <c>invoiceAlreadyAttached</c> for a file already on an entry (BR-22). Empty when it can.</summary>
     public static async Task<string> RefusalOfAsync(Guid projectId, DateOnly date, decimal amount, string notes, List<Guid> accountIds, Guid attachmentId, TimeProvider time, RedixDbContext db)
     {

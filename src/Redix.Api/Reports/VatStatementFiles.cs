@@ -32,7 +32,10 @@ public static class VatStatementFiles
         sheet.RightToLeft = true;
         sheet.Cell(1, 1).Value = $"ضريبة المشتريات عن الربع {ordinal} سنة {quarter.Start.Year}";
         sheet.Range(1, 1, 1, Titles.Length).Merge().Style.Font.SetBold().Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-        Titles.Select((title, index) => sheet.Cell(2, index + 1).Value = title).ToList();
+        for (var column = 0; column < Titles.Length; column++)
+        {
+            sheet.Cell(2, column + 1).Value = Titles[column];
+        }
         sheet.Row(2).Style.Font.Bold = true;
         var purchasesTotal = Section(sheet, 3, quarter.Purchases, rate, "الإجمالي");
         var salesHeading = purchasesTotal + 2;

@@ -75,7 +75,7 @@ public static class RevenueEndpoints
         var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, [request.AccountId], request.AttachmentId, time, db);
         if (refusal.Length > 0)
         {
-            return Refusal.Of(refusal == "InvoiceAlreadyAttached" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, refusal);
+            return DirectEntries.AnswerOf(refusal);
         }
 
         var userId = AccessTokens.UserIdOf(principal);
@@ -135,7 +135,7 @@ public static class RevenueEndpoints
             refusal = await DirectEntries.RefusalOfAsync(projectId, request.InvoiceDate, request.Total, request.Description, [request.AccountId], request.AttachmentId, time, db);
             if (refusal.Length > 0)
             {
-                return Refusal.Of(refusal == "InvoiceAlreadyAttached" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, refusal);
+                return DirectEntries.AnswerOf(refusal);
             }
             var entry = DirectEntries.New(projectId, EntryKind.Revenue, request.InvoiceDate, request.Total, request.AccountId, request.Description.Trim(), userId, at);
             DirectEntries.Add(entry, DetailsOf(entry.Id, item.Id, SubgroupOf(item, Guid.Empty), request.InvoiceDate, request.InvoiceDate, request.AttachmentId), userId, at, db);

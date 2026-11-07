@@ -52,17 +52,8 @@ public static class ExpensesEndpoints
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     /// <param name="time">The current time.</param>
-    public static async Task<IResult> Record(Guid projectId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var repeated = await EntryRecording.RepeatOfAsync(request.Id, projectId, AccessTokens.UserIdOf(principal), db);
-        if (repeated is not null)
-        {
-            return Results.Ok(repeated);
-        }
-
-        var (status, idRefusal) = await EntryRecording.RefusalOfIdAsync(request.Id, db);
-        return idRefusal.Length > 0 ? Refusal.Of(status, idRefusal) : await SaveAsync(projectId, request, principal, db, time, null);
-    }
+    public static Task<IResult> Record(Guid projectId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        EntryRecording.RecordAsync(projectId, request, principal, db, () => SaveAsync(projectId, request, principal, db, time, null));
 
     /// <summary>Changes a purchase before it is approved (UC-033), through every check a new one passes. What is approved answers <c>entryApproved</c> (BR-11, AC-16.2); someone else's <c>notYourEntry</c>; one waiting for a decision, to whoever may not change it then, <c>entryWaitingForDecision</c>.</summary>
     /// <param name="projectId">The project.</param>
@@ -71,17 +62,8 @@ public static class ExpensesEndpoints
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     /// <param name="time">The current time.</param>
-    public static async Task<IResult> Edit(Guid projectId, Guid entryId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId && row.Kind == EntryKind.Purchase);
-        if (entry is null)
-        {
-            return Results.NotFound();
-        }
-        var userId = AccessTokens.UserIdOf(principal);
-        var (status, refusal) = EntryChanges.RefusalOf(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId));
-        return refusal.Length > 0 ? Refusal.Of(status, refusal) : await SaveAsync(projectId, request with { Id = entryId }, principal, db, time, entry);
-    }
+    public static Task<IResult> Edit(Guid projectId, Guid entryId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        EntryRecording.ChangeAsync(projectId, entryId, EntryKind.Purchase, principal, db, entry => SaveAsync(projectId, request with { Id = entryId }, principal, db, time, entry));
 
     private static async Task<IResult> SaveAsync(Guid projectId, ExpenseRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, Entry? existing)
     {
@@ -103,13 +85,10 @@ public static class ExpensesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownSupplier");
         }
 
-        var refusal = await EntryRecording.RefusalOfPaymentAsync(projectId, request, userId, held, db);
-        refusal = refusal.Length > 0 ? refusal : request.RefusalOfTyped();
-        var project = await db.Projects.SingleAsync(row => row.Id == projectId);
-        refusal = refusal.Length > 0 || Entry.IsAcceptableDate(request.PaymentDate, project.StartDate, Entry.Today(time)) ? refusal : "InvalidPaymentDate";
-        if (refusal.Length > 0)
+        var refusal = await EntryRecording.RefusalOfAsync(projectId, request, item, userId, held, editing, db, time);
+        if (refusal.Code.Length > 0)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+            return Refusal.Of(refusal.Status, refusal.Code, "columnKey", refusal.ColumnKey);
         }
         if (request.IsCreditNote)
         {
@@ -124,30 +103,15 @@ public static class ExpensesEndpoints
             }
         }
 
-        var (reason, columnKey) = EntryRecording.RefusalOfColumns(request, item.Columns.Where(column => !column.IsHidden).ToList());
-        if (reason.Length > 0)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, reason, "columnKey", columnKey);
-        }
-        if (request.AttachmentId != Guid.Empty && await EntryRecording.IsFileOnAnEntryAsync(projectId, request.AttachmentId, db, editing))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
-        }
-
-        var at = time.GetUtcNow().UtcDateTime;
-        var (entry, details) = Build(request, projectId, subgroup.Id, userId, at);
-        if (existing is not null)
-        {
-            await EntryChanges.ReplaceAsync(existing, entry, details, userId, at, db);
-            return Results.Ok(new ExpenseView(existing.Id, existing.Status, existing.Amount));
-        }
-        await EntryRecording.SaveAsync(entry, details, userId, db);
-        return Results.Created($"/projects/{projectId}/expenses/{entry.Id}", new ExpenseView(entry.Id, entry.Status, entry.Amount));
+        var (entry, details) = Build(request, projectId, subgroup.Id, userId, time.GetUtcNow().UtcDateTime);
+        var kept = await EntryRecording.KeepAsync(entry, details, existing, userId, db);
+        var view = new ExpenseView(kept.Id, kept.Status, kept.Amount);
+        return existing is null ? Results.Created($"/projects/{projectId}/expenses/{kept.Id}", view) : Results.Ok(view);
     }
 
     private static (Entry Entry, List<object> Details) Build(ExpenseRequest request, Guid projectId, Guid subgroupId, Guid userId, DateTime at)
     {
-        var entry = EntryRecording.EntryOf(request, projectId, EntryKind.Purchase, request.PaymentDate, request.KeptTotal(), userId, at);
+        var entry = EntryRecording.EntryOf(request, projectId, EntryKind.Purchase, request.KeptTotal(), userId, at);
         List<object> details =
         [
             EntryRecording.ExpenseDetailsOf(request, request.ItemId, subgroupId),

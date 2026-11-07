@@ -66,7 +66,7 @@ public static class InvoiceAttachEndpoints
             return Results.NotFound();
         }
         var userId = AccessTokens.UserIdOf(principal);
-        if (entry.CreatedByUserId != userId && !(await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.ManageAnyEntry))
+        if (!EntryChanges.MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId)))
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
         }

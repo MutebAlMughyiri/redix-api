@@ -27,17 +27,8 @@ public static class ContractorPaymentsEndpoints
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     /// <param name="time">The current time.</param>
-    public static async Task<IResult> Record(Guid projectId, ContractorPaymentRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var repeated = await EntryRecording.RepeatOfAsync(request.Id, projectId, AccessTokens.UserIdOf(principal), db);
-        if (repeated is not null)
-        {
-            return Results.Ok(repeated);
-        }
-
-        var (status, idRefusal) = await EntryRecording.RefusalOfIdAsync(request.Id, db);
-        return idRefusal.Length > 0 ? Refusal.Of(status, idRefusal) : await SaveAsync(projectId, request, principal, db, time, null);
-    }
+    public static Task<IResult> Record(Guid projectId, ContractorPaymentRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        EntryRecording.RecordAsync(projectId, request, principal, db, () => SaveAsync(projectId, request, principal, db, time, null));
 
     /// <summary>Changes a contractor payment before it is approved (UC-033), through every check a new one passes, and with the refusals of <see cref="EntryChanges.RefusalOf"/>.</summary>
     /// <param name="projectId">The project.</param>
@@ -46,17 +37,8 @@ public static class ContractorPaymentsEndpoints
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     /// <param name="time">The current time.</param>
-    public static async Task<IResult> Edit(Guid projectId, Guid entryId, ContractorPaymentRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId && row.Kind == EntryKind.ContractorPayment);
-        if (entry is null)
-        {
-            return Results.NotFound();
-        }
-        var userId = AccessTokens.UserIdOf(principal);
-        var (status, refusal) = EntryChanges.RefusalOf(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId));
-        return refusal.Length > 0 ? Refusal.Of(status, refusal) : await SaveAsync(projectId, request with { Id = entryId }, principal, db, time, entry);
-    }
+    public static Task<IResult> Edit(Guid projectId, Guid entryId, ContractorPaymentRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
+        EntryRecording.ChangeAsync(projectId, entryId, EntryKind.ContractorPayment, principal, db, entry => SaveAsync(projectId, request with { Id = entryId }, principal, db, time, entry));
 
     private static async Task<IResult> SaveAsync(Guid projectId, ContractorPaymentRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, Entry? existing)
     {
@@ -72,50 +54,26 @@ public static class ContractorPaymentsEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "ItemNotOffered");
         }
 
-        var subgroup = item.Subgroups.Single(row => row.Name == Subgroup.GeneralName);
-
         var userId = AccessTokens.UserIdOf(principal);
-        var access = await UserAccess.OfAsync(userId, db);
-        var refusal = await EntryRecording.RefusalOfPaymentAsync(projectId, request, userId, access.In(projectId), db);
-        refusal = refusal.Length > 0 ? refusal : request.RefusalOfTyped();
-        var project = await db.Projects.SingleAsync(row => row.Id == projectId);
-        refusal = refusal.Length > 0 || Entry.IsAcceptableDate(request.PaymentDate, project.StartDate, Entry.Today(time)) ? refusal : "InvalidPaymentDate";
-        if (refusal.Length > 0)
+        var refusal = await EntryRecording.RefusalOfAsync(projectId, request, item, userId, (await UserAccess.OfAsync(userId, db)).In(projectId), editing, db, time);
+        if (refusal.Code.Length > 0)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
-        }
-        var (reason, columnKey) = EntryRecording.RefusalOfColumns(request, item.Columns.Where(column => !column.IsHidden).ToList());
-        if (reason.Length > 0)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, reason, "columnKey", columnKey);
-        }
-        if (request.AttachmentId != Guid.Empty && await EntryRecording.IsFileOnAnEntryAsync(projectId, request.AttachmentId, db, editing))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
+            return Refusal.Of(refusal.Status, refusal.Code, "columnKey", refusal.ColumnKey);
         }
 
         var money = (await ContractMoney.OfProjectAsync(projectId, db)).GetValueOrDefault(contract.Id);
         var at = time.GetUtcNow().UtcDateTime;
-        var entry = EntryRecording.EntryOf(request, projectId, EntryKind.ContractorPayment, request.PaymentDate, request.Amount, userId, at);
-        var details = DetailsOf(request, contract, subgroup.Id);
-        if (existing is not null)
-        {
-            await EntryChanges.ReplaceAsync(existing, entry, details, userId, at, db);
-            entry = existing;
-        }
-        else
-        {
-            await EntryRecording.SaveAsync(entry, details, userId, db);
-        }
+        var entry = await EntryRecording.KeepAsync(EntryRecording.EntryOf(request, projectId, EntryKind.ContractorPayment, request.Amount, userId, at), DetailsOf(request, contract, item), existing, userId, db);
         var counted = money.Paid + money.Pending + (request.IsOutsideContract ? 0 : request.Amount);
         return Results.Created($"/projects/{projectId}/entries/{entry.Id}", new ContractorPaymentView(entry.Id, entry.Status, entry.Amount, money.Paid, money.Pending, contract.RemainingAfter(counted), contract.IsOverrunBy(counted)));
     }
 
-    private static List<object> DetailsOf(ContractorPaymentRequest request, Contract contract, Guid subgroupId)
+    /// <summary>What the payment holds besides its entry: under its item's general subgroup, its contract being its table (R11), with its receipt when there is one.</summary>
+    private static List<object> DetailsOf(ContractorPaymentRequest request, Contract contract, Item item)
     {
         List<object> details =
         [
-            EntryRecording.ExpenseDetailsOf(request, contract.ItemId, subgroupId),
+            EntryRecording.ExpenseDetailsOf(request, contract.ItemId, item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id),
             new ContractorPaymentDetails { EntryId = request.Id, ContractId = contract.Id, IsOutsideContract = request.IsOutsideContract },
         ];
         if (request.AttachmentId != Guid.Empty)
