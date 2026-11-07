@@ -126,6 +126,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What users may do across the system, such as the admin's approving projects.</summary>
     public DbSet<SystemPermission> SystemPermissions => Set<SystemPermission>();
 
+    /// <summary>The configurable values, such as how long the app waits for an answer.</summary>
+    public DbSet<Config.ConfigValue> ConfigValues => Set<Config.ConfigValue>();
+
     /// <summary>
     /// Records <paramref name="action"/>, done by <paramref name="userId"/> at <paramref name="at"/>, to the tracked <paramref name="record"/>. Call it after the change
     /// and before <c>SaveChanges</c>, which saves the record and the change together.
@@ -446,6 +449,13 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             chosen.HasIndex(row => row.UserId).IsUnique();
             chosen.HasOne<User>().WithMany().HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Restrict);
             chosen.HasOne<Project>().WithMany().HasForeignKey(row => row.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Config.ConfigValue>(value =>
+        {
+            value.Property(v => v.Key).HasMaxLength(Config.ConfigValue.KeyMaxLength).IsUnicode(false);
+            value.Property(v => v.Value).HasMaxLength(Config.ConfigValue.ValueMaxLength);
+            value.HasIndex(v => v.Key).IsUnique();
+            value.HasData(Config.ConfigValue.Seeded);
         });
         modelBuilder.Entity<SystemPermission>(held =>
         {

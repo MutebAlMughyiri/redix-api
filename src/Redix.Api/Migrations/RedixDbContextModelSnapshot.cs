@@ -377,6 +377,50 @@ namespace Redix.Api.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Redix.Api.Config.ConfigValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("ConfigValues");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("961162d7-c9c8-5b82-c642-4c5a6cdbe393"),
+                            Key = "requestTimeoutSeconds",
+                            Value = "10"
+                        },
+                        new
+                        {
+                            Id = new Guid("9399f72c-0f36-d3d5-fd62-b9f982d68edf"),
+                            Key = "fileTimeoutSeconds",
+                            Value = "120"
+                        });
+                });
+
             modelBuilder.Entity("Redix.Api.Contracts.Contract", b =>
                 {
                     b.Property<Guid>("Id")
