@@ -181,6 +181,7 @@ public static class TranslationSeed
         ("categories.generalSubgroup", "The item's general group cannot be renamed or removed.", "المجموعة العامة للبند لا يُعدَّل اسمها ولا تُحذف."),
         ("categories.subgroupInUse", "Entries use this subgroup, so it cannot be removed.", "هذه المجموعة الفرعية عليها قيود، فلا تُحذف."),
         ("categories.itemHasEntries", "This item has entries, so its type cannot change.", "هذا البند عليه قيود، فلا يتغير نوعه."),
+        ("categories.itemTakesNoPurchases", "A sub-table holds purchases, so only an item that takes purchases has one.", "الجدول الفرعي للمشتريات، فلا يكون إلا لبند يأخذ مشتريات."),
         ("expenses.entryApproved", "Finance approved this before your change arrived, so your change was not applied.", "اعتمد المالي هذا القيد قبل وصول تعديلك، فلم يُطبَّق تعديلك."),
         ("expenses.entryWaitingForDecision", "This waits for Finance's decision, so it cannot change now.", "ينتظر هذا القيد قرار المالي، فلا يتغيّر الآن."),
         ("expenses.notYourEntry", "Someone else entered this.", "أدخل غيرك هذا القيد."),

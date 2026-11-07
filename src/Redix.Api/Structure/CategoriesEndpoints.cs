@@ -151,8 +151,9 @@ public static class CategoriesEndpoints
     public static Task<IResult> EnableItem(Guid projectId, Guid itemId, RedixDbContext db) => ChangeItemAsync(projectId, itemId, db, item => item.IsActive = true);
 
     /// <summary>
-    /// Changes what an item is for while no entry names it, or <c>itemHasEntries</c>, and no contract does, or <c>itemHasContract</c>; it is in the audit trail. Its built-in columns become the project's default columns for the new type, because what an entry is asked follows them (FR-38),
-    /// and nothing has a value in them yet. The columns a person added stay, after them.
+    /// Changes what an item is for while no entry names it, or <c>itemHasEntries</c>, and no contract does, or <c>itemHasContract</c>; it is in the audit trail. An item of purchases or of
+    /// contractor payments may always become both, since every entry and contract it holds stays valid (Muteb, 7 Nov 2026, for a sub-table on a payments item). Its built-in columns
+    /// become the project's default columns for the new type, because what an entry is asked follows them (FR-38); an entry keeps what it holds. The columns a person added stay, after them.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
@@ -167,11 +168,12 @@ public static class CategoriesEndpoints
         {
             return Results.NotFound();
         }
-        if (await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId) || await db.Set<Revenue.RevenueDetails>().AnyAsync(details => details.ItemId == itemId))
+        var widens = request.Type == ItemType.Both && item.Type is ItemType.Purchases or ItemType.ContractorPayments;
+        if (!widens && (await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId) || await db.Set<Revenue.RevenueDetails>().AnyAsync(details => details.ItemId == itemId)))
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasEntries);
         }
-        if (await db.Contracts.AnyAsync(contract => contract.ItemId == itemId))
+        if (!widens && await db.Contracts.AnyAsync(contract => contract.ItemId == itemId))
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasContract);
         }
@@ -211,7 +213,10 @@ public static class CategoriesEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Adds a named subgroup at the end of an item's list. An unacceptable name answers <c>invalidName</c>.</summary>
+    /// <summary>
+    /// Adds a named subgroup at the end of an item's list. A sub-table holds purchases (Muteb, 7 Nov 2026), so an item that takes none answers <c>itemTakesNoPurchases</c>; an
+    /// unacceptable name answers <c>invalidName</c>.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
     /// <param name="request">The subgroup's name.</param>
@@ -219,9 +224,14 @@ public static class CategoriesEndpoints
     public static Task<IResult> AddSubgroup(Guid projectId, Guid itemId, NameRequest request, RedixDbContext db) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+            var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
+            if (item is null)
             {
                 return Results.NotFound();
+            }
+            if (item.Type is not (ItemType.Purchases or ItemType.Both))
+            {
+                return ProjectStructure.Refused(StructureChangeOutcome.ItemTakesNoPurchases);
             }
             db.Subgroups.Add(new Subgroup { ItemId = itemId, Name = name, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) });
             await db.SaveChangesAsync();

@@ -5170,6 +5170,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("8694c1f7-f024-e5be-9eb4-18435cdbae24"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2cfd816e-0a15-bbdb-8db6-14e58a17a45d"),
+                            Value = "A sub-table holds purchases, so only an item that takes purchases has one."
+                        },
+                        new
+                        {
+                            Id = new Guid("4f1afe05-9708-61a5-d3f7-3d010bc2c796"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2cfd816e-0a15-bbdb-8db6-14e58a17a45d"),
+                            Value = "الجدول الفرعي للمشتريات، فلا يكون إلا لبند يأخذ مشتريات."
+                        },
+                        new
+                        {
                             Id = new Guid("322f0e08-e8a6-23cc-5ffd-8c980e0c320a"),
                             Language = "en",
                             TranslationKeyId = new Guid("d67edc90-0193-bfbb-457a-8a87e27709ca"),
@@ -15607,6 +15621,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("f7aa01bb-a08c-fd84-a26e-0f4a02368f21"),
                             Description = "",
                             Key = "categories.itemHasEntries"
+                        },
+                        new
+                        {
+                            Id = new Guid("2cfd816e-0a15-bbdb-8db6-14e58a17a45d"),
+                            Description = "",
+                            Key = "categories.itemTakesNoPurchases"
                         },
                         new
                         {

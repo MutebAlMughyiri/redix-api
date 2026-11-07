@@ -735,6 +735,59 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task SubTable_AnItemOfContractorPaymentsWithAContractMayBecomeBoth()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var category = (await CategoriesOf(ledger.Client, ledger.ProjectId))[1];
+        var item = await AddItemAsync(ledger.Client, ledger.ProjectId, category.Id, "دفعات العظم", ItemType.ContractorPayments);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, 1000m, false), Json)).EnsureSuccessStatusCode();
+
+        (await ChangeTypeAsync(ledger.Client, ledger.ProjectId, item.Id, ItemType.Both)).EnsureSuccessStatusCode();
+
+        Assert.Equal(ItemType.Both, (await CategoriesOf(ledger.Client, ledger.ProjectId)).SelectMany(row => row.Items).Single(row => row.Id == item.Id).Type);
+    }
+
+    [Fact]
+    public async Task SubTable_AnItemOfPurchasesWithAnEntryMayBecomeBoth()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var category = (await CategoriesOf(ledger.Client, ledger.ProjectId))[1];
+        var item = await AddItemAsync(ledger.Client, ledger.ProjectId, category.Id, "الجلي", ItemType.Purchases);
+        await ledger.RecordAsync(ledger.Purchase() with { ItemId = item.Id });
+
+        (await ChangeTypeAsync(ledger.Client, ledger.ProjectId, item.Id, ItemType.Both)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task SubTable_AnItemThatTakesNoPurchasesHasNoSubTable()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var category = (await CategoriesOf(client, project.Id))[1];
+
+        foreach (var type in new[] { ItemType.ContractorPayments, ItemType.OtherRevenue })
+        {
+            var item = await AddItemAsync(client, project.Id, category.Id, $"بند {type}", type);
+            var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups", new NameRequest("الجلاي"));
+
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+            Assert.Equal("itemTakesNoPurchases", await CodeOf(refused));
+        }
+    }
+
+    [Fact]
+    public async Task SubTable_ASubTableAddedIsOfferedAndTakesAPurchase()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("الجلاي"), Json)).EnsureSuccessStatusCode();
+
+        var table = (await EntryTablesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == ledger.ItemId).Tables.Single(row => row.Name == "الجلاي");
+        var purchase = ledger.Purchase() with { SubgroupId = table.Id };
+        await ledger.RecordAsync(purchase);
+
+        Assert.Equal(table.Id, await ledger.ReadAsync(db => db.ExpenseDetails.Where(row => row.EntryId == purchase.Id).Select(row => row.SubgroupId).SingleAsync()));
+    }
+
+    [Fact]
     public async Task AnItemWithAnEntryKeepsItsType()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

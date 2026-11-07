@@ -35,4 +35,7 @@ public enum StructureChangeOutcome
 
     /// <summary>A revenue item asks no columns (FR-38).</summary>
     RevenueTakesNoColumns,
+
+    /// <summary>A sub-table holds purchases, so an item that takes none has no sub-table (Muteb, 7 Nov 2026).</summary>
+    ItemTakesNoPurchases,
 }

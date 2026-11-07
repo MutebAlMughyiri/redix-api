@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-07 | A sub-table holds purchases: only an item that takes purchases gets one, and an item of purchases or of contractor payments may become both even with entries or contracts | Muteb added الجلاي to دفعات العظم (contractor payments only) and could not record into it; he chose "Purchases" |
 | 2026-11-07 | An empty VAT number means nothing: the VAT workbook works the VAT out of every total, `total × rate ÷ (100 + rate)`, whatever the party's number; the accountant clears a row in Excel if a seller charged none | Muteb, 7 Nov 2026: "if no vat number added when adding new supplier that is means nothing"; his answer "VAT on every total" |
 | 2026-11-07 | A VAT number is optional and, when given, any number of at most 20 digits, for a supplier and a sale's buyer alike; the 15 digits starting and ending with 3, and the "not VAT-registered" switch, go. Two suppliers still cannot share one | Muteb: "just a number has max 20 digit numbers and not required and can keep it empty with remove toogle not vat registered" |
 | 2026-11-07 | Partner pockets go: adding a partner makes no account, the reconciliation has no "owed to partners", and the migration deletes every pocket and its account | Muteb, from the deep review: "Remove pockets completely"; redix-api #99. No pocket held an entry or an opening balance in any database |
