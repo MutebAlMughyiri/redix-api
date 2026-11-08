@@ -5958,20 +5958,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("dfcd76a2-953b-6b21-d692-0069970cbfed"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f2375ed9-4ece-1db5-01ba-d3b8070e1310"),
-                            Value = "Swipe a row to remove it"
-                        },
-                        new
-                        {
-                            Id = new Guid("390837e8-d1ce-72ae-45a3-5069c30c99d1"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f2375ed9-4ece-1db5-01ba-d3b8070e1310"),
-                            Value = "اسحب السطر لحذفه"
-                        },
-                        new
-                        {
                             Id = new Guid("37987c1b-10fb-1f47-e59c-a1d31626a59c"),
                             Language = "en",
                             TranslationKeyId = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
@@ -6003,14 +5989,56 @@ namespace Redix.Api.Migrations
                             Id = new Guid("fbd93af4-c12c-a781-50d7-8b94e1597b2b"),
                             Language = "en",
                             TranslationKeyId = new Guid("72685414-803a-e33f-9629-d4021c1518ed"),
-                            Value = "Reverse"
+                            Value = "Remove"
                         },
                         new
                         {
                             Id = new Guid("276e0c02-f441-86d6-e744-ec59a7f911bd"),
                             Language = "ar",
                             TranslationKeyId = new Guid("72685414-803a-e33f-9629-d4021c1518ed"),
-                            Value = "عكس القيد"
+                            Value = "حذف"
+                        },
+                        new
+                        {
+                            Id = new Guid("68ea08a0-2f03-84b6-83dc-c12f10efe48f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("79fc88ca-db19-92d5-c185-41bb606735c5"),
+                            Value = "Entry"
+                        },
+                        new
+                        {
+                            Id = new Guid("1159240c-afc5-71b4-acd8-65dbd6445c3c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("79fc88ca-db19-92d5-c185-41bb606735c5"),
+                            Value = "قيد"
+                        },
+                        new
+                        {
+                            Id = new Guid("7d1b4f10-f58e-d845-d981-2a2a8ec9cfd0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e91317c6-a78a-90bd-982d-86fcd70c2e6d"),
+                            Value = "An approved entry does not change."
+                        },
+                        new
+                        {
+                            Id = new Guid("d5d0dd62-a7ae-8094-514b-86c95f46999b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e91317c6-a78a-90bd-982d-86fcd70c2e6d"),
+                            Value = "القيد المعتمد لا يتغيّر."
+                        },
+                        new
+                        {
+                            Id = new Guid("7a2f08fa-fe87-fe62-b1b1-c028ad316f93"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c3ac744a-7b2e-b85f-c633-dbd564b74fe0"),
+                            Value = "Only whoever entered it, or a manager, changes it."
+                        },
+                        new
+                        {
+                            Id = new Guid("fa50bd92-9f48-51ed-2903-db0574483b1a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c3ac744a-7b2e-b85f-c633-dbd564b74fe0"),
+                            Value = "يغيّره من أدخله أو المدير فقط."
                         },
                         new
                         {
@@ -14196,12 +14224,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("f2375ed9-4ece-1db5-01ba-d3b8070e1310"),
-                            Description = "",
-                            Key = "swipe.hint"
-                        },
-                        new
-                        {
                             Id = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
                             Description = "",
                             Key = "documents.download"
@@ -14217,6 +14239,24 @@ namespace Redix.Api.Migrations
                             Id = new Guid("72685414-803a-e33f-9629-d4021c1518ed"),
                             Description = "",
                             Key = "entries.reverse"
+                        },
+                        new
+                        {
+                            Id = new Guid("79fc88ca-db19-92d5-c185-41bb606735c5"),
+                            Description = "",
+                            Key = "entries.view"
+                        },
+                        new
+                        {
+                            Id = new Guid("e91317c6-a78a-90bd-982d-86fcd70c2e6d"),
+                            Description = "",
+                            Key = "entries.approvedCannotChange"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3ac744a-7b2e-b85f-c633-dbd564b74fe0"),
+                            Description = "",
+                            Key = "entries.notYours"
                         },
                         new
                         {
