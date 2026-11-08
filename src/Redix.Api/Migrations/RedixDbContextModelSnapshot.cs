@@ -623,6 +623,8 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId", "Status");
 
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ProjectId", "Status"), new[] { "Kind", "Amount", "AccountId" });
+
                     b.ToTable("Entries");
                 });
 
