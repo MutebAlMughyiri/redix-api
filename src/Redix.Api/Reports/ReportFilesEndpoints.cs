@@ -4,6 +4,7 @@ using Redix.Api.Auth;
 using Redix.Api.Config;
 using Redix.Api.Contracts;
 using Redix.Api.Revenue;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
@@ -48,12 +49,12 @@ public static class ReportFilesEndpoints
 
     private static async Task<IResult> ItemFileAsync(Guid projectId, Guid itemId, RedixDbContext db, bool isPdf)
     {
-        var item = await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).SingleOrDefaultAsync(row => row.Id == itemId && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId));
-        if (item is null)
+        var item = await ProjectStructure.ItemWithTablesAsync(projectId, itemId, db);
+        if (item == Item.None)
         {
             return Results.NotFound();
         }
-        var report = await ItemReportEndpoints.OfAsync(projectId, item, await ItemReportEndpoints.NewSinceAsync(projectId, db), db);
+        var report = await ItemReportEndpoints.OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db);
         return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "item.pdf") : Results.File(ItemReportFiles.Excel(report), ExcelType, "item.xlsx");
     }
 }

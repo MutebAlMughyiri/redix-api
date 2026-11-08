@@ -25,7 +25,8 @@
 | Rule | Code | Test |
 | --- | --- | --- |
 | D23: a refund is plain revenue that raises revenue and surplus | `RevenueEndpoints.Record` | `RevenueTests.D23_ARefundIsPlainRevenueThatRaisesRevenueAndSurplus` |
-| Other revenue is for its own day unless told, and reaches its account | `RevenueEndpoints.Record`, `AccountMoney` | `RevenueTests.OtherRevenueIsForItsOwnDayUnlessToldAndReachesItsAccount`, `APeriodEndingBeforeItStartsIsRefusedForRevenue` |
+| UC-026: a credit note and a reversal take away from the statement what their bills counted | `VatStatement.OfAsync` | `RevenueTests.UC_026_ACreditNoteAndAReversalTakeAwayFromTheStatementWhatTheirBillsCounted` |
+| Other revenue reaches its account; a revenue entry has no period since findings row 149 | `RevenueEndpoints.Record`, `AccountMoney` | `RevenueTests.OtherRevenueReachesItsAccount` |
 | Only whoever moves money records revenue | `MapProjectChanges(MoveMoney)` | `RevenueTests.OnlyWhoeverMovesMoneyRecordsRevenue` |
 | FR-28: revenue goes on a revenue item and never on an expense one | `RevenueEndpoints.Record` | `RevenueTests.FR_28_RevenueGoesOnARevenueItemAndNeverOnAnExpenseOne` |
 | AC-46.7: the dashboard keeps revenue categories apart from expense ones | `DashboardEndpoints.Dashboard` | `RevenueTests.AC_46_7_TheDashboardKeepsRevenueCategoriesApartFromExpenseOnes` |

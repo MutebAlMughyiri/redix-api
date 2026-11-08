@@ -50,9 +50,9 @@ public class ApprovalsTests(MigratedApiFactory factory)
         var pending = (await PendingAsync(ledger.Client, ledger.ProjectId))!;
 
         Assert.Equal([older, newer.Id], pending.Select(row => row.Id));
-        Assert.Equal("", pending[0].AttachmentId);
+        Assert.Equal(("", ""), (pending[0].AttachmentId, pending[0].FileName));
         Assert.Equal(file.ToString(), pending[1].AttachmentId);
-        Assert.Equal("image/jpeg", pending[1].ContentType);
+        Assert.Equal(("image/jpeg", "invoice.jpg"), (pending[1].ContentType, pending[1].FileName));
         Assert.Equal("شركة النخيل", pending[1].SupplierName);
         Assert.Equal(1150m, pending[1].Amount);
     }

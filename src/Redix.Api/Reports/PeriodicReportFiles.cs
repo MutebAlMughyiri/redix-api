@@ -1,6 +1,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using Redix.Api.Translations;
 
 namespace Redix.Api.Reports;
 
@@ -81,7 +82,11 @@ public static class PeriodicReportFiles
         Line(page, "فرق المطابقة", report.ReconciliationDifference, true);
         if (report.PendingCount > 0)
         {
-            Line(page, $"بانتظار الاعتماد ({report.PendingCount})", report.PendingAmount);
+            Line(page, $"{TranslationSeed.Arabic("reports.pendingExpenses")} ({report.PendingCount})", report.PendingAmount);
+        }
+        if (report.PendingRevenueCount > 0)
+        {
+            Line(page, $"{TranslationSeed.Arabic("reports.pendingRevenue")} ({report.PendingRevenueCount})", report.PendingRevenueAmount);
         }
         foreach (var category in report.Categories.Where(category => category.Items.Any(item => item.Total != 0)))
         {

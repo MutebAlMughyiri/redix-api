@@ -1,6 +1,6 @@
 namespace Redix.Api.Entries;
 
-/// <summary>One entry's tie to another, of one type: a credit note to the invoice it returns, a carry's two sides and a reversal.</summary>
+/// <summary>One entry's tie to another, of one type: a credit note to the bill it returns, or a reversal to the entry it reverses.</summary>
 public class EntryLink
 {
     /// <summary>The entry the link is from.</summary>

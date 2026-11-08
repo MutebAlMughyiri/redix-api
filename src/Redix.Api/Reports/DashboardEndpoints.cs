@@ -33,9 +33,7 @@ public static class DashboardEndpoints
     {
         var figures = await ProjectFigures.OfAsync(projectId, db);
         var reconciliation = await ReconciliationsEndpoints.Latest(projectId, db);
-        var pending = db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval);
-        var pendingCount = await pending.CountAsync();
-        var pendingAmount = await pending.SumAsync(entry => entry.Amount);
+        var waiting = await WaitingFigures.OfAsync(projectId, db);
         var totals = await ItemTotals.OfProjectAsync(projectId, db);
         var categories = await db.Categories.Where(category => category.ProjectId == projectId).OrderBy(category => category.SortOrder).ToListAsync();
         var categoryIds = categories.Select(category => category.Id).ToList();
@@ -45,7 +43,7 @@ public static class DashboardEndpoints
             .Where(line => line.Items.Count > 0)
             .Select(line => new CategoryTotalView(line.Category.Id, line.Category.Name, line.Items.Sum(item => item.Total), line.Items))
             .ToList();
-        return new DashboardView(figures.Revenue, capital, figures.Expenses, figures.Surplus, reconciliation.At != default, reconciliation.Difference, pendingCount, pendingAmount, figures.CompletionPercent, SideOf(false), SideOf(true));
+        return new DashboardView(figures.Revenue, capital, figures.Expenses, figures.Surplus, reconciliation.At != default, reconciliation.Difference, waiting, figures.CompletionPercent, SideOf(false), SideOf(true));
     }
 }
 
@@ -56,12 +54,11 @@ public static class DashboardEndpoints
 /// <param name="Surplus">Revenue less expenses (BR-07).</param>
 /// <param name="WasReconciled">True once the accounts were checked against the books.</param>
 /// <param name="ReconciliationDifference">The latest check's difference (BR-08).</param>
-/// <param name="PendingCount">How many entries wait for approval.</param>
-/// <param name="PendingAmount">What they come to.</param>
+/// <param name="Waiting">What waits for approval: expenses, and revenue with partners' money.</param>
 /// <param name="CompletionPercent">How far the work has come: expenses as a percentage of revenue.</param>
 /// <param name="Categories">Each category holding expense items, its total with those items'.</param>
 /// <param name="RevenueCategories">Each category holding revenue items, its total with those items' (FR-38); with <paramref name="Capital"/> they add up to <paramref name="Revenue"/>.</param>
-public record DashboardView(decimal Revenue, CapitalView Capital, decimal Expenses, decimal Surplus, bool WasReconciled, decimal ReconciliationDifference, int PendingCount, decimal PendingAmount, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
+public record DashboardView(decimal Revenue, CapitalView Capital, decimal Expenses, decimal Surplus, bool WasReconciled, decimal ReconciliationDifference, WaitingFigures Waiting, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
 
 /// <summary>One category's total (BR-03).</summary>
 /// <param name="Id">The category.</param>

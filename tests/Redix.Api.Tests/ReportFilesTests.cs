@@ -52,11 +52,54 @@ public class ReportFilesTests(MigratedApiFactory factory)
         await ledger.RecordAsync(ledger.Purchase(70) with { Submit = true });
 
         var next = await ledger.Client.GetFromJsonAsync<NextReportView>($"/projects/{ledger.ProjectId}/periodic-reports/next", Json);
-        Assert.Equal((1, 1, 70m), (next!.Number, next.PendingCount, next.PendingAmount));
+        Assert.Equal((1, 1, 70m), (next!.Number, next.Waiting.ExpensesCount, next.Waiting.ExpensesAmount));
 
         Assert.Equal(1, (await IssueAsync(ledger)).Number);
         Assert.Equal(2, (await IssueAsync(ledger)).Number);
         Assert.Equal([2, 1], (await ledger.Client.GetFromJsonAsync<List<PeriodicReportRowView>>($"/projects/{ledger.ProjectId}/periodic-reports", Json))!.Select(row => row.Number));
+    }
+
+    [Fact]
+    public async Task Row_147_WhatWaitsIsExpensesAndRevenueWithPartnersMoneyApartAndTheDashboardTheNextAndTheIssuedReportAgree()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger, "شريك");
+        CapitalMovementRequest Movement(CapitalMovementType type, decimal amount) => new(partner, type, ledger.Today, amount, ledger.AccountId, "") { CashReason = "نقداً" };
+        await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", Movement(CapitalMovementType.Contribution, 1000), Json));
+        await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", Movement(CapitalMovementType.Contribution, 300), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", Movement(CapitalMovementType.Withdrawal, 100), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, ""), Json)).EnsureSuccessStatusCode();
+
+        var dashboard = await ledger.Client.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json);
+        var next = await ledger.Client.GetFromJsonAsync<NextReportView>($"/projects/{ledger.ProjectId}/periodic-reports/next", Json);
+        await IssueAsync(ledger);
+        var report = await ReadAsync(ledger.Client, ledger.ProjectId, 1);
+
+        var expected = new WaitingFigures(1, 5m, 3, 270m);
+        Assert.Equal(expected, dashboard!.Waiting);
+        Assert.Equal(expected, next!.Waiting);
+        Assert.Equal((1, 5m, 3, 270m), (report.PendingCount, report.PendingAmount, report.PendingRevenueCount, report.PendingRevenueAmount));
+        Assert.Equal((1000m, 0m, 1000m), (report.Revenue, report.Expenses, report.Surplus));
+    }
+
+    [Fact]
+    public async Task Row_147_TheWorkbookShowsWaitingExpensesBesideTheirDifferenceAndWaitingRevenueUnderTheSurplus()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger, "شريك");
+        await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 300, ledger.AccountId, "") { CashReason = "نقداً" }, Json)).EnsureSuccessStatusCode();
+        await IssueAsync(ledger);
+
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
+
+        var summary = workbook.Worksheet("الخلاصة");
+        IXLCell Labelled(string start) => summary.Column(1).CellsUsed().Single(cell => cell.GetString().StartsWith(start, StringComparison.Ordinal));
+        var expenses = Labelled("مصروفات بانتظار الاعتماد");
+        var revenue = Labelled("إيرادات ورأس مال بانتظار الاعتماد");
+        Assert.Equal(("مصروفات بانتظار الاعتماد (1)", 8, 5m), (expenses.GetString(), expenses.Address.RowNumber, expenses.CellRight().GetValue<decimal>()));
+        Assert.Equal(("إيرادات ورأس مال بانتظار الاعتماد (1)", Labelled("الفائض\n").Address.RowNumber + 1, 300m), (revenue.GetString(), revenue.Address.RowNumber, revenue.CellRight().GetValue<decimal>()));
     }
 
     [Fact]
@@ -209,9 +252,9 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
         var summary = workbook.Worksheet("الخلاصة");
         var refundSheet = workbook.Worksheet("استرجاع الضرائب");
-        Assert.Equal(("المبلغ", 300m), (refundSheet.Cell("E2").GetString(), refundSheet.Cell("E5").GetValue<decimal>()));
+        Assert.Equal(("المبلغ", 300m), (refundSheet.Cell("D2").GetString(), refundSheet.Cell("D5").GetValue<decimal>()));
         Assert.Equal(StatementStyle.Green, refundSheet.Cell("B4").Style.Fill.BackgroundColor);
-        Assert.Equal(("رأس المال", "استرجاع ضرائب", "'استرجاع الضرائب'!E5", 300m), (summary.Cell("A10").GetString(), summary.Cell("A11").GetString(), summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>()));
+        Assert.Equal(("رأس المال", "استرجاع ضرائب", "'استرجاع الضرائب'!D5", 300m), (summary.Cell("A10").GetString(), summary.Cell("A11").GetString(), summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>()));
         Assert.Equal(("فلوس البيع المودعة بالحساب", StatementStyle.Muted), (summary.Cell("A12").GetString(), summary.Cell("A12").Style.Font.FontColor));
         Assert.Equal(("مجموع الايرادات", 1300m, 300m), (summary.Cell("A13").GetString(), summary.Cell("B13").GetValue<decimal>(), summary.Cell("B15").GetValue<decimal>()));
     }
@@ -319,7 +362,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     private static PeriodicReportSnapshot Report(List<ItemReportView> items) =>
-        new("غصون 6", 1, new DateTime(2026, 11, 5), 0, items.Sum(item => item.Total), 0, 0, 0, 0, 0, 0, [], [], 0, 0, 0, 0, 0, [], items, []);
+        new("غصون 6", 1, new DateTime(2026, 11, 5), 0, items.Sum(item => item.Total), 0, 0, 0, 0, 0, 0, [], [], 0, 0, 0, 0, 0, [], items, [], 0, 0);
 
     private static ItemReportView Item(string name, string category, params SubgroupReportView[] subgroups) => new(Guid.NewGuid(), name, category, subgroups.Sum(subgroup => subgroup.Total), [], [.. subgroups], []);
 

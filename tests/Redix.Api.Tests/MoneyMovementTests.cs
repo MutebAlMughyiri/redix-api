@@ -186,7 +186,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
         var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!);
 
-        Assert.Equal((-100m, $"{file}", "حساب المؤسسة"), (row.Amount, row.AttachmentId, row.AccountName));
+        Assert.Equal((-100m, $"{file}", "invoice.jpg", "حساب المؤسسة"), (row.Amount, row.AttachmentId, row.FileName, row.AccountName));
     }
 
     [Fact]

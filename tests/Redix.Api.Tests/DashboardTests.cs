@@ -34,12 +34,12 @@ public class DashboardTests(MigratedApiFactory factory)
         await ledger.RecordAsync(waiting);
 
         var before = await DashboardAsync(ledger.Client, ledger.ProjectId);
-        Assert.Equal((1, 300m, 0m), (before.PendingCount, before.PendingAmount, before.Expenses));
+        Assert.Equal((1, 300m, 0m), (before.Waiting.ExpensesCount, before.Waiting.ExpensesAmount, before.Expenses));
 
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/approve", new ApproveEntriesRequest([waiting.Id]), Json)).EnsureSuccessStatusCode();
 
         var after = await DashboardAsync(ledger.Client, ledger.ProjectId);
-        Assert.Equal((0, 300m, -300m), (after.PendingCount, after.Expenses, after.Surplus));
+        Assert.Equal((0, 300m, -300m), (after.Waiting.ExpensesCount, after.Expenses, after.Surplus));
         var category = after.Categories.Single(row => row.Items.Any(item => item.Id == ledger.ItemId));
         Assert.Equal(300m, category.Total);
         Assert.Equal(300m, category.Items.Single(item => item.Id == ledger.ItemId).Total);

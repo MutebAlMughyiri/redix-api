@@ -34,7 +34,7 @@ public static class ColumnsEndpoints
     /// <param name="db">The database the structure lives in.</param>
     public static async Task<IResult> ListOfItem(Guid projectId, Guid itemId, RedixDbContext db)
     {
-        if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+        if (!await ProjectStructure.HasItemAsync(projectId, itemId, db))
         {
             return Results.NotFound();
         }
@@ -75,7 +75,7 @@ public static class ColumnsEndpoints
             return ProjectStructure.Refused(outcome);
         }
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
-        if (item is null)
+        if (item == Item.None)
         {
             return Results.NotFound();
         }
@@ -97,7 +97,7 @@ public static class ColumnsEndpoints
     /// <param name="db">The database the structure lives in.</param>
     public static async Task<IResult> ReorderOfItem(Guid projectId, Guid itemId, ReorderRequest request, RedixDbContext db)
     {
-        if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+        if (!await ProjectStructure.HasItemAsync(projectId, itemId, db))
         {
             return Results.NotFound();
         }
@@ -259,7 +259,7 @@ public static class ColumnsEndpoints
     private static async Task<IResult> ChangeOfItemAsync(Guid projectId, Guid itemId, Guid columnId, RedixDbContext db, Func<ItemColumn, StructureChangeOutcome> change)
     {
         var column = await db.ItemColumns.SingleOrDefaultAsync(column => column.Id == columnId && column.ItemId == itemId && !column.IsHidden);
-        if (column is null || await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+        if (column is null || !await ProjectStructure.HasItemAsync(projectId, itemId, db))
         {
             return Results.NotFound();
         }

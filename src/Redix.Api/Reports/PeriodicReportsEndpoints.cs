@@ -35,14 +35,10 @@ public static class PeriodicReportsEndpoints
     public static Task<List<PeriodicReportRowView>> List(Guid projectId, RedixDbContext db) =>
         db.PeriodicReports.Where(report => report.ProjectId == projectId).OrderByDescending(report => report.Number).Select(report => new PeriodicReportRowView(report.Number, report.IssuedAt, report.ExpensesTotal)).ToListAsync();
 
-    /// <summary>The number the next report takes, and what waits for approval, which it shows as one line (UC-053 step 2).</summary>
+    /// <summary>The number the next report takes, and what waits for approval, which it shows as two lines (UC-053 step 2).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database the reports live in.</param>
-    public static async Task<NextReportView> Next(Guid projectId, RedixDbContext db)
-    {
-        var pending = db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval);
-        return new NextReportView(await NextNumberAsync(projectId, db), await pending.CountAsync(), await pending.SumAsync(entry => entry.Amount));
-    }
+    public static async Task<NextReportView> Next(Guid projectId, RedixDbContext db) => new((await PeriodicReport.LatestOfAsync(projectId, db)).Number + 1, await WaitingFigures.OfAsync(projectId, db));
 
     /// <summary>
     /// Issues the next report from what is approved now: a numbered snapshot that never changes (BR-26). What was approved since the previous one is marked new, whatever its date, and the
@@ -54,7 +50,7 @@ public static class PeriodicReportsEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Issue(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var previous = await db.PeriodicReports.Where(report => report.ProjectId == projectId).OrderByDescending(report => report.Number).FirstOrDefaultAsync() ?? new PeriodicReport { IssuedAt = Entry.NotApproved };
+        var previous = await PeriodicReport.LatestOfAsync(projectId, db);
         var at = time.GetUtcNow().UtcDateTime;
         var snapshot = await SnapshotAsync(projectId, previous.Number + 1, previous, at, db);
         var report = new PeriodicReport { ProjectId = projectId, Number = snapshot.Number, IssuedAt = at, IssuedByUserId = AccessTokens.UserIdOf(principal), ExpensesTotal = snapshot.Expenses, Snapshot = JsonSerializer.Serialize(snapshot, Json) };
@@ -108,12 +104,6 @@ public static class PeriodicReportsEndpoints
         return stored is null ? null : JsonSerializer.Deserialize<PeriodicReportSnapshot>(stored, Json);
     }
 
-    private static async Task<int> NextNumberAsync(Guid projectId, RedixDbContext db)
-    {
-        var numbers = db.PeriodicReports.Where(report => report.ProjectId == projectId).Select(report => report.Number);
-        return await numbers.AnyAsync() ? await numbers.MaxAsync() + 1 : 1;
-    }
-
     private static async Task<PeriodicReportSnapshot> SnapshotAsync(Guid projectId, int number, PeriodicReport previous, DateTime at, RedixDbContext db)
     {
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
@@ -137,7 +127,8 @@ public static class PeriodicReportsEndpoints
         var accounts = reconciliation.Balances.Select(row => new ReportAccountView(row.AccountName, row.Type, row.ActualBalance)).ToList();
         return new PeriodicReportSnapshot(
             project.Name, number, at, previous.ExpensesTotal, figures.Expenses, figures.Capital, figures.VatRefunds, figures.Sales, figures.OtherRevenue, figures.Surplus, figures.SurplusWithoutSales,
-            dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.PendingCount, dashboard.PendingAmount, capital.Total, partnerViews, itemReports, dashboard.RevenueCategories);
+            dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.Waiting.ExpensesCount, dashboard.Waiting.ExpensesAmount, capital.Total, partnerViews, itemReports,
+            dashboard.RevenueCategories, dashboard.Waiting.RevenueCount, dashboard.Waiting.RevenueAmount);
     }
 }
 
@@ -149,6 +140,5 @@ public record PeriodicReportRowView(int Number, DateTime IssuedAt, decimal Expen
 
 /// <summary>What the next report takes.</summary>
 /// <param name="Number">Its number.</param>
-/// <param name="PendingCount">How many entries wait, which it shows as one line.</param>
-/// <param name="PendingAmount">What they come to.</param>
-public record NextReportView(int Number, int PendingCount, decimal PendingAmount);
+/// <param name="Waiting">What waits for approval, which it shows as two lines.</param>
+public record NextReportView(int Number, WaitingFigures Waiting);

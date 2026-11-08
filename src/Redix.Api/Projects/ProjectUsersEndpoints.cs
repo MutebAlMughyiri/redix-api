@@ -197,3 +197,14 @@ public record AddExistingUserRequest(string Username);
 /// <param name="Id">The user's id.</param>
 /// <param name="DisplayName">The user's name.</param>
 public record MemberView(Guid Id, string DisplayName);
+
+/// <summary>What the app sends to create a user.</summary>
+/// <param name="DisplayName">The name as it shows on entries.</param>
+/// <param name="Username">The name the user signs in with.</param>
+/// <param name="Mobile">The user's mobile; may be empty.</param>
+/// <param name="TemporaryPassword">The password the user changes at first sign-in.</param>
+public record CreateUserRequest(string DisplayName, string Username, string Mobile, string TemporaryPassword)
+{
+    /// <summary>What the user may do in the project, as ticked; <see cref="Permission.ReadProject"/> is held whatever is ticked.</summary>
+    public List<Permission> Permissions { get; init; } = [];
+}

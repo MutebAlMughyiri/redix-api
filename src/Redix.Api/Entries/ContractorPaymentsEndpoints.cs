@@ -49,7 +49,7 @@ public static class ContractorPaymentsEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownContract");
         }
         var item = await ProjectStructure.OfferedItemAsync(projectId, contract.ItemId, ItemType.ContractorPayments, db);
-        if (item is null)
+        if (item == Item.None)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "ItemNotOffered");
         }

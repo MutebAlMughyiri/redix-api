@@ -26,6 +26,8 @@ A report keeps every figure as issued, in `PeriodicReports.Snapshot`. What was a
 | Rule | Code | Test |
 | --- | --- | --- |
 | AC-29.3: numbered with no gaps; the next says what waits | `PeriodicReportsEndpoints.Issue`, `Next` | `ReportFilesTests.AC_29_3_ReportsAreNumberedWithNoGapsAndTheNextSaysWhatWaits` |
+| Findings row 147: what waits is two figures, expenses and revenue with partners' money (a withdrawal takes away); the dashboard, the next report and the issued report read one owner | `WaitingFigures.OfAsync` | `ReportFilesTests.Row_147_WhatWaitsIsExpensesAndRevenueWithPartnersMoneyApartAndTheDashboardTheNextAndTheIssuedReportAgree` |
+| The workbook shows waiting expenses beside their difference and waiting revenue under the surplus, leaving the statement's layout as it was | `PeriodicReportWorkbook.FillSummary` | `ReportFilesTests.Row_147_TheWorkbookShowsWaitingExpensesBesideTheirDifferenceAndWaitingRevenueUnderTheSurplus` |
 | AC-29.2: an entry approved later leaves the issued report, and is new in the next | `PeriodicReportsEndpoints.SnapshotAsync`, `ItemReportEndpoints.OfAsync` | `ReportFilesTests.AC_29_2_AnEntryApprovedLaterLeavesTheIssuedReportAndIsNewInTheNext` |
 | The summary adds up as the statement does | `PeriodicReportsEndpoints.SnapshotAsync` | `ReportFilesTests.TheSummaryAddsUpAsTheStatementDoes` |
 | BR-31: everyone reads; only their own partner line; no one else exports | `PeriodicReportSnapshot.ForPartnerOf` | `ReportFilesTests.BR_31_EveryoneReadsTheReportAndSeesOnlyTheirOwnPartnerLineButNoOneElseExports` |

@@ -6,7 +6,7 @@ using Redix.Api.Notifications;
 namespace Redix.Api.Entries;
 
 /// <summary>
-/// What Finance enters outside the expense form: capital movements, revenue and sales invoices, which wait for approval like an expense (BR-30, Muteb 8 Nov 2026, redix-api #101), and a
+/// What Finance enters outside the expense form: capital movements and revenue, which wait for approval like an expense (BR-30, Muteb 8 Nov 2026, redix-api #101), and a
 /// reversal, which whoever approves enters approved (FR-50). What is approved never changes after that (BR-11).
 /// </summary>
 public static class DirectEntries
@@ -59,7 +59,7 @@ public static class DirectEntries
     public static IResult AnswerOf(string refusal) => Refusal.Of(refusal == "InvoiceAlreadyAttached" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, refusal);
 
     /// <summary>Why a money movement cannot be kept: <c>invalidDate</c> outside the project's period (BR-12), <c>invalidAmount</c> not above zero or beyond the limit, <c>invalidNotes</c> too long, <c>unknownAccount</c> for an account not active in the project, <c>unknownAttachment</c>, or <c>invoiceAlreadyAttached</c> for a file already on an entry (BR-22). Empty when it can.</summary>
-    public static async Task<string> RefusalOfAsync(Guid projectId, DateOnly date, decimal amount, string notes, List<Guid> accountIds, Guid attachmentId, TimeProvider time, RedixDbContext db)
+    public static async Task<string> RefusalOfAsync(Guid projectId, DateOnly date, decimal amount, string notes, Guid accountId, Guid attachmentId, TimeProvider time, RedixDbContext db)
     {
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
         if (!Entry.IsAcceptableDate(date, project.StartDate, Entry.Today(time)))
@@ -74,12 +74,9 @@ public static class DirectEntries
         {
             return "InvalidNotes";
         }
-        foreach (var accountId in accountIds)
+        if (!await db.Accounts.AnyAsync(account => account.Id == accountId && account.ProjectId == projectId && account.IsActive))
         {
-            if (!await db.Accounts.AnyAsync(account => account.Id == accountId && account.ProjectId == projectId && account.IsActive))
-            {
-                return "UnknownAccount";
-            }
+            return "UnknownAccount";
         }
         if (attachmentId == Guid.Empty)
         {

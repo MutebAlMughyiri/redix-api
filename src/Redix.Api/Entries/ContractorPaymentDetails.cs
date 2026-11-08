@@ -6,7 +6,7 @@ public class ContractorPaymentDetails
     /// <summary>The entry.</summary>
     public Guid EntryId { get; init; }
 
-    /// <summary>The contract, which says the contractor, the item and the unit.</summary>
+    /// <summary>The contract, which says the contractor and the item.</summary>
     public Guid ContractId { get; init; }
 
     /// <summary>True for a payment that counts in the item's total and leaves the contract's remaining alone (FR-13).</summary>

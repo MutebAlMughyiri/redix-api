@@ -76,7 +76,7 @@ public static class ContractsEndpoints
     }
 
     /// <summary>
-    /// Amends a contract's terms and adds to its documents, a document staying once attached, and changes its contractor, item or unit while no payment names it, or answers <c>contractHasPayments</c> and changes nothing.
+    /// Amends a contract's terms and adds to its documents, a document staying once attached, and changes its contractor or item while no payment names it, or answers <c>contractHasPayments</c> and changes nothing.
     /// It answers as <see cref="Add"/> does for all of them, and all of it is in the audit trail.
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -143,7 +143,7 @@ public static class ContractsEndpoints
         {
             return "UnknownSupplier";
         }
-        return await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.ContractorPayments, db) is null ? "ItemNotOffered" : "";
+        return await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.ContractorPayments, db) == Item.None ? "ItemNotOffered" : "";
     }
 
     private static async Task<string> RefusalOfDocumentsAsync(Guid projectId, List<Guid> attachmentIds, RedixDbContext db)

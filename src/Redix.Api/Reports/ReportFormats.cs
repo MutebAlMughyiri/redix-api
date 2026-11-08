@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using QuestPDF.Drawing;
 using QuestPDF.Infrastructure;
+using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Translations;
 
@@ -54,8 +55,8 @@ public static class ReportFormats
     /// <summary>A time as dd.MM.yyyy HH:mm, in Saudi Arabia.</summary>
     public static string Time(DateTime utc) => InSaudiArabia(utc).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
 
-    /// <summary>A moment in Saudi Arabia's time, three hours ahead of UTC all year.</summary>
-    public static DateTime InSaudiArabia(DateTime utc) => utc.AddHours(3);
+    /// <summary>A moment in Saudi Arabia's time (<see cref="Entry.SaudiOffset"/>).</summary>
+    public static DateTime InSaudiArabia(DateTime utc) => utc + Entry.SaudiOffset;
 
     /// <summary>A name Excel accepts for a sheet: no forbidden character, at most 31 letters, and not one already taken in <paramref name="taken"/>.</summary>
     public static string SheetName(string name, HashSet<string> taken)

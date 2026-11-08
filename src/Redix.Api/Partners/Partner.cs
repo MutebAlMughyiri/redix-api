@@ -14,7 +14,4 @@ public class Partner
 
     /// <summary>The partner's name, as it was typed.</summary>
     public required string Name { get; set; }
-
-    /// <summary>False once they settled and withdrew; the capital use cases set it (FR-25).</summary>
-    public bool IsActive { get; set; } = true;
 }

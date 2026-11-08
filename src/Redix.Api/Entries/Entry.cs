@@ -9,7 +9,8 @@ public class Entry
     /// <summary>The <see cref="ApprovedAt"/> of an entry not approved yet.</summary>
     public static readonly DateTime NotApproved = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    private static readonly TimeSpan SaudiOffset = TimeSpan.FromHours(3);
+    /// <summary>Saudi Arabia's time, three hours ahead of UTC all year: the one owner of the project's day and of the time a report prints.</summary>
+    public static readonly TimeSpan SaudiOffset = TimeSpan.FromHours(3);
 
     /// <summary>The entry's id, time-ordered and made on the phone, so an entry has it before it reaches the server (AC-16.3).</summary>
     public Guid Id { get; init; }
@@ -23,10 +24,10 @@ public class Entry
     /// <summary>Where it stands.</summary>
     public EntryStatus Status { get; set; }
 
-    /// <summary>The day the money moved, which the periodic report goes by (BR-24).</summary>
+    /// <summary>The entry's one date (redix-api #96, D10).</summary>
     public DateOnly EntryDate { get; set; }
 
-    /// <summary>What was paid, which the periodic report goes by (BR-24); negative for a credit note or a deduction (FR-14).</summary>
+    /// <summary>Its total; negative for a credit note or a deduction (FR-14).</summary>
     public decimal Amount { get; set; }
 
     /// <summary>The account it was paid from or into.</summary>

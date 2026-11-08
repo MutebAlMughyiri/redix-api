@@ -21,15 +21,8 @@ public static class ItemReportEndpoints
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<IResult> Report(Guid projectId, Guid itemId, RedixDbContext db)
     {
-        var item = await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).SingleOrDefaultAsync(row => row.Id == itemId && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId));
-        return item is null ? Results.NotFound() : Results.Ok(await OfAsync(projectId, item, await NewSinceAsync(projectId, db), db));
-    }
-
-    /// <summary>When the latest periodic report was issued: what was approved since is new (BR-26).</summary>
-    public static async Task<DateTime> NewSinceAsync(Guid projectId, RedixDbContext db)
-    {
-        var issued = db.PeriodicReports.Where(report => report.ProjectId == projectId).Select(report => report.IssuedAt);
-        return await issued.AnyAsync() ? await issued.MaxAsync() : Entry.NotApproved;
+        var item = await ProjectStructure.ItemWithTablesAsync(projectId, itemId, db);
+        return item == Item.None ? Results.NotFound() : Results.Ok(await OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db));
     }
 
     /// <summary>The report of <paramref name="item"/>, for whatever shows it: the screen, or a file. What was approved after <paramref name="newSince"/> is marked new (BR-26).</summary>

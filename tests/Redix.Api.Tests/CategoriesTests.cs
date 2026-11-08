@@ -597,7 +597,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var offered = await EntryTablesOf(client, project.Id);
         var items = offered.SelectMany(category => category.Items).ToList();
 
-        Assert.DoesNotContain(offered, category => category.Id == categories[4].Id);
+        Assert.DoesNotContain(offered, category => category.Id == categories[4].Id.ToString());
         Assert.DoesNotContain(items, item => item.Id == contractsOnly.Id || item.Id == categories[3].Items[0].Id);
         Assert.Equal([ItemTableKind.General], items.Single(item => item.Id == purchasesOnly.Id).Tables.Select(table => table.Kind));
     }
@@ -609,21 +609,19 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task R3_R5_R13_WhoeverMovesMoneyIsOfferedTheRevenueItemsAndRightAfterThemEachActivePartner()
+    public async Task R3_R5_R13_WhoeverMovesMoneyIsOfferedTheRevenueItemsAndRightAfterThemEachPartner()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var refund = await ledger.RevenueItemAsync(ItemType.VatRefund);
         var nawaf = await PartnerAsync(ledger, "نواف");
         var reem = await PartnerAsync(ledger, "ريم");
-        var gone = await PartnerAsync(ledger, "سالم");
-        await ledger.ReadAsync(db => db.Partners.Where(partner => partner.Id == gone).ExecuteUpdateAsync(partner => partner.SetProperty(row => row.IsActive, false)));
 
         var offered = await EntryTablesOf(ledger.Client, ledger.ProjectId);
 
         var revenue = offered.SelectMany(category => category.Items).Single(item => item.Id == refund);
         Assert.True(revenue.IsRevenue);
         Assert.Equal([ItemTableKind.General], revenue.Tables.Select(table => table.Kind));
-        var partners = offered.Single(category => category.Id == Guid.Empty);
+        var partners = offered.Single(category => category.Id == "");
         Assert.Equal("", partners.Name);
         Assert.Equal(offered.FindLastIndex(category => category.Items.Any(item => item.IsRevenue)) + 1, offered.IndexOf(partners));
         Assert.Equal([nawaf, reem], partners.Items.Select(item => item.Id));
@@ -641,7 +639,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var offered = await EntryTablesOf(field, ledger.ProjectId);
 
-        Assert.DoesNotContain(offered, category => category.Id == Guid.Empty);
+        Assert.DoesNotContain(offered, category => category.Id == "");
         Assert.DoesNotContain(offered.SelectMany(category => category.Items), item => item.Id == refund || item.IsRevenue);
         Assert.Contains(offered.SelectMany(category => category.Items), item => item.Id == ledger.ItemId);
     }

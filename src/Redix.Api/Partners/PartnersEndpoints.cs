@@ -106,5 +106,5 @@ public record PartnerRequest(string Name)
 public record PartnerView(Guid Id, string Name, string UserId, string UserName)
 {
     /// <summary>The view of <paramref name="partner"/>, whose login is named <paramref name="userName"/>.</summary>
-    public static PartnerView Of(Partner partner, string userName) => new(partner.Id, partner.Name, partner.UserId == Guid.Empty ? "" : partner.UserId.ToString(), userName);
+    public static PartnerView Of(Partner partner, string userName) => new(partner.Id, partner.Name, Ids.Text(partner.UserId), userName);
 }

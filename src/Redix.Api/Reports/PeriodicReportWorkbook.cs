@@ -138,7 +138,11 @@ public static class PeriodicReportWorkbook
         Line(sheet, 7, Revenue, "فرق المصروفات", "B6-B5").FirstCell().CellRight().Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         if (report.PendingCount > 0)
         {
-            Line(sheet, 8, Revenue, $"بانتظار الاعتماد ({report.PendingCount})", report.PendingAmount);
+            Line(sheet, 8, Revenue, $"{TranslationSeed.Arabic("reports.pendingExpenses")} ({report.PendingCount})", report.PendingAmount);
+        }
+        if (report.PendingRevenueCount > 0)
+        {
+            Line(sheet, surplus + 1, Revenue, $"{TranslationSeed.Arabic("reports.pendingRevenue")} ({report.PendingRevenueCount})", report.PendingRevenueAmount);
         }
         sheet.Cell(6, 6).FormulaA1 = $"ROUND(F4,2)=ROUND(B{surplus},2)";
         sheet.Cell(7, 6).SetMoneyFormula($"F4-B{surplus}").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;

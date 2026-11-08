@@ -90,8 +90,7 @@ public static class AuthEndpoints
     /// <param name="hasher">Checks the current password and hashes the new one.</param>
     /// <param name="accessTokens">Issues the renewed access token, which no longer asks for a password change.</param>
     /// <param name="time">The current time, for the lockout and the renewed tokens.</param>
-    public static async Task<IResult> ChangePassword(ChangePasswordRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher,
-        AccessTokens accessTokens, TimeProvider time)
+    public static async Task<IResult> ChangePassword(ChangePasswordRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, AccessTokens accessTokens, TimeProvider time)
     {
         var now = time.GetUtcNow().UtcDateTime;
         var userId = AccessTokens.UserIdOf(principal);

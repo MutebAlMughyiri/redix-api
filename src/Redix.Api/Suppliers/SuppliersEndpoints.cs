@@ -119,7 +119,7 @@ public static class SuppliersEndpoints
     {
         var vatNumber = request.VatNumberKept();
         var refusal = Supplier.RefusalOf(request.Name.Trim(), vatNumber, request.Mobile.Trim());
-        if (refusal.Length == 0 && request.DefaultItemId != Guid.Empty && await ProjectStructure.ItemOfAsync(projectId, request.DefaultItemId, db) is null)
+        if (refusal.Length == 0 && request.DefaultItemId != Guid.Empty && !await ProjectStructure.HasItemAsync(projectId, request.DefaultItemId, db))
         {
             refusal = "UnknownItem";
         }
@@ -175,7 +175,7 @@ public record SupplierRequest(string Name)
 /// <summary>A supplier as the app shows it.</summary>
 /// <param name="Id">The supplier's id.</param>
 /// <param name="Name">The supplier's name.</param>
-/// <param name="VatNumber">Its VAT number; empty for a supplier not VAT-registered.</param>
+/// <param name="VatNumber">Its VAT number; empty when it has none.</param>
 /// <param name="Mobile">Its mobile; empty when none.</param>
 /// <param name="DefaultItemId">The item its expenses usually go to; empty when none.</param>
 /// <param name="DefaultItemName">That item's name; empty when none.</param>
@@ -188,5 +188,5 @@ public record SupplierView(Guid Id, string Name, string VatNumber, string Mobile
 
     /// <summary>The view of <paramref name="supplier"/>, whose default item is named <paramref name="defaultItemName"/>.</summary>
     public static SupplierView Of(Supplier supplier, string defaultItemName) =>
-        new(supplier.Id, supplier.Name, supplier.VatNumber, supplier.Mobile, supplier.DefaultItemId == Guid.Empty ? "" : supplier.DefaultItemId.ToString(), defaultItemName, supplier.Status, supplier.IsActive);
+        new(supplier.Id, supplier.Name, supplier.VatNumber, supplier.Mobile, Ids.Text(supplier.DefaultItemId), defaultItemName, supplier.Status, supplier.IsActive);
 }

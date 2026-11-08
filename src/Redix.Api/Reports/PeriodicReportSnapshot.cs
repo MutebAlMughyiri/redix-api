@@ -19,12 +19,14 @@ namespace Redix.Api.Reports;
 /// <param name="Accounts">Each account's real balance at the latest reconciliation.</param>
 /// <param name="AccountsTotal">Their total.</param>
 /// <param name="ReconciliationDifference">That total less the surplus (BR-08).</param>
-/// <param name="PendingCount">How many entries waited for approval, a line of their own (BR-26).</param>
+/// <param name="PendingCount">How many expenses waited for approval, a line of their own (BR-26). Until 8 Nov 2026 only expenses could wait, so earlier reports read the same.</param>
 /// <param name="PendingAmount">What they came to.</param>
 /// <param name="CapitalTotal">All partners' capital.</param>
 /// <param name="Partners">Each partner's capital, share and movements.</param>
 /// <param name="Items">Each item's report, expense and revenue, new rows marked.</param>
 /// <param name="RevenueCategories">Each category of revenue items, its total with its items' (FR-38): the summary's revenue side.</param>
+/// <param name="PendingRevenueCount">How many revenue entries and partners' movements waited for approval (findings row 147); none in a report issued before 8 Nov 2026.</param>
+/// <param name="PendingRevenueAmount">What they would have added to revenue.</param>
 public record PeriodicReportSnapshot(
     string ProjectName,
     int Number,
@@ -46,7 +48,9 @@ public record PeriodicReportSnapshot(
     decimal CapitalTotal,
     List<ReportPartnerView> Partners,
     List<ItemReportView> Items,
-    List<CategoryTotalView> RevenueCategories)
+    List<CategoryTotalView> RevenueCategories,
+    int PendingRevenueCount,
+    decimal PendingRevenueAmount)
 {
     /// <summary>Expenses less the previous report's (BR-09).</summary>
     public decimal ExpensesDifference => Expenses - PreviousExpenses;

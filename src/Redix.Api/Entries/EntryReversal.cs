@@ -35,7 +35,7 @@ public static class EntryReversal
         var revenue = await db.Set<RevenueDetails>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (revenue is not null)
         {
-            details.Add(new RevenueDetails { EntryId = reversal.Id, ItemId = revenue.ItemId, SubgroupId = revenue.SubgroupId, PeriodStart = revenue.PeriodStart, PeriodEnd = revenue.PeriodEnd });
+            details.Add(new RevenueDetails { EntryId = reversal.Id, ItemId = revenue.ItemId, SubgroupId = revenue.SubgroupId });
         }
         await DirectEntries.AddAsync(reversal, details, userId, at, db);
         return reversal;

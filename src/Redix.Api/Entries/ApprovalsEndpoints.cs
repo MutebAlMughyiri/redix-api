@@ -32,7 +32,7 @@ public static class ApprovalsEndpoints
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry))).ToList();
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.FileNameOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry))).ToList();
     }
 
     /// <summary>
@@ -138,9 +138,10 @@ public static class ApprovalsEndpoints
 /// <param name="Notes">What was noted.</param>
 /// <param name="AttachmentId">Its file; empty when it has none.</param>
 /// <param name="ContentType">What the file is; empty when it has none.</param>
+/// <param name="FileName">The file's name; empty when it has none.</param>
 /// <param name="AuthorName">Who entered it.</param>
 /// <param name="PartnerName">A capital movement's partner; empty for any other entry (redix-api #101).</param>
-public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string AuthorName, string PartnerName);
+public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string FileName, string AuthorName, string PartnerName);
 
 /// <summary>The entries to approve.</summary>
 /// <param name="EntryIds">Their ids.</param>

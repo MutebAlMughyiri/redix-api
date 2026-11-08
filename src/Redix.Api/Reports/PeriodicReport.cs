@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using Redix.Api.Entries;
+
 namespace Redix.Api.Reports;
 
 /// <summary>A numbered periodic report as it was issued (FR-29, BR-26): every figure kept as it was, so nothing approved later changes it.</summary>
@@ -23,4 +26,13 @@ public class PeriodicReport
 
     /// <summary>Every figure as issued, as JSON.</summary>
     public string Snapshot { get; init; } = "{}";
+
+    /// <summary>
+    /// The latest report issued in the project <paramref name="projectId"/>; while none was, one numbered 0 and issued before anything was approved. The one owner of the next number (AC-29.3),
+    /// the previous report's expenses (BR-09) and what is new since (BR-26).
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="db">The database the reports live in.</param>
+    public static async Task<PeriodicReport> LatestOfAsync(Guid projectId, RedixDbContext db) =>
+        await db.PeriodicReports.Where(report => report.ProjectId == projectId).OrderByDescending(report => report.Number).FirstOrDefaultAsync() ?? new PeriodicReport { IssuedAt = Entry.NotApproved };
 }

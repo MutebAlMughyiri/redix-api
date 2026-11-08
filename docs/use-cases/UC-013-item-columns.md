@@ -44,7 +44,7 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | --- | --- | --- |
 | A new item inherits the default columns of its type (FR-38) | `Item.New` | `ColumnsTests.ANewItemInheritsTheDefaultColumnsOfItsType` |
 | A template item is copied with the columns of its type | `Item.CopyFor` | `ColumnsTests.ATemplateItemIsCopiedWithTheColumnsOfItsType` |
-| The core columns are the nine of BR-20, and the rest of BR-20 are not core | `StructureSeed` | `ColumnsTests.TheCoreColumnsOfAPurchaseAreTheNineOfBr20` |
+| The core columns of a purchase are the five left of BR-20: date, supplier, total, account and file; the bill number left with D2 (findings row 150) | `StructureSeed` | `ColumnsTests.TheCoreColumnsOfAPurchaseAreTheFiveLeftOfBr20` |
 | An item of both types holds the purchase columns, then what only a contractor payment has | `StructureSeed.DefaultColumns` | `ColumnsTests.AnItemOfBothTypesHoldsThePurchaseColumnsThenWhatOnlyAContractorPaymentHas` |
 | A column added to one item is asked in that item only (AC-41.1) | `ColumnsEndpoints.AddToItem` | `ColumnsTests.AColumnAddedToOneItemIsAskedInThatItemOnly` |
 | A column needs a name of 1 to 100 characters | `Column.CheckNew`, `Column.Edit` | `ColumnsTests.AColumnNeedsANameOfAtMost100Characters` |

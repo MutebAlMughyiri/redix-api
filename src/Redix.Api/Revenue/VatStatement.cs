@@ -50,8 +50,8 @@ public record VatQuarterView(DateOnly Start, DateOnly End, List<VatRow> Purchase
 
 /// <summary>One purchase on the statement.</summary>
 /// <param name="Date">Its date.</param>
-/// <param name="Party">The supplier, or the buyer.</param>
+/// <param name="Party">The supplier.</param>
 /// <param name="VatNumber">The party's VAT number; empty when it has none, so no VAT is worked out of it.</param>
-/// <param name="Description">What was bought, or the sale's invoice number.</param>
+/// <param name="Description">What was bought.</param>
 /// <param name="Total">Its total: negative for a credit note.</param>
 public record VatRow(DateOnly Date, string Party, string VatNumber, string Description, decimal Total);

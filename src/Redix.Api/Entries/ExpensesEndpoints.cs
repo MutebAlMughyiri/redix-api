@@ -71,7 +71,7 @@ public static class ExpensesEndpoints
         var userId = AccessTokens.UserIdOf(principal);
         var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
         var item = await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.Purchases, db);
-        if (item is null)
+        if (item == Item.None)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "ItemNotOffered");
         }

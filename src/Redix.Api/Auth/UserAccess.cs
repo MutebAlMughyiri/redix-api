@@ -19,7 +19,7 @@ public class UserAccess(List<Permission> everywhere, ILookup<Guid, Permission> b
         var everywhere = await db.SystemPermissions.Where(row => row.UserId == userId).Select(row => row.Permission).ToListAsync();
         var inProjects = await db.ProjectPermissions
             .Where(row => row.UserId == userId
-                && db.Projects.Any(project => project.Id == row.ProjectId && (project.Status == Projects.ProjectStatus.Active || project.Status == Projects.ProjectStatus.Finished)))
+                && db.Projects.Any(project => project.Id == row.ProjectId && Projects.Project.ApprovedStatuses.Contains(project.Status)))
             .Select(row => new { row.ProjectId, row.Permission }).ToListAsync();
         return new UserAccess(everywhere, inProjects.ToLookup(row => row.ProjectId, row => row.Permission));
     }

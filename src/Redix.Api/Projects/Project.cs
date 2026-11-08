@@ -50,8 +50,11 @@ public class Project
     /// <summary>True once the project is finished: nothing in it changes any more (AC-04.1).</summary>
     public bool IsReadOnly => Status == ProjectStatus.Finished;
 
+    /// <summary>Where a project stands once the admin has let it in, so permissions count in it (BR-34).</summary>
+    public static readonly ProjectStatus[] ApprovedStatuses = [ProjectStatus.Active, ProjectStatus.Finished];
+
     /// <summary>True once the admin has let it in, so permissions count in it (BR-34).</summary>
-    public bool IsApproved => Status is ProjectStatus.Active or ProjectStatus.Finished;
+    public bool IsApproved => ApprovedStatuses.Contains(Status);
 
     /// <summary>A new project waiting for approval, with its units in order and its <paramref name="description"/>; the outcome says whether its name, every unit's and the description are acceptable.</summary>
     public static (Project Project, ProjectChangeOutcome Outcome) New(string name, DateOnly startDate, IEnumerable<string> units, string description)

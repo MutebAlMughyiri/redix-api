@@ -16,7 +16,7 @@ public sealed class EntryFacts
     private Dictionary<Guid, ContractorPaymentDetails> _payments = [];
     private Dictionary<Guid, Invoice> _invoices = [];
     private ILookup<Guid, EntryAttachment> _files = Array.Empty<EntryAttachment>().ToLookup(row => row.EntryId);
-    private Dictionary<Guid, string> _contentTypes = [];
+    private Dictionary<Guid, (string ContentType, string FileName)> _attachments = [];
     private Dictionary<Guid, string> _items = [];
     private Dictionary<Guid, string> _accounts = [];
     private Dictionary<Guid, Supplier> _suppliers = [];
@@ -27,6 +27,8 @@ public sealed class EntryFacts
     public static async Task<EntryFacts> OfAsync(Guid projectId, List<Entry> entries, RedixDbContext db)
     {
         var ids = entries.Select(entry => entry.Id).ToList();
+        var files = await db.EntryAttachments.Where(row => ids.Contains(row.EntryId)).ToListAsync();
+        var fileIds = files.Select(row => row.AttachmentId).Distinct().ToList();
         var authorIds = entries.Select(entry => entry.CreatedByUserId).Distinct().ToList();
         return new EntryFacts
         {
@@ -37,8 +39,8 @@ public sealed class EntryFacts
             _purchases = await db.PurchaseDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
             _payments = await db.ContractorPaymentDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
             _invoices = await db.Invoices.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
-            _files = (await db.EntryAttachments.Where(row => ids.Contains(row.EntryId)).ToListAsync()).ToLookup(row => row.EntryId),
-            _contentTypes = await db.Attachments.Where(row => row.ProjectId == projectId).ToDictionaryAsync(row => row.Id, row => row.ContentType),
+            _files = files.ToLookup(row => row.EntryId),
+            _attachments = await db.Attachments.Where(row => fileIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id, row => (row.ContentType, row.FileName)),
             _items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)).ToDictionaryAsync(item => item.Id, item => item.Name),
             _accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name),
             _suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id),
@@ -85,5 +87,10 @@ public sealed class EntryFacts
     public string AttachmentIdOf(Entry entry) => _files[entry.Id].Select(file => file.AttachmentId.ToString()).FirstOrDefault("");
 
     /// <summary>What its file is; empty when it has none.</summary>
-    public string ContentTypeOf(Entry entry) => _files[entry.Id].Select(file => _contentTypes.GetValueOrDefault(file.AttachmentId, "")).FirstOrDefault("");
+    public string ContentTypeOf(Entry entry) => FileOf(entry).ContentType;
+
+    /// <summary>Its file's name, so the phone hands it over by that name (findings row 158); empty when it has none.</summary>
+    public string FileNameOf(Entry entry) => FileOf(entry).FileName;
+
+    private (string ContentType, string FileName) FileOf(Entry entry) => _files[entry.Id].Select(file => _attachments.GetValueOrDefault(file.AttachmentId, ("", ""))).FirstOrDefault(("", ""));
 }

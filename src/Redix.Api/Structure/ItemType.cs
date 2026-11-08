@@ -12,7 +12,7 @@ public enum ItemType : byte
     /// <summary>Both purchases and contractor payments.</summary>
     Both,
 
-    /// <summary>Revenue: a unit sold, which carries its sales invoice (FR-42).</summary>
+    /// <summary>Revenue: money from a unit sold.</summary>
     Sale,
 
     /// <summary>Revenue: VAT refunded, recorded like any other revenue (redix-api #96, D23).</summary>

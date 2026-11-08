@@ -39,10 +39,10 @@ public static class CapitalEndpoints
         var balances = await BalancesAsync(projectId, db);
         var total = balances.Values.Sum();
         var partners = await db.Partners.Where(partner => partner.ProjectId == projectId && (seesAll || partner.UserId == userId)).ToListAsync();
-        var lines = partners.OrderByDescending(partner => partner.IsActive).ThenByDescending(partner => balances.GetValueOrDefault(partner.Id)).ThenBy(partner => partner.Id).Select(partner =>
+        var lines = partners.OrderByDescending(partner => balances.GetValueOrDefault(partner.Id)).ThenBy(partner => partner.Id).Select(partner =>
         {
             var balance = balances.GetValueOrDefault(partner.Id);
-            return new PartnerCapitalView(partner.Id, partner.Name, partner.IsActive, partner.UserId == userId, balance, total == 0 ? 0 : decimal.Round(balance / total * 100, SharePercentDecimals, MidpointRounding.AwayFromZero));
+            return new PartnerCapitalView(partner.Id, partner.Name, partner.UserId == userId, balance, total == 0 ? 0 : decimal.Round(balance / total * 100, SharePercentDecimals, MidpointRounding.AwayFromZero));
         }).ToList();
         return new CapitalView(total, lines);
     }
@@ -76,12 +76,13 @@ public static class CapitalEndpoints
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var reversed = (await db.EntryLinks.Where(link => link.Type == EntryLinkType.Reversal && (ids.Contains(link.EntryId) || ids.Contains(link.LinkedEntryId))).ToListAsync()).SelectMany(link => new[] { link.EntryId, link.LinkedEntryId }).ToHashSet();
-        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.details.Description, row.details.CashReason, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id))).ToList();
+        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.details.Description, row.details.CashReason, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
     /// <summary>
-    /// Enters a capital movement, approved at once (BR-30). It needs its bank receipt, unless paid in cash with a reason (BR-23), otherwise <c>receiptRequired</c>; a reason too long answers <c>invalidReason</c>, and something in kind with no reason <c>receiptRequired</c>. A carry here answers <c>useCarry</c>, since it has its own route.
-    /// A settlement must take all the partner holds, otherwise <c>settlementNotFull</c>, and then they are no longer active. A partner not in the project answers <c>unknownPartner</c>; one who left <c>partnerLeft</c>. Otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does.
+    /// Enters a partner's contribution or withdrawal, which waits for approval like every entry (BR-30, redix-api #101). It needs its bank receipt, unless paid in cash with a reason
+    /// (BR-23), otherwise <c>receiptRequired</c>; a reason too long answers <c>invalidReason</c>. A partner not in the project answers <c>unknownPartner</c>. Otherwise it answers as
+    /// <see cref="DirectEntries.RefusalOfAsync"/> does.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The movement.</param>
@@ -104,7 +105,7 @@ public static class CapitalEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "ReceiptRequired");
         }
-        var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, [request.AccountId], request.AttachmentId, time, db);
+        var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, request.AccountId, request.AttachmentId, time, db);
         if (refusal.Length > 0)
         {
             return DirectEntries.AnswerOf(refusal);
@@ -124,16 +125,9 @@ public static class CapitalEndpoints
         return Results.Ok(new EntryStatusView(entry.Id, entry.Status, ""));
     }
 
-    /// <summary>Why <paramref name="partnerId"/> cannot move money in <paramref name="projectId"/>: <c>unknownPartner</c> when not a partner of it, <c>partnerLeft</c> once gone; empty when they can.</summary>
-    public static async Task<string> RefusalOfPartnerAsync(Guid projectId, Guid partnerId, RedixDbContext db)
-    {
-        var partner = await db.Partners.SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
-        if (partner is null)
-        {
-            return "UnknownPartner";
-        }
-        return partner.IsActive ? "" : "PartnerLeft";
-    }
+    /// <summary>Why <paramref name="partnerId"/> cannot move money in <paramref name="projectId"/>: <c>unknownPartner</c> when not a partner of it; empty when they can.</summary>
+    public static async Task<string> RefusalOfPartnerAsync(Guid projectId, Guid partnerId, RedixDbContext db) =>
+        await db.Partners.AnyAsync(row => row.Id == partnerId && row.ProjectId == projectId) ? "" : "UnknownPartner";
 
     private static async Task<Dictionary<Guid, decimal>> BalancesAsync(Guid projectId, RedixDbContext db)
     {
@@ -171,11 +165,10 @@ public record CapitalView(decimal Total, List<PartnerCapitalView> Partners);
 /// <summary>One partner's capital.</summary>
 /// <param name="Id">The partner.</param>
 /// <param name="Name">Their name.</param>
-/// <param name="IsActive">False once they settled and withdrew.</param>
 /// <param name="IsMine">True when this is the caller's own.</param>
 /// <param name="Balance">Their capital.</param>
 /// <param name="SharePercent">Their share of the total, as a percentage with ten decimals (BR-28).</param>
-public record PartnerCapitalView(Guid Id, string Name, bool IsActive, bool IsMine, decimal Balance, decimal SharePercent);
+public record PartnerCapitalView(Guid Id, string Name, bool IsMine, decimal Balance, decimal SharePercent);
 
 /// <summary>One movement of a partner's capital.</summary>
 /// <param name="Id">The entry.</param>
@@ -188,4 +181,8 @@ public record PartnerCapitalView(Guid Id, string Name, bool IsActive, bool IsMin
 /// <param name="AttachmentId">Its receipt; empty when none.</param>
 /// <param name="ContentType">What the receipt is; empty when none.</param>
 /// <param name="IsReversed">True when it was reversed, or is itself a reversal.</param>
-public record CapitalMovementView(Guid Id, CapitalMovementType Type, DateOnly Date, decimal Amount, string Description, string CashReason, string AccountName, string AttachmentId, string ContentType, bool IsReversed);
+public record CapitalMovementView(Guid Id, CapitalMovementType Type, DateOnly Date, decimal Amount, string Description, string CashReason, string AccountName, string AttachmentId, string ContentType, bool IsReversed)
+{
+    /// <summary>The receipt's name, so the phone hands it over by that name (findings row 158); empty when none, and in a report issued before 8 Nov 2026.</summary>
+    public string FileName { get; init; } = "";
+}

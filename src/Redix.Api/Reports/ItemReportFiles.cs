@@ -25,7 +25,7 @@ public static class ItemReportFiles
 
     private static readonly StatementColumn Received = new("المبلغ", CellKind.Text);
 
-    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", CellKind.Text), new("رقم الفاتورة", CellKind.Centred), new("التاريخ", CellKind.Date)];
+    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", CellKind.Text), new("التاريخ", CellKind.Date)];
 
     /// <summary>One item's report as a workbook, its sheet as the periodic report's.</summary>
     public static byte[] Excel(ItemReportView item)
@@ -37,7 +37,7 @@ public static class ItemReportFiles
 
     /// <summary>
     /// An item's sheet (FR-46): a table of purchases per subgroup that has any, titled with its name or, for the general one, the item's, the item's own report columns before the cost (AC-46.8);
-    /// and a table of payments per contract, its agreed amount under it (AC-46.2); all in the order the item's tables were put in. A revenue item's tables list what came in: the description and buyer, the invoice, the day and the
+    /// and a table of payments per contract, its agreed amount under it (AC-46.2); all in the order the item's tables were put in. A revenue item's tables list what came in: the description, the day and the
     /// amount. The item's choice says whether each table's percentage is calculated (AC-46.9).
     /// </summary>
     public static StatementSheet SheetOf(ItemReportView item)
@@ -78,7 +78,7 @@ public static class ItemReportFiles
         line.Amount, "", line.IsNew, true);
 
     private static StatementRow RevenueRow(ItemEntryRow line) => new(
-        [string.Join(" · ", new[] { line.Description, line.SupplierName }.Where(text => text.Length > 0)), line.InvoiceNumber, line.Date.ToDateTime(TimeOnly.MinValue)],
+        [line.Description, line.Date.ToDateTime(TimeOnly.MinValue)],
         line.Amount, "", line.IsNew, true);
 
     private static StatementRow PaymentRow(ItemEntryRow payment) => new(

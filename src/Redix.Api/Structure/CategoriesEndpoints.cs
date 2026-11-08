@@ -164,7 +164,7 @@ public static class CategoriesEndpoints
     public static async Task<IResult> ChangeItemType(Guid projectId, Guid itemId, ChangeItemTypeRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
-        if (item is null)
+        if (item == Item.None)
         {
             return Results.NotFound();
         }
@@ -203,7 +203,7 @@ public static class CategoriesEndpoints
     public static async Task<IResult> SetTablePercentages(Guid projectId, Guid itemId, TablePercentagesRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
-        if (item is null)
+        if (item == Item.None)
         {
             return Results.NotFound();
         }
@@ -225,7 +225,7 @@ public static class CategoriesEndpoints
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
-            if (item is null)
+            if (item == Item.None)
             {
                 return Results.NotFound();
             }
@@ -248,7 +248,7 @@ public static class CategoriesEndpoints
     public static async Task<IResult> Tables(Guid projectId, Guid itemId, RedixDbContext db)
     {
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
-        if (item is null)
+        if (item == Item.None)
         {
             return Results.NotFound();
         }
@@ -279,7 +279,7 @@ public static class CategoriesEndpoints
         var movesMoney = (await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db)).In(projectId).Contains(Permission.MoveMoney);
         var contracts = await ContractTablesAsync(db.Contracts.Where(contract => contract.ProjectId == projectId && contract.IsActive), db);
         var tables = (await ReadAsync(projectId, db))
-            .Select(category => new TableCategoryView(category.Id, category.Name, category.ItemsOfferedFor(ItemType.Purchases)
+            .Select(category => new TableCategoryView(Ids.Text(category.Id), category.Name, category.ItemsOfferedFor(ItemType.Purchases)
                 .Concat(category.ItemsOfferedFor(ItemType.ContractorPayments))
                 .Concat(movesMoney ? category.ItemsOfferedFor(ItemType.OtherRevenue) : [])
                 .Distinct()
@@ -292,11 +292,11 @@ public static class CategoriesEndpoints
                 .ToList()))
             .Where(view => view.Items.Count > 0)
             .ToList();
-        var partners = movesMoney ? await db.Partners.Where(partner => partner.ProjectId == projectId && partner.IsActive).ToListAsync() : [];
+        var partners = movesMoney ? await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync() : [];
         if (partners.Count > 0)
         {
             var afterRevenue = tables.FindLastIndex(category => category.Items.Any(item => item.IsRevenue)) + 1;
-            tables.Insert(afterRevenue == 0 ? tables.Count : afterRevenue, new TableCategoryView(Guid.Empty, "", partners.OrderBy(partner => partner.Id).Select(partner => new TableItemView(partner.Id, partner.Name, [new EntryTableView(partner.Id, ItemTableKind.Partner, partner.Name)], false)).ToList()));
+            tables.Insert(afterRevenue == 0 ? tables.Count : afterRevenue, new TableCategoryView("", "", partners.OrderBy(partner => partner.Id).Select(partner => new TableItemView(partner.Id, partner.Name, [new EntryTableView(partner.Id, ItemTableKind.Partner, partner.Name)], false)).ToList()));
         }
         return tables;
     }
@@ -322,7 +322,7 @@ public static class CategoriesEndpoints
     /// <param name="db">The database the structure lives in.</param>
     public static async Task<IResult> ReorderTables(Guid projectId, Guid itemId, ReorderRequest request, RedixDbContext db)
     {
-        if (await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+        if (!await ProjectStructure.HasItemAsync(projectId, itemId, db))
         {
             return Results.NotFound();
         }
@@ -338,7 +338,7 @@ public static class CategoriesEndpoints
     public static async Task<IResult> DeleteSubgroup(Guid projectId, Guid itemId, Guid subgroupId, RedixDbContext db)
     {
         var subgroup = await db.Subgroups.SingleOrDefaultAsync(row => row.Id == subgroupId && row.ItemId == itemId);
-        if (subgroup is null || await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+        if (subgroup is null || !await ProjectStructure.HasItemAsync(projectId, itemId, db))
         {
             return Results.NotFound();
         }
@@ -365,7 +365,7 @@ public static class CategoriesEndpoints
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             var subgroup = await db.Subgroups.SingleOrDefaultAsync(row => row.Id == subgroupId && row.ItemId == itemId);
-            if (subgroup is null || await ProjectStructure.ItemOfAsync(projectId, itemId, db) is null)
+            if (subgroup is null || !await ProjectStructure.HasItemAsync(projectId, itemId, db))
             {
                 return Results.NotFound();
             }
@@ -408,7 +408,7 @@ public static class CategoriesEndpoints
     private static async Task<IResult> ChangeItemAsync(Guid projectId, Guid itemId, RedixDbContext db, Action<Item> change)
     {
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
-        if (item is null)
+        if (item == Item.None)
         {
             return Results.NotFound();
         }
@@ -440,7 +440,7 @@ public record TablePercentagesRequest(bool IsOn);
 public record ReorderRequest(List<Guid> Ids);
 
 /// <summary>A category as the app shows it.</summary>
-/// <param name="Id">The category's id.</param>
+/// <param name="Id">The category's id; empty for the partners' group.</param>
 /// <param name="Name">The category's name.</param>
 /// <param name="IsActive">False once disabled.</param>
 /// <param name="Items">Its items, in order.</param>
@@ -471,10 +471,10 @@ public record ItemView(Guid Id, string Name, ItemType Type, bool IsActive, List<
 public record ItemTableView(Guid Id, ItemTableKind Kind, string Name, int Count);
 
 /// <summary>A category of the tables an entry may go into (redix-app #84); the partners' group has no id and no name (redix-api #101).</summary>
-/// <param name="Id">The category's id.</param>
+/// <param name="Id">The category's id; empty for the partners' group.</param>
 /// <param name="Name">The category's name.</param>
 /// <param name="Items">Its items that take entries, in order, or its partners.</param>
-public record TableCategoryView(Guid Id, string Name, List<TableItemView> Items);
+public record TableCategoryView(string Id, string Name, List<TableItemView> Items);
 
 /// <summary>An item and the tables of it an entry may go into, or a partner and their one table.</summary>
 /// <param name="Id">The item's id, or the partner's.</param>

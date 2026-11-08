@@ -10,7 +10,7 @@ namespace Redix.Api.Accounts;
 /// <param name="VatRefunds">VAT that came back.</param>
 /// <param name="Sales">What units sold for.</param>
 /// <param name="OtherRevenue">Anything else that came in.</param>
-/// <param name="Expenses">Purchases and contractor payments, by what was paid (BR-24).</param>
+/// <param name="Expenses">Purchases and contractor payments, each by its total.</param>
 public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds, decimal Sales, decimal OtherRevenue, decimal Expenses)
 {
     /// <summary>Capital, VAT refunds and sales (BR-06).</summary>

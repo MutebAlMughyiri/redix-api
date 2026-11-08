@@ -27,7 +27,7 @@ public static class ProjectsEndpoints
     }
 
     /// <summary>
-    /// The projects the caller may read, and those they registered that are not approved, running ones first and then the newest (AC-36.1), each with what they may do
+    /// The projects the caller may read, and those they registered that are not approved, active ones first and then the newest (AC-36.1), each with what they may do
     /// in it (AC-36.2). A finished project stays listed, with its reports (AC-04.1).
     /// </summary>
     /// <param name="principal">The caller's session.</param>

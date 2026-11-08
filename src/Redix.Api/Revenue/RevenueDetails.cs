@@ -11,10 +11,4 @@ public class RevenueDetails
 
     /// <summary>The item's subgroup, its general one unless another was chosen.</summary>
     public Guid SubgroupId { get; init; }
-
-    /// <summary>The first day of the period it is for.</summary>
-    public DateOnly PeriodStart { get; init; }
-
-    /// <summary>The last day of the period it is for.</summary>
-    public DateOnly PeriodEnd { get; init; }
 }

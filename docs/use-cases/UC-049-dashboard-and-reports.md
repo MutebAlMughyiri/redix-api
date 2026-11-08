@@ -8,7 +8,7 @@
 
 | Route | What it does |
 | --- | --- |
-| `GET /projects/{id}/dashboard` | Revenue, expenses, the surplus, the reconciliation difference, what waits, each category and item's total, the capital with the partners' lines the caller may see (BR-31), the completion |
+| `GET /projects/{id}/dashboard` | Revenue, expenses, the surplus, the reconciliation difference, what waits as two figures (`WaitingFigures`), each category and item's total, the capital with the partners' lines the caller may see (BR-31), the completion |
 | `GET /projects/{id}/reports/items/{itemId}` | An item's purchases by subgroup, then each contract with its payments |
 | `GET /projects/{id}/contracts` | Each contract's value, paid, remaining and overrun (UC-020), which is the contracts report |
 

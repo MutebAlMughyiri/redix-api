@@ -394,7 +394,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<EntryLink>(link =>
         {
             link.HasKey(l => new { l.EntryId, l.Type });
-            link.Property(l => l.Reason).HasMaxLength(Project.ReasonMaxLength);
+            link.Property(l => l.Reason).HasMaxLength(ApprovalsEndpoints.ReasonMaxLength);
             link.HasIndex(l => l.LinkedEntryId);
             link.HasIndex(l => l.LinkedEntryId, "IX_EntryLinks_OneReversal").IsUnique().HasFilter($"[Type] = {(byte)EntryLinkType.Reversal}");
             link.HasOne<Entry>().WithMany().HasForeignKey(l => l.EntryId).OnDelete(DeleteBehavior.Restrict);
