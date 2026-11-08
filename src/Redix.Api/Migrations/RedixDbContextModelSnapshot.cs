@@ -3465,20 +3465,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("94951e20-563c-f5b5-277f-26c31f938577"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("fa5bdd50-f61f-02fc-2071-d4aeff12e8b6"),
-                            Value = "Remove unit"
-                        },
-                        new
-                        {
-                            Id = new Guid("4f563c54-300d-21dc-0483-658ec3fd4076"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("fa5bdd50-f61f-02fc-2071-d4aeff12e8b6"),
-                            Value = "حذف الوحدة"
-                        },
-                        new
-                        {
                             Id = new Guid("4c362fb6-4bd8-ffa0-3fd5-629ea30055b3"),
                             Language = "en",
                             TranslationKeyId = new Guid("25f79ab6-6305-7112-554a-c09ef0e99eee"),
@@ -3630,34 +3616,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("9876a2f0-34b3-61e5-bce4-8373a59aa30d"),
                             Value = "تعديل اسم الوحدة"
-                        },
-                        new
-                        {
-                            Id = new Guid("d1dd8d2a-d8a3-6956-539d-207fdc82e6fa"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("93caa0c9-b3c8-2f69-7583-e7fe363eeaba"),
-                            Value = "Delete this unit?"
-                        },
-                        new
-                        {
-                            Id = new Guid("5308ff98-93ed-ddfa-846f-ac63511369e4"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("93caa0c9-b3c8-2f69-7583-e7fe363eeaba"),
-                            Value = "حذف هذه الوحدة؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("9774b8eb-6c82-b6f0-b56b-92a58fb57467"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
-                            Value = "It leaves this project."
-                        },
-                        new
-                        {
-                            Id = new Guid("b0777b87-cdcc-965d-80a4-b5f3a843b845"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
-                            Value = "تُحذف من هذا المشروع."
                         },
                         new
                         {
@@ -5831,6 +5789,48 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("9420a811-b80d-abdb-aaef-f1016d3e4036"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a600acec-e37d-ba1c-1ec4-322b87ac9712"),
+                            Value = "Remove"
+                        },
+                        new
+                        {
+                            Id = new Guid("b048caaf-7304-becd-6344-4443e8ee4021"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a600acec-e37d-ba1c-1ec4-322b87ac9712"),
+                            Value = "حذف"
+                        },
+                        new
+                        {
+                            Id = new Guid("dfcd76a2-953b-6b21-d692-0069970cbfed"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f2375ed9-4ece-1db5-01ba-d3b8070e1310"),
+                            Value = "Swipe a row to remove it"
+                        },
+                        new
+                        {
+                            Id = new Guid("390837e8-d1ce-72ae-45a3-5069c30c99d1"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f2375ed9-4ece-1db5-01ba-d3b8070e1310"),
+                            Value = "اسحب السطر لحذفه"
+                        },
+                        new
+                        {
+                            Id = new Guid("37987c1b-10fb-1f47-e59c-a1d31626a59c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
+                            Value = "Download"
+                        },
+                        new
+                        {
+                            Id = new Guid("fc777906-eb20-1309-796f-44d54fe66d48"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
+                            Value = "تنزيل"
+                        },
+                        new
+                        {
                             Id = new Guid("12dee4c0-f443-892e-5728-c2e00f9ca781"),
                             Language = "en",
                             TranslationKeyId = new Guid("4c540222-763c-2ad3-8ccd-52cf4c975b9d"),
@@ -5856,48 +5856,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("76d4cd24-6534-d7be-07ab-9ee6d13f873a"),
                             Value = "يسحب الشريك هذا المبلغ من رأس ماله"
-                        },
-                        new
-                        {
-                            Id = new Guid("2030e402-8de2-fac2-5d2d-7056400c69de"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("6c1f74f9-0fb1-ccd3-850a-850c6038fa84"),
-                            Value = "Delete"
-                        },
-                        new
-                        {
-                            Id = new Guid("7171e170-0567-d5af-bc06-a6c9c8369cc3"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("6c1f74f9-0fb1-ccd3-850a-850c6038fa84"),
-                            Value = "حذف"
-                        },
-                        new
-                        {
-                            Id = new Guid("4d1f8109-7ad0-3ebc-b142-2fcbc2be5288"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("67b07ccb-bbad-f754-7e2c-95b922c6ebf6"),
-                            Value = "Delete this entry?"
-                        },
-                        new
-                        {
-                            Id = new Guid("aa0bd5ac-e38d-d709-5598-6f24b17750f2"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("67b07ccb-bbad-f754-7e2c-95b922c6ebf6"),
-                            Value = "حذف هذا القيد؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("43e7cdbb-a032-18e8-65a0-08beeff9c39e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d0f1c346-3d32-bd88-74e9-9f55fcb3b4ad"),
-                            Value = "It was never approved, so nothing counted it. The audit trail keeps what it held."
-                        },
-                        new
-                        {
-                            Id = new Guid("02c9eaf9-787d-6bbf-7f4b-e12e0f0f9b8f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d0f1c346-3d32-bd88-74e9-9f55fcb3b4ad"),
-                            Value = "لم يُعتمد قط، فلم يُحتسب. ويبقى ما كان فيه في سجل التدقيق."
                         },
                         new
                         {
@@ -8463,62 +8421,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("39faff0b-ad09-11bf-0780-5f7a50f0c8d4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("cad4486c-357c-6ce3-b37c-106c3bd591ed"),
-                            Value = "Remove from the list"
-                        },
-                        new
-                        {
-                            Id = new Guid("6637e359-3cbd-6721-679a-1a9bd73ed6bf"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("cad4486c-357c-6ce3-b37c-106c3bd591ed"),
-                            Value = "إزالة من القائمة"
-                        },
-                        new
-                        {
-                            Id = new Guid("dc6ccf6a-e9db-1982-9f95-901dad2c1735"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("a050fc9a-315b-24e2-f181-3b8fb2b3fc2a"),
-                            Value = "Remove this document from the list?"
-                        },
-                        new
-                        {
-                            Id = new Guid("c273214f-2ba7-4ea2-46a5-efb2ea550078"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("a050fc9a-315b-24e2-f181-3b8fb2b3fc2a"),
-                            Value = "إزالة هذا المستند من القائمة؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("85cd55c0-1fa0-c1df-0c8e-68ac47526a74"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("941f1467-59ae-ae24-3970-1c18d4746456"),
-                            Value = "Its file stays kept, as every file does."
-                        },
-                        new
-                        {
-                            Id = new Guid("879f3ae7-53de-7cb9-73d3-b30a59a22285"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("941f1467-59ae-ae24-3970-1c18d4746456"),
-                            Value = "يبقى ملفه محفوظاً كسائر الملفات."
-                        },
-                        new
-                        {
-                            Id = new Guid("dcd05699-76db-cf6a-3a42-abda97b739fd"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("6f109267-5cbe-944b-90db-082cd706d0bc"),
-                            Value = "The document is removed from the list."
-                        },
-                        new
-                        {
-                            Id = new Guid("ad109564-a804-084c-d974-68775e98883d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("6f109267-5cbe-944b-90db-082cd706d0bc"),
-                            Value = "تمت إزالة المستند من القائمة."
-                        },
-                        new
-                        {
                             Id = new Guid("50aa967c-017d-15cf-cb7f-91fc7f4c8bd5"),
                             Language = "en",
                             TranslationKeyId = new Guid("18651164-b6f9-a403-1f85-a016015fc38d"),
@@ -9583,48 +9485,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("737f1238-3111-f960-e7b7-221b60e4afba"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f2a4897f-3f7b-e84c-25d6-f2aaff87e1df"),
-                            Value = "Delete"
-                        },
-                        new
-                        {
-                            Id = new Guid("311694a2-2026-d939-49cc-dfcd8d502270"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f2a4897f-3f7b-e84c-25d6-f2aaff87e1df"),
-                            Value = "حذف"
-                        },
-                        new
-                        {
-                            Id = new Guid("f29e53dc-b0e2-08a4-863a-862138c9cf3c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("084575ec-a8f0-3e07-ae65-8cc66b51bf1e"),
-                            Value = "Delete this entry from the phone?"
-                        },
-                        new
-                        {
-                            Id = new Guid("a144a294-df3c-6231-b06d-e572e6bad7d3"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("084575ec-a8f0-3e07-ae65-8cc66b51bf1e"),
-                            Value = "حذف هذا القيد من الجهاز؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("85bd0522-9c77-0872-6759-b8b1d3e1428b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("76ac5b37-e17a-f6fb-bef7-a8b1287d7231"),
-                            Value = "It was never sent, so it will be gone for good."
-                        },
-                        new
-                        {
-                            Id = new Guid("a1f915e5-7b4b-d8f5-38f6-481e06ad5e94"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("76ac5b37-e17a-f6fb-bef7-a8b1287d7231"),
-                            Value = "لم يُرسل قط، فسيذهب نهائياً."
-                        },
-                        new
-                        {
                             Id = new Guid("3ac93d3f-8a62-cde3-9bf2-803c92011b99"),
                             Language = "en",
                             TranslationKeyId = new Guid("be9ac772-02a4-1393-7189-495e3103dfad"),
@@ -9650,48 +9510,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("e84af6cd-4410-441d-7fa4-f1d800eb903e"),
                             Value = "تغيير النوع"
-                        },
-                        new
-                        {
-                            Id = new Guid("dad5370a-e85b-e4a7-d61f-bf177539c682"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e74ea481-4167-704c-56e4-d84d5469f3c5"),
-                            Value = "Remove subgroup"
-                        },
-                        new
-                        {
-                            Id = new Guid("289c88c8-4e1b-bb42-de45-d60c1a2af8f3"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e74ea481-4167-704c-56e4-d84d5469f3c5"),
-                            Value = "حذف المجموعة الفرعية"
-                        },
-                        new
-                        {
-                            Id = new Guid("84f84050-1de7-71bd-cfb6-3308e4bcf250"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("538f3cd3-08a5-34d3-84c6-ba44f8dbe5c0"),
-                            Value = "Remove this subgroup?"
-                        },
-                        new
-                        {
-                            Id = new Guid("b2cded1d-07e0-eff2-6a6d-bfe6faee7fc7"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("538f3cd3-08a5-34d3-84c6-ba44f8dbe5c0"),
-                            Value = "حذف هذه المجموعة الفرعية؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("06165536-e25c-a27a-e773-144bdf8d66fd"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("715a4055-0c6f-a9c3-0a38-1af080e61d86"),
-                            Value = "It leaves this item. A subgroup that entries use cannot be removed."
-                        },
-                        new
-                        {
-                            Id = new Guid("8f5e3085-0901-5721-a7b4-959fa2e4ed46"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("715a4055-0c6f-a9c3-0a38-1af080e61d86"),
-                            Value = "تُحذف من هذا البند. ولا تُحذف مجموعة فرعية عليها قيود."
                         },
                         new
                         {
@@ -10619,20 +10437,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a1cf9081-a9f6-ee30-2b1e-a620a6445f8e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c488fde9-af3a-1449-62f0-bc2ff6a85095"),
-                            Value = "Delete column"
-                        },
-                        new
-                        {
-                            Id = new Guid("b552ee0f-c866-4baa-19c4-95e295e85519"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c488fde9-af3a-1449-62f0-bc2ff6a85095"),
-                            Value = "حذف العمود"
-                        },
-                        new
-                        {
                             Id = new Guid("6fdd527a-b27f-dd2c-6d2e-5881c25c0545"),
                             Language = "en",
                             TranslationKeyId = new Guid("75732723-aba7-1685-bd11-04205305acb8"),
@@ -10644,20 +10448,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("75732723-aba7-1685-bd11-04205305acb8"),
                             Value = "حفظ"
-                        },
-                        new
-                        {
-                            Id = new Guid("dae04a10-ded3-a030-8933-75fcda2cb729"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("662954f9-3b36-95d7-56a7-00b109f487d7"),
-                            Value = "It leaves entry. Values already recorded stay on their entries and in the audit trail."
-                        },
-                        new
-                        {
-                            Id = new Guid("9f6e51bd-7939-6ac7-09c5-779c98cb4281"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("662954f9-3b36-95d7-56a7-00b109f487d7"),
-                            Value = "يختفي من الإدخال، وتبقى قيمه في القيود السابقة وسجل التدقيق."
                         },
                         new
                         {
@@ -10924,48 +10714,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("523c58cf-8a55-99a1-d45a-b56f130afad6"),
                             Value = "معطّلة"
-                        },
-                        new
-                        {
-                            Id = new Guid("cee8b3b7-7ded-97ac-6fd6-88da5ae90030"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e1df62d4-0bfe-c696-74e2-130d142c5624"),
-                            Value = "Delete"
-                        },
-                        new
-                        {
-                            Id = new Guid("2551a7f7-7bad-e207-94fb-5f8b82826080"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e1df62d4-0bfe-c696-74e2-130d142c5624"),
-                            Value = "حذف"
-                        },
-                        new
-                        {
-                            Id = new Guid("2ebc8975-4868-0691-9f4d-ec60f4ae9464"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("67c23c81-f71f-5d99-2fd2-b6f0e4c72978"),
-                            Value = "Delete this payment method?"
-                        },
-                        new
-                        {
-                            Id = new Guid("5b7d4119-911c-89ed-de40-8264f72b4b80"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("67c23c81-f71f-5d99-2fd2-b6f0e4c72978"),
-                            Value = "حذف طريقة الدفع هذه؟"
-                        },
-                        new
-                        {
-                            Id = new Guid("1dce543d-8dfb-f3c4-c97b-8bb193c5b7f0"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("7934c26c-1710-2aab-355c-df6a49ddf926"),
-                            Value = "It leaves the list for good. A method an expense was paid with is not deleted: disable it instead."
-                        },
-                        new
-                        {
-                            Id = new Guid("0f61202b-d205-523e-3593-54f90ea4d69d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("7934c26c-1710-2aab-355c-df6a49ddf926"),
-                            Value = "تُحذف من القائمة نهائياً. الطريقة التي دُفع بها مصروف لا تُحذف، بل تُعطَّل."
                         },
                         new
                         {
@@ -14027,12 +13775,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("fa5bdd50-f61f-02fc-2071-d4aeff12e8b6"),
-                            Description = "",
-                            Key = "projects.removeUnit"
-                        },
-                        new
-                        {
                             Id = new Guid("25f79ab6-6305-7112-554a-c09ef0e99eee"),
                             Description = "",
                             Key = "projects.create"
@@ -14096,18 +13838,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9876a2f0-34b3-61e5-bce4-8373a59aa30d"),
                             Description = "",
                             Key = "projects.renameUnit"
-                        },
-                        new
-                        {
-                            Id = new Guid("93caa0c9-b3c8-2f69-7583-e7fe363eeaba"),
-                            Description = "",
-                            Key = "projects.removeUnitQuestion"
-                        },
-                        new
-                        {
-                            Id = new Guid("48659bd6-f4bf-8125-08a9-775e6e52c0bb"),
-                            Description = "",
-                            Key = "projects.removeUnitExplain"
                         },
                         new
                         {
@@ -15041,6 +14771,24 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("a600acec-e37d-ba1c-1ec4-322b87ac9712"),
+                            Description = "",
+                            Key = "swipe.remove"
+                        },
+                        new
+                        {
+                            Id = new Guid("f2375ed9-4ece-1db5-01ba-d3b8070e1310"),
+                            Description = "",
+                            Key = "swipe.hint"
+                        },
+                        new
+                        {
+                            Id = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
+                            Description = "",
+                            Key = "documents.download"
+                        },
+                        new
+                        {
                             Id = new Guid("4c540222-763c-2ad3-8ccd-52cf4c975b9d"),
                             Description = "",
                             Key = "entries.capitalGroup"
@@ -15050,24 +14798,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("76d4cd24-6534-d7be-07ab-9ee6d13f873a"),
                             Description = "",
                             Key = "entries.withdrawalHint"
-                        },
-                        new
-                        {
-                            Id = new Guid("6c1f74f9-0fb1-ccd3-850a-850c6038fa84"),
-                            Description = "",
-                            Key = "entries.delete"
-                        },
-                        new
-                        {
-                            Id = new Guid("67b07ccb-bbad-f754-7e2c-95b922c6ebf6"),
-                            Description = "",
-                            Key = "entries.deleteQuestion"
-                        },
-                        new
-                        {
-                            Id = new Guid("d0f1c346-3d32-bd88-74e9-9f55fcb3b4ad"),
-                            Description = "",
-                            Key = "entries.deleteExplain"
                         },
                         new
                         {
@@ -16169,30 +15899,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("cad4486c-357c-6ce3-b37c-106c3bd591ed"),
-                            Description = "",
-                            Key = "documents.remove"
-                        },
-                        new
-                        {
-                            Id = new Guid("a050fc9a-315b-24e2-f181-3b8fb2b3fc2a"),
-                            Description = "",
-                            Key = "documents.removeQuestion"
-                        },
-                        new
-                        {
-                            Id = new Guid("941f1467-59ae-ae24-3970-1c18d4746456"),
-                            Description = "",
-                            Key = "documents.removeExplain"
-                        },
-                        new
-                        {
-                            Id = new Guid("6f109267-5cbe-944b-90db-082cd706d0bc"),
-                            Description = "",
-                            Key = "documents.removed"
-                        },
-                        new
-                        {
                             Id = new Guid("18651164-b6f9-a403-1f85-a016015fc38d"),
                             Description = "",
                             Key = "documents.loadFailed"
@@ -16649,24 +16355,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("f2a4897f-3f7b-e84c-25d6-f2aaff87e1df"),
-                            Description = "",
-                            Key = "offline.discard"
-                        },
-                        new
-                        {
-                            Id = new Guid("084575ec-a8f0-3e07-ae65-8cc66b51bf1e"),
-                            Description = "",
-                            Key = "offline.discardQuestion"
-                        },
-                        new
-                        {
-                            Id = new Guid("76ac5b37-e17a-f6fb-bef7-a8b1287d7231"),
-                            Description = "",
-                            Key = "offline.discardExplain"
-                        },
-                        new
-                        {
                             Id = new Guid("be9ac772-02a4-1393-7189-495e3103dfad"),
                             Description = "",
                             Key = "categories.itemHasContract"
@@ -16676,24 +16364,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("e84af6cd-4410-441d-7fa4-f1d800eb903e"),
                             Description = "",
                             Key = "categories.changeType"
-                        },
-                        new
-                        {
-                            Id = new Guid("e74ea481-4167-704c-56e4-d84d5469f3c5"),
-                            Description = "",
-                            Key = "subgroups.delete"
-                        },
-                        new
-                        {
-                            Id = new Guid("538f3cd3-08a5-34d3-84c6-ba44f8dbe5c0"),
-                            Description = "",
-                            Key = "subgroups.deleteQuestion"
-                        },
-                        new
-                        {
-                            Id = new Guid("715a4055-0c6f-a9c3-0a38-1af080e61d86"),
-                            Description = "",
-                            Key = "subgroups.deleteExplain"
                         },
                         new
                         {
@@ -17093,21 +16763,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c488fde9-af3a-1449-62f0-bc2ff6a85095"),
-                            Description = "",
-                            Key = "columns.delete"
-                        },
-                        new
-                        {
                             Id = new Guid("75732723-aba7-1685-bd11-04205305acb8"),
                             Description = "",
                             Key = "columns.save"
-                        },
-                        new
-                        {
-                            Id = new Guid("662954f9-3b36-95d7-56a7-00b109f487d7"),
-                            Description = "",
-                            Key = "columns.deleteExplain"
                         },
                         new
                         {
@@ -17222,24 +16880,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("523c58cf-8a55-99a1-d45a-b56f130afad6"),
                             Description = "",
                             Key = "paymentMethods.disabled"
-                        },
-                        new
-                        {
-                            Id = new Guid("e1df62d4-0bfe-c696-74e2-130d142c5624"),
-                            Description = "",
-                            Key = "paymentMethods.delete"
-                        },
-                        new
-                        {
-                            Id = new Guid("67c23c81-f71f-5d99-2fd2-b6f0e4c72978"),
-                            Description = "",
-                            Key = "paymentMethods.deleteQuestion"
-                        },
-                        new
-                        {
-                            Id = new Guid("7934c26c-1710-2aab-355c-df6a49ddf926"),
-                            Description = "",
-                            Key = "paymentMethods.deleteExplain"
                         },
                         new
                         {
