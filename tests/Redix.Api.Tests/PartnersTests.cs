@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
 
@@ -35,6 +36,27 @@ public class PartnersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         await factory.GiveAsync(user.Id, project.Id, Holds.Of(role));
         return (user, await factory.ClientSignedInAsAsync(user, Password));
+    }
+
+    [Fact]
+    public async Task UC_109_PartnersDeclaredWithANewProjectBecomeTablesOfItsRasAlMalInTheirOrderOnceApproved()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var client = await factory.ClientSignedInAsAsync(user, Password);
+
+        var refused = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 8", new DateOnly(2026, 11, 1), []) { Partners = ["نواف", " "] }, Json);
+        var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 9", new DateOnly(2026, 11, 1), []) { Partners = [" نواف ", "ريم"] }, Json);
+        var project = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
+        await factory.WithDatabaseAsync(async db =>
+        {
+            await ProjectStructure.ApproveAsync(await db.Projects.SingleAsync(stored => stored.Id == project.Id), user.Id, db);
+            await db.SaveChangesAsync();
+        });
+        await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
+
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidName"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+        var capital = await Ledger.CapitalItemOfAsync(client, project.Id);
+        Assert.Equal([("نواف", capital, "رأس المال"), ("ريم", capital, "رأس المال")], (await PartnersOf(client, project.Id)).Select(partner => (partner.Name, partner.ItemId, partner.ItemName)));
     }
 
     private static async Task<List<PartnerView>> PartnersOf(HttpClient client, Guid projectId) =>

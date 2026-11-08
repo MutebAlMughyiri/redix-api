@@ -5,6 +5,7 @@ using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
 using Redix.Api.Structure;
+using Redix.Api.Partners;
 
 namespace Redix.Api.Projects;
 
@@ -38,6 +39,11 @@ public static class RegistrationEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, outcome.ToString());
         }
+        var (partners, declared) = PartnersEndpoints.DeclaredWith(project.Id, request.Partners);
+        if (declared.Length > 0)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, declared);
+        }
 
         var displayName = request.DisplayName.Trim();
         var username = request.Username.Trim();
@@ -58,6 +64,7 @@ public static class RegistrationEndpoints
         db.Users.Add(manager);
         db.Audit(manager, AuditAction.Create, manager.Id, now);
         ProjectsEndpoints.AddWithManager(project, manager.Id, db, now);
+        db.Partners.AddRange(partners);
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{project.Id}", await ProjectsEndpoints.ViewOfAsync(project, manager.Id, db));
     }
@@ -134,6 +141,9 @@ public record RegisterProjectRequest(string Name, DateOnly StartDate, List<strin
 {
     /// <summary>What the project is, for the admin who approves it; left out for none.</summary>
     public string Description { get; init; } = "";
+
+    /// <summary>The names of its partners, in order, each a table of its رأس المال once approved (redix-api #109); left out for none.</summary>
+    public List<string> Partners { get; init; } = [];
 }
 
 /// <summary>What the admin sends to refuse a project.</summary>

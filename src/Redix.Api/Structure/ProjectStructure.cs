@@ -10,7 +10,8 @@ public static class ProjectStructure
     /// <summary>
     /// Approves <paramref name="project"/> and copies its structure from what its registration chose, so every approved project starts with one (FR-05, UC-006 step 3). The caller saves
     /// them together. Only the structure is copied, never entries, contracts or balances (AC-05.2). Its payment methods always come from the default template: what registration chooses names categories and items.
-    /// Its register starts with the general cash supplier, added in the name of <paramref name="approverId"/> (UC-017).
+    /// Its register starts with the general cash supplier, added in the name of <paramref name="approverId"/> (UC-017). The partners declared with it become tables of its first
+    /// capital item, رأس المال (redix-api #109).
     /// </summary>
     public static async Task<ProjectChangeOutcome> ApproveAsync(Project project, Guid approverId, RedixDbContext db)
     {
@@ -23,7 +24,13 @@ public static class ProjectStructure
                 .Include(category => category.Items).ThenInclude(item => item.Columns)
                 .AsSplitQuery().ToListAsync();
             db.DefaultColumns.AddRange(defaults.Select(column => column.CopyFor(project.Id)));
-            db.Categories.AddRange(categories.Select(category => category.CopyFor(project.Id, defaults)));
+            var copies = categories.Select(category => category.CopyFor(project.Id, defaults)).ToList();
+            db.Categories.AddRange(copies);
+            var capital = copies.OrderBy(category => category.SortOrder).SelectMany(category => category.Items.OrderBy(item => item.SortOrder)).FirstOrDefault(item => item.Type == ItemType.Capital, Item.None);
+            foreach (var partner in await db.Partners.Where(partner => partner.ProjectId == project.Id && partner.ItemId == Guid.Empty).ToListAsync())
+            {
+                partner.ItemId = capital.Id;
+            }
             var paymentMethods = await db.PaymentMethods.AsNoTracking().Where(method => method.ProjectId == StructureSeed.TemplateId).ToListAsync();
             db.PaymentMethods.AddRange(paymentMethods.Select(method => method.CopyFor(project.Id)));
             db.Suppliers.Add(Supplier.GeneralCashSupplier(project.Id, approverId));

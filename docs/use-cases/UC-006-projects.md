@@ -11,7 +11,7 @@
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
 | `GET /projects` | The caller's projects with their units, running ones first, then the newest (UC-008) | `200` the projects |
-| `POST /projects` | Registers a project from a name, a start date and its units, all or nothing, with the caller as its first manager, waiting for approval. `structureSourceId`, left out for the default template, names an earlier project to copy the structure from (UC-012) | `201` the project; `400` `invalidName` or `unknownSource`; `400` for a missing field |
+| `POST /projects` | Registers a project from a name, a start date, its units and its `partners` (names, redix-api #109, each a table of its رأس المال once approved), all or nothing, with the caller as its first manager, waiting for approval. `structureSourceId`, left out for the default template, names an earlier project to copy the structure from (UC-012) | `201` the project; `400` `invalidName` or `unknownSource`; `400` for a missing field |
 | `POST /projects/{projectId}/units` | Adds a unit at the end of the project's list | `200` the project; `400` `invalidName`; `409` `projectFinished` or `unitNameTaken`; `403` without `ManageProject` in it |
 | `POST /projects/{projectId}` with `{ name }` | Renames the project while it is open (BR-38) | `200` the project; `400` `invalidName`; `409` `projectFinished`; `403` without `ManageProject` in it |
 | `POST /projects/{projectId}/description` with `{ description }` | Keeps the project's description while it is open, trimmed; empty clears it (redix-api 93) | `200` the project; `400` `invalidDescription` over 2,000 characters; `409` `projectFinished`; `403` without `ManageProject` in it |

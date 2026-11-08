@@ -86,6 +86,18 @@ public static class PartnersEndpoints
             return Results.Ok();
         });
 
+    /// <summary>
+    /// The partners declared with a new project (redix-api #109), in the order typed, each to become a table of its رأس المال once the project is approved and has a structure
+    /// (<see cref="ProjectStructure.ApproveAsync"/>); <c>invalidName</c> when a name is not acceptable, as a partner added later answers.
+    /// </summary>
+    public static (List<Partner> Partners, string Refusal) DeclaredWith(Guid projectId, IEnumerable<string> names)
+    {
+        var trimmed = names.Select(name => name.Trim()).ToList();
+        return trimmed.All(Project.IsAcceptableName)
+            ? ([.. trimmed.Select((name, place) => new Partner { ProjectId = projectId, Name = name, SortOrder = place + 1 })], "")
+            : ([], nameof(ProjectChangeOutcome.InvalidName));
+    }
+
     private static async Task<string> RefusalOfAsync(Guid projectId, Guid partnerId, PartnerRequest request, RedixDbContext db)
     {
         if (await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.Capital, db) == Item.None)

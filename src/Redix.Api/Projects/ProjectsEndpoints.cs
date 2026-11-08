@@ -60,6 +60,11 @@ public static class ProjectsEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, outcome.ToString());
         }
+        var (partners, refusal) = PartnersEndpoints.DeclaredWith(project.Id, request.Partners);
+        if (refusal.Length > 0)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+        }
 
         var userId = AccessTokens.UserIdOf(principal);
         if (request.StructureSourceId != Guid.Empty && !(await UserAccess.OfAsync(userId, db)).In(request.StructureSourceId).Contains(Permission.ReadProject))
@@ -69,6 +74,7 @@ public static class ProjectsEndpoints
 
         project.StructureSourceId = request.StructureSourceId;
         AddWithManager(project, userId, db, time.GetUtcNow().UtcDateTime);
+        db.Partners.AddRange(partners);
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{project.Id}", await ViewOfAsync(project, userId, db));
     }
@@ -222,6 +228,9 @@ public record CreateProjectRequest(string Name, DateOnly StartDate, List<string>
 
     /// <summary>What the project is; left out for none.</summary>
     public string Description { get; init; } = "";
+
+    /// <summary>The names of its partners, in order, each a table of its رأس المال once approved (redix-api #109); left out for none.</summary>
+    public List<string> Partners { get; init; } = [];
 }
 
 /// <summary>What the app sends to keep a project's description.</summary>
