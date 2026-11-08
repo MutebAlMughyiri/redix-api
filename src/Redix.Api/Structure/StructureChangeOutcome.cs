@@ -24,6 +24,9 @@ public enum StructureChangeOutcome
     /// <summary>A contract names the item, so its type stays, or that contract's payments would be refused (FR-38).</summary>
     ItemHasContract,
 
+    /// <summary>Partners are the item's tables, so it stays a capital item (redix-api #109).</summary>
+    ItemHasPartners,
+
     /// <summary>A person cannot choose that type for a column (FR-41).</summary>
     InvalidDataType,
 

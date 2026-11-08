@@ -33,7 +33,7 @@ public static class ProjectStructure
 
     /// <summary>The refusal of <paramref name="outcome"/>: a request that could never work is a bad request, anything else a conflict with what the row is.</summary>
     public static IResult Refused(StructureChangeOutcome outcome) =>
-        Refusal.Of(outcome is StructureChangeOutcome.GeneralSubgroup or StructureChangeOutcome.SubgroupInUse or StructureChangeOutcome.ItemHasEntries or StructureChangeOutcome.ItemHasContract or StructureChangeOutcome.CoreColumn ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, outcome.ToString());
+        Refusal.Of(outcome is StructureChangeOutcome.GeneralSubgroup or StructureChangeOutcome.SubgroupInUse or StructureChangeOutcome.ItemHasEntries or StructureChangeOutcome.ItemHasContract or StructureChangeOutcome.ItemHasPartners or StructureChangeOutcome.CoreColumn ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, outcome.ToString());
 
     /// <summary>True when an entry, an expense or revenue, is kept on the item <paramref name="itemId"/>.</summary>
     public static async Task<bool> ItemHasEntriesAsync(Guid itemId, RedixDbContext db) =>
@@ -64,12 +64,13 @@ public static class ProjectStructure
         return category?.ItemsOfferedFor(kind).SingleOrDefault(item => item.Id == itemId) ?? Item.None;
     }
 
-    /// <summary>The place after every table of the item <paramref name="itemId"/>, its subgroups and its contracts alike, for a table added to it (AC-46.8).</summary>
+    /// <summary>The place after every table of the item <paramref name="itemId"/>, its subgroups, contracts and partners alike, for a table added to it (AC-46.8).</summary>
     public static async Task<int> NextTablePlaceAsync(Guid itemId, RedixDbContext db)
     {
         var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).Select(subgroup => subgroup.SortOrder).ToListAsync();
         var contracts = await db.Contracts.Where(contract => contract.ItemId == itemId).Select(contract => contract.SortOrder).ToListAsync();
-        return subgroups.Concat(contracts).DefaultIfEmpty(-1).Max() + 1;
+        var partners = await db.Partners.Where(partner => partner.ItemId == itemId).Select(partner => partner.SortOrder).ToListAsync();
+        return subgroups.Concat(contracts).Concat(partners).DefaultIfEmpty(-1).Max() + 1;
     }
 
     /// <summary>Puts <paramref name="rows"/> in the order of <paramref name="ids"/>, the order of the report (AC-39.1). Anything but every row exactly once changes nothing, and answers false.</summary>

@@ -54,7 +54,7 @@ public static class ReportFilesEndpoints
         {
             return Results.NotFound();
         }
-        var report = await ItemReportEndpoints.OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db);
+        var report = await ItemReportEndpoints.OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, _ => true);
         return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "item.pdf") : Results.File(ItemReportFiles.Excel(report), ExcelType, "item.xlsx");
     }
 }

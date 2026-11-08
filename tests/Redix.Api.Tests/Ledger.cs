@@ -47,8 +47,14 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     }
 
     /// <summary>The project's revenue item of <paramref name="type"/>: the template gives every project one of each.</summary>
-    public async Task<Guid> RevenueItemAsync(ItemType type) =>
-        (await Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ProjectId}/categories", Json))!.SelectMany(category => category.Items).First(item => item.Type == type).Id;
+    public Task<Guid> RevenueItemAsync(ItemType type) => ItemOfTypeAsync(Client, ProjectId, type);
+
+    /// <summary>The first item of <paramref name="type"/> in the project <paramref name="projectId"/>, as <paramref name="client"/> reads it.</summary>
+    public static async Task<Guid> ItemOfTypeAsync(HttpClient client, Guid projectId, ItemType type) =>
+        (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{projectId}/categories", Json))!.SelectMany(category => category.Items).First(item => item.Type == type).Id;
+
+    /// <summary>The project's رأس المال, whose tables its partners are (redix-api #109): the template gives every project one.</summary>
+    public static Task<Guid> CapitalItemOfAsync(HttpClient client, Guid projectId) => ItemOfTypeAsync(client, projectId, ItemType.Capital);
 
     /// <summary>A purchase of <paramref name="amount"/> today, on the ledger's item, supplier, method and account (redix-api #96).</summary>
     public ExpenseRequest Purchase(decimal amount = 1150m) => new(Guid.CreateVersion7())

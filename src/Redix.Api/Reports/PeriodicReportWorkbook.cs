@@ -9,66 +9,34 @@ using Redix.Api.Translations;
 namespace Redix.Api.Reports;
 
 /// <summary>
-/// The periodic report as a workbook laid out as the project's own statement (UC-055, FR-46): الخلاصة with the revenue on one side and the expenses on the other, then a sheet for every
-/// other line of it, each written by <see cref="StatementWriter"/>: راس المال with a table per partner, then a sheet per item, expense or revenue. Every line of the summary points at
-/// its own sheets, and no sheet serves two lines (AC-46.10). Every total is a live formula, and new rows are green (BR-26).
+/// The periodic report as a workbook laid out as the project's own statement (UC-055, FR-46): الخلاصة with the revenue on one side and the expenses on the other, then a sheet per item,
+/// expense, revenue or capital, each written by <see cref="StatementWriter"/>; رأس المال is an item like any other, its tables its partners (redix-api #109). Every line of the summary points
+/// at its own sheets, and no sheet serves two lines (AC-46.10). Every total is a live formula, and new rows are green (BR-26).
 /// </summary>
 public static class PeriodicReportWorkbook
 {
     private const int Revenue = 1;
     private const int Expenses = 4;
 
-    private static readonly StatementColumn MovementAmount = new("المبلغ", CellKind.Text);
-
-    private static readonly List<StatementColumn> MovementColumns = [new("النوع", CellKind.Centred), new("التاريخ", CellKind.Date), new("الوصف", CellKind.Linked)];
-
-    /// <summary>The workbook of <paramref name="report"/>, each partner's receipt a link under <paramref name="receiptsAddress"/>.</summary>
-    public static byte[] Of(PeriodicReportSnapshot report, string receiptsAddress)
+    /// <summary>The workbook of <paramref name="report"/>.</summary>
+    public static byte[] Of(PeriodicReportSnapshot report)
     {
         using var workbook = StatementStyle.NewWorkbook();
         var names = new HashSet<string>();
         var summary = StatementStyle.AddSheet(workbook, "الخلاصة", names, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
-        var capitalTotal = StatementWriter.Add(workbook, CapitalOf(report, receiptsAddress), names);
         var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
         var itemTotals = report.Items.ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, names));
-        FillSummary(summary, report, capitalTotal, itemTotals);
+        FillSummary(summary, report, itemTotals);
         StatementStyle.Fit(summary);
         return StatementStyle.Bytes(workbook);
     }
 
     /// <summary>
-    /// The capital sheet (AC-46.6): a table per partner, their movements oldest first, each receipt a link under <paramref name="receiptsAddress"/>, and their share under their total. Someone
-    /// who sees only their own line (BR-31) gets the other partners as one table of one row, so اجمالي الكل is still the project's capital.
-    /// </summary>
-    /// <param name="report">The report.</param>
-    /// <param name="receiptsAddress">Where the receipts' links start; empty for a PDF, which links nothing.</param>
-    public static StatementSheet CapitalOf(PeriodicReportSnapshot report, string receiptsAddress)
-    {
-        List<StatementTable> tables = [.. report.Partners.Select(partner => Movements(partner.Name, Enumerable.Reverse(partner.Movements).Select(movement => MovementRow(movement, receiptsAddress))))];
-        var others = report.CapitalTotal - report.Partners.Sum(partner => partner.Balance);
-        if (others != 0)
-        {
-            tables.Add(Movements("باقي الشركاء", [new StatementRow(["", Blank.Value, "رأس مال باقي الشركاء"], others, "", false, true)]));
-        }
-        return new StatementSheet("راس المال", tables.Count > 0 ? tables : [Movements("الشركاء", [])], "نسبة المشاركة");
-    }
-
-    private static StatementTable Movements(string title, IEnumerable<StatementRow> rows) => new(title, MovementColumns, MovementAmount, rows.ToList(), 0);
-
-    private static StatementRow MovementRow(CapitalMovementView movement, string receiptsAddress) => new(
-        [
-            ReportFormats.Movement(movement.Type),
-            movement.Date.ToDateTime(TimeOnly.MinValue),
-            movement.Description.Length > 0 || movement.AttachmentId.Length == 0 ? movement.Description : "الإيصال",
-        ],
-        movement.Amount, movement.AttachmentId.Length > 0 ? receiptsAddress + movement.AttachmentId : "", false, true);
-
-    /// <summary>
-    /// Fills الخلاصة in the statement's layout. Each side lists its categories in order (AC-46.7): the revenue side starts with رأس المال, then every category of revenue items; the expense
-    /// side every category of expense items. A category of one item points at that item's sheet, one of more at its detail block (AC-46.10). A line holding only sale items is muted and left
+    /// Fills الخلاصة in the statement's layout. Each side lists its categories in order (AC-46.7): the revenue side every category of revenue items, رأس المال first as the structure orders
+    /// it; the expense side every category of expense items. A category of one item points at that item's sheet, one of more at its detail block (AC-46.10). A line holding only sale items is muted and left
     /// out of مجموع الايرادات بدون البيع.
     /// </summary>
-    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, string capitalTotal, Dictionary<Guid, string> itemTotals)
+    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, Dictionary<Guid, string> itemTotals)
     {
         var title = sheet.Range(1, 1, 1, 5).Merge();
         title.FirstCell().Value = report.ProjectName;
@@ -102,14 +70,13 @@ public static class PeriodicReportWorkbook
         Line(sheet, top, Expenses, "مصروفات").AsTotal();
         var expensesTotal = top + 1 + report.Categories.Count;
 
-        var revenue = top + 2 + report.RevenueCategories.Count;
+        var revenue = top + 1 + report.RevenueCategories.Count;
         var withoutSales = revenue + 2;
         var surplus = withoutSales + 2;
         var details = Details(sheet, [.. report.Categories, .. report.RevenueCategories], itemTotals, [surplus, expensesTotal]);
         string ValueOf(CategoryTotalView category) => category.Items.Count > 1 ? details[category.Id] : category.Items.Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).FirstOrDefault("0");
 
-        Line(sheet, top + 1, Revenue, "رأس المال", capitalTotal).AsBody();
-        var row = top + 2;
+        var row = top + 1;
         foreach (var category in report.RevenueCategories)
         {
             var line = Line(sheet, row++, Revenue, category.Name, ValueOf(category));
@@ -122,7 +89,7 @@ public static class PeriodicReportWorkbook
                 line.AsBody();
             }
         }
-        Line(sheet, revenue, Revenue, "مجموع الايرادات", $"SUM(B{top + 1}:B{revenue - 1})").AsTotal();
+        Line(sheet, revenue, Revenue, "مجموع الايرادات", revenue > top + 1 ? $"SUM(B{top + 1}:B{revenue - 1})" : "0").AsTotal();
         var sales = report.RevenueCategories.SelectMany(category => category.Items).Where(item => item.Type == ItemType.Sale).Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).ToList();
         Line(sheet, withoutSales, Revenue, "مجموع الايرادات بدون البيع", sales.Count > 0 ? $"B{revenue}-({string.Join("+", sales)})" : $"B{revenue}").AsMutedTotal();
         Line(sheet, withoutSales + 1, Revenue, "الفائض بدون البيع", $"B{withoutSales}-E{expensesTotal}").AsMutedTotal();

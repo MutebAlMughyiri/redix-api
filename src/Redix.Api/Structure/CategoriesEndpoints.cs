@@ -177,6 +177,10 @@ public static class CategoriesEndpoints
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasContract);
         }
+        if (await db.Partners.AnyAsync(partner => partner.ItemId == itemId))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.ItemHasPartners);
+        }
 
         item.Type = request.Type;
         var defaults = await db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == request.Type).OrderBy(column => column.SortOrder).ToListAsync();
@@ -258,18 +262,19 @@ public static class CategoriesEndpoints
             .GroupBy(subgroupId => subgroupId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count);
         var payments = await (from payment in db.ContractorPaymentDetails join entry in approved on payment.EntryId equals entry.Id select payment.ContractId)
             .GroupBy(contractId => contractId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count);
+        var movements = await (from movement in db.CapitalMovementDetails join entry in approved on movement.EntryId equals entry.Id select movement.PartnerId)
+            .GroupBy(partnerId => partnerId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count);
+        var counts = purchases.Concat(payments).Concat(movements).ToDictionary();
         var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
-        var contracts = await ContractTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), db);
-        return Results.Ok(TablesOf(item, subgroups, contracts)
-            .Select(table => new ItemTableView(table.Id, table.Kind, table.Name, (table.Kind == ItemTableKind.Contract ? payments : purchases).GetValueOrDefault(table.Id)))
-            .ToList());
+        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), db.Partners.Where(partner => partner.ItemId == itemId), db);
+        return Results.Ok(TablesOf(item, subgroups, own).Select(table => new ItemTableView(table.Id, table.Kind, table.Name, counts.GetValueOrDefault(table.Id))).ToList());
     }
 
     /// <summary>
     /// Every table an entry may go into (redix-app #84, redix-api #101): each active category's items that take purchases or contractor payments, each with its tables in the order
     /// its sheet prints them. An item's general and named tables show when it takes purchases, and its active contracts when it takes contractor payments. Whoever holds
-    /// <see cref="Permission.MoveMoney"/> also gets the revenue items, with their general and named tables, and right after the last category holding one, a group with no id and no
-    /// name holding each active partner as a table, which the app names: capital is revenue (BR-06, Muteb 8 Nov 2026). An item or a category with nothing to offer is left out.
+    /// <see cref="Permission.MoveMoney"/> also gets the revenue items with their tables, a capital item's being its partners (redix-api #109). An item or a category with nothing to
+    /// offer is left out.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
@@ -277,56 +282,62 @@ public static class CategoriesEndpoints
     public static async Task<List<TableCategoryView>> EntryTables(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var movesMoney = (await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db)).In(projectId).Contains(Permission.MoveMoney);
-        var contracts = await ContractTablesAsync(db.Contracts.Where(contract => contract.ProjectId == projectId && contract.IsActive), db);
-        var tables = (await ReadAsync(projectId, db))
-            .Select(category => new TableCategoryView(Ids.Text(category.Id), category.Name, category.ItemsOfferedFor(ItemType.Purchases)
+        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ProjectId == projectId && contract.IsActive), db.Partners.Where(partner => partner.ProjectId == projectId), db);
+        return (await ReadAsync(projectId, db))
+            .Select(category => new TableCategoryView(category.Id, category.Name, category.ItemsOfferedFor(ItemType.Purchases)
                 .Concat(category.ItemsOfferedFor(ItemType.ContractorPayments))
-                .Concat(movesMoney ? category.ItemsOfferedFor(ItemType.OtherRevenue) : [])
+                .Concat(movesMoney ? [.. category.ItemsOfferedFor(ItemType.OtherRevenue), .. category.ItemsOfferedFor(ItemType.Capital)] : [])
                 .Distinct()
                 .OrderBy(item => item.SortOrder)
                 .Select(item => new TableItemView(item.Id, item.Name, TablesOf(
                     item,
                     item.IsOfferedFor(ItemType.Purchases) || item.Type.IsRevenue() ? item.Subgroups : [],
-                    item.IsOfferedFor(ItemType.ContractorPayments) ? contracts.Where(contract => contract.ItemId == item.Id) : []).ToList(), item.Type.IsRevenue()))
+                    own.Where(table => table.Kind == ItemTableKind.Partner || item.IsOfferedFor(ItemType.ContractorPayments))).ToList(), item.Type.IsRevenue()))
                 .Where(view => view.Tables.Count > 0)
                 .ToList()))
             .Where(view => view.Items.Count > 0)
             .ToList();
-        var partners = movesMoney ? await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync() : [];
-        if (partners.Count > 0)
-        {
-            var afterRevenue = tables.FindLastIndex(category => category.Items.Any(item => item.IsRevenue)) + 1;
-            tables.Insert(afterRevenue == 0 ? tables.Count : afterRevenue, new TableCategoryView("", "", partners.OrderBy(partner => partner.Id).Select(partner => new TableItemView(partner.Id, partner.Name, [new EntryTableView(partner.Id, ItemTableKind.Partner, partner.Name)], false)).ToList()));
-        }
-        return tables;
     }
 
-    /// <summary>The contracts of <paramref name="contracts"/> as tables, each named after its contractor.</summary>
-    private static Task<List<ContractTable>> ContractTablesAsync(IQueryable<Contract> contracts, RedixDbContext db) =>
-        (from contract in contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id select new ContractTable(contract.Id, contract.ItemId, contract.SortOrder, supplier.Name)).ToListAsync();
+    /// <summary>The tables each with a business of its own makes: <paramref name="contracts"/>, each named after its contractor, and <paramref name="partners"/> (redix-api #109).</summary>
+    private static async Task<List<OwnTable>> OwnTablesAsync(IQueryable<Contract> contracts, IQueryable<Partners.Partner> partners, RedixDbContext db) =>
+    [
+        .. await (from contract in contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id select new OwnTable(contract.Id, contract.ItemId, contract.SortOrder, supplier.Name, ItemTableKind.Contract)).ToListAsync(),
+        .. await partners.Select(partner => new OwnTable(partner.Id, partner.ItemId, partner.SortOrder, partner.Name, ItemTableKind.Partner)).ToListAsync(),
+    ];
 
-    /// <summary>The tables of <paramref name="item"/> among <paramref name="subgroups"/> and <paramref name="contracts"/>, in the order its sheet prints them (AC-46.8): its general table named after the item, each named subgroup, and each contract's payments named after its contractor.</summary>
-    private static IEnumerable<EntryTableView> TablesOf(Item item, IEnumerable<Subgroup> subgroups, IEnumerable<ContractTable> contracts) =>
-        subgroups.Select(subgroup => (subgroup.SortOrder, Table: new EntryTableView(subgroup.Id, subgroup.Name == Subgroup.GeneralName ? ItemTableKind.General : ItemTableKind.Subgroup, subgroup.Name == Subgroup.GeneralName ? item.Name : subgroup.Name)))
-            .Concat(contracts.Select(contract => (contract.SortOrder, Table: new EntryTableView(contract.Id, ItemTableKind.Contract, contract.Name))))
+    /// <summary>
+    /// The tables of <paramref name="item"/> among <paramref name="subgroups"/> and <paramref name="own"/>, in the order its sheet prints them (AC-46.8): its general table named after the item,
+    /// each named subgroup, each contract's payments named after its contractor, and for a capital item its partners alone (redix-api #109).
+    /// </summary>
+    private static IEnumerable<EntryTableView> TablesOf(Item item, IEnumerable<Subgroup> subgroups, IEnumerable<OwnTable> own) =>
+        (item.HasSubgroupTables ? subgroups : [])
+            .Select(subgroup => (subgroup.SortOrder, Table: new EntryTableView(subgroup.Id, subgroup.Name == Subgroup.GeneralName ? ItemTableKind.General : ItemTableKind.Subgroup, subgroup.Name == Subgroup.GeneralName ? item.Name : subgroup.Name)))
+            .Concat(own.Where(table => table.ItemId == item.Id).Select(table => (table.SortOrder, Table: new EntryTableView(table.Id, table.Kind, table.Name))))
             .OrderBy(table => table.SortOrder)
             .Select(table => table.Table);
 
-    /// <summary>A contract as a table: its id, its item, its place in the item's sheet and its contractor's name.</summary>
-    private sealed record ContractTable(Guid Id, Guid ItemId, int SortOrder, string Name);
+    /// <summary>A table with a business of its own: its id, its item, its place in the item's sheet, its name and what it is.</summary>
+    private sealed record OwnTable(Guid Id, Guid ItemId, int SortOrder, string Name, ItemTableKind Kind);
 
-    /// <summary>Puts all an item's tables, its subgroups and its contracts alike, in the order given, which is the order of its sheet (AC-46.8). A list that is not exactly them answers <c>invalidOrder</c>.</summary>
+    /// <summary>Puts all an item's tables, its subgroups, contracts and partners alike, in the order given, which is the order of its sheet (AC-46.8). A list that is not exactly them answers <c>invalidOrder</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
     /// <param name="request">Every table's id, in the new order.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static async Task<IResult> ReorderTables(Guid projectId, Guid itemId, ReorderRequest request, RedixDbContext db)
     {
-        if (!await ProjectStructure.HasItemAsync(projectId, itemId, db))
+        var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
+        if (item == Item.None)
         {
             return Results.NotFound();
         }
-        List<IOrdered> tables = [.. await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync(), .. await db.Contracts.Where(contract => contract.ItemId == itemId).ToListAsync()];
+        List<IOrdered> tables =
+        [
+            .. item.HasSubgroupTables ? await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync() : [],
+            .. await db.Contracts.Where(contract => contract.ItemId == itemId).ToListAsync(),
+            .. await db.Partners.Where(partner => partner.ItemId == itemId).ToListAsync(),
+        ];
         return await ReorderAsync(tables, request, db);
     }
 
@@ -440,7 +451,7 @@ public record TablePercentagesRequest(bool IsOn);
 public record ReorderRequest(List<Guid> Ids);
 
 /// <summary>A category as the app shows it.</summary>
-/// <param name="Id">The category's id; empty for the partners' group.</param>
+/// <param name="Id">The category's id.</param>
 /// <param name="Name">The category's name.</param>
 /// <param name="IsActive">False once disabled.</param>
 /// <param name="Items">Its items, in order.</param>
@@ -464,29 +475,29 @@ public record ItemView(Guid Id, string Name, ItemType Type, bool IsActive, List<
 }
 
 /// <summary>One table of an item's sheet, as the app lists them.</summary>
-/// <param name="Id">The subgroup or contract it prints.</param>
+/// <param name="Id">The subgroup, contract or partner it prints.</param>
 /// <param name="Kind">What it prints.</param>
-/// <param name="Name">The item's name for its general table, the subgroup's, or the contractor's.</param>
+/// <param name="Name">The item's name for its general table, the subgroup's, the contractor's, or the partner's.</param>
 /// <param name="Count">How many approved entries it holds.</param>
 public record ItemTableView(Guid Id, ItemTableKind Kind, string Name, int Count);
 
-/// <summary>A category of the tables an entry may go into (redix-app #84); the partners' group has no id and no name (redix-api #101).</summary>
-/// <param name="Id">The category's id; empty for the partners' group.</param>
+/// <summary>A category of the tables an entry may go into (redix-app #84).</summary>
+/// <param name="Id">The category's id.</param>
 /// <param name="Name">The category's name.</param>
-/// <param name="Items">Its items that take entries, in order, or its partners.</param>
-public record TableCategoryView(string Id, string Name, List<TableItemView> Items);
+/// <param name="Items">Its items that take entries, in order.</param>
+public record TableCategoryView(Guid Id, string Name, List<TableItemView> Items);
 
-/// <summary>An item and the tables of it an entry may go into, or a partner and their one table.</summary>
-/// <param name="Id">The item's id, or the partner's.</param>
-/// <param name="Name">The item's name, or the partner's.</param>
+/// <summary>An item and the tables of it an entry may go into.</summary>
+/// <param name="Id">The item's id.</param>
+/// <param name="Name">The item's name.</param>
 /// <param name="Tables">Its tables, in the order its sheet prints them.</param>
 /// <param name="IsRevenue">True for a revenue item, whose entries are revenue.</param>
 public record TableItemView(Guid Id, string Name, List<EntryTableView> Tables, bool IsRevenue);
 
-/// <summary>One table of an item's sheet: a purchase goes into its general or a named one, a contractor payment into its contract's.</summary>
-/// <param name="Id">The subgroup or contract it prints.</param>
+/// <summary>One table of an item's sheet: a purchase goes into its general or a named one, a contractor payment into its contract's, a partner's money into theirs.</summary>
+/// <param name="Id">The subgroup, contract or partner it prints.</param>
 /// <param name="Kind">What it prints.</param>
-/// <param name="Name">The item's name for its general table, the subgroup's, or the contractor's.</param>
+/// <param name="Name">The item's name for its general table, the subgroup's, the contractor's, or the partner's.</param>
 public record EntryTableView(Guid Id, ItemTableKind Kind, string Name);
 
 /// <summary>What a table of an item's sheet prints.</summary>
@@ -501,7 +512,7 @@ public enum ItemTableKind : byte
     /// <summary>A contract's payments.</summary>
     Contract,
 
-    /// <summary>A partner, whose entries are capital movements (redix-api #101).</summary>
+    /// <summary>A partner of a capital item, whose entries are capital movements (redix-api #101, #109).</summary>
     Partner,
 }
 

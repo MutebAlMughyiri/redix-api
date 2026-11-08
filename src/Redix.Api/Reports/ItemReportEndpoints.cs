@@ -4,10 +4,15 @@ using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
+using System.Security.Claims;
+using Redix.Api.Partners;
 
 namespace Redix.Api.Reports;
 
-/// <summary>Everything spent on one item (UC-050, FR-30): its purchases by subgroup, then each contract's payments; for a revenue item, its revenue by subgroup.</summary>
+/// <summary>
+/// Everything spent on one item (UC-050, FR-30): its purchases by subgroup, then each contract's payments; for a revenue item, its revenue by subgroup; for a capital item, each partner's
+/// money in and out, a table each (redix-api #109).
+/// </summary>
 public static class ItemReportEndpoints
 {
     /// <summary>Maps the route, for anyone who reads the project.</summary>
@@ -15,18 +20,31 @@ public static class ItemReportEndpoints
     public static void MapItemReport(this WebApplication app) =>
         app.MapGet("/projects/{projectId:guid}/reports/items/{itemId:guid}", Report).RequireAuthorization(nameof(Permission.ReadProject));
 
-    /// <summary>The report of the item, from what is approved, in date order. Its subgroups and its contracts' payments add up to its total (AC-30.1). An item of another project is not found.</summary>
+    /// <summary>
+    /// The report of the item, from what is approved, in date order. Its subgroups and its contracts' payments add up to its total (AC-30.1). A capital item shows the caller only their own
+    /// partner's table unless they see all capital (BR-31), and its total stays the project's capital. An item of another project is not found.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
+    /// <param name="principal">The caller's session, which says whose capital they see.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static async Task<IResult> Report(Guid projectId, Guid itemId, RedixDbContext db)
+    public static async Task<IResult> Report(Guid projectId, Guid itemId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var item = await ProjectStructure.ItemWithTablesAsync(projectId, itemId, db);
-        return item == Item.None ? Results.NotFound() : Results.Ok(await OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db));
+        if (item == Item.None)
+        {
+            return Results.NotFound();
+        }
+        var userId = AccessTokens.UserIdOf(principal);
+        var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
+        return Results.Ok(await OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, partner => seesAll || partner.UserId == userId));
     }
 
-    /// <summary>The report of <paramref name="item"/>, for whatever shows it: the screen, or a file. What was approved after <paramref name="newSince"/> is marked new (BR-26).</summary>
-    public static async Task<ItemReportView> OfAsync(Guid projectId, Item item, DateTime newSince, RedixDbContext db)
+    /// <summary>
+    /// The report of <paramref name="item"/>, for whatever shows it: the screen, or a file. What was approved after <paramref name="newSince"/> is marked new (BR-26). Of a capital item's
+    /// partners, only those <paramref name="shows"/> keeps have their table.
+    /// </summary>
+    public static async Task<ItemReportView> OfAsync(Guid projectId, Item item, DateTime newSince, RedixDbContext db, Func<Partner, bool> shows)
     {
         var rows = await (
             from expense in db.ExpenseDetails
@@ -71,9 +89,29 @@ public static class ItemReportEndpoints
             var paid = money.GetValueOrDefault(row.contract.Id).Paid;
             return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.RemainingAfter(paid), row.contract.IsOverrunBy(paid), lines.Sum(line => line.Amount), lines) { SortOrder = row.contract.SortOrder };
         }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
+        var movements = await (
+            from movement in db.CapitalMovementDetails
+            join entry in db.Entries on movement.EntryId equals entry.Id
+            join partner in db.Partners on movement.PartnerId equals partner.Id
+            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && partner.ItemId == item.Id
+            orderby entry.EntryDate, entry.Id
+            select new { entry, movement }).ToListAsync();
+        ItemEntryRow MovementRowOf(Entry entry, CapitalMovementDetails movement) => new(
+            entry.Id, entry.EntryDate, string.Join(" · ", new[] { ReportFormats.Movement(movement.Type), movement.Description }.Where(text => text.Length > 0)), "", "", 0, 0,
+            CapitalMovementDetails.IsInflow(movement.Type) ? entry.Amount : -entry.Amount, false, [], entry.ApprovedAt > newSince);
+        var partners = (await db.Partners.Where(partner => partner.ItemId == item.Id).ToListAsync()).Where(shows).OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id);
+        var partnerTables = partners.Select(partner =>
+        {
+            var lines = movements.Where(row => row.movement.PartnerId == partner.Id).Select(row => MovementRowOf(row.entry, row.movement)).ToList();
+            return new SubgroupReportView(partner.Id, partner.Name, lines.Sum(line => line.Amount), lines) { SortOrder = partner.SortOrder };
+        }).Where(table => table.Rows.Count > 0);
         var categoryName = await db.Categories.Where(category => category.Id == item.CategoryId).Select(category => category.Name).SingleAsync();
-        var total = rows.Sum(row => row.entry.Amount) + revenue.Sum(row => row.entry.Amount);
-        return new ItemReportView(item.Id, item.Name, categoryName, total, columns.Select(column => column.Name).ToList(), subgroups, contractViews) { ShowsTablePercentages = item.ShowsTablePercentages, Type = item.Type };
+        var total = rows.Sum(row => row.entry.Amount) + revenue.Sum(row => row.entry.Amount) + movements.Sum(row => MovementRowOf(row.entry, row.movement).Amount);
+        return new ItemReportView(item.Id, item.Name, categoryName, total, columns.Select(column => column.Name).ToList(), [.. subgroups, .. partnerTables], contractViews)
+        {
+            ShowsTablePercentages = item.ShowsTablePercentages,
+            Type = item.Type,
+        };
     }
 }
 
@@ -94,11 +132,11 @@ public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, 
     public ItemType Type { get; init; }
 }
 
-/// <summary>One subgroup's purchases.</summary>
-/// <param name="Id">The subgroup.</param>
+/// <summary>One table's rows: a subgroup's purchases or revenue, or a partner's money in and out.</summary>
+/// <param name="Id">The subgroup, or the partner.</param>
 /// <param name="Name">Its name; empty for the general one.</param>
-/// <param name="Total">Its purchases.</param>
-/// <param name="Rows">Each purchase.</param>
+/// <param name="Total">What its rows add up to.</param>
+/// <param name="Rows">Each row.</param>
 public record SubgroupReportView(Guid Id, string Name, decimal Total, List<ItemEntryRow> Rows)
 {
     /// <summary>Its place among the item's tables (AC-46.8); zero in a report issued before tables had one.</summary>

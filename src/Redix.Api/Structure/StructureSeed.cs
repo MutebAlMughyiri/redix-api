@@ -25,6 +25,7 @@ public static class StructureSeed
             ("معدات تشطيب", ItemType.Both), ("رواتب الحارس", ItemType.Both),
         ]),
         ("الإشراف", [("إشراف مالي", ItemType.Both), ("إشراف ميداني", ItemType.Both)]),
+        ("رأس المال", [("رأس المال", ItemType.Capital)]),
         ("استرجاع ضرائب", [("استرجاع الضرائب", ItemType.VatRefund)]),
         ("إيرادات أخرى", [("إيرادات أخرى", ItemType.OtherRevenue)]),
         ("فلوس البيع المودعة بالحساب", [("البيع", ItemType.Sale)]),
@@ -76,7 +77,7 @@ public static class StructureSeed
 
     /// <summary>Their items.</summary>
     public static IEnumerable<Item> Items => Seeded.SelectMany(category => category.Items.Select((item, index) =>
-        new Item { Id = ItemId(category.Category, item.Name), CategoryId = CategoryId(category.Category), Name = item.Name, Type = item.Type, SortOrder = index }));
+        new Item { Id = ItemId(category.Category, item.Name), CategoryId = CategoryId(category.Category), Name = item.Name, Type = item.Type, SortOrder = index, ShowsTablePercentages = item.Type == ItemType.Capital }));
 
     /// <summary>Each item's general group.</summary>
     public static IEnumerable<Subgroup> Subgroups => Items.Select(item => new Subgroup { Id = StableIds.Of($"subgroup:{item.Id}"), ItemId = item.Id, Name = Subgroup.GeneralName });

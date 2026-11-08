@@ -156,7 +156,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_45_1_ThePdfIsAPdfWithAPagePerItemAfterTheSummaryAndPartners()
+    public async Task AC_45_1_ThePdfIsAPdfWithAPagePerItemAfterTheSummary()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ApprovedAsync(ledger, ledger.Purchase(115));
@@ -165,7 +165,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var pdf = await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/pdf");
 
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(System.Text.Encoding.Latin1.GetString(pdf), @"/Type\s*/Page(?!s)").Count);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(System.Text.Encoding.Latin1.GetString(pdf), @"/Type\s*/Page(?!s)").Count);
     }
 
     [Fact]
@@ -180,19 +180,19 @@ public class ReportFilesTests(MigratedApiFactory factory)
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
         workbook.RecalculateAllFormulas();
 
-        var itemSheet = workbook.Worksheet(3);
-        Assert.Equal(["الخلاصة", "راس المال"], workbook.Worksheets.Take(2).Select(sheet => sheet.Name));
+        var itemSheet = workbook.Worksheet(2);
+        Assert.Equal(["الخلاصة", itemSheet.Name, "رأس المال"], workbook.Worksheets.Select(sheet => sheet.Name));
         Assert.All(workbook.Worksheets, sheet => Assert.True(sheet.RightToLeft && sheet.PageSetup.PagesWide == 1 && sheet.PageSetup.PaperSize == XLPaperSize.A4Paper));
         var summary = workbook.Worksheet("الخلاصة");
         Assert.Equal(("رقم التقرير:", "1", "غصون 6"), (summary.Cell("A2").GetString(), summary.Cell("B2").GetString(), summary.Cell("A1").GetString()));
-        Assert.Equal(("ايرادات", "مصروفات", "رأس المال", "'راس المال'!E4"), (summary.Cell("A9").GetString(), summary.Cell("D9").GetString(), summary.Cell("A10").GetString(), summary.Cell("B10").FormulaA1));
+        Assert.Equal(("ايرادات", "مصروفات", "رأس المال", "'رأس المال'!D4"), (summary.Cell("A9").GetString(), summary.Cell("D9").GetString(), summary.Cell("A10").GetString(), summary.Cell("B10").FormulaA1));
         Assert.Equal(("مجموع الايرادات", 1000m, 115m, 885m), (summary.Cell("A14").GetString(), summary.Cell("B14").GetValue<decimal>(), summary.Cell("E15").GetValue<decimal>(), summary.Cell("B18").GetValue<decimal>()));
         Assert.Equal(("تفاصيل العظم:", "B31"), (summary.Cell("A21").GetString(), summary.Cell("E12").FormulaA1));
         Assert.Equal(["استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], new[] { 11, 12, 13 }.Select(line => summary.Cell(line, 1).GetString()));
         Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains($"'{itemSheet.Name}'!"));
-        var capital = workbook.Worksheet("راس المال");
-        Assert.Equal(("شريك", "إضافة مبلغ", 1000m), (capital.Cell("A1").GetString(), capital.Cell("B3").GetString(), capital.Cell("E3").GetValue<decimal>()));
-        Assert.Equal(("الاجمالي", 1000m), (capital.Cell("A4").GetString(), capital.Cell("E4").GetValue<decimal>()));
+        var capital = workbook.Worksheet("رأس المال");
+        Assert.Equal(("شريك", "إضافة مبلغ", 1000m), (capital.Cell("A1").GetString(), capital.Cell("B3").GetString(), capital.Cell("D3").GetValue<decimal>()));
+        Assert.Equal(("الاجمالي", 1000m), (capital.Cell("A4").GetString(), capital.Cell("D4").GetValue<decimal>()));
         var row = itemSheet.CellsUsed().First(cell => cell.GetString().StartsWith("P1 ·")).Address.RowNumber;
         Assert.True(itemSheet.Cell(row, 5).IsEmpty() && itemSheet.Cell(row, 6).IsEmpty(), "a price and a quantity nobody entered stay blank, as in the PDF");
         Assert.Equal((itemSheet.Name, "الوصف", 115m), (itemSheet.Cell("A1").GetString(), itemSheet.Cell("B2").GetString(), itemSheet.Cell(row + 1, 7).GetValue<decimal>()));
@@ -236,17 +236,21 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var report = Report([Item("السباكة", "العظم", Subgroup("", Row(100, "P1"))), Item("السباكة", "التشطيب", Subgroup("", Row(100, "P2")))]);
 
-        using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, "")));
+        using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report)));
 
-        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(2).Select(sheet => sheet.Name));
+        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(1).Select(sheet => sheet.Name));
     }
 
     [Fact]
-    public void AC_46_7_TheRevenueSideIsCapitalThenEachRevenueCategoryEachOnItsOwnSheetAndSalesAreMuted()
+    public void AC_46_7_UC_109_TheRevenueSideIsEachRevenueCategoryInTheStructuresOrderRasAlMalFirstEachOnItsOwnSheetAndSalesAreMuted()
     {
+        var capital = Capital(("سالم", 500));
         var refunds = Item("استرجاع الضرائب", "استرجاع ضرائب", Subgroup("", Row(200, ""), Row(100, "", isNew: true))) with { Type = ItemType.VatRefund };
         var sales = Item("البيع", "فلوس البيع المودعة بالحساب", Subgroup("", Row(1000, "S-1"))) with { Type = ItemType.Sale };
-        var report = Report([refunds, sales]) with { RevenueCategories = [Category("استرجاع ضرائب", ItemType.VatRefund, refunds), Category("فلوس البيع المودعة بالحساب", ItemType.Sale, sales)] };
+        var report = Report([capital, refunds, sales]) with
+        {
+            RevenueCategories = [Category("رأس المال", ItemType.Capital, capital), Category("استرجاع ضرائب", ItemType.VatRefund, refunds), Category("فلوس البيع المودعة بالحساب", ItemType.Sale, sales)],
+        };
 
         using var workbook = Workbook(report);
 
@@ -254,9 +258,10 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var refundSheet = workbook.Worksheet("استرجاع الضرائب");
         Assert.Equal(("المبلغ", 300m), (refundSheet.Cell("D2").GetString(), refundSheet.Cell("D5").GetValue<decimal>()));
         Assert.Equal(StatementStyle.Green, refundSheet.Cell("B4").Style.Fill.BackgroundColor);
-        Assert.Equal(("رأس المال", "استرجاع ضرائب", "'استرجاع الضرائب'!D5", 300m), (summary.Cell("A10").GetString(), summary.Cell("A11").GetString(), summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>()));
+        Assert.Equal(("رأس المال", "'رأس المال'!D4", 500m), (summary.Cell("A10").GetString(), summary.Cell("B10").FormulaA1, summary.Cell("B10").GetValue<decimal>()));
+        Assert.Equal(("استرجاع ضرائب", "'استرجاع الضرائب'!D5", 300m), (summary.Cell("A11").GetString(), summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>()));
         Assert.Equal(("فلوس البيع المودعة بالحساب", StatementStyle.Muted), (summary.Cell("A12").GetString(), summary.Cell("A12").Style.Font.FontColor));
-        Assert.Equal(("مجموع الايرادات", 1300m, 300m), (summary.Cell("A13").GetString(), summary.Cell("B13").GetValue<decimal>(), summary.Cell("B15").GetValue<decimal>()));
+        Assert.Equal(("مجموع الايرادات", 1800m, 800m), (summary.Cell("A13").GetString(), summary.Cell("B13").GetValue<decimal>(), summary.Cell("B15").GetValue<decimal>()));
     }
 
     [Fact]
@@ -271,21 +276,29 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public void AC_46_6_CapitalIsATablePerPartnerWithTheirShareUnderTheirTotalAndTheWholeCapitalForEveryone()
+    public void AC_46_6_UC_109_RasAlMalIsAnItemWhoseTablesAreItsPartnersEachOnesShareUnderTheirTotalAndTheWholeCapitalUnderThem()
+    {
+        var capital = Capital(("سالم", 150), ("خالد", 50));
+
+        using var workbook = Workbook(Report([capital]) with { RevenueCategories = [Category("رأس المال", ItemType.Capital, capital)] });
+
+        var sheet = workbook.Worksheet("رأس المال");
+        Assert.Equal(("سالم", "الاجمالي", 150m), (sheet.Cell("A1").GetString(), sheet.Cell("A4").GetString(), sheet.Cell("D4").GetValue<decimal>()));
+        Assert.Equal(("النسبة", 0.75m, "خالد", 0.25m), (sheet.Cell("A5").GetString(), sheet.Cell("D5").GetValue<decimal>(), sheet.Cell("A7").GetString(), sheet.Cell("D11").GetValue<decimal>()));
+        Assert.Equal(("اجمالي الكل", 200m, "نسبة الكل", 1m), (sheet.Cell("A13").GetString(), sheet.Cell("D13").GetValue<decimal>(), sheet.Cell("A14").GetString(), sheet.Cell("D14").GetValue<decimal>()));
+        Assert.Equal("'رأس المال'!D13", workbook.Worksheet("الخلاصة").Cell("B10").FormulaA1);
+    }
+
+    [Fact]
+    public void BR_31_UC_109_AReportForAPartnerHoldsTheirLineAndNoItemReportWhichOnlyTheFilesTake()
     {
         var khaled = Guid.NewGuid();
-        var report = Report([]) with { Capital = 200, CapitalTotal = 200, Partners = [Partner("سالم", Guid.NewGuid(), 150), Partner("خالد", khaled, 50)] };
+        var report = Report([Capital(("سالم", 150), ("خالد", 50))]) with { Partners = [new ReportPartnerView("سالم", Guid.NewGuid(), 150, 75), new ReportPartnerView("خالد", khaled, 50, 25)] };
 
-        using var full = Workbook(report);
-        using var own = Workbook(report.ForPartnerOf(khaled));
+        var seen = report.ForPartnerOf(khaled);
 
-        var capital = full.Worksheet("راس المال");
-        Assert.Equal(("سالم", "الاجمالي", 150m), (capital.Cell("A1").GetString(), capital.Cell("A4").GetString(), capital.Cell("E4").GetValue<decimal>()));
-        Assert.Equal(("نسبة المشاركة", 0.75m, "خالد", 0.25m), (capital.Cell("A5").GetString(), capital.Cell("E5").GetValue<decimal>(), capital.Cell("A7").GetString(), capital.Cell("E11").GetValue<decimal>()));
-        Assert.Equal(("اجمالي الكل", 200m, "نسبة الكل", 1m), (capital.Cell("A13").GetString(), capital.Cell("E13").GetValue<decimal>(), capital.Cell("A14").GetString(), capital.Cell("E14").GetValue<decimal>()));
-        Assert.Equal("'راس المال'!E13", full.Worksheet("الخلاصة").Cell("B10").FormulaA1);
-        var seen = own.Worksheet("راس المال");
-        Assert.Equal(("خالد", "باقي الشركاء", 150m, 200m), (seen.Cell("A1").GetString(), seen.Cell("A7").GetString(), seen.Cell("E9").GetValue<decimal>(), seen.Cell("E13").GetValue<decimal>()));
+        Assert.Equal("خالد", Assert.Single(seen.Partners).Name);
+        Assert.Empty(seen.Items);
     }
 
     [Fact]
@@ -349,7 +362,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
     private static XLWorkbook Workbook(PeriodicReportSnapshot report)
     {
-        var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, "")));
+        var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report)));
         workbook.RecalculateAllFormulas();
         return workbook;
     }
@@ -371,8 +384,9 @@ public class ReportFilesTests(MigratedApiFactory factory)
     private static CategoryTotalView Category(string name, ItemType type, params ItemReportView[] items) =>
         new(Guid.NewGuid(), name, items.Sum(item => item.Total), [.. items.Select(item => new ItemTotalView(item.ItemId, item.ItemName, item.Total, type))]);
 
-    private static ReportPartnerView Partner(string name, Guid userId, decimal balance) =>
-        new(name, userId, balance, 0, [new CapitalMovementView(Guid.NewGuid(), CapitalMovementType.Contribution, new DateOnly(2026, 3, 1), balance, "تحويل بنكي", "", "حساب المؤسسة", "", "", false)]);
+    /// <summary>رأس المال as an item (redix-api #109): a table per partner holding one contribution, its sheet giving each one's share.</summary>
+    private static ItemReportView Capital(params (string Name, decimal Amount)[] partners) =>
+        Item("رأس المال", "رأس المال", [.. partners.Select(partner => Subgroup(partner.Name, Row(partner.Amount, "")))]) with { Type = ItemType.Capital, ShowsTablePercentages = true };
 
     private static ItemEntryRow Row(decimal amount, string invoiceNumber, bool isNew = false, bool isOutside = false) =>
         new(Guid.NewGuid(), new DateOnly(2026, 9, 1), "دفعة", "", invoiceNumber, 0, 0, amount, isOutside, [], isNew);
@@ -417,9 +431,9 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public void Row_130_EveryFigureOfTheWorkbooksCapitalAndItemSheetsIsOnThePeriodicReportsPdf()
+    public void Row_130_EveryFigureOfTheWorkbooksItemSheetsRasAlMalAmongThemIsOnThePeriodicReportsPdf()
     {
-        var report = Report([Tiles()]) with { CapitalTotal = 4000, Partners = [Partner("متعب", Guid.Empty, 3000), Partner("نواف", Guid.Empty, 1000)] };
+        var report = Report([Tiles(), Capital(("متعب", 3000), ("نواف", 1000))]);
 
         using var workbook = Workbook(report);
 
@@ -498,7 +512,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
     private static async Task<Guid> PartnerAsync(Ledger ledger, string name, Guid userId = default)
     {
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name) { UserId = userId }, Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)) { UserId = userId }, Json)).EnsureSuccessStatusCode();
         return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
     }
 }

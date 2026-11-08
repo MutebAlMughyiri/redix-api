@@ -20,6 +20,9 @@ public enum ItemType : byte
 
     /// <summary>Revenue: anything else that comes in.</summary>
     OtherRevenue,
+
+    /// <summary>Revenue: what the partners put in, less what they took out (BR-05, BR-06). Its tables are its partners, each a table as a contract is (redix-api #109).</summary>
+    Capital,
 }
 
 /// <summary>What an item's type says beyond itself.</summary>

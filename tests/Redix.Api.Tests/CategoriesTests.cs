@@ -10,6 +10,7 @@ using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
+using Redix.Api.Revenue;
 
 namespace Redix.Api.Tests;
 
@@ -100,9 +101,9 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var categories = await CategoriesOf(client, project.Id);
 
-        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "الإشراف", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], categories.Select(category => category.Name));
-        Assert.Equal([1, 6, 9, 14, 2, 1, 1, 1], categories.Select(category => category.Items.Count));
-        Assert.Equal([ItemType.VatRefund, ItemType.OtherRevenue, ItemType.Sale], categories.Skip(5).Select(category => category.Items.Single().Type));
+        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "الإشراف", "رأس المال", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], categories.Select(category => category.Name));
+        Assert.Equal([1, 6, 9, 14, 2, 1, 1, 1, 1], categories.Select(category => category.Items.Count));
+        Assert.Equal([ItemType.Capital, ItemType.VatRefund, ItemType.OtherRevenue, ItemType.Sale], categories.Skip(5).Select(category => category.Items.Single().Type));
         Assert.Equal(["الحفر", "الحديد", "الخرسانة", "البناء", "دفعات العظم", "الكهرباء", "السباكة", "ردود الماء", "أغراض الموقع"], categories[2].Items.Select(item => item.Name));
     }
 
@@ -188,7 +189,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         await ApproveAsAdminAsync(project.Id);
 
-        await factory.WithDatabaseAsync(async db => Assert.Equal(8, await db.Categories.CountAsync(category => category.ProjectId == project.Id)));
+        await factory.WithDatabaseAsync(async db => Assert.Equal(9, await db.Categories.CountAsync(category => category.ProjectId == project.Id)));
     }
 
     [Fact]
@@ -224,7 +225,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
 
         var copied = await CategoriesOf(client, project.Id);
-        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], copied.Select(category => category.Name));
+        Assert.Equal(["تكلفة الأراضي", "الرسوم والفواتير", "العظم", "التشطيب", "رأس المال", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], copied.Select(category => category.Name));
         Assert.DoesNotContain(copied[2].Items, copiedItem => copiedItem.Name == "الحفر");
     }
 
@@ -481,7 +482,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         foreach (var role in new[] { Field, Reader, "Manager" })
         {
             var member = await MemberAsync(project, role);
-            Assert.Equal(8, (await CategoriesOf(member, project.Id)).Count);
+            Assert.Equal(9, (await CategoriesOf(member, project.Id)).Count);
             Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsJsonAsync($"/projects/{project.Id}/categories", new NameRequest("الملاحق"))).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsync($"/projects/{project.Id}/categories/{category.Id}/disable", null)).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsync($"/projects/{project.Id}/items/{category.Items[0].Id}/disable", null)).StatusCode);
@@ -530,7 +531,7 @@ public class CategoriesTests(MigratedApiFactory factory)
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
             Assert.Equal("projectFinished", await CodeOf(refused));
         }
-        Assert.Equal(8, (await CategoriesOf(client, project.Id)).Count);
+        Assert.Equal(9, (await CategoriesOf(client, project.Id)).Count);
     }
 
     [Fact]
@@ -597,22 +598,23 @@ public class CategoriesTests(MigratedApiFactory factory)
         var offered = await EntryTablesOf(client, project.Id);
         var items = offered.SelectMany(category => category.Items).ToList();
 
-        Assert.DoesNotContain(offered, category => category.Id == categories[4].Id.ToString());
+        Assert.DoesNotContain(offered, category => category.Id == categories[4].Id);
         Assert.DoesNotContain(items, item => item.Id == contractsOnly.Id || item.Id == categories[3].Items[0].Id);
         Assert.Equal([ItemTableKind.General], items.Single(item => item.Id == purchasesOnly.Id).Tables.Select(table => table.Kind));
     }
 
     private static async Task<Guid> PartnerAsync(Ledger ledger, string name)
     {
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
         return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
     }
 
     [Fact]
-    public async Task R3_R5_R13_WhoeverMovesMoneyIsOfferedTheRevenueItemsAndRightAfterThemEachPartner()
+    public async Task R3_R5_R13_UC_109_WhoeverMovesMoneyIsOfferedTheRevenueItemsAndRasAlMalWhoseTablesAreItsPartnersInTheirOrder()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var refund = await ledger.RevenueItemAsync(ItemType.VatRefund);
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
         var nawaf = await PartnerAsync(ledger, "نواف");
         var reem = await PartnerAsync(ledger, "ريم");
 
@@ -621,12 +623,73 @@ public class CategoriesTests(MigratedApiFactory factory)
         var revenue = offered.SelectMany(category => category.Items).Single(item => item.Id == refund);
         Assert.True(revenue.IsRevenue);
         Assert.Equal([ItemTableKind.General], revenue.Tables.Select(table => table.Kind));
-        var partners = offered.Single(category => category.Id == "");
-        Assert.Equal("", partners.Name);
-        Assert.Equal(offered.FindLastIndex(category => category.Items.Any(item => item.IsRevenue)) + 1, offered.IndexOf(partners));
-        Assert.Equal([nawaf, reem], partners.Items.Select(item => item.Id));
-        Assert.All(partners.Items, item => Assert.Equal((ItemTableKind.Partner, item.Id, item.Name, false), (item.Tables.Single().Kind, item.Tables.Single().Id, item.Tables.Single().Name, item.IsRevenue)));
+        var capitalCategory = offered.Single(category => category.Items.Any(item => item.Id == capital));
+        Assert.Equal(("رأس المال", "رأس المال", true), (capitalCategory.Name, capitalCategory.Items.Single().Name, capitalCategory.Items.Single().IsRevenue));
+        Assert.Equal([(ItemTableKind.Partner, nawaf, "نواف"), (ItemTableKind.Partner, reem, "ريم")], capitalCategory.Items.Single().Tables.Select(table => (table.Kind, table.Id, table.Name)));
+        Assert.All(offered, category => Assert.NotEqual("", category.Name));
+        Assert.True(offered.IndexOf(capitalCategory) < offered.FindIndex(category => category.Items.Any(item => item.Id == refund)), "رأس المال comes first among the revenue");
         Assert.False(offered.SelectMany(category => category.Items).Single(item => item.Id == ledger.ItemId).IsRevenue);
+    }
+
+    [Fact]
+    public async Task UC_109_APartnerIsATableOfACapitalItemLastAmongItsTablesAndNoOtherItemTakesOne()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
+        var nawaf = await PartnerAsync(ledger, "نواف");
+        var reem = await PartnerAsync(ledger, "ريم");
+
+        var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("سالم", ledger.ItemId), Json);
+        var tables = (await ledger.Client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{ledger.ProjectId}/items/{capital}/tables", Json))!;
+        var reordered = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{capital}/tables/reorder", new ReorderRequest([reem, nawaf]), Json);
+
+        Assert.Equal((HttpStatusCode.BadRequest, "itemNotOffered"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+        Assert.Equal([(nawaf, ItemTableKind.Partner, "نواف"), (reem, ItemTableKind.Partner, "ريم")], tables.Select(table => (table.Id, table.Kind, table.Name)));
+        reordered.EnsureSuccessStatusCode();
+        Assert.Equal([reem, nawaf], (await ledger.Client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{ledger.ProjectId}/items/{capital}/tables", Json))!.Select(table => table.Id));
+    }
+
+    [Fact]
+    public async Task UC_109_RevenueGoesIntoEveryRevenueItemButRasAlMalAndAPartnerIntoNothingElse()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
+
+        var revenue = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(capital, ledger.Today, 100, ledger.AccountId, ""), Json);
+        var offeredForRevenue = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType=otherRevenue", Json))!.SelectMany(category => category.Items);
+        var offeredForCapital = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType=capital", Json))!.SelectMany(category => category.Items);
+
+        Assert.Equal((HttpStatusCode.BadRequest, "unknownItem"), (revenue.StatusCode, await Ledger.CodeOf(revenue)));
+        Assert.DoesNotContain(offeredForRevenue, item => item.Id == capital);
+        Assert.Equal([capital], offeredForCapital.Select(item => item.Id));
+    }
+
+    [Fact]
+    public async Task UC_109_ACapitalItemStaysOneWhilePartnersAreItsTablesAndTakesNoSubTable()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
+        await PartnerAsync(ledger, "نواف");
+
+        var retyped = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{capital}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Json);
+        var subTable = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{capital}/subgroups", new NameRequest("دفعة أولى"), Json);
+
+        Assert.Equal((HttpStatusCode.Conflict, "itemHasPartners"), (retyped.StatusCode, await Ledger.CodeOf(retyped)));
+        Assert.Equal((HttpStatusCode.BadRequest, "itemTakesNoPurchases"), (subTable.StatusCode, await Ledger.CodeOf(subTable)));
+    }
+
+    [Fact]
+    public async Task UC_109_EveryProjectStartsWithRasAlMalACategoryOfItsOwnFirstAmongTheRevenueWhoseSheetGivesEachPartnersShare()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+
+        var categories = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories", Json))!;
+
+        var capital = categories.Single(category => category.Items.Any(item => item.Type == ItemType.Capital));
+        var item = capital.Items.Single();
+        Assert.Equal(("رأس المال", "رأس المال", true), (capital.Name, item.Name, item.ShowsTablePercentages));
+        Assert.Equal(categories.FindIndex(category => category.Items.Any(row => row.Type.IsRevenue())), categories.IndexOf(capital));
+        Assert.True(categories.FindLastIndex(category => category.Items.Any(row => !row.Type.IsRevenue())) < categories.IndexOf(capital));
     }
 
     [Fact]
@@ -639,7 +702,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var offered = await EntryTablesOf(field, ledger.ProjectId);
 
-        Assert.DoesNotContain(offered, category => category.Id == "");
+        Assert.DoesNotContain(offered.SelectMany(category => category.Items).SelectMany(item => item.Tables), table => table.Kind == ItemTableKind.Partner);
         Assert.DoesNotContain(offered.SelectMany(category => category.Items), item => item.Id == refund || item.IsRevenue);
         Assert.Contains(offered.SelectMany(category => category.Items), item => item.Id == ledger.ItemId);
     }

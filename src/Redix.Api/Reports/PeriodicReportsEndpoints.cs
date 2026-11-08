@@ -86,16 +86,14 @@ public static class PeriodicReportsEndpoints
         return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportFiles.Pdf(snapshot), "application/pdf", $"report-{number}.pdf");
     }
 
-    /// <summary>The report as a workbook with live totals (UC-055). Each receipt links to its file at <paramref name="request"/>'s address.</summary>
+    /// <summary>The report as a workbook with live totals (UC-055).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="number">The report's number.</param>
-    /// <param name="request">The request, whose address the receipts' links start with.</param>
     /// <param name="db">The database the reports live in.</param>
-    public static async Task<IResult> Excel(Guid projectId, int number, HttpRequest request, RedixDbContext db)
+    public static async Task<IResult> Excel(Guid projectId, int number, RedixDbContext db)
     {
         var snapshot = await SnapshotOfAsync(projectId, number, db);
-        var receipts = $"{request.Scheme}://{request.Host}/projects/{projectId}/attachments/";
-        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportWorkbook.Of(snapshot, receipts), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
+        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportWorkbook.Of(snapshot), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
     }
 
     private static async Task<PeriodicReportSnapshot?> SnapshotOfAsync(Guid projectId, int number, RedixDbContext db)
@@ -109,20 +107,16 @@ public static class PeriodicReportsEndpoints
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
         var figures = await ProjectFigures.OfAsync(projectId, db);
         var capital = await CapitalEndpoints.ViewOfAsync(projectId, Guid.Empty, true, db);
-        var dashboard = await DashboardEndpoints.OfAsync(projectId, capital, db);
+        var dashboard = await DashboardEndpoints.OfAsync(projectId, db);
         var reconciliation = await ReconciliationsEndpoints.Latest(projectId, db);
         var partners = await db.Partners.Where(partner => partner.ProjectId == projectId).ToDictionaryAsync(partner => partner.Id);
-        var partnerViews = new List<ReportPartnerView>();
-        foreach (var line in capital.Partners)
-        {
-            partnerViews.Add(new ReportPartnerView(line.Name, partners[line.Id].UserId, line.Balance, line.SharePercent, await CapitalEndpoints.MovementsOfAsync(projectId, line.Id, db)));
-        }
+        var partnerViews = capital.Partners.Select(line => new ReportPartnerView(line.Name, partners[line.Id].UserId, line.Balance, line.SharePercent)).ToList();
         var itemIds = dashboard.Categories.Concat(dashboard.RevenueCategories).SelectMany(category => category.Items).Where(item => item.Total != 0).Select(item => item.Id).ToList();
         var items = await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).Where(row => itemIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id);
         var itemReports = new List<ItemReportView>();
         foreach (var id in itemIds)
         {
-            itemReports.Add(await ItemReportEndpoints.OfAsync(projectId, items[id], previous.IssuedAt, db));
+            itemReports.Add(await ItemReportEndpoints.OfAsync(projectId, items[id], previous.IssuedAt, db, _ => true));
         }
         var accounts = reconciliation.Balances.Select(row => new ReportAccountView(row.AccountName, row.Type, row.ActualBalance)).ToList();
         return new PeriodicReportSnapshot(

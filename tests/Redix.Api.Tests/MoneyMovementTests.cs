@@ -32,7 +32,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
     private static async Task<Guid> PartnerAsync(HttpClient client, Guid projectId, string name, Guid userId = default)
     {
-        (await client.PostAsJsonAsync($"/projects/{projectId}/partners", new PartnerRequest(name) { UserId = userId }, Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{projectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(client, projectId)) { UserId = userId }, Json)).EnsureSuccessStatusCode();
         return (await client.GetFromJsonAsync<List<PartnerView>>($"/projects/{projectId}/partners", Json))!.Single(row => row.Name == name).Id;
     }
 
@@ -153,7 +153,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_31_TheDashboardsCapitalOpensToEveryPartnerForWhoeverSeesAllCapitalToTheirOwnLineForAPartnerAndToNoneForAnyoneElse()
+    public async Task BR_31_UC_109_RasAlMalsReportIsATablePerPartnerEveryOneForWhoeverSeesAllCapitalTheirOwnForAPartnerNoneForAnyoneElseAndTheWholeCapitalForAll()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (partnerReader, partnerReaderId) = await ledger.MemberAsync("Reader");
@@ -162,18 +162,22 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var other = await PartnerAsync(ledger.Client, ledger.ProjectId, "غيره");
         await ContributeAsync(ledger, own, 100);
         await ContributeAsync(ledger, other, 300);
+        await ledger.ApproveAsync(await MoveAsync(ledger, Contribution(ledger, own, 40) with { Type = CapitalMovementType.Withdrawal }));
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
 
-        async Task<CapitalView> DashboardCapitalAsync(HttpClient client) => (await client.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!.Capital;
+        async Task<ItemReportView> ReportAsync(HttpClient client) => (await client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{capital}", Json))!;
 
-        var all = await DashboardCapitalAsync(ledger.Client);
-        Assert.Equal(400m, all.Total);
-        Assert.Equal([(other, 300m), (own, 100m)], all.Partners.Select(line => (line.Id, line.Balance)));
-        var mine = await DashboardCapitalAsync(partnerReader);
-        Assert.Equal(400m, mine.Total);
-        Assert.Equal((own, 100m), (Assert.Single(mine.Partners).Id, mine.Partners[0].Balance));
-        var none = await DashboardCapitalAsync(otherReader);
-        Assert.Equal(400m, none.Total);
-        Assert.Empty(none.Partners);
+        var all = await ReportAsync(ledger.Client);
+        Assert.Equal(360m, all.Total);
+        Assert.Equal([(own, "القارئ", 60m), (other, "غيره", 300m)], all.Subgroups.Select(table => (table.Id, table.Name, table.Total)));
+        Assert.Equal([-40m, 100m], all.Subgroups[0].Rows.Select(row => row.Amount).Order());
+        var mine = await ReportAsync(partnerReader);
+        Assert.Equal((360m, own), (mine.Total, Assert.Single(mine.Subgroups).Id));
+        var none = await ReportAsync(otherReader);
+        Assert.Equal(360m, none.Total);
+        Assert.Empty(none.Subgroups);
+        var dashboard = (await otherReader.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!;
+        Assert.Equal(360m, dashboard.RevenueCategories.SelectMany(category => category.Items).Single(item => item.Id == capital).Total);
     }
 
     [Fact]

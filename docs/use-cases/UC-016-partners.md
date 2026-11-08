@@ -17,8 +17,10 @@ The capital use cases read their figures through the same link: a partner's row 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
 | `GET /projects/{projectId}/partners` | `ReadProject` | `200` in the order added, as `{ id, name, userId, userName }`: everyone with `SeeAllCapital`, otherwise only the caller's own. `userId` and `userName` are empty for a partner with no login |
-| `POST /projects/{projectId}/partners` with `{ name, userId }` | `ManageSettings` | `200`; `400` `invalidName`, `unknownUser` or `userTaken` |
-| `POST /projects/{projectId}/partners/{id}` with `{ name, userId }` | `ManageSettings` | The same; `404` |
+| `POST /projects/{projectId}/partners` with `{ name, itemId, userId }` | `ManageSettings` | `200`; `400` `invalidName`, `itemNotOffered` (`itemId` is not one of the project's capital items), `unknownUser` or `userTaken` |
+| `POST /projects/{projectId}/partners/{id}` with `{ name, itemId, userId }` | `ManageSettings` | The same; `404` |
+
+**A partner is a table (redix-api #109).** Each partner is a table of a capital item of the structure, رأس المال, as a contract is a table of its item: Add entry lists رأس المال with its partners under it, its report and its sheet are a table per partner, and its percentages give each one's share (BR-05). The list answers each partner's `itemId` and `itemName` too, in their tables' order.
 
 `userId` is left out for a partner with no login, which also takes a login away. Every change also answers `409` `projectFinished` in a finished project.
 
@@ -37,11 +39,12 @@ The capital use cases read their figures through the same link: a partner's row 
 | Partners show in the order added | `PartnersEndpoints.List` | `PartnersTests.PartnersShowInTheOrderTheyWereAdded` |
 | An edit renames a partner and sets or takes away their login | `PartnersEndpoints.Edit` | `PartnersTests.AnEditRenamesAPartnerAndSetsTheirLogin`, `AnEditCanTakeALoginAway` |
 | A partner needs a name of 1 to 100 characters | `ProjectChanges.WithNameAsync` | `PartnersTests.APartnerNeedsANameOfAtMost100Characters` |
-| A login must be in the project (BR-33) | `PartnersEndpoints.RefusalOfLoginAsync` | `PartnersTests.ALoginMustBeInTheProject` |
-| A login is one partner in a project, also in the database, and any number have none | `PartnersEndpoints.RefusalOfLoginAsync`, the index in `RedixDbContext` | `PartnersTests.ALoginIsOnePartnerInAProject`, `TheDatabaseHoldsALoginToOnePartnerInAProjectAndManyWithNoLogin` |
+| A login must be in the project (BR-33) | `PartnersEndpoints.RefusalOfAsync` | `PartnersTests.ALoginMustBeInTheProject` |
+| A login is one partner in a project, also in the database, and any number have none | `PartnersEndpoints.RefusalOfAsync`, the index in `RedixDbContext` | `PartnersTests.ALoginIsOnePartnerInAProject`, `TheDatabaseHoldsALoginToOnePartnerInAProjectAndManyWithNoLogin` |
 | One login may be a partner in two projects (BR-33) | The index in `RedixDbContext` | `PartnersTests.OneLoginMayBeAPartnerInTwoProjects` |
 | Someone without `SeeAllCapital` sees only their own partner, or none (BR-31) | `PartnersEndpoints.List` | `PartnersTests.SomeoneWithoutSeeAllCapitalSeesOnlyTheirOwnPartner`, `SomeoneWhoIsNoPartnerSeesNoPartners` |
 | Whoever holds `SeeAllCapital` sees every partner (BR-31) | `PartnersEndpoints.List` | `PartnersTests.WhoeverHoldsSeeAllCapitalSeesEveryPartner` |
+| redix-api #109: a partner is a table of a capital item, last among its tables, and the tables are put in order like any item's; no other item takes a partner | `PartnersEndpoints.RefusalOfAsync`, `ProjectStructure.NextTablePlaceAsync`, `CategoriesEndpoints.ReorderTables` | `CategoriesTests.UC_109_APartnerIsATableOfACapitalItemLastAmongItsTablesAndNoOtherItemTakesOne` |
 | Only Finance changes partners | `Permission.ManageSettings` | `PartnersTests.OnlyFinanceChangesPartners` |
 | One project's partners are never another's (BR-33) | `Partner.ProjectId`, `PartnersEndpoints` | `PartnersTests.OneProjectsPartnersAreNeverAnothers` |
 | A project copied from an earlier one starts with no partners (AC-05.2) | `ProjectStructure.ApproveAsync` copies only structure | `PartnersTests.ACopiedProjectStartsWithNoPartners` |

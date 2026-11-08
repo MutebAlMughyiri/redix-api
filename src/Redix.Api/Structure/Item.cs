@@ -42,11 +42,15 @@ public class Item : IOrdered
         return item;
     }
 
+    /// <summary>True when its subgroups are among its tables: every item but a capital one, whose tables are its partners alone (redix-api #109).</summary>
+    public bool HasSubgroupTables => Type != ItemType.Capital;
+
     /// <summary>
-    /// Whether entering <paramref name="kind"/> offers this item (AC-05.3, AC-38.1): an expense, an item of its type or of both; revenue of any kind, every revenue item, whose own type
-    /// then says what the revenue is.
+    /// Whether entering <paramref name="kind"/> offers this item (AC-05.3, AC-38.1): an expense, an item of its type or of both; revenue of any kind, every revenue item but a capital one,
+    /// its own type then saying what the revenue is; capital, every capital item, whose tables are its partners (redix-api #109).
     /// </summary>
-    public bool IsOfferedFor(ItemType kind) => IsActive && (kind.IsRevenue() ? Type.IsRevenue() : Type == ItemType.Both || Type == kind);
+    public bool IsOfferedFor(ItemType kind) =>
+        IsActive && (kind.IsRevenue() ? Type.IsRevenue() && (Type == ItemType.Capital) == (kind == ItemType.Capital) : Type == ItemType.Both || Type == kind);
 
     /// <summary>
     /// The same item with its subgroups and the columns it still asks for, for a new category. An item of the default template holds no columns of its own, so a copy of it takes the

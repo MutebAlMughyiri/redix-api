@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Partners;
 
@@ -19,7 +20,7 @@ public static class PartnersEndpoints
         changes.MapPost("/partners/{partnerId:guid}", Edit);
     }
 
-    /// <summary>The project's partners in the order they were added: all of them with <see cref="Permission.SeeAllCapital"/>, otherwise only the caller's own (BR-31).</summary>
+    /// <summary>The project's partners in their tables' order: all of them with <see cref="Permission.SeeAllCapital"/>, otherwise only the caller's own (BR-31).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
@@ -30,24 +31,28 @@ public static class PartnersEndpoints
         var partners = await db.Partners.Where(partner => partner.ProjectId == projectId && (seesAll || partner.UserId == userId)).ToListAsync();
         var userIds = partners.Select(partner => partner.UserId).ToList();
         var names = await db.Users.Where(user => userIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
-        return partners.OrderBy(partner => partner.Id).Select(partner => PartnerView.Of(partner, names.GetValueOrDefault(partner.UserId, ""))).ToList();
+        var items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId) && item.Type == ItemType.Capital)
+            .ToDictionaryAsync(item => item.Id, item => item.Name);
+        return partners.OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id)
+            .Select(partner => PartnerView.Of(partner, names.GetValueOrDefault(partner.UserId, ""), items.GetValueOrDefault(partner.ItemId, ""))).ToList();
     }
 
     /// <summary>
-    /// Adds a partner. An unacceptable name answers <c>invalidName</c>; a login who is not in the project, <c>unknownUser</c>; a login that is already another partner's in this project, <c>userTaken</c>.
+    /// Adds a partner as a table of a capital item, last among its tables (redix-api #109). An unacceptable name answers <c>invalidName</c>; an item that is not one of the project's capital
+    /// items, <c>itemNotOffered</c>; a login who is not in the project, <c>unknownUser</c>; a login that is already another partner's in this project, <c>userTaken</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
-    /// <param name="request">The partner's name, and their login if they have one.</param>
+    /// <param name="request">The partner's name, their capital item, and their login if they have one.</param>
     /// <param name="db">The database they live in.</param>
     public static Task<IResult> Add(Guid projectId, PartnerRequest request, RedixDbContext db) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            var refusal = await RefusalOfLoginAsync(projectId, Guid.Empty, request.UserId, db);
+            var refusal = await RefusalOfAsync(projectId, Guid.Empty, request, db);
             if (refusal.Length > 0)
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
             }
-            db.Partners.Add(new Partner { ProjectId = projectId, UserId = request.UserId, Name = name });
+            db.Partners.Add(new Partner { ProjectId = projectId, UserId = request.UserId, Name = name, ItemId = request.ItemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(request.ItemId, db) });
             await db.SaveChangesAsync();
             return Results.Ok();
         });
@@ -65,10 +70,15 @@ public static class PartnersEndpoints
             {
                 return Results.NotFound();
             }
-            var refusal = await RefusalOfLoginAsync(projectId, partnerId, request.UserId, db);
+            var refusal = await RefusalOfAsync(projectId, partnerId, request, db);
             if (refusal.Length > 0)
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+            }
+            if (partner.ItemId != request.ItemId)
+            {
+                partner.ItemId = request.ItemId;
+                partner.SortOrder = await ProjectStructure.NextTablePlaceAsync(request.ItemId, db);
             }
             partner.Name = name;
             partner.UserId = request.UserId;
@@ -76,8 +86,13 @@ public static class PartnersEndpoints
             return Results.Ok();
         });
 
-    private static async Task<string> RefusalOfLoginAsync(Guid projectId, Guid partnerId, Guid userId, RedixDbContext db)
+    private static async Task<string> RefusalOfAsync(Guid projectId, Guid partnerId, PartnerRequest request, RedixDbContext db)
     {
+        if (await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.Capital, db) == Item.None)
+        {
+            return "ItemNotOffered";
+        }
+        var userId = request.UserId;
         if (userId == Guid.Empty)
         {
             return "";
@@ -92,7 +107,8 @@ public static class PartnersEndpoints
 
 /// <summary>What the app sends to add or change a partner.</summary>
 /// <param name="Name">The partner's name.</param>
-public record PartnerRequest(string Name)
+/// <param name="ItemId">The capital item whose table they are (redix-api #109).</param>
+public record PartnerRequest(string Name, Guid ItemId)
 {
     /// <summary>The login whose capital this is; left out for a partner with no login.</summary>
     public Guid UserId { get; init; }
@@ -103,8 +119,10 @@ public record PartnerRequest(string Name)
 /// <param name="Name">The partner's name.</param>
 /// <param name="UserId">The login whose capital this is; empty for a partner with no login.</param>
 /// <param name="UserName">That login's name; empty for a partner with no login.</param>
-public record PartnerView(Guid Id, string Name, string UserId, string UserName)
+/// <param name="ItemId">The capital item whose table they are.</param>
+/// <param name="ItemName">That item's name.</param>
+public record PartnerView(Guid Id, string Name, string UserId, string UserName, Guid ItemId, string ItemName)
 {
-    /// <summary>The view of <paramref name="partner"/>, whose login is named <paramref name="userName"/>.</summary>
-    public static PartnerView Of(Partner partner, string userName) => new(partner.Id, partner.Name, Ids.Text(partner.UserId), userName);
+    /// <summary>The view of <paramref name="partner"/>, whose login is named <paramref name="userName"/> and whose capital item <paramref name="itemName"/>.</summary>
+    public static PartnerView Of(Partner partner, string userName, string itemName) => new(partner.Id, partner.Name, Ids.Text(partner.UserId), userName, partner.ItemId, itemName);
 }

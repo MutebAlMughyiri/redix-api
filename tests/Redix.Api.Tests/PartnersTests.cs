@@ -42,7 +42,7 @@ public class PartnersTests(MigratedApiFactory factory)
 
     private static async Task<PartnerView> AddAsync(HttpClient client, Guid projectId, string name, Guid userId = default)
     {
-        (await client.PostAsJsonAsync($"/projects/{projectId}/partners", new PartnerRequest(name) { UserId = userId }, Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{projectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(client, projectId)) { UserId = userId }, Json)).EnsureSuccessStatusCode();
         return (await PartnersOf(client, projectId)).Single(partner => partner.Name == name);
     }
 
@@ -91,7 +91,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var (nawaf, _) = await MemberAsync(project, Field);
         var partner = await AddAsync(client, project.Id, "نوف");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف") { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(client, project.Id)) { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
 
         var edited = (await PartnersOf(client, project.Id)).Single();
         Assert.Equal("نواف", edited.Name);
@@ -105,7 +105,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var (nawaf, _) = await MemberAsync(project, Field);
         var partner = await AddAsync(client, project.Id, "نواف", nawaf.Id);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(client, project.Id)), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("", (await PartnersOf(client, project.Id)).Single().UserId);
     }
@@ -119,8 +119,8 @@ public class PartnersTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest(name), Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest(name), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(client, project.Id)), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(client, project.Id)), Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -137,8 +137,8 @@ public class PartnersTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف") { UserId = stranger.Id }, Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب") { UserId = stranger.Id }, Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(client, project.Id)) { UserId = stranger.Id }, Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب", await Ledger.CapitalItemOfAsync(client, project.Id)) { UserId = stranger.Id }, Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -156,14 +156,14 @@ public class PartnersTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف الثاني") { UserId = nawaf.Id }, Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{other.Id}", new PartnerRequest("فواز") { UserId = nawaf.Id }, Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف الثاني", await Ledger.CapitalItemOfAsync(client, project.Id)) { UserId = nawaf.Id }, Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{other.Id}", new PartnerRequest("فواز", await Ledger.CapitalItemOfAsync(client, project.Id)) { UserId = nawaf.Id }, Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
             Assert.Equal("userTaken", await CodeOf(refused));
         }
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{mine.Id}", new PartnerRequest("نواف بن محمد") { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{mine.Id}", new PartnerRequest("نواف بن محمد", await Ledger.CapitalItemOfAsync(client, project.Id)) { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
     }
 
     [Fact]
@@ -244,8 +244,8 @@ public class PartnersTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف"), Json),
-            await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب") { UserId = member.Id }, Json),
+            await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(client, project.Id)), Json),
+            await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب", await Ledger.CapitalItemOfAsync(client, project.Id)) { UserId = member.Id }, Json),
         })
         {
             Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
@@ -260,7 +260,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var theirs = await AddAsync(otherClient, other.Id, "شريكهم");
 
         Assert.Empty(await PartnersOf(client, project.Id));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{theirs.Id}", new PartnerRequest("سرقة"), Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{theirs.Id}", new PartnerRequest("سرقة", await Ledger.CapitalItemOfAsync(client, project.Id)), Json)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{other.Id}/partners")).StatusCode);
     }
 
@@ -287,8 +287,8 @@ public class PartnersTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف"), Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(client, project.Id)), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(client, project.Id)), Json),
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);

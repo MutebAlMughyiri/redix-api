@@ -61,8 +61,11 @@ public record PeriodicReportSnapshot(
     /// <summary>All revenue but sales.</summary>
     public decimal RevenueWithoutSales => Revenue - Sales;
 
-    /// <summary>The same report for someone who sees only their own capital (BR-31): the total, and no partner but theirs.</summary>
-    public PeriodicReportSnapshot ForPartnerOf(Guid userId) => this with { Partners = Partners.Where(partner => partner.UserId == userId).ToList() };
+    /// <summary>
+    /// The same report for someone who sees only their own capital (BR-31): the total, and no partner but theirs. The item reports, رأس المال's holding every partner's money (redix-api #109),
+    /// stay for the files, which only whoever sees all capital takes.
+    /// </summary>
+    public PeriodicReportSnapshot ForPartnerOf(Guid userId) => this with { Partners = Partners.Where(partner => partner.UserId == userId).ToList(), Items = [] };
 }
 
 /// <summary>An account's balance in a report.</summary>
@@ -76,5 +79,4 @@ public record ReportAccountView(string Name, AccountType Type, decimal Balance);
 /// <param name="UserId">Their login; empty when they have none.</param>
 /// <param name="Balance">Their capital.</param>
 /// <param name="SharePercent">Their share, with ten decimals.</param>
-/// <param name="Movements">Their movements, newest first.</param>
-public record ReportPartnerView(string Name, Guid UserId, decimal Balance, decimal SharePercent, List<CapitalMovementView> Movements);
+public record ReportPartnerView(string Name, Guid UserId, decimal Balance, decimal SharePercent);

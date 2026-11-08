@@ -11,14 +11,13 @@ namespace Redix.Api.Reports;
 /// </summary>
 public static class PeriodicReportFiles
 {
-    /// <summary>A4 portrait, right to left: the summary, the capital, then a page per item; new rows shaded green (BR-26).</summary>
+    /// <summary>A4 portrait, right to left: the summary, then a page per item, رأس المال among them; new rows shaded green (BR-26).</summary>
     public static byte[] Pdf(PeriodicReportSnapshot report)
     {
         ReportFormats.PreparePdf();
         return Document.Create(document =>
         {
             Page(document, page => Summary(page, report));
-            Page(document, page => StatementPdf.Draw(page, PeriodicReportWorkbook.CapitalOf(report, "")));
             foreach (var item in report.Items)
             {
                 Page(document, page => StatementPdf.Draw(page, ItemReportFiles.SheetOf(item)));
@@ -67,12 +66,9 @@ public static class PeriodicReportFiles
         Line(page, "مصروفات التقرير الحالي", report.Expenses);
         Line(page, "الفرق", report.ExpensesDifference, true);
         page.Item().PaddingTop(6).Text("الإيرادات").Bold();
-        Line(page, "رأس المال", report.Capital);
-        Line(page, "استرجاع الضرائب", report.VatRefunds);
-        Line(page, "البيع", report.Sales);
-        if (report.OtherRevenue != 0)
+        foreach (var category in report.RevenueCategories)
         {
-            Line(page, "إيرادات أخرى", report.OtherRevenue);
+            Line(page, category.Name, category.Total);
         }
         Line(page, "مجموع الإيرادات", report.Revenue, true);
         Line(page, "المجموع بدون البيع", report.RevenueWithoutSales);
