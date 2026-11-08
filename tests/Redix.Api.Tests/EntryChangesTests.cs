@@ -46,6 +46,20 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task NotesLongerThanTheLimitAreRefusedAndNotesOfTheLimitAreKept()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var entry = await ledger.RecordAsync(ledger.Purchase());
+        var path = $"/projects/{ledger.ProjectId}/entries/{entry.Id}/notes";
+
+        var refused = await ledger.Client.PostAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength + 1)), Json);
+        var kept = await ledger.Client.PostAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength)), Json);
+
+        await AssertRefused(refused, HttpStatusCode.BadRequest, "invalidNotes");
+        Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
+    }
+
+    [Fact]
     public async Task AnAuthorChangesTheirDraftAndItHoldsTheNewValues()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

@@ -76,7 +76,7 @@ public static class ItemReportEndpoints
         {
             var lines = paymentRows.Where(payment => (payments.GetValueOrDefault(payment.entry.Id) ?? new ContractorPaymentDetails()).ContractId == row.contract.Id).Select(payment => RowOf(payment.entry, payment.expense)).ToList();
             var paid = money.GetValueOrDefault(row.contract.Id).Paid;
-            return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.Value - paid, !row.contract.IsOpenValue && paid > row.contract.Value, lines.Sum(line => line.Amount), lines) { SortOrder = row.contract.SortOrder };
+            return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.RemainingAfter(paid), row.contract.IsOverrunBy(paid), lines.Sum(line => line.Amount), lines) { SortOrder = row.contract.SortOrder };
         }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
         var categoryName = await db.Categories.Where(category => category.Id == item.CategoryId).Select(category => category.Name).SingleAsync();
         var total = rows.Sum(row => row.entry.Amount) + revenue.Sum(row => row.entry.Amount);
@@ -118,7 +118,7 @@ public record SubgroupReportView(Guid Id, string Name, decimal Total, List<ItemE
 /// <param name="Value">What it is worth.</param>
 /// <param name="IsOpenValue">True when it has no fixed value.</param>
 /// <param name="Paid">What was paid inside it (BR-04).</param>
-/// <param name="Remaining">Its value less that.</param>
+/// <param name="Remaining">Its value less that; nothing for an open-value contract.</param>
 /// <param name="IsOverrun">True when more was paid than it is worth (AC-31.1).</param>
 /// <param name="PaymentsTotal">Every payment on it, outside the contract too: what counts in the item.</param>
 /// <param name="Payments">Each payment.</param>

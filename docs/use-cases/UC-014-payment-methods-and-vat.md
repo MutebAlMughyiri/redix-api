@@ -48,6 +48,7 @@ Every change also answers `409` `projectFinished` in a finished project.
 | One project's route never reaches another's methods (BR-33) | `PaymentMethodsEndpoints.ChangeAsync`, `PermissionHandler` | `PaymentMethodsTests.ARouteOfOneProjectNeverReachesAnothersMethods` |
 | Everyone with access reads; only Finance changes | `Permission.ManageSettings` | `PaymentMethodsTests.EveryoneWithAccessReadsMethodsAndOnlyFinanceChangesThem` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `PaymentMethodsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+| A method added after a delete goes last, and no two methods share a place | `PaymentMethodsEndpoints.Add` | `PaymentMethodsTests.AMethodAddedAfterADeleteGoesLastAndNoTwoMethodsShareAPlace` |
 
 ## Left to later use cases
 

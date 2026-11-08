@@ -31,3 +31,4 @@
 | AC-50.1: a reversal is opposite and tied, the net is zero, and the original stays | `EntriesEndpoints.Reverse` | `EntryChangesTests.AC_50_1_AReversalIsAnOppositeEntryTiedToTheOriginalAndTheNetEffectIsZero` |
 | Only an approved entry is reversed, once, with a reason | `EntriesEndpoints.Reverse` | `EntryChangesTests.OnlyAnApprovedEntryIsReversedOnceAndWithAReason` |
 | Only whoever decides entries reverses them | The `ApproveEntries` policy | `EntryChangesTests.OnlyWhoeverDecidesEntriesReversesThem` |
+| Notes longer than 1,000 characters answer `invalidNotes`; notes of 1,000 are kept | `EntriesEndpoints.ChangeNotes`, `Entry.NotesMaxLength` | `EntryChangesTests.NotesLongerThanTheLimitAreRefusedAndNotesOfTheLimitAreKept` |

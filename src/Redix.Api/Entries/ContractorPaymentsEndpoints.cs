@@ -61,11 +61,12 @@ public static class ContractorPaymentsEndpoints
             return Refusal.Of(refusal.Status, refusal.Code, "columnKey", refusal.ColumnKey);
         }
 
-        var money = (await ContractMoney.OfProjectAsync(projectId, db)).GetValueOrDefault(contract.Id);
+        var money = (await ContractMoney.OfProjectAsync(projectId, db, editing)).GetValueOrDefault(contract.Id);
         var at = time.GetUtcNow().UtcDateTime;
         var entry = await EntryRecording.KeepAsync(EntryRecording.EntryOf(request, projectId, EntryKind.ContractorPayment, request.Amount, userId, at), DetailsOf(request, contract, item), existing, userId, db);
         var counted = money.Paid + money.Pending + (request.IsOutsideContract ? 0 : request.Amount);
-        return Results.Created($"/projects/{projectId}/entries/{entry.Id}", new ContractorPaymentView(entry.Id, entry.Status, entry.Amount, money.Paid, money.Pending, contract.RemainingAfter(counted), contract.IsOverrunBy(counted)));
+        var view = new ContractorPaymentView(entry.Id, entry.Status, entry.Amount, money.Paid, money.Pending, contract.RemainingAfter(counted), contract.IsOverrunBy(counted));
+        return existing is null ? Results.Created($"/projects/{projectId}/entries/{entry.Id}", view) : Results.Ok(view);
     }
 
     /// <summary>What the payment holds besides its entry: under its item's general subgroup, its contract being its table (R11), with its receipt when there is one.</summary>

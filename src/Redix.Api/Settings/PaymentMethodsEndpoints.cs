@@ -40,7 +40,7 @@ public static class PaymentMethodsEndpoints
     public static Task<IResult> Add(Guid projectId, NameRequest request, RedixDbContext db) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            db.PaymentMethods.Add(new PaymentMethod { ProjectId = projectId, Name = name, SortOrder = await db.PaymentMethods.CountAsync(method => method.ProjectId == projectId) });
+            db.PaymentMethods.Add(new PaymentMethod { ProjectId = projectId, Name = name, SortOrder = await db.PaymentMethods.Where(method => method.ProjectId == projectId).OrderByDescending(method => method.SortOrder).Select(method => method.SortOrder + 1).FirstOrDefaultAsync() });
             await db.SaveChangesAsync();
             return Results.Ok();
         });

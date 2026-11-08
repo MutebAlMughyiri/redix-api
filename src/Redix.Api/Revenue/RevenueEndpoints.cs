@@ -31,7 +31,7 @@ public static class RevenueEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Record(Guid projectId, RevenueRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var item = await RevenueItemOfAsync(projectId, request.ItemId, db);
+        var item = await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.OtherRevenue, db) ?? Item.None;
         var subgroupId = SubgroupOf(item, request.SubgroupId);
         if (subgroupId == Guid.Empty)
         {
@@ -56,9 +56,6 @@ public static class RevenueEndpoints
         await db.SaveChangesAsync();
         return Results.Ok(new EntryStatusView(entry.Id, entry.Status, ""));
     }
-
-    private static async Task<Item> RevenueItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
-        await db.Items.Include(item => item.Subgroups).SingleOrDefaultAsync(item => item.Id == itemId && item.IsActive && item.Type >= ItemType.Sale && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)) ?? Item.None;
 
     /// <summary>The subgroup <paramref name="subgroupId"/> of <paramref name="item"/>, or its general one when none is named; empty when the item has no such subgroup.</summary>
     private static Guid SubgroupOf(Item item, Guid subgroupId) =>

@@ -36,5 +36,6 @@
 | The revenue list and the sales invoice are gone | `RevenueEndpoints.MapRevenue` | `RevenueTests.NoRevenueList_TheRevenueListAndTheSalesInvoiceAreGone` |
 | AC-32.1, D19: the statement lists approved purchases with their supplier and what was bought | `VatStatement.OfAsync` | `RevenueTests.AC_32_1_D19_TheStatementListsApprovedPurchasesWithTheirSupplierAndWhatWasBought` |
 | AC-32.2: a custom period across quarters has a section per quarter | `VatStatement.OfAsync` | `RevenueTests.AC_32_2_ACustomPeriodAcrossQuartersHasASectionPerQuarter`, `APeriodEndingBeforeItStartsIsRefused` |
+| Revenue takes its item as the table list offers it: an item of a disabled category answers `unknownItem` | `ProjectStructure.OfferedItemAsync` | `RevenueTests.RevenueOnAnItemOfADisabledCategoryIsRefusedAsTheTableListHidesIt` |
 
 The workbook's formula and its rate are proved in `ReportFilesTests` (UC-053).

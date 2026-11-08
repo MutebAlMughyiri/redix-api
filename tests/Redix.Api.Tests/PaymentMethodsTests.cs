@@ -7,6 +7,7 @@ using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Redix.Api.Tests;
 
@@ -43,6 +44,25 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
 
     private static async Task<string> CodeOf(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
+
+    [Fact]
+    public async Task AMethodAddedAfterADeleteGoesLastAndNoTwoMethodsShareAPlace()
+    {
+        var (client, project) = await FinanceAsync();
+        foreach (var name in new[] { "شيك", "تحويل" })
+        {
+            (await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest(name), MigratedApiFactory.Json)).EnsureSuccessStatusCode();
+        }
+        var first = (await MethodsOf(client, project.Id)).First();
+        (await client.PostAsync($"/projects/{project.Id}/payment-methods/{first.Id}/delete", null)).EnsureSuccessStatusCode();
+
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest("نقد"), MigratedApiFactory.Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal("نقد", (await MethodsOf(client, project.Id)).Last().Name);
+        using var scope = factory.Services.CreateScope();
+        var places = await scope.ServiceProvider.GetRequiredService<RedixDbContext>().PaymentMethods.Where(method => method.ProjectId == project.Id).Select(method => method.SortOrder).ToListAsync();
+        Assert.Equal(places.Count, places.Distinct().Count());
+    }
 
     [Fact]
     public async Task AnApprovedProjectStartsWithTheThreeMethods()

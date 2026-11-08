@@ -8,13 +8,13 @@ namespace Redix.Api.Contracts;
 /// <param name="Pending">Those waiting for approval. A draft and a rejected payment are neither.</param>
 public readonly record struct ContractMoney(decimal Paid, decimal Pending)
 {
-    /// <summary>What the ledger holds inside each of the project's contracts; a contract with nothing is left out, and its default is nothing.</summary>
-    public static async Task<Dictionary<Guid, ContractMoney>> OfProjectAsync(Guid projectId, RedixDbContext db)
+    /// <summary>What the ledger holds inside each of the project's contracts, leaving out the entry <paramref name="leftOut"/>, the one being changed; a contract with nothing is left out, and its default is nothing.</summary>
+    public static async Task<Dictionary<Guid, ContractMoney>> OfProjectAsync(Guid projectId, RedixDbContext db, Guid leftOut = default)
     {
         var rows = await (
             from payment in db.ContractorPaymentDetails
             join entry in db.Entries on payment.EntryId equals entry.Id
-            where entry.ProjectId == projectId && !payment.IsOutsideContract && (entry.Status == EntryStatus.Approved || entry.Status == EntryStatus.PendingApproval)
+            where entry.ProjectId == projectId && entry.Id != leftOut && !payment.IsOutsideContract && (entry.Status == EntryStatus.Approved || entry.Status == EntryStatus.PendingApproval)
             group entry.Amount by new { payment.ContractId, entry.Status } into amounts
             select new { amounts.Key.ContractId, amounts.Key.Status, Total = amounts.Sum() }).ToListAsync();
         return rows.GroupBy(row => row.ContractId).ToDictionary(contract => contract.Key, contract => new ContractMoney(

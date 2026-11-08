@@ -32,7 +32,7 @@ public static class EntriesEndpoints
     public static Task<List<EntryRowView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId);
+        return RowsAsync(projectId, userId, db, entry => entry.CreatedByUserId == userId);
     }
 
     /// <summary>Every entry of the project, newest first: everyone who reads a project sees all its expenses and revenue, partners' money as BR-31 allows (Muteb, 8 Nov 2026), and drafts only of their own.</summary>
@@ -42,16 +42,21 @@ public static class EntriesEndpoints
     public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId));
+        return RowsAsync(projectId, userId, db, entry => entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId);
     }
 
-    /// <summary>The entries <paramref name="shown"/> keeps, newest first; a partner's money shows only to whoever holds <see cref="Permission.SeeAllCapital"/>, or to that partner (BR-31).</summary>
-    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown)
+    /// <summary>The project's entries <paramref name="userId"/> may see: a partner's money only for whoever holds <see cref="Permission.SeeAllCapital"/>, or for that partner (BR-31).</summary>
+    private static async Task<IQueryable<Entry>> SeenByAsync(Guid projectId, Guid userId, RedixDbContext db)
     {
         var seesAllCapital = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
-        var entries = await db.Entries.Where(shown)
-            .Where(entry => seesAllCapital || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && db.Partners.Any(partner => partner.Id == details.PartnerId && partner.UserId != userId)))
-            .OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id).ToListAsync();
+        return db.Entries.Where(entry => entry.ProjectId == projectId
+            && (seesAllCapital || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && db.Partners.Any(partner => partner.Id == details.PartnerId && partner.UserId != userId))));
+    }
+
+    /// <summary>The entries <paramref name="shown"/> keeps of those the caller may see, newest first.</summary>
+    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown)
+    {
+        var entries = await (await SeenByAsync(projectId, userId, db)).Where(shown).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var rejections = (await db.EntryDecisions.Where(row => ids.Contains(row.EntryId) && row.Action == EntryDecisionAction.Reject).OrderBy(row => row.Id).ToListAsync()).GroupBy(row => row.EntryId).ToDictionary(group => group.Key, group => group.Last().Reason);
@@ -72,13 +77,14 @@ public static class EntriesEndpoints
             facts.PartnerNameOf(entry))).ToList();
     }
 
-    /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. Anything else answers 404.</summary>
+    /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. A partner's money the caller may not see (BR-31), or anything else, answers 404.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>
+    /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static async Task<IResult> Read(Guid projectId, Guid entryId, RedixDbContext db)
+    public static async Task<IResult> Read(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
+        var entry = await (await SeenByAsync(projectId, AccessTokens.UserIdOf(principal), db)).SingleOrDefaultAsync(row => row.Id == entryId);
         return entry is null ? Results.NotFound() : Results.Ok(await ViewOfAsync(entry, db));
     }
 
@@ -148,7 +154,7 @@ public static class EntriesEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Changes an entry's notes, which is allowed even once it is approved (AC-50.2, BR-11), for who entered it or whoever holds <see cref="Permission.ManageAnyEntry"/>; anyone else gets <c>notYourEntry</c>.</summary>
+    /// <summary>Changes an entry's notes, which is allowed even once it is approved (AC-50.2, BR-11), for who entered it or whoever holds <see cref="Permission.ManageAnyEntry"/>; anyone else gets <c>notYourEntry</c>, and notes longer than <see cref="Entry.NotesMaxLength"/> <c>invalidNotes</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>
     /// <param name="request">The notes.</param>
@@ -167,7 +173,12 @@ public static class EntriesEndpoints
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
         }
-        entry.Notes = request.Notes.Trim();
+        var notes = request.Notes.Trim();
+        if (notes.Length > Entry.NotesMaxLength)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidNotes");
+        }
+        entry.Notes = notes;
         db.Audit(entry, AuditAction.Update, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok();
@@ -222,7 +233,7 @@ public static class EntriesEndpoints
 
     private static async Task<List<string>> MissingOfAsync(Entry entry, RedixDbContext db)
     {
-        var expense = await db.ExpenseDetails.SingleAsync(row => row.EntryId == entry.Id);
+        var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ExpenseDetails();
         var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new PurchaseDetails();
         var columns = await db.Set<ItemColumn>().Where(column => column.ItemId == expense.ItemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync();
         var answers = new EntryAnswers(entry.Kind, purchase.Product, purchase.UnitPrice, purchase.Quantity, entry.Notes, expense.CustomValuesByKey());

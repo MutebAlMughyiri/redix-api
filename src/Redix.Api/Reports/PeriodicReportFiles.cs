@@ -121,7 +121,7 @@ public static class PeriodicReportFiles
             page.Item().PaddingTop(8).Text($"حركات {partner.Name}").Bold();
             foreach (var movement in partner.Movements)
             {
-                Line(page, $"{ReportFormats.Date(movement.Date)} · {(movement.Description.Length > 0 ? movement.Description : movement.Type.ToString())}", movement.Amount);
+                Line(page, $"{ReportFormats.Date(movement.Date)} · {(movement.Description.Length > 0 ? movement.Description : ReportFormats.Movement(movement.Type))}", movement.Amount);
             }
         }
     }

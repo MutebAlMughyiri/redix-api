@@ -77,6 +77,23 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task ASubgroupRevenueIsKeptOnIsNotRemoved()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var category = (await CategoriesOf(ledger.Client, ledger.ProjectId))[0];
+        var itemId = (await AddItemAsync(ledger.Client, ledger.ProjectId, category.Id, "إيجار المعدات")).Id;
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/subgroups", new NameRequest("إيجار"), Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Ledger.Json)).EnsureSuccessStatusCode();
+        var subgroup = (await CategoriesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == itemId).Subgroups[1];
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new Revenue.RevenueRequest(itemId, ledger.Today, 70, ledger.AccountId, "") { SubgroupId = subgroup.Id }, Ledger.Json)).EnsureSuccessStatusCode();
+
+        var refused = await DeleteSubgroupAsync(ledger.Client, ledger.ProjectId, itemId, subgroup.Id);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("subgroupInUse", await CodeOf(refused));
+    }
+
+    [Fact]
     public async Task TheTemplateHoldsTheCategoriesAndItemsOfTheBrs()
     {
         var (_, client, project) = await FinanceAsync();

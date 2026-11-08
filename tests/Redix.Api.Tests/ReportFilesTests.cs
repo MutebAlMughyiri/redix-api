@@ -34,6 +34,18 @@ public class ReportFilesTests(MigratedApiFactory factory)
         (await client.GetFromJsonAsync<PeriodicReportSnapshot>($"/projects/{projectId}/periodic-reports/{number}", Json))!;
 
     [Fact]
+    public void APartnersMovementWithNoDescriptionIsNamedInArabicNeverByItsCode()
+    {
+        foreach (var type in Enum.GetValues<CapitalMovementType>())
+        {
+            var name = ReportFormats.Movement(type);
+
+            Assert.Equal(Translations.TranslationSeed.Arabic($"capital.{JsonNamingPolicy.CamelCase.ConvertName(type.ToString())}"), name);
+            Assert.NotEqual(type.ToString(), name);
+        }
+    }
+
+    [Fact]
     public async Task AC_29_3_ReportsAreNumberedWithNoGapsAndTheNextSaysWhatWaits()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

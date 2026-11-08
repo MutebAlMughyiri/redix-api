@@ -55,7 +55,7 @@ public static class PeriodicReportWorkbook
 
     private static StatementRow MovementRow(CapitalMovementView movement, string receiptsAddress) => new(
         [
-            TranslationSeed.Arabic($"capital.{JsonNamingPolicy.CamelCase.ConvertName(movement.Type.ToString())}"),
+            ReportFormats.Movement(movement.Type),
             movement.Date.ToDateTime(TimeOnly.MinValue),
             movement.Description.Length > 0 || movement.AttachmentId.Length == 0 ? movement.Description : "الإيصال",
         ],

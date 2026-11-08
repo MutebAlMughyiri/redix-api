@@ -86,6 +86,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | The general subgroup has no name to change | `CategoriesEndpoints.RenameSubgroup` | `CategoriesTests.TheGeneralSubgroupHasNoNameToChange` |
 | Everyone with access reads; only Finance changes | `Permission.ManageStructure` | `CategoriesTests.EveryoneWithAccessReadsTheStructureAndOnlyFinanceChangesIt` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectStructure.MapStructureChanges`, an endpoint filter | `CategoriesTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+| A subgroup an expense or revenue is kept on is not removed (`subgroupInUse`); "is anything kept on it" has one owner for items and subgroups | `ProjectStructure.SubgroupHasEntriesAsync`, `ItemHasEntriesAsync` | `CategoriesTests.ASubgroupAnEntryUsesIsNotRemoved`, `ASubgroupRevenueIsKeptOnIsNotRemoved` |
 
 ## Left to later use cases
 

@@ -169,7 +169,7 @@ public static class CategoriesEndpoints
             return Results.NotFound();
         }
         var widens = request.Type == ItemType.Both && item.Type is ItemType.Purchases or ItemType.ContractorPayments;
-        if (!widens && (await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId) || await db.Set<Revenue.RevenueDetails>().AnyAsync(details => details.ItemId == itemId)))
+        if (!widens && await ProjectStructure.ItemHasEntriesAsync(itemId, db))
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasEntries);
         }
@@ -346,7 +346,7 @@ public static class CategoriesEndpoints
         {
             return ProjectStructure.Refused(StructureChangeOutcome.GeneralSubgroup);
         }
-        if (await db.ExpenseDetails.AnyAsync(details => details.SubgroupId == subgroupId))
+        if (await ProjectStructure.SubgroupHasEntriesAsync(subgroupId, db))
         {
             return ProjectStructure.Refused(StructureChangeOutcome.SubgroupInUse);
         }

@@ -40,3 +40,5 @@ Tests are in `SubmitEntryTests`.
 | BR-33 and a finished project | `ProjectChanges`, the query by project | `BR_33_AnEntryOfAnotherProjectIsNotFoundAndSomeoneOutsideIsRefused`, `AC_04_1_AFinishedProjectSendsNothing` |
 | FR-21: sending is in the audit trail | `RedixDbContext.Audit` | `FR_21_SendingIsInTheAuditTrailAndARefusalIsNot` |
 | An entry reads back whole | `ViewOfAsync` | `ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest`, `ReadingAnExpenseWithoutAnInvoiceAnswersItsReasonAndAnEmptyInvoice`, `ReadingACreditNoteAnswersWhatItIsLinkedTo` |
+| A rejected revenue or partner entry is sent again and waits once more; it has no columns to check | `EntriesEndpoints.MissingOfAsync` | `RevenueTests.ARejectedRevenueEntryIsSentAgainAndWaitsOnceMore` |
+| BR-31: one partner's money read by its id answers 404 to anyone but that partner and whoever holds `seeAllCapital`; the list and the single read share one filter | `EntriesEndpoints.SeenByAsync`, `Read` | `RevenueTests.BR_31_OnePartnersMoneyReadByItsIdIsLeftToThatPartnerAndWhoeverSeesAllCapital` |

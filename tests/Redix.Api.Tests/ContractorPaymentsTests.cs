@@ -75,6 +75,46 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         where details.ItemId == setup.ItemId && entry.ProjectId == setup.Ledger.ProjectId && entry.Status == EntryStatus.Approved
         select entry.Amount).SumAsync());
 
+    private static async Task<Reports.ItemReportView> ReportOfAsync(Setup setup) =>
+        (await setup.Ledger.Client.GetFromJsonAsync<Reports.ItemReportView>($"/projects/{setup.Ledger.ProjectId}/reports/items/{setup.ItemId}", Ledger.Json))!;
+
+    [Fact]
+    public async Task EditingAWaitingPaymentCountsItOnceKeepsTheOthersAndAnswersOk()
+    {
+        var setup = await ContractAsync(10000m);
+        var request = Payment(setup, 3000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
+        await RecordAsync(setup, request);
+        await RecordAsync(setup, Payment(setup, 1000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
+
+        var edited = await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/contractor-payments/{request.Id}", request with { Amount = 4000m }, Ledger.Json);
+
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+        var view = (await edited.Content.ReadFromJsonAsync<ContractorPaymentView>(Ledger.Json))!;
+        Assert.Equal((1000m, 5000m, false), (view.Pending, view.RemainingAfter, view.IsOverrun));
+    }
+
+    [Fact]
+    public async Task TheItemReportLeavesAnOpenValueContractNothingRemainingAndNoOverrun()
+    {
+        var setup = await ContractAsync(0m, isOpenValue: true);
+        await ApprovedAsync(setup, 5000m);
+
+        var contract = (await ReportOfAsync(setup)).Contracts.Single(row => row.Id == setup.ContractId);
+
+        Assert.Equal((5000m, 0m, false), (contract.Paid, contract.Remaining, contract.IsOverrun));
+    }
+
+    [Fact]
+    public async Task TheItemReportLeavesAValuedContractItsValueLessWhatWasPaid()
+    {
+        var setup = await ContractAsync(10000m);
+        await ApprovedAsync(setup, 4000m);
+
+        var contract = (await ReportOfAsync(setup)).Contracts.Single(row => row.Id == setup.ContractId);
+
+        Assert.Equal((4000m, 6000m, false), (contract.Paid, contract.Remaining, contract.IsOverrun));
+    }
+
     [Fact]
     public async Task AC_07_1_ThePaymentsOfA34000ContractLeaveItsRemainingAndOneMoreOverrunsItWithAnAlertAndIsSaved()
     {

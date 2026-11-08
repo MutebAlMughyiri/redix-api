@@ -35,6 +35,14 @@ public static class ProjectStructure
     public static IResult Refused(StructureChangeOutcome outcome) =>
         Refusal.Of(outcome is StructureChangeOutcome.GeneralSubgroup or StructureChangeOutcome.SubgroupInUse or StructureChangeOutcome.ItemHasEntries or StructureChangeOutcome.ItemHasContract or StructureChangeOutcome.CoreColumn ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, outcome.ToString());
 
+    /// <summary>True when an entry, an expense or revenue, is kept on the item <paramref name="itemId"/>.</summary>
+    public static async Task<bool> ItemHasEntriesAsync(Guid itemId, RedixDbContext db) =>
+        await db.ExpenseDetails.AnyAsync(details => details.ItemId == itemId) || await db.Set<Revenue.RevenueDetails>().AnyAsync(details => details.ItemId == itemId);
+
+    /// <summary>True when an entry, an expense or revenue, is kept on the subgroup <paramref name="subgroupId"/>.</summary>
+    public static async Task<bool> SubgroupHasEntriesAsync(Guid subgroupId, RedixDbContext db) =>
+        await db.ExpenseDetails.AnyAsync(details => details.SubgroupId == subgroupId) || await db.Set<Revenue.RevenueDetails>().AnyAsync(details => details.SubgroupId == subgroupId);
+
     /// <summary>The item <paramref name="itemId"/> if it belongs to <paramref name="projectId"/>, so one project's route never reaches another's rows (BR-33).</summary>
     public static Task<Item?> ItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
         db.Items.SingleOrDefaultAsync(item => item.Id == itemId && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));
