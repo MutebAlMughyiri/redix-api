@@ -417,6 +417,56 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public void Row_130_EveryFigureOfTheWorkbooksCapitalAndItemSheetsIsOnThePeriodicReportsPdf()
+    {
+        var report = Report([Tiles()]) with { CapitalTotal = 4000, Partners = [Partner("متعب", Guid.Empty, 3000), Partner("نواف", Guid.Empty, 1000)] };
+
+        using var workbook = Workbook(report);
+
+        var figures = FiguresOf(workbook);
+        Assert.Contains("75.00%", figures);
+        Assert.Contains("30,000.00", figures);
+        AssertOnThePdf(figures, PeriodicReportFiles.Pdf(report));
+    }
+
+    [Fact]
+    public void Row_130_EveryFigureOfAnItemsWorkbookIsOnItsPdf()
+    {
+        var item = Tiles();
+
+        using var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel(item)));
+        workbook.RecalculateAllFormulas();
+
+        var figures = FiguresOf(workbook);
+        Assert.Contains("4,000.00", figures);
+        AssertOnThePdf(figures, ItemReportFiles.Pdf(item));
+    }
+
+    /// <summary>An item with a general table, a named one with a new row, and a contract with a payment outside it, whose sheet calculates each table's percentage.</summary>
+    private static ItemReportView Tiles()
+    {
+        var contract = new ContractReportView(Guid.NewGuid(), "مقاول البلاط", 34000, false, 30000, 4000, false, 30500, [Row(30000, ""), Row(500, "", isOutside: true)]);
+        var item = Item("البلاط", "التشطيب", Subgroup("", Row(115, "")), Subgroup("الدور الأرضي", Row(200, ""), Row(85.5m, "", isNew: true)));
+        return item with { Contracts = [contract], Total = item.Total + 30500, ShowsTablePercentages = true };
+    }
+
+    /// <summary>Every figure in the amount column of every sheet but الخلاصة, as the statement writes it: money as 1,234.56, a share as 12.34%.</summary>
+    private static List<string> FiguresOf(XLWorkbook workbook) =>
+        [.. workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.Column(sheet.LastColumnUsed()!.ColumnNumber()).CellsUsed())
+            .Where(cell => cell.Value.IsNumber)
+            .Select(cell => cell.Style.NumberFormat.Format.Contains('%')
+                ? ((decimal)cell.Value.GetNumber() * 100).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "%"
+                : ReportFormats.Money((decimal)cell.Value.GetNumber()))];
+
+    /// <summary>Every one of <paramref name="figures"/> is a word of <paramref name="pdf"/>, as many times as the workbook shows it, so no figure can stand in for another.</summary>
+    private static void AssertOnThePdf(List<string> figures, byte[] pdf)
+    {
+        using var document = UglyToad.PdfPig.PdfDocument.Open(pdf);
+        var words = document.GetPages().SelectMany(page => page.GetWords()).GroupBy(word => word.Text).ToDictionary(group => group.Key, group => group.Count());
+        Assert.All(figures.GroupBy(figure => figure), figure => Assert.True(words.GetValueOrDefault(figure.Key) >= figure.Count(), $"{figure.Key}: {figure.Count()} in the workbook, {words.GetValueOrDefault(figure.Key)} on the PDF"));
+    }
+
+    [Fact]
     public async Task AC_33_1_TheItemAndContractsReportsExport()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
