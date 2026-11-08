@@ -232,6 +232,22 @@ public class RevenueTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task BR_06_TheDashboardGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
+        var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
+        await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 500, ledger.AccountId, "") { CashReason = "نقداً" }, Json));
+        await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, "")));
+        var (reader, _) = await ledger.MemberAsync("Reader");
+
+        var dashboard = (await reader.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!;
+
+        Assert.Equal((500m, 570m), (dashboard.Capital, dashboard.Revenue));
+        Assert.Equal(dashboard.Revenue, dashboard.Capital + dashboard.RevenueCategories.Sum(category => category.Total));
+    }
+
+    [Fact]
     public async Task AC_46_7_TheDashboardKeepsRevenueCategoriesApartFromExpenseOnes()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

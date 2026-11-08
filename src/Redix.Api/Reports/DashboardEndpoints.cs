@@ -35,12 +35,13 @@ public static class DashboardEndpoints
             .Where(line => line.Items.Count > 0)
             .Select(line => new CategoryTotalView(line.Category.Id, line.Category.Name, line.Items.Sum(item => item.Total), line.Items))
             .ToList();
-        return new DashboardView(figures.Revenue, figures.Expenses, figures.Surplus, reconciliation.At != default, reconciliation.Difference, pendingCount, pendingAmount, figures.CompletionPercent, SideOf(false), SideOf(true));
+        return new DashboardView(figures.Revenue, figures.Capital, figures.Expenses, figures.Surplus, reconciliation.At != default, reconciliation.Difference, pendingCount, pendingAmount, figures.CompletionPercent, SideOf(false), SideOf(true));
     }
 }
 
 /// <summary>A project's figures at a glance.</summary>
 /// <param name="Revenue">Capital, VAT refunds and sales (BR-06).</param>
+/// <param name="Capital">What the partners put in less what they took out: the revenue side's first line, as on the periodic report (BR-06, AC-46.7). Only the total; each partner's share stays on Partners (BR-31).</param>
 /// <param name="Expenses">Every approved expense: the project's cost.</param>
 /// <param name="Surplus">Revenue less expenses (BR-07).</param>
 /// <param name="WasReconciled">True once the accounts were checked against the books.</param>
@@ -49,8 +50,8 @@ public static class DashboardEndpoints
 /// <param name="PendingAmount">What they come to.</param>
 /// <param name="CompletionPercent">How far the work has come: expenses as a percentage of revenue.</param>
 /// <param name="Categories">Each category holding expense items, its total with those items'.</param>
-/// <param name="RevenueCategories">Each category holding revenue items, its total with those items' (FR-38).</param>
-public record DashboardView(decimal Revenue, decimal Expenses, decimal Surplus, bool WasReconciled, decimal ReconciliationDifference, int PendingCount, decimal PendingAmount, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
+/// <param name="RevenueCategories">Each category holding revenue items, its total with those items' (FR-38); with <paramref name="Capital"/> they add up to <paramref name="Revenue"/>.</param>
+public record DashboardView(decimal Revenue, decimal Capital, decimal Expenses, decimal Surplus, bool WasReconciled, decimal ReconciliationDifference, int PendingCount, decimal PendingAmount, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
 
 /// <summary>One category's total (BR-03).</summary>
 /// <param name="Id">The category.</param>

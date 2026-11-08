@@ -29,6 +29,7 @@
 | Only whoever moves money records revenue | `MapProjectChanges(MoveMoney)` | `RevenueTests.OnlyWhoeverMovesMoneyRecordsRevenue` |
 | FR-28: revenue goes on a revenue item and never on an expense one | `RevenueEndpoints.Record` | `RevenueTests.FR_28_RevenueGoesOnARevenueItemAndNeverOnAnExpenseOne` |
 | AC-46.7: the dashboard keeps revenue categories apart from expense ones | `DashboardEndpoints.Dashboard` | `RevenueTests.AC_46_7_TheDashboardKeepsRevenueCategoriesApartFromExpenseOnes` |
+| BR-06, AC-46.7: the dashboard gives every reader the capital, a total with no partner in it (BR-31), so its revenue side starts with capital and adds up to the revenue, as the periodic report's does | `DashboardEndpoints.Dashboard`, `DashboardView.Capital` | `RevenueTests.BR_06_TheDashboardGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue` |
 | Reversing a sale takes it out of the revenue | `EntryReversal` | `RevenueTests.ReversingASaleTakesItOutOfTheRevenue` |
 | The entries list holds revenue and partners' money with their status; a partner's money shows only to whoever sees all capital, or to that partner (BR-31) | `EntriesEndpoints.RowsAsync` | `RevenueTests.OneList_TheEntriesListHoldsRevenueAndPartnersMoneyWithTheirStatus`, `BR_31_InTheEntriesListAPartnerSeesTheirOwnMoneyAndNoOneElses` |
 | A waiting revenue or partner entry is deleted with everything it holds | `EntryChanges.RemoveDetailsAsync` | `RevenueTests.OneList_AWaitingRevenueOrPartnerEntryIsDeletedWithEverythingItHolds` |
