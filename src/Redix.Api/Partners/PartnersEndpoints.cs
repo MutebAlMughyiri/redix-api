@@ -26,9 +26,8 @@ public static class PartnersEndpoints
     /// <param name="db">The database they live in.</param>
     public static async Task<List<PartnerView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
-        var userId = AccessTokens.UserIdOf(principal);
-        var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
-        var partners = await db.Partners.Where(partner => partner.ProjectId == projectId && (seesAll || partner.UserId == userId)).ToListAsync();
+        var sight = await PartnerSight.OfAsync(principal, projectId, db);
+        var partners = (await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees).ToList();
         var userIds = partners.Select(partner => partner.UserId).ToList();
         var names = await db.Users.Where(user => userIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
         var items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId) && item.Type == ItemType.Capital)
@@ -47,7 +46,7 @@ public static class PartnersEndpoints
     public static Task<IResult> Add(Guid projectId, PartnerRequest request, RedixDbContext db) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            var refusal = await RefusalOfAsync(projectId, Guid.Empty, request, db);
+            var refusal = await RefusalOfAsync(projectId, Partner.None, request, db);
             if (refusal.Length > 0)
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
@@ -70,7 +69,7 @@ public static class PartnersEndpoints
             {
                 return Results.NotFound();
             }
-            var refusal = await RefusalOfAsync(projectId, partnerId, request, db);
+            var refusal = await RefusalOfAsync(projectId, partner, request, db);
             if (refusal.Length > 0)
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
@@ -98,12 +97,14 @@ public static class PartnersEndpoints
             : ([], nameof(ProjectChangeOutcome.InvalidName));
     }
 
-    private static async Task<string> RefusalOfAsync(Guid projectId, Guid partnerId, PartnerRequest request, RedixDbContext db)
+    /// <summary>Why <paramref name="request"/> cannot add or change <paramref name="partner"/>; the item is checked only when it changes, so a partner of a disabled item is still renamed (BR-15).</summary>
+    private static async Task<string> RefusalOfAsync(Guid projectId, Partner partner, PartnerRequest request, RedixDbContext db)
     {
-        if (await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.Capital, db) == Item.None)
+        if (request.ItemId != partner.ItemId && await ProjectStructure.OfferedItemAsync(projectId, request.ItemId, ItemType.Capital, db) == Item.None)
         {
             return "ItemNotOffered";
         }
+        var partnerId = partner.Id;
         var userId = request.UserId;
         if (userId == Guid.Empty)
         {

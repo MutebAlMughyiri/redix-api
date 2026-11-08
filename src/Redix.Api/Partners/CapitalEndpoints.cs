@@ -4,6 +4,7 @@ using Redix.Api.Accounts;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Partners;
 
@@ -63,7 +64,7 @@ public static class CapitalEndpoints
         return Results.Ok(await MovementsOfAsync(projectId, partnerId, db));
     }
 
-    /// <summary>One partner's movements of capital, newest first: what the capital screen and the periodic report both show.</summary>
+    /// <summary>One partner's movements of capital, newest first, as the movements screen shows them.</summary>
     public static async Task<List<CapitalMovementView>> MovementsOfAsync(Guid projectId, Guid partnerId, RedixDbContext db)
     {
         var rows = await (
@@ -76,7 +77,7 @@ public static class CapitalEndpoints
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var reversed = (await db.EntryLinks.Where(link => link.Type == EntryLinkType.Reversal && (ids.Contains(link.EntryId) || ids.Contains(link.LinkedEntryId))).ToListAsync()).SelectMany(link => new[] { link.EntryId, link.LinkedEntryId }).ToHashSet();
-        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.details.Description, row.details.CashReason, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
+        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.entry.Notes, row.details.CashReason, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
     /// <summary>
@@ -115,7 +116,7 @@ public static class CapitalEndpoints
         var at = time.GetUtcNow().UtcDateTime;
         var kind = CapitalMovementDetails.IsInflow(request.Type) ? EntryKind.CapitalIn : EntryKind.CapitalOut;
         var entry = DirectEntries.Pending(projectId, kind, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
-        List<object> details = [new CapitalMovementDetails { EntryId = entry.Id, PartnerId = request.PartnerId, Type = request.Type, Description = request.Description.Trim(), CashReason = reason }];
+        List<object> details = [new CapitalMovementDetails { EntryId = entry.Id, PartnerId = request.PartnerId, Type = request.Type, CashReason = reason }];
         if (request.AttachmentId != Guid.Empty)
         {
             details.Add(new EntryAttachment { EntryId = entry.Id, AttachmentId = request.AttachmentId, Role = EntryAttachmentRole.BankReceipt });
@@ -125,9 +126,15 @@ public static class CapitalEndpoints
         return Results.Ok(new EntryStatusView(entry.Id, entry.Status, ""));
     }
 
-    /// <summary>Why <paramref name="partnerId"/> cannot move money in <paramref name="projectId"/>: <c>unknownPartner</c> when not a partner of it; empty when they can.</summary>
-    public static async Task<string> RefusalOfPartnerAsync(Guid projectId, Guid partnerId, RedixDbContext db) =>
-        await db.Partners.AnyAsync(row => row.Id == partnerId && row.ProjectId == projectId) ? "" : "UnknownPartner";
+    /// <summary>
+    /// Why <paramref name="partnerId"/> cannot move money in <paramref name="projectId"/>: <c>unknownPartner</c> when not a partner of it, or when their table's capital item is not offered
+    /// (disabled, BR-15, or none yet), as an expense's item must be (redix-api #109); empty when they can.
+    /// </summary>
+    public static async Task<string> RefusalOfPartnerAsync(Guid projectId, Guid partnerId, RedixDbContext db)
+    {
+        var itemId = await db.Partners.Where(row => row.Id == partnerId && row.ProjectId == projectId).Select(row => row.ItemId).FirstOrDefaultAsync();
+        return await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.Capital, db) == Item.None ? "UnknownPartner" : "";
+    }
 
     private static async Task<Dictionary<Guid, decimal>> BalancesAsync(Guid projectId, RedixDbContext db)
     {

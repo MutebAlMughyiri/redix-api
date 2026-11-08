@@ -59,6 +59,15 @@ public static class ProjectStructure
         await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).SingleOrDefaultAsync(row => row.Id == itemId && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId))
         ?? Item.None;
 
+    /// <summary>
+    /// Why the project <paramref name="projectId"/> cannot take an item of <paramref name="type"/>: <c>capitalItemExists</c> for a second capital item (BR-31, redix-api #109); empty
+    /// when it can.
+    /// </summary>
+    public static async Task<string> RefusalOfTypeAsync(Guid projectId, ItemType type, RedixDbContext db) =>
+        type == ItemType.Capital && await db.Items.AnyAsync(item => item.Type == ItemType.Capital && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId))
+            ? nameof(StructureChangeOutcome.CapitalItemExists)
+            : "";
+
     /// <summary>True when the item <paramref name="itemId"/> belongs to <paramref name="projectId"/> (BR-33).</summary>
     public static Task<bool> HasItemAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
         db.Items.AnyAsync(item => item.Id == itemId && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));

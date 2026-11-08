@@ -25,9 +25,6 @@ public class CapitalMovementDetails
     /// <summary>What it is.</summary>
     public CapitalMovementType Type { get; init; }
 
-    /// <summary>What was said about it.</summary>
-    public string Description { get; init; } = "";
-
     /// <summary>Why it has no bank receipt (BR-23); empty when it has one.</summary>
     public string CashReason { get; init; } = "";
 

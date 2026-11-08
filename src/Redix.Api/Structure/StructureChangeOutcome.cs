@@ -27,6 +27,12 @@ public enum StructureChangeOutcome
     /// <summary>Partners are the item's tables, so it stays a capital item (redix-api #109).</summary>
     ItemHasPartners,
 
+    /// <summary>
+    /// A project has one capital item, so its total is the whole capital that every reader sees (BR-31) and no second item shows one partner's balance; until a table can be hidden from
+    /// someone (redix-api #106).
+    /// </summary>
+    CapitalItemExists,
+
     /// <summary>A person cannot choose that type for a column (FR-41).</summary>
     InvalidDataType,
 

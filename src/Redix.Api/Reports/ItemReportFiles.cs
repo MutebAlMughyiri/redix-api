@@ -73,18 +73,18 @@ public static class ItemReportFiles
             line.Quantity == 0 ? Blank.Value : line.Quantity,
             .. line.Values.Select(value => (XLCellValue)value),
         ],
-        line.Amount, "", line.IsNew, true);
+        line.Amount, line.IsNew, true);
 
     private static StatementRow RevenueRow(ItemEntryRow line) => new(
         [line.Description, line.Date.ToDateTime(TimeOnly.MinValue)],
-        line.Amount, "", line.IsNew, true);
+        line.Amount, line.IsNew, true);
 
     private static StatementRow PaymentRow(ItemEntryRow payment) => new(
         [
             string.Join(" · ", new[] { payment.Description, payment.IsOutsideContract ? "خارج العقد" : "" }.Concat(payment.Values).Where(text => text.Length > 0)),
             payment.Date.ToDateTime(TimeOnly.MinValue),
         ],
-        payment.Amount, "", payment.IsNew, !payment.IsOutsideContract);
+        payment.Amount, payment.IsNew, !payment.IsOutsideContract);
 
     /// <summary>The contracts report as a PDF: each contract's value, paid, remaining, and an alert where more was paid (FR-31, FR-33).</summary>
     public static byte[] ContractsPdf(string projectName, List<ContractView> contracts)
@@ -126,7 +126,7 @@ public static class ItemReportFiles
             "العقود",
             [new StatementColumn("المقاول", CellKind.Text), new StatementColumn("البند", CellKind.Text), new StatementColumn("قيمة العقد", CellKind.Price), new StatementColumn("المدفوع", CellKind.Price)],
             new StatementColumn("المتبقي", CellKind.Price),
-            contracts.Select(contract => new StatementRow([contract.SupplierName, contract.ItemName, contract.IsOpenValue ? "مفتوحة" : contract.Value, contract.Paid], contract.IsOpenValue ? 0 : contract.Remaining, "", false, true)).ToList(),
+            contracts.Select(contract => new StatementRow([contract.SupplierName, contract.ItemName, contract.IsOpenValue ? "مفتوحة" : contract.Value, contract.Paid], contract.IsOpenValue ? 0 : contract.Remaining, false, true)).ToList(),
             0);
         StatementWriter.Add(workbook, new StatementSheet("العقود", [table], ""), []);
         return StatementStyle.Bytes(workbook);

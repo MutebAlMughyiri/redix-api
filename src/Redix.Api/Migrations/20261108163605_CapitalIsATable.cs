@@ -105,7 +105,7 @@ namespace Redix.Api.Migrations
                 values: new object[] { new Guid("7f1e80a0-63f0-0351-5262-2a5a02392d3a"), new Guid("f2d90dd8-4d88-c252-27ca-0160324d3cd4"), "", 0 });
 
             // Every project with a structure gets a category رأس المال holding an item رأس المال, before its first category of revenue items, or last when it has none; its partners
-            // become that item's tables in the order they were added (redix-api #109). A project still waiting for approval takes it from the template when approved.
+            // become that item's tables in the order they were added, which their time-ordered ids give as text, not as SQL Server sorts a uniqueidentifier (redix-api #109). A project still waiting for approval takes it from the template when approved.
             migrationBuilder.Sql("""
                 DECLARE @capital TABLE (ProjectId uniqueidentifier PRIMARY KEY, Place int, CategoryId uniqueidentifier, ItemId uniqueidentifier);
                 INSERT INTO @capital (ProjectId, Place, CategoryId, ItemId)
@@ -123,7 +123,7 @@ namespace Redix.Api.Migrations
                 UPDATE partner SET ItemId = capital.ItemId, SortOrder = placed.Place
                 FROM Partners partner
                 JOIN @capital capital ON capital.ProjectId = partner.ProjectId
-                JOIN (SELECT Id, ROW_NUMBER() OVER (PARTITION BY ProjectId ORDER BY Id) AS Place FROM Partners) placed ON placed.Id = partner.Id;
+                JOIN (SELECT Id, ROW_NUMBER() OVER (PARTITION BY ProjectId ORDER BY CONVERT(char(36), Id)) AS Place FROM Partners) placed ON placed.Id = partner.Id;
                 """);
         }
 

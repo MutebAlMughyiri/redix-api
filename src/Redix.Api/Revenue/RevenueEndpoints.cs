@@ -12,7 +12,7 @@ namespace Redix.Api.Revenue;
 /// <summary>Money that comes in other than capital (UC-047, FR-28). Whoever moves money enters it from Add entry, and it waits for approval like every entry (BR-30, redix-api #101).</summary>
 public static class RevenueEndpoints
 {
-    /// <summary>Maps the routes that read, for anyone who reads the project, and those that enter, for whoever holds <see cref="Permission.MoveMoney"/>.</summary>
+    /// <summary>Maps the route that enters revenue, for whoever holds <see cref="Permission.MoveMoney"/>; revenue is read through the entries list and the item report.</summary>
     /// <param name="app">The app.</param>
     public static void MapRevenue(this WebApplication app)
     {

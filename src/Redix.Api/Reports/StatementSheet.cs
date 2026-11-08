@@ -24,19 +24,15 @@ public record StatementColumn(string Header, CellKind Kind);
 /// <summary>A row of a table.</summary>
 /// <param name="Cells">Its cells, one for each column before the amount.</param>
 /// <param name="Amount">Its amount.</param>
-/// <param name="Link">Where its <see cref="CellKind.Linked"/> cell leads; empty for nowhere.</param>
 /// <param name="IsNew">True when it was approved after the previous report, shaded green (BR-26).</param>
 /// <param name="CountsAgainstAgreement">False for a payment outside its contract, which leaves المتبقي as it was (BR-04).</param>
-public record StatementRow(List<XLCellValue> Cells, decimal Amount, string Link, bool IsNew, bool CountsAgainstAgreement);
+public record StatementRow(List<XLCellValue> Cells, decimal Amount, bool IsNew, bool CountsAgainstAgreement);
 
 /// <summary>How a cell is written.</summary>
 public enum CellKind : byte
 {
     /// <summary>As it is.</summary>
     Text,
-
-    /// <summary>As it is, leading to the row's link.</summary>
-    Linked,
 
     /// <summary>Centred.</summary>
     Centred,

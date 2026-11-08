@@ -13,7 +13,7 @@ namespace Redix.Api.Accounts;
 /// <param name="Expenses">Purchases and contractor payments, each by its total.</param>
 public readonly record struct ProjectFigures(decimal Capital, decimal VatRefunds, decimal Sales, decimal OtherRevenue, decimal Expenses)
 {
-    /// <summary>Capital, VAT refunds and sales (BR-06).</summary>
+    /// <summary>Capital, VAT refunds, other revenue and sales (BR-06).</summary>
     public decimal Revenue => RevenueWithoutSales + Sales;
 
     /// <summary>All revenue but sales.</summary>

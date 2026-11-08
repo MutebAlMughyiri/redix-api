@@ -665,6 +665,38 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task BR_31_UC_109_RasAlMalsTablesShowEveryPartnerToWhoeverSeesAllCapitalTheirOwnToAPartnerAndNoneToAnyoneElse()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
+        var (partnerReader, partnerReaderId) = await ledger.MemberAsync("Reader");
+        var (otherReader, _) = await ledger.MemberAsync("Reader");
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("القارئ", capital) { UserId = partnerReaderId }, Json)).EnsureSuccessStatusCode();
+        await PartnerAsync(ledger, "غيره");
+
+        async Task<List<string>> TablesSeenBy(HttpClient client) =>
+            (await client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{ledger.ProjectId}/items/{capital}/tables", Json))!.Select(table => table.Name).ToList();
+
+        Assert.Equal(["القارئ", "غيره"], await TablesSeenBy(ledger.Client));
+        Assert.Equal(["القارئ"], await TablesSeenBy(partnerReader));
+        Assert.Empty(await TablesSeenBy(otherReader));
+    }
+
+    [Fact]
+    public async Task BR_31_UC_109_AProjectHasOneCapitalItemSoNoSecondOneShowsOnePartnersBalance()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var category = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories", Json))!.First(row => row.Items.Any(item => item.Type == ItemType.Capital));
+        var refund = await ledger.RevenueItemAsync(ItemType.VatRefund);
+
+        var added = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/categories/{category.Id}/items", new AddItemRequest("رأس مال أحمد", ItemType.Capital), Json);
+        var retyped = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{refund}/type", new ChangeItemTypeRequest(ItemType.Capital), Json);
+
+        Assert.Equal((HttpStatusCode.Conflict, "capitalItemExists"), (added.StatusCode, await Ledger.CodeOf(added)));
+        Assert.Equal((HttpStatusCode.Conflict, "capitalItemExists"), (retyped.StatusCode, await Ledger.CodeOf(retyped)));
+    }
+
+    [Fact]
     public async Task UC_109_ACapitalItemStaysOneWhilePartnersAreItsTablesAndTakesNoSubTable()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

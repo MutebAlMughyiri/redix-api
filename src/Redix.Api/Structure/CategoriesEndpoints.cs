@@ -108,6 +108,11 @@ public static class CategoriesEndpoints
             {
                 return Results.NotFound();
             }
+            var refusal = await ProjectStructure.RefusalOfTypeAsync(projectId, request.Type, db);
+            if (refusal.Length > 0)
+            {
+                return Refusal.Of(StatusCodes.Status409Conflict, refusal);
+            }
 
             var defaults = await db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == request.Type).ToListAsync();
             var item = Item.New(categoryId, name, request.Type, await db.Items.CountAsync(row => row.CategoryId == categoryId), defaults);
@@ -181,6 +186,11 @@ public static class CategoriesEndpoints
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasPartners);
         }
+        var refusal = item.Type == request.Type ? "" : await ProjectStructure.RefusalOfTypeAsync(projectId, request.Type, db);
+        if (refusal.Length > 0)
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, refusal);
+        }
 
         item.Type = request.Type;
         var defaults = await db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == request.Type).OrderBy(column => column.SortOrder).ToListAsync();
@@ -243,13 +253,14 @@ public static class CategoriesEndpoints
         });
 
     /// <summary>
-    /// An item's tables in the order its sheet prints them (AC-46.8): its general table, named after the item, each named subgroup, and each contract's payments, named after its
-    /// contractor, with how many approved entries each holds.
+    /// An item's tables in the order its sheet prints them (AC-46.8): its general table, named after the item, each named subgroup, each contract's payments, named after its
+    /// contractor, and a capital item's partners, only those the caller sees (BR-31), with how many approved entries each holds.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
+    /// <param name="principal">The caller's session, which says whose capital they see.</param>
     /// <param name="db">The database the structure lives in.</param>
-    public static async Task<IResult> Tables(Guid projectId, Guid itemId, RedixDbContext db)
+    public static async Task<IResult> Tables(Guid projectId, Guid itemId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
         if (item == Item.None)
@@ -266,7 +277,8 @@ public static class CategoriesEndpoints
             .GroupBy(partnerId => partnerId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count);
         var counts = purchases.Concat(payments).Concat(movements).ToDictionary();
         var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
-        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), db.Partners.Where(partner => partner.ItemId == itemId), db);
+        var sight = await Partners.PartnerSight.OfAsync(principal, projectId, db);
+        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), (await db.Partners.Where(partner => partner.ItemId == itemId).ToListAsync()).Where(sight.Sees), db);
         return Results.Ok(TablesOf(item, subgroups, own).Select(table => new ItemTableView(table.Id, table.Kind, table.Name, counts.GetValueOrDefault(table.Id))).ToList());
     }
 
@@ -282,7 +294,7 @@ public static class CategoriesEndpoints
     public static async Task<List<TableCategoryView>> EntryTables(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var movesMoney = (await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db)).In(projectId).Contains(Permission.MoveMoney);
-        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ProjectId == projectId && contract.IsActive), db.Partners.Where(partner => partner.ProjectId == projectId), db);
+        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ProjectId == projectId && contract.IsActive), await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync(), db);
         return (await ReadAsync(projectId, db))
             .Select(category => new TableCategoryView(category.Id, category.Name, category.ItemsOfferedFor(ItemType.Purchases)
                 .Concat(category.ItemsOfferedFor(ItemType.ContractorPayments))
@@ -300,10 +312,10 @@ public static class CategoriesEndpoints
     }
 
     /// <summary>The tables each with a business of its own makes: <paramref name="contracts"/>, each named after its contractor, and <paramref name="partners"/> (redix-api #109).</summary>
-    private static async Task<List<OwnTable>> OwnTablesAsync(IQueryable<Contract> contracts, IQueryable<Partners.Partner> partners, RedixDbContext db) =>
+    private static async Task<List<OwnTable>> OwnTablesAsync(IQueryable<Contract> contracts, IEnumerable<Partners.Partner> partners, RedixDbContext db) =>
     [
         .. await (from contract in contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id select new OwnTable(contract.Id, contract.ItemId, contract.SortOrder, supplier.Name, ItemTableKind.Contract)).ToListAsync(),
-        .. await partners.Select(partner => new OwnTable(partner.Id, partner.ItemId, partner.SortOrder, partner.Name, ItemTableKind.Partner)).ToListAsync(),
+        .. partners.Select(partner => new OwnTable(partner.Id, partner.ItemId, partner.SortOrder, partner.Name, ItemTableKind.Partner)),
     ];
 
     /// <summary>

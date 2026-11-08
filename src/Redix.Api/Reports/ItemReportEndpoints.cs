@@ -35,9 +35,8 @@ public static class ItemReportEndpoints
         {
             return Results.NotFound();
         }
-        var userId = AccessTokens.UserIdOf(principal);
-        var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
-        return Results.Ok(await OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, partner => seesAll || partner.UserId == userId));
+        var sight = await PartnerSight.OfAsync(principal, projectId, db);
+        return Results.Ok(await OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, sight.Sees));
     }
 
     /// <summary>
@@ -97,7 +96,7 @@ public static class ItemReportEndpoints
             orderby entry.EntryDate, entry.Id
             select new { entry, movement }).ToListAsync();
         ItemEntryRow MovementRowOf(Entry entry, CapitalMovementDetails movement) => new(
-            entry.Id, entry.EntryDate, string.Join(" · ", new[] { ReportFormats.Movement(movement.Type), movement.Description }.Where(text => text.Length > 0)), "", "", 0, 0,
+            entry.Id, entry.EntryDate, string.Join(" · ", new[] { ReportFormats.Movement(movement.Type), entry.Notes }.Where(text => text.Length > 0)), "", "", 0, 0,
             CapitalMovementDetails.IsInflow(movement.Type) ? entry.Amount : -entry.Amount, false, [], entry.ApprovedAt > newSince);
         var partners = (await db.Partners.Where(partner => partner.ItemId == item.Id).ToListAsync()).Where(shows).OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id);
         var partnerTables = partners.Select(partner =>
@@ -119,7 +118,7 @@ public static class ItemReportEndpoints
 /// <param name="ItemId">The item.</param>
 /// <param name="ItemName">Its name.</param>
 /// <param name="CategoryName">Its category.</param>
-/// <param name="Total">Its purchases and contractor payments (BR-02).</param>
+/// <param name="Total">Its purchases and contractor payments (BR-02), its revenue, or for a capital item the whole capital.</param>
 /// <param name="Columns">The names of its own columns that print in its report (FR-41), in the order of each row's values.</param>
 /// <param name="Subgroups">Its purchases, a table per subgroup.</param>
 /// <param name="Contracts">Its contracts, each with its payments.</param>

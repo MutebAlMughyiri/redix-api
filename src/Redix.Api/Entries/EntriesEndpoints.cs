@@ -12,7 +12,10 @@ namespace Redix.Api.Entries;
 /// <summary>What any entry shares once it is in the ledger: reading it, and sending it for approval (UC-028).</summary>
 public static class EntriesEndpoints
 {
-    /// <summary>Maps the route that reads an entry, for anyone who reads the project, and the one that sends it, for whoever holds <see cref="Permission.RecordEntries"/>.</summary>
+    /// <summary>
+    /// Maps the routes that read an entry, the caller's own and the project's list, for anyone who reads the project; those that send it and change its notes, for whoever holds
+    /// <see cref="Permission.RecordEntries"/>; reversing, for <see cref="Permission.ApproveEntries"/>; and deleting, for <see cref="Permission.DeleteEntries"/>.
+    /// </summary>
     public static void MapEntries(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/entries/{entryId:guid}", Read).RequireAuthorization(nameof(Permission.ReadProject));
@@ -93,7 +96,7 @@ public static class EntriesEndpoints
 
     /// <summary>
     /// Sends a draft or a rejected entry for approval, and answers it (UC-028). Only its author sends it, unless the caller holds <see cref="Permission.ManageAnyEntry"/>: otherwise <c>notYourEntry</c>. Anything already sent answers <c>entryNotSubmittable</c>.
-    /// What it still lacks answers <c>entryIncomplete</c> with every key under <c>missing</c>: <c>attachment</c> for a file with no reason in its place (FR-09), and each required column left empty (FR-41). Telling Finance is UC-036 "Send push notifications".
+    /// What it still lacks answers <c>entryIncomplete</c> with every key under <c>missing</c>: each required column left empty (FR-41). Telling Finance is UC-036 "Send push notifications".
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>

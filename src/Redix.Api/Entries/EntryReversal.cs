@@ -30,7 +30,7 @@ public static class EntryReversal
         var capital = await db.CapitalMovementDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (capital is not null)
         {
-            details.Add(new CapitalMovementDetails { EntryId = reversal.Id, PartnerId = capital.PartnerId, Type = capital.Type, Description = reason });
+            details.Add(new CapitalMovementDetails { EntryId = reversal.Id, PartnerId = capital.PartnerId, Type = capital.Type });
         }
         var revenue = await db.Set<RevenueDetails>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (revenue is not null)

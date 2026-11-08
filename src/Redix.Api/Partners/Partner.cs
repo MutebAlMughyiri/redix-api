@@ -8,6 +8,9 @@ namespace Redix.Api.Partners;
 /// </summary>
 public class Partner : IOrdered
 {
+    /// <summary>No partner: what a new one is added over, whose id and item are empty.</summary>
+    public static Partner None { get; } = new() { Id = Guid.Empty, Name = "" };
+
     /// <summary>The partner's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 

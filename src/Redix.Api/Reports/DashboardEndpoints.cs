@@ -41,7 +41,7 @@ public static class DashboardEndpoints
 }
 
 /// <summary>A project's figures at a glance.</summary>
-/// <param name="Revenue">Capital, VAT refunds and sales (BR-06).</param>
+/// <param name="Revenue">Capital, VAT refunds, other revenue and sales (BR-06).</param>
 /// <param name="Expenses">Every approved expense: the project's cost.</param>
 /// <param name="Surplus">Revenue less expenses (BR-07).</param>
 /// <param name="WasReconciled">True once the accounts were checked against the books.</param>

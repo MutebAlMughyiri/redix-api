@@ -181,6 +181,37 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task BR_15_UC_109_ADisabledRasAlMalTakesNoMovementYetItsPartnerIsStillRenamed()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/items/{capital}/disable", null)).EnsureSuccessStatusCode();
+
+        var moved = await MoveAsync(ledger, Contribution(ledger, partner, 100));
+        var renamed = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{partner}", new PartnerRequest("شريك أول", capital), Json);
+
+        Assert.Equal((HttpStatusCode.BadRequest, "unknownPartner"), (moved.StatusCode, await Ledger.CodeOf(moved)));
+        renamed.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task UC_109_AMovementsTextIsItsEntrysNotesSoChangingTheNotesChangesWhatTheCapitalAndItsReportShow()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+        var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
+        await ContributeAsync(ledger, partner, 100);
+        var entryId = (await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!.Single().Id;
+
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/notes", new ChangeNotesRequest("تحويل من البنك"), Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal("تحويل من البنك", (await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!.Single().Description);
+        var report = (await ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{capital}", Json))!;
+        Assert.EndsWith("تحويل من البنك", report.Subgroups.Single().Rows.Single().Description);
+    }
+
+    [Fact]
     public async Task AMovementShowsWhatItDidToTheCapitalAndItsReceipt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
