@@ -592,7 +592,7 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task R3_R5_R13_WhoeverMovesMoneyIsOfferedTheRevenueItemsAndLastEachActivePartner()
+    public async Task R3_R5_R13_WhoeverMovesMoneyIsOfferedTheRevenueItemsAndRightAfterThemEachActivePartner()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var refund = await ledger.RevenueItemAsync(ItemType.VatRefund);
@@ -606,8 +606,9 @@ public class CategoriesTests(MigratedApiFactory factory)
         var revenue = offered.SelectMany(category => category.Items).Single(item => item.Id == refund);
         Assert.True(revenue.IsRevenue);
         Assert.Equal([ItemTableKind.General], revenue.Tables.Select(table => table.Kind));
-        var partners = offered.Last();
-        Assert.Equal((Guid.Empty, ""), (partners.Id, partners.Name));
+        var partners = offered.Single(category => category.Id == Guid.Empty);
+        Assert.Equal("", partners.Name);
+        Assert.Equal(offered.FindLastIndex(category => category.Items.Any(item => item.IsRevenue)) + 1, offered.IndexOf(partners));
         Assert.Equal([nawaf, reem], partners.Items.Select(item => item.Id));
         Assert.All(partners.Items, item => Assert.Equal((ItemTableKind.Partner, item.Id, item.Name, false), (item.Tables.Single().Kind, item.Tables.Single().Id, item.Tables.Single().Name, item.IsRevenue)));
         Assert.False(offered.SelectMany(category => category.Items).Single(item => item.Id == ledger.ItemId).IsRevenue);

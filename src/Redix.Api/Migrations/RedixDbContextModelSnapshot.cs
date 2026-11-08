@@ -5831,6 +5831,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("12dee4c0-f443-892e-5728-c2e00f9ca781"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4c540222-763c-2ad3-8ccd-52cf4c975b9d"),
+                            Value = "Revenue · Capital"
+                        },
+                        new
+                        {
+                            Id = new Guid("2f7e5d09-b834-ea9a-0aa6-985e5ac0a9f7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4c540222-763c-2ad3-8ccd-52cf4c975b9d"),
+                            Value = "الإيرادات · رأس المال"
+                        },
+                        new
+                        {
                             Id = new Guid("a772dd27-8908-b6ee-b335-5eb9f457a10c"),
                             Language = "en",
                             TranslationKeyId = new Guid("76d4cd24-6534-d7be-07ab-9ee6d13f873a"),
@@ -15024,6 +15038,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("f405963d-ceb0-a769-42e6-e2ee6231ffa7"),
                             Description = "",
                             Key = "entries.withdrawal"
+                        },
+                        new
+                        {
+                            Id = new Guid("4c540222-763c-2ad3-8ccd-52cf4c975b9d"),
+                            Description = "",
+                            Key = "entries.capitalGroup"
                         },
                         new
                         {

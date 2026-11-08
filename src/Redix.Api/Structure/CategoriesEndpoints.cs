@@ -268,8 +268,8 @@ public static class CategoriesEndpoints
     /// <summary>
     /// Every table an entry may go into (redix-app #84, redix-api #101): each active category's items that take purchases or contractor payments, each with its tables in the order
     /// its sheet prints them. An item's general and named tables show when it takes purchases, and its active contracts when it takes contractor payments. Whoever holds
-    /// <see cref="Permission.MoveMoney"/> also gets the revenue items, with their general and named tables, and last a group with no id and no name holding each active partner as a
-    /// table, which the app names. An item or a category with nothing to offer is left out.
+    /// <see cref="Permission.MoveMoney"/> also gets the revenue items, with their general and named tables, and right after the last category holding one, a group with no id and no
+    /// name holding each active partner as a table, which the app names: capital is revenue (BR-06, Muteb 8 Nov 2026). An item or a category with nothing to offer is left out.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
@@ -295,7 +295,8 @@ public static class CategoriesEndpoints
         var partners = movesMoney ? await db.Partners.Where(partner => partner.ProjectId == projectId && partner.IsActive).ToListAsync() : [];
         if (partners.Count > 0)
         {
-            tables.Add(new TableCategoryView(Guid.Empty, "", partners.OrderBy(partner => partner.Id).Select(partner => new TableItemView(partner.Id, partner.Name, [new EntryTableView(partner.Id, ItemTableKind.Partner, partner.Name)], false)).ToList()));
+            var afterRevenue = tables.FindLastIndex(category => category.Items.Any(item => item.IsRevenue)) + 1;
+            tables.Insert(afterRevenue == 0 ? tables.Count : afterRevenue, new TableCategoryView(Guid.Empty, "", partners.OrderBy(partner => partner.Id).Select(partner => new TableItemView(partner.Id, partner.Name, [new EntryTableView(partner.Id, ItemTableKind.Partner, partner.Name)], false)).ToList()));
         }
         return tables;
     }

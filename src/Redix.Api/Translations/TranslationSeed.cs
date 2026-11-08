@@ -228,6 +228,7 @@ public static class TranslationSeed
         ("entries.edit", "Edit", "تعديل"),
         ("entries.send", "Send for approval", "إرسال للاعتماد"),
         ("entries.withdrawal", "Withdrawal", "سحب"),
+        ("entries.capitalGroup", "Revenue · Capital", "الإيرادات · رأس المال"),
         ("entries.withdrawalHint", "The partner takes this amount out of their capital", "يسحب الشريك هذا المبلغ من رأس ماله"),
         ("entries.delete", "Delete", "حذف"),
         ("entries.deleteQuestion", "Delete this entry?", "حذف هذا القيد؟"),
