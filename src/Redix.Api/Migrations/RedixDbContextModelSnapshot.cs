@@ -6448,20 +6448,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("60fadec6-7224-7fea-5d13-e021300d4c1a"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f445d2bf-ac6e-a357-1a80-e0fca57a2876"),
-                            Value = "Contracts and what remains"
-                        },
-                        new
-                        {
-                            Id = new Guid("f2a96fd3-7748-de55-a631-d1631801442d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f445d2bf-ac6e-a357-1a80-e0fca57a2876"),
-                            Value = "العقود والمتبقي"
-                        },
-                        new
-                        {
                             Id = new Guid("27551e78-834a-b2be-5c05-da732d084acd"),
                             Language = "en",
                             TranslationKeyId = new Guid("a8a282dd-76f5-b557-a0d1-b8916c10db8c"),
@@ -6983,14 +6969,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("91e412fa-0eab-013c-4d7b-b8a582d7ba0e"),
                             Language = "en",
                             TranslationKeyId = new Guid("442db054-1bbe-da4f-fcce-ea086b6a4eca"),
-                            Value = "VAT statement"
+                            Value = "VAT refund"
                         },
                         new
                         {
                             Id = new Guid("6709191c-fcba-8e91-2a28-d2b4ac929653"),
                             Language = "ar",
                             TranslationKeyId = new Guid("442db054-1bbe-da4f-fcce-ea086b6a4eca"),
-                            Value = "كشف ضريبة القيمة المضافة"
+                            Value = "استرداد ضريبة القيمة المضافة"
                         },
                         new
                         {
@@ -7151,14 +7137,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("f6bef1aa-f1f7-fc19-c85f-8ecb287c9215"),
                             Language = "en",
                             TranslationKeyId = new Guid("1d57001f-4aaf-4128-21b3-31912acb68eb"),
-                            Value = "Update actual balances"
+                            Value = "Update"
                         },
                         new
                         {
                             Id = new Guid("bbdee45f-ebf9-9cc2-954b-dd9cbbbff299"),
                             Language = "ar",
                             TranslationKeyId = new Guid("1d57001f-4aaf-4128-21b3-31912acb68eb"),
-                            Value = "تحديث الأرصدة الفعلية"
+                            Value = "تحديث"
                         },
                         new
                         {
@@ -14431,12 +14417,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("dcfc4b11-786f-e75b-7712-128fa2b7fe96"),
                             Description = "",
                             Key = "reports.item"
-                        },
-                        new
-                        {
-                            Id = new Guid("f445d2bf-ac6e-a357-1a80-e0fca57a2876"),
-                            Description = "",
-                            Key = "reports.contracts"
                         },
                         new
                         {
