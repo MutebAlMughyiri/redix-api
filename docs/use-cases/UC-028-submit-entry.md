@@ -32,13 +32,13 @@ Tests are in `SubmitEntryTests`.
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | A complete draft becomes pending | `EntriesEndpoints.Submit` | `UC_028_ADraftWithItsFileIsSentAndIsPending` |
-| AC-09.1: no file and no reason is refused; a reason is enough | `MissingOfAsync` | `AC_09_1_ADraftWithNoFileAndNoReasonIsRefusedNamingTheFile`, `AC_09_1_ADraftThatSaysWhyThereIsNoInvoiceIsSentAndJoinsTheExceptionsList` |
-| FR-41: each required column is named | `EntryAnswers.MissingOf` | `FR_41_EveryRequiredColumnLeftEmptyIsNamedWithTheFile`, `FR_41_WhatADraftHoldsIsWhatAnswersItsColumns` |
-| A contractor payment needs its receipt, and waits once sent | `MissingOfAsync`, `ContractMoney` | `ADraftContractorPaymentNeedsItsReceiptAndOnceSentWaitsOnItsContract` |
+| D3: a draft with no file is sent, and takes its file later (D15); AC-09.1 and the exceptions list retired with simple expense (redix-api #96) | `MissingOfAsync` | `D3_ADraftWithNoFileIsSent` |
+| FR-41: each required column is named | `EntryAnswers.MissingOf` | `FR_41_EveryRequiredColumnLeftEmptyIsNamed`, `FR_41_WhatADraftHoldsIsWhatAnswersItsColumns` |
+| D16: a contractor payment is sent with or without its receipt, and once sent waits on its contract | `MissingOfAsync`, `ContractMoney` | `D16_ADraftContractorPaymentIsSentWithOrWithoutItsReceiptAndWaitsOnItsContract` |
 | Only a draft or a rejected entry | `Entry.CanBeSubmitted` | `UC_033_ARejectedEntryCanBeSentAgain`, `AnEntryAlreadySentCannotBeSentAgain` |
 | Field sends their own; Finance anyone's | `Permission.ManageAnyEntry` | `FieldSendsTheirOwnEntryAndNotAnothersAndFinanceSendsAnyones`, `WhoHoldsNoRecordEntriesCannotSendAnEntry` |
 | BR-33 and a finished project | `ProjectChanges`, the query by project | `BR_33_AnEntryOfAnotherProjectIsNotFoundAndSomeoneOutsideIsRefused`, `AC_04_1_AFinishedProjectSendsNothing` |
 | FR-21: sending is in the audit trail | `RedixDbContext.Audit` | `FR_21_SendingIsInTheAuditTrailAndARefusalIsNot` |
-| An entry reads back whole | `ViewOfAsync` | `ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest`, `ReadingAnExpenseWithoutAnInvoiceAnswersItsReasonAndAnEmptyInvoice`, `ReadingACreditNoteAnswersWhatItIsLinkedTo` |
+| An entry reads back whole | `ViewOfAsync` | `ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest`, `ReadingACreditNoteAnswersWhatItIsLinkedTo` |
 | A rejected revenue or partner entry is sent again and waits once more; it has no columns to check | `EntriesEndpoints.MissingOfAsync` | `RevenueTests.ARejectedRevenueEntryIsSentAgainAndWaitsOnceMore` |
 | BR-31: one partner's money read by its id answers 404 to anyone but that partner and whoever holds `seeAllCapital`; the list and the single read share one filter | `EntriesEndpoints.SeenByAsync`, `Read` | `RevenueTests.BR_31_OnePartnersMoneyReadByItsIdIsLeftToThatPartnerAndWhoeverSeesAllCapital` |

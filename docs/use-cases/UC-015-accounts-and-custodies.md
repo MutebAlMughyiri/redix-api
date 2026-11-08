@@ -54,7 +54,7 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 | Banks come first, then in the order added | `AccountsEndpoints.ViewsAsync` | `AccountsTests.BanksComeFirstThenInTheOrderTheyWereAdded` |
 | A custodian sees their custody and every other account, and changes none (AC-22.1, BR-31) | `AccountView.IsMine`, `Permission.ManageSettings` | `AccountsTests.ACustodianSeesTheirCustodyAndEveryOtherAccountWithoutChangingThem` |
 | Field is offered only what they hold, and only while it is active (open question 4) | `Account.IsOfferedTo` | `AccountsTests.FieldIsOfferedOnlyTheAccountsTheyHold`, `FieldHoldingNothingIsOfferedNothing`, `FieldIsNotOfferedADisabledAccountTheyHold` |
-| Finance is offered every active account | `Permission.ChargeAnyAccount` | `AccountsTests.FinanceIsOfferedEveryActiveAccount`, `OnlyFinanceChargesAnyAccount` |
+| Finance is offered every active account | `Permission.ChargeAnyAccount` | `AccountsTests.FinanceIsOfferedEveryActiveAccount`, `FieldIsOfferedOnlyTheAccountsTheyHold` |
 | One project's accounts are never another's (BR-33) | `Account.ProjectId`, `AccountsEndpoints` | `AccountsTests.OneProjectsAccountsAreNeverAnothers` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `AccountsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 | Everyone with access reads; only Finance changes | `Permission.ManageSettings` | `AccountsTests.EveryoneWithAccessReadsAccountsAndOnlyFinanceChangesThem` |

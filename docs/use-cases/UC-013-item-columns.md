@@ -66,7 +66,7 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | A project copied from an earlier one takes its columns, without what it deleted (AC-05.2) | `ProjectStructure.ApproveAsync`, `Item.CopyFor` | `ColumnsTests.AnEarlierProjectsColumnsAreCopiedWithoutWhatItDeleted` |
 | Everyone with access reads; only Finance changes | `Permission.ManageStructure` | `ColumnsTests.EveryoneWithAccessReadsColumnsAndOnlyFinanceChangesThem` |
 | One project's route never reaches another's columns (BR-33) | `ProjectStructure.ItemOfAsync`, `ColumnsEndpoints.TemplateOf` | `ColumnsTests.ARouteOfOneProjectNeverReachesAnothersColumns` |
-| A finished project refuses every change and stays readable (AC-04.1) | `ProjectStructure.MapStructureChanges` | `ColumnsTests.AFinishedProjectRefusesColumnChangesAndStaysReadable` |
+| A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `ColumnsTests.AFinishedProjectRefusesColumnChangesAndStaysReadable` |
 
 ## Left to later use cases
 

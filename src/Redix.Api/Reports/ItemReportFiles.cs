@@ -5,16 +5,14 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
-/// <summary>An item's report and the contracts report as files (FR-33), and the item page and sheet the periodic report shares (FR-45, FR-46).</summary>
+/// <summary>An item's report and the contracts report as files (FR-33), and the item sheet the periodic report shares, drawn the same in its workbook and its PDF (FR-45, FR-46, findings row 130).</summary>
 public static class ItemReportFiles
 {
-    private static readonly string[] Titles = ["", "الوصف", "رقم الفاتورة", "التاريخ", "البند", "سعر الحبة", "العدد", "التكلفة"];
-
     /// <summary>One item's report as a PDF.</summary>
     public static byte[] Pdf(ItemReportView item)
     {
         ReportFormats.PreparePdf();
-        return Document.Create(document => PeriodicReportFiles.Page(document, page => ItemPage(page, item))).GeneratePdf();
+        return Document.Create(document => PeriodicReportFiles.Page(document, page => StatementPdf.Draw(page, SheetOf(item)))).GeneratePdf();
     }
 
     private static readonly StatementColumn Cost = new("التكلفة", CellKind.Text);
@@ -87,69 +85,6 @@ public static class ItemReportFiles
             payment.Date.ToDateTime(TimeOnly.MinValue),
         ],
         payment.Amount, "", payment.IsNew, !payment.IsOutsideContract);
-
-    /// <summary>An item's page: a table per subgroup in the statement's columns, then each contract with its value in the head, its payments, their total, what remains and the total of all; new rows green (FR-45).</summary>
-    public static void ItemPage(ColumnDescriptor page, ItemReportView item)
-    {
-        page.Spacing(6);
-        page.Item().Text($"{item.CategoryName} · {item.ItemName}").FontSize(13).Bold();
-        foreach (var subgroup in item.Subgroups)
-        {
-            page.Item().Text(subgroup.Name.Length > 0 ? subgroup.Name : "عام").Bold();
-            Table(page, item, subgroup.Rows, subgroup.Total);
-        }
-        foreach (var contract in item.Contracts)
-        {
-            page.Item().Text($"{contract.ContractorName} · قيمة العقد {(contract.IsOpenValue ? "مفتوحة" : ReportFormats.Money(contract.Value))}").Bold();
-            Table(page, item, contract.Payments, contract.PaymentsTotal);
-            if (!contract.IsOpenValue)
-            {
-                PeriodicReportFiles.Line(page, "المتبقي", contract.Remaining, true);
-            }
-        }
-        PeriodicReportFiles.Line(page, "اجمالي الكل", item.Total, true);
-    }
-
-    private static void Table(ColumnDescriptor page, ItemReportView item, List<ItemEntryRow> rows, decimal total) => page.Item().Table(table =>
-    {
-        table.ColumnsDefinition(columns =>
-        {
-            columns.ConstantColumn(22);
-            columns.RelativeColumn(4);
-            columns.RelativeColumn(2);
-            columns.RelativeColumn(2);
-            columns.RelativeColumn(2);
-            columns.RelativeColumn(2);
-            columns.RelativeColumn(1);
-            columns.RelativeColumn(2);
-        });
-        PeriodicReportFiles.Header(table, Titles);
-        var number = 1;
-        foreach (var row in rows)
-        {
-            foreach (var text in Cells(number++, row, item.ItemName))
-            {
-                PeriodicReportFiles.Cell(table, text, isNew: row.IsNew);
-            }
-        }
-        for (var blank = 0; blank < Titles.Length - 1; blank++)
-        {
-            PeriodicReportFiles.Cell(table, blank == 1 ? "المجموع" : "", true);
-        }
-        PeriodicReportFiles.Cell(table, ReportFormats.Money(total), true);
-    });
-
-    private static string[] Cells(int number, ItemEntryRow row, string itemName) =>
-    [
-        $"{number}",
-        string.Join(" · ", new[] { row.Description, row.SupplierName }.Concat(row.Values).Where(text => text.Length > 0)),
-        row.InvoiceNumber,
-        ReportFormats.Date(row.Date),
-        itemName,
-        row.UnitPrice == 0 ? "" : ReportFormats.Money(row.UnitPrice),
-        row.Quantity == 0 ? "" : $"{row.Quantity:0.##}",
-        ReportFormats.Money(row.Amount),
-    ];
 
     /// <summary>The contracts report as a PDF: each contract's value, paid, remaining, and an alert where more was paid (FR-31, FR-33).</summary>
     public static byte[] ContractsPdf(string projectName, List<ContractView> contracts)

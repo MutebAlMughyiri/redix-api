@@ -39,7 +39,7 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 | Rule | Code | Test in `SuppliersTests` |
 | --- | --- | --- |
 | Finance adds a supplier with its name, VAT number, mobile and default item (FR-06) | `SuppliersEndpoints.Add` | `FinanceAddsASupplierWithAllItsDetails` |
-| A VAT number of 14 digits is refused (AC-06.1) | `Supplier.IsValidVatNumber` | `AVatNumberOf14DigitsIsRefused` |
+| BR-16: a VAT number is empty or at most 20 digits; more, or anything but digits, is refused (Muteb, 7 Nov 2026) | `Supplier.IsValidVatNumber` | `SuppliersTests.BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused` |
 | A number another supplier holds is refused, naming that supplier (AC-06.1) | `SuppliersEndpoints.IfAcceptableAsync` | `AVatNumberAnotherSupplierHoldsIsRefusedNamingThatSupplier`, `AnEditToANumberAnotherSupplierHoldsIsRefused` |
 | A disabled supplier still holds its number | `SuppliersEndpoints.IfAcceptableAsync` | `ADisabledSupplierStillHoldsItsVatNumber` |
 | The database holds a number to one supplier in a project | The index in `RedixDbContext` | `TheDatabaseHoldsAVatNumberToOneSupplierInAProject` |

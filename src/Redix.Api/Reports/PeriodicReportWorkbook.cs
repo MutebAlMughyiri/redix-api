@@ -40,7 +40,9 @@ public static class PeriodicReportWorkbook
     /// The capital sheet (AC-46.6): a table per partner, their movements oldest first, each receipt a link under <paramref name="receiptsAddress"/>, and their share under their total. Someone
     /// who sees only their own line (BR-31) gets the other partners as one table of one row, so اجمالي الكل is still the project's capital.
     /// </summary>
-    private static StatementSheet CapitalOf(PeriodicReportSnapshot report, string receiptsAddress)
+    /// <param name="report">The report.</param>
+    /// <param name="receiptsAddress">Where the receipts' links start; empty for a PDF, which links nothing.</param>
+    public static StatementSheet CapitalOf(PeriodicReportSnapshot report, string receiptsAddress)
     {
         List<StatementTable> tables = [.. report.Partners.Select(partner => Movements(partner.Name, Enumerable.Reverse(partner.Movements).Select(movement => MovementRow(movement, receiptsAddress))))];
         var others = report.CapitalTotal - report.Partners.Sum(partner => partner.Balance);

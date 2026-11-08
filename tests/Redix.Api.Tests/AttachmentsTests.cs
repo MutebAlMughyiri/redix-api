@@ -126,6 +126,21 @@ public class AttachmentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Row_138_ADocumentsFileMayBeAnyFileThoughAnEntrysMayNot()
+    {
+        var (client, project) = await FinanceAsync();
+        var file = new ByteArrayContent("PK zip"u8.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+
+        var kept = await client.PostAsync($"/projects/{project.Id}/attachments/document", new MultipartFormDataContent { { file, "file", "quantities.zip" } });
+        var refused = await UploadAsync(client, project.Id, "PK zip"u8.ToArray(), "quantities.zip", "application/zip");
+
+        Assert.Equal(HttpStatusCode.Created, kept.StatusCode);
+        Assert.Equal("quantities.zip", (await kept.Content.ReadFromJsonAsync<AttachmentView>(Json))!.FileName);
+        Assert.Equal("invalidFileType", await CodeOf(refused));
+    }
+
+    [Fact]
     public async Task APictureOf1MbOrMoreIsRefusedAndOneJustBelowIsKept()
     {
         var (client, project) = await FinanceAsync();

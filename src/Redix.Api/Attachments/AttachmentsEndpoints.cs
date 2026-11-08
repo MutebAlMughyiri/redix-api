@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Redix.Api.Audit;
@@ -10,11 +12,13 @@ namespace Redix.Api.Attachments;
 /// <summary>Keeps a project's files, and serves them only to people with access to that project (UC-021, FR-09). There is no delete (NFR-11).</summary>
 public static class AttachmentsEndpoints
 {
-    /// <summary>Maps the route that reads a file, for anyone who reads the project, and the one that keeps it, for whoever holds <see cref="Permission.AttachFiles"/>.</summary>
+    /// <summary>Maps the route that reads a file, for anyone who reads the project, and the two that keep one, for whoever holds <see cref="Permission.AttachFiles"/>: an entry's file, and a document's.</summary>
     public static void MapAttachments(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/attachments/{attachmentId:guid}", Read).RequireAuthorization(nameof(Permission.ReadProject));
-        app.MapProjectChanges(Permission.AttachFiles).MapPost("/attachments", Upload).DisableAntiforgery();
+        var changes = app.MapProjectChanges(Permission.AttachFiles);
+        changes.MapPost("/attachments", Upload).DisableAntiforgery();
+        changes.MapPost("/attachments/document", UploadDocument).DisableAntiforgery().WithMetadata(new RequestSizeLimitAttribute(FormOptions.DefaultMultipartBodyLengthLimit));
     }
 
     /// <summary>The file of an attachment of the project; one of another project is not found (BR-33).</summary>
@@ -28,16 +32,29 @@ public static class AttachmentsEndpoints
         return attachment is null ? Results.NotFound() : Results.File(options.Value.PathOf(attachment), attachment.ContentType, attachment.FileName);
     }
 
-    /// <summary>Keeps a file, and answers it, for an entry or a contract to name. The same file from the same person answers the one already kept, so a retried upload keeps it once (UC-029). A file that is not a picture or a PDF answers <c>invalidFileType</c>; a picture of 1 MB or more, <c>imageTooLarge</c>.</summary>
+    /// <summary>Keeps an entry's file, and answers it, for an entry to name. The same file from the same person answers the one already kept, so a retried upload keeps it once (UC-029). A file that is not a picture or a PDF answers <c>invalidFileType</c>; a picture of 1 MB or more, <c>imageTooLarge</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="file">The file.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database that records it.</param>
     /// <param name="options">The folder files are kept under.</param>
     /// <param name="time">The current time.</param>
-    public static async Task<IResult> Upload(Guid projectId, IFormFile file, ClaimsPrincipal principal, RedixDbContext db, IOptions<AttachmentOptions> options, TimeProvider time)
+    public static Task<IResult> Upload(Guid projectId, IFormFile file, ClaimsPrincipal principal, RedixDbContext db, IOptions<AttachmentOptions> options, TimeProvider time) =>
+        UploadAsync(projectId, file, FileKinds.PicturesAndPdfs, principal, db, options, time);
+
+    /// <summary>Keeps a document's file, any file of at most 25 MB, for a contract to name (findings row 138, Muteb 8 Nov 2026: as the project's Documents take); otherwise as <see cref="Upload"/>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="file">The file.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database that records it.</param>
+    /// <param name="options">The folder files are kept under.</param>
+    /// <param name="time">The current time.</param>
+    public static Task<IResult> UploadDocument(Guid projectId, IFormFile file, ClaimsPrincipal principal, RedixDbContext db, IOptions<AttachmentOptions> options, TimeProvider time) =>
+        UploadAsync(projectId, file, FileKinds.Any, principal, db, options, time);
+
+    private static async Task<IResult> UploadAsync(Guid projectId, IFormFile file, FileKinds kinds, ClaimsPrincipal principal, RedixDbContext db, IOptions<AttachmentOptions> options, TimeProvider time)
     {
-        var (refusal, attachment, isNew) = await KeepAsync(projectId, file, FileKinds.PicturesAndPdfs, AccessTokens.UserIdOf(principal), db, options.Value, time);
+        var (refusal, attachment, isNew) = await KeepAsync(projectId, file, kinds, AccessTokens.UserIdOf(principal), db, options.Value, time);
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);

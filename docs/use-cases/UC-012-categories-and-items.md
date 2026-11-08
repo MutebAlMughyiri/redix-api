@@ -61,7 +61,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | A sub-table added is offered to an expense and takes a purchase | `EntryTables`, `ExpensesEndpoints` | `CategoriesTests.SubTable_ASubTableAddedIsOfferedAndTakesAPurchase` |
 | An item of purchases or of contractor payments may become both whatever it holds | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.SubTable_AnItemOfContractorPaymentsWithAContractMayBecomeBoth`, `SubTable_AnItemOfPurchasesWithAnEntryMayBecomeBoth` |
 | R10: an expense is offered an item's general table, each named one and each active contract, in its sheet's order | `CategoriesEndpoints.EntryTables`, `TablesOf` | `CategoriesTests.R10_AnItemOffersAnExpenseItsGeneralTableEachNamedOneAndEachActiveContractInItsSheetsOrder` |
-| R7: no revenue item, no disabled item or category, and no item without a table is offered | `CategoriesEndpoints.EntryTables` | `CategoriesTests.R7_NoRevenueItemNoDisabledItemOrCategoryAndNoItemWithoutATableIsOffered` |
+| R7: no disabled item or category, and no item without a table is offered; revenue items are offered only to whoever moves money (redix-api #101) | `CategoriesEndpoints.EntryTables` | `CategoriesTests.R7_NoDisabledItemOrCategoryAndNoItemWithoutATableIsOffered` |
 | An item's type changes while no entry names it, in the audit trail, old and new | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AnItemsTypeChangesWhileItHasNoEntriesAndIsOfferedAsItsNewTypeIs`, `AChangedTypeIsInTheAuditTrailOldAndNew`, `AnItemWithAnEntryKeepsItsType`, `OnlyFinanceChangesATypeAndNeverAnotherProjects` |
 | A changed type asks the default columns of the new type, and keeps what a person added | `CategoriesEndpoints.ChangeItemType` | `CategoriesTests.AChangedTypeAsksTheColumnsOfTheNewTypeAndKeepsWhatAPersonAdded`, `ChangingATypeThereAndBackLeavesOneOfEachColumn` |
 | FR-38: an item is added on its side, and revenue entry offers every revenue item and no expense one | `Item.IsOfferedFor` | `CategoriesTests.FR_38_AnItemIsAddedOnItsSideAndRevenueEntryOffersEveryRevenueItemAndNoExpenseOne` |
@@ -85,7 +85,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | A name has 1 to 100 characters, spaces around it trimmed | `Project.IsAcceptableName` | `CategoriesTests.ACategoryAnItemOrASubgroupNeedsANameOfAtMost100Characters` |
 | The general subgroup has no name to change | `CategoriesEndpoints.RenameSubgroup` | `CategoriesTests.TheGeneralSubgroupHasNoNameToChange` |
 | Everyone with access reads; only Finance changes | `Permission.ManageStructure` | `CategoriesTests.EveryoneWithAccessReadsTheStructureAndOnlyFinanceChangesIt` |
-| A finished project refuses every change and stays readable (AC-04.1) | `ProjectStructure.MapStructureChanges`, an endpoint filter | `CategoriesTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+| A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges`, an endpoint filter | `CategoriesTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 | A subgroup an expense or revenue is kept on is not removed (`subgroupInUse`); "is anything kept on it" has one owner for items and subgroups | `ProjectStructure.SubgroupHasEntriesAsync`, `ItemHasEntriesAsync` | `CategoriesTests.ASubgroupAnEntryUsesIsNotRemoved`, `ASubgroupRevenueIsKeptOnIsNotRemoved` |
 
 ## Left to later use cases

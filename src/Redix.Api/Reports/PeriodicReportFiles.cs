@@ -5,20 +5,23 @@ using Redix.Api.Translations;
 
 namespace Redix.Api.Reports;
 
-/// <summary>The periodic report as a PDF laid out as report 23 (UC-054, FR-45); its workbook is <see cref="PeriodicReportWorkbook"/>. Words are the statement's own Arabic, as report 23 prints them.</summary>
+/// <summary>
+/// The periodic report as a PDF (UC-054, FR-45): its summary laid out as report 23, and the capital and every item drawn by <see cref="StatementPdf"/> from the very tables its workbook
+/// writes (<see cref="PeriodicReportWorkbook"/>, findings row 130). Words are the statement's own Arabic, as report 23 prints them.
+/// </summary>
 public static class PeriodicReportFiles
 {
-    /// <summary>A4 portrait, right to left: the summary, the partners, then a page per item; new rows shaded green (BR-26).</summary>
+    /// <summary>A4 portrait, right to left: the summary, the capital, then a page per item; new rows shaded green (BR-26).</summary>
     public static byte[] Pdf(PeriodicReportSnapshot report)
     {
         ReportFormats.PreparePdf();
         return Document.Create(document =>
         {
             Page(document, page => Summary(page, report));
-            Page(document, page => Partners(page, report));
+            Page(document, page => StatementPdf.Draw(page, PeriodicReportWorkbook.CapitalOf(report, "")));
             foreach (var item in report.Items)
             {
-                Page(document, page => ItemReportFiles.ItemPage(page, item));
+                Page(document, page => StatementPdf.Draw(page, ItemReportFiles.SheetOf(item)));
             }
         }).GeneratePdf();
     }
@@ -35,10 +38,13 @@ public static class PeriodicReportFiles
     });
 
     /// <summary>A line of a label and an amount.</summary>
-    public static void Line(ColumnDescriptor column, string label, decimal amount, bool isStrong = false) => column.Item().Row(row =>
+    public static void Line(ColumnDescriptor column, string label, decimal amount, bool isStrong = false) => Line(column, label, ReportFormats.Money(amount), isStrong);
+
+    /// <summary>A line of a label and a figure already written.</summary>
+    public static void Line(ColumnDescriptor column, string label, string written, bool isStrong) => column.Item().Row(row =>
     {
         var text = row.RelativeItem().Text(label);
-        var figure = row.ConstantItem(120).AlignLeft().Text(ReportFormats.Money(amount));
+        var figure = row.ConstantItem(120).AlignLeft().Text(written);
         if (isStrong)
         {
             text.Bold();
@@ -94,39 +100,6 @@ public static class PeriodicReportFiles
             foreach (var item in category.Items.Where(item => item.Total != 0))
             {
                 Line(page, item.Name, item.Total);
-            }
-        }
-    }
-
-    private static void Partners(ColumnDescriptor page, PeriodicReportSnapshot report)
-    {
-        page.Spacing(4);
-        page.Item().Text("الشركاء ورأس المال").FontSize(14).Bold();
-        page.Item().Table(table =>
-        {
-            table.ColumnsDefinition(columns =>
-            {
-                columns.RelativeColumn(3);
-                columns.RelativeColumn(2);
-                columns.RelativeColumn(2);
-            });
-            Header(table, "الشريك", "الرصيد", "النسبة %");
-            foreach (var partner in report.Partners)
-            {
-                Cell(table, partner.Name);
-                Cell(table, ReportFormats.Money(partner.Balance));
-                Cell(table, partner.SharePercent.ToString("0.0000000000", System.Globalization.CultureInfo.InvariantCulture));
-            }
-            Cell(table, "الإجمالي", true);
-            Cell(table, ReportFormats.Money(report.CapitalTotal), true);
-            Cell(table, "100.0000000000", true);
-        });
-        foreach (var partner in report.Partners.Where(partner => partner.Movements.Count > 0))
-        {
-            page.Item().PaddingTop(8).Text($"حركات {partner.Name}").Bold();
-            foreach (var movement in partner.Movements)
-            {
-                Line(page, $"{ReportFormats.Date(movement.Date)} · {(movement.Description.Length > 0 ? movement.Description : ReportFormats.Movement(movement.Type))}", movement.Amount);
             }
         }
     }
