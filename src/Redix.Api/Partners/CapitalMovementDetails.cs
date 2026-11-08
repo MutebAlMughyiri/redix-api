@@ -13,9 +13,6 @@ public enum CapitalMovementType : byte
 /// <summary>What only a capital movement has (FR-25).</summary>
 public class CapitalMovementDetails
 {
-    /// <summary>The longest cash reason.</summary>
-    public const int ReasonMaxLength = 500;
-
     /// <summary>The entry.</summary>
     public Guid EntryId { get; init; }
 
@@ -24,9 +21,6 @@ public class CapitalMovementDetails
 
     /// <summary>What it is.</summary>
     public CapitalMovementType Type { get; init; }
-
-    /// <summary>Why it has no bank receipt (BR-23); empty when it has one.</summary>
-    public string CashReason { get; init; } = "";
 
     /// <summary>Whether it adds to the partner's capital.</summary>
     public static bool IsInflow(CapitalMovementType type) => type == CapitalMovementType.Contribution;

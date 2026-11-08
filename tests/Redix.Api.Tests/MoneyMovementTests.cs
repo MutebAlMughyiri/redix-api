@@ -39,7 +39,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     private static Task<HttpResponseMessage> MoveAsync(Ledger ledger, CapitalMovementRequest request) => ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", request, Json);
 
     private static CapitalMovementRequest Contribution(Ledger ledger, Guid partnerId, decimal amount) =>
-        new(partnerId, CapitalMovementType.Contribution, ledger.Today, amount, ledger.AccountId, "زاد رصيده") { CashReason = "نقداً" };
+        new(partnerId, CapitalMovementType.Contribution, ledger.Today, amount, ledger.AccountId, "زاد رصيده");
 
     private static async Task ContributeAsync(Ledger ledger, Guid partnerId, decimal amount) => await ledger.ApproveAsync(await MoveAsync(ledger, Contribution(ledger, partnerId, amount)));
 
@@ -86,14 +86,13 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_25_1_AMovementWithNoReceiptIsRefusedAndCashWithAReasonIsNot()
+    public async Task Simple_Entry_AMovementTakesItsReceiptWhenThereIsOneAndNeedsNone()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
         var bare = new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 100, ledger.AccountId, "");
 
-        Assert.Equal("receiptRequired", await Ledger.CodeOf(await MoveAsync(ledger, bare)));
-        await ledger.ApproveAsync(await MoveAsync(ledger, bare with { CashReason = "دفع نقداً في الموقع" }));
+        await ledger.ApproveAsync(await MoveAsync(ledger, bare));
         await ledger.ApproveAsync(await MoveAsync(ledger, bare with { AttachmentId = await ledger.FileAsync() }));
 
         Assert.Equal(200m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
@@ -295,7 +294,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
         foreach (var type in new[] { "settlementAndExit", "carryIn", "carryOut", "inKind", "refundableAdvance" })
         {
-            var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new { partnerId = partner, type, date = ledger.Today, amount = 100, accountId = ledger.AccountId, description = "", cashReason = "نقداً" });
+            var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new { partnerId = partner, type, date = ledger.Today, amount = 100, accountId = ledger.AccountId, description = "" });
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         }
         var carry = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements/carry", new { partnerId = partner });

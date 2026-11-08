@@ -352,7 +352,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<Redix.Api.Partners.CapitalMovementDetails>(details =>
         {
             details.HasKey(d => d.EntryId);
-            details.Property(d => d.CashReason).HasMaxLength(Redix.Api.Partners.CapitalMovementDetails.ReasonMaxLength);
             details.HasIndex(d => d.PartnerId);
             details.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Partners.CapitalMovementDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Partner>().WithMany().HasForeignKey(d => d.PartnerId).OnDelete(DeleteBehavior.Restrict);

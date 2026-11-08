@@ -858,11 +858,6 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("EntryId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CashReason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<Guid>("PartnerId")
                         .HasColumnType("uniqueidentifier");
 
@@ -7713,34 +7708,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("05da0418-2ef1-8e52-1fd3-ececb22e393c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b0f4dbc5-7fc7-82b4-83db-e627bb5cb23b"),
-                            Value = "Bank transfer receipt"
-                        },
-                        new
-                        {
-                            Id = new Guid("e2a795fe-66f5-a3bf-a45a-6e443ddbc04f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b0f4dbc5-7fc7-82b4-83db-e627bb5cb23b"),
-                            Value = "إيصال التحويل البنكي"
-                        },
-                        new
-                        {
-                            Id = new Guid("d3f316f8-3a18-12dd-b233-9eb443e6ecb8"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("bd98d737-6932-3fe0-af89-033c6b20536f"),
-                            Value = "Required"
-                        },
-                        new
-                        {
-                            Id = new Guid("e9e9eb5b-7a7a-158d-14c8-5b9cddf9fd80"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("bd98d737-6932-3fe0-af89-033c6b20536f"),
-                            Value = "إلزامي"
-                        },
-                        new
-                        {
                             Id = new Guid("b00a0fed-698c-9c72-9181-486aca8bc155"),
                             Language = "en",
                             TranslationKeyId = new Guid("602b884f-6c0e-9f7a-48b0-29e1ec3db7ec"),
@@ -7755,62 +7722,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("64ffce39-7460-8b8e-946c-49d4db39d129"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("45e403c0-39c2-dcb5-9adf-378c85a35da0"),
-                            Value = "Amount on the receipt"
-                        },
-                        new
-                        {
-                            Id = new Guid("7ed71510-912d-aa33-4e50-cad2744fbbe0"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("45e403c0-39c2-dcb5-9adf-378c85a35da0"),
-                            Value = "المبلغ في الإيصال"
-                        },
-                        new
-                        {
-                            Id = new Guid("898a76ff-8007-4504-53f7-e245883f1c73"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("0a351e62-d993-89df-8883-2186f5541dd0"),
-                            Value = "The amount on the receipt differs from this movement."
-                        },
-                        new
-                        {
-                            Id = new Guid("1ff16692-1a30-8b9e-7760-46a40d30c6b6"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("0a351e62-d993-89df-8883-2186f5541dd0"),
-                            Value = "المبلغ في الإيصال يخالف هذه الحركة."
-                        },
-                        new
-                        {
-                            Id = new Guid("d43eed7b-fbc5-9495-b344-9a70fc5eb7bb"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c1a586fe-cebf-8cb7-a168-15001eaa2b8e"),
-                            Value = "Paid in cash, with no receipt"
-                        },
-                        new
-                        {
-                            Id = new Guid("2b4ba849-7fe1-ff6b-964d-491b9e8c990c"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c1a586fe-cebf-8cb7-a168-15001eaa2b8e"),
-                            Value = "دُفع نقداً بلا إيصال"
-                        },
-                        new
-                        {
-                            Id = new Guid("2e9a14ad-4748-d7ef-1723-cd3be17fdb01"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b49a01cf-0619-9ade-fe19-4a99fd2e4388"),
-                            Value = "Why"
-                        },
-                        new
-                        {
-                            Id = new Guid("4a61a8f1-9f82-5227-2223-ecff83997d51"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b49a01cf-0619-9ade-fe19-4a99fd2e4388"),
-                            Value = "السبب"
-                        },
-                        new
-                        {
                             Id = new Guid("eee66bc5-8de0-c896-d146-3329eba9c822"),
                             Language = "en",
                             TranslationKeyId = new Guid("c4bb1636-edb6-9df1-c124-c12bd6930eec"),
@@ -7822,20 +7733,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("c4bb1636-edb6-9df1-c124-c12bd6930eec"),
                             Value = "حفظ الحركة"
-                        },
-                        new
-                        {
-                            Id = new Guid("3f565137-3037-3eea-e282-54342b0f3fc5"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ecc38ac2-207f-bc8b-ad39-9cc445b4177b"),
-                            Value = "Cash"
-                        },
-                        new
-                        {
-                            Id = new Guid("2a92db36-c3f4-4a8e-e087-56044b39adc2"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ecc38ac2-207f-bc8b-ad39-9cc445b4177b"),
-                            Value = "نقداً"
                         },
                         new
                         {
@@ -7920,34 +7817,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("c768947e-2f79-d2e3-b55b-090ebe86ebf3"),
                             Value = "تعذر تنفيذ ذلك."
-                        },
-                        new
-                        {
-                            Id = new Guid("4a30ce9d-805d-235d-f7b8-44dd6fec981c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("7b9eb655-00de-97d2-bee3-e081cec24c8e"),
-                            Value = "Attach the bank receipt, or say why it was paid in cash."
-                        },
-                        new
-                        {
-                            Id = new Guid("5f5f83b3-7d16-a2de-28ef-a9f4cd7e34f7"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("7b9eb655-00de-97d2-bee3-e081cec24c8e"),
-                            Value = "أرفق الإيصال البنكي، أو اذكر سبب الدفع نقداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("f022bfd7-dee9-65fd-a3a6-e275b4f1b722"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("7076a257-f3d8-6b5d-9900-2248f0ed5bd5"),
-                            Value = "The reason is too long."
-                        },
-                        new
-                        {
-                            Id = new Guid("b8f0476b-4232-76d7-9823-ee7e84360d10"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("7076a257-f3d8-6b5d-9900-2248f0ed5bd5"),
-                            Value = "السبب طويل جداً."
                         },
                         new
                         {
@@ -15413,57 +15282,15 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("b0f4dbc5-7fc7-82b4-83db-e627bb5cb23b"),
-                            Description = "",
-                            Key = "capital.receipt"
-                        },
-                        new
-                        {
-                            Id = new Guid("bd98d737-6932-3fe0-af89-033c6b20536f"),
-                            Description = "",
-                            Key = "capital.receiptRequiredWord"
-                        },
-                        new
-                        {
                             Id = new Guid("602b884f-6c0e-9f7a-48b0-29e1ec3db7ec"),
                             Description = "",
                             Key = "capital.receiptHint"
                         },
                         new
                         {
-                            Id = new Guid("45e403c0-39c2-dcb5-9adf-378c85a35da0"),
-                            Description = "",
-                            Key = "capital.receiptAmount"
-                        },
-                        new
-                        {
-                            Id = new Guid("0a351e62-d993-89df-8883-2186f5541dd0"),
-                            Description = "",
-                            Key = "capital.receiptDiffers"
-                        },
-                        new
-                        {
-                            Id = new Guid("c1a586fe-cebf-8cb7-a168-15001eaa2b8e"),
-                            Description = "",
-                            Key = "capital.paidInCash"
-                        },
-                        new
-                        {
-                            Id = new Guid("b49a01cf-0619-9ade-fe19-4a99fd2e4388"),
-                            Description = "",
-                            Key = "capital.cashReason"
-                        },
-                        new
-                        {
                             Id = new Guid("c4bb1636-edb6-9df1-c124-c12bd6930eec"),
                             Description = "",
                             Key = "capital.save"
-                        },
-                        new
-                        {
-                            Id = new Guid("ecc38ac2-207f-bc8b-ad39-9cc445b4177b"),
-                            Description = "",
-                            Key = "capital.cash"
                         },
                         new
                         {
@@ -15500,18 +15327,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("c768947e-2f79-d2e3-b55b-090ebe86ebf3"),
                             Description = "",
                             Key = "capital.refused"
-                        },
-                        new
-                        {
-                            Id = new Guid("7b9eb655-00de-97d2-bee3-e081cec24c8e"),
-                            Description = "",
-                            Key = "capital.receiptRequired"
-                        },
-                        new
-                        {
-                            Id = new Guid("7076a257-f3d8-6b5d-9900-2248f0ed5bd5"),
-                            Description = "",
-                            Key = "capital.invalidReason"
                         },
                         new
                         {

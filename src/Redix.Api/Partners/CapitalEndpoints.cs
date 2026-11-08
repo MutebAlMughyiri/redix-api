@@ -77,13 +77,12 @@ public static class CapitalEndpoints
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var reversed = (await db.EntryLinks.Where(link => link.Type == EntryLinkType.Reversal && (ids.Contains(link.EntryId) || ids.Contains(link.LinkedEntryId))).ToListAsync()).SelectMany(link => new[] { link.EntryId, link.LinkedEntryId }).ToHashSet();
-        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.entry.Notes, row.details.CashReason, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
+        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
     /// <summary>
-    /// Enters a partner's contribution or withdrawal, which waits for approval like every entry (BR-30, redix-api #101). It needs its bank receipt, unless paid in cash with a reason
-    /// (BR-23), otherwise <c>receiptRequired</c>; a reason too long answers <c>invalidReason</c>. A partner not in the project answers <c>unknownPartner</c>. Otherwise it answers as
-    /// <see cref="DirectEntries.RefusalOfAsync"/> does.
+    /// Enters a partner's contribution or withdrawal, which waits for approval like every entry (BR-30, redix-api #101), with its receipt when there is one: a file is optional, as
+    /// for every entry (Muteb, 8 Nov 2026). A partner not in the project answers <c>unknownPartner</c>. Otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The movement.</param>
@@ -97,15 +96,6 @@ public static class CapitalEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, partnerRefusal);
         }
-        var reason = request.CashReason.Trim();
-        if (reason.Length > CapitalMovementDetails.ReasonMaxLength)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidReason");
-        }
-        if (request.AttachmentId == Guid.Empty && reason.Length == 0)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "ReceiptRequired");
-        }
         var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, request.AccountId, request.AttachmentId, time, db);
         if (refusal.Length > 0)
         {
@@ -116,7 +106,7 @@ public static class CapitalEndpoints
         var at = time.GetUtcNow().UtcDateTime;
         var kind = CapitalMovementDetails.IsInflow(request.Type) ? EntryKind.CapitalIn : EntryKind.CapitalOut;
         var entry = DirectEntries.Pending(projectId, kind, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
-        List<object> details = [new CapitalMovementDetails { EntryId = entry.Id, PartnerId = request.PartnerId, Type = request.Type, CashReason = reason }];
+        List<object> details = [new CapitalMovementDetails { EntryId = entry.Id, PartnerId = request.PartnerId, Type = request.Type }];
         if (request.AttachmentId != Guid.Empty)
         {
             details.Add(new EntryAttachment { EntryId = entry.Id, AttachmentId = request.AttachmentId, Role = EntryAttachmentRole.BankReceipt });
@@ -157,11 +147,8 @@ public static class CapitalEndpoints
 /// <param name="Description">What was said about it; may be empty.</param>
 public record CapitalMovementRequest(Guid PartnerId, CapitalMovementType Type, DateOnly Date, decimal Amount, Guid AccountId, string Description)
 {
-    /// <summary>The bank receipt; left out when paid in cash.</summary>
+    /// <summary>The receipt; left out when there is none.</summary>
     public Guid AttachmentId { get; init; }
-
-    /// <summary>Why there is no receipt; left out when there is one (BR-23).</summary>
-    public string CashReason { get; init; } = "";
 }
 
 /// <summary>A project's capital.</summary>
@@ -183,12 +170,11 @@ public record PartnerCapitalView(Guid Id, string Name, bool IsMine, decimal Bala
 /// <param name="Date">The day it moved.</param>
 /// <param name="Amount">What it did to the capital: negative when it took some away.</param>
 /// <param name="Description">What was said about it.</param>
-/// <param name="CashReason">Why it has no receipt; empty when it has one.</param>
 /// <param name="AccountName">The account it moved through.</param>
 /// <param name="AttachmentId">Its receipt; empty when none.</param>
 /// <param name="ContentType">What the receipt is; empty when none.</param>
 /// <param name="IsReversed">True when it was reversed, or is itself a reversal.</param>
-public record CapitalMovementView(Guid Id, CapitalMovementType Type, DateOnly Date, decimal Amount, string Description, string CashReason, string AccountName, string AttachmentId, string ContentType, bool IsReversed)
+public record CapitalMovementView(Guid Id, CapitalMovementType Type, DateOnly Date, decimal Amount, string Description, string AccountName, string AttachmentId, string ContentType, bool IsReversed)
 {
     /// <summary>The receipt's name, so the phone hands it over by that name (findings row 158); empty when none, and in a report issued before 8 Nov 2026.</summary>
     public string FileName { get; init; } = "";
