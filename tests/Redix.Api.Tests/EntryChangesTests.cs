@@ -328,6 +328,19 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task UC_083_AnEntryOnTheListCarriesItsNotesAccountAndPaymentMethodForItsSharedText()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var sent = ledger.Purchase(300m) with { Submit = true, Notes = "دفعة أولى" };
+        await ledger.RecordAsync(sent);
+        var methods = (await ledger.Client.GetFromJsonAsync<List<Settings.PaymentMethodView>>($"/projects/{ledger.ProjectId}/payment-methods", Json))!;
+
+        var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!);
+
+        Assert.Equal(("دفعة أولى", "حساب المؤسسة", methods.Single(method => method.Id == ledger.MethodId).Name), (row.Notes, row.AccountName, row.PaymentMethodName));
+    }
+
+    [Fact]
     public async Task EveryoneInTheProjectSeesItsEntriesWithTheirStatusAndOnlyTheirOwnDrafts()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

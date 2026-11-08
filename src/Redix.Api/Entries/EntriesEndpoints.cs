@@ -74,7 +74,10 @@ public static class EntriesEndpoints
             facts.AuthorNameOf(entry),
             entry.CreatedByUserId == userId,
             reversed.Contains(entry.Id),
-            facts.PartnerNameOf(entry))).ToList();
+            facts.PartnerNameOf(entry),
+            entry.Notes,
+            facts.AccountNameOf(entry),
+            facts.PaymentMethodNameOf(entry))).ToList();
     }
 
     /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. A partner's money the caller may not see (BR-31), or anything else, answers 404.</summary>
@@ -264,7 +267,10 @@ public static class EntriesEndpoints
 /// <param name="IsMine">True when the caller entered it.</param>
 /// <param name="IsReversed">True when it was reversed, or is itself a reversal.</param>
 /// <param name="PartnerName">A capital movement's partner; empty for any other entry.</param>
-public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed, string PartnerName);
+/// <param name="Notes">What was noted; empty for nothing.</param>
+/// <param name="AccountName">The account it was paid from or reached.</param>
+/// <param name="PaymentMethodName">How an expense was paid; empty when nobody said, and for any other entry.</param>
+public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed, string PartnerName, string Notes, string AccountName, string PaymentMethodName);
 
 /// <summary>An entry's notes.</summary>
 /// <param name="Notes">The notes; may be empty.</param>

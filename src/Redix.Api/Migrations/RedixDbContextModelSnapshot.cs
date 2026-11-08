@@ -5671,6 +5671,202 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("088a74a6-b6ac-6ea6-c0a6-1b1170ca3c57"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cef9c77e-4b66-df0c-bdfb-aee431fbc39c"),
+                            Value = "Share"
+                        },
+                        new
+                        {
+                            Id = new Guid("b917dc50-1777-e7e0-56c3-84a3a693e355"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cef9c77e-4b66-df0c-bdfb-aee431fbc39c"),
+                            Value = "مشاركة"
+                        },
+                        new
+                        {
+                            Id = new Guid("89ebe5ba-1a6e-f3df-6e4c-403d2fed261d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("89edd0b5-9abb-04dc-ac6f-37cc08ee3fb8"),
+                            Value = "This entry could not be found: it may have been deleted, or it is in a project you are not in."
+                        },
+                        new
+                        {
+                            Id = new Guid("49b79303-ffb5-f8a2-aa1a-fed2994c4c57"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("89edd0b5-9abb-04dc-ac6f-37cc08ee3fb8"),
+                            Value = "تعذّر العثور على هذا القيد: ربما حُذف، أو هو في مشروع لست فيه."
+                        },
+                        new
+                        {
+                            Id = new Guid("25d53029-97f7-fc40-34c8-aab53e019a6a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4c868806-5279-b16b-7f09-ed6cd7e8b8f6"),
+                            Value = "Show everything waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("36ec9ba4-e1bb-1782-3014-5944541d9262"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4c868806-5279-b16b-7f09-ed6cd7e8b8f6"),
+                            Value = "عرض كل ما ينتظر"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0f3663b-c7de-8580-ab10-8f6a0201da8e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("15e6c2aa-44a1-0d26-a855-0066f951d5b9"),
+                            Value = "Item"
+                        },
+                        new
+                        {
+                            Id = new Guid("12625a28-c749-d22e-8953-0439c90d7e8d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("15e6c2aa-44a1-0d26-a855-0066f951d5b9"),
+                            Value = "البند"
+                        },
+                        new
+                        {
+                            Id = new Guid("749a7613-2e98-7878-e198-2e17e5f384f1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2b5d0eb9-77c7-aba7-830b-68d1cd699637"),
+                            Value = "Partner"
+                        },
+                        new
+                        {
+                            Id = new Guid("4a48352c-d1ce-e8bc-5fe2-a97dc6759744"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2b5d0eb9-77c7-aba7-830b-68d1cd699637"),
+                            Value = "الشريك"
+                        },
+                        new
+                        {
+                            Id = new Guid("e2b5213e-d00c-171a-f71e-edfdef4804fe"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4fa3122e-1ca9-a581-ef8f-d3bbf6108d1e"),
+                            Value = "Supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("d00a0545-3aa7-4db1-bfc5-9418a5a548f0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4fa3122e-1ca9-a581-ef8f-d3bbf6108d1e"),
+                            Value = "المورد"
+                        },
+                        new
+                        {
+                            Id = new Guid("8bb75904-7efa-680a-8051-903dfbf18b1d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7fa6fda1-bb3e-ab2f-b414-976a58fb7b94"),
+                            Value = "Contractor"
+                        },
+                        new
+                        {
+                            Id = new Guid("759d5049-bb47-77d4-c446-9278ce4f8123"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7fa6fda1-bb3e-ab2f-b414-976a58fb7b94"),
+                            Value = "المقاول"
+                        },
+                        new
+                        {
+                            Id = new Guid("e9f4f448-07d6-a616-b57d-ce81a31bd3f0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7ca538d7-3f4d-53fb-1935-3db639949765"),
+                            Value = "Amount"
+                        },
+                        new
+                        {
+                            Id = new Guid("c027e59b-44bd-490e-557f-e1beae6980a3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7ca538d7-3f4d-53fb-1935-3db639949765"),
+                            Value = "المبلغ"
+                        },
+                        new
+                        {
+                            Id = new Guid("b66f44e7-feb6-d98e-0458-d4ea0162537c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e1c44e00-aaa9-49f2-fddf-82ee3a2897bc"),
+                            Value = "Date"
+                        },
+                        new
+                        {
+                            Id = new Guid("b36bbb66-29c0-88e0-83bd-0f3d35e06844"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e1c44e00-aaa9-49f2-fddf-82ee3a2897bc"),
+                            Value = "التاريخ"
+                        },
+                        new
+                        {
+                            Id = new Guid("ed84fea8-e269-239d-d688-0f9a9d87e678"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b3300888-6503-ff69-d52e-dd2f55114352"),
+                            Value = "Status"
+                        },
+                        new
+                        {
+                            Id = new Guid("ee1ca999-68a1-5ab9-e3ca-20b296d00172"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b3300888-6503-ff69-d52e-dd2f55114352"),
+                            Value = "الحالة"
+                        },
+                        new
+                        {
+                            Id = new Guid("45df6f33-3423-3174-92a3-8f0b8badad1f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7c25b041-baaf-90c2-86f7-5f747f1cd0d7"),
+                            Value = "Account"
+                        },
+                        new
+                        {
+                            Id = new Guid("017a7088-2510-cf18-f303-7c913dfdff72"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7c25b041-baaf-90c2-86f7-5f747f1cd0d7"),
+                            Value = "الحساب"
+                        },
+                        new
+                        {
+                            Id = new Guid("bfaea1c6-4c42-8aa1-abf4-e15d28ef1535"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("95e494bc-2749-eeea-deb4-b63fbe408416"),
+                            Value = "Payment method"
+                        },
+                        new
+                        {
+                            Id = new Guid("fa040b2d-e38d-f90e-557c-9d4311521cd5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("95e494bc-2749-eeea-deb4-b63fbe408416"),
+                            Value = "طريقة الدفع"
+                        },
+                        new
+                        {
+                            Id = new Guid("2e4e68bb-e544-1020-5b36-75b89607dba9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6717342a-504e-3687-226a-0638210dd5f9"),
+                            Value = "Entered by"
+                        },
+                        new
+                        {
+                            Id = new Guid("9866dab7-5227-ade8-af4e-f2e51ebc52c6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6717342a-504e-3687-226a-0638210dd5f9"),
+                            Value = "أدخله"
+                        },
+                        new
+                        {
+                            Id = new Guid("67feda3a-4efa-983d-c8d9-1c0eaf5a01b6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9afa03fa-30e8-5df8-3ea5-4c4b41859e50"),
+                            Value = "Notes"
+                        },
+                        new
+                        {
+                            Id = new Guid("10b6922b-86f9-57d7-cbc7-53b5bf7ef7bf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9afa03fa-30e8-5df8-3ea5-4c4b41859e50"),
+                            Value = "ملاحظات"
+                        },
+                        new
+                        {
                             Id = new Guid("7c83c5b7-e684-a93a-c6f0-b8e0bb0f8e15"),
                             Language = "en",
                             TranslationKeyId = new Guid("6ba82d29-a6be-19e3-260b-3062002d29f3"),
@@ -14436,6 +14632,90 @@ namespace Redix.Api.Migrations
                             Id = new Guid("31777cd1-60a8-52f7-7344-3f55662a5459"),
                             Description = "",
                             Key = "entries.reversed"
+                        },
+                        new
+                        {
+                            Id = new Guid("cef9c77e-4b66-df0c-bdfb-aee431fbc39c"),
+                            Description = "",
+                            Key = "entries.share"
+                        },
+                        new
+                        {
+                            Id = new Guid("89edd0b5-9abb-04dc-ac6f-37cc08ee3fb8"),
+                            Description = "",
+                            Key = "entries.notFound"
+                        },
+                        new
+                        {
+                            Id = new Guid("4c868806-5279-b16b-7f09-ed6cd7e8b8f6"),
+                            Description = "",
+                            Key = "approvals.showAll"
+                        },
+                        new
+                        {
+                            Id = new Guid("15e6c2aa-44a1-0d26-a855-0066f951d5b9"),
+                            Description = "",
+                            Key = "entryShare.item"
+                        },
+                        new
+                        {
+                            Id = new Guid("2b5d0eb9-77c7-aba7-830b-68d1cd699637"),
+                            Description = "",
+                            Key = "entryShare.partner"
+                        },
+                        new
+                        {
+                            Id = new Guid("4fa3122e-1ca9-a581-ef8f-d3bbf6108d1e"),
+                            Description = "",
+                            Key = "entryShare.supplier"
+                        },
+                        new
+                        {
+                            Id = new Guid("7fa6fda1-bb3e-ab2f-b414-976a58fb7b94"),
+                            Description = "",
+                            Key = "entryShare.contractor"
+                        },
+                        new
+                        {
+                            Id = new Guid("7ca538d7-3f4d-53fb-1935-3db639949765"),
+                            Description = "",
+                            Key = "entryShare.amount"
+                        },
+                        new
+                        {
+                            Id = new Guid("e1c44e00-aaa9-49f2-fddf-82ee3a2897bc"),
+                            Description = "",
+                            Key = "entryShare.date"
+                        },
+                        new
+                        {
+                            Id = new Guid("b3300888-6503-ff69-d52e-dd2f55114352"),
+                            Description = "",
+                            Key = "entryShare.status"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c25b041-baaf-90c2-86f7-5f747f1cd0d7"),
+                            Description = "",
+                            Key = "entryShare.account"
+                        },
+                        new
+                        {
+                            Id = new Guid("95e494bc-2749-eeea-deb4-b63fbe408416"),
+                            Description = "",
+                            Key = "entryShare.paymentMethod"
+                        },
+                        new
+                        {
+                            Id = new Guid("6717342a-504e-3687-226a-0638210dd5f9"),
+                            Description = "",
+                            Key = "entryShare.author"
+                        },
+                        new
+                        {
+                            Id = new Guid("9afa03fa-30e8-5df8-3ea5-4c4b41859e50"),
+                            Description = "",
+                            Key = "entryShare.notes"
                         },
                         new
                         {

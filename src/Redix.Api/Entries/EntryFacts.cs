@@ -19,6 +19,7 @@ public sealed class EntryFacts
     private Dictionary<Guid, (string ContentType, string FileName)> _attachments = [];
     private Dictionary<Guid, string> _items = [];
     private Dictionary<Guid, string> _accounts = [];
+    private Dictionary<Guid, string> _paymentMethods = [];
     private Dictionary<Guid, Supplier> _suppliers = [];
     private Dictionary<Guid, Guid> _contractors = [];
     private Dictionary<Guid, string> _authors = [];
@@ -43,6 +44,7 @@ public sealed class EntryFacts
             _attachments = await db.Attachments.Where(row => fileIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id, row => (row.ContentType, row.FileName)),
             _items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)).ToDictionaryAsync(item => item.Id, item => item.Name),
             _accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name),
+            _paymentMethods = await db.PaymentMethods.Where(method => method.ProjectId == projectId).ToDictionaryAsync(method => method.Id, method => method.Name),
             _suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id),
             _contractors = await db.Contracts.Where(contract => contract.ProjectId == projectId).ToDictionaryAsync(contract => contract.Id, contract => contract.SupplierId),
             _authors = await db.Users.Where(user => authorIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName),
@@ -63,6 +65,9 @@ public sealed class EntryFacts
 
     /// <summary>The account that paid it.</summary>
     public string AccountNameOf(Entry entry) => _accounts.GetValueOrDefault(entry.AccountId, "");
+
+    /// <summary>How an expense was paid; empty when nobody said, and for any other entry.</summary>
+    public string PaymentMethodNameOf(Entry entry) => _paymentMethods.GetValueOrDefault(ExpenseOf(entry).PaymentMethodId, "");
 
     /// <summary>Who entered it.</summary>
     public string AuthorNameOf(Entry entry) => _authors.GetValueOrDefault(entry.CreatedByUserId, "");

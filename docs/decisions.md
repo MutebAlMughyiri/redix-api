@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-08 | The entries list carries each entry's notes, account name and payment method name (`EntryRowView`), and the words of a shared entry are seeded (`entries.share`, `entryShare.*`, `entries.notFound`, `approvals.showAll`) | The app shares an entry as text holding everything, from the list it already reads (Muteb, redix-app #83, D3 and D8) |
 | 2026-11-08 | What waits for approval is two figures, from one owner (`WaitingFigures`): expenses, and revenue with partners' money, a withdrawal taking away; the dashboard, the next report and the issued report read it, and a report keeps the second pair beside `PendingCount` and `PendingAmount`, which kept expenses only before 8 Nov anyway | Muteb, findings row 147: "point 2, let us unify the logic, no need for customization" |
 | 2026-11-08 | A partner has no active flag: `Partner.IsActive`, the `partnerLeft` refusal and its word go | Muteb, findings row 148, "Remove it": nothing set it since settlement was removed; RedixReal held no inactive partner |
 | 2026-11-08 | An id that may be absent is sent as text, empty when none, made by one helper (`Ids.Text`); Add entry's partners group sends an empty id | Muteb, findings row 154, "Empty string, one helper": the app already takes an empty string to mean none |
