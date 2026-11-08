@@ -293,8 +293,8 @@ public class RevenueTests(MigratedApiFactory factory)
 
         var dashboard = (await reader.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!;
 
-        Assert.Equal((500m, 570m), (dashboard.Capital, dashboard.Revenue));
-        Assert.Equal(dashboard.Revenue, dashboard.Capital + dashboard.RevenueCategories.Sum(category => category.Total));
+        Assert.Equal((500m, 570m), (dashboard.Capital.Total, dashboard.Revenue));
+        Assert.Equal(dashboard.Revenue, dashboard.Capital.Total + dashboard.RevenueCategories.Sum(category => category.Total));
     }
 
     [Fact]

@@ -118,9 +118,9 @@ public static class PeriodicReportsEndpoints
     {
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
         var figures = await ProjectFigures.OfAsync(projectId, db);
-        var dashboard = await DashboardEndpoints.Dashboard(projectId, db);
-        var reconciliation = await ReconciliationsEndpoints.Latest(projectId, db);
         var capital = await CapitalEndpoints.ViewOfAsync(projectId, Guid.Empty, true, db);
+        var dashboard = await DashboardEndpoints.OfAsync(projectId, capital, db);
+        var reconciliation = await ReconciliationsEndpoints.Latest(projectId, db);
         var partners = await db.Partners.Where(partner => partner.ProjectId == projectId).ToDictionaryAsync(partner => partner.Id);
         var partnerViews = new List<ReportPartnerView>();
         foreach (var line in capital.Partners)

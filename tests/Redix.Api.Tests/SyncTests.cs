@@ -25,7 +25,7 @@ public class SyncTests(MigratedApiFactory factory)
         var sync = await SyncAsync(ledger.Client, ledger.ProjectId);
 
         var project = $"/projects/{ledger.ProjectId}";
-        foreach (var address in new[] { "categories/offered?itemType=purchases", "categories/offered?itemType=contractorPayments", "suppliers", "suppliers/search?text=", "contracts", "accounts", "accounts/offered", "payment-methods", "payment-methods/offered", "entries/mine", $"items/{ledger.ItemId}/columns" })
+        foreach (var address in new[] { "categories/offered?itemType=purchases", "categories/offered?itemType=contractorPayments", "entry-tables", "suppliers", "suppliers/search?text=", "contracts", "accounts", "accounts/offered", "payment-methods", "payment-methods/offered", "entries/mine", $"items/{ledger.ItemId}/columns" })
         {
             Assert.Contains($"{project}/{address}", sync.Lists.Keys);
         }
@@ -69,6 +69,8 @@ public class SyncTests(MigratedApiFactory factory)
         Assert.NotEqual(before.Stamp, after.Stamp);
         var offered = ((JsonElement)after.Lists[$"/projects/{ledger.ProjectId}/categories/offered?itemType=purchases"]).Deserialize<List<CategoryView>>(Json)!;
         Assert.Contains(offered.SelectMany(row => row.Items), item => item.Name == "بند الدرج");
+        var tables = ((JsonElement)after.Lists[$"/projects/{ledger.ProjectId}/entry-tables"]).Deserialize<List<TableCategoryView>>(Json)!;
+        Assert.Contains(tables.SelectMany(row => row.Items), item => item.Name == "بند الدرج");
     }
 
     [Fact]

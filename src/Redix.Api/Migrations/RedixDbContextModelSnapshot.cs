@@ -2808,6 +2808,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("07e30917-32ab-8658-a444-ca12fddb1229"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3436f16b-5a5b-3d5e-1597-8c4f5592fa43"),
+                            Value = "The server could not sign you in. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("eb34bc4f-46f7-e1f3-76c0-ec50de20a9f9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3436f16b-5a5b-3d5e-1597-8c4f5592fa43"),
+                            Value = "تعذّر على الخادم تسجيل دخولك. حاول مرة أخرى."
+                        },
+                        new
+                        {
                             Id = new Guid("4cab34f1-8cee-3437-bb76-36922a8569a6"),
                             Language = "en",
                             TranslationKeyId = new Guid("7aa4cb9c-361f-c384-b305-c794d843c08b"),
@@ -2959,6 +2973,20 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("fe97eb8a-3e48-8aa5-c0a2-e05c4a486950"),
                             Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("549b8139-4dbe-0355-7f02-9561f6f4d77e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("61cc9c1c-a89b-e4c7-e155-ba31c84eb42f"),
+                            Value = "The server could not change your password. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("6e5a5f70-08f1-5fa0-7090-1e66d1afdcf4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("61cc9c1c-a89b-e4c7-e155-ba31c84eb42f"),
+                            Value = "تعذّر على الخادم تغيير كلمة المرور. حاول مرة أخرى."
                         },
                         new
                         {
@@ -13274,6 +13302,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("3436f16b-5a5b-3d5e-1597-8c4f5592fa43"),
+                            Description = "",
+                            Key = "signIn.refused"
+                        },
+                        new
+                        {
                             Id = new Guid("7aa4cb9c-361f-c384-b305-c794d843c08b"),
                             Description = "",
                             Key = "changePassword.title"
@@ -13337,6 +13371,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("fe97eb8a-3e48-8aa5-c0a2-e05c4a486950"),
                             Description = "",
                             Key = "changePassword.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("61cc9c1c-a89b-e4c7-e155-ba31c84eb42f"),
+                            Description = "",
+                            Key = "changePassword.refused"
                         },
                         new
                         {

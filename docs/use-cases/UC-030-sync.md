@@ -16,7 +16,7 @@
 | A first sync answers every list | `SyncEndpoints.ListsAsync` | `SyncTests.AFirstSyncAnswersEveryListAtTheAddressTheAppReadsItAt` |
 | A kept list is what its own read answers | `SyncEndpoints.ListsAsync` | `SyncTests.EachListHoldsWhatItsOwnReadAnswers` |
 | Nothing changed answers nothing | `SyncEndpoints.Changes` | `SyncTests.NothingChangedAnswersNoLists` |
-| AC-05.1: an item Finance added reaches the field at the next sync | `SyncEndpoints.Changes` | `SyncTests.AC_05_1_AnItemFinanceAddedReachesTheFieldAtTheNextSync` |
+| AC-05.1: an item Finance added reaches the field at the next sync, in its offered lists and in Add entry's table list (`entry-tables`), with no online visit to Add entry first | `SyncEndpoints.ListsAsync` | `SyncTests.AC_05_1_AnItemFinanceAddedReachesTheFieldAtTheNextSync` |
 | A row leaving a list changes the stamp too | `SyncEndpoints.Changes` | `SyncTests.ARowThatLeftAListChangesTheStampToo` |
 | The field keeps only the accounts they may charge | `AccountsEndpoints.Offered` | `SyncTests.TheFieldKeepsOnlyTheAccountsTheyMayCharge` |
 | Each person keeps only their own entries' status | `EntriesEndpoints.Mine` | `SyncTests.EachPersonKeepsOnlyTheStatusOfTheirOwnEntries` |

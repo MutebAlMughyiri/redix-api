@@ -46,6 +46,7 @@ public static class SyncEndpoints
         {
             [$"{project}/categories/offered?itemType=purchases"] = purchases,
             [$"{project}/categories/offered?itemType=contractorPayments"] = payments,
+            [$"{project}/entry-tables"] = await CategoriesEndpoints.EntryTables(projectId, principal, db),
             [$"{project}/suppliers"] = await SuppliersEndpoints.List(projectId, db),
             [$"{project}/suppliers/search?text="] = await SuppliersEndpoints.Search(projectId, principal, db),
             [$"{project}/contracts"] = await ContractsEndpoints.List(projectId, db),

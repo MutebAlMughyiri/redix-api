@@ -7,6 +7,7 @@ using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Notifications;
 using Redix.Api.Projects;
+using Redix.Api.Reports;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
 using Xunit;
@@ -149,6 +150,30 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         Assert.Equal((own, true, 25m), (line.Id, line.IsMine, line.SharePercent));
         Assert.Equal(HttpStatusCode.OK, (await reader.GetAsync($"/projects/{ledger.ProjectId}/partners/{own}/movements")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await reader.GetAsync($"/projects/{ledger.ProjectId}/partners/{other}/movements")).StatusCode);
+    }
+
+    [Fact]
+    public async Task BR_31_TheDashboardsCapitalOpensToEveryPartnerForWhoeverSeesAllCapitalToTheirOwnLineForAPartnerAndToNoneForAnyoneElse()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (partnerReader, partnerReaderId) = await ledger.MemberAsync("Reader");
+        var (otherReader, _) = await ledger.MemberAsync("Reader");
+        var own = await PartnerAsync(ledger.Client, ledger.ProjectId, "القارئ", partnerReaderId);
+        var other = await PartnerAsync(ledger.Client, ledger.ProjectId, "غيره");
+        await ContributeAsync(ledger, own, 100);
+        await ContributeAsync(ledger, other, 300);
+
+        async Task<CapitalView> DashboardCapitalAsync(HttpClient client) => (await client.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!.Capital;
+
+        var all = await DashboardCapitalAsync(ledger.Client);
+        Assert.Equal(400m, all.Total);
+        Assert.Equal([(other, 300m), (own, 100m)], all.Partners.Select(line => (line.Id, line.Balance)));
+        var mine = await DashboardCapitalAsync(partnerReader);
+        Assert.Equal(400m, mine.Total);
+        Assert.Equal((own, 100m), (Assert.Single(mine.Partners).Id, mine.Partners[0].Balance));
+        var none = await DashboardCapitalAsync(otherReader);
+        Assert.Equal(400m, none.Total);
+        Assert.Empty(none.Partners);
     }
 
     [Fact]
