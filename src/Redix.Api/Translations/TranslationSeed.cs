@@ -549,7 +549,6 @@ public static class TranslationSeed
         ("columns.applyExplain", "The default template decides what new items of this type start with. Existing items change only if you apply this to them.", "القالب الافتراضي يحدد ما تبدأ به البنود الجديدة من هذا النوع. ولا تتغير البنود الموجودة إلا إذا طبقت هذا عليها."),
         ("columns.applyToAll", "Apply to all items", "تطبيق على كل البنود"),
         ("columns.templateOnly", "Template only", "القالب فقط"),
-        ("common.add", "Add", "إضافة"),
         ("paymentMethods.title", "Payment methods", "طرق الدفع"),
         ("paymentMethods.empty", "No payment methods.", "لا توجد طرق دفع."),
         ("paymentMethods.loadFailed", "Could not read the payment methods. Check the network and try again.", "تعذّرت قراءة طرق الدفع. تحقق من الشبكة وحاول مرة أخرى."),

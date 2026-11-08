@@ -10284,20 +10284,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("4696d695-79a4-8ac6-703c-a25a63a7363b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("96a11976-3fc0-1ed6-0ad6-84a34ed45346"),
-                            Value = "Add"
-                        },
-                        new
-                        {
-                            Id = new Guid("1839efbc-9109-c577-1bba-73e6f603caf8"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("96a11976-3fc0-1ed6-0ad6-84a34ed45346"),
-                            Value = "إضافة"
-                        },
-                        new
-                        {
                             Id = new Guid("f7b7479b-e8b5-c733-2a06-1b4a1c8250b9"),
                             Language = "en",
                             TranslationKeyId = new Guid("51ff4955-892c-26c8-462a-c9c821be7286"),
@@ -16489,12 +16475,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("700e94b7-2fe5-d557-54da-b692a2f39e3d"),
                             Description = "",
                             Key = "columns.templateOnly"
-                        },
-                        new
-                        {
-                            Id = new Guid("96a11976-3fc0-1ed6-0ad6-84a34ed45346"),
-                            Description = "",
-                            Key = "common.add"
                         },
                         new
                         {
