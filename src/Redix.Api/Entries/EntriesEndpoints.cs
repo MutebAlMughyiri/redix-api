@@ -32,22 +32,26 @@ public static class EntriesEndpoints
     public static Task<List<EntryRowView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Kind == EntryKind.Purchase || entry.Kind == EntryKind.ContractorPayment) && entry.CreatedByUserId == userId);
+        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && entry.CreatedByUserId == userId);
     }
 
-    /// <summary>Every entry of the project, newest first: everyone who reads a project sees all its expenses, and drafts only of their own.</summary>
+    /// <summary>Every entry of the project, newest first: everyone who reads a project sees all its expenses and revenue, partners' money as BR-31 allows (Muteb, 8 Nov 2026), and drafts only of their own.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Kind == EntryKind.Purchase || entry.Kind == EntryKind.ContractorPayment) && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId));
+        return RowsAsync(projectId, userId, db, entry => entry.ProjectId == projectId && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId));
     }
 
+    /// <summary>The entries <paramref name="shown"/> keeps, newest first; a partner's money shows only to whoever holds <see cref="Permission.SeeAllCapital"/>, or to that partner (BR-31).</summary>
     private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown)
     {
-        var entries = await db.Entries.Where(shown).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id).ToListAsync();
+        var seesAllCapital = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
+        var entries = await db.Entries.Where(shown)
+            .Where(entry => seesAllCapital || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && db.Partners.Any(partner => partner.Id == details.PartnerId && partner.UserId != userId)))
+            .OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var rejections = (await db.EntryDecisions.Where(row => ids.Contains(row.EntryId) && row.Action == EntryDecisionAction.Reject).OrderBy(row => row.Id).ToListAsync()).GroupBy(row => row.EntryId).ToDictionary(group => group.Key, group => group.Last().Reason);
@@ -64,7 +68,8 @@ public static class EntriesEndpoints
             facts.InvoiceOf(entry).Number,
             facts.AuthorNameOf(entry),
             entry.CreatedByUserId == userId,
-            reversed.Contains(entry.Id))).ToList();
+            reversed.Contains(entry.Id),
+            facts.PartnerNameOf(entry))).ToList();
     }
 
     /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. Anything else answers 404.</summary>
@@ -247,7 +252,8 @@ public static class EntriesEndpoints
 /// <param name="AuthorName">Who entered it.</param>
 /// <param name="IsMine">True when the caller entered it.</param>
 /// <param name="IsReversed">True when it was reversed, or is itself a reversal.</param>
-public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed);
+/// <param name="PartnerName">A capital movement's partner; empty for any other entry.</param>
+public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed, string PartnerName);
 
 /// <summary>An entry's notes.</summary>
 /// <param name="Notes">The notes; may be empty.</param>

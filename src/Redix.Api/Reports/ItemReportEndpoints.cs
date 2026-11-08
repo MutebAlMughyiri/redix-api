@@ -47,8 +47,6 @@ public static class ItemReportEndpoints
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && details.ItemId == item.Id
             orderby entry.EntryDate, entry.Id
             select new { entry, details }).ToListAsync();
-        var revenueIds = revenue.Select(row => row.entry.Id).ToList();
-        var sales = await db.Set<SalesInvoice>().Where(sale => revenueIds.Contains(sale.EntryId)).ToDictionaryAsync(sale => sale.EntryId);
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
@@ -63,11 +61,7 @@ public static class ItemReportEndpoints
             return new ItemEntryRow(entry.Id, entry.EntryDate, purchase.Product.Length > 0 ? purchase.Product : entry.Notes, facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, purchase.UnitPrice, purchase.Quantity, entry.Amount, (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract, columns.Select(column => values.GetValueOrDefault(column.Key, "")).ToList(), entry.ApprovedAt > newSince);
         }
 
-        ItemEntryRow RevenueRowOf(Entry entry)
-        {
-            var sale = sales.GetValueOrDefault(entry.Id) ?? new SalesInvoice();
-            return new ItemEntryRow(entry.Id, entry.EntryDate, entry.Notes, sale.BuyerName, sale.Number, 0, 0, entry.Amount, false, [], entry.ApprovedAt > newSince);
-        }
+        ItemEntryRow RevenueRowOf(Entry entry) => new(entry.Id, entry.EntryDate, entry.Notes, "", "", 0, 0, entry.Amount, false, [], entry.ApprovedAt > newSince);
 
         var subgroups = item.Subgroups.OrderBy(subgroup => subgroup.SortOrder).Select(subgroup =>
         {

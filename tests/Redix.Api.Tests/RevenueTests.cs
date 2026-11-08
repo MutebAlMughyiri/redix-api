@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Entries;
+using Redix.Api.Partners;
 using Redix.Api.Reports;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
@@ -21,11 +22,9 @@ public class RevenueTests(MigratedApiFactory factory)
 
     private static Task<HttpResponseMessage> RevenueAsync(Ledger ledger, RevenueRequest request) => ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", request, Json);
 
-    private static async Task<HttpResponseMessage> SaleAsync(Ledger ledger, SalesInvoiceRequest request) =>
-        await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/sales-invoices", request with { ItemId = await ledger.RevenueItemAsync(ItemType.Sale) }, Json);
+    private static async Task<List<EntryRowView>> EntriesAsync(Ledger ledger) => (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
 
-    private static SalesInvoiceRequest Sale(Ledger ledger, string number = "S-1", decimal total = 1150) =>
-        new("أحمد", "", number, ledger.Today, total, ledger.AccountId);
+    private static Task<RevenueDetails> DetailsOfAsync(Ledger ledger, Guid entryId) => ledger.ReadAsync(db => db.Set<RevenueDetails>().SingleAsync(row => row.EntryId == entryId));
 
     private static Task<ProjectFigures> FiguresAsync(Ledger ledger) => ledger.ReadAsync(db => ProjectFigures.OfAsync(ledger.ProjectId, db));
 
@@ -46,13 +45,13 @@ public class RevenueTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var before = await FiguresAsync(ledger);
 
-        await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.VatRefund), ledger.Today, 140, ledger.AccountId, "")));
+        var id = await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.VatRefund), ledger.Today, 140, ledger.AccountId, "")));
 
         var after = await FiguresAsync(ledger);
         Assert.Equal(before.Revenue + 140, after.Revenue);
         Assert.Equal(before.Surplus + 140, after.Surplus);
-        var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<RevenueRowView>>($"/projects/{ledger.ProjectId}/revenue", Json))!);
-        Assert.Equal((ledger.Today, ledger.Today, 140m), (row.PeriodStart, row.PeriodEnd, row.Amount));
+        var details = await DetailsOfAsync(ledger, id);
+        Assert.Equal((ledger.Today, ledger.Today), (details.PeriodStart, details.PeriodEnd));
     }
 
     [Fact]
@@ -70,10 +69,10 @@ public class RevenueTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
 
-        await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, "إيجار")));
+        var id = await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, "إيجار")));
 
-        var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<RevenueRowView>>($"/projects/{ledger.ProjectId}/revenue", Json))!);
-        Assert.Equal((ledger.Today, ledger.Today, "حساب المؤسسة"), (row.PeriodStart, row.PeriodEnd, row.AccountName));
+        var details = await DetailsOfAsync(ledger, id);
+        Assert.Equal((ledger.Today, ledger.Today), (details.PeriodStart, details.PeriodEnd));
         Assert.Equal(70m, (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(account => account.Id == ledger.AccountId).Balance);
     }
 
@@ -87,26 +86,11 @@ public class RevenueTests(MigratedApiFactory factory)
 
         Assert.Equal(EntryStatus.PendingApproval, sent.Status);
         Assert.Equal(before.Revenue, (await FiguresAsync(ledger)).Revenue);
-        Assert.Empty((await ledger.Client.GetFromJsonAsync<List<RevenueRowView>>($"/projects/{ledger.ProjectId}/revenue", Json))!);
+        Assert.Equal(EntryStatus.PendingApproval, (await EntriesAsync(ledger)).Single(row => row.Id == sent.Id).Status);
 
         await ledger.ApproveAsync(sent.Id);
 
         Assert.Equal(before.Revenue + 70, (await FiguresAsync(ledger)).Revenue);
-    }
-
-    [Fact]
-    public async Task D10_ASalesInvoiceWaitsForApprovalAndARejectedOneNeverCounts()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-
-        var sent = await SaleAsync(ledger, Sale(ledger, total: 1150));
-        var id = (await sent.Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
-        Assert.Equal(0m, (await FiguresAsync(ledger)).Sales);
-        Assert.Empty(Assert.Single(await StatementAsync(ledger)).Sales);
-
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/reject", new RejectEntryRequest("رقم الفاتورة خطأ"), Json)).EnsureSuccessStatusCode();
-
-        Assert.Equal(0m, (await FiguresAsync(ledger)).Sales);
     }
 
     [Fact]
@@ -121,56 +105,15 @@ public class RevenueTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_42_1_D22_ASaleIsATotalThatReachesTheSalesSection()
+    public async Task ReversingASaleTakesItOutOfTheRevenue()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-
-        await ledger.ApproveAsync(await SaleAsync(ledger, Sale(ledger, total: 1150) with { BuyerVatNumber = MigratedApiFactory.NewVatNumber() }));
-
-        var sale = Assert.Single(Assert.Single(await StatementAsync(ledger)).Sales);
-        Assert.Equal(("أحمد", "S-1", 1150m), (sale.Party, sale.Description, sale.Total));
+        var id = await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.Sale), ledger.Today, 1150, ledger.AccountId, "")));
         Assert.Equal(1150m, (await FiguresAsync(ledger)).Sales);
-    }
-
-    [Fact]
-    public async Task AC_42_1_ASaleAlreadyRecordedAsRevenueCountsOnce()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var recorded = await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.Sale), ledger.Today, 1000, ledger.AccountId, ""));
-        var entry = await recorded.Content.ReadFromJsonAsync<EntryStatusView>(Json);
-
-        (await SaleAsync(ledger, Sale(ledger, total: 1000) with { SaleEntryId = entry!.Id })).EnsureSuccessStatusCode();
-        await ledger.ApproveAsync(entry.Id);
-
-        Assert.Equal(1000m, (await FiguresAsync(ledger)).Sales);
-        var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<RevenueRowView>>($"/projects/{ledger.ProjectId}/revenue", Json))!);
-        Assert.Equal(("أحمد", "S-1"), (row.BuyerName, row.InvoiceNumber));
-        Assert.Equal("unknownSale", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2") with { SaleEntryId = entry.Id })));
-    }
-
-    [Fact]
-    public async Task WhatASalesInvoiceCannotBeIsRefused()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        (await SaleAsync(ledger, Sale(ledger, "S-1"))).EnsureSuccessStatusCode();
-
-        Assert.Equal("duplicateInvoice", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-1"))));
-        Assert.Equal("invalidBuyerName", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2") with { BuyerName = " " })));
-        Assert.Equal("invalidVatNumber", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2") with { BuyerVatNumber = "12345a" })));
-        Assert.Equal("invalidInvoiceNumber", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, " "))));
-        Assert.Equal("invalidAmount", await Ledger.CodeOf(await SaleAsync(ledger, Sale(ledger, "S-2", 0))));
-    }
-
-    [Fact]
-    public async Task ReversingASaleTakesItOutOfTheStatementAndTheRevenue()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var id = await ledger.ApproveAsync(await SaleAsync(ledger, Sale(ledger)));
 
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal(0m, (await FiguresAsync(ledger)).Sales);
-        Assert.Equal(0m, Assert.Single(await StatementAsync(ledger)).Sales.Sum(row => row.Total));
     }
 
     [Fact]
@@ -219,9 +162,73 @@ public class RevenueTests(MigratedApiFactory factory)
         await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, "إيجار")));
 
         Assert.Equal("unknownItem", await Ledger.CodeOf(refused));
-        var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<RevenueRowView>>($"/projects/{ledger.ProjectId}/revenue", Json))!);
-        Assert.Equal((ItemType.OtherRevenue, "إيرادات أخرى"), (row.Type, row.ItemName));
+        var row = Assert.Single(await EntriesAsync(ledger), row => row.Kind == EntryKind.Revenue);
+        Assert.Equal("إيرادات أخرى", row.ItemName);
         Assert.Equal(70m, (await FiguresAsync(ledger)).OtherRevenue);
+    }
+
+    [Fact]
+    public async Task OneList_TheEntriesListHoldsRevenueAndPartnersMoneyWithTheirStatus()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
+        var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
+        var revenue = await ledger.ApproveAsync(await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, "")));
+        var capital = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 500, ledger.AccountId, "") { CashReason = "نقداً" }, Json);
+        var capitalId = (await capital.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
+
+        var rows = await EntriesAsync(ledger);
+
+        Assert.Equal((EntryKind.Revenue, EntryStatus.Approved, "إيرادات أخرى", ""), rows.Where(row => row.Id == revenue).Select(row => (row.Kind, row.Status, row.ItemName, row.PartnerName)).Single());
+        Assert.Equal((EntryKind.CapitalIn, EntryStatus.PendingApproval, "نواف"), rows.Where(row => row.Id == capitalId).Select(row => (row.Kind, row.Status, row.PartnerName)).Single());
+    }
+
+    [Fact]
+    public async Task OneList_AWaitingRevenueOrPartnerEntryIsDeletedWithEverythingItHolds()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
+        var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
+        var revenue = (await (await RevenueAsync(ledger, new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, ""))).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
+        var capital = (await (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 500, ledger.AccountId, "") { CashReason = "نقداً" }, Json)).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
+
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{revenue}/delete", null)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{capital}/delete", null)).EnsureSuccessStatusCode();
+
+        Assert.DoesNotContain(await EntriesAsync(ledger), row => row.Id == revenue || row.Id == capital);
+        Assert.False(await ledger.ReadAsync(db => db.Set<RevenueDetails>().AnyAsync(row => row.EntryId == revenue)));
+        Assert.False(await ledger.ReadAsync(db => db.CapitalMovementDetails.AnyAsync(row => row.EntryId == capital)));
+    }
+
+    [Fact]
+    public async Task BR_31_InTheEntriesListAPartnerSeesTheirOwnMoneyAndNoOneElses()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (reader, readerId) = await ledger.MemberAsync("Reader");
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("القارئ") { UserId = readerId }, Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("غيره"), Json)).EnsureSuccessStatusCode();
+        var partners = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!;
+        async Task<Guid> ContributeAsync(string name) =>
+            await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partners.Single(row => row.Name == name).Id, CapitalMovementType.Contribution, ledger.Today, 100, ledger.AccountId, "") { CashReason = "نقداً" }, Json));
+        var own = await ContributeAsync("القارئ");
+        var other = await ContributeAsync("غيره");
+
+        var seenByReader = (await reader.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
+        var seenByFinance = await EntriesAsync(ledger);
+
+        Assert.Contains(seenByReader, row => row.Id == own);
+        Assert.DoesNotContain(seenByReader, row => row.Id == other);
+        Assert.Contains(seenByFinance, row => row.Id == own);
+        Assert.Contains(seenByFinance, row => row.Id == other);
+    }
+
+    [Fact]
+    public async Task NoRevenueList_TheRevenueListAndTheSalesInvoiceAreGone()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+
+        Assert.False((await ledger.Client.GetAsync($"/projects/{ledger.ProjectId}/revenue")).IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/sales-invoices", new { buyerName = "أحمد" })).StatusCode);
     }
 
     [Fact]

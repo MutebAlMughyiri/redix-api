@@ -55,7 +55,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-064](use-cases/UC-064-documents.md) | Keep a project's documents, any file, in optional groups | The manager keeps them; everyone reads |
 | [UC-053 to UC-058](use-cases/UC-053-reports.md) | The numbered periodic report, and every report as PDF and workbook; the VAT statement as a workbook | Finance issues; everyone reads; whoever sees all capital exports |
 | [UC-049, UC-050, UC-051, UC-063](use-cases/UC-049-dashboard-and-reports.md) | The dashboard, an item's report, the contracts, completion and cost | Everyone in the project |
-| [UC-047, UC-048, UC-056](use-cases/UC-047-revenue-and-vat.md) | Revenue, sales invoices, and the VAT statement's workbook for any period, its VAT worked out and never stored | Whoever does the project's finance; everyone reads |
+| [UC-047, UC-056](use-cases/UC-047-revenue-and-vat.md) | Revenue, and the VAT statement's workbook for any period, its VAT worked out and never stored | Whoever does the project's finance; everyone reads |
 | [UC-040 to UC-044](use-cases/UC-040-money-movements.md) | Reconciliation, capital movements, and shares | Whoever does the project's finance; everyone reads |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-070](use-cases/UC-070-config.md) | Keep configurable values in one table, starting with how long the app waits for an answer | The app, before sign-in |

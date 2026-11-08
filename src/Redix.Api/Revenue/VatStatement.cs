@@ -4,7 +4,7 @@ using Redix.Api.Entries;
 namespace Redix.Api.Revenue;
 
 /// <summary>
-/// The كشف الضريبة (UC-056): the period's approved purchases and sales, quarter by quarter, each a total with its party's VAT number. REDIX keeps no VAT: the Excel works it out of each total at the configured rate (redix-api #96, D4, D19).
+/// The كشف الضريبة (UC-056): the period's approved purchases, quarter by quarter (sales invoices were removed on 8 Nov 2026), each a total with its party's VAT number. REDIX keeps no VAT: the Excel works it out of each total at the configured rate (redix-api #96, D4, D19).
 /// </summary>
 public static class VatStatement
 {
@@ -14,7 +14,7 @@ public static class VatStatement
     /// <summary>The first day of the quarter after the one starting on <paramref name="start"/>.</summary>
     public static DateOnly NextQuarter(DateOnly start) => start.AddMonths(3);
 
-    /// <summary>The quarters from the one holding <paramref name="first"/> to the one holding <paramref name="last"/>, each with the approved purchases and sales dated inside the period, oldest first.</summary>
+    /// <summary>The quarters from the one holding <paramref name="first"/> to the one holding <paramref name="last"/>, each with the approved purchases dated inside the period, oldest first.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="first">The period's first day.</param>
     /// <param name="last">The period's last day.</param>
@@ -24,26 +24,19 @@ public static class VatStatement
         var purchases = await db.Entries
             .Where(entry => entry.ProjectId == projectId && entry.Kind == EntryKind.Purchase && entry.Status == EntryStatus.Approved && entry.EntryDate >= first && entry.EntryDate <= last)
             .OrderBy(entry => entry.EntryDate).ThenBy(entry => entry.Id).ToListAsync();
-        var sales = await (
-            from sale in db.Set<SalesInvoice>()
-            join entry in db.Entries on sale.EntryId equals entry.Id
-            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && sale.InvoiceDate >= first && sale.InvoiceDate <= last
-            orderby sale.InvoiceDate, sale.EntryId
-            select sale).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, purchases, db);
         var purchaseRows = purchases.Select(entry =>
         {
             var product = facts.ProductOf(entry);
             return new VatRow(entry.EntryDate, facts.SupplierNameOf(entry), facts.SupplierVatNumberOf(entry), product.Length > 0 ? product : facts.ItemNameOf(entry), entry.Amount);
         }).ToList();
-        var saleRows = sales.Select(sale => new VatRow(sale.InvoiceDate, sale.BuyerName, sale.BuyerVatNumber, sale.Number, sale.Total)).ToList();
 
         var quarters = new List<VatQuarterView>();
         for (var start = QuarterStartOf(first); start <= last; start = NextQuarter(start))
         {
             var end = NextQuarter(start).AddDays(-1);
             bool Inside(VatRow row) => row.Date >= start && row.Date <= end;
-            quarters.Add(new VatQuarterView(start, end, purchaseRows.Where(Inside).ToList(), saleRows.Where(Inside).ToList()));
+            quarters.Add(new VatQuarterView(start, end, purchaseRows.Where(Inside).ToList()));
         }
         return quarters;
     }
@@ -53,10 +46,9 @@ public static class VatStatement
 /// <param name="Start">Its first day.</param>
 /// <param name="End">Its last day.</param>
 /// <param name="Purchases">Its approved purchases.</param>
-/// <param name="Sales">Its approved sales.</param>
-public record VatQuarterView(DateOnly Start, DateOnly End, List<VatRow> Purchases, List<VatRow> Sales);
+public record VatQuarterView(DateOnly Start, DateOnly End, List<VatRow> Purchases);
 
-/// <summary>One purchase or sale on the statement.</summary>
+/// <summary>One purchase on the statement.</summary>
 /// <param name="Date">Its date.</param>
 /// <param name="Party">The supplier, or the buyer.</param>
 /// <param name="VatNumber">The party's VAT number; empty when it has none, so no VAT is worked out of it.</param>

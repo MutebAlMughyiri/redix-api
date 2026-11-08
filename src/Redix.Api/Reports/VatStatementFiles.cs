@@ -5,7 +5,7 @@ using Redix.Api.Revenue;
 namespace Redix.Api.Reports;
 
 /// <summary>
-/// The كشف الضريبة as the accountant's workbook: a sheet per quarter, its purchases then its sales, each row's VAT and amount before VAT as formulas on its total at the configured rate, and the net due at the foot (redix-api #96, D5, D19). Every total gives its VAT, whether its party has a VAT number or not: an empty number means nothing (Muteb, 7 Nov 2026).
+/// The كشف الضريبة as the accountant's workbook: a sheet per quarter, its purchases, each row's VAT and amount before VAT as formulas on its total at the configured rate, and the net due at the foot (redix-api #96, D5, D19). Every total gives its VAT, whether its party has a VAT number or not: an empty number means nothing (Muteb, 7 Nov 2026).
 /// </summary>
 public static class VatStatementFiles
 {
@@ -38,21 +38,11 @@ public static class VatStatementFiles
         }
         sheet.Row(2).Style.Font.Bold = true;
         var purchasesTotal = Section(sheet, 3, quarter.Purchases, rate, "الإجمالي");
-        var salesHeading = purchasesTotal + 2;
-        sheet.Cell(salesHeading, 1).Value = "ضريبة المبيعات";
-        sheet.Cell(salesHeading, 1).Style.Font.Bold = true;
-        var salesTotal = Section(sheet, salesHeading + 1, quarter.Sales, rate, "إجمالي المبيعات");
-        sheet.Range(salesTotal, 1, salesTotal, Titles.Length).Style.Fill.BackgroundColor = XLColor.Yellow;
-        var foot = salesTotal + 2;
-        sheet.Cell(foot, 1).Value = "إجمالي ضريبة المبيعات";
-        sheet.Cell(foot, 6).FormulaA1 = $"F{salesTotal}";
-        sheet.Cell(foot + 1, 1).Value = "إجمالي ضريبة المشتريات";
-        sheet.Cell(foot + 1, 6).FormulaA1 = $"F{purchasesTotal}";
-        sheet.Cell(foot + 2, 1).Value = "الفرق المستحق";
-        sheet.Cell(foot + 2, 6).FormulaA1 = $"F{foot}-F{foot + 1}";
-        sheet.Range(foot + 2, 1, foot + 2, Titles.Length).Style.Fill.BackgroundColor = XLColor.Red;
-        sheet.Range(foot, 6, foot + 2, 6).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
-        sheet.Range(foot, 1, foot + 2, Titles.Length).Style.Font.Bold = true;
+        var foot = purchasesTotal + 2;
+        sheet.Cell(foot, 1).Value = "إجمالي ضريبة المشتريات";
+        sheet.Cell(foot, 6).FormulaA1 = $"F{purchasesTotal}";
+        sheet.Cell(foot, 6).Style.NumberFormat.Format = ReportFormats.ExcelMoney;
+        sheet.Range(foot, 1, foot, Titles.Length).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
     }
 

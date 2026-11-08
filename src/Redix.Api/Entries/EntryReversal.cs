@@ -37,11 +37,6 @@ public static class EntryReversal
         {
             details.Add(new RevenueDetails { EntryId = reversal.Id, ItemId = revenue.ItemId, SubgroupId = revenue.SubgroupId, PeriodStart = revenue.PeriodStart, PeriodEnd = revenue.PeriodEnd });
         }
-        var sale = await db.Set<SalesInvoice>().SingleOrDefaultAsync(row => row.EntryId == entry.Id);
-        if (sale is not null)
-        {
-            details.Add(new SalesInvoice { EntryId = reversal.Id, BuyerName = sale.BuyerName, BuyerVatNumber = sale.BuyerVatNumber, Number = sale.Number, InvoiceDate = sale.InvoiceDate, Total = -sale.Total });
-        }
         await DirectEntries.AddAsync(reversal, details, userId, at, db);
         return reversal;
     }

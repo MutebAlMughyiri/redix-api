@@ -348,15 +348,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             details.HasOne<Item>().WithMany().HasForeignKey(d => d.ItemId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Subgroup>().WithMany().HasForeignKey(d => d.SubgroupId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<Redix.Api.Revenue.SalesInvoice>(sale =>
-        {
-            sale.HasKey(s => s.EntryId);
-            sale.Property(s => s.BuyerName).HasMaxLength(Redix.Api.Revenue.SalesInvoice.BuyerNameMaxLength);
-            sale.Property(s => s.BuyerVatNumber).HasMaxLength(Supplier.VatNumberMaxLength).IsUnicode(false);
-            sale.Property(s => s.Number).HasMaxLength(Invoice.NumberMaxLength);
-            sale.HasIndex(s => s.Number);
-            sale.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Revenue.SalesInvoice>(s => s.EntryId).OnDelete(DeleteBehavior.Restrict);
-        });
         modelBuilder.Entity<Redix.Api.Partners.CapitalMovementDetails>(details =>
         {
             details.HasKey(d => d.EntryId);

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
+using Redix.Api.Revenue;
 
 namespace Redix.Api.Entries;
 
@@ -76,6 +77,8 @@ public static class EntryChanges
             .. await db.ContractorPaymentDetails.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.Invoices.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.EntryAttachments.Where(row => row.EntryId == entryId).ToListAsync(),
+            .. await db.Set<RevenueDetails>().Where(row => row.EntryId == entryId).ToListAsync(),
+            .. await db.CapitalMovementDetails.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.EntryLinks.Where(row => row.EntryId == entryId && row.Type == EntryLinkType.CreditNoteOf).ToListAsync(),
         ];
         foreach (var detail in details)

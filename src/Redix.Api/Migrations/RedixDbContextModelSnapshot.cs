@@ -1140,47 +1140,6 @@ namespace Redix.Api.Migrations
                     b.ToTable("RevenueDetails");
                 });
 
-            modelBuilder.Entity("Redix.Api.Revenue.SalesInvoice", b =>
-                {
-                    b.Property<Guid>("EntryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BuyerName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("BuyerVatNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<DateOnly>("InvoiceDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Number")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<decimal>("Total")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("decimal(19,4)");
-
-                    b.HasKey("EntryId");
-
-                    b.HasIndex("Number");
-
-                    b.ToTable("SalesInvoice");
-                });
-
             modelBuilder.Entity("Redix.Api.Settings.PaymentMethod", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6797,34 +6756,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("6286fa79-17bd-d23f-78e4-c4a136741219"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ffbfd0a6-07c6-b443-41cf-7cd2815e603a"),
-                            Value = "No revenue yet."
-                        },
-                        new
-                        {
-                            Id = new Guid("7a29ecd2-1d55-056e-ef1d-03fc54b2b773"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ffbfd0a6-07c6-b443-41cf-7cd2815e603a"),
-                            Value = "لا إيرادات بعد."
-                        },
-                        new
-                        {
-                            Id = new Guid("118eb76b-dab0-e7fc-1f7f-80a7101abad2"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("fc4402e1-89f0-8e19-8991-8e0a8381bd80"),
-                            Value = "Sales invoice"
-                        },
-                        new
-                        {
-                            Id = new Guid("d30d7b41-b07c-718c-3b0a-107712534613"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("fc4402e1-89f0-8e19-8991-8e0a8381bd80"),
-                            Value = "فاتورة مبيعات"
-                        },
-                        new
-                        {
                             Id = new Guid("639193ec-14d7-6da1-88dd-1407f44034b3"),
                             Language = "en",
                             TranslationKeyId = new Guid("5ca3ee2f-8613-cb66-9d7d-d1fbe27f7eb2"),
@@ -6937,62 +6868,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("81e9d1c2-b2f3-8791-a232-6cb536e538ea"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("5dd19319-0c04-ccd1-2ccc-8ee89d6ca12d"),
-                            Value = "Save"
-                        },
-                        new
-                        {
-                            Id = new Guid("7f220c36-6daa-7d42-a3ca-e4dda7366184"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("5dd19319-0c04-ccd1-2ccc-8ee89d6ca12d"),
-                            Value = "حفظ"
-                        },
-                        new
-                        {
-                            Id = new Guid("b2ae1889-c3f1-95ab-7080-7bb599e34d29"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d4d87ddb-4151-4679-de32-e6f658cffab5"),
-                            Value = "Saved."
-                        },
-                        new
-                        {
-                            Id = new Guid("3b221698-6956-a455-caa1-118d8a67c756"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d4d87ddb-4151-4679-de32-e6f658cffab5"),
-                            Value = "حُفظ."
-                        },
-                        new
-                        {
-                            Id = new Guid("cd205636-f07e-d600-d43d-1b87f1197fb0"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("55308c5c-bc6e-17fe-fc55-27c94dbe096f"),
-                            Value = "Buyer"
-                        },
-                        new
-                        {
-                            Id = new Guid("6f225d23-0434-443e-eb35-f7979da7cd29"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("55308c5c-bc6e-17fe-fc55-27c94dbe096f"),
-                            Value = "المشتري"
-                        },
-                        new
-                        {
-                            Id = new Guid("d476da59-e6da-4a8d-609f-52e43376456e"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("dffa66ac-66d8-fe13-0134-b667625c09f3"),
-                            Value = "Buyer's VAT number"
-                        },
-                        new
-                        {
-                            Id = new Guid("81932110-b482-f6e0-ea70-eafdb1323700"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("dffa66ac-66d8-fe13-0134-b667625c09f3"),
-                            Value = "الرقم الضريبي للمشتري"
-                        },
-                        new
-                        {
                             Id = new Guid("449b8219-4168-4400-8e51-fe12a63171da"),
                             Language = "en",
                             TranslationKeyId = new Guid("88e76b4b-219e-f4a5-7c60-b1ea8c8acb0b"),
@@ -7004,20 +6879,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("88e76b4b-219e-f4a5-7c60-b1ea8c8acb0b"),
                             Value = "رقم الفاتورة"
-                        },
-                        new
-                        {
-                            Id = new Guid("c1c0436c-2e0e-7fb3-baff-9f844f637086"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("bdbfe3a5-744c-2fb7-a938-a2a4bccdc87a"),
-                            Value = "Invoice date"
-                        },
-                        new
-                        {
-                            Id = new Guid("7caf3c40-9763-dd6d-42e4-7e19240c3fc2"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("bdbfe3a5-744c-2fb7-a938-a2a4bccdc87a"),
-                            Value = "تاريخ الفاتورة"
                         },
                         new
                         {
@@ -7074,20 +6935,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("ed7e6b87-7525-1753-bd76-4c3935863295"),
                             Value = "اختر الربع."
-                        },
-                        new
-                        {
-                            Id = new Guid("501e6637-f41d-0ed9-34cd-645dd466ebe8"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3fa83908-3d6c-ab8a-26c0-09f0d35c735a"),
-                            Value = "Item"
-                        },
-                        new
-                        {
-                            Id = new Guid("0ade3f45-967d-b9d7-207d-29b741afd3f5"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3fa83908-3d6c-ab8a-26c0-09f0d35c735a"),
-                            Value = "البند"
                         },
                         new
                         {
@@ -7189,20 +7036,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("8ebe400b-b9d2-c6ed-b02f-6f9a3fef662f"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("891fecc6-619c-cb76-3498-4af157e0b8c8"),
-                            Value = "Type the buyer's name."
-                        },
-                        new
-                        {
-                            Id = new Guid("0458e8e5-5916-79e7-4194-18a3093798a7"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("891fecc6-619c-cb76-3498-4af157e0b8c8"),
-                            Value = "اكتب اسم المشتري."
-                        },
-                        new
-                        {
                             Id = new Guid("8251d222-f1df-c0f8-8570-a68bda92db04"),
                             Language = "en",
                             TranslationKeyId = new Guid("0447cea6-3786-1f47-5238-d936034b480c"),
@@ -7214,62 +7047,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("0447cea6-3786-1f47-5238-d936034b480c"),
                             Value = "الرقم الضريبي رقم من 20 خانة على الأكثر."
-                        },
-                        new
-                        {
-                            Id = new Guid("6a8d9a1b-3995-200d-5748-cfa8c611e060"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d598fac9-8645-e5ef-867d-2e39a3f8978b"),
-                            Value = "Type the invoice's number."
-                        },
-                        new
-                        {
-                            Id = new Guid("1a9a486a-c230-7f33-d1a8-2c97e69b1604"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d598fac9-8645-e5ef-867d-2e39a3f8978b"),
-                            Value = "اكتب رقم الفاتورة."
-                        },
-                        new
-                        {
-                            Id = new Guid("34fc25ae-a507-817d-5be0-31052a75c46b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c3c804c7-01f9-fbe8-8d3e-9e74915fb449"),
-                            Value = "The invoice's date is outside the project's period."
-                        },
-                        new
-                        {
-                            Id = new Guid("b14c6e3a-3d7c-51e8-7cce-8313527fb652"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c3c804c7-01f9-fbe8-8d3e-9e74915fb449"),
-                            Value = "تاريخ الفاتورة خارج فترة المشروع."
-                        },
-                        new
-                        {
-                            Id = new Guid("a50a8ded-83de-6cce-6be3-9618f4bf259f"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ba88539f-bc5c-2d4e-2772-3ab432668945"),
-                            Value = "This invoice number is already used."
-                        },
-                        new
-                        {
-                            Id = new Guid("11f67e3b-fa67-94b7-6fe8-891c5a269d8b"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ba88539f-bc5c-2d4e-2772-3ab432668945"),
-                            Value = "رقم الفاتورة مستخدم."
-                        },
-                        new
-                        {
-                            Id = new Guid("047ceb71-19ce-51c4-2011-d8f1a8e9d5f0"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("584c15a1-027b-9534-06df-798b0a7a3cbe"),
-                            Value = "That sale was not found, or has an invoice."
-                        },
-                        new
-                        {
-                            Id = new Guid("41473377-a79e-b35a-1f98-1820fe2e0c5d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("584c15a1-027b-9534-06df-798b0a7a3cbe"),
-                            Value = "لم يُعثر على ذلك البيع، أو له فاتورة."
                         },
                         new
                         {
@@ -15203,18 +14980,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("ffbfd0a6-07c6-b443-41cf-7cd2815e603a"),
-                            Description = "",
-                            Key = "revenue.empty"
-                        },
-                        new
-                        {
-                            Id = new Guid("fc4402e1-89f0-8e19-8991-8e0a8381bd80"),
-                            Description = "",
-                            Key = "revenue.newSale"
-                        },
-                        new
-                        {
                             Id = new Guid("5ca3ee2f-8613-cb66-9d7d-d1fbe27f7eb2"),
                             Description = "",
                             Key = "revenue.vatRefund"
@@ -15263,39 +15028,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("5dd19319-0c04-ccd1-2ccc-8ee89d6ca12d"),
-                            Description = "",
-                            Key = "revenue.save"
-                        },
-                        new
-                        {
-                            Id = new Guid("d4d87ddb-4151-4679-de32-e6f658cffab5"),
-                            Description = "",
-                            Key = "revenue.saved"
-                        },
-                        new
-                        {
-                            Id = new Guid("55308c5c-bc6e-17fe-fc55-27c94dbe096f"),
-                            Description = "",
-                            Key = "revenue.buyer"
-                        },
-                        new
-                        {
-                            Id = new Guid("dffa66ac-66d8-fe13-0134-b667625c09f3"),
-                            Description = "",
-                            Key = "revenue.buyerVatNumber"
-                        },
-                        new
-                        {
                             Id = new Guid("88e76b4b-219e-f4a5-7c60-b1ea8c8acb0b"),
                             Description = "",
                             Key = "revenue.invoiceNumber"
-                        },
-                        new
-                        {
-                            Id = new Guid("bdbfe3a5-744c-2fb7-a938-a2a4bccdc87a"),
-                            Description = "",
-                            Key = "revenue.invoiceDate"
                         },
                         new
                         {
@@ -15320,12 +15055,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("ed7e6b87-7525-1753-bd76-4c3935863295"),
                             Description = "",
                             Key = "revenue.invalidPeriod"
-                        },
-                        new
-                        {
-                            Id = new Guid("3fa83908-3d6c-ab8a-26c0-09f0d35c735a"),
-                            Description = "",
-                            Key = "revenue.item"
                         },
                         new
                         {
@@ -15371,39 +15100,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("891fecc6-619c-cb76-3498-4af157e0b8c8"),
-                            Description = "",
-                            Key = "revenue.invalidBuyerName"
-                        },
-                        new
-                        {
                             Id = new Guid("0447cea6-3786-1f47-5238-d936034b480c"),
                             Description = "",
                             Key = "revenue.invalidVatNumber"
-                        },
-                        new
-                        {
-                            Id = new Guid("d598fac9-8645-e5ef-867d-2e39a3f8978b"),
-                            Description = "",
-                            Key = "revenue.invalidInvoiceNumber"
-                        },
-                        new
-                        {
-                            Id = new Guid("c3c804c7-01f9-fbe8-8d3e-9e74915fb449"),
-                            Description = "",
-                            Key = "revenue.invalidInvoiceDate"
-                        },
-                        new
-                        {
-                            Id = new Guid("ba88539f-bc5c-2d4e-2772-3ab432668945"),
-                            Description = "",
-                            Key = "revenue.duplicateInvoice"
-                        },
-                        new
-                        {
-                            Id = new Guid("584c15a1-027b-9534-06df-798b0a7a3cbe"),
-                            Description = "",
-                            Key = "revenue.unknownSale"
                         },
                         new
                         {
@@ -18430,15 +18129,6 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Structure.Subgroup", null)
                         .WithMany()
                         .HasForeignKey("SubgroupId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Redix.Api.Revenue.SalesInvoice", b =>
-                {
-                    b.HasOne("Redix.Api.Entries.Entry", null)
-                        .WithOne()
-                        .HasForeignKey("Redix.Api.Revenue.SalesInvoice", "EntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
