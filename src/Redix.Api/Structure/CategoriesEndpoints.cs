@@ -282,34 +282,17 @@ public static class CategoriesEndpoints
         return Results.Ok(TablesOf(item, subgroups, own).Select(table => new ItemTableView(table.Id, table.Kind, table.Name, counts.GetValueOrDefault(table.Id))).ToList());
     }
 
-    /// <summary>
-    /// Every table an entry may go into (redix-app #84, redix-api #101): each active category's items that take purchases or contractor payments, each with its tables in the order
-    /// its sheet prints them. An item's general and named tables show when it takes purchases, and its active contracts when it takes contractor payments. Whoever holds
-    /// <see cref="Permission.MoveMoney"/> also gets the revenue items with their tables, a capital item's being its partners (redix-api #109). An item or a category with nothing to
-    /// offer is left out.
-    /// </summary>
+    /// <summary>Every table the caller may enter into (redix-app #84, redix-api #110), grouped by category and item in the order of the report, as <see cref="EntryTable.OfferedAsync"/> offers them.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the structure lives in.</param>
-    public static async Task<List<TableCategoryView>> EntryTables(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
-    {
-        var movesMoney = (await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db)).In(projectId).Contains(Permission.MoveMoney);
-        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ProjectId == projectId && contract.IsActive), await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync(), db);
-        return (await ReadAsync(projectId, db))
-            .Select(category => new TableCategoryView(category.Id, category.Name, category.ItemsOfferedFor(ItemType.Purchases)
-                .Concat(category.ItemsOfferedFor(ItemType.ContractorPayments))
-                .Concat(movesMoney ? [.. category.ItemsOfferedFor(ItemType.OtherRevenue), .. category.ItemsOfferedFor(ItemType.Capital)] : [])
-                .Distinct()
-                .OrderBy(item => item.SortOrder)
-                .Select(item => new TableItemView(item.Id, item.Name, TablesOf(
-                    item,
-                    item.IsOfferedFor(ItemType.Purchases) || item.Type.IsRevenue() ? item.Subgroups : [],
-                    own.Where(table => table.Kind == ItemTableKind.Partner || item.IsOfferedFor(ItemType.ContractorPayments))).ToList(), item.Type.IsRevenue()))
-                .Where(view => view.Tables.Count > 0)
+    public static async Task<List<TableCategoryView>> EntryTables(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) =>
+        (await EntryTable.OfferedAsync(projectId, (await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db)).In(projectId), db))
+            .GroupBy(table => table.Category)
+            .Select(category => new TableCategoryView(category.Key.Id, category.Key.Name, category.GroupBy(table => table.Item)
+                .Select(item => new TableItemView(item.Key.Id, item.Key.Name, item.Select(table => new EntryTableView(table.Id, table.Kind, table.Name)).ToList(), item.Key.Type.IsRevenue()))
                 .ToList()))
-            .Where(view => view.Items.Count > 0)
             .ToList();
-    }
 
     /// <summary>The tables each with a business of its own makes: <paramref name="contracts"/>, each named after its contractor, and <paramref name="partners"/> (redix-api #109).</summary>
     private static async Task<List<OwnTable>> OwnTablesAsync(IQueryable<Contract> contracts, IEnumerable<Partners.Partner> partners, RedixDbContext db) =>

@@ -26,7 +26,7 @@ Each part is the share times the surplus to two decimals, and the last partner t
 | FR-51: a part carried reaches the partner in the later project | `CapitalEndpoints.AddCarry` | `LiquidationTests.FR_51_APartCarriedReachesThePartnerInTheLaterProject` |
 | BR-27: a deficit is paid in by share and leaves nothing | `LiquidationEndpoints.Liquidate` | `LiquidationTests.BR_27_ADeficitIsPaidInByShareAndLeavesNothing` |
 | BR-35: entries waiting, or a line missing or extra, are refused and nothing is entered | `LiquidationEndpoints.Liquidate` | `LiquidationTests.BR_35_EntriesWaitingAndALineMissingOrExtraAreRefusedAndNothingIsEntered` |
-| A part of the liquidation is not a plain movement | `CapitalEndpoints.Record` | `LiquidationTests.APartOfTheLiquidationCannotBeEnteredAsAPlainMovement` |
+| A part of the liquidation is not a plain movement | `PartnerTable` | `LiquidationTests.APartOfTheLiquidationCannotBeEnteredAsAPlainMovement` |
 | BR-27: a late expense is paid in and late revenue taken by the shares at closing; the surplus stays nothing | `LiquidationEndpoints.RecordLate` | `LiquidationTests.BR_27_ALateExpenseIsPaidInAndLateRevenueTakenByTheSharesAtClosingAndTheSurplusStaysNothing` |
 | FR-51: a late entry needs a closed project and an item that takes purchases, or a revenue item | `LiquidationEndpoints.RecordLate` | `LiquidationTests.FR_51_ALateEntryNeedsAClosedProjectAndAnItemThatTakesPurchases` |
 | BR-23: a payout's receipt is attached after closing, and only once | `LiquidationEndpoints.AttachReceipt` | `LiquidationTests.BR_23_APayoutsReceiptIsAttachedAfterTheProjectClosesAndOnlyOnce` |

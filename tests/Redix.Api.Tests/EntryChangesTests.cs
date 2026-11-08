@@ -16,8 +16,8 @@ public class EntryChangesTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
-    private static Task<HttpResponseMessage> EditAsync(HttpClient client, Ledger ledger, ExpenseRequest request) =>
-        client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/expenses/{request.Id}", request, Json);
+    private static Task<HttpResponseMessage> EditAsync(HttpClient client, Ledger ledger, EntryRequest request) =>
+        client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}", request, Json);
 
     private static Task<HttpResponseMessage> DeleteAsync(HttpClient client, Ledger ledger, Guid id) =>
         client.PostAsync($"/projects/{ledger.ProjectId}/entries/{id}/delete", null);
@@ -34,14 +34,14 @@ public class EntryChangesTests(MigratedApiFactory factory)
         Assert.Equal(code, await Ledger.CodeOf(response));
     }
 
-    private static async Task<(HttpClient Client, ExpenseRequest Request, Guid UserId)> FieldDraftAsync(Ledger ledger)
+    private static async Task<(HttpClient Client, EntryRequest Request, Guid UserId)> FieldDraftAsync(Ledger ledger)
     {
         var (field, userId) = await ledger.MemberAsync("Field");
         var custody = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json);
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         custody.EnsureSuccessStatusCode();
         var request = ledger.Purchase(200m) with { AccountId = account.Id };
-        (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/expenses", request, Json)).EnsureSuccessStatusCode();
+        (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", request, Json)).EnsureSuccessStatusCode();
         return (field, request, userId);
     }
 

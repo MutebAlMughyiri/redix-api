@@ -18,7 +18,7 @@ The bill has to be the same supplier's in the same project, sent or approved, an
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/expenses` | `RecordEntries` | Takes `isCreditNote`, `originalEntryId` and a negative `amount`. Answers `creditNoteNeedsOriginal`, `unknownOriginalInvoice`, `creditNoteAboveOriginal` and `deductionNeedsNotes` |
+| `POST /projects/{id}/entries` | `RecordEntries` | Takes `isCreditNote`, `originalEntryId` and a negative `amount`. Answers `creditNoteNeedsOriginal`, `unknownOriginalInvoice`, `creditNoteAboveOriginal` and `deductionNeedsNotes` |
 | `GET /projects/{id}/expenses/creditable?supplierId=` | `ReadProject` | That supplier's bills a credit note can return, each as `{ entryId, number, date, returnable }`: the number of an older bill that had one, empty for the rest |
 
 ## Tables
@@ -31,11 +31,11 @@ Tests are in `CreditNoteTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| AC-14.2: a credit note is a negative total, linked to its bill, and takes from the item | `ExpenseRequest.KeptTotal`, `ExpensesEndpoints.SaveAsync` | `AC_14_2_ACreditNoteIsANegativeTotalLinkedToItsBillAndTakesFromTheItem` |
-| D13: a credit note needs its bill, and only a credit note names one | `ExpenseRequest.RefusalOfTyped` | `D13_ACreditNoteNeedsItsBillAndOnlyACreditNoteNamesOne` |
-| D13: a credit note cannot go above what is left of its bill, alone or together | `ExpensesEndpoints.SaveAsync`, `Creditable` | `D13_ACreditNoteCannotGoAboveItsBill`, `D13_TheCreditNotesOfOneBillTogetherCannotGoAboveIt`, `ARejectedCreditNoteNoLongerTakesFromItsBillAndADraftOneDoes` |
+| AC-14.2: a credit note is a negative total, linked to its bill, and takes from the item | `PurchaseTable.AmountOf`, `PurchaseTable.DetailsOf` | `AC_14_2_ACreditNoteIsANegativeTotalLinkedToItsBillAndTakesFromTheItem` |
+| D13: a credit note needs its bill, and only a credit note names one | `PurchaseTable.RefusalOfTyped` | `D13_ACreditNoteNeedsItsBillAndOnlyACreditNoteNamesOne` |
+| D13: a credit note cannot go above what is left of its bill, alone or together | `PurchaseTable.RefusalOfAsync`, `ExpensesEndpoints.CreditableExceptAsync` | `D13_ACreditNoteCannotGoAboveItsBill`, `D13_TheCreditNotesOfOneBillTogetherCannotGoAboveIt`, `ARejectedCreditNoteNoLongerTakesFromItsBillAndADraftOneDoes` |
 | Only the same supplier's sent bill | `Creditable` | `OnlyABillOfTheSameSupplierThatWasSentCanBeReturned` |
-| A credit note is typed as a plain amount | `ExpenseRequest.RefusalOfTyped` | `ACreditNoteIsTypedAsAPlainAmount` |
+| A credit note is typed as a plain amount | `PurchaseTable.RefusalOfTyped` | `ACreditNoteIsTypedAsAPlainAmount` |
 | AC-14.1: a deduction of 136 reduces the item total and names no bill | `EntryRequest.IsDeduction` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndNamesNoBill` |
 | BR-31: anyone who reads the project sees what can be returned | `Creditable` | `BR_31_AnyoneWhoReadsTheProjectSeesWhatCanBeReturned` |
 | FR-21: the link is in the audit trail | `RedixDbContext.Audit` | `FR_21_TheLinkIsInTheAuditTrail` |

@@ -24,7 +24,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
 
-    private static async Task<Guid> DraftAsync(Ledger ledger, ExpenseRequest request)
+    private static async Task<Guid> DraftAsync(Ledger ledger, EntryRequest request)
     {
         await ledger.RecordAsync(request);
         return request.Id;
@@ -98,11 +98,11 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         var item = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType={ItemType.ContractorPayments}", Ledger.Json))!.SelectMany(category => category.Items).First();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, 34000m, false), Ledger.Json)).EnsureSuccessStatusCode();
         var contractId = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Ledger.Json))!.Single().Id;
-        ContractorPaymentRequest Payment() => new(Guid.CreateVersion7()) { ContractId = contractId, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
+        EntryRequest Payment() => new(Guid.CreateVersion7()) { ItemId = item.Id, TableId = contractId, Date = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
         var noReceipt = Payment();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", noReceipt, Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", noReceipt, Ledger.Json)).EnsureSuccessStatusCode();
         var withReceipt = Payment() with { AttachmentId = await ledger.FileAsync() };
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", withReceipt, Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", withReceipt, Ledger.Json)).EnsureSuccessStatusCode();
 
         (await SubmitAsync(ledger, noReceipt.Id)).EnsureSuccessStatusCode();
         (await SubmitAsync(ledger, withReceipt.Id)).EnsureSuccessStatusCode();

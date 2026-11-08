@@ -24,7 +24,7 @@ Both kinds of expense share `EntryRequest` and `EntryRecording`: the payment met
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/contractor-payments` | `RecordEntries` | Records a payment as a draft, or sent, from `{ id, contractId, isOutsideContract, amount, paymentDate, accountId, paymentMethodId, notes, customValues, attachmentId, submit }`. Answers what the contract stands at with it |
+| `POST /projects/{id}/entries` | `RecordEntries`, through the contract's table on offer (redix-api #110) | Records a payment as a draft, or sent, from `{ id, itemId, tableId, isOutsideContract, amount, date, accountId, paymentMethodId, notes, customValues, attachmentId, submit }`, the table being the contract. Answers what the contract stands at with it |
 | `GET /projects/{id}/contracts` | `ReadProject` | Answers real `paid`, `pending`, `remaining` and `isOverrun`, and `itemId` for the entry form |
 
 ## Tables
@@ -37,18 +37,18 @@ Tests are in `ContractorPaymentsTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| R11: a payment goes under its item's general subgroup, even when the item has named ones | `ContractorPaymentsEndpoints` | `R11_APaymentGoesUnderItsItemsGeneralSubgroupEvenWhenTheItemHasNamedOnes`, `ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup` |
+| R11: a payment goes under its item's general subgroup, even when the item has named ones | `ContractTable.DetailsOf` | `R11_APaymentGoesUnderItsItemsGeneralSubgroupEvenWhenTheItemHasNamedOnes`, `ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup` |
 | AC-07.1: a real 30,000 leaves 4,000, and 5,000 more is saved with an alert and (1,000) | `ContractMoney`, `Contract.RemainingAfter`, `IsOverrunBy` | `AC_07_1_ThePaymentsOfA34000ContractLeaveItsRemainingAndOneMoreOverrunsItWithAnAlertAndIsSaved` |
 | AC-07.2: an open-value contract only adds up | `Contract` | `AC_07_2_AnOpenValueContractAddsUpWithNoRemainingAndNoAlert` |
 | BR-10: only an approved payment is paid; a pending one waits beside it | `ContractMoney` | `BR_10_OnlyAnApprovedPaymentIsPaidAndAPendingOneWaitsBesideIt`, `ADraftAndARejectedPaymentCountForNothing` |
-| The alert counts what waits | `ContractorPaymentsEndpoints.Record` | `TheAlertWhileEnteringCountsWhatWaitsSoTwoPendingPaymentsCannotOverrunUnseen` |
+| The alert counts what waits | `ContractTable.AnswerOfAsync` | `TheAlertWhileEnteringCountsWhatWaitsSoTwoPendingPaymentsCannotOverrunUnseen` |
 | AC-13.1: outside the contract it enters the item total and leaves the remaining | `ContractMoney` | `AC_13_1_APaymentOutsideTheContractEntersTheItemTotalAndLeavesTheRemainingAlone` |
 | AC-14.1: a deduction of 136 reduces the item total and the paid | `Entries.Amount` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndThePaidOnTheContract` |
 | D14: a deduction says why in its notes | `EntryRequest.RefusalOfCommon` | `D14_ADeductionSaysWhyInItsNotes` |
-| D16: a payment is sent with no receipt, and writes no invoice row | `ContractorPaymentsEndpoints.Record` | `D16_APaymentIsSentWithNoReceipt`, `D16_APaymentWritesNoInvoiceRow` |
+| D16: a payment is sent with no receipt, and writes no invoice row | `EntryRecording.Record` | `D16_APaymentIsSentWithNoReceipt`, `D16_APaymentWritesNoInvoiceRow` |
 | A receipt is linked as a receipt; a file already on an entry is refused | `EntryRecording` | `TheReceiptIsLinkedAsAReceiptAndAFileAlreadyOnAnEntryIsRefused` |
 | AC-38.1: an item that takes no contractor payments | `ProjectStructure.OfferedItemAsync` | `AC_38_1_AContractWhoseItemIsDisabledTakesNoPayment` |
 | Open question 4: only what the user may charge | `EntryRecording.RefusalOfAsync` | `OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther` |
 | FR-41: its columns, and never a purchase's | `EntryAnswers` | `FR_41_ARequiredCustomColumnIsAskedOfAPaymentWhenSending`, `FR_41_WhatOnlyAPurchaseHoldsIsNeverAskedOfAPayment` |
-| What was typed; a disabled contract; a finished project; the audit trail; an id sent twice | `ContractorPaymentRequest`, `ProjectChanges` | `WhatWasTypedIsRefusedWhenItCannotBeKept`, `ADisabledContractOrOneOfAnotherProjectIsRefused`, `AnEmptyIdIsRefused`, `AC_04_1_AFinishedProjectRecordsNoPayment`, `FR_21_APaymentIsInTheAuditTrail`, `AC_16_3_APaymentSentAgainLandsOnce` |
-| Editing a waiting payment counts it once, keeps the contract's other waiting payments, and answers 200 | `ContractMoney.OfProjectAsync` (`leftOut`), `ContractorPaymentsEndpoints.SaveAsync` | `ContractorPaymentsTests.EditingAWaitingPaymentCountsItOnceKeepsTheOthersAndAnswersOk` |
+| What was typed; a disabled contract; a finished project; the audit trail; an id sent twice | `EntryRecording`, `ProjectChanges` | `WhatWasTypedIsRefusedWhenItCannotBeKept`, `ADisabledContractOrOneOfAnotherProjectIsRefused`, `AnEmptyIdIsRefused`, `AC_04_1_AFinishedProjectRecordsNoPayment`, `FR_21_APaymentIsInTheAuditTrail`, `AC_16_3_APaymentSentAgainLandsOnce` |
+| Editing a waiting payment counts it once, keeps the contract's other waiting payments, and answers 200 | `ContractMoney.OfProjectAsync` (`leftOut`), `ContractTable.AnswerOfAsync` | `ContractorPaymentsTests.EditingAWaitingPaymentCountsItOnceKeepsTheOthersAndAnswersOk` |

@@ -13,7 +13,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
 {
     private Task<Ledger> LedgerAsync() => Ledger.WithFinanceAsync(factory);
 
-    private static ExpenseRequest CreditNote(Ledger ledger, decimal amount, Guid originalEntryId) => ledger.Purchase(amount) with { IsCreditNote = true, OriginalEntryId = originalEntryId };
+    private static EntryRequest CreditNote(Ledger ledger, decimal amount, Guid originalEntryId) => ledger.Purchase(amount) with { IsCreditNote = true, OriginalEntryId = originalEntryId };
 
     /// <summary>A bill of 1,150, sent.</summary>
     private static async Task<Guid> BillAsync(Ledger ledger)

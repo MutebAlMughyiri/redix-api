@@ -8,7 +8,7 @@
 
 | Route | What it answers |
 | --- | --- |
-| `POST /projects/{id}/expenses`, `/contractor-payments` | An id its author already recorded in that project answers `200` with where the entry stands, and changes nothing; from anyone else `409 entryExists` |
+| `POST /projects/{id}/entries`, for every table (redix-api #110) | An id its author already recorded in that project answers `200` with where the entry stands, and changes nothing; from anyone else `409 entryExists` |
 | `POST /projects/{id}/attachments` | The same file from the same person in that project answers `200` with the one already kept |
 
 | Rule | Code | Test |

@@ -10,7 +10,20 @@ public static class EntryReversal
     /// <summary>Adds the reversal of <paramref name="entry"/>, with a copy of what it holds; saved with the change.</summary>
     public static async Task<Entry> AddAsync(Entry entry, string reason, Guid userId, DateTime at, DateOnly today, RedixDbContext db)
     {
-        var reversal = DirectEntries.Approved(entry.ProjectId, entry.Kind, today, -entry.Amount, entry.AccountId, reason, userId, at);
+        var reversal = new Entry
+        {
+            Id = Guid.CreateVersion7(),
+            ProjectId = entry.ProjectId,
+            Kind = entry.Kind,
+            Status = EntryStatus.Approved,
+            EntryDate = today,
+            Amount = -entry.Amount,
+            AccountId = entry.AccountId,
+            Notes = reason,
+            CreatedByUserId = userId,
+            CreatedAt = at,
+            ApprovedAt = at,
+        };
         List<object> details = [new EntryLink { EntryId = reversal.Id, Type = EntryLinkType.Reversal, LinkedEntryId = entry.Id, Reason = reason }];
         var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id);
         if (expense is not null)
@@ -37,7 +50,7 @@ public static class EntryReversal
         {
             details.Add(new RevenueDetails { EntryId = reversal.Id, ItemId = revenue.ItemId, SubgroupId = revenue.SubgroupId });
         }
-        await DirectEntries.AddAsync(reversal, details, userId, at, db);
+        await EntryRecording.AddAsync(reversal, details, userId, db);
         return reversal;
     }
 }

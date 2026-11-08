@@ -30,19 +30,20 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         return new Setup(ledger, contract.Id, item.Id);
     }
 
-    private static ContractorPaymentRequest Payment(Setup setup, decimal amount = 3000m) => new(Guid.CreateVersion7())
+    private static EntryRequest Payment(Setup setup, decimal amount = 3000m) => new(Guid.CreateVersion7())
     {
-        ContractId = setup.ContractId,
-        PaymentDate = setup.Ledger.Today,
+        ItemId = setup.ItemId,
+        TableId = setup.ContractId,
+        Date = setup.Ledger.Today,
         Amount = amount,
         PaymentMethodId = setup.Ledger.MethodId,
         AccountId = setup.Ledger.AccountId,
     };
 
-    private static Task<HttpResponseMessage> PostAsync(Setup setup, ContractorPaymentRequest request, HttpClient? client = null) =>
-        (client ?? setup.Ledger.Client).PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/contractor-payments", request, Ledger.Json);
+    private static Task<HttpResponseMessage> PostAsync(Setup setup, EntryRequest request, HttpClient? client = null) =>
+        (client ?? setup.Ledger.Client).PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/entries", request, Ledger.Json);
 
-    private static async Task<ContractorPaymentView> RecordAsync(Setup setup, ContractorPaymentRequest request)
+    private static async Task<ContractorPaymentView> RecordAsync(Setup setup, EntryRequest request)
     {
         var response = await PostAsync(setup, request);
         Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
@@ -50,7 +51,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     }
 
     /// <summary>A payment recorded through the API and sent with its receipt, and then approved as UC-032 "Approve or reject entries" will: by changing its status.</summary>
-    private static async Task<ContractorPaymentRequest> ApprovedAsync(Setup setup, decimal amount, bool isOutsideContract = false)
+    private static async Task<EntryRequest> ApprovedAsync(Setup setup, decimal amount, bool isOutsideContract = false)
     {
         var request = Payment(setup, amount) with { IsOutsideContract = isOutsideContract, AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
         await RecordAsync(setup, request);
@@ -61,7 +62,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     private static async Task<ContractView> ContractOfAsync(Setup setup) =>
         (await setup.Ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{setup.Ledger.ProjectId}/contracts", Ledger.Json))!.Single(row => row.Id == setup.ContractId);
 
-    private static async Task AssertRefusedAsync(Setup setup, ContractorPaymentRequest request, string code)
+    private static async Task AssertRefusedAsync(Setup setup, EntryRequest request, string code)
     {
         var response = await PostAsync(setup, request);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -86,7 +87,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         await RecordAsync(setup, request);
         await RecordAsync(setup, Payment(setup, 1000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
 
-        var edited = await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/contractor-payments/{request.Id}", request with { Amount = 4000m }, Ledger.Json);
+        var edited = await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/entries/{request.Id}", request with { Amount = 4000m }, Ledger.Json);
 
         Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
         var view = (await edited.Content.ReadFromJsonAsync<ContractorPaymentView>(Ledger.Json))!;
@@ -342,8 +343,8 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         await AssertRefusedAsync(setup, Payment(setup, 0m), "invalidAmount");
         await AssertRefusedAsync(setup, Payment(setup, 1.234m), "invalidAmount");
         await AssertRefusedAsync(setup, Payment(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");
-        await AssertRefusedAsync(setup, Payment(setup) with { PaymentDate = default }, "invalidPaymentDate");
-        await AssertRefusedAsync(setup, Payment(setup) with { PaymentDate = today.AddDays(1) }, "invalidPaymentDate");
+        await AssertRefusedAsync(setup, Payment(setup) with { Date = default }, "invalidDate");
+        await AssertRefusedAsync(setup, Payment(setup) with { Date = today.AddDays(1) }, "invalidDate");
     }
 
     [Fact]
@@ -352,9 +353,9 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         var setup = await ContractAsync();
         var other = await ContractAsync();
 
-        await AssertRefusedAsync(setup, Payment(setup) with { ContractId = other.ContractId }, "unknownContract");
+        await AssertRefusedAsync(setup, Payment(setup) with { TableId = other.ContractId }, "unknownTable");
         (await setup.Ledger.Client.PostAsync($"/projects/{setup.Ledger.ProjectId}/contracts/{setup.ContractId}/disable", null)).EnsureSuccessStatusCode();
-        await AssertRefusedAsync(setup, Payment(setup), "unknownContract");
+        await AssertRefusedAsync(setup, Payment(setup), "unknownTable");
     }
 
     [Fact]
@@ -363,7 +364,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         var setup = await ContractAsync();
         await factory.WithDatabaseAsync(db => db.Items.Where(item => item.Id == setup.ItemId).ExecuteUpdateAsync(item => item.SetProperty(row => row.IsActive, false)));
 
-        await AssertRefusedAsync(setup, Payment(setup), "itemNotOffered");
+        await AssertRefusedAsync(setup, Payment(setup), "unknownTable");
     }
 
     [Fact]

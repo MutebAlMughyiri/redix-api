@@ -37,6 +37,7 @@ public static class EntryChanges
         await db.SaveChangesAsync();
 
         var sending = edited.Status == EntryStatus.PendingApproval && existing.Status != EntryStatus.PendingApproval;
+        existing.Kind = edited.Kind;
         existing.EntryDate = edited.EntryDate;
         existing.Amount = edited.Amount;
         existing.AccountId = edited.AccountId;

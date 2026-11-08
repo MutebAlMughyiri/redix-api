@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Revenue;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
@@ -246,14 +247,22 @@ public static class EntriesEndpoints
         return answers.MissingOf(columns);
     }
 
-    private static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db) => new(
-        entry,
-        await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ExpenseDetails(),
-        await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new PurchaseDetails(),
-        await db.ContractorPaymentDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ContractorPaymentDetails(),
-        await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new Invoice(),
-        await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync(),
-        await db.EntryLinks.Where(row => row.EntryId == entry.Id).ToListAsync());
+    private static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db)
+    {
+        var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ExpenseDetails();
+        var payment = await db.ContractorPaymentDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ContractorPaymentDetails();
+        var partnerId = await db.CapitalMovementDetails.Where(row => row.EntryId == entry.Id).Select(row => row.PartnerId).SingleOrDefaultAsync();
+        var revenueTableId = await db.Set<RevenueDetails>().Where(row => row.EntryId == entry.Id).Select(row => row.SubgroupId).SingleOrDefaultAsync();
+        return new(
+            entry,
+            new[] { payment.ContractId, partnerId, revenueTableId, expense.SubgroupId }.FirstOrDefault(id => id != Guid.Empty),
+            expense,
+            await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new PurchaseDetails(),
+            payment,
+            await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new Invoice(),
+            await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync(),
+            await db.EntryLinks.Where(row => row.EntryId == entry.Id).ToListAsync());
+    }
 }
 
 /// <summary>An entry on a list.</summary>
@@ -281,10 +290,11 @@ public record ChangeNotesRequest(string Notes);
 
 /// <summary>An entry and everything its kind has. What it does not have is empty, with an empty <c>entryId</c>, so a reader asks nothing but that.</summary>
 /// <param name="Entry">The entry.</param>
+/// <param name="TableId">The table it is in: its contract, its partner, or its item's group (redix-api #110).</param>
 /// <param name="Expense">What every expense has.</param>
 /// <param name="Purchase">What only a purchase has.</param>
 /// <param name="ContractorPayment">What only a contractor payment has.</param>
 /// <param name="Invoice">The bill number it was entered with before REDIX stopped asking for one; empty on a newer entry (redix-api #96, D2).</param>
 /// <param name="Attachments">The files it carries.</param>
 /// <param name="Links">What ties it to other entries.</param>
-public record EntryView(Entry Entry, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments, List<EntryLink> Links);
+public record EntryView(Entry Entry, Guid TableId, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments, List<EntryLink> Links);

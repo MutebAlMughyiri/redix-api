@@ -6938,34 +6938,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("4605ecfe-b3d8-5df9-7683-6fc44f1d4271"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3027597b-3d9d-3d2c-c9a3-bc8bef773bf5"),
-                            Value = "Account"
-                        },
-                        new
-                        {
-                            Id = new Guid("b5b933f6-6ef5-c85b-9c77-d6982a1d88a1"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3027597b-3d9d-3d2c-c9a3-bc8bef773bf5"),
-                            Value = "الحساب"
-                        },
-                        new
-                        {
-                            Id = new Guid("5b292da7-398a-d2af-cf83-3234c3e9934b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9986841e-810b-8962-d4e1-a388352f38e9"),
-                            Value = "Description"
-                        },
-                        new
-                        {
-                            Id = new Guid("61cf7604-0c16-0dcd-f40e-c9c713232c15"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9986841e-810b-8962-d4e1-a388352f38e9"),
-                            Value = "الوصف"
-                        },
-                        new
-                        {
                             Id = new Guid("60f9c445-c74f-c2dd-b1cc-164d6312b080"),
                             Language = "en",
                             TranslationKeyId = new Guid("f8cad813-0c34-ea12-02f5-6fc9a034c153"),
@@ -6991,132 +6963,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("3eb99653-ceb0-f8bf-c7e0-20eb0a3d5b57"),
                             Value = "تعذرت قراءة الإيرادات. تحقق من الاتصال وحاول مجدداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("2d68c01d-fabb-2296-f41a-3a3e3b828b21"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("dfcb343d-720c-3164-c03d-5549447750fe"),
-                            Value = "No connection to the server. Try again."
-                        },
-                        new
-                        {
-                            Id = new Guid("7d494342-0f9d-1d35-e158-0e199f9296ab"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("dfcb343d-720c-3164-c03d-5549447750fe"),
-                            Value = "لا اتصال بالخادم. حاول مجدداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("dda3a7cc-82bb-ac87-9eb3-a821b440a783"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b24cade7-d2d0-3e04-5df3-7ed583fe5446"),
-                            Value = "This could not be done."
-                        },
-                        new
-                        {
-                            Id = new Guid("90180e09-a012-d150-28db-4544dad4c9a5"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b24cade7-d2d0-3e04-5df3-7ed583fe5446"),
-                            Value = "تعذر تنفيذ ذلك."
-                        },
-                        new
-                        {
-                            Id = new Guid("124b8d0f-fae2-1a28-2117-d89166c86ef6"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ba5a6ecc-8c9e-5dd2-2a12-0ed466a103fc"),
-                            Value = "Choose a revenue item of this project."
-                        },
-                        new
-                        {
-                            Id = new Guid("02d2904b-f846-23e7-ee77-8dc6c4786e77"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ba5a6ecc-8c9e-5dd2-2a12-0ed466a103fc"),
-                            Value = "اختر بند إيرادات من هذا المشروع."
-                        },
-                        new
-                        {
-                            Id = new Guid("eb5f442e-046c-64f6-ac20-058bebdd4078"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e85316d8-05a6-2c9b-fff1-74ae9049a30b"),
-                            Value = "The date is outside the project's period."
-                        },
-                        new
-                        {
-                            Id = new Guid("1f980580-b6c5-9051-bd64-d30c396deca1"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e85316d8-05a6-2c9b-fff1-74ae9049a30b"),
-                            Value = "التاريخ خارج فترة المشروع."
-                        },
-                        new
-                        {
-                            Id = new Guid("f71bccff-38c6-3ab5-ffff-9ce1dfe339ed"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("640ad877-bf82-1804-e1d6-69abbd7f98d7"),
-                            Value = "Type an amount above zero, with at most two decimals."
-                        },
-                        new
-                        {
-                            Id = new Guid("0aa0b73c-9411-1cc4-2af9-282797c2984a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("640ad877-bf82-1804-e1d6-69abbd7f98d7"),
-                            Value = "اكتب مبلغاً أكبر من الصفر بخانتين عشريتين كحد أقصى."
-                        },
-                        new
-                        {
-                            Id = new Guid("b733ece1-a370-1e9e-ab91-62d12c153a13"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ef7dc8b6-066b-9c91-2370-29beab7ba230"),
-                            Value = "The description is too long."
-                        },
-                        new
-                        {
-                            Id = new Guid("2e094557-6d7e-b3d9-da37-fdc7da3de402"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ef7dc8b6-066b-9c91-2370-29beab7ba230"),
-                            Value = "الوصف طويل جداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("65a6f0e8-5be5-0bf6-4bc7-6a1eba373a6d"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ffb92055-46ed-1867-1094-cd3c1b0e529e"),
-                            Value = "Choose the account."
-                        },
-                        new
-                        {
-                            Id = new Guid("6ffd35cb-8d0f-7e38-71b9-d3a50653ca1c"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ffb92055-46ed-1867-1094-cd3c1b0e529e"),
-                            Value = "اختر الحساب."
-                        },
-                        new
-                        {
-                            Id = new Guid("2bff715c-9281-4599-0e61-058d2d452510"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("1c891c17-20fe-13a6-77ea-82f216f91ca6"),
-                            Value = "The file was not found. Choose it again."
-                        },
-                        new
-                        {
-                            Id = new Guid("a5ce9137-4240-bc78-3c24-e90a9a55309a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("1c891c17-20fe-13a6-77ea-82f216f91ca6"),
-                            Value = "لم يُعثر على الملف. اختره مجدداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("d0aafd6d-6353-7e9c-1110-ff9739342ef7"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("99f25918-f1e7-dde4-0f2f-cd67937c72da"),
-                            Value = "This file is already on an entry."
-                        },
-                        new
-                        {
-                            Id = new Guid("a0b8aca2-51e2-afce-7da7-2db09b819432"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("99f25918-f1e7-dde4-0f2f-cd67937c72da"),
-                            Value = "هذا الملف مرفق بقيد آخر."
                         },
                         new
                         {
@@ -7792,132 +7638,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a587b83b-1d84-0db1-339e-8884b8f2dd82"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("2947ee0e-8693-df6a-f16e-772993743f60"),
-                            Value = "No connection to the server. Try again."
-                        },
-                        new
-                        {
-                            Id = new Guid("70ebae12-6786-5571-bf14-cc6b7c44343b"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("2947ee0e-8693-df6a-f16e-772993743f60"),
-                            Value = "لا اتصال بالخادم. حاول مجدداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("3f7dd83a-8c5b-a11e-79e9-6980dcf22ea7"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("c768947e-2f79-d2e3-b55b-090ebe86ebf3"),
-                            Value = "This could not be done."
-                        },
-                        new
-                        {
-                            Id = new Guid("98eb31d2-d9bc-7242-8d04-5ac4ada9f0e4"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("c768947e-2f79-d2e3-b55b-090ebe86ebf3"),
-                            Value = "تعذر تنفيذ ذلك."
-                        },
-                        new
-                        {
-                            Id = new Guid("19b78b19-b279-9cf5-640e-48fc50f7b0b1"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9c86d593-d4d2-fcb8-7dc2-bff92bb94747"),
-                            Value = "Choose the partner."
-                        },
-                        new
-                        {
-                            Id = new Guid("89b6418a-3e01-256e-d8dc-ad8d0fe69f99"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9c86d593-d4d2-fcb8-7dc2-bff92bb94747"),
-                            Value = "اختر الشريك."
-                        },
-                        new
-                        {
-                            Id = new Guid("a7f89259-31b7-742f-d09f-4fb2854f1675"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d78a1d43-4602-993e-c0e4-c80249b0e2dd"),
-                            Value = "The date is outside the project's period."
-                        },
-                        new
-                        {
-                            Id = new Guid("03c52fe2-d77d-0c74-573c-cbfa80d68f68"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d78a1d43-4602-993e-c0e4-c80249b0e2dd"),
-                            Value = "التاريخ خارج فترة المشروع."
-                        },
-                        new
-                        {
-                            Id = new Guid("7e515384-dacb-02bd-1d0f-f419f0caacb9"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9c7c9263-970f-5773-324e-24508ec84b64"),
-                            Value = "Type an amount above zero, with at most two decimals."
-                        },
-                        new
-                        {
-                            Id = new Guid("35888947-ef7f-4379-26f3-fd5103c78588"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9c7c9263-970f-5773-324e-24508ec84b64"),
-                            Value = "اكتب مبلغاً أكبر من الصفر بخانتين عشريتين كحد أقصى."
-                        },
-                        new
-                        {
-                            Id = new Guid("c1e1c235-8459-4f41-ce44-d0cd181b02c4"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("42b6a274-7add-5e52-5bed-4255134ef780"),
-                            Value = "The description is too long."
-                        },
-                        new
-                        {
-                            Id = new Guid("3ba98db2-f9a0-2e22-cf41-cb29101fec5b"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("42b6a274-7add-5e52-5bed-4255134ef780"),
-                            Value = "الوصف طويل جداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("e37149b4-afd7-407d-d143-1dfaf55c5e6d"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d731c9fc-f78f-ef52-1c7c-422497baaec3"),
-                            Value = "Choose the account."
-                        },
-                        new
-                        {
-                            Id = new Guid("8632bda2-9563-ad8a-3d6a-2a45faa77f41"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d731c9fc-f78f-ef52-1c7c-422497baaec3"),
-                            Value = "اختر الحساب."
-                        },
-                        new
-                        {
-                            Id = new Guid("aa811d02-ece9-283e-27e7-73e6d67f1110"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("dc95b2fe-3d7d-325d-3967-fa8823add2aa"),
-                            Value = "The file was not found. Choose it again."
-                        },
-                        new
-                        {
-                            Id = new Guid("4377bf43-44e3-4564-cc1a-6d2706d71b4d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("dc95b2fe-3d7d-325d-3967-fa8823add2aa"),
-                            Value = "لم يُعثر على الملف. اختره مجدداً."
-                        },
-                        new
-                        {
-                            Id = new Guid("69ff256e-564e-2525-5a6c-451d7e6a5592"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d98464da-fea3-ea77-833c-72f09c2519f4"),
-                            Value = "This file is already on an entry."
-                        },
-                        new
-                        {
-                            Id = new Guid("f33e4a47-dc77-7ca7-4d70-ca47915933fa"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d98464da-fea3-ea77-833c-72f09c2519f4"),
-                            Value = "هذا الملف مرفق بقيد آخر."
-                        },
-                        new
-                        {
                             Id = new Guid("a2ffb9aa-64df-334d-989d-5dbb53b48a4d"),
                             Language = "en",
                             TranslationKeyId = new Guid("75c17f5e-cb87-87cc-3022-bcf9fa626525"),
@@ -7943,20 +7663,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("8fa855b8-82dd-277c-08c9-23f47523cf46"),
                             Value = "لا يوجد شريك لتوزيعه عليه."
-                        },
-                        new
-                        {
-                            Id = new Guid("2fa9bc7c-8d93-0bee-941f-ac0ce55694c8"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("53d6a2d8-c1c6-0057-3dd2-6d54130df912"),
-                            Value = "This project is closed."
-                        },
-                        new
-                        {
-                            Id = new Guid("d083c07d-9508-65f6-8b5f-996e7f94499c"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("53d6a2d8-c1c6-0057-3dd2-6d54130df912"),
-                            Value = "هذا المشروع مغلق."
                         },
                         new
                         {
@@ -12468,34 +12174,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("9f7742bd-2445-1eed-acf2-19e9bbbeb8da"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e02871f2-6721-3c8c-50c7-63840fb2d62d"),
-                            Value = "Choose an item that takes purchases."
-                        },
-                        new
-                        {
-                            Id = new Guid("c946555a-b3a9-5762-e807-bca9521cc28b"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e02871f2-6721-3c8c-50c7-63840fb2d62d"),
-                            Value = "اختر بنداً يقبل المشتريات."
-                        },
-                        new
-                        {
-                            Id = new Guid("a11904de-fb13-e9ca-5108-deaa84092b2d"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
-                            Value = "Choose a subgroup of this item."
-                        },
-                        new
-                        {
-                            Id = new Guid("13a81f25-c935-caae-0d87-3c2744dcfd52"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
-                            Value = "اختر مجموعة فرعية من هذا البند."
-                        },
-                        new
-                        {
                             Id = new Guid("98ad406e-6ed3-0b3e-08eb-9c54d2b906da"),
                             Language = "en",
                             TranslationKeyId = new Guid("99bb5246-dc7c-0c02-3e28-8264e981b90f"),
@@ -12622,17 +12300,31 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("38ed7541-948c-8ec5-4256-6644057d5cef"),
+                            Id = new Guid("cdc61298-806d-6f34-b7c8-7a8fc2a6a17b"),
                             Language = "en",
-                            TranslationKeyId = new Guid("51abb597-0670-6810-42f8-ade90ed52984"),
+                            TranslationKeyId = new Guid("21d95887-8bcc-8670-37f5-426441d6e91a"),
                             Value = "The date must be within the project's period and not in the future."
                         },
                         new
                         {
-                            Id = new Guid("cb3e0bec-d780-3c81-2b66-b608dd235e6f"),
+                            Id = new Guid("0edb0ee7-9fe2-250b-d9b7-4906dd30c7a2"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("51abb597-0670-6810-42f8-ade90ed52984"),
+                            TranslationKeyId = new Guid("21d95887-8bcc-8670-37f5-426441d6e91a"),
                             Value = "يجب أن يقع التاريخ ضمن فترة المشروع وألا يكون في المستقبل."
+                        },
+                        new
+                        {
+                            Id = new Guid("edf1e0e9-0853-1142-1929-a6ae84d8a00f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5d7d57cb-582d-ae44-3442-32006955b507"),
+                            Value = "Choose a table offered to you."
+                        },
+                        new
+                        {
+                            Id = new Guid("ad298718-9489-9b96-325a-194b05d40b86"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5d7d57cb-582d-ae44-3442-32006955b507"),
+                            Value = "اختر جدولاً متاحاً لك."
                         },
                         new
                         {
@@ -12815,20 +12507,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("b102c8cb-efc2-f411-0219-59b1e745861b"),
                             Value = "أكمل ما ينقص هذا القيد قبل الإرسال."
-                        },
-                        new
-                        {
-                            Id = new Guid("e221131d-1d27-0c1c-9d54-757378cccd48"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("37c64841-3318-0fcc-042d-03697eccd2be"),
-                            Value = "Choose a contract."
-                        },
-                        new
-                        {
-                            Id = new Guid("6b757b47-168d-097f-5021-899839234480"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("37c64841-3318-0fcc-042d-03697eccd2be"),
-                            Value = "اختر عقداً."
                         },
                         new
                         {
@@ -14952,18 +14630,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("3027597b-3d9d-3d2c-c9a3-bc8bef773bf5"),
-                            Description = "",
-                            Key = "revenue.account"
-                        },
-                        new
-                        {
-                            Id = new Guid("9986841e-810b-8962-d4e1-a388352f38e9"),
-                            Description = "",
-                            Key = "revenue.description"
-                        },
-                        new
-                        {
                             Id = new Guid("f8cad813-0c34-ea12-02f5-6fc9a034c153"),
                             Description = "",
                             Key = "revenue.file"
@@ -14973,60 +14639,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("3eb99653-ceb0-f8bf-c7e0-20eb0a3d5b57"),
                             Description = "",
                             Key = "revenue.loadFailed"
-                        },
-                        new
-                        {
-                            Id = new Guid("dfcb343d-720c-3164-c03d-5549447750fe"),
-                            Description = "",
-                            Key = "revenue.noConnection"
-                        },
-                        new
-                        {
-                            Id = new Guid("b24cade7-d2d0-3e04-5df3-7ed583fe5446"),
-                            Description = "",
-                            Key = "revenue.refused"
-                        },
-                        new
-                        {
-                            Id = new Guid("ba5a6ecc-8c9e-5dd2-2a12-0ed466a103fc"),
-                            Description = "",
-                            Key = "revenue.unknownItem"
-                        },
-                        new
-                        {
-                            Id = new Guid("e85316d8-05a6-2c9b-fff1-74ae9049a30b"),
-                            Description = "",
-                            Key = "revenue.invalidDate"
-                        },
-                        new
-                        {
-                            Id = new Guid("640ad877-bf82-1804-e1d6-69abbd7f98d7"),
-                            Description = "",
-                            Key = "revenue.invalidAmount"
-                        },
-                        new
-                        {
-                            Id = new Guid("ef7dc8b6-066b-9c91-2370-29beab7ba230"),
-                            Description = "",
-                            Key = "revenue.invalidNotes"
-                        },
-                        new
-                        {
-                            Id = new Guid("ffb92055-46ed-1867-1094-cd3c1b0e529e"),
-                            Description = "",
-                            Key = "revenue.unknownAccount"
-                        },
-                        new
-                        {
-                            Id = new Guid("1c891c17-20fe-13a6-77ea-82f216f91ca6"),
-                            Description = "",
-                            Key = "revenue.unknownAttachment"
-                        },
-                        new
-                        {
-                            Id = new Guid("99f25918-f1e7-dde4-0f2f-cd67937c72da"),
-                            Description = "",
-                            Key = "revenue.invoiceAlreadyAttached"
                         },
                         new
                         {
@@ -15318,60 +14930,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("2947ee0e-8693-df6a-f16e-772993743f60"),
-                            Description = "",
-                            Key = "capital.noConnection"
-                        },
-                        new
-                        {
-                            Id = new Guid("c768947e-2f79-d2e3-b55b-090ebe86ebf3"),
-                            Description = "",
-                            Key = "capital.refused"
-                        },
-                        new
-                        {
-                            Id = new Guid("9c86d593-d4d2-fcb8-7dc2-bff92bb94747"),
-                            Description = "",
-                            Key = "capital.unknownPartner"
-                        },
-                        new
-                        {
-                            Id = new Guid("d78a1d43-4602-993e-c0e4-c80249b0e2dd"),
-                            Description = "",
-                            Key = "capital.invalidDate"
-                        },
-                        new
-                        {
-                            Id = new Guid("9c7c9263-970f-5773-324e-24508ec84b64"),
-                            Description = "",
-                            Key = "capital.invalidAmount"
-                        },
-                        new
-                        {
-                            Id = new Guid("42b6a274-7add-5e52-5bed-4255134ef780"),
-                            Description = "",
-                            Key = "capital.invalidNotes"
-                        },
-                        new
-                        {
-                            Id = new Guid("d731c9fc-f78f-ef52-1c7c-422497baaec3"),
-                            Description = "",
-                            Key = "capital.unknownAccount"
-                        },
-                        new
-                        {
-                            Id = new Guid("dc95b2fe-3d7d-325d-3967-fa8823add2aa"),
-                            Description = "",
-                            Key = "capital.unknownAttachment"
-                        },
-                        new
-                        {
-                            Id = new Guid("d98464da-fea3-ea77-833c-72f09c2519f4"),
-                            Description = "",
-                            Key = "capital.invoiceAlreadyAttached"
-                        },
-                        new
-                        {
                             Id = new Guid("75c17f5e-cb87-87cc-3022-bcf9fa626525"),
                             Description = "",
                             Key = "capital.pendingEntries"
@@ -15381,12 +14939,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("8fa855b8-82dd-277c-08c9-23f47523cf46"),
                             Description = "",
                             Key = "capital.noPartners"
-                        },
-                        new
-                        {
-                            Id = new Guid("53d6a2d8-c1c6-0057-3dd2-6d54130df912"),
-                            Description = "",
-                            Key = "capital.projectFinished"
                         },
                         new
                         {
@@ -17322,18 +16874,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("e02871f2-6721-3c8c-50c7-63840fb2d62d"),
-                            Description = "",
-                            Key = "expenses.itemNotOffered"
-                        },
-                        new
-                        {
-                            Id = new Guid("4b92ea62-b7c3-0d87-3e6a-69d81e6a0dab"),
-                            Description = "",
-                            Key = "expenses.unknownSubgroup"
-                        },
-                        new
-                        {
                             Id = new Guid("99bb5246-dc7c-0c02-3e28-8264e981b90f"),
                             Description = "",
                             Key = "expenses.unknownSupplier"
@@ -17388,9 +16928,15 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("51abb597-0670-6810-42f8-ade90ed52984"),
+                            Id = new Guid("21d95887-8bcc-8670-37f5-426441d6e91a"),
                             Description = "",
-                            Key = "expenses.invalidPaymentDate"
+                            Key = "expenses.invalidDate"
+                        },
+                        new
+                        {
+                            Id = new Guid("5d7d57cb-582d-ae44-3442-32006955b507"),
+                            Description = "",
+                            Key = "expenses.unknownTable"
                         },
                         new
                         {
@@ -17469,12 +17015,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b102c8cb-efc2-f411-0219-59b1e745861b"),
                             Description = "",
                             Key = "entries.entryIncomplete"
-                        },
-                        new
-                        {
-                            Id = new Guid("37c64841-3318-0fcc-042d-03697eccd2be"),
-                            Description = "",
-                            Key = "expenses.unknownContract"
                         },
                         new
                         {

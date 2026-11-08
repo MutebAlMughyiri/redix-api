@@ -19,7 +19,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
-    private async Task<Guid> ApprovedAsync(Ledger ledger, ExpenseRequest request)
+    private async Task<Guid> ApprovedAsync(Ledger ledger, EntryRequest request)
     {
         await ledger.RecordAsync(request with { Submit = true, AttachmentId = await ledger.FileAsync() });
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
@@ -64,12 +64,11 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
-        CapitalMovementRequest Movement(CapitalMovementType type, decimal amount) => new(partner, type, ledger.Today, amount, ledger.AccountId, "");
-        await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", Movement(CapitalMovementType.Contribution, 1000), Json));
+        await ledger.ApproveAsync(await ledger.PostAsync(await ledger.PartnerEntryAsync(partner, 1000)));
         await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", Movement(CapitalMovementType.Contribution, 300), Json)).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", Movement(CapitalMovementType.Withdrawal, 100), Json)).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(await ledger.RevenueItemAsync(ItemType.OtherRevenue), ledger.Today, 70, ledger.AccountId, ""), Json)).EnsureSuccessStatusCode();
+        (await ledger.PostAsync(await ledger.PartnerEntryAsync(partner, 300))).EnsureSuccessStatusCode();
+        (await ledger.PostAsync(await ledger.PartnerEntryAsync(partner, 100, isWithdrawal: true))).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.RevenueAsync(ItemType.OtherRevenue, 70, ""), Json)).EnsureSuccessStatusCode();
 
         var dashboard = await ledger.Client.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json);
         var next = await ledger.Client.GetFromJsonAsync<NextReportView>($"/projects/{ledger.ProjectId}/periodic-reports/next", Json);
@@ -89,7 +88,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
         await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 300, ledger.AccountId, ""), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 300, notes: ""), Json)).EnsureSuccessStatusCode();
         await IssueAsync(ledger);
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
@@ -127,7 +126,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
-        await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 1000, ledger.AccountId, ""), Json));
+        await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 1000, notes: ""), Json));
         await ApprovedAsync(ledger, ledger.Purchase(300));
         await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
 
@@ -173,7 +172,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
-        await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 1000, ledger.AccountId, ""), Json));
+        await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 1000, notes: ""), Json));
         await ApprovedAsync(ledger, ledger.Purchase(115) with { Product = "P1" });
         await IssueAsync(ledger);
 

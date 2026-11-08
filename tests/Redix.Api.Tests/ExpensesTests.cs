@@ -26,7 +26,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
-    private sealed record Setup(HttpClient Client, ProjectView Project, Guid ItemId, Guid SupplierId, Guid CashSupplierId, Guid MethodId, Guid AccountId);
+    private sealed record Setup(HttpClient Client, ProjectView Project, Guid ItemId, Guid TableId, Guid SupplierId, Guid CashSupplierId, Guid MethodId, Guid AccountId);
 
     private async Task<Setup> FinanceAsync(string name = "غصون 6")
     {
@@ -39,7 +39,8 @@ public class ExpensesTests(MigratedApiFactory factory)
         var methods = (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{project.Id}/payment-methods", Json))!;
         (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب المؤسسة", AccountType.Bank, 0), Json)).EnsureSuccessStatusCode();
         var account = (await client.GetFromJsonAsync<List<AccountView>>($"/projects/{project.Id}/accounts", Json))!.Single();
-        return new Setup(client, project, (await PurchaseItemAsync(client, project.Id)).Id, supplier.Id, suppliers.Single(row => row.Name == Supplier.GeneralCashSupplierName).Id, methods[0].Id, account.Id);
+        var item = await PurchaseItemAsync(client, project.Id);
+        return new Setup(client, project, item.Id, item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, supplier.Id, suppliers.Single(row => row.Name == Supplier.GeneralCashSupplierName).Id, methods[0].Id, account.Id);
     }
 
     private static async Task<SupplierView> SupplierAsync(HttpClient client, Guid projectId, string name, string vatNumber)
@@ -58,26 +59,27 @@ public class ExpensesTests(MigratedApiFactory factory)
         return (await factory.ClientSignedInAsAsync(user, Password), user.Id);
     }
 
-    private ExpenseRequest Expense(Setup setup, decimal amount = 6000m) => new(Guid.CreateVersion7())
+    private EntryRequest Expense(Setup setup, decimal amount = 6000m) => new(Guid.CreateVersion7())
     {
         ItemId = setup.ItemId,
+        TableId = setup.TableId,
         SupplierId = setup.SupplierId,
-        PaymentDate = Entry.Today(factory.Time),
+        Date = Entry.Today(factory.Time),
         Amount = amount,
         PaymentMethodId = setup.MethodId,
         AccountId = setup.AccountId,
     };
 
-    private static Task<HttpResponseMessage> PostAsync(HttpClient client, Guid projectId, ExpenseRequest request) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/expenses", request, Json);
+    private static Task<HttpResponseMessage> PostAsync(HttpClient client, Guid projectId, EntryRequest request) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/entries", request, Json);
 
-    private static async Task<ExpenseView> RecordAsync(HttpClient client, Guid projectId, ExpenseRequest request) =>
-        (await (await PostAsync(client, projectId, request)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ExpenseView>(Json))!;
+    private static async Task<RecordedEntryView> RecordAsync(HttpClient client, Guid projectId, EntryRequest request) =>
+        (await (await PostAsync(client, projectId, request)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<RecordedEntryView>(Json))!;
 
     private static async Task<string> CodeOf(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
 
-    private static async Task AssertRefusedAsync(Setup setup, ExpenseRequest request, string code)
+    private static async Task AssertRefusedAsync(Setup setup, EntryRequest request, string code)
     {
         var response = await PostAsync(setup.Client, setup.Project.Id, request);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -139,7 +141,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
         var entry = await EntryOfAsync((await RecordAsync(setup.Client, setup.Project.Id, request)).Id);
 
-        Assert.Equal(request.PaymentDate, entry.EntryDate);
+        Assert.Equal(request.Date, entry.EntryDate);
         Assert.Equal(6000m, entry.Amount);
     }
 
@@ -171,7 +173,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var subgroups = (await PurchaseItemAsync(setup.Client, setup.Project.Id)).Subgroups;
 
         var general = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup));
-        var named = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SubgroupId = subgroups.Single(row => row.Name == "مواد").Id });
+        var named = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { TableId = subgroups.Single(row => row.Name == "مواد").Id });
 
         Assert.Equal(subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, (await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == general.Id))).SubgroupId);
         Assert.Equal(subgroups.Single(row => row.Name == "مواد").Id, (await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == named.Id))).SubgroupId);
@@ -181,7 +183,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     public async Task ASubgroupOfAnotherItemIsRefused()
     {
         var setup = await FinanceAsync();
-        await AssertRefusedAsync(setup, Expense(setup) with { SubgroupId = Guid.CreateVersion7() }, "unknownSubgroup");
+        await AssertRefusedAsync(setup, Expense(setup) with { TableId = Guid.CreateVersion7() }, "unknownTable");
     }
 
     [Fact]
@@ -264,10 +266,10 @@ public class ExpensesTests(MigratedApiFactory factory)
         var other = await FinanceAsync("غصون 7");
         var contractorOnly = (await setup.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{setup.Project.Id}/categories", Json))!.SelectMany(category => category.Items).First(item => item.Type == ItemType.ContractorPayments);
 
-        await AssertRefusedAsync(setup, Expense(setup) with { ItemId = contractorOnly.Id }, "itemNotOffered");
-        await AssertRefusedAsync(setup, Expense(setup) with { ItemId = other.ItemId }, "itemNotOffered");
+        await AssertRefusedAsync(setup, Expense(setup) with { ItemId = contractorOnly.Id, TableId = contractorOnly.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id }, "unknownTable");
+        await AssertRefusedAsync(setup, Expense(setup) with { ItemId = other.ItemId, TableId = other.TableId }, "unknownTable");
         (await setup.Client.PostAsync($"/projects/{setup.Project.Id}/items/{setup.ItemId}/disable", null)).EnsureSuccessStatusCode();
-        await AssertRefusedAsync(setup, Expense(setup), "itemNotOffered");
+        await AssertRefusedAsync(setup, Expense(setup), "unknownTable");
     }
 
     [Fact]
@@ -335,9 +337,9 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var today = Entry.Today(factory.Time);
 
-        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = today.AddDays(1) }, "invalidPaymentDate");
-        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = setup.Project.StartDate.AddDays(-1) }, "invalidPaymentDate");
-        await AssertRefusedAsync(setup, Expense(setup) with { PaymentDate = default }, "invalidPaymentDate");
+        await AssertRefusedAsync(setup, Expense(setup) with { Date = today.AddDays(1) }, "invalidDate");
+        await AssertRefusedAsync(setup, Expense(setup) with { Date = setup.Project.StartDate.AddDays(-1) }, "invalidDate");
+        await AssertRefusedAsync(setup, Expense(setup) with { Date = default }, "invalidDate");
     }
 
     [Fact]
@@ -345,8 +347,8 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { PaymentDate = setup.Project.StartDate })).StatusCode);
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { PaymentDate = Entry.Today(factory.Time) })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { Date = setup.Project.StartDate })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { Date = Entry.Today(factory.Time) })).StatusCode);
     }
 
     [Fact]
@@ -386,7 +388,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var answer = await refused.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("requiredColumnMissing", answer.GetProperty("code").GetString());
         Assert.Equal(key, answer.GetProperty("columnKey").GetString());
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ItemId = otherItem.Id, Submit = true, AttachmentId = attachmentId })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ItemId = otherItem.Id, TableId = otherItem.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, Submit = true, AttachmentId = attachmentId })).StatusCode);
     }
 
     [Fact]
@@ -528,7 +530,9 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var (member, _) = await MemberAsync(setup, role);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await PostAsync(member, setup.Project.Id, Expense(setup))).StatusCode);
+        var refused = await PostAsync(member, setup.Project.Id, Expense(setup));
+
+        Assert.Equal((HttpStatusCode.BadRequest, "unknownTable"), (refused.StatusCode, await CodeOf(refused)));
     }
 
     [Fact]

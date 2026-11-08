@@ -86,7 +86,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/subgroups", new NameRequest("إيجار"), Ledger.Json)).EnsureSuccessStatusCode();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Ledger.Json)).EnsureSuccessStatusCode();
         var subgroup = (await CategoriesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == itemId).Subgroups[1];
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new Revenue.RevenueRequest(itemId, ledger.Today, 70, ledger.AccountId, "") { SubgroupId = subgroup.Id }, Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", (await ledger.RevenueOnAsync(itemId, 70)) with { TableId = subgroup.Id }, Ledger.Json)).EnsureSuccessStatusCode();
 
         var refused = await DeleteSubgroupAsync(ledger.Client, ledger.ProjectId, itemId, subgroup.Id);
 
@@ -655,11 +655,11 @@ public class CategoriesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
 
-        var revenue = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(capital, ledger.Today, 100, ledger.AccountId, ""), Json);
+        var revenue = await ledger.PostAsync(new EntryRequest(Guid.CreateVersion7()) { ItemId = capital, TableId = Guid.CreateVersion7(), Date = ledger.Today, Amount = 100, AccountId = ledger.AccountId, Submit = true });
         var offeredForRevenue = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType=otherRevenue", Json))!.SelectMany(category => category.Items);
         var offeredForCapital = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType=capital", Json))!.SelectMany(category => category.Items);
 
-        Assert.Equal((HttpStatusCode.BadRequest, "unknownItem"), (revenue.StatusCode, await Ledger.CodeOf(revenue)));
+        Assert.Equal((HttpStatusCode.BadRequest, "unknownTable"), (revenue.StatusCode, await Ledger.CodeOf(revenue)));
         Assert.DoesNotContain(offeredForRevenue, item => item.Id == capital);
         Assert.Equal([capital], offeredForCapital.Select(item => item.Id));
     }
@@ -773,7 +773,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var added = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("مواد"), Json);
         added.EnsureSuccessStatusCode();
         var subgroup = (await CategoriesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == ledger.ItemId).Subgroups[1];
-        await ledger.RecordAsync(ledger.Purchase() with { SubgroupId = subgroup.Id });
+        await ledger.RecordAsync(ledger.Purchase() with { TableId = subgroup.Id });
 
         var refused = await DeleteSubgroupAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, subgroup.Id);
 
@@ -906,7 +906,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var category = (await CategoriesOf(ledger.Client, ledger.ProjectId))[1];
         var item = await AddItemAsync(ledger.Client, ledger.ProjectId, category.Id, "الجلي", ItemType.Purchases);
-        await ledger.RecordAsync(ledger.Purchase() with { ItemId = item.Id });
+        await ledger.RecordAsync(ledger.Purchase() with { ItemId = item.Id, TableId = item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id });
 
         (await ChangeTypeAsync(ledger.Client, ledger.ProjectId, item.Id, ItemType.Both)).EnsureSuccessStatusCode();
     }
@@ -934,7 +934,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/subgroups", new NameRequest("الجلاي"), Json)).EnsureSuccessStatusCode();
 
         var table = (await EntryTablesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == ledger.ItemId).Tables.Single(row => row.Name == "الجلاي");
-        var purchase = ledger.Purchase() with { SubgroupId = table.Id };
+        var purchase = ledger.Purchase() with { TableId = table.Id };
         await ledger.RecordAsync(purchase);
 
         Assert.Equal(table.Id, await ledger.ReadAsync(db => db.ExpenseDetails.Where(row => row.EntryId == purchase.Id).Select(row => row.SubgroupId).SingleAsync()));

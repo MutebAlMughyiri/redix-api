@@ -428,8 +428,8 @@ public class ContractsTests(MigratedApiFactory factory)
         var item = await ItemOf(ledger.Client, ledger.ProjectId);
         (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, 34000m, false))).EnsureSuccessStatusCode();
         var contract = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
-        var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();
+        var payment = new EntryRequest(Guid.CreateVersion7()) { ItemId = item.Id, TableId = contract.Id, Date = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", payment, Json)).EnsureSuccessStatusCode();
         await ledger.SetStatusAsync(payment.Id, status);
         Assert.True(Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId)).HasPayments);
         var contractor = await AnotherContractorAsync(ledger.Client, ledger.ProjectId);
@@ -449,8 +449,8 @@ public class ContractsTests(MigratedApiFactory factory)
         var item = await ItemOf(ledger.Client, ledger.ProjectId);
         (await PostAsync(ledger.Client, ledger.ProjectId, new AddContractRequest(ledger.SupplierId, item.Id, 34000m, false))).EnsureSuccessStatusCode();
         var contract = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
-        var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, PaymentDate = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();
+        var payment = new EntryRequest(Guid.CreateVersion7()) { ItemId = item.Id, TableId = contract.Id, Date = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId };
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", payment, Json)).EnsureSuccessStatusCode();
 
         (await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 40000m, isOpenValue = false })).EnsureSuccessStatusCode();
         (await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 41000m, isOpenValue = false, supplierId = contract.SupplierId, itemId = contract.ItemId })).EnsureSuccessStatusCode();

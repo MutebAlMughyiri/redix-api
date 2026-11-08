@@ -45,6 +45,10 @@ docs/                   these pages
 4. The endpoint, a documented static method in its feature folder, reads or writes through `RedixDbContext`.
 5. The rule a request depends on lives on the class that owns the data, not in the endpoint, so the endpoint only coordinates.
 
+## Recording an entry
+
+Every entry, whatever its table, is recorded by `EntryRecording` through one route, `POST /projects/{id}/entries`, and changed through `POST /projects/{id}/entries/{entryId}` (redix-api #110). The phone names the entry's id, so a second post of the same entry answers the first. The recorder finds the entry's table among the tables `EntryTable.OfferedAsync` offers the caller, the same list the picker shows, then checks what every entry shares by its item's side, then asks the table's kind for its own checks and rows. A kind is one class behind `EntryTable` (`PurchaseTable`, `ContractTable`, `RevenueTable`, `PartnerTable`); no other class asks which kind a table is.
+
 ## Rules every part follows
 
 | Rule | Where it lives |

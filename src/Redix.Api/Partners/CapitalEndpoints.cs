@@ -13,14 +13,12 @@ public static class CapitalEndpoints
 {
     private const int SharePercentDecimals = 10;
 
-    /// <summary>Maps the routes that read capital, for anyone who reads the project, and those that enter a movement, for whoever holds <see cref="Permission.MoveMoney"/>.</summary>
+    /// <summary>Maps the routes that read capital, for anyone who reads the project; a movement is entered as every entry is (redix-api #110).</summary>
     /// <param name="app">The app.</param>
     public static void MapCapital(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/capital", Capital).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapGet("/projects/{projectId:guid}/partners/{partnerId:guid}/movements", Movements).RequireAuthorization(nameof(Permission.ReadProject));
-        var changes = app.MapProjectChanges(Permission.MoveMoney);
-        changes.MapPost("/capital-movements", Record);
     }
 
     /// <summary>The project's total capital, and each partner's balance and share, computed unrounded and given with ten decimals (BR-05, BR-28). Everyone who reads the project sees the total and their own line; whoever holds <see cref="Permission.SeeAllCapital"/> sees every line (BR-31).</summary>
@@ -80,52 +78,6 @@ public static class CapitalEndpoints
         return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind == EntryKind.CapitalIn ? row.entry.Amount : -row.entry.Amount, row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
-    /// <summary>
-    /// Enters a partner's contribution or withdrawal, which waits for approval like every entry (BR-30, redix-api #101), with its receipt when there is one: a file is optional, as
-    /// for every entry (Muteb, 8 Nov 2026). A partner not in the project answers <c>unknownPartner</c>. Otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does.
-    /// </summary>
-    /// <param name="projectId">The project.</param>
-    /// <param name="request">The movement.</param>
-    /// <param name="principal">The caller's session.</param>
-    /// <param name="db">The database the ledger lives in.</param>
-    /// <param name="time">The current time.</param>
-    public static async Task<IResult> Record(Guid projectId, CapitalMovementRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var partnerRefusal = await RefusalOfPartnerAsync(projectId, request.PartnerId, db);
-        if (partnerRefusal.Length > 0)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, partnerRefusal);
-        }
-        var refusal = await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, request.AccountId, request.AttachmentId, time, db);
-        if (refusal.Length > 0)
-        {
-            return DirectEntries.AnswerOf(refusal);
-        }
-
-        var userId = AccessTokens.UserIdOf(principal);
-        var at = time.GetUtcNow().UtcDateTime;
-        var kind = CapitalMovementDetails.IsInflow(request.Type) ? EntryKind.CapitalIn : EntryKind.CapitalOut;
-        var entry = DirectEntries.Pending(projectId, kind, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
-        List<object> details = [new CapitalMovementDetails { EntryId = entry.Id, PartnerId = request.PartnerId, Type = request.Type }];
-        if (request.AttachmentId != Guid.Empty)
-        {
-            details.Add(new EntryAttachment { EntryId = entry.Id, AttachmentId = request.AttachmentId, Role = EntryAttachmentRole.BankReceipt });
-        }
-        await DirectEntries.AddAsync(entry, details, userId, at, db);
-        await db.SaveChangesAsync();
-        return Results.Ok(new EntryStatusView(entry.Id, entry.Status, ""));
-    }
-
-    /// <summary>
-    /// Why <paramref name="partnerId"/> cannot move money in <paramref name="projectId"/>: <c>unknownPartner</c> when not a partner of it, or when their table's capital item is not offered
-    /// (disabled, BR-15, or none yet), as an expense's item must be (redix-api #109); empty when they can.
-    /// </summary>
-    public static async Task<string> RefusalOfPartnerAsync(Guid projectId, Guid partnerId, RedixDbContext db)
-    {
-        var itemId = await db.Partners.Where(row => row.Id == partnerId && row.ProjectId == projectId).Select(row => row.ItemId).FirstOrDefaultAsync();
-        return await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.Capital, db) == Item.None ? "UnknownPartner" : "";
-    }
-
     private static async Task<Dictionary<Guid, decimal>> BalancesAsync(Guid projectId, RedixDbContext db)
     {
         var rows = await (
@@ -136,19 +88,6 @@ public static class CapitalEndpoints
             select new { moved.Key.PartnerId, moved.Key.Kind, Total = moved.Sum(entry => entry.Amount) }).ToListAsync();
         return rows.GroupBy(row => row.PartnerId).ToDictionary(group => group.Key, group => group.Sum(row => row.Kind == EntryKind.CapitalIn ? row.Total : -row.Total));
     }
-}
-
-/// <summary>A capital movement to enter.</summary>
-/// <param name="PartnerId">The partner.</param>
-/// <param name="Type">What it is.</param>
-/// <param name="Date">The day it moved.</param>
-/// <param name="Amount">How much, above zero.</param>
-/// <param name="AccountId">The account it moved through.</param>
-/// <param name="Description">What was said about it; may be empty.</param>
-public record CapitalMovementRequest(Guid PartnerId, CapitalMovementType Type, DateOnly Date, decimal Amount, Guid AccountId, string Description)
-{
-    /// <summary>The receipt; left out when there is none.</summary>
-    public Guid AttachmentId { get; init; }
 }
 
 /// <summary>A project's capital.</summary>

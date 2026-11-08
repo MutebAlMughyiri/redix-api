@@ -1,17 +1,30 @@
 namespace Redix.Api.Entries;
 
-/// <summary>What the app sends for any expense, a purchase or a contractor payment: its total, its date, how it was paid, its file when there is one, and what its item's columns ask (redix-api #96).</summary>
-/// <param name="Id">The entry's id, made on the phone.</param>
-public abstract record EntryRequest(Guid Id)
+/// <summary>
+/// What the app sends for any entry, whatever its table (redix-api #110): the table it goes into, its date, its amount, its account, its notes, its file when there is one, and
+/// whether it is sent for approval or kept as a draft. What only one kind of table asks is here too, and every other kind leaves it out: a purchase's supplier, product, price,
+/// quantity and the bill a credit note returns (D13), a contractor payment's place inside or outside its contract (FR-13), and a partner's withdrawal (BR-06).
+/// </summary>
+/// <param name="Id">The entry's id, made on the phone, so a second post of it answers the first (AC-16.3).</param>
+public record EntryRequest(Guid Id)
 {
-    /// <summary>How it was paid.</summary>
-    public Guid PaymentMethodId { get; init; }
+    /// <summary>The item whose table it goes into.</summary>
+    public Guid ItemId { get; init; }
 
-    /// <summary>The account it was paid from.</summary>
+    /// <summary>The table: one of the item's groups, a contract or a partner.</summary>
+    public Guid TableId { get; init; }
+
+    /// <summary>The entry's one date: the day the money moved (redix-api #96, D10).</summary>
+    public DateOnly Date { get; init; }
+
+    /// <summary>What it comes to. Negative for a deduction on an expense (FR-14); a purchase may leave it out for its unit price times its quantity.</summary>
+    public decimal Amount { get; init; }
+
+    /// <summary>The account the money moved through.</summary>
     public Guid AccountId { get; init; }
 
-    /// <summary>The expense's one date: the day it was paid (redix-api #96, D10).</summary>
-    public DateOnly PaymentDate { get; init; }
+    /// <summary>How an expense was paid; revenue and a partner's money take none.</summary>
+    public Guid PaymentMethodId { get; init; }
 
     /// <summary>Notes on it; left out when none. A deduction says why here (D14).</summary>
     public string Notes { get; init; } = "";
@@ -19,35 +32,39 @@ public abstract record EntryRequest(Guid Id)
     /// <summary>The values of the item's custom columns, by each column's key (FR-41).</summary>
     public Dictionary<string, string> CustomValues { get; init; } = [];
 
-    /// <summary>The file, already kept; left out when there is none, which every expense may be (D3, D16).</summary>
+    /// <summary>The file, already kept; left out when there is none, which every entry may be (D3, D16).</summary>
     public Guid AttachmentId { get; init; }
 
     /// <summary>True to send it for approval; otherwise it is saved as a draft.</summary>
     public bool Submit { get; init; }
 
-    /// <summary>What it comes to: negative for a deduction (FR-14).</summary>
-    public abstract decimal Total();
+    /// <summary>A purchase's supplier, from the project's register.</summary>
+    public Guid SupplierId { get; init; }
 
-    /// <summary>Whether this is a deduction: a negative total, which comes off the item.</summary>
-    public bool IsDeduction() => Total() < 0;
+    /// <summary>What a purchase bought; left out when not said.</summary>
+    public string Product { get; init; } = "";
 
-    /// <summary>The custom values to keep: each trimmed, and the empty ones gone.</summary>
+    /// <summary>The price of one; left out when not used.</summary>
+    public decimal UnitPrice { get; init; }
+
+    /// <summary>How many; left out when not used.</summary>
+    public decimal Quantity { get; init; }
+
+    /// <summary>True for a credit note: a total coming back to the bill <see cref="OriginalEntryId"/> names, typed as a plain amount and kept negative (D13).</summary>
+    public bool IsCreditNote { get; init; }
+
+    /// <summary>The bill a credit note returns; required for a credit note, and only for one (D13).</summary>
+    public Guid OriginalEntryId { get; init; }
+
+    /// <summary>True for a contractor payment outside the contract, which counts in the item's total and leaves the remaining alone (FR-13).</summary>
+    public bool IsOutsideContract { get; init; }
+
+    /// <summary>True for a partner taking money out of their capital; otherwise they put it in (BR-06).</summary>
+    public bool IsWithdrawal { get; init; }
+
+    /// <summary>The custom values that hold something, trimmed.</summary>
     public Dictionary<string, string> CustomValuesKept() => CustomValues.Where(value => value.Value.Trim().Length > 0).ToDictionary(value => value.Key, value => value.Value.Trim());
 
-    /// <summary>What this holds that an item's columns can require.</summary>
-    public abstract EntryAnswers Answers();
-
-    /// <summary>Why what was typed cannot be kept: what every expense has (<see cref="RefusalOfCommon"/>), then what its kind has. Empty when it can.</summary>
-    public abstract string RefusalOfTyped();
-
-    /// <summary>Why what every expense has cannot be kept: notes too long, or a deduction that does not say why in them (D14). Empty when it can.</summary>
-    protected string RefusalOfCommon()
-    {
-        var notes = Notes.Trim();
-        if (notes.Length > Entry.NotesMaxLength)
-        {
-            return "InvalidNotes";
-        }
-        return IsDeduction() && notes.Length == 0 ? "DeductionNeedsNotes" : "";
-    }
+    /// <summary>What it answers of an item's columns (FR-41), as an entry of <paramref name="kind"/>.</summary>
+    public EntryAnswers AnswersAs(EntryKind kind) => new(kind, Product.Trim(), UnitPrice, Quantity, Notes.Trim(), CustomValuesKept());
 }

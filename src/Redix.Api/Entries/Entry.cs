@@ -19,7 +19,7 @@ public class Entry
     public Guid ProjectId { get; init; }
 
     /// <summary>What it is.</summary>
-    public EntryKind Kind { get; init; }
+    public EntryKind Kind { get; set; }
 
     /// <summary>Where it stands.</summary>
     public EntryStatus Status { get; set; }

@@ -31,7 +31,7 @@ public class SimpleExpenseTests(MigratedApiFactory factory)
         var response = await ledger.PostAsync(expense);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var view = (await response.Content.ReadFromJsonAsync<ExpenseView>(Ledger.Json))!;
+        var view = (await response.Content.ReadFromJsonAsync<RecordedEntryView>(Ledger.Json))!;
         Assert.Equal((EntryStatus.PendingApproval, 1150m), (view.Status, view.Amount));
         var entry = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == expense.Id));
         Assert.Equal((ledger.Today, 1150m), (entry.EntryDate, entry.Amount));

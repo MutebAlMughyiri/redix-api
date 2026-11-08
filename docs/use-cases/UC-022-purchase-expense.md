@@ -22,7 +22,7 @@ The id is made on the phone (the database design's principle 4, AC-16.3), so an 
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/expenses` | `RecordEntries` | Records a draft, or with `submit` one pending approval, from `{ id, itemId, subgroupId, supplierId, paymentDate, amount, product, unitPrice, quantity, accountId, paymentMethodId, notes, customValues, attachmentId, isCreditNote, originalEntryId, submit }` |
+| `POST /projects/{id}/entries` | `RecordEntries`, through the table on offer (redix-api #110) | Records a draft, or with `submit` one pending approval, from `{ id, itemId, tableId, supplierId, date, amount, product, unitPrice, quantity, accountId, paymentMethodId, notes, customValues, attachmentId, isCreditNote, originalEntryId, submit }` |
 | `GET /projects/{id}/suppliers/search` | `ReadProject` | Puts what the caller used most first, and answers `timesUsed` |
 
 Its refusals are in the endpoint's Swagger summary. Each names a word the app shows.
@@ -41,19 +41,19 @@ Tests are in `ExpensesTests` and `SimpleExpenseTests`.
 | D10: an expense is its total on its one date | `ExpensesEndpoints.SaveAsync` | `ExpensesTests.D10_AnExpenseIsItsTotalOnItsOneDate` |
 | D11: a new expense writes no invoice row, and a draft with no file is sent later with none | `ExpensesEndpoints.SaveAsync` | `SimpleExpenseTests.D11_ANewExpenseWritesNoInvoiceRow`, `D11_ADraftWithNoFileIsSentLaterWithNoFile` |
 | D14: a deduction says why in its notes | `EntryRequest.RefusalOfCommon` | `SimpleExpenseTests.D14_ADeductionSaysWhyInItsNotes` |
-| BR-01: left without an amount, the total is price × quantity; a typed amount wins | `ExpenseRequest.Total` | `ExpensesTests.BR_01_LeftWithoutAnAmountTheTotalIsThePriceTimesTheQuantity`, `AnAmountTypedWinsOverThePriceAndQuantityWhichStayAsTyped` |
+| BR-01: left without an amount, the total is price × quantity; a typed amount wins | `PurchaseTable.TotalOf` | `ExpensesTests.BR_01_LeftWithoutAnAmountTheTotalIsThePriceTimesTheQuantity`, `AnAmountTypedWinsOverThePriceAndQuantityWhichStayAsTyped` |
 | BR-12: a date inside the project's period, not in the future, in Saudi time | `Entry.IsAcceptableDate`, `Entry.Today` | `ExpensesTests.BR_12_ADateOutsideTheProjectsPeriodOrInTheFutureIsRefused`, `BR_12_TheProjectsFirstDayAndTodayAreAccepted`, `BR_12_TodayIsTheDateInSaudiArabiaNotOnTheServer` |
 | BR-19: a supplier from the register, never free text | `Supplier.OfferedTo` | `ExpensesTests.BR_19_ASupplierNotInTheRegisterIsRefused`, `ADisabledSupplierIsRefused`, `FR_44_FieldUsesTheirOwnPendingSupplierAndNotAnothers` |
 | Open question 4: Field charges only what they hold; `ChargeAnyAccount` lets Finance charge any active account | `Account.IsOfferedTo` | `ExpensesTests.OpenQuestion4_FieldChargesAnAccountTheyAreACustodianOf`, `OpenQuestion4_FieldCannotChargeAnAccountTheyAreNotACustodianOf`, `ChargeAnyAccountLetsFinanceChargeAnyActiveAccountAndNotADisabledOne` |
 | AC-38.1: only an item that takes purchases | `ProjectStructure.OfferedItemAsync` | `ExpensesTests.AC_38_1_AnItemThatTakesNoPurchasesOrIsDisabledOrOfAnotherProjectIsRefused` |
 | AC-40.1: a disabled payment method is refused | `ExpensesEndpoints` | `ExpensesTests.AC_40_1_ADisabledPaymentMethodIsRefused` |
-| FR-41, AC-41.1: a required column is asked when sending, of its own item only | `ExpenseRequest.Answers` | `ExpensesTests.AC_41_1_ARequiredCustomColumnIsAskedOnlyOfItsItemWhenSending`, `ADraftCanWaitForARequiredColumn`, `FR_41_ABuiltInColumnMadeRequiredIsAskedWhenSending` |
+| FR-41, AC-41.1: a required column is asked when sending, of its own item only | `EntryRequest.AnswersAs` | `ExpensesTests.AC_41_1_ARequiredCustomColumnIsAskedOnlyOfItsItemWhenSending`, `ADraftCanWaitForARequiredColumn`, `FR_41_ABuiltInColumnMadeRequiredIsAskedWhenSending` |
 | FR-41: values are stored with the entry, and must fit their column | `ExpenseDetails.CustomValues`, `Column.Accepts` | `ExpensesTests.FR_41_CustomValuesAreStoredWithTheEntryAndAnEmptyOneIsNoValue`, `FR_41_AValueThatDoesNotFitItsColumnIsRefusedNamingIt`, `FR_41_AValueThatFitsItsColumnIsKept`, `AValueForAColumnTheItemDoesNotAskIsRefused` |
 | BR-21: a deleted column is no longer asked | `ExpensesEndpoints` | `ExpensesTests.BR_21_ADeletedColumnIsNoLongerAsked` |
 | A file, when there is one, is linked to its entry as its invoice | `ExpensesEndpoints.SaveAsync` | `ExpensesTests.TheFileOfAnInvoiceIsLinkedToItsEntryAsItsInvoice` |
 | BR-22: one file is on one expense | `EntryAttachments` | `SimpleExpenseTests.BR_22_TheSameFileOnASecondExpenseIsRefused`, `BR_22_TheSameFileSentAgainIsTheSameFileAndIsRefused`, `AFileKeptAndOnNoEntryIsFreeToUse` |
 | BR-33: nothing of another project | Each check | `ExpensesTests.BR_33_AFileOfAnotherProjectIsRefusedOnAnEntry`, `BR_33_AnAccountOfAnotherProjectIsRefused`, `BR_33_SomeoneOutsideTheProjectCannotRecordInIt` |
-| AC-16.3: an id used twice saves once | `ExpensesEndpoints.Record` | `ExpensesTests.AC_16_3_AnUploadSentAgainLandsOnceAndAnswersTheEntry`, `AnIdSomeoneElseUsedIsRefusedAndTellsThemNothingOfIt` |
+| AC-16.3: an id used twice saves once | `EntryRecording.Record` | `ExpensesTests.AC_16_3_AnUploadSentAgainLandsOnceAndAnswersTheEntry`, `AnIdSomeoneElseUsedIsRefusedAndTellsThemNothingOfIt` |
 | FR-21: who recorded it and its total are in the audit trail | `db.Audit`, one record per table | `ExpensesTests.FR_21_AnExpenseIsInTheAuditTrailWithWhoAndItsTotal`, `ADraftIsCreatedInTheAuditTrailRatherThanSubmitted` |
 | AC-43.1: the caller's most used suppliers first | `SuppliersEndpoints.Search` | `ExpensesTests.AC_43_1_TheSearchPutsWhatTheCallerUsedMostFirstAndThenByName`, `AC_43_1_MostUsedIsTheCallersOwnNotSomeoneElses` |
 

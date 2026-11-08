@@ -30,13 +30,13 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     private static Task<HttpResponseMessage> AttachAsync(HttpClient client, Ledger ledger, Guid entryId, AttachInvoiceRequest request) =>
         client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/invoice", request, Json);
 
-    private static async Task<(HttpClient Client, ExpenseRequest Request)> FieldRecordsAsync(Ledger ledger)
+    private static async Task<(HttpClient Client, EntryRequest Request)> FieldRecordsAsync(Ledger ledger)
     {
         var (field, userId) = await ledger.MemberAsync("Field");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         var request = ledger.Purchase(200m) with { AccountId = account.Id, Submit = true };
-        (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/expenses", request, Json)).EnsureSuccessStatusCode();
+        (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", request, Json)).EnsureSuccessStatusCode();
         return (field, request);
     }
 
@@ -59,9 +59,9 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         await factory.WithDatabaseAsync(db => db.Projects.Where(row => row.Id == ledger.ProjectId).ExecuteUpdateAsync(row => row.SetProperty(project => project.StartDate, ledger.Today.AddMonths(-1))));
         var vatNumber = await SupplierVatNumberAsync(ledger);
-        var matching = ledger.Purchase(200m) with { Submit = true, Amount = 6000, PaymentDate = ledger.Today.AddDays(-3) };
-        var far = ledger.Purchase(200m) with { Submit = true, Amount = 6002, PaymentDate = ledger.Today };
-        var late = ledger.Purchase(200m) with { Submit = true, Amount = 6000, PaymentDate = ledger.Today.AddDays(-4) };
+        var matching = ledger.Purchase(200m) with { Submit = true, Amount = 6000, Date = ledger.Today.AddDays(-3) };
+        var far = ledger.Purchase(200m) with { Submit = true, Amount = 6002, Date = ledger.Today };
+        var late = ledger.Purchase(200m) with { Submit = true, Amount = 6000, Date = ledger.Today.AddDays(-4) };
         await ledger.RecordAsync(matching);
         await ledger.RecordAsync(far);
         await ledger.RecordAsync(late);

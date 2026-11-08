@@ -19,7 +19,7 @@ public class DashboardTests(MigratedApiFactory factory)
 
     private static async Task<DashboardView> DashboardAsync(HttpClient client, Guid projectId) => (await client.GetFromJsonAsync<DashboardView>($"/projects/{projectId}/dashboard", Json))!;
 
-    private static async Task<Guid> ApprovedAsync(Ledger ledger, ExpenseRequest request)
+    private static async Task<Guid> ApprovedAsync(Ledger ledger, EntryRequest request)
     {
         await ledger.RecordAsync(request with { Submit = true, AttachmentId = await ledger.FileAsync() });
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
@@ -90,8 +90,8 @@ public class DashboardTests(MigratedApiFactory factory)
         await ApprovedAsync(ledger, ledger.Purchase(50));
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000, false), Json)).EnsureSuccessStatusCode();
         var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Json))!.Single();
-        var payment = new ContractorPaymentRequest(Guid.CreateVersion7()) { ContractId = contract.Id, AttachmentId = await ledger.FileAsync(), PaymentDate = ledger.Today, Amount = 300, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId, Submit = true };
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contractor-payments", payment, Json)).EnsureSuccessStatusCode();
+        var payment = new EntryRequest(Guid.CreateVersion7()) { ItemId = ledger.ItemId, TableId = contract.Id, AttachmentId = await ledger.FileAsync(), Date = ledger.Today, Amount = 300, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId, Submit = true };
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", payment, Json)).EnsureSuccessStatusCode();
         await ledger.SetStatusAsync(payment.Id, EntryStatus.Approved);
 
         var report = (await ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}", Json))!;
