@@ -6,6 +6,7 @@ using Redix.Api.Audit;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
+using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
@@ -567,12 +568,10 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task R7_NoRevenueItemNoDisabledItemOrCategoryAndNoItemWithoutATableIsOffered()
+    public async Task R7_NoDisabledItemOrCategoryAndNoItemWithoutATableIsOffered()
     {
         var (_, client, project) = await FinanceAsync();
         var categories = await CategoriesOf(client, project.Id);
-        var revenue = await AddCategoryAsync(client, project.Id, "إيجارات");
-        var rent = await AddItemAsync(client, project.Id, revenue.Id, "إيجار المكتب", ItemType.OtherRevenue);
         var contractsOnly = await AddItemAsync(client, project.Id, categories[2].Id, "أعمال بالعقد", ItemType.ContractorPayments);
         var purchasesOnly = await AddItemAsync(client, project.Id, categories[2].Id, "مشتريات فقط", ItemType.Purchases);
         (await client.PostAsync($"/projects/{project.Id}/items/{categories[3].Items[0].Id}/disable", null)).EnsureSuccessStatusCode();
@@ -581,9 +580,52 @@ public class CategoriesTests(MigratedApiFactory factory)
         var offered = await EntryTablesOf(client, project.Id);
         var items = offered.SelectMany(category => category.Items).ToList();
 
-        Assert.DoesNotContain(offered, category => category.Id == revenue.Id || category.Id == categories[4].Id);
-        Assert.DoesNotContain(items, item => item.Id == rent.Id || item.Id == contractsOnly.Id || item.Id == categories[3].Items[0].Id);
+        Assert.DoesNotContain(offered, category => category.Id == categories[4].Id);
+        Assert.DoesNotContain(items, item => item.Id == contractsOnly.Id || item.Id == categories[3].Items[0].Id);
         Assert.Equal([ItemTableKind.General], items.Single(item => item.Id == purchasesOnly.Id).Tables.Select(table => table.Kind));
+    }
+
+    private static async Task<Guid> PartnerAsync(Ledger ledger, string name)
+    {
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name), Json)).EnsureSuccessStatusCode();
+        return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
+    }
+
+    [Fact]
+    public async Task R3_R5_R13_WhoeverMovesMoneyIsOfferedTheRevenueItemsAndLastEachActivePartner()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var refund = await ledger.RevenueItemAsync(ItemType.VatRefund);
+        var nawaf = await PartnerAsync(ledger, "نواف");
+        var reem = await PartnerAsync(ledger, "ريم");
+        var gone = await PartnerAsync(ledger, "سالم");
+        await ledger.ReadAsync(db => db.Partners.Where(partner => partner.Id == gone).ExecuteUpdateAsync(partner => partner.SetProperty(row => row.IsActive, false)));
+
+        var offered = await EntryTablesOf(ledger.Client, ledger.ProjectId);
+
+        var revenue = offered.SelectMany(category => category.Items).Single(item => item.Id == refund);
+        Assert.True(revenue.IsRevenue);
+        Assert.Equal([ItemTableKind.General], revenue.Tables.Select(table => table.Kind));
+        var partners = offered.Last();
+        Assert.Equal((Guid.Empty, ""), (partners.Id, partners.Name));
+        Assert.Equal([nawaf, reem], partners.Items.Select(item => item.Id));
+        Assert.All(partners.Items, item => Assert.Equal((ItemTableKind.Partner, item.Id, item.Name, false), (item.Tables.Single().Kind, item.Tables.Single().Id, item.Tables.Single().Name, item.IsRevenue)));
+        Assert.False(offered.SelectMany(category => category.Items).Single(item => item.Id == ledger.ItemId).IsRevenue);
+    }
+
+    [Fact]
+    public async Task R9_SomeoneWhoMovesNoMoneyIsOfferedNoRevenueItemAndNoPartner()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var refund = await ledger.RevenueItemAsync(ItemType.VatRefund);
+        await PartnerAsync(ledger, "نواف");
+        var (field, _) = await ledger.MemberAsync("Field");
+
+        var offered = await EntryTablesOf(field, ledger.ProjectId);
+
+        Assert.DoesNotContain(offered, category => category.Id == Guid.Empty);
+        Assert.DoesNotContain(offered.SelectMany(category => category.Items), item => item.Id == refund || item.IsRevenue);
+        Assert.Contains(offered.SelectMany(category => category.Items), item => item.Id == ledger.ItemId);
     }
 
     private static async Task<List<ItemTableView>> TablesOf(HttpClient client, Guid projectId, Guid itemId) =>

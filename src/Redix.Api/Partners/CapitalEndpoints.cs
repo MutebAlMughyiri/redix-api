@@ -20,7 +20,6 @@ public static class CapitalEndpoints
         app.MapGet("/projects/{projectId:guid}/partners/{partnerId:guid}/movements", Movements).RequireAuthorization(nameof(Permission.ReadProject));
         var changes = app.MapProjectChanges(Permission.MoveMoney);
         changes.MapPost("/capital-movements", Record);
-        changes.MapPost("/capital-movements/carry", Carry);
     }
 
     /// <summary>The project's total capital, and each partner's balance and share, computed unrounded and given with ten decimals (BR-05, BR-28). Everyone who reads the project sees the total and their own line; whoever holds <see cref="Permission.SeeAllCapital"/> sees every line (BR-31).</summary>
@@ -91,10 +90,6 @@ public static class CapitalEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Record(Guid projectId, CapitalMovementRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        if (request.Type is CapitalMovementType.CarryIn or CapitalMovementType.CarryOut)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "UseCarry");
-        }
         var partnerRefusal = await RefusalOfPartnerAsync(projectId, request.PartnerId, db);
         if (partnerRefusal.Length > 0)
         {
@@ -105,8 +100,7 @@ public static class CapitalEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidReason");
         }
-        var needsReason = request.Type == CapitalMovementType.InKind;
-        if (needsReason ? reason.Length == 0 : request.AttachmentId == Guid.Empty && reason.Length == 0)
+        if (request.AttachmentId == Guid.Empty && reason.Length == 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "ReceiptRequired");
         }
@@ -115,90 +109,20 @@ public static class CapitalEndpoints
         {
             return DirectEntries.AnswerOf(refusal);
         }
-        if (request.Type == CapitalMovementType.SettlementAndExit && (await BalancesAsync(projectId, db)).GetValueOrDefault(request.PartnerId) != request.Amount)
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "SettlementNotFull");
-        }
 
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
         var kind = CapitalMovementDetails.IsInflow(request.Type) ? EntryKind.CapitalIn : EntryKind.CapitalOut;
-        var entry = DirectEntries.New(projectId, kind, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
+        var entry = DirectEntries.Pending(projectId, kind, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
         List<object> details = [new CapitalMovementDetails { EntryId = entry.Id, PartnerId = request.PartnerId, Type = request.Type, Description = request.Description.Trim(), CashReason = reason }];
         if (request.AttachmentId != Guid.Empty)
         {
             details.Add(new EntryAttachment { EntryId = entry.Id, AttachmentId = request.AttachmentId, Role = EntryAttachmentRole.BankReceipt });
         }
-        DirectEntries.Add(entry, details, userId, at, db);
-        if (request.Type == CapitalMovementType.SettlementAndExit)
-        {
-            await SetActiveAsync(request.PartnerId, false, db);
-        }
+        await DirectEntries.AddAsync(entry, details, userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok(new EntryStatusView(entry.Id, entry.Status, ""));
     }
-
-    /// <summary>
-    /// Moves a partner's balance from this project to another in one action (FR-26): a movement out here and a movement in there, tied together, with no receipt (BR-23). Projects are otherwise separate (BR-33), so the caller must hold <see cref="Permission.MoveMoney"/> in both, otherwise <c>targetProjectRefused</c>, and it must be running, otherwise <c>targetProjectFinished</c>. The same project answers <c>sameProject</c>.
-    /// A partner not in their project answers <c>unknownPartner</c>; one who left <c>partnerLeft</c>; otherwise it answers as <see cref="DirectEntries.RefusalOfAsync"/> does, on each side.
-    /// </summary>
-    /// <param name="projectId">The project it leaves.</param>
-    /// <param name="request">The partner in each project, the account in each, and the amount.</param>
-    /// <param name="principal">The caller's session.</param>
-    /// <param name="db">The database the ledger lives in.</param>
-    /// <param name="time">The current time.</param>
-    public static async Task<IResult> Carry(Guid projectId, CarryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var userId = AccessTokens.UserIdOf(principal);
-        var (status, refusal) = await RefusalOfCarryAsync(projectId, request, userId, time, db);
-        if (refusal.Length > 0)
-        {
-            return Refusal.Of(status, refusal);
-        }
-        var leaving = AddCarry(projectId, request, EntryKind.CapitalOut, CapitalMovementType.CarryOut, userId, time.GetUtcNow().UtcDateTime, db);
-        await db.SaveChangesAsync();
-        return Results.Ok(new EntryStatusView(leaving.Id, leaving.Status, ""));
-    }
-
-    /// <summary>Why <paramref name="request"/> cannot be carried, with its status, as <see cref="Carry"/> answers; an empty reason when it can.</summary>
-    public static async Task<(int Status, string Reason)> RefusalOfCarryAsync(Guid projectId, CarryRequest request, Guid userId, TimeProvider time, RedixDbContext db)
-    {
-        if (request.TargetProjectId == projectId)
-        {
-            return (StatusCodes.Status400BadRequest, "SameProject");
-        }
-        if (!(await UserAccess.OfAsync(userId, db)).In(request.TargetProjectId).Contains(Permission.MoveMoney))
-        {
-            return (StatusCodes.Status403Forbidden, "TargetProjectRefused");
-        }
-        if (!await db.Projects.AnyAsync(project => project.Id == request.TargetProjectId && project.Status == ProjectStatus.Active))
-        {
-            return (StatusCodes.Status409Conflict, "TargetProjectFinished");
-        }
-        var refusal = await RefusalOfPartnerAsync(projectId, request.PartnerId, db);
-        refusal = refusal.Length > 0 ? refusal : await RefusalOfPartnerAsync(request.TargetProjectId, request.TargetPartnerId, db);
-        refusal = refusal.Length > 0 ? refusal : await DirectEntries.RefusalOfAsync(projectId, request.Date, request.Amount, request.Description, [request.AccountId], Guid.Empty, time, db);
-        refusal = refusal.Length > 0 ? refusal : await DirectEntries.RefusalOfAsync(request.TargetProjectId, request.Date, request.Amount, request.Description, [request.TargetAccountId], Guid.Empty, time, db);
-        return (StatusCodes.Status400BadRequest, refusal);
-    }
-
-    /// <summary>
-    /// Adds a carry: an entry of <paramref name="kind"/> and <paramref name="type"/> here, and the opposite there, a carry in when this one leaves and a carry out when it arrives, tied together (FR-26).
-    /// Saved with the change; answers the entry here.
-    /// </summary>
-    public static Entry AddCarry(Guid projectId, CarryRequest request, EntryKind kind, CapitalMovementType type, Guid userId, DateTime at, RedixDbContext db)
-    {
-        var description = request.Description.Trim();
-        var leaves = kind == EntryKind.CapitalOut;
-        var here = DirectEntries.New(projectId, kind, request.Date, request.Amount, request.AccountId, description, userId, at);
-        var there = DirectEntries.New(request.TargetProjectId, leaves ? EntryKind.CapitalIn : EntryKind.CapitalOut, request.Date, request.Amount, request.TargetAccountId, description, userId, at);
-        DirectEntries.Add(here, [new CapitalMovementDetails { EntryId = here.Id, PartnerId = request.PartnerId, Type = type, Description = description }, new EntryLink { EntryId = here.Id, Type = EntryLinkType.CarryPair, LinkedEntryId = there.Id }], userId, at, db);
-        DirectEntries.Add(there, [new CapitalMovementDetails { EntryId = there.Id, PartnerId = request.TargetPartnerId, Type = leaves ? CapitalMovementType.CarryIn : CapitalMovementType.CarryOut, Description = description }, new EntryLink { EntryId = there.Id, Type = EntryLinkType.CarryPair, LinkedEntryId = here.Id }], userId, at, db);
-        return here;
-    }
-
-    /// <summary>Marks a partner as still in or as gone; saved with the change.</summary>
-    public static async Task SetActiveAsync(Guid partnerId, bool isActive, RedixDbContext db) => (await db.Partners.SingleAsync(row => row.Id == partnerId)).IsActive = isActive;
 
     /// <summary>Why <paramref name="partnerId"/> cannot move money in <paramref name="projectId"/>: <c>unknownPartner</c> when not a partner of it, <c>partnerLeft</c> once gone; empty when they can.</summary>
     public static async Task<string> RefusalOfPartnerAsync(Guid projectId, Guid partnerId, RedixDbContext db)
@@ -238,17 +162,6 @@ public record CapitalMovementRequest(Guid PartnerId, CapitalMovementType Type, D
     /// <summary>Why there is no receipt; left out when there is one (BR-23).</summary>
     public string CashReason { get; init; } = "";
 }
-
-/// <summary>A partner's balance to carry to another project.</summary>
-/// <param name="PartnerId">The partner in this project.</param>
-/// <param name="AccountId">The account it leaves in this project.</param>
-/// <param name="TargetProjectId">The project it goes to.</param>
-/// <param name="TargetPartnerId">The partner in that project.</param>
-/// <param name="TargetAccountId">The account it reaches in that project.</param>
-/// <param name="Date">The day it moved.</param>
-/// <param name="Amount">How much, above zero.</param>
-/// <param name="Description">What was said about it; may be empty.</param>
-public record CarryRequest(Guid PartnerId, Guid AccountId, Guid TargetProjectId, Guid TargetPartnerId, Guid TargetAccountId, DateOnly Date, decimal Amount, string Description);
 
 /// <summary>A project's capital.</summary>
 /// <param name="Total">All partners' capital (BR-05).</param>

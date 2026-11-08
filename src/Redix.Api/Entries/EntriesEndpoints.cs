@@ -170,7 +170,7 @@ public static class EntriesEndpoints
 
     /// <summary>
     /// Reverses an approved entry (UC-035, FR-50): an opposite entry of the same amount, tied to the original and approved at once, so both show in the reports and the net effect is zero. The original does not change.
-    /// What was entered as one reverses as one, a carry's two sides, or an expense and the capital it gave. No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; one already reversed, or itself a reversal, <c>alreadyReversed</c>; and one tied to a project the caller cannot change, <c>tiedProjectRefused</c>.
+    /// No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; and one already reversed, or itself a reversal, <c>alreadyReversed</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>
@@ -202,18 +202,7 @@ public static class EntriesEndpoints
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
         var today = Entry.Today(time);
-        var tied = await EntryReversal.TiedToAsync(entryId, db);
-        var access = await UserAccess.OfAsync(userId, db);
-        var otherProjects = tied.Select(row => row.ProjectId).Where(id => id != projectId).ToList();
-        if (otherProjects.Any(id => !access.In(id).Contains(Permission.ApproveEntries)) || await db.Projects.AnyAsync(project => otherProjects.Contains(project.Id) && project.Status != ProjectStatus.Active))
-        {
-            return Refusal.Of(StatusCodes.Status403Forbidden, "TiedProjectRefused");
-        }
         var reversal = await EntryReversal.AddAsync(entry, reason, userId, at, today, db);
-        foreach (var other in tied)
-        {
-            await EntryReversal.AddAsync(other, reason, userId, at, today, db);
-        }
         try
         {
             await db.SaveChangesAsync();

@@ -266,26 +266,38 @@ public static class CategoriesEndpoints
     }
 
     /// <summary>
-    /// Every table an expense may go into (redix-app #84): each active category's items that take purchases or contractor payments, each with its tables in the order its sheet
-    /// prints them. An item's general and named tables show when it takes purchases, and its active contracts when it takes contractor payments. An item or a category with nothing
-    /// to offer is left out, and so is every revenue item.
+    /// Every table an entry may go into (redix-app #84, redix-api #101): each active category's items that take purchases or contractor payments, each with its tables in the order
+    /// its sheet prints them. An item's general and named tables show when it takes purchases, and its active contracts when it takes contractor payments. Whoever holds
+    /// <see cref="Permission.MoveMoney"/> also gets the revenue items, with their general and named tables, and last a group with no id and no name holding each active partner as a
+    /// table, which the app names. An item or a category with nothing to offer is left out.
     /// </summary>
     /// <param name="projectId">The project.</param>
+    /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the structure lives in.</param>
-    public static async Task<List<TableCategoryView>> EntryTables(Guid projectId, RedixDbContext db)
+    public static async Task<List<TableCategoryView>> EntryTables(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
+        var movesMoney = (await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db)).In(projectId).Contains(Permission.MoveMoney);
         var contracts = await ContractTablesAsync(db.Contracts.Where(contract => contract.ProjectId == projectId && contract.IsActive), db);
-        return (await ReadAsync(projectId, db))
-            .Select(category => new TableCategoryView(category.Id, category.Name, category.ItemsOfferedFor(ItemType.Purchases).Concat(category.ItemsOfferedFor(ItemType.ContractorPayments)).Distinct()
+        var tables = (await ReadAsync(projectId, db))
+            .Select(category => new TableCategoryView(category.Id, category.Name, category.ItemsOfferedFor(ItemType.Purchases)
+                .Concat(category.ItemsOfferedFor(ItemType.ContractorPayments))
+                .Concat(movesMoney ? category.ItemsOfferedFor(ItemType.OtherRevenue) : [])
+                .Distinct()
                 .OrderBy(item => item.SortOrder)
                 .Select(item => new TableItemView(item.Id, item.Name, TablesOf(
                     item,
-                    item.IsOfferedFor(ItemType.Purchases) ? item.Subgroups : [],
-                    item.IsOfferedFor(ItemType.ContractorPayments) ? contracts.Where(contract => contract.ItemId == item.Id) : []).ToList()))
+                    item.IsOfferedFor(ItemType.Purchases) || item.Type.IsRevenue() ? item.Subgroups : [],
+                    item.IsOfferedFor(ItemType.ContractorPayments) ? contracts.Where(contract => contract.ItemId == item.Id) : []).ToList(), item.Type.IsRevenue()))
                 .Where(view => view.Tables.Count > 0)
                 .ToList()))
             .Where(view => view.Items.Count > 0)
             .ToList();
+        var partners = movesMoney ? await db.Partners.Where(partner => partner.ProjectId == projectId && partner.IsActive).ToListAsync() : [];
+        if (partners.Count > 0)
+        {
+            tables.Add(new TableCategoryView(Guid.Empty, "", partners.OrderBy(partner => partner.Id).Select(partner => new TableItemView(partner.Id, partner.Name, [new EntryTableView(partner.Id, ItemTableKind.Partner, partner.Name)], false)).ToList()));
+        }
+        return tables;
     }
 
     /// <summary>The contracts of <paramref name="contracts"/> as tables, each named after its contractor.</summary>
@@ -457,17 +469,18 @@ public record ItemView(Guid Id, string Name, ItemType Type, bool IsActive, List<
 /// <param name="Count">How many approved entries it holds.</param>
 public record ItemTableView(Guid Id, ItemTableKind Kind, string Name, int Count);
 
-/// <summary>A category of the tables an expense may go into (redix-app #84).</summary>
+/// <summary>A category of the tables an entry may go into (redix-app #84); the partners' group has no id and no name (redix-api #101).</summary>
 /// <param name="Id">The category's id.</param>
 /// <param name="Name">The category's name.</param>
-/// <param name="Items">Its items that take expenses, in order.</param>
+/// <param name="Items">Its items that take entries, in order, or its partners.</param>
 public record TableCategoryView(Guid Id, string Name, List<TableItemView> Items);
 
-/// <summary>An item and the tables of it an expense may go into.</summary>
-/// <param name="Id">The item's id.</param>
-/// <param name="Name">The item's name.</param>
+/// <summary>An item and the tables of it an entry may go into, or a partner and their one table.</summary>
+/// <param name="Id">The item's id, or the partner's.</param>
+/// <param name="Name">The item's name, or the partner's.</param>
 /// <param name="Tables">Its tables, in the order its sheet prints them.</param>
-public record TableItemView(Guid Id, string Name, List<EntryTableView> Tables);
+/// <param name="IsRevenue">True for a revenue item, whose entries are revenue.</param>
+public record TableItemView(Guid Id, string Name, List<EntryTableView> Tables, bool IsRevenue);
 
 /// <summary>One table of an item's sheet: a purchase goes into its general or a named one, a contractor payment into its contract's.</summary>
 /// <param name="Id">The subgroup or contract it prints.</param>
@@ -486,6 +499,9 @@ public enum ItemTableKind : byte
 
     /// <summary>A contract's payments.</summary>
     Contract,
+
+    /// <summary>A partner, whose entries are capital movements (redix-api #101).</summary>
+    Partner,
 }
 
 /// <summary>A subgroup as the app shows it.</summary>

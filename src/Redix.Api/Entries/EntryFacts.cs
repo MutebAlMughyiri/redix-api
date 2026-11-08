@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Projects;
+using Redix.Api.Revenue;
 using Redix.Api.Suppliers;
 
 namespace Redix.Api.Entries;
@@ -8,6 +9,9 @@ namespace Redix.Api.Entries;
 public sealed class EntryFacts
 {
     private Dictionary<Guid, ExpenseDetails> _expenses = [];
+    private Dictionary<Guid, Guid> _revenueItems = [];
+    private Dictionary<Guid, Guid> _capitalPartners = [];
+    private Dictionary<Guid, string> _partners = [];
     private Dictionary<Guid, PurchaseDetails> _purchases = [];
     private Dictionary<Guid, ContractorPaymentDetails> _payments = [];
     private Dictionary<Guid, Invoice> _invoices = [];
@@ -27,6 +31,9 @@ public sealed class EntryFacts
         return new EntryFacts
         {
             _expenses = await db.ExpenseDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
+            _revenueItems = await db.Set<RevenueDetails>().Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId, row => row.ItemId),
+            _capitalPartners = await db.CapitalMovementDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId, row => row.PartnerId),
+            _partners = await db.Partners.Where(partner => partner.ProjectId == projectId).ToDictionaryAsync(partner => partner.Id, partner => partner.Name),
             _purchases = await db.PurchaseDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
             _payments = await db.ContractorPaymentDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
             _invoices = await db.Invoices.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
@@ -46,8 +53,11 @@ public sealed class EntryFacts
     /// <summary>The entry's invoice; an empty one when it has none.</summary>
     public Invoice InvoiceOf(Entry entry) => _invoices.GetValueOrDefault(entry.Id) ?? new Invoice();
 
-    /// <summary>The entry's item.</summary>
-    public string ItemNameOf(Entry entry) => _items.GetValueOrDefault(ExpenseOf(entry).ItemId, "");
+    /// <summary>The entry's item: an expense's, or a revenue entry's.</summary>
+    public string ItemNameOf(Entry entry) => _items.GetValueOrDefault(_revenueItems.TryGetValue(entry.Id, out var itemId) ? itemId : ExpenseOf(entry).ItemId, "");
+
+    /// <summary>A capital movement's partner; empty for any other entry.</summary>
+    public string PartnerNameOf(Entry entry) => _partners.GetValueOrDefault(_capitalPartners.GetValueOrDefault(entry.Id), "");
 
     /// <summary>The account that paid it.</summary>
     public string AccountNameOf(Entry entry) => _accounts.GetValueOrDefault(entry.AccountId, "");

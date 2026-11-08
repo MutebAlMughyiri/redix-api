@@ -32,7 +32,7 @@ public static class ApprovalsEndpoints
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry))).ToList();
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry))).ToList();
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public static class ApprovalsEndpoints
 /// <param name="Kind">What it is.</param>
 /// <param name="EntryDate">Its date.</param>
 /// <param name="Amount">What was paid.</param>
-/// <param name="ItemName">Its item.</param>
+/// <param name="ItemName">Its item: an expense's or a revenue entry's.</param>
 /// <param name="SupplierName">Its supplier, or the contract's contractor.</param>
 /// <param name="InvoiceNumber">The number of an older bill that had one; empty for the rest.</param>
 /// <param name="AccountName">What paid it.</param>
@@ -139,7 +139,8 @@ public static class ApprovalsEndpoints
 /// <param name="AttachmentId">Its file; empty when it has none.</param>
 /// <param name="ContentType">What the file is; empty when it has none.</param>
 /// <param name="AuthorName">Who entered it.</param>
-public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string AuthorName);
+/// <param name="PartnerName">A capital movement's partner; empty for any other entry (redix-api #101).</param>
+public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string AuthorName, string PartnerName);
 
 /// <summary>The entries to approve.</summary>
 /// <param name="EntryIds">Their ids.</param>

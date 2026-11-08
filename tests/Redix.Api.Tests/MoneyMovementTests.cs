@@ -5,7 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
+using Redix.Api.Notifications;
 using Redix.Api.Projects;
+using Redix.Api.Revenue;
+using Redix.Api.Structure;
 using Xunit;
 
 namespace Redix.Api.Tests;
@@ -37,7 +40,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     private static CapitalMovementRequest Contribution(Ledger ledger, Guid partnerId, decimal amount) =>
         new(partnerId, CapitalMovementType.Contribution, ledger.Today, amount, ledger.AccountId, "زاد رصيده") { CashReason = "نقداً" };
 
-    private static async Task ContributeAsync(Ledger ledger, Guid partnerId, decimal amount) => (await MoveAsync(ledger, Contribution(ledger, partnerId, amount))).EnsureSuccessStatusCode();
+    private static async Task ContributeAsync(Ledger ledger, Guid partnerId, decimal amount) => await ledger.ApproveAsync(await MoveAsync(ledger, Contribution(ledger, partnerId, amount)));
 
     private static async Task<CapitalView> CapitalAsync(HttpClient client, Guid projectId) => (await client.GetFromJsonAsync<CapitalView>($"/projects/{projectId}/capital", Json))!;
 
@@ -89,8 +92,8 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var bare = new CapitalMovementRequest(partner, CapitalMovementType.Contribution, ledger.Today, 100, ledger.AccountId, "");
 
         Assert.Equal("receiptRequired", await Ledger.CodeOf(await MoveAsync(ledger, bare)));
-        (await MoveAsync(ledger, bare with { CashReason = "دفع نقداً في الموقع" })).EnsureSuccessStatusCode();
-        (await MoveAsync(ledger, bare with { AttachmentId = await ledger.FileAsync() })).EnsureSuccessStatusCode();
+        await ledger.ApproveAsync(await MoveAsync(ledger, bare with { CashReason = "دفع نقداً في الموقع" }));
+        await ledger.ApproveAsync(await MoveAsync(ledger, bare with { AttachmentId = await ledger.FileAsync() }));
 
         Assert.Equal(200m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
     }
@@ -102,118 +105,10 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
         await ContributeAsync(ledger, partner, 1000);
 
-        (await MoveAsync(ledger, Contribution(ledger, partner, 300) with { Type = CapitalMovementType.Withdrawal })).EnsureSuccessStatusCode();
+        await ledger.ApproveAsync(await MoveAsync(ledger, Contribution(ledger, partner, 300) with { Type = CapitalMovementType.Withdrawal }));
 
         Assert.Equal(700m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
         Assert.Equal(700m, await BalanceAsync(ledger, ledger.AccountId));
-    }
-
-    [Fact]
-    public async Task SomethingInKindNeedsItsReason()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
-        var inKind = new CapitalMovementRequest(partner, CapitalMovementType.InKind, ledger.Today, 100, ledger.AccountId, "") { AttachmentId = await ledger.FileAsync() };
-
-        Assert.Equal("receiptRequired", await Ledger.CodeOf(await MoveAsync(ledger, inKind)));
-        (await MoveAsync(ledger, inKind with { CashReason = "أرض" })).EnsureSuccessStatusCode();
-    }
-
-    [Fact]
-    public async Task ASettlementTakesAllTheyHoldAndTheyLeave()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
-        await ContributeAsync(ledger, partner, 1000);
-        var settlement = Contribution(ledger, partner, 400) with { Type = CapitalMovementType.SettlementAndExit };
-
-        Assert.Equal("settlementNotFull", await Ledger.CodeOf(await MoveAsync(ledger, settlement)));
-        (await MoveAsync(ledger, settlement with { Amount = 1000 })).EnsureSuccessStatusCode();
-
-        var line = Assert.Single((await CapitalAsync(ledger.Client, ledger.ProjectId)).Partners);
-        Assert.Equal((0m, false), (line.Balance, line.IsActive));
-        Assert.Equal("partnerLeft", await Ledger.CodeOf(await MoveAsync(ledger, Contribution(ledger, partner, 10))));
-    }
-
-    [Fact]
-    public async Task ReversingASettlementBringsThePartnerBack()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
-        await ContributeAsync(ledger, partner, 1000);
-        var answer = await MoveAsync(ledger, Contribution(ledger, partner, 1000) with { Type = CapitalMovementType.SettlementAndExit });
-        var settled = await answer.Content.ReadFromJsonAsync<EntryStatusView>(Json);
-
-        await ReverseAsync(ledger.Client, ledger.ProjectId, settled!.Id);
-
-        var line = Assert.Single((await CapitalAsync(ledger.Client, ledger.ProjectId)).Partners);
-        Assert.Equal((1000m, true), (line.Balance, line.IsActive));
-    }
-
-    [Fact]
-    public async Task ACarryHasItsOwnRoute()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
-
-        Assert.Equal("useCarry", await Ledger.CodeOf(await MoveAsync(ledger, Contribution(ledger, partner, 10) with { Type = CapitalMovementType.CarryIn })));
-    }
-
-    private async Task<(Ledger Source, Guid SourcePartner, ProjectView Target, Guid TargetPartner, Guid TargetAccount)> TwoProjectsAsync()
-    {
-        var source = await Ledger.WithFinanceAsync(factory);
-        var sourcePartner = await PartnerAsync(source.Client, source.ProjectId, "شريك");
-        await ContributeAsync(source, sourcePartner, 1000);
-        var target = await factory.ApprovedProjectAsync(source.Client, "غصون 7", "الفلة");
-        var user = await source.ReadAsync(db => db.ProjectPermissions.Where(row => row.ProjectId == source.ProjectId).Select(row => row.UserId).FirstAsync());
-        await factory.GiveAsync(user, target.Id, Holds.Of("Finance"));
-        var targetPartner = await PartnerAsync(source.Client, target.Id, "شريك");
-        (await source.Client.PostAsJsonAsync($"/projects/{target.Id}/accounts", new AddAccountRequest("حساب", AccountType.Bank, 0), Json)).EnsureSuccessStatusCode();
-        var account = (await source.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{target.Id}/accounts", Json))!.Single(row => row.Type == AccountType.Bank);
-        return (source, sourcePartner, target, targetPartner, account.Id);
-    }
-
-    [Fact]
-    public async Task AC_26_1_ACarryLowersOneAndRaisesTheOtherWithNoReceipt()
-    {
-        var (source, sourcePartner, target, targetPartner, targetAccount) = await TwoProjectsAsync();
-
-        var answer = await source.Client.PostAsJsonAsync($"/projects/{source.ProjectId}/capital-movements/carry", new CarryRequest(sourcePartner, source.AccountId, target.Id, targetPartner, targetAccount, source.Today, 400, ""), Json);
-
-        answer.EnsureSuccessStatusCode();
-        Assert.Equal(600m, (await CapitalAsync(source.Client, source.ProjectId)).Partners.Single().Balance);
-        Assert.Equal(400m, (await CapitalAsync(source.Client, target.Id)).Partners.Single().Balance);
-    }
-
-    [Fact]
-    public async Task ReversingACarryReversesBothProjects()
-    {
-        var (source, sourcePartner, target, targetPartner, targetAccount) = await TwoProjectsAsync();
-        var answer = await source.Client.PostAsJsonAsync($"/projects/{source.ProjectId}/capital-movements/carry", new CarryRequest(sourcePartner, source.AccountId, target.Id, targetPartner, targetAccount, source.Today, 400, ""), Json);
-        var carried = await answer.Content.ReadFromJsonAsync<EntryStatusView>(Json);
-
-        await ReverseAsync(source.Client, source.ProjectId, carried!.Id);
-
-        Assert.Equal(1000m, (await CapitalAsync(source.Client, source.ProjectId)).Partners.Single().Balance);
-        Assert.Equal(0m, (await CapitalAsync(source.Client, target.Id)).Partners.Single().Balance);
-    }
-
-    [Fact]
-    public async Task ACarryNeedsMoneyRightsInBothProjectsAndARunningTarget()
-    {
-        var (source, sourcePartner, target, targetPartner, targetAccount) = await TwoProjectsAsync();
-        var request = new CarryRequest(sourcePartner, source.AccountId, target.Id, targetPartner, targetAccount, source.Today, 400, "");
-
-        var elsewhere = await Ledger.WithFinanceAsync(factory);
-        var refused = await source.Client.PostAsJsonAsync($"/projects/{source.ProjectId}/capital-movements/carry", request with { TargetProjectId = elsewhere.ProjectId }, Json);
-        Assert.Equal("targetProjectRefused", await Ledger.CodeOf(refused));
-
-        var same = await source.Client.PostAsJsonAsync($"/projects/{source.ProjectId}/capital-movements/carry", request with { TargetProjectId = source.ProjectId }, Json);
-        Assert.Equal("sameProject", await Ledger.CodeOf(same));
-
-        await factory.WithDatabaseAsync(db => db.Projects.Where(row => row.Id == target.Id).ExecuteUpdateAsync(row => row.SetProperty(project => project.Status, ProjectStatus.Finished)));
-        var finished = await source.Client.PostAsJsonAsync($"/projects/{source.ProjectId}/capital-movements/carry", request, Json);
-        Assert.Equal("targetProjectFinished", await Ledger.CodeOf(finished));
     }
 
     [Fact]
@@ -226,7 +121,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         await ContributeAsync(ledger, first, 2000);
         await ContributeAsync(ledger, second, 1000);
         await ContributeAsync(ledger, third, 500);
-        (await MoveAsync(ledger, Contribution(ledger, third, 500) with { Type = CapitalMovementType.Withdrawal })).EnsureSuccessStatusCode();
+        await ledger.ApproveAsync(await MoveAsync(ledger, Contribution(ledger, third, 500) with { Type = CapitalMovementType.Withdrawal }));
 
         var capital = await CapitalAsync(ledger.Client, ledger.ProjectId);
 
@@ -262,11 +157,91 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
         var file = await ledger.FileAsync();
-        (await MoveAsync(ledger, new CapitalMovementRequest(partner, CapitalMovementType.Withdrawal, ledger.Today, 100, ledger.AccountId, "سحب") { AttachmentId = file })).EnsureSuccessStatusCode();
+        await ledger.ApproveAsync(await MoveAsync(ledger, new CapitalMovementRequest(partner, CapitalMovementType.Withdrawal, ledger.Today, 100, ledger.AccountId, "سحب") { AttachmentId = file }));
 
         var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!);
 
         Assert.Equal((-100m, $"{file}", "حساب المؤسسة"), (row.Amount, row.AttachmentId, row.AccountName));
+    }
+
+    [Fact]
+    public async Task R10_AMovementWaitsForApprovalAndCountsOnlyOnceApproved()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+
+        var sent = (await (await MoveAsync(ledger, Contribution(ledger, partner, 1000))).Content.ReadFromJsonAsync<EntryStatusView>(Json))!;
+
+        Assert.Equal(EntryStatus.PendingApproval, sent.Status);
+        Assert.Equal(0m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
+        Assert.Equal(0m, await BalanceAsync(ledger, ledger.AccountId));
+        Assert.Empty((await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!);
+
+        await ledger.ApproveAsync(sent.Id);
+
+        Assert.Equal(1000m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
+        Assert.Equal(1000m, await BalanceAsync(ledger, ledger.AccountId));
+    }
+
+    [Fact]
+    public async Task R10_ARejectedMovementNeverCounts()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+        var id = (await (await MoveAsync(ledger, Contribution(ledger, partner, 1000))).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
+
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/reject", new RejectEntryRequest("المبلغ لا يطابق الإيصال"), Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal(0m, (await CapitalAsync(ledger.Client, ledger.ProjectId)).Total);
+        Assert.Equal(0m, await BalanceAsync(ledger, ledger.AccountId));
+    }
+
+    [Fact]
+    public async Task R16_WhatWaitsNamesAMovementsPartnerAndARevenueEntrysItem()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "نواف");
+        await MoveAsync(ledger, Contribution(ledger, partner, 1000));
+        var item = await ledger.RevenueItemAsync(ItemType.VatRefund);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/revenue", new RevenueRequest(item, ledger.Today, 140, ledger.AccountId, ""), Json)).EnsureSuccessStatusCode();
+
+        var waiting = (await ledger.Client.GetFromJsonAsync<List<PendingEntryView>>($"/projects/{ledger.ProjectId}/entries/pending", Json))!;
+
+        var capital = waiting.Single(row => row.Kind == EntryKind.CapitalIn);
+        Assert.Equal(("نواف", "", 1000m), (capital.PartnerName, capital.ItemName, capital.Amount));
+        var revenue = waiting.Single(row => row.Kind == EntryKind.Revenue);
+        var itemName = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories", Json))!.SelectMany(category => category.Items).Single(row => row.Id == item).Name;
+        Assert.Equal((itemName, "", 140m), (revenue.ItemName, revenue.PartnerName, revenue.Amount));
+    }
+
+    [Fact]
+    public async Task R16_AMovementSentTellsWhoeverApprovesAndNotWhoSentIt()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (finance, _) = await ledger.MemberAsync("Finance");
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+
+        await MoveAsync(ledger, Contribution(ledger, partner, 1000));
+
+        Assert.Equal(NotificationKind.EntrySubmitted, Assert.Single((await finance.GetFromJsonAsync<List<NotificationView>>("/notifications", Json))!).Kind);
+        Assert.Empty((await ledger.Client.GetFromJsonAsync<List<NotificationView>>("/notifications", Json))!);
+    }
+
+    [Fact]
+    public async Task R4_R6_OnlyAContributionOrAWithdrawalIsTakenAndTheCarryIsGone()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+
+        foreach (var type in new[] { "settlementAndExit", "carryIn", "carryOut", "inKind", "refundableAdvance" })
+        {
+            var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements", new { partnerId = partner, type, date = ledger.Today, amount = 100, accountId = ledger.AccountId, description = "", cashReason = "نقداً" });
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        }
+        var carry = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/capital-movements/carry", new { partnerId = partner });
+
+        Assert.Equal(HttpStatusCode.NotFound, carry.StatusCode);
+        Assert.Empty(await ledger.ReadAsync(db => db.CapitalMovementDetails.Where(row => row.PartnerId == partner).ToListAsync()));
     }
 
     [Fact]

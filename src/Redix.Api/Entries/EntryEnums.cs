@@ -64,12 +64,9 @@ public enum EntryDecisionAction : byte
     Reject,
 }
 
-/// <summary>What ties two entries. Each keeps the number it is stored as, since the transfer's pair, once 0, was removed (Muteb, 8 Nov 2026).</summary>
+/// <summary>What ties two entries. Each keeps the number it is stored as, since the transfer's pair (0) and the carry's (1) were removed (Muteb, 8 Nov 2026).</summary>
 public enum EntryLinkType : byte
 {
-    /// <summary>The two sides of a partner's balance carried between projects.</summary>
-    CarryPair = 1,
-
     /// <summary>The entry that reverses an approved one (FR-50).</summary>
     Reversal = 2,
 

@@ -80,8 +80,8 @@ public static class RevenueEndpoints
 
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
-        var entry = DirectEntries.New(projectId, EntryKind.Revenue, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
-        DirectEntries.Add(entry, DetailsOf(entry.Id, item.Id, subgroupId, start, end, request.AttachmentId), userId, at, db);
+        var entry = DirectEntries.Pending(projectId, EntryKind.Revenue, request.Date, request.Amount, request.AccountId, request.Description.Trim(), userId, at);
+        await DirectEntries.AddAsync(entry, DetailsOf(entry.Id, item.Id, subgroupId, start, end, request.AttachmentId), userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok(new EntryStatusView(entry.Id, entry.Status, ""));
     }
@@ -137,8 +137,8 @@ public static class RevenueEndpoints
             {
                 return DirectEntries.AnswerOf(refusal);
             }
-            var entry = DirectEntries.New(projectId, EntryKind.Revenue, request.InvoiceDate, request.Total, request.AccountId, request.Description.Trim(), userId, at);
-            DirectEntries.Add(entry, DetailsOf(entry.Id, item.Id, SubgroupOf(item, Guid.Empty), request.InvoiceDate, request.InvoiceDate, request.AttachmentId), userId, at, db);
+            var entry = DirectEntries.Pending(projectId, EntryKind.Revenue, request.InvoiceDate, request.Total, request.AccountId, request.Description.Trim(), userId, at);
+            await DirectEntries.AddAsync(entry, DetailsOf(entry.Id, item.Id, SubgroupOf(item, Guid.Empty), request.InvoiceDate, request.InvoiceDate, request.AttachmentId), userId, at, db);
             entryId = entry.Id;
         }
         var invoice = new SalesInvoice

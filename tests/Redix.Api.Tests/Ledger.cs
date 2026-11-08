@@ -87,6 +87,16 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     public Task SetStatusAsync(Guid entryId, EntryStatus status) =>
         Factory.WithDatabaseAsync(db => db.Entries.Where(entry => entry.Id == entryId).ExecuteUpdateAsync(entry => entry.SetProperty(row => row.Status, status)));
 
+    /// <summary>Approves the entry <paramref name="sent"/> answered, as Finance does with what waits (BR-30, redix-api #101), and answers its id.</summary>
+    public async Task<Guid> ApproveAsync(HttpResponseMessage sent) => await ApproveAsync((await sent.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id);
+
+    /// <summary>Approves the entry <paramref name="id"/>, as Finance does with what waits, and answers its id.</summary>
+    public async Task<Guid> ApproveAsync(Guid id)
+    {
+        (await Client.PostAsJsonAsync($"/projects/{ProjectId}/entries/approve", new ApproveEntriesRequest([id]), Json)).EnsureSuccessStatusCode();
+        return id;
+    }
+
     public async Task<Guid> FileAsync()
     {
         var file = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0, .. Guid.NewGuid().ToByteArray()]);
