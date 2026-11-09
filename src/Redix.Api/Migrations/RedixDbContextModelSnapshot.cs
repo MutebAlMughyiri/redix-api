@@ -2976,20 +2976,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("8fed7ed6-0863-202e-42c8-660b835b2271"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("79732691-82a9-94d8-1e77-1e2e61f11150"),
-                            Value = "My account"
-                        },
-                        new
-                        {
-                            Id = new Guid("c33dd6a2-b653-f564-0dfc-7c5be9117567"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("79732691-82a9-94d8-1e77-1e2e61f11150"),
-                            Value = "حسابي"
-                        },
-                        new
-                        {
                             Id = new Guid("0b5ef6da-d918-2900-a478-7a86826e0386"),
                             Language = "en",
                             TranslationKeyId = new Guid("9c8312c3-f598-8eb6-6361-5600dbbf8781"),
@@ -4079,6 +4065,34 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("fb13c972-25d4-62c5-d9e3-032537936bc6"),
                             Value = "حدد ما يستطيعه هذا الشخص في هذا المشروع. إلغاء «يرى المشروع» يخرجه منه."
+                        },
+                        new
+                        {
+                            Id = new Guid("3f1f6a1f-06c3-9d56-47e4-724c1b5644e1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1fed799b-9e9d-89b1-e8e3-be7608c77b0b"),
+                            Value = "My permissions"
+                        },
+                        new
+                        {
+                            Id = new Guid("4d64a021-be54-2a4b-95e2-de8b150566bb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1fed799b-9e9d-89b1-e8e3-be7608c77b0b"),
+                            Value = "صلاحياتي"
+                        },
+                        new
+                        {
+                            Id = new Guid("8fe7cd36-03ff-f7db-ac7a-b3c8fd0f3e03"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("acae32c6-973e-6d26-4d54-3e792ce3c18c"),
+                            Value = "What you may do in this project. Only the project manager changes it."
+                        },
+                        new
+                        {
+                            Id = new Guid("27589247-c918-bdbf-ba5a-5014b4d3537f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("acae32c6-973e-6d26-4d54-3e792ce3c18c"),
+                            Value = "ما تستطيعه في هذا المشروع. يغيّره مدير المشروع فقط."
                         },
                         new
                         {
@@ -9360,6 +9374,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("066e36b0-f0c2-e3ac-88ab-5c0fa06d8688"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f0e2c210-2c77-ee5d-54d1-611ab13f2097"),
+                            Value = "Import project settings"
+                        },
+                        new
+                        {
+                            Id = new Guid("9ea691bc-4176-625f-6d08-f3a9ad22a4f5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f0e2c210-2c77-ee5d-54d1-611ab13f2097"),
+                            Value = "استيراد إعدادات المشروع"
+                        },
+                        new
+                        {
                             Id = new Guid("3be681f9-b871-25f4-e0d4-f47a864b86e0"),
                             Language = "en",
                             TranslationKeyId = new Guid("96118bfd-4008-580d-d590-9a2bf23e8ea6"),
@@ -12932,12 +12960,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("79732691-82a9-94d8-1e77-1e2e61f11150"),
-                            Description = "",
-                            Key = "myAccount.title"
-                        },
-                        new
-                        {
                             Id = new Guid("9c8312c3-f598-8eb6-6361-5600dbbf8781"),
                             Description = "",
                             Key = "myAccount.language"
@@ -13403,6 +13425,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("fb13c972-25d4-62c5-d9e3-032537936bc6"),
                             Description = "",
                             Key = "permissions.hint"
+                        },
+                        new
+                        {
+                            Id = new Guid("1fed799b-9e9d-89b1-e8e3-be7608c77b0b"),
+                            Description = "",
+                            Key = "permissions.mine"
+                        },
+                        new
+                        {
+                            Id = new Guid("acae32c6-973e-6d26-4d54-3e792ce3c18c"),
+                            Description = "",
+                            Key = "permissions.mineHint"
                         },
                         new
                         {
@@ -15665,6 +15699,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("077a7edf-b7d3-f51f-2d8f-06b19ca15ae0"),
                             Description = "",
                             Key = "projects.unknownSource"
+                        },
+                        new
+                        {
+                            Id = new Guid("f0e2c210-2c77-ee5d-54d1-611ab13f2097"),
+                            Description = "",
+                            Key = "projects.importSettings"
                         },
                         new
                         {

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Redix.Api.Audit;
 using Redix.Api.Auth;
@@ -52,6 +53,23 @@ public class AuthTests(MigratedApiFactory factory)
         Assert.Equal(AccessTokens.Lifetime, accessToken.ValidTo - accessToken.IssuedAt);
         Assert.NotEmpty(session.RefreshToken);
         Assert.False(session.MustChangePassword);
+    }
+
+    [Fact]
+    public async Task ASessionSaysWhoItsUserIsAtSignInAndAtEachRenewal()
+    {
+        var user = await factory.AddUserAsync(Password);
+        await factory.WithDatabaseAsync(async db =>
+        {
+            (await db.Users.SingleAsync(row => row.Id == user.Id)).DisplayName = "متعب المغيري";
+            await db.SaveChangesAsync();
+        });
+
+        var session = await SessionOf(await SignInAsync(user.Username, Password));
+        var renewed = await SessionOf(await RefreshAsync(session.RefreshToken));
+
+        Assert.Equal((user.Username, "متعب المغيري"), (session.Username, session.DisplayName));
+        Assert.Equal((user.Username, "متعب المغيري"), (renewed.Username, renewed.DisplayName));
     }
 
     [Fact]

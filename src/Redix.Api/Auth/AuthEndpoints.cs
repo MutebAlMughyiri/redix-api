@@ -193,7 +193,9 @@ public record SetBiometricsRequest(bool On);
 /// <param name="DefaultProjectId">The project sign-in opens directly, skipping the list (AC-37.1); empty when none, or when they can no longer read it (AC-37.2).</param>
 /// <param name="UsesBiometrics">True when this phone asks for a fingerprint or face on opening (UC-011).</param>
 /// <param name="UserId">Who this is, so that a phone's unsent entries go only with the person who entered them (UC-029).</param>
-public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool UsesBiometrics, Guid UserId)
+/// <param name="Username">The name they sign in with, which My account shows (Muteb, 9 Nov 2026).</param>
+/// <param name="DisplayName">Their name as it shows on entries, which My account shows above it.</param>
+public record Session(string AccessToken, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool UsesBiometrics, Guid UserId, string Username, string DisplayName)
 {
     /// <summary>The session of <paramref name="user"/> on <paramref name="device"/> with these tokens. One check covers every way of losing access to the default project.</summary>
     public static async Task<Session> OfAsync(User user, Device device, string accessToken, string refreshToken, RedixDbContext db)
@@ -201,6 +203,6 @@ public record Session(string AccessToken, string RefreshToken, bool MustChangePa
         var access = await UserAccess.OfAsync(user.Id, db);
         var chosen = await db.UserDefaultProjects.Where(row => row.UserId == user.Id).Select(row => row.ProjectId).SingleOrDefaultAsync();
         var defaultProjectId = access.In(chosen).Contains(Permission.ReadProject) ? chosen.ToString() : "";
-        return new(accessToken, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, device.UsesBiometrics, user.Id);
+        return new(accessToken, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, device.UsesBiometrics, user.Id, user.Username, user.DisplayName);
     }
 }
