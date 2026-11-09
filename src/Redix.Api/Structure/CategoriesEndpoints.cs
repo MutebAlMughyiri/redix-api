@@ -307,7 +307,7 @@ public static class CategoriesEndpoints
     /// </summary>
     private static IEnumerable<EntryTableView> TablesOf(Item item, IEnumerable<Subgroup> subgroups, IEnumerable<OwnTable> own) =>
         (item.HasSubgroupTables ? subgroups : [])
-            .Select(subgroup => (subgroup.SortOrder, Table: new EntryTableView(subgroup.Id, subgroup.Name == Subgroup.GeneralName ? ItemTableKind.General : ItemTableKind.Subgroup, subgroup.Name == Subgroup.GeneralName ? item.Name : subgroup.Name)))
+            .Select(subgroup => (subgroup.SortOrder, Table: new EntryTableView(subgroup.Id, subgroup.IsGeneral ? ItemTableKind.General : ItemTableKind.Subgroup, subgroup.IsGeneral ? item.Name : subgroup.Name)))
             .Concat(own.Where(table => table.ItemId == item.Id).Select(table => (table.SortOrder, Table: new EntryTableView(table.Id, table.Kind, table.Name))))
             .OrderBy(table => table.SortOrder)
             .Select(table => table.Table);
@@ -348,7 +348,7 @@ public static class CategoriesEndpoints
         {
             return Results.NotFound();
         }
-        if (subgroup.Name == Subgroup.GeneralName)
+        if (subgroup.IsGeneral)
         {
             return ProjectStructure.Refused(StructureChangeOutcome.GeneralSubgroup);
         }
@@ -375,7 +375,7 @@ public static class CategoriesEndpoints
             {
                 return Results.NotFound();
             }
-            if (subgroup.Name == Subgroup.GeneralName)
+            if (subgroup.IsGeneral)
             {
                 return ProjectStructure.Refused(StructureChangeOutcome.GeneralSubgroup);
             }
