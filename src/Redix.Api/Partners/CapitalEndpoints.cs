@@ -27,9 +27,8 @@ public static class CapitalEndpoints
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<CapitalView> Capital(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
-        var userId = AccessTokens.UserIdOf(principal);
-        var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
-        return await ViewOfAsync(projectId, userId, seesAll, db);
+        var sight = await PartnerSight.OfAsync(principal, projectId, db);
+        return await ViewOfAsync(projectId, sight.UserId, sight.SeesAll, db);
     }
 
     /// <summary>The project's capital with every line when <paramref name="seesAll"/>, otherwise only <paramref name="userId"/>'s: the one owner of balances and shares (BR-05, BR-28).</summary>
@@ -53,9 +52,8 @@ public static class CapitalEndpoints
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<IResult> Movements(Guid projectId, Guid partnerId, ClaimsPrincipal principal, RedixDbContext db)
     {
-        var userId = AccessTokens.UserIdOf(principal);
-        var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
-        if (!await db.Partners.AnyAsync(partner => partner.Id == partnerId && partner.ProjectId == projectId && (seesAll || partner.UserId == userId)))
+        var sight = await PartnerSight.OfAsync(principal, projectId, db);
+        if (!await db.Partners.AnyAsync(partner => partner.Id == partnerId && partner.ProjectId == projectId && (sight.SeesAll || partner.UserId == sight.UserId)))
         {
             return Results.NotFound();
         }

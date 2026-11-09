@@ -9,11 +9,11 @@ namespace Redix.Api.Partners;
 public readonly record struct PartnerSight(Guid UserId, bool SeesAll)
 {
     /// <summary>What the caller of <paramref name="principal"/> sees of the partners of <paramref name="projectId"/>.</summary>
-    public static async Task<PartnerSight> OfAsync(ClaimsPrincipal principal, Guid projectId, RedixDbContext db)
-    {
-        var userId = AccessTokens.UserIdOf(principal);
-        return new PartnerSight(userId, (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital));
-    }
+    public static Task<PartnerSight> OfAsync(ClaimsPrincipal principal, Guid projectId, RedixDbContext db) => OfUserAsync(AccessTokens.UserIdOf(principal), projectId, db);
+
+    /// <summary>What <paramref name="userId"/> sees of the partners of <paramref name="projectId"/>.</summary>
+    public static async Task<PartnerSight> OfUserAsync(Guid userId, Guid projectId, RedixDbContext db) =>
+        new(userId, (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital));
 
     /// <summary>True when the caller sees <paramref name="partner"/>.</summary>
     public bool Sees(Partner partner) => SeesAll || partner.UserId == UserId;

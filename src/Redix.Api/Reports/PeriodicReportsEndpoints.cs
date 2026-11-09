@@ -71,9 +71,8 @@ public static class PeriodicReportsEndpoints
         {
             return Results.NotFound();
         }
-        var userId = AccessTokens.UserIdOf(principal);
-        var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
-        return Results.Ok(seesAll ? snapshot : snapshot.ForPartnerOf(userId));
+        var sight = await PartnerSight.OfAsync(principal, projectId, db);
+        return Results.Ok(sight.SeesAll ? snapshot : snapshot.ForPartnerOf(sight.UserId));
     }
 
     /// <summary>The report as a PDF laid out as report 23 (UC-054).</summary>

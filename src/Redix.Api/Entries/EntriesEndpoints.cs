@@ -52,9 +52,9 @@ public static class EntriesEndpoints
     /// <summary>The project's entries <paramref name="userId"/> may see: a partner's money only for whoever holds <see cref="Permission.SeeAllCapital"/>, or for that partner (BR-31).</summary>
     private static async Task<IQueryable<Entry>> SeenByAsync(Guid projectId, Guid userId, RedixDbContext db)
     {
-        var seesAllCapital = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.SeeAllCapital);
+        var sight = await Partners.PartnerSight.OfUserAsync(userId, projectId, db);
         return db.Entries.Where(entry => entry.ProjectId == projectId
-            && (seesAllCapital || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && db.Partners.Any(partner => partner.Id == details.PartnerId && partner.UserId != userId))));
+            && (sight.SeesAll || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && db.Partners.Any(partner => partner.Id == details.PartnerId && partner.UserId != userId))));
     }
 
     /// <summary>The entries <paramref name="shown"/> keeps of those the caller may see, newest first.</summary>
