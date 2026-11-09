@@ -9,7 +9,7 @@ namespace Redix.Api.Projects;
 /// <summary>A project's people and what each may do in it (UC-009, FR-02, FR-36), for whoever manages its users. Every project keeps its own list (BR-33), and every change is saved with its audit record.</summary>
 public static class ProjectUsersEndpoints
 {
-    /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for whoever manages its users <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, and giving and taking a permission.</summary>
+    /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for whoever manages its users <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, giving and taking a permission, and a person's role name.</summary>
     public static void MapProjectUsers(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/members", Members).RequireAuthorization(nameof(Permission.ReadProject));
@@ -19,6 +19,7 @@ public static class ProjectUsersEndpoints
         project.MapPost("/users/existing", AddExisting);
         project.MapPost("/users/{userId:guid}/permissions/{permission}", Give);
         project.MapPost("/users/{userId:guid}/permissions/{permission}/remove", Take);
+        project.MapPost("/users/{userId:guid}/role-name", SetRoleName);
     }
 
     /// <summary>The active people of this project by name, once each, for choosing who holds something in it. Only their names show (BR-33).</summary>
@@ -58,10 +59,15 @@ public static class ProjectUsersEndpoints
         var displayName = request.DisplayName.Trim();
         var username = request.Username.Trim();
         var mobile = request.Mobile.Trim();
+        var roleName = request.RoleName.Trim();
         var refusal = User.RefusalOfNew(displayName, username, mobile, request.TemporaryPassword);
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+        }
+        if (roleName.Length > ProjectRoleName.MaxLength)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidRoleName");
         }
         if (!request.Permissions.All(ProjectPermission.InAProject.Contains))
         {
@@ -81,6 +87,9 @@ public static class ProjectUsersEndpoints
         {
             Add(projectId, user.Id, permission, principal, db, now);
         }
+        var named = new ProjectRoleName { ProjectId = projectId, UserId = user.Id, RoleName = roleName };
+        db.ProjectRoleNames.Add(named);
+        db.Audit(named, AuditAction.Create, AccessTokens.UserIdOf(principal), now);
         await db.SaveChangesAsync();
         return Results.Created($"/users/{user.Id}", await ViewInProjectAsync(user, projectId, db));
     }
@@ -172,6 +181,38 @@ public static class ProjectUsersEndpoints
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
+    /// <summary>Names what someone in this project is called there (Muteb, 9 Nov 2026), replacing what was typed before; empty clears it. Longer than <see cref="ProjectRoleName.MaxLength"/> answers <c>invalidRoleName</c>.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="userId">The person, who must be in this project.</param>
+    /// <param name="request">The role name.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
+    /// <param name="db">The database they live in.</param>
+    /// <param name="time">The current time, for the audit record.</param>
+    public static async Task<IResult> SetRoleName(Guid projectId, Guid userId, RoleNameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var user = await InProjectAsync(projectId, userId, db);
+        if (user is null)
+        {
+            return Results.NotFound();
+        }
+        var roleName = request.RoleName.Trim();
+        if (roleName.Length > ProjectRoleName.MaxLength)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidRoleName");
+        }
+
+        var named = await db.ProjectRoleNames.SingleOrDefaultAsync(row => row.ProjectId == projectId && row.UserId == userId);
+        if (named is null)
+        {
+            named = new ProjectRoleName { ProjectId = projectId, UserId = userId };
+            db.ProjectRoleNames.Add(named);
+        }
+        named.RoleName = roleName;
+        db.Audit(named, AuditAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
+        return Results.Ok(await ViewInProjectAsync(user, projectId, db));
+    }
+
     private static void Add(Guid projectId, Guid userId, Permission permission, ClaimsPrincipal principal, RedixDbContext db, DateTime now)
     {
         var held = new ProjectPermission { ProjectId = projectId, UserId = userId, Permission = permission };
@@ -188,6 +229,10 @@ public static class ProjectUsersEndpoints
         return UserView.Of(user, (await UsersEndpoints.ProjectsByUserAsync(held, db))[user.Id].ToList());
     }
 }
+
+/// <summary>What the app sends to name what someone is called in a project.</summary>
+/// <param name="RoleName">The role name; empty clears it.</param>
+public record RoleNameRequest(string RoleName);
 
 /// <summary>What the app sends to add someone who already has a login.</summary>
 /// <param name="Username">Their exact username.</param>
@@ -207,4 +252,7 @@ public record CreateUserRequest(string DisplayName, string Username, string Mobi
 {
     /// <summary>What the user may do in the project, as ticked; <see cref="Permission.ReadProject"/> is held whatever is ticked.</summary>
     public List<Permission> Permissions { get; init; } = [];
+
+    /// <summary>What they are called in the project; may be empty (Muteb, 9 Nov 2026).</summary>
+    public string RoleName { get; init; } = "";
 }

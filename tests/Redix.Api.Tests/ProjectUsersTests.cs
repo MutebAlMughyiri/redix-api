@@ -53,6 +53,9 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
     private static List<Permission> HeldIn(UserView user) => Assert.Single(user.Projects).Permissions;
 
+    private static Task<HttpResponseMessage> NameRoleAsync(HttpClient client, Guid projectId, Guid userId, string roleName) =>
+        client.PostAsJsonAsync($"/projects/{projectId}/users/{userId}/role-name", new RoleNameRequest(roleName));
+
     private static Task<HttpResponseMessage> ResetAsync(HttpClient client, Guid userId) =>
         client.PostAsJsonAsync($"/users/{userId}/reset-password", new ResetPasswordRequest(Temporary));
 
@@ -216,6 +219,51 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{projectId}/users")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await GiveAsync(client, projectId, user.Id, Permission.ManageUsers)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await NameRoleAsync(client, projectId, user.Id, "مدير المشروع")).StatusCode);
+    }
+
+    [Fact]
+    public async Task AManagerTypesWhatSomeoneIsCalledInTheProjectAndThatPersonReadsItWithTheProject()
+    {
+        var (manager, client, projectId) = await ManagerAsync();
+        var created = await ViewOf(await CreateAsync(client, projectId, NewUsername()));
+
+        var named = await ViewOf(await NameRoleAsync(client, projectId, created.Id, "  مشرف مالي  "));
+        await ViewOf(await NameRoleAsync(client, projectId, manager.Id, "مدير المشروع"));
+
+        Assert.Equal("مشرف مالي", Assert.Single(named.Projects).RoleName);
+        Assert.Equal("مشرف مالي", Assert.Single((await ListAsync(client, projectId))!, user => user.Id == created.Id).Projects.Single().RoleName);
+        var theirs = Assert.Single((await client.GetFromJsonAsync<List<ProjectView>>("/projects", Json))!, project => project.Id == projectId);
+        Assert.Equal("مدير المشروع", theirs.RoleName);
+        Assert.Equal("", Assert.Single((await ViewOf(await NameRoleAsync(client, projectId, created.Id, ""))).Projects).RoleName);
+    }
+
+    [Fact]
+    public async Task ARoleNameMayBeTypedWhenCreatingALoginAndIsEmptyWhenNoneWas()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+
+        var named = await ViewOf(await client.PostAsJsonAsync($"/projects/{projectId}/users", new CreateUserRequest("نواف", NewUsername(), "", Temporary) { RoleName = " مشرف ميداني " }, Json));
+        var unnamed = await ViewOf(await CreateAsync(client, projectId, NewUsername()));
+
+        Assert.Equal("مشرف ميداني", Assert.Single(named.Projects).RoleName);
+        Assert.Equal("", Assert.Single(unnamed.Projects).RoleName);
+    }
+
+    [Fact]
+    public async Task ARoleNameOver50IsRefusedAndOnlySomeoneInTheProjectIsNamed()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var created = await ViewOf(await CreateAsync(client, projectId, NewUsername()));
+        var stranger = await factory.AddUserAsync(Password);
+
+        var tooLong = await NameRoleAsync(client, projectId, created.Id, new string('م', ProjectRoleName.MaxLength + 1));
+        var creating = await client.PostAsJsonAsync($"/projects/{projectId}/users", new CreateUserRequest("نواف", NewUsername(), "", Temporary) { RoleName = new string('م', ProjectRoleName.MaxLength + 1) }, Json);
+
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidRoleName"), (tooLong.StatusCode, await CodeOf(tooLong)));
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidRoleName"), (creating.StatusCode, await CodeOf(creating)));
+        Assert.Equal(HttpStatusCode.OK, (await NameRoleAsync(client, projectId, created.Id, new string('م', ProjectRoleName.MaxLength))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await NameRoleAsync(client, projectId, stranger.Id, "مشرف")).StatusCode);
     }
 
     [Fact]

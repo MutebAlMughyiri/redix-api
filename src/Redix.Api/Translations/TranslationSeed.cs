@@ -86,6 +86,8 @@ public static class TranslationSeed
         ("users.nameHint", "The name as it shows on entries", "الاسم كما يظهر في القيود"),
         ("users.username", "Username", "اسم المستخدم"),
         ("users.mobile", "Mobile", "الجوال"),
+        ("users.roleName", "Role name", "المسمى الوظيفي"),
+        ("users.invalidRoleName", "A role name is at most 50 characters.", "المسمى الوظيفي 50 حرفاً على الأكثر."),
         ("users.temporaryPassword", "Temporary password", "كلمة مرور مؤقتة"),
         ("users.temporaryPasswordHint", "Changed at first sign-in", "تُغيَّر عند أول دخول"),
         ("users.add", "Add user", "إضافة المستخدم"),

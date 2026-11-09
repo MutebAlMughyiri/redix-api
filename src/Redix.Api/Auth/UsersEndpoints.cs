@@ -23,14 +23,16 @@ public static class UsersEndpoints
         users.MapPost("/enable", Enable);
     }
 
-    /// <summary>The projects and permissions in <paramref name="held"/>, by user: one line per project, by its name, with what the user holds there in the permissions' order.</summary>
+    /// <summary>The projects and permissions in <paramref name="held"/>, by user: one line per project, by its name, with what the user holds there in the permissions' order and what they are called there.</summary>
     public static async Task<ILookup<Guid, UserProjectView>> ProjectsByUserAsync(IQueryable<ProjectPermission> held, RedixDbContext db)
     {
         var rows = await held
             .Join(db.Projects, row => row.ProjectId, project => project.Id, (row, project) => new { row.UserId, row.ProjectId, project.Name, row.Permission })
             .ToListAsync();
+        var roleNames = await db.ProjectRoleNames.Where(named => held.Any(row => row.UserId == named.UserId && row.ProjectId == named.ProjectId))
+            .ToDictionaryAsync(named => (named.UserId, named.ProjectId), named => named.RoleName);
         return rows.GroupBy(row => (row.UserId, row.ProjectId, row.Name)).OrderBy(line => line.Key.Name)
-            .ToLookup(line => line.Key.UserId, line => new UserProjectView(line.Key.ProjectId, line.Key.Name, line.Select(row => row.Permission).Order().ToList()));
+            .ToLookup(line => line.Key.UserId, line => new UserProjectView(line.Key.ProjectId, line.Key.Name, line.Select(row => row.Permission).Order().ToList(), roleNames.GetValueOrDefault((line.Key.UserId, line.Key.ProjectId), "")));
     }
 
     /// <summary>Changes a user's name and mobile. A name outside its limit answers <c>invalidName</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>.</summary>
@@ -156,7 +158,8 @@ public record ResetPasswordRequest(string TemporaryPassword);
 /// <param name="ProjectId">The project's id.</param>
 /// <param name="Name">The project's name.</param>
 /// <param name="Permissions">What the user may do there.</param>
-public record UserProjectView(Guid ProjectId, string Name, List<Permission> Permissions);
+/// <param name="RoleName">What they are called there; empty when nothing was typed.</param>
+public record UserProjectView(Guid ProjectId, string Name, List<Permission> Permissions, string RoleName);
 
 /// <summary>A user as the app shows them. It names its fields, so the password's hash and any new column stay out.</summary>
 /// <param name="Id">The user's id.</param>

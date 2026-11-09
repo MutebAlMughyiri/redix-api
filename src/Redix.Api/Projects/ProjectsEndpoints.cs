@@ -37,11 +37,12 @@ public static class ProjectsEndpoints
         var userId = AccessTokens.UserIdOf(principal);
         var access = await UserAccess.OfAsync(userId, db);
         var theirs = (await db.ProjectPermissions.Where(held => held.UserId == userId).Select(held => held.ProjectId).Distinct().ToListAsync()).ToHashSet();
+        var roleNames = await ProjectRoleName.OfUserAsync(userId, db);
         var projects = await db.Projects.Include(project => project.Units.OrderBy(unit => unit.SortOrder))
             .OrderBy(project => project.Status).ThenByDescending(project => project.StartDate)
             .ToListAsync();
         return projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (!project.IsApproved && theirs.Contains(project.Id)))
-            .Select(project => ProjectView.Of(project, access.In(project.Id))).ToList();
+            .Select(project => ProjectView.Of(project, access.In(project.Id), roleNames.GetValueOrDefault(project.Id, ""))).ToList();
     }
 
     /// <summary>
@@ -213,7 +214,8 @@ public static class ProjectsEndpoints
     public static async Task<ProjectView> ViewOfAsync(Project project, Guid userId, RedixDbContext db)
     {
         var access = await UserAccess.OfAsync(userId, db);
-        return ProjectView.Of(project, access.In(project.Id));
+        var roleNames = await ProjectRoleName.OfUserAsync(userId, db);
+        return ProjectView.Of(project, access.In(project.Id), roleNames.GetValueOrDefault(project.Id, ""));
     }
 }
 
@@ -254,11 +256,12 @@ public record AddUnitRequest(string Name);
 /// <param name="Description">What the project is; empty for none.</param>
 /// <param name="Units">The project's units, in order.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, string Description, List<UnitView> Units, List<Permission> Permissions)
+/// <param name="RoleName">What the caller is called in this project, shown under its name (Muteb, 9 Nov 2026); empty when nothing was typed.</param>
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, string Description, List<UnitView> Units, List<Permission> Permissions, string RoleName)
 {
-    /// <summary>The view of <paramref name="project"/>, with its units in order and the caller's <paramref name="permissions"/> in it.</summary>
-    public static ProjectView Of(Project project, List<Permission> permissions) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(), permissions);
+    /// <summary>The view of <paramref name="project"/>, with its units in order, and the caller's <paramref name="permissions"/> and <paramref name="roleName"/> in it.</summary>
+    public static ProjectView Of(Project project, List<Permission> permissions, string roleName) =>
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(), permissions, roleName);
 }
 
 /// <summary>A unit as the app shows it.</summary>

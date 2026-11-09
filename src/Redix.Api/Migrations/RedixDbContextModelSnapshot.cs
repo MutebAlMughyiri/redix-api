@@ -1006,6 +1006,38 @@ namespace Redix.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Redix.Api.Projects.ProjectRoleName", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ProjectRoleNames");
+                });
+
             modelBuilder.Entity("Redix.Api.Projects.Unit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3785,6 +3817,34 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("a60f5052-361e-e04f-d287-c7a05df71feb"),
                             Value = "الجوال"
+                        },
+                        new
+                        {
+                            Id = new Guid("2e095970-ebf6-f721-2dd4-83933473db8e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c578af1a-a6a5-c34a-80cd-77ac151c3526"),
+                            Value = "Role name"
+                        },
+                        new
+                        {
+                            Id = new Guid("e291a276-e0d0-09ac-3edb-7ce78116064e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c578af1a-a6a5-c34a-80cd-77ac151c3526"),
+                            Value = "المسمى الوظيفي"
+                        },
+                        new
+                        {
+                            Id = new Guid("9af83acd-dd3b-1a26-b4a3-c342a99bd1da"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e2a52a90-73ad-0e59-a413-69652745704f"),
+                            Value = "A role name is at most 50 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("63cf4e6e-f5b2-ef02-c4a8-706e6c9d8e27"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e2a52a90-73ad-0e59-a413-69652745704f"),
+                            Value = "المسمى الوظيفي 50 حرفاً على الأكثر."
                         },
                         new
                         {
@@ -13308,6 +13368,18 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("c578af1a-a6a5-c34a-80cd-77ac151c3526"),
+                            Description = "",
+                            Key = "users.roleName"
+                        },
+                        new
+                        {
+                            Id = new Guid("e2a52a90-73ad-0e59-a413-69652745704f"),
+                            Description = "",
+                            Key = "users.invalidRoleName"
+                        },
+                        new
+                        {
                             Id = new Guid("5e05bf11-75f0-72c2-a100-c3f1f4569848"),
                             Description = "",
                             Key = "users.temporaryPassword"
@@ -17485,6 +17557,21 @@ namespace Redix.Api.Migrations
                 });
 
             modelBuilder.Entity("Redix.Api.Projects.ProjectPermission", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.ProjectRoleName", b =>
                 {
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()

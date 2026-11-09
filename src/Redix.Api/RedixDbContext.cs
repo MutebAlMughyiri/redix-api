@@ -42,6 +42,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The project each user chose to land on (FR-37).</summary>
     public DbSet<UserDefaultProject> UserDefaultProjects => Set<UserDefaultProject>();
 
+    /// <summary>What each person is called in each project (Muteb, 9 Nov 2026).</summary>
+    public DbSet<ProjectRoleName> ProjectRoleNames => Set<ProjectRoleName>();
+
     /// <summary>Each project's categories of expenses, in the default template too (FR-39).</summary>
     public DbSet<Category> Categories => Set<Category>();
 
@@ -412,6 +415,13 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             held.HasIndex(h => new { h.ProjectId, h.UserId, h.Permission }).IsUnique();
             held.HasOne<Project>().WithMany().HasForeignKey(h => h.ProjectId).OnDelete(DeleteBehavior.Restrict);
             held.HasOne<User>().WithMany().HasForeignKey(h => h.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ProjectRoleName>(named =>
+        {
+            named.Property(row => row.RoleName).HasMaxLength(ProjectRoleName.MaxLength);
+            named.HasIndex(row => new { row.ProjectId, row.UserId }).IsUnique();
+            named.HasOne<Project>().WithMany().HasForeignKey(row => row.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            named.HasOne<User>().WithMany().HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<UserDefaultProject>(chosen =>
         {
