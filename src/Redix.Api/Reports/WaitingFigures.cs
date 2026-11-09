@@ -25,7 +25,7 @@ public record WaitingFigures(int ExpensesCount, decimal ExpensesAmount, int Reve
             .ToListAsync();
         var expenses = kinds.Where(row => IsExpense(row.Kind)).ToList();
         var revenue = kinds.Where(row => !IsExpense(row.Kind)).ToList();
-        return new WaitingFigures(expenses.Sum(row => row.Count), expenses.Sum(row => row.Amount), revenue.Sum(row => row.Count), revenue.Sum(row => row.Kind == EntryKind.CapitalOut ? -row.Amount : row.Amount));
+        return new WaitingFigures(expenses.Sum(row => row.Count), expenses.Sum(row => row.Amount), revenue.Sum(row => row.Count), revenue.Sum(row => row.Kind.Signed(row.Amount)));
     }
 
     private static bool IsExpense(EntryKind kind) => kind is EntryKind.Purchase or EntryKind.ContractorPayment;

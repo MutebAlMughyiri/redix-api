@@ -22,6 +22,4 @@ public class CapitalMovementDetails
     /// <summary>What it is.</summary>
     public CapitalMovementType Type { get; init; }
 
-    /// <summary>Whether it adds to the partner's capital.</summary>
-    public static bool IsInflow(CapitalMovementType type) => type == CapitalMovementType.Contribution;
 }

@@ -97,7 +97,7 @@ public static class ItemReportEndpoints
             select new { entry, movement }).ToListAsync();
         ItemEntryRow MovementRowOf(Entry entry, CapitalMovementDetails movement) => new(
             entry.Id, entry.EntryDate, string.Join(" · ", new[] { ReportFormats.Movement(movement.Type), entry.Notes }.Where(text => text.Length > 0)), "", "", 0, 0,
-            CapitalMovementDetails.IsInflow(movement.Type) ? entry.Amount : -entry.Amount, false, [], entry.ApprovedAt > newSince);
+            entry.Kind.Signed(entry.Amount), false, [], entry.ApprovedAt > newSince);
         var partners = (await db.Partners.Where(partner => partner.ItemId == item.Id).ToListAsync()).Where(shows).OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id);
         var partnerTables = partners.Select(partner =>
         {

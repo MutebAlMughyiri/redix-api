@@ -19,6 +19,13 @@ public enum EntryKind : byte
     Revenue,
 }
 
+/// <summary>What an entry's kind means for money.</summary>
+public static class EntryKinds
+{
+    /// <summary><paramref name="amount"/> as <paramref name="kind"/> moves money: as it is for capital coming in and revenue, negated for what goes out. A database query cannot call it.</summary>
+    public static decimal Signed(this EntryKind kind, decimal amount) => kind is EntryKind.CapitalIn or EntryKind.Revenue ? amount : -amount;
+}
+
 /// <summary>Where an entry stands. Only approved entries count in any total (BR-10).</summary>
 public enum EntryStatus : byte
 {
