@@ -29,7 +29,7 @@ public static class ReconciliationsEndpoints
         var moved = await AccountMoney.MovementsOfProjectAsync(projectId, db);
         var actual = latest.Balances.ToDictionary(row => row.AccountId, row => row.ActualBalance);
         var rows = accounts.Where(account => account.IsActive || actual.ContainsKey(account.Id)).OrderBy(account => account.Type).ThenBy(account => account.Id)
-            .Select(account => new ReconciliationBalanceView(account.Id, account.Name, account.Type, account.OpeningBalance + moved.GetValueOrDefault(account.Id), actual.GetValueOrDefault(account.Id))).ToList();
+            .Select(account => new ReconciliationBalanceView(account.Id, account.Name, account.Type, account.OpeningBalance + moved.GetValueOrDefault(account.Id), actual.GetValueOrDefault(account.Id), actual.ContainsKey(account.Id))).ToList();
         var total = actual.Values.Sum();
         return new ReconciliationView(latest.At, surplus, total, total - surplus, rows);
     }
@@ -89,5 +89,6 @@ public record ReconciliationView(DateTime At, decimal Surplus, decimal ActualTot
 /// <param name="AccountName">Its name.</param>
 /// <param name="Type">What kind it is.</param>
 /// <param name="BooksBalance">What the books say it holds now.</param>
-/// <param name="ActualBalance">What it really held at the latest check.</param>
-public record ReconciliationBalanceView(Guid AccountId, string AccountName, AccountType Type, decimal BooksBalance, decimal ActualBalance);
+/// <param name="ActualBalance">What it really held at the latest check; zero when that check did not hold it.</param>
+/// <param name="WasChecked">True when the latest check held this account, so an account added since is not read as checked empty (findings row 187).</param>
+public record ReconciliationBalanceView(Guid AccountId, string AccountName, AccountType Type, decimal BooksBalance, decimal ActualBalance, bool WasChecked);

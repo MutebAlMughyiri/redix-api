@@ -61,13 +61,13 @@ public static class ProjectUsersEndpoints
         var mobile = request.Mobile.Trim();
         var roleName = request.RoleName.Trim();
         var refusal = User.RefusalOfNew(displayName, username, mobile, request.TemporaryPassword);
+        if (refusal.Length == 0)
+        {
+            refusal = ProjectRoleName.RefusalOf(roleName);
+        }
         if (refusal.Length > 0)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
-        }
-        if (roleName.Length > ProjectRoleName.MaxLength)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidRoleName");
         }
         if (!request.Permissions.All(ProjectPermission.InAProject.Contains))
         {
@@ -87,9 +87,7 @@ public static class ProjectUsersEndpoints
         {
             Add(projectId, user.Id, permission, principal, db, now);
         }
-        var named = new ProjectRoleName { ProjectId = projectId, UserId = user.Id, RoleName = roleName };
-        db.ProjectRoleNames.Add(named);
-        db.Audit(named, AuditAction.Create, AccessTokens.UserIdOf(principal), now);
+        await ProjectRoleName.NameAsync(projectId, user.Id, roleName, AccessTokens.UserIdOf(principal), now, db);
         await db.SaveChangesAsync();
         return Results.Created($"/users/{user.Id}", await ViewInProjectAsync(user, projectId, db));
     }
@@ -177,6 +175,10 @@ public static class ProjectUsersEndpoints
             db.ProjectPermissions.Remove(held);
             db.Audit(held, AuditAction.RemoveProject, AccessTokens.UserIdOf(principal), now);
         }
+        if (taking == Permission.ReadProject)
+        {
+            await ProjectRoleName.NameAsync(projectId, userId, "", AccessTokens.UserIdOf(principal), now, db);
+        }
         await db.SaveChangesAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
@@ -196,19 +198,13 @@ public static class ProjectUsersEndpoints
             return Results.NotFound();
         }
         var roleName = request.RoleName.Trim();
-        if (roleName.Length > ProjectRoleName.MaxLength)
+        var refusal = ProjectRoleName.RefusalOf(roleName);
+        if (refusal.Length > 0)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidRoleName");
+            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
         }
 
-        var named = await db.ProjectRoleNames.SingleOrDefaultAsync(row => row.ProjectId == projectId && row.UserId == userId);
-        if (named is null)
-        {
-            named = new ProjectRoleName { ProjectId = projectId, UserId = userId };
-            db.ProjectRoleNames.Add(named);
-        }
-        named.RoleName = roleName;
-        db.Audit(named, AuditAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        await ProjectRoleName.NameAsync(projectId, userId, roleName, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
         await db.SaveChangesAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }

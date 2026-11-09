@@ -71,7 +71,21 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var view = await ledger.Client.GetFromJsonAsync<ReconciliationView>($"/projects/{ledger.ProjectId}/reconciliations/latest", Json);
 
         Assert.Equal(0m, view!.ActualTotal);
-        Assert.Equal(ledger.AccountId, Assert.Single(view.Balances).AccountId);
+        var balance = Assert.Single(view.Balances);
+        Assert.Equal((ledger.AccountId, false), (balance.AccountId, balance.WasChecked));
+    }
+
+    [Fact]
+    public async Task AnAccountAddedAfterTheLatestCheckSaysTheCheckDidNotHoldIt()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 0m)]), Json);
+        var added = await AccountAsync(ledger, "كاش");
+
+        var view = await ledger.Client.GetFromJsonAsync<ReconciliationView>($"/projects/{ledger.ProjectId}/reconciliations/latest", Json);
+
+        Assert.True(Assert.Single(view!.Balances, row => row.AccountId == ledger.AccountId).WasChecked);
+        Assert.False(Assert.Single(view.Balances, row => row.AccountId == added).WasChecked);
     }
 
     [Fact]

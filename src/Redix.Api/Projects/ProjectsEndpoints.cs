@@ -42,7 +42,7 @@ public static class ProjectsEndpoints
             .OrderBy(project => project.Status).ThenByDescending(project => project.StartDate)
             .ToListAsync();
         return projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (!project.IsApproved && theirs.Contains(project.Id)))
-            .Select(project => ProjectView.Of(project, access.In(project.Id), roleNames.GetValueOrDefault(project.Id, ""))).ToList();
+            .Select(project => ProjectView.Of(project, access.In(project.Id), roleNames)).ToList();
     }
 
     /// <summary>
@@ -215,7 +215,7 @@ public static class ProjectsEndpoints
     {
         var access = await UserAccess.OfAsync(userId, db);
         var roleNames = await ProjectRoleName.OfUserAsync(userId, db);
-        return ProjectView.Of(project, access.In(project.Id), roleNames.GetValueOrDefault(project.Id, ""));
+        return ProjectView.Of(project, access.In(project.Id), roleNames);
     }
 }
 
@@ -259,9 +259,9 @@ public record AddUnitRequest(string Name);
 /// <param name="RoleName">What the caller is called in this project, shown under its name (Muteb, 9 Nov 2026); empty when nothing was typed.</param>
 public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, string Description, List<UnitView> Units, List<Permission> Permissions, string RoleName)
 {
-    /// <summary>The view of <paramref name="project"/>, with its units in order, and the caller's <paramref name="permissions"/> and <paramref name="roleName"/> in it.</summary>
-    public static ProjectView Of(Project project, List<Permission> permissions, string roleName) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(), permissions, roleName);
+    /// <summary>The view of <paramref name="project"/>, with its units in order, and the caller's <paramref name="permissions"/> in it and role name among their <paramref name="roleNames"/>.</summary>
+    public static ProjectView Of(Project project, List<Permission> permissions, Dictionary<Guid, string> roleNames) =>
+        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(), permissions, roleNames.GetValueOrDefault(project.Id, ""));
 }
 
 /// <summary>A unit as the app shows it.</summary>

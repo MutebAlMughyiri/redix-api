@@ -50,6 +50,7 @@ A new permission is code: a route has to name it, and a migration adds it. The d
 | `POST /projects/{projectId}/users/existing` | `ManageUsers` | `200` adds `{ username }` holding `ReadProject`; `404` `unknownUser` |
 | `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | `ManageUsers` | `200`; `400` `invalidPermission`; `404` someone not in the project |
 | `POST /projects/{projectId}/users/{userId}/permissions/{permission}/remove` | `ManageUsers` | `200`; `ReadProject` takes every one of theirs; `409` `lastManager` |
+| `POST /projects/{projectId}/users/{userId}/role-name` | `ManageUsers` | `200` names `{ roleName }`, a label only that decides nothing; `400` `invalidRoleName` |
 | `POST /users/{userId}`, `/reset-password`, `/disable`, `/enable` | See below | `200`; `403` `otherProject`; `409` `lastManager` on disable |
 
 A permission is named in the route as the app names it, `approveEntries`, whatever its case.

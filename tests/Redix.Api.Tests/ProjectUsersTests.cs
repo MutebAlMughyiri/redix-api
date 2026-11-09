@@ -239,6 +239,20 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task TakingSomeoneOutOfTheProjectTakesTheirRoleNameSoComingBackStartsWithNone()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var created = await ViewOf(await CreateAsync(client, projectId, NewUsername()));
+        await ViewOf(await NameRoleAsync(client, projectId, created.Id, "مدير المشروع"));
+
+        await TakeAsync(client, projectId, created.Id, Permission.ReadProject);
+        var back = await ViewOf(await AddExistingAsync(client, projectId, created.Username));
+
+        Assert.Equal("", Assert.Single(back.Projects).RoleName);
+        await factory.WithDatabaseAsync(async db => Assert.False(await db.ProjectRoleNames.AnyAsync(row => row.ProjectId == projectId && row.UserId == created.Id)));
+    }
+
+    [Fact]
     public async Task ARoleNameMayBeTypedWhenCreatingALoginAndIsEmptyWhenNoneWas()
     {
         var (_, client, projectId) = await ManagerAsync();
