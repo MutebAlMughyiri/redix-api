@@ -361,7 +361,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         });
         modelBuilder.Entity<Redix.Api.Reports.PeriodicReport>(report =>
         {
-            report.Property(r => r.Id).ValueGeneratedNever();
             report.HasIndex(r => new { r.ProjectId, r.Number }).IsUnique();
             report.Property(r => r.Snapshot).HasColumnType("json");
             report.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Restrict);
@@ -369,7 +368,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         });
         modelBuilder.Entity<Reconciliation>(reconciliation =>
         {
-            reconciliation.Property(r => r.Id).ValueGeneratedNever();
             reconciliation.HasIndex(r => new { r.ProjectId, r.At });
             reconciliation.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Restrict);
             reconciliation.HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
@@ -382,7 +380,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         });
         modelBuilder.Entity<Redix.Api.Notifications.Notification>(notification =>
         {
-            notification.Property(n => n.Id).ValueGeneratedNever();
             notification.HasIndex(n => new { n.UserId, n.At });
             notification.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);
         });
