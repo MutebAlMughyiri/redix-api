@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Redix.Api.Audit;
 
 namespace Redix.Api.Auth;
@@ -9,6 +10,31 @@ public class User
 {
     /// <summary>No user: what a lookup answers when there is none, so no caller holds a null.</summary>
     public static User None { get; } = new() { Username = "" };
+
+    /// <summary>
+    /// Adds a new login from what was typed, for the caller to save and audit. A field outside its limit answers its code with status 400, a username already taken <c>usernameTaken</c> with 409;
+    /// the user is <see cref="None"/> then.
+    /// </summary>
+    public static async Task<(User User, int Status, string Refusal)> AddNewAsync(string displayName, string username, string mobile, string password, bool mustChangePassword, RedixDbContext db, IPasswordHasher<User> hasher, DateTime now)
+    {
+        var name = displayName.Trim();
+        var login = username.Trim();
+        var phone = mobile.Trim();
+        var refusal = RefusalOfNew(name, login, phone, password);
+        if (refusal.Length > 0)
+        {
+            return (None, StatusCodes.Status400BadRequest, refusal);
+        }
+        if (await db.Users.AnyAsync(user => user.Username == login))
+        {
+            return (None, StatusCodes.Status409Conflict, "UsernameTaken");
+        }
+
+        var added = new User { Username = login, DisplayName = name, Mobile = phone, MustChangePassword = mustChangePassword, CreatedAt = now };
+        added.SetPassword(password, hasher);
+        db.Users.Add(added);
+        return (added, 0, "");
+    }
 
     /// <summary>Wrong passwords in a row that lock the account (AC-01.2).</summary>
     public const int WrongPasswordsBeforeLock = 5;

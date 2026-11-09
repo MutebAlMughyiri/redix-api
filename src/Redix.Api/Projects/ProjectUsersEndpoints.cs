@@ -56,32 +56,23 @@ public static class ProjectUsersEndpoints
     /// <param name="time">The current time, for the user and the audit records.</param>
     public static async Task<IResult> Create(Guid projectId, CreateUserRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
     {
-        var displayName = request.DisplayName.Trim();
-        var username = request.Username.Trim();
-        var mobile = request.Mobile.Trim();
         var roleName = request.RoleName.Trim();
-        var refusal = User.RefusalOfNew(displayName, username, mobile, request.TemporaryPassword);
-        if (refusal.Length == 0)
+        var roleRefusal = ProjectRoleName.RefusalOf(roleName);
+        if (roleRefusal.Length > 0)
         {
-            refusal = ProjectRoleName.RefusalOf(roleName);
-        }
-        if (refusal.Length > 0)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+            return Refusal.Of(StatusCodes.Status400BadRequest, roleRefusal);
         }
         if (!request.Permissions.All(ProjectPermission.InAProject.Contains))
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPermission");
         }
-        if (await db.Users.AnyAsync(user => user.Username == username))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "UsernameTaken");
-        }
 
         var now = time.GetUtcNow().UtcDateTime;
-        var user = new User { Username = username, DisplayName = displayName, Mobile = mobile, MustChangePassword = true, CreatedAt = now };
-        user.SetPassword(request.TemporaryPassword, hasher);
-        db.Users.Add(user);
+        var (user, status, refusal) = await User.AddNewAsync(request.DisplayName, request.Username, request.Mobile, request.TemporaryPassword, mustChangePassword: true, db, hasher, now);
+        if (refusal.Length > 0)
+        {
+            return Refusal.Of(status, refusal);
+        }
         db.Audit(user, AuditAction.Create, AccessTokens.UserIdOf(principal), now);
         foreach (var permission in request.Permissions.Prepend(Permission.ReadProject).Distinct())
         {

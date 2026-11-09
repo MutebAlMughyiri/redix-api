@@ -45,23 +45,12 @@ public static class RegistrationEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, declared);
         }
 
-        var displayName = request.DisplayName.Trim();
-        var username = request.Username.Trim();
-        var mobile = request.Mobile.Trim();
-        var refusal = User.RefusalOfNew(displayName, username, mobile, request.Password);
+        var now = time.GetUtcNow().UtcDateTime;
+        var (manager, status, refusal) = await User.AddNewAsync(request.DisplayName, request.Username, request.Mobile, request.Password, mustChangePassword: false, db, hasher, now);
         if (refusal.Length > 0)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+            return Refusal.Of(status, refusal);
         }
-        if (await db.Users.AnyAsync(user => user.Username == username))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "UsernameTaken");
-        }
-
-        var now = time.GetUtcNow().UtcDateTime;
-        var manager = new User { Username = username, DisplayName = displayName, Mobile = mobile, CreatedAt = now };
-        manager.SetPassword(request.Password, hasher);
-        db.Users.Add(manager);
         db.Audit(manager, AuditAction.Create, manager.Id, now);
         ProjectsEndpoints.AddWithManager(project, manager.Id, db, now);
         db.Partners.AddRange(partners);
