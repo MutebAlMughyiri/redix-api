@@ -60,13 +60,13 @@ public static class InvoiceAttachEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Attach(Guid projectId, Guid entryId, AttachInvoiceRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
+        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
+        if (entry == Entry.None)
         {
             return Results.NotFound();
         }
         var userId = AccessTokens.UserIdOf(principal);
-        if (!EntryChanges.MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId)))
+        if (!await EntryChanges.MayHandleAsync(entry, userId, db))
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
         }

@@ -44,7 +44,7 @@ public static class EntryRecording
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidEntryId");
         }
-        return await db.Entries.AnyAsync(entry => entry.Id == request.Id) ? Refusal.Of(StatusCodes.Status409Conflict, "EntryExists") : await SaveAsync(projectId, request, userId, db, time, null);
+        return await db.Entries.AnyAsync(entry => entry.Id == request.Id) ? Refusal.Of(StatusCodes.Status409Conflict, "EntryExists") : await SaveAsync(projectId, request, userId, db, time, Entry.None);
     }
 
     /// <summary>
@@ -59,8 +59,8 @@ public static class EntryRecording
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Change(Guid projectId, Guid entryId, EntryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
+        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
+        if (entry == Entry.None)
         {
             return Results.NotFound();
         }
@@ -78,7 +78,7 @@ public static class EntryRecording
     /// <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>, and sending needs the required columns, <c>requiredColumnMissing</c> (FR-41); a file
     /// already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). A new entry answers 201 with what was kept, a changed one 200.
     /// </summary>
-    private static async Task<IResult> SaveAsync(Guid projectId, EntryRequest request, Guid userId, RedixDbContext db, TimeProvider time, Entry? existing)
+    private static async Task<IResult> SaveAsync(Guid projectId, EntryRequest request, Guid userId, RedixDbContext db, TimeProvider time, Entry existing)
     {
         var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
         var table = (await EntryTable.OfferedAsync(projectId, held, db)).SingleOrDefault(row => row.Item.Id == request.ItemId && row.Id == request.TableId);
@@ -86,7 +86,7 @@ public static class EntryRecording
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownTable");
         }
-        var editing = existing?.Id ?? Guid.Empty;
+        var editing = existing.Id;
         var (status, code, columnKey) = await RefusalOfAsync(projectId, request, table, userId, held, editing, db, time);
         if (code.Length > 0)
         {
@@ -95,7 +95,7 @@ public static class EntryRecording
         var at = time.GetUtcNow().UtcDateTime;
         var entry = await KeepAsync(EntryOf(request, projectId, table, userId, at), [.. table.DetailsOf(request), .. FileOf(request, table.FileRole)], existing, userId, db);
         var answer = await table.AnswerOfAsync(entry, request, db);
-        return existing is null ? Results.Created($"/projects/{projectId}/entries/{entry.Id}", answer) : Results.Ok(answer);
+        return existing == Entry.None ? Results.Created($"/projects/{projectId}/entries/{entry.Id}", answer) : Results.Ok(answer);
     }
 
     private static async Task<(int Status, string Code, string ColumnKey)> RefusalOfAsync(Guid projectId, EntryRequest request, EntryTable table, Guid userId, List<Permission> held, Guid editing, RedixDbContext db, TimeProvider time)
@@ -197,9 +197,9 @@ public static class EntryRecording
         request.AttachmentId == Guid.Empty ? [] : [new EntryAttachment { EntryId = request.Id, AttachmentId = request.AttachmentId, Role = role }];
 
     /// <summary>Keeps <paramref name="entry"/> with its <paramref name="details"/>: as a new entry, or in place of <paramref name="existing"/> when one is being changed. Answers the entry kept.</summary>
-    private static async Task<Entry> KeepAsync(Entry entry, List<object> details, Entry? existing, Guid userId, RedixDbContext db)
+    private static async Task<Entry> KeepAsync(Entry entry, List<object> details, Entry existing, Guid userId, RedixDbContext db)
     {
-        if (existing is null)
+        if (existing == Entry.None)
         {
             await AddAsync(entry, details, userId, db);
             await db.SaveChangesAsync();

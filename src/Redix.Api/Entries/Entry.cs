@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace Redix.Api.Entries;
 
 /// <summary>One movement of money in the ledger, of any kind. Approval, audit, reversal, attachments and account balances are built once, on this. What only one kind has lives in a detail table keyed by the entry.</summary>
@@ -5,6 +7,13 @@ public class Entry
 {
     /// <summary>The longest notes an entry may have.</summary>
     public const int NotesMaxLength = 1000;
+
+    /// <summary>No entry: what a lookup answers when there is none, and what "keep this as a new entry" passes for the entry it replaces, so no caller holds a null.</summary>
+    public static Entry None { get; } = new();
+
+    /// <summary>The entry <paramref name="entryId"/> if it belongs to <paramref name="projectId"/> (BR-33); <see cref="None"/> otherwise.</summary>
+    public static async Task<Entry> OfProjectAsync(Guid projectId, Guid entryId, RedixDbContext db) =>
+        await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId) ?? None;
 
     /// <summary>The <see cref="ApprovedAt"/> of an entry not approved yet.</summary>
     public static readonly DateTime NotApproved = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);

@@ -7,6 +7,9 @@ namespace Redix.Api.Auth;
 /// <summary>Someone who signs in to REDIX (FR-01). It owns the sign-in rules: the password check and the lockout (AC-01.2).</summary>
 public class User
 {
+    /// <summary>No user: what a lookup answers when there is none, so no caller holds a null.</summary>
+    public static User None { get; } = new() { Username = "" };
+
     /// <summary>Wrong passwords in a row that lock the account (AC-01.2).</summary>
     public const int WrongPasswordsBeforeLock = 5;
 

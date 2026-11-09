@@ -101,8 +101,8 @@ public static class ProjectUsersEndpoints
     public static async Task<IResult> AddExisting(Guid projectId, AddExistingUserRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var username = request.Username.Trim();
-        var user = await db.Users.SingleOrDefaultAsync(user => user.Username == username && !db.SystemPermissions.Any(row => row.UserId == user.Id));
-        if (user is null)
+        var user = await db.Users.SingleOrDefaultAsync(user => user.Username == username && !db.SystemPermissions.Any(row => row.UserId == user.Id)) ?? User.None;
+        if (user == User.None)
         {
             return Refusal.Of(StatusCodes.Status404NotFound, "UnknownUser");
         }
@@ -125,7 +125,7 @@ public static class ProjectUsersEndpoints
     public static async Task<IResult> Give(Guid projectId, Guid userId, string permission, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
-        if (user is null)
+        if (user == User.None)
         {
             return Results.NotFound();
         }
@@ -155,7 +155,7 @@ public static class ProjectUsersEndpoints
     public static async Task<IResult> Take(Guid projectId, Guid userId, string permission, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
-        if (user is null)
+        if (user == User.None)
         {
             return Results.NotFound();
         }
@@ -193,7 +193,7 @@ public static class ProjectUsersEndpoints
     public static async Task<IResult> SetRoleName(Guid projectId, Guid userId, RoleNameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
-        if (user is null)
+        if (user == User.None)
         {
             return Results.NotFound();
         }
@@ -216,8 +216,8 @@ public static class ProjectUsersEndpoints
         db.Audit(held, AuditAction.AssignProject, AccessTokens.UserIdOf(principal), now);
     }
 
-    private static Task<User?> InProjectAsync(Guid projectId, Guid userId, RedixDbContext db) =>
-        db.Users.SingleOrDefaultAsync(user => user.Id == userId && db.ProjectPermissions.Any(held => held.ProjectId == projectId && held.UserId == userId));
+    private static async Task<User> InProjectAsync(Guid projectId, Guid userId, RedixDbContext db) =>
+        await db.Users.SingleOrDefaultAsync(user => user.Id == userId && db.ProjectPermissions.Any(held => held.ProjectId == projectId && held.UserId == userId)) ?? User.None;
 
     private static async Task<UserView> ViewInProjectAsync(User user, Guid projectId, RedixDbContext db)
     {

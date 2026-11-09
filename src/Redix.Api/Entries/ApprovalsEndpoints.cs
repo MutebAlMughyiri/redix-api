@@ -81,8 +81,8 @@ public static class ApprovalsEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Reject(Guid projectId, Guid entryId, RejectEntryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
+        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
+        if (entry == Entry.None)
         {
             return Results.NotFound();
         }

@@ -91,8 +91,8 @@ public static class EntriesEndpoints
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<IResult> Read(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db)
     {
-        var entry = await (await SeenByAsync(projectId, AccessTokens.UserIdOf(principal), db)).SingleOrDefaultAsync(row => row.Id == entryId);
-        return entry is null ? Results.NotFound() : Results.Ok(await ViewOfAsync(entry, db));
+        var entry = await (await SeenByAsync(projectId, AccessTokens.UserIdOf(principal), db)).SingleOrDefaultAsync(row => row.Id == entryId) ?? Entry.None;
+        return entry == Entry.None ? Results.NotFound() : Results.Ok(await ViewOfAsync(entry, db));
     }
 
     /// <summary>
@@ -106,13 +106,13 @@ public static class EntriesEndpoints
     /// <param name="time">The current time, for the audit record.</param>
     public static async Task<IResult> Submit(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
+        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
+        if (entry == Entry.None)
         {
             return Results.NotFound();
         }
         var userId = AccessTokens.UserIdOf(principal);
-        if (!EntryChanges.MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId)))
+        if (!await EntryChanges.MayHandleAsync(entry, userId, db))
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
         }
@@ -142,8 +142,8 @@ public static class EntriesEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Delete(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
+        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
+        if (entry == Entry.None)
         {
             return Results.NotFound();
         }
@@ -170,13 +170,13 @@ public static class EntriesEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> ChangeNotes(Guid projectId, Guid entryId, ChangeNotesRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
+        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
+        if (entry == Entry.None)
         {
             return Results.NotFound();
         }
         var userId = AccessTokens.UserIdOf(principal);
-        if (!EntryChanges.MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId)))
+        if (!await EntryChanges.MayHandleAsync(entry, userId, db))
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
         }
@@ -203,8 +203,8 @@ public static class EntriesEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Reverse(Guid projectId, Guid entryId, RejectEntryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId);
-        if (entry is null)
+        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
+        if (entry == Entry.None)
         {
             return Results.NotFound();
         }
