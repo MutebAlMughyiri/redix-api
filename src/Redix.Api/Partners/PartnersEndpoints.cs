@@ -30,7 +30,7 @@ public static class PartnersEndpoints
         var partners = (await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees).ToList();
         var userIds = partners.Select(partner => partner.UserId).ToList();
         var names = await db.Users.Where(user => userIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
-        var items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId) && item.Type == ItemType.Capital)
+        var items = await ProjectStructure.ItemsOf(projectId, db).Where(item => item.Type == ItemType.Capital)
             .ToDictionaryAsync(item => item.Id, item => item.Name);
         return partners.OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id)
             .Select(partner => PartnerView.Of(partner, names.GetValueOrDefault(partner.UserId, ""), items.GetValueOrDefault(partner.ItemId, ""))).ToList();

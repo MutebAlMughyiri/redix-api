@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Projects;
 using Redix.Api.Revenue;
+using Redix.Api.Structure;
 using Redix.Api.Suppliers;
 
 namespace Redix.Api.Entries;
@@ -42,7 +43,7 @@ public sealed class EntryFacts
             _invoices = await db.Invoices.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId),
             _files = files.ToLookup(row => row.EntryId),
             _attachments = await db.Attachments.Where(row => fileIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id, row => (row.ContentType, row.FileName)),
-            _items = await db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)).ToDictionaryAsync(item => item.Id, item => item.Name),
+            _items = await ProjectStructure.ItemsOf(projectId, db).ToDictionaryAsync(item => item.Id, item => item.Name),
             _accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name),
             _paymentMethods = await db.PaymentMethods.Where(method => method.ProjectId == projectId).ToDictionaryAsync(method => method.Id, method => method.Name),
             _suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id),

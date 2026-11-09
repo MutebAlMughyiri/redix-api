@@ -50,27 +50,30 @@ public static class ProjectStructure
     public static async Task<bool> SubgroupHasEntriesAsync(Guid subgroupId, RedixDbContext db) =>
         await db.ExpenseDetails.AnyAsync(details => details.SubgroupId == subgroupId) || await db.Set<Revenue.RevenueDetails>().AnyAsync(details => details.SubgroupId == subgroupId);
 
-    /// <summary>The item <paramref name="itemId"/> if it belongs to <paramref name="projectId"/>, so one project's route never reaches another's rows (BR-33); <see cref="Item.None"/> otherwise.</summary>
+    /// <summary>The items of <paramref name="projectId"/>: the one answer to whether an item belongs to a project, so one project's route never reaches another's rows (BR-33).</summary>
+    public static IQueryable<Item> ItemsOf(Guid projectId, RedixDbContext db) =>
+        db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));
+
+    /// <summary>The item <paramref name="itemId"/> if it belongs to <paramref name="projectId"/>; <see cref="Item.None"/> otherwise.</summary>
     public static async Task<Item> ItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
-        await db.Items.SingleOrDefaultAsync(item => item.Id == itemId && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId)) ?? Item.None;
+        await ItemsOf(projectId, db).SingleOrDefaultAsync(item => item.Id == itemId) ?? Item.None;
 
     /// <summary>The item <paramref name="itemId"/> of <paramref name="projectId"/> with its subgroups and columns, as its report reads it (BR-33); <see cref="Item.None"/> otherwise.</summary>
     public static async Task<Item> ItemWithTablesAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
-        await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).SingleOrDefaultAsync(row => row.Id == itemId && db.Categories.Any(category => category.Id == row.CategoryId && category.ProjectId == projectId))
-        ?? Item.None;
+        await ItemsOf(projectId, db).Include(row => row.Subgroups).Include(row => row.Columns).SingleOrDefaultAsync(row => row.Id == itemId) ?? Item.None;
 
     /// <summary>
     /// Why the project <paramref name="projectId"/> cannot take an item of <paramref name="type"/>: <c>capitalItemExists</c> for a second capital item (BR-31, redix-api #109); empty
     /// when it can.
     /// </summary>
     public static async Task<string> RefusalOfTypeAsync(Guid projectId, ItemType type, RedixDbContext db) =>
-        type == ItemType.Capital && await db.Items.AnyAsync(item => item.Type == ItemType.Capital && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId))
+        type == ItemType.Capital && await ItemsOf(projectId, db).AnyAsync(item => item.Type == ItemType.Capital)
             ? nameof(StructureChangeOutcome.CapitalItemExists)
             : "";
 
     /// <summary>True when the item <paramref name="itemId"/> belongs to <paramref name="projectId"/> (BR-33).</summary>
     public static Task<bool> HasItemAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
-        db.Items.AnyAsync(item => item.Id == itemId && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));
+        ItemsOf(projectId, db).AnyAsync(item => item.Id == itemId);
 
     /// <summary>The item <paramref name="itemId"/> of the project with its subgroups and columns, if entering <paramref name="kind"/> offers it (AC-05.3, AC-38.1); <see cref="Item.None"/> otherwise.</summary>
     public static async Task<Item> OfferedItemAsync(Guid projectId, Guid itemId, ItemType kind, RedixDbContext db)

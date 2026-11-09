@@ -251,7 +251,7 @@ public static class ColumnsEndpoints
         db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == itemType.Value);
 
     private static IQueryable<Item> ItemsOf(Guid projectId, ItemTypeInUrl itemType, RedixDbContext db) =>
-        db.Items.Where(item => item.Type == itemType.Value && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));
+        ProjectStructure.ItemsOf(projectId, db).Where(item => item.Type == itemType.Value);
 
     private static IQueryable<ItemColumn> ColumnsOfItemsOf(Guid projectId, ItemTypeInUrl itemType, RedixDbContext db) =>
         db.ItemColumns.Where(column => !column.IsHidden && ItemsOf(projectId, itemType, db).Any(item => item.Id == column.ItemId));
