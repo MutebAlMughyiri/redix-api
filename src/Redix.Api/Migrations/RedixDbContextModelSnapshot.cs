@@ -6508,17 +6508,17 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("6140c7de-1782-ec48-ba41-e735c4ab95df"),
+                            Id = new Guid("1354ddba-a368-af89-4f5d-ef95c9b077c2"),
                             Language = "en",
-                            TranslationKeyId = new Guid("dcfc4b11-786f-e75b-7712-128fa2b7fe96"),
-                            Value = "Item report"
+                            TranslationKeyId = new Guid("154538a6-9cb8-c1a1-f668-ff761eaa4c86"),
+                            Value = "Revenue and expenses"
                         },
                         new
                         {
-                            Id = new Guid("44418224-6446-7b08-0aec-96566cfd1cef"),
+                            Id = new Guid("f6db13d7-0a0d-c42d-e0dc-cd5cf80bf1ba"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("dcfc4b11-786f-e75b-7712-128fa2b7fe96"),
-                            Value = "تقرير بند"
+                            TranslationKeyId = new Guid("154538a6-9cb8-c1a1-f668-ff761eaa4c86"),
+                            Value = "الإيرادات والمصروفات"
                         },
                         new
                         {
@@ -14520,9 +14520,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("dcfc4b11-786f-e75b-7712-128fa2b7fe96"),
+                            Id = new Guid("154538a6-9cb8-c1a1-f668-ff761eaa4c86"),
                             Description = "",
-                            Key = "reports.item"
+                            Key = "reports.revenueAndExpenses"
                         },
                         new
                         {

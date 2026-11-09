@@ -278,7 +278,7 @@ public static class TranslationSeed
         ("reports.print", "Print", "طباعة"),
         ("reports.share", "Share", "مشاركة"),
         ("reports.fileFailed", "Could not get the file. Check the connection and try again.", "تعذر جلب الملف. تحقق من الاتصال وحاول مجدداً."),
-        ("reports.item", "Item report", "تقرير بند"),
+        ("reports.revenueAndExpenses", "Revenue and expenses", "الإيرادات والمصروفات"),
         ("reports.partners", "Partners and capital", "الشركاء ورأس المال"),
         ("reports.loadFailed", "Could not read the report. Check the connection and try again.", "تعذرت قراءة التقرير. تحقق من الاتصال وحاول مجدداً."),
         ("reports.noConnection", "No connection to the server. Try again.", "لا اتصال بالخادم. حاول مجدداً."),
