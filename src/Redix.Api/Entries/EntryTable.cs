@@ -77,10 +77,10 @@ public abstract record EntryTable(Category Category, Item Item, Guid Id, string 
     }
 
     /// <summary>The name of <paramref name="item"/>'s group <paramref name="subgroup"/> in the picker: its general group goes by the item's name.</summary>
-    protected static string NameOf(Item item, Subgroup subgroup) => subgroup.Name == Subgroup.GeneralName ? item.Name : subgroup.Name;
+    protected static string NameOf(Item item, Subgroup subgroup) => subgroup.IsGeneral ? item.Name : subgroup.Name;
 
     /// <summary>What <paramref name="subgroup"/> is in its item's sheet.</summary>
-    protected static ItemTableKind KindOf(Subgroup subgroup) => subgroup.Name == Subgroup.GeneralName ? ItemTableKind.General : ItemTableKind.Subgroup;
+    protected static ItemTableKind KindOf(Subgroup subgroup) => subgroup.IsGeneral ? ItemTableKind.General : ItemTableKind.Subgroup;
 
     /// <summary>What every expense of <paramref name="request"/> holds, in its item's group <paramref name="subgroupId"/>: how it was paid and its custom values.</summary>
     protected ExpenseDetails ExpenseDetailsOf(EntryRequest request, Guid subgroupId) => new()

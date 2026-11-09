@@ -22,7 +22,7 @@ public sealed record ContractTable(Category Category, Item Item, Contract Contra
     /// <inheritdoc />
     public override List<object> DetailsOf(EntryRequest request) =>
     [
-        ExpenseDetailsOf(request, Item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id),
+        ExpenseDetailsOf(request, Item.Subgroups.Single(row => row.IsGeneral).Id),
         new ContractorPaymentDetails { EntryId = request.Id, ContractId = Contract.Id, IsOutsideContract = request.IsOutsideContract },
     ];
 

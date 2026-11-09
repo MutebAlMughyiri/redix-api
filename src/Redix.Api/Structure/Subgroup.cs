@@ -6,6 +6,9 @@ public class Subgroup : IOrdered
     /// <summary>The name of an item's general group.</summary>
     public const string GeneralName = "";
 
+    /// <summary>True for the item's general group, the one with no name of its own. A database query cannot read it.</summary>
+    public bool IsGeneral => Name == GeneralName;
+
     /// <summary>The subgroup's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
