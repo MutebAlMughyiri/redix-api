@@ -7,13 +7,13 @@ using Redix.Api.Structure;
 namespace Redix.Api.Reports;
 
 /// <summary>A project's figures at a glance (UC-049, FR-34), with its completion and cost (UC-063).</summary>
-public static class DashboardEndpoints
+public static class SummaryEndpoints
 {
-    /// <summary>Maps the route that reads the dashboard, for anyone who reads the project.</summary>
+    /// <summary>Maps the route that reads the summary, for anyone who reads the project.</summary>
     /// <param name="app">The app.</param>
-    public static void MapDashboard(this WebApplication app)
+    public static void MapSummary(this WebApplication app)
     {
-        app.MapGet("/projects/{projectId:guid}/dashboard", OfAsync).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/projects/{projectId:guid}/summary", OfAsync).RequireAuthorization(nameof(Permission.ReadProject));
     }
 
     /// <summary>
@@ -22,7 +22,7 @@ public static class DashboardEndpoints
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static async Task<DashboardView> OfAsync(Guid projectId, RedixDbContext db)
+    public static async Task<SummaryView> OfAsync(Guid projectId, RedixDbContext db)
     {
         var figures = await ProjectFigures.OfAsync(projectId, db);
         var reconciliation = await ReconciliationsEndpoints.Latest(projectId, db);
@@ -36,7 +36,7 @@ public static class DashboardEndpoints
             .Where(line => line.Items.Count > 0)
             .Select(line => new CategoryTotalView(line.Category.Id, line.Category.Name, line.Items.Sum(item => item.Total), line.Items))
             .ToList();
-        return new DashboardView(figures.Revenue, figures.Expenses, figures.Surplus, reconciliation.At != default, reconciliation.Difference, waiting, figures.CompletionPercent, SideOf(false), SideOf(true));
+        return new SummaryView(figures.Revenue, figures.Expenses, figures.Surplus, reconciliation.At != default, reconciliation.Difference, waiting, figures.CompletionPercent, SideOf(false), SideOf(true));
     }
 }
 
@@ -50,7 +50,7 @@ public static class DashboardEndpoints
 /// <param name="CompletionPercent">How far the work has come: expenses as a percentage of revenue.</param>
 /// <param name="Categories">Each category holding expense items, its total with those items'.</param>
 /// <param name="RevenueCategories">Each category holding revenue items, رأس المال among them (redix-api #109), its total with those items' (FR-38); they add up to <paramref name="Revenue"/>.</param>
-public record DashboardView(decimal Revenue, decimal Expenses, decimal Surplus, bool WasReconciled, decimal ReconciliationDifference, WaitingFigures Waiting, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
+public record SummaryView(decimal Revenue, decimal Expenses, decimal Surplus, bool WasReconciled, decimal ReconciliationDifference, WaitingFigures Waiting, decimal CompletionPercent, List<CategoryTotalView> Categories, List<CategoryTotalView> RevenueCategories);
 
 /// <summary>One category's total (BR-03).</summary>
 /// <param name="Id">The category.</param>

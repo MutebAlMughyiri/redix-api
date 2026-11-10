@@ -188,8 +188,8 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var none = await ReportAsync(otherReader);
         Assert.Equal(360m, none.Total);
         Assert.Empty(none.Subgroups);
-        var dashboard = (await otherReader.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!;
-        Assert.Equal(360m, dashboard.RevenueCategories.SelectMany(category => category.Items).Single(item => item.Id == capital).Total);
+        var summary = (await otherReader.GetFromJsonAsync<SummaryView>($"/projects/{ledger.ProjectId}/summary", Json))!;
+        Assert.Equal(360m, summary.RevenueCategories.SelectMany(category => category.Items).Single(item => item.Id == capital).Total);
     }
 
     [Fact]

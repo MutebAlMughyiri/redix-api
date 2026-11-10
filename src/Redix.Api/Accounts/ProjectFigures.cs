@@ -5,7 +5,7 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Accounts;
 
-/// <summary>A project's money as the BRS reckons it, only ever from what is approved (BR-10): the one owner of capital, revenue and surplus, so the dashboard, the reconciliation and the report cannot disagree.</summary>
+/// <summary>A project's money as the BRS reckons it, only ever from what is approved (BR-10): the one owner of capital, revenue and surplus, so the summary, the reconciliation and the report cannot disagree.</summary>
 /// <param name="Capital">What partners put in, less what they took out (BR-05).</param>
 /// <param name="VatRefunds">VAT that came back.</param>
 /// <param name="Sales">What units sold for.</param>

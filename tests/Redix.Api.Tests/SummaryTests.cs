@@ -11,13 +11,13 @@ using Xunit;
 
 namespace Redix.Api.Tests;
 
-/// <summary>UC-049, UC-050, UC-063: the dashboard, the item report, and completion and cost. No figure here is real.</summary>
+/// <summary>UC-049, UC-050, UC-063: the summary, the item report, and completion and cost. No figure here is real.</summary>
 [Collection(FourthDatabaseCollection.Name)]
-public class DashboardTests(MigratedApiFactory factory)
+public class SummaryTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
-    private static async Task<DashboardView> DashboardAsync(HttpClient client, Guid projectId) => (await client.GetFromJsonAsync<DashboardView>($"/projects/{projectId}/dashboard", Json))!;
+    private static async Task<SummaryView> SummaryAsync(HttpClient client, Guid projectId) => (await client.GetFromJsonAsync<SummaryView>($"/projects/{projectId}/summary", Json))!;
 
     private static async Task<Guid> ApprovedAsync(Ledger ledger, EntryRequest request)
     {
@@ -33,12 +33,12 @@ public class DashboardTests(MigratedApiFactory factory)
         var waiting = ledger.Purchase(300) with { Submit = true };
         await ledger.RecordAsync(waiting);
 
-        var before = await DashboardAsync(ledger.Client, ledger.ProjectId);
+        var before = await SummaryAsync(ledger.Client, ledger.ProjectId);
         Assert.Equal((1, 300m, 0m), (before.Waiting.ExpensesCount, before.Waiting.ExpensesAmount, before.Expenses));
 
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/approve", new ApproveEntriesRequest([waiting.Id]), Json)).EnsureSuccessStatusCode();
 
-        var after = await DashboardAsync(ledger.Client, ledger.ProjectId);
+        var after = await SummaryAsync(ledger.Client, ledger.ProjectId);
         Assert.Equal((0, 300m, -300m), (after.Waiting.ExpensesCount, after.Expenses, after.Surplus));
         var category = after.Categories.Single(row => row.Items.Any(item => item.Id == ledger.ItemId));
         Assert.Equal(300m, category.Total);
@@ -47,16 +47,16 @@ public class DashboardTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task TheDashboardCarriesTheReconciliationDifferenceOnceThereIsOne()
+    public async Task TheSummaryCarriesTheReconciliationDifferenceOnceThereIsOne()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        Assert.False((await DashboardAsync(ledger.Client, ledger.ProjectId)).WasReconciled);
+        Assert.False((await SummaryAsync(ledger.Client, ledger.ProjectId)).WasReconciled);
 
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 25)]), Json)).EnsureSuccessStatusCode();
 
-        var dashboard = await DashboardAsync(ledger.Client, ledger.ProjectId);
-        Assert.True(dashboard.WasReconciled);
-        Assert.Equal(25m, dashboard.ReconciliationDifference);
+        var summary = await SummaryAsync(ledger.Client, ledger.ProjectId);
+        Assert.True(summary.WasReconciled);
+        Assert.Equal(25m, summary.ReconciliationDifference);
     }
 
     [Theory]
@@ -74,7 +74,7 @@ public class DashboardTests(MigratedApiFactory factory)
         await ApprovedAsync(ledger, ledger.Purchase(200));
         var (reader, _) = await ledger.MemberAsync("Reader");
 
-        var seen = await DashboardAsync(reader, ledger.ProjectId);
+        var seen = await SummaryAsync(reader, ledger.ProjectId);
 
         Assert.Equal((0m, 200m), (seen.CompletionPercent, seen.Expenses));
         Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/completion", new { percent = 50 }, Json)).StatusCode);

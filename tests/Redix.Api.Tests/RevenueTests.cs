@@ -285,7 +285,7 @@ public class RevenueTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_06_TheDashboardGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue()
+    public async Task BR_06_TheSummaryGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
@@ -294,23 +294,23 @@ public class RevenueTests(MigratedApiFactory factory)
         await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, "")));
         var (reader, _) = await ledger.MemberAsync("Reader");
 
-        var dashboard = (await reader.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!;
+        var summary = (await reader.GetFromJsonAsync<SummaryView>($"/projects/{ledger.ProjectId}/summary", Json))!;
 
-        var capital = dashboard.RevenueCategories.Single(category => category.Items.Any(item => item.Type == ItemType.Capital));
-        Assert.Equal(("رأس المال", 500m, 570m), (capital.Name, capital.Total, dashboard.Revenue));
-        Assert.Equal(dashboard.Revenue, dashboard.RevenueCategories.Sum(category => category.Total));
+        var capital = summary.RevenueCategories.Single(category => category.Items.Any(item => item.Type == ItemType.Capital));
+        Assert.Equal(("رأس المال", 500m, 570m), (capital.Name, capital.Total, summary.Revenue));
+        Assert.Equal(summary.Revenue, summary.RevenueCategories.Sum(category => category.Total));
     }
 
     [Fact]
-    public async Task AC_46_7_TheDashboardKeepsRevenueCategoriesApartFromExpenseOnes()
+    public async Task AC_46_7_TheSummaryKeepsRevenueCategoriesApartFromExpenseOnes()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.VatRefund, 40, "")));
 
-        var dashboard = (await ledger.Client.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json))!;
+        var summary = (await ledger.Client.GetFromJsonAsync<SummaryView>($"/projects/{ledger.ProjectId}/summary", Json))!;
 
-        Assert.Equal(["رأس المال", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], dashboard.RevenueCategories.Select(category => category.Name));
-        Assert.Equal((0m, 40m), (dashboard.RevenueCategories[0].Total, dashboard.RevenueCategories[1].Total));
-        Assert.DoesNotContain(dashboard.Categories.SelectMany(category => category.Items), item => item.Type.IsRevenue());
+        Assert.Equal(["رأس المال", "استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], summary.RevenueCategories.Select(category => category.Name));
+        Assert.Equal((0m, 40m), (summary.RevenueCategories[0].Total, summary.RevenueCategories[1].Total));
+        Assert.DoesNotContain(summary.Categories.SelectMany(category => category.Items), item => item.Type.IsRevenue());
     }
 }

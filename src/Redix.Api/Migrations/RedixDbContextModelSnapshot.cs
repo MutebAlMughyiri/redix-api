@@ -3179,16 +3179,16 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("63780978-6ece-9380-8ede-8e57b671d82c"),
+                            Id = new Guid("f3e418a7-d1bf-4423-e4d8-7606a8d5f7aa"),
                             Language = "en",
-                            TranslationKeyId = new Guid("e4b6fd5b-c018-8a6f-cfb9-eb702bc257f8"),
+                            TranslationKeyId = new Guid("f63f2faf-8687-e64a-236f-2d46048c67b3"),
                             Value = "Settings"
                         },
                         new
                         {
-                            Id = new Guid("c0ed5273-1e9c-305e-3b72-8a5bfd47fe2e"),
+                            Id = new Guid("bf714f93-2a1f-629a-bb60-2edb51025389"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("e4b6fd5b-c018-8a6f-cfb9-eb702bc257f8"),
+                            TranslationKeyId = new Guid("f63f2faf-8687-e64a-236f-2d46048c67b3"),
                             Value = "الإعدادات"
                         },
                         new
@@ -5027,58 +5027,58 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("b08f3025-6404-a6ac-ff51-83cd50007fd5"),
+                            Id = new Guid("d186998a-5aed-fc1f-8646-8134f16da248"),
                             Language = "en",
-                            TranslationKeyId = new Guid("c75a69df-d529-56c2-3263-f4d0508ca209"),
+                            TranslationKeyId = new Guid("f146410b-eb35-20d5-bb4c-81a27a39e607"),
                             Value = "Default project"
                         },
                         new
                         {
-                            Id = new Guid("401e8689-1f2c-5e6c-fb9e-e4d60525e39d"),
+                            Id = new Guid("c532c4a2-d031-dba7-d453-865987152951"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("c75a69df-d529-56c2-3263-f4d0508ca209"),
+                            TranslationKeyId = new Guid("f146410b-eb35-20d5-bb4c-81a27a39e607"),
                             Value = "المشروع الافتراضي"
                         },
                         new
                         {
-                            Id = new Guid("d9f3ffef-aafb-df6b-916a-04d7458fa652"),
+                            Id = new Guid("9f6ec8dc-7a7e-bb74-7e2f-8c069958baf4"),
                             Language = "en",
-                            TranslationKeyId = new Guid("7f6e7447-8283-655a-3b1a-54520b2d1b2d"),
+                            TranslationKeyId = new Guid("0b30ab2b-fd33-4f8d-a55b-041f9f86feae"),
                             Value = "Tick the project that opens when you sign in. Untick it to see the list instead."
                         },
                         new
                         {
-                            Id = new Guid("c15f7bde-7cd3-96b1-e563-5b90f8b3fd04"),
+                            Id = new Guid("8290689e-2e70-b72f-eff1-761b0d2a9695"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("7f6e7447-8283-655a-3b1a-54520b2d1b2d"),
+                            TranslationKeyId = new Guid("0b30ab2b-fd33-4f8d-a55b-041f9f86feae"),
                             Value = "اختر المشروع الذي يُفتح عند الدخول، أو ألغِ اختياره لتظهر القائمة."
                         },
                         new
                         {
-                            Id = new Guid("29d8b4a3-086b-f8b1-3147-7ed493115514"),
+                            Id = new Guid("8f4a8d17-47f3-6822-41cc-b806013bb8ab"),
                             Language = "en",
-                            TranslationKeyId = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
+                            TranslationKeyId = new Guid("bbd52e0f-38bc-104b-91b5-cf5aa50801d0"),
                             Value = "Switch project"
                         },
                         new
                         {
-                            Id = new Guid("9a719b5e-fc79-3ab2-64af-caaaef29e274"),
+                            Id = new Guid("04fac440-5447-6f74-cb3e-beade2f428d5"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
+                            TranslationKeyId = new Guid("bbd52e0f-38bc-104b-91b5-cf5aa50801d0"),
                             Value = "تبديل المشروع"
                         },
                         new
                         {
-                            Id = new Guid("3f8a9725-8632-6380-41b4-f9dc04a66af1"),
+                            Id = new Guid("e98e96c5-7a16-1f35-ea6d-23225a6d6846"),
                             Language = "en",
-                            TranslationKeyId = new Guid("93237c57-3ce7-8e41-52fa-8620884cfc06"),
+                            TranslationKeyId = new Guid("a81cac79-7208-4f80-8bda-b8881cd8323b"),
                             Value = "Dark mode"
                         },
                         new
                         {
-                            Id = new Guid("972c19b6-535e-c396-c199-7edb1b8ddd33"),
+                            Id = new Guid("eb401c0d-0dee-c2f4-a2bf-e6b3b271ed14"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("93237c57-3ce7-8e41-52fa-8620884cfc06"),
+                            TranslationKeyId = new Guid("a81cac79-7208-4f80-8bda-b8881cd8323b"),
                             Value = "الوضع الداكن"
                         },
                         new
@@ -6889,142 +6889,142 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("24e44838-df9f-6c90-d847-6a16c9c5ea69"),
+                            Id = new Guid("d441dd0e-330b-feaf-153f-099d902bfa6c"),
                             Language = "en",
-                            TranslationKeyId = new Guid("559748fd-2331-110f-f452-2c94c8a2f260"),
+                            TranslationKeyId = new Guid("cc458256-b2d6-4007-2ddf-97a062a4d95d"),
                             Value = "Waiting for your approval: {0}"
                         },
                         new
                         {
-                            Id = new Guid("4fce2d73-d49b-33a0-6ff1-cc72e64c1a43"),
+                            Id = new Guid("d093b1e5-a8b6-e763-d9a4-c05c6508600d"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("559748fd-2331-110f-f452-2c94c8a2f260"),
+                            TranslationKeyId = new Guid("cc458256-b2d6-4007-2ddf-97a062a4d95d"),
                             Value = "بانتظار اعتمادك: {0}"
                         },
                         new
                         {
-                            Id = new Guid("0bbcbcb5-e7d8-1b5a-0eb1-42e984ad4aca"),
+                            Id = new Guid("10aaca51-635a-f28f-cacb-6cb7b7918bdd"),
                             Language = "en",
-                            TranslationKeyId = new Guid("342ff198-443d-dabe-16b0-4b1b96685fa0"),
+                            TranslationKeyId = new Guid("5284c9c9-e2eb-3439-6370-d3e769bf4a6d"),
                             Value = "Tap to review with the invoices"
                         },
                         new
                         {
-                            Id = new Guid("38ff3397-850c-11cc-2d9f-f965502ea687"),
+                            Id = new Guid("c0e46a69-e649-a9c3-b5fb-5a76924abebd"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("342ff198-443d-dabe-16b0-4b1b96685fa0"),
+                            TranslationKeyId = new Guid("5284c9c9-e2eb-3439-6370-d3e769bf4a6d"),
                             Value = "اضغط للمراجعة مع صور الفواتير"
                         },
                         new
                         {
-                            Id = new Guid("e5363956-8d6c-ad82-b964-582d9b662150"),
+                            Id = new Guid("301f3e9d-68bd-7ad1-ba03-9e08433295f9"),
                             Language = "en",
-                            TranslationKeyId = new Guid("a87245ac-fd89-63d5-b495-2f640cf53e70"),
+                            TranslationKeyId = new Guid("0f9f6d5c-956a-540c-cfdc-782f680e6b4e"),
                             Value = "Surplus (what the accounts should hold)"
                         },
                         new
                         {
-                            Id = new Guid("d008b5b0-7595-a29f-9cf9-19a214988e4d"),
+                            Id = new Guid("730f2470-b846-db63-6151-f0ce073b316c"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("a87245ac-fd89-63d5-b495-2f640cf53e70"),
+                            TranslationKeyId = new Guid("0f9f6d5c-956a-540c-cfdc-782f680e6b4e"),
                             Value = "الفائض (المبلغ المفروض بالحساب)"
                         },
                         new
                         {
-                            Id = new Guid("557adec9-b08c-04eb-fd9e-7f19cd6a79ab"),
+                            Id = new Guid("100b9879-686b-70c8-59a4-ee2ffd481c3d"),
                             Language = "en",
-                            TranslationKeyId = new Guid("af558e39-9fce-83ab-348e-22bf0ea37faa"),
+                            TranslationKeyId = new Guid("33309176-122e-b83f-89ad-7b666e92093f"),
                             Value = "Without sales"
                         },
                         new
                         {
-                            Id = new Guid("f003bc9f-146d-fc7a-68ea-d1673fc1ac33"),
+                            Id = new Guid("c047d356-3223-83cd-6643-144f0f6788df"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("af558e39-9fce-83ab-348e-22bf0ea37faa"),
+                            TranslationKeyId = new Guid("33309176-122e-b83f-89ad-7b666e92093f"),
                             Value = "بدون البيع"
                         },
                         new
                         {
-                            Id = new Guid("9374cee1-f7fb-03a2-2b0b-c3a69d22343b"),
+                            Id = new Guid("5ae095d9-2383-e5e9-6307-ddd0d545cba7"),
                             Language = "en",
-                            TranslationKeyId = new Guid("5d82c713-7243-60fc-fdc2-7434c99bab87"),
+                            TranslationKeyId = new Guid("b77d7114-1f38-c54d-15d1-1765cd1c57de"),
                             Value = "Revenue"
                         },
                         new
                         {
-                            Id = new Guid("b85220d6-eb1f-f65c-0549-2cc171cae932"),
+                            Id = new Guid("6083b683-5093-cb17-369d-1ff78c50d106"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("5d82c713-7243-60fc-fdc2-7434c99bab87"),
+                            TranslationKeyId = new Guid("b77d7114-1f38-c54d-15d1-1765cd1c57de"),
                             Value = "الإيرادات"
                         },
                         new
                         {
-                            Id = new Guid("e0eeb6f4-1e7d-6e35-6b3f-5d5d99d032af"),
+                            Id = new Guid("1e171aa3-57a0-9bb4-22fd-a9715f281476"),
                             Language = "en",
-                            TranslationKeyId = new Guid("21aca3f3-82e3-592b-81b3-6245694cad25"),
+                            TranslationKeyId = new Guid("85937fc3-912f-a21d-5e8b-465780da5c7d"),
                             Value = "Expenses"
                         },
                         new
                         {
-                            Id = new Guid("e2e72137-d344-f48e-440b-4fb203a802f4"),
+                            Id = new Guid("8f9cb151-d853-c355-7287-045a2fce25b3"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("21aca3f3-82e3-592b-81b3-6245694cad25"),
+                            TranslationKeyId = new Guid("85937fc3-912f-a21d-5e8b-465780da5c7d"),
                             Value = "المصروفات"
                         },
                         new
                         {
-                            Id = new Guid("9af8f4df-bbce-fe91-634a-d6a013604197"),
+                            Id = new Guid("ff92b910-f0e2-53b5-4f8e-04afde6cb610"),
                             Language = "en",
-                            TranslationKeyId = new Guid("112a86e8-66c9-4a81-3496-49ce2a5360f6"),
+                            TranslationKeyId = new Guid("ba32de37-bebe-08b9-be33-35e0aa46fedd"),
                             Value = "Reconciliation difference"
                         },
                         new
                         {
-                            Id = new Guid("0ac451ab-833e-5b48-b0bd-cd41b29ca1ae"),
+                            Id = new Guid("2f368baa-4303-b9e6-0b4b-952fbd670f75"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("112a86e8-66c9-4a81-3496-49ce2a5360f6"),
+                            TranslationKeyId = new Guid("ba32de37-bebe-08b9-be33-35e0aa46fedd"),
                             Value = "فرق المطابقة مع الأرصدة"
                         },
                         new
                         {
-                            Id = new Guid("a2254fbd-8540-9b79-3b14-427aba720006"),
+                            Id = new Guid("c63a9606-d26a-1d6c-2098-3506b39467a4"),
                             Language = "en",
-                            TranslationKeyId = new Guid("b26762bb-2b76-6156-fbed-21e028bd794f"),
+                            TranslationKeyId = new Guid("88cd465e-6d2e-c0e5-7eed-02679ff5107f"),
                             Value = "Expenses by category"
                         },
                         new
                         {
-                            Id = new Guid("ff2b6273-9c51-af34-be96-2627870ec1aa"),
+                            Id = new Guid("0a28ffc6-76ae-d470-bdb4-d42afadd268c"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("b26762bb-2b76-6156-fbed-21e028bd794f"),
+                            TranslationKeyId = new Guid("88cd465e-6d2e-c0e5-7eed-02679ff5107f"),
                             Value = "المصروفات حسب التصنيف"
                         },
                         new
                         {
-                            Id = new Guid("eee79376-22ae-89c0-6768-76832ea9ac97"),
+                            Id = new Guid("734da565-e045-324a-1b27-e6dded36c8ba"),
                             Language = "en",
-                            TranslationKeyId = new Guid("5ea0b9ae-225b-160f-9c05-8cce74b9149c"),
+                            TranslationKeyId = new Guid("212bb87c-af38-a4dc-f492-d4d9337e483f"),
                             Value = "Completion"
                         },
                         new
                         {
-                            Id = new Guid("d45fcf59-6198-13cc-1962-4df6c356b9dd"),
+                            Id = new Guid("ede1dd51-994b-e938-966e-25fb3bf3d09e"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("5ea0b9ae-225b-160f-9c05-8cce74b9149c"),
+                            TranslationKeyId = new Guid("212bb87c-af38-a4dc-f492-d4d9337e483f"),
                             Value = "نسبة الإنجاز"
                         },
                         new
                         {
-                            Id = new Guid("7d0c01e1-12f6-dbc2-6f85-63eef5198c33"),
+                            Id = new Guid("c9014313-f285-f4e0-fa68-eb7d04eab008"),
                             Language = "en",
-                            TranslationKeyId = new Guid("efe80ddb-d2ca-9c15-02ce-92b7761c57cf"),
+                            TranslationKeyId = new Guid("cb3e1b79-14ee-f733-c669-85ffa3099d90"),
                             Value = "Could not read the figures. Check the connection and try again."
                         },
                         new
                         {
-                            Id = new Guid("e0531341-4ac5-1ebc-36ce-317b4c39a8a6"),
+                            Id = new Guid("ea0ba365-45bc-a997-1790-4678e3a7ea68"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("efe80ddb-d2ca-9c15-02ce-92b7761c57cf"),
+                            TranslationKeyId = new Guid("cb3e1b79-14ee-f733-c669-85ffa3099d90"),
                             Value = "تعذرت قراءة الأرقام. تحقق من الاتصال وحاول مجدداً."
                         },
                         new
@@ -13827,9 +13827,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("e4b6fd5b-c018-8a6f-cfb9-eb702bc257f8"),
+                            Id = new Guid("f63f2faf-8687-e64a-236f-2d46048c67b3"),
                             Description = "",
-                            Key = "settings.title"
+                            Key = "generalSettings.title"
                         },
                         new
                         {
@@ -14619,27 +14619,27 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c75a69df-d529-56c2-3263-f4d0508ca209"),
+                            Id = new Guid("f146410b-eb35-20d5-bb4c-81a27a39e607"),
                             Description = "",
-                            Key = "settings.defaultProject"
+                            Key = "generalSettings.defaultProject"
                         },
                         new
                         {
-                            Id = new Guid("7f6e7447-8283-655a-3b1a-54520b2d1b2d"),
+                            Id = new Guid("0b30ab2b-fd33-4f8d-a55b-041f9f86feae"),
                             Description = "",
-                            Key = "settings.defaultProjectHint"
+                            Key = "generalSettings.defaultProjectHint"
                         },
                         new
                         {
-                            Id = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
+                            Id = new Guid("bbd52e0f-38bc-104b-91b5-cf5aa50801d0"),
                             Description = "",
-                            Key = "settings.switchProject"
+                            Key = "generalSettings.switchProject"
                         },
                         new
                         {
-                            Id = new Guid("93237c57-3ce7-8e41-52fa-8620884cfc06"),
+                            Id = new Guid("a81cac79-7208-4f80-8bda-b8881cd8323b"),
                             Description = "",
-                            Key = "settings.darkMode"
+                            Key = "generalSettings.darkMode"
                         },
                         new
                         {
@@ -15417,63 +15417,63 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("559748fd-2331-110f-f452-2c94c8a2f260"),
+                            Id = new Guid("cc458256-b2d6-4007-2ddf-97a062a4d95d"),
                             Description = "",
-                            Key = "dashboard.pending"
+                            Key = "summary.pending"
                         },
                         new
                         {
-                            Id = new Guid("342ff198-443d-dabe-16b0-4b1b96685fa0"),
+                            Id = new Guid("5284c9c9-e2eb-3439-6370-d3e769bf4a6d"),
                             Description = "",
-                            Key = "dashboard.pendingHint"
+                            Key = "summary.pendingHint"
                         },
                         new
                         {
-                            Id = new Guid("a87245ac-fd89-63d5-b495-2f640cf53e70"),
+                            Id = new Guid("0f9f6d5c-956a-540c-cfdc-782f680e6b4e"),
                             Description = "",
-                            Key = "dashboard.surplus"
+                            Key = "summary.surplus"
                         },
                         new
                         {
-                            Id = new Guid("af558e39-9fce-83ab-348e-22bf0ea37faa"),
+                            Id = new Guid("33309176-122e-b83f-89ad-7b666e92093f"),
                             Description = "",
-                            Key = "dashboard.surplusWithoutSales"
+                            Key = "summary.surplusWithoutSales"
                         },
                         new
                         {
-                            Id = new Guid("5d82c713-7243-60fc-fdc2-7434c99bab87"),
+                            Id = new Guid("b77d7114-1f38-c54d-15d1-1765cd1c57de"),
                             Description = "",
-                            Key = "dashboard.revenue"
+                            Key = "summary.revenue"
                         },
                         new
                         {
-                            Id = new Guid("21aca3f3-82e3-592b-81b3-6245694cad25"),
+                            Id = new Guid("85937fc3-912f-a21d-5e8b-465780da5c7d"),
                             Description = "",
-                            Key = "dashboard.expenses"
+                            Key = "summary.expenses"
                         },
                         new
                         {
-                            Id = new Guid("112a86e8-66c9-4a81-3496-49ce2a5360f6"),
+                            Id = new Guid("ba32de37-bebe-08b9-be33-35e0aa46fedd"),
                             Description = "",
-                            Key = "dashboard.difference"
+                            Key = "summary.difference"
                         },
                         new
                         {
-                            Id = new Guid("b26762bb-2b76-6156-fbed-21e028bd794f"),
+                            Id = new Guid("88cd465e-6d2e-c0e5-7eed-02679ff5107f"),
                             Description = "",
-                            Key = "dashboard.byCategory"
+                            Key = "summary.byCategory"
                         },
                         new
                         {
-                            Id = new Guid("5ea0b9ae-225b-160f-9c05-8cce74b9149c"),
+                            Id = new Guid("212bb87c-af38-a4dc-f492-d4d9337e483f"),
                             Description = "",
-                            Key = "dashboard.completion"
+                            Key = "summary.completion"
                         },
                         new
                         {
-                            Id = new Guid("efe80ddb-d2ca-9c15-02ce-92b7761c57cf"),
+                            Id = new Guid("cb3e1b79-14ee-f733-c669-85ffa3099d90"),
                             Description = "",
-                            Key = "dashboard.loadFailed"
+                            Key = "summary.loadFailed"
                         },
                         new
                         {

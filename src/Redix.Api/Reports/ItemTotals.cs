@@ -6,7 +6,7 @@ namespace Redix.Api.Reports;
 
 /// <summary>
 /// What each item of a project came to: an expense item's approved purchases and contractor payments, by what was paid (BR-02), a revenue item's approved revenue, a capital item what its
-/// partners put in less what they took out (BR-05). The one owner of item totals, so the dashboard, the item report and the periodic report agree.
+/// partners put in less what they took out (BR-05). The one owner of item totals, so the summary, the item report and the periodic report agree.
 /// </summary>
 public static class ItemTotals
 {

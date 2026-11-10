@@ -106,11 +106,11 @@ public static class PeriodicReportsEndpoints
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
         var figures = await ProjectFigures.OfAsync(projectId, db);
         var capital = await CapitalEndpoints.ViewOfAsync(projectId, Guid.Empty, true, db);
-        var dashboard = await DashboardEndpoints.OfAsync(projectId, db);
+        var summary = await SummaryEndpoints.OfAsync(projectId, db);
         var reconciliation = await ReconciliationsEndpoints.Latest(projectId, db);
         var partners = await db.Partners.Where(partner => partner.ProjectId == projectId).ToDictionaryAsync(partner => partner.Id);
         var partnerViews = capital.Partners.Select(line => new ReportPartnerView(line.Name, partners[line.Id].UserId, line.Balance, line.SharePercent)).ToList();
-        var itemIds = dashboard.Categories.Concat(dashboard.RevenueCategories).SelectMany(category => category.Items).Where(item => item.Total != 0).Select(item => item.Id).ToList();
+        var itemIds = summary.Categories.Concat(summary.RevenueCategories).SelectMany(category => category.Items).Where(item => item.Total != 0).Select(item => item.Id).ToList();
         var items = await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).Where(row => itemIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id);
         var itemReports = new List<ItemReportView>();
         foreach (var id in itemIds)
@@ -120,8 +120,8 @@ public static class PeriodicReportsEndpoints
         var accounts = reconciliation.Balances.Select(row => new ReportAccountView(row.AccountName, row.Type, row.ActualBalance)).ToList();
         return new PeriodicReportSnapshot(
             project.Name, number, at, previous.ExpensesTotal, figures.Expenses, figures.Capital, figures.VatRefunds, figures.Sales, figures.OtherRevenue, figures.Surplus, figures.SurplusWithoutSales,
-            dashboard.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, dashboard.Waiting.ExpensesCount, dashboard.Waiting.ExpensesAmount, capital.Total, partnerViews, itemReports,
-            dashboard.RevenueCategories, dashboard.Waiting.RevenueCount, dashboard.Waiting.RevenueAmount);
+            summary.Categories, accounts, reconciliation.ActualTotal, reconciliation.Difference, summary.Waiting.ExpensesCount, summary.Waiting.ExpensesAmount, capital.Total, partnerViews, itemReports,
+            summary.RevenueCategories, summary.Waiting.RevenueCount, summary.Waiting.RevenueAmount);
     }
 }
 

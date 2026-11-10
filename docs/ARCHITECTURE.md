@@ -26,7 +26,7 @@ src/Redix.Api/
   Attachments/          a project's files: the record of each, the folder they live in, and who may read them
   Documents/            a project's documents (UC-064): any file under a name, in optional groups
   Notifications/        who was told what happened to an entry or a project (UC-036)
-  Reports/              the dashboard, the item and contracts reports, the numbered periodic report, what waits, and their PDFs and workbooks
+  Reports/              the summary, the item and contracts reports, the numbered periodic report, what waits, and their PDFs and workbooks
   Sync/                 what a phone keeps so it can work without a network (UC-030)
   Refusal.cs            the answer to a refused request: problem details with a code
   Ids.cs                how an id that may be absent travels: as text, empty when none

@@ -114,7 +114,7 @@ app.MapNotifications();
 app.MapInvoiceAttach();
 app.MapReconciliations();
 app.MapCapital();
-app.MapDashboard();
+app.MapSummary();
 app.MapItemReport();
 app.MapDocuments();
 app.MapPeriodicReports();

@@ -60,7 +60,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task Row_147_WhatWaitsIsExpensesAndRevenueWithPartnersMoneyApartAndTheDashboardTheNextAndTheIssuedReportAgree()
+    public async Task Row_147_WhatWaitsIsExpensesAndRevenueWithPartnersMoneyApartAndTheSummaryTheNextAndTheIssuedReportAgree()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
@@ -70,13 +70,13 @@ public class ReportFilesTests(MigratedApiFactory factory)
         (await ledger.PostAsync(await ledger.PartnerEntryAsync(partner, 100, isWithdrawal: true))).EnsureSuccessStatusCode();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.RevenueAsync(ItemType.OtherRevenue, 70, ""), Json)).EnsureSuccessStatusCode();
 
-        var dashboard = await ledger.Client.GetFromJsonAsync<DashboardView>($"/projects/{ledger.ProjectId}/dashboard", Json);
+        var summary = await ledger.Client.GetFromJsonAsync<SummaryView>($"/projects/{ledger.ProjectId}/summary", Json);
         var next = await ledger.Client.GetFromJsonAsync<NextReportView>($"/projects/{ledger.ProjectId}/periodic-reports/next", Json);
         await IssueAsync(ledger);
         var report = await ReadAsync(ledger.Client, ledger.ProjectId, 1);
 
         var expected = new WaitingFigures(1, 5m, 3, 270m);
-        Assert.Equal(expected, dashboard!.Waiting);
+        Assert.Equal(expected, summary!.Waiting);
         Assert.Equal(expected, next!.Waiting);
         Assert.Equal((1, 5m, 3, 270m), (report.PendingCount, report.PendingAmount, report.PendingRevenueCount, report.PendingRevenueAmount));
         Assert.Equal((1000m, 0m, 1000m), (report.Revenue, report.Expenses, report.Surplus));

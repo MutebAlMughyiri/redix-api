@@ -5,7 +5,7 @@ namespace Redix.Api.Reports;
 
 /// <summary>
 /// What waits for approval, as two figures (findings row 147, Muteb 8 Nov 2026): expenses, which lower the surplus once approved, and revenue with partners' money, which raises it. The one
-/// owner of "what waits" for the dashboard and the periodic report.
+/// owner of "what waits" for the summary and the periodic report.
 /// </summary>
 /// <param name="ExpensesCount">How many purchases and contractor payments wait.</param>
 /// <param name="ExpensesAmount">What they come to.</param>

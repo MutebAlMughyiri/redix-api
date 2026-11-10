@@ -325,7 +325,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<Entry>(entry =>
         {
             entry.Property(e => e.Notes).HasMaxLength(global::Redix.Api.Entries.Entry.NotesMaxLength);
-            // Measured on RedixReal, 8 Nov 2026: the dashboard, the figures and what waits all filter by project and status and sum amounts by kind and account (redix-api #87).
+            // Measured on RedixReal, 8 Nov 2026: the summary, the figures and what waits all filter by project and status and sum amounts by kind and account (redix-api #87).
             entry.HasIndex(e => new { e.ProjectId, e.Status }).IncludeProperties(e => new { e.Kind, e.Amount, e.AccountId });
             entry.HasOne<Project>().WithMany().HasForeignKey(e => e.ProjectId).OnDelete(DeleteBehavior.Restrict);
             entry.HasOne<Account>().WithMany().HasForeignKey(e => e.AccountId).OnDelete(DeleteBehavior.Restrict);
