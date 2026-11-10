@@ -9080,17 +9080,45 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("baf1facc-15a9-ec26-6ec0-142223e611f5"),
+                            Id = new Guid("1eea6e9f-ed9f-533d-7926-0c9f1598add0"),
                             Language = "en",
-                            TranslationKeyId = new Guid("31201cdc-11c9-15b7-8319-28b1f71a6c67"),
-                            Value = "Waiting for the network"
+                            TranslationKeyId = new Guid("1aab11c1-eab5-db18-53fa-2364c62c7a33"),
+                            Value = "These entries are sent by themselves once the network is back."
                         },
                         new
                         {
-                            Id = new Guid("dd28f535-f3d8-84ba-a0b5-0a8440423208"),
+                            Id = new Guid("09afb887-8981-690b-b38b-fb47566b827e"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("31201cdc-11c9-15b7-8319-28b1f71a6c67"),
-                            Value = "بانتظار الشبكة"
+                            TranslationKeyId = new Guid("1aab11c1-eab5-db18-53fa-2364c62c7a33"),
+                            Value = "تُرسل هذه القيود وحدها حين تعود الشبكة."
+                        },
+                        new
+                        {
+                            Id = new Guid("bfffb476-e097-b544-4e6b-cbe22bbfd7d4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7a0595cc-1f5f-dc55-9a0f-c83aa3c37510"),
+                            Value = "Send now"
+                        },
+                        new
+                        {
+                            Id = new Guid("0cb93e87-3cc1-4e86-065e-c620093a7cb2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7a0595cc-1f5f-dc55-9a0f-c83aa3c37510"),
+                            Value = "إرسال الآن"
+                        },
+                        new
+                        {
+                            Id = new Guid("4e4da4bd-b738-b38d-65d4-a8485cb49214"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("688f8817-21bc-4d73-fdf1-d7b7b77975dc"),
+                            Value = "With a bill"
+                        },
+                        new
+                        {
+                            Id = new Guid("01f958b8-b855-db32-d142-c5383d9e71c8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("688f8817-21bc-4d73-fdf1-d7b7b77975dc"),
+                            Value = "مع فاتورة"
                         },
                         new
                         {
@@ -16656,9 +16684,21 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("31201cdc-11c9-15b7-8319-28b1f71a6c67"),
+                            Id = new Guid("1aab11c1-eab5-db18-53fa-2364c62c7a33"),
                             Description = "",
-                            Key = "offline.waiting"
+                            Key = "offline.autoSend"
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0595cc-1f5f-dc55-9a0f-c83aa3c37510"),
+                            Description = "",
+                            Key = "offline.sendNow"
+                        },
+                        new
+                        {
+                            Id = new Guid("688f8817-21bc-4d73-fdf1-d7b7b77975dc"),
+                            Description = "",
+                            Key = "offline.withFile"
                         },
                         new
                         {
