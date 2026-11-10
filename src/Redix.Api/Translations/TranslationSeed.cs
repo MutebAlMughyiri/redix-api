@@ -714,6 +714,7 @@ public static class TranslationSeed
         ("entries.entryNotSubmittable", "This entry was already sent.", "هذا القيد مُرسل مسبقاً."),
         ("entries.entryIncomplete", "Fill what this entry still lacks before sending.", "أكمل ما ينقص هذا القيد قبل الإرسال."),
         ("contracts.pending", "Waiting for approval", "بانتظار الاعتماد"),
+        ("contracts.afterApproval", "after approval", "بعد الاعتماد"),
         ("contractorPayments.remainingAfter", "Remaining after this payment", "المتبقي بعد الدفعة"),
         ("contractorPayments.overrun", "This payment goes beyond the contract's value. You can still save it.", "هذه الدفعة تتجاوز قيمة العقد. يمكنك الحفظ رغم ذلك."),
         ("contractorPayments.savedOverrun", "Saved, with the contract overrun.", "حُفظت، والعقد متجاوَز."),

@@ -12612,6 +12612,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("325f1b4c-18a8-84bc-db9d-e816d18f4534"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3e235119-ab31-5245-6304-aefa87cb07f1"),
+                            Value = "after approval"
+                        },
+                        new
+                        {
+                            Id = new Guid("5ceaf5e5-6bd3-8f12-1ae3-553a30d1c1e2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3e235119-ab31-5245-6304-aefa87cb07f1"),
+                            Value = "بعد الاعتماد"
+                        },
+                        new
+                        {
                             Id = new Guid("46fca222-75ab-9a64-f590-5d22e9323f40"),
                             Language = "en",
                             TranslationKeyId = new Guid("bd6c01ee-b87b-def0-a719-6f05a583e17d"),
@@ -17133,6 +17147,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("59926246-1594-60fb-c542-7c8b332640fd"),
                             Description = "",
                             Key = "contracts.pending"
+                        },
+                        new
+                        {
+                            Id = new Guid("3e235119-ab31-5245-6304-aefa87cb07f1"),
+                            Description = "",
+                            Key = "contracts.afterApproval"
                         },
                         new
                         {
