@@ -360,6 +360,7 @@ public class PartnersTests(MigratedApiFactory factory)
         {
             await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف"), Json),
             await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب") { UserId = member.Id }, Json),
+            await memberClient.PostAsync($"/projects/{project.Id}/partners/{partner.Id}/delete", null),
         })
         {
             Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
@@ -403,6 +404,7 @@ public class PartnersTests(MigratedApiFactory factory)
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف"), Json),
             await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json),
+            await client.PostAsync($"/projects/{project.Id}/partners/{partner.Id}/delete", null),
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);

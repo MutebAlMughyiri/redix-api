@@ -278,7 +278,7 @@ public static class CategoriesEndpoints
         var counts = purchases.Concat(payments).Concat(movements).ToDictionary();
         var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
         var sight = await Partners.PartnerSight.OfAsync(principal, projectId, db);
-        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), (await db.Partners.Where(partner => partner.ItemId == itemId).ToListAsync()).Where(sight.Sees), db);
+        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), (await db.Partners.Where(Partners.Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync()).Where(sight.Sees), db);
         return Results.Ok(TablesOf(item, subgroups, own).Select(table => new ItemTableView(table.Id, table.Kind, table.Name, counts.GetValueOrDefault(table.Id))).ToList());
     }
 
@@ -331,7 +331,7 @@ public static class CategoriesEndpoints
         [
             .. item.HasSubgroupTables ? await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync() : [],
             .. await db.Contracts.Where(contract => contract.ItemId == itemId).ToListAsync(),
-            .. await db.Partners.Where(partner => partner.ItemId == itemId).ToListAsync(),
+            .. await db.Partners.Where(Partners.Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync(),
         ];
         return await ReorderAsync(tables, request, db);
     }

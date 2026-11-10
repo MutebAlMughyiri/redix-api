@@ -16,9 +16,10 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `GET /projects/{projectId}/partners` | `ReadProject` | `200` in their tables' order, as `{ id, name, userId, userName }`: everyone with `SeeAllCapital`, the chosen ones with `SeeChosenCapital`, otherwise none. `userId` and `userName` are empty for a partner with no login |
+| `GET /projects/{projectId}/partners` | `ReadProject` | `200` in their tables' order, as `{ id, name, userId, userName, mayDelete }`, deleted partners left out: everyone with `SeeAllCapital`, the chosen ones with `SeeChosenCapital`, otherwise none. `userId` and `userName` are empty for a partner with no login |
 | `POST /projects/{projectId}/partners` with `{ name, userId }` | `ManageSettings` | `200`, a table of the project's one capital item; `400` `invalidName`, `itemNotOffered` (that item is disabled or no longer of capital), `unknownUser` or `userTaken` |
-| `POST /projects/{projectId}/partners/{id}` with `{ name, userId }` | `ManageSettings` | The same, but for the item; `404` |
+| `POST /projects/{projectId}/partners/{id}` with `{ name, userId }` | `ManageSettings` | The same, but for the item; `404`, also for a deleted partner |
+| `POST /projects/{projectId}/partners/{id}/delete` | `ManageSettings` | `200` deletes softly (redix-api #100); `404`, also once deleted; `409` `partnerNotDeletable` unless their capital is 0 and nothing unapproved names them |
 
 **A partner is a table (redix-api #109).** Each partner is a table of a capital item of the structure, رأس المال, as a contract is a table of its item: Add entry lists رأس المال with its partners under it, its report and its sheet are a table per partner, and its percentages give each one's share (BR-05). The list answers each partner's `itemId` and `itemName` too, in their tables' order.
 
@@ -28,7 +29,7 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 
 | Table | Holds |
 | --- | --- |
-| `Partners` | Each project's partners, and the login of each |
+| `Partners` | Each project's partners, the login of each, and `IsDeleted` once deleted softly (redix-api #100) |
 
 ## Rules and where they live
 
@@ -47,6 +48,7 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 | Whoever holds `SeeAllCapital` sees every partner (BR-31) | `PartnersEndpoints.List` | `PartnersTests.WhoeverHoldsSeeAllCapitalSeesEveryPartner` |
 | redix-api #109: partners may be declared by name when a project is created or registered (`partners` in `POST /projects` and `POST /projects/register`), an unacceptable name answering `invalidName`; once the project is approved they become tables of its first capital item, رأس المال, in the order typed | `PartnersEndpoints.DeclaredWith`, `ProjectStructure.ApproveAsync` | `PartnersTests.UC_109_PartnersDeclaredWithANewProjectBecomeTablesOfItsRasAlMalInTheirOrderOnceApproved` |
 | redix-api #109: a partner is a table of the capital item, last among its tables, and the tables are put in order like any item's | `PartnersEndpoints.Add`, `ProjectStructure.NextTablePlaceAsync`, `CategoriesEndpoints.ReorderTables` | `CategoriesTests.UC_109_APartnerIsATableOfTheCapitalItemLastAmongItsTables` |
+| redix-api #100: a partner at zero capital that nothing unapproved names is deleted softly: they leave Partners, Add entry, the item's tables and the capital lines, their movements stay in the entries, reports and History, and their account is free; one with capital or something waiting is not, and the list says which | `PartnersEndpoints.Delete`, `DeletableAsync`, `Partner.Kept` | `PartnerDeleteTests.UC_100_APartnerAtZeroCapitalIsDeletedSoftlyLeavingTheListsWhileTheirMovementsAndHistoryStayAndTheirAccountIsFree`, `UC_100_APartnerWithCapitalOrAMovementWaitingIsNotDeletedAndOneNeverUsedIs`, `UC_100_ADeletedPartnerCannotBeChosenForSomeone` |
 | Only Finance changes partners | `Permission.ManageSettings` | `PartnersTests.OnlyFinanceChangesPartners` |
 | One project's partners are never another's (BR-33) | `Partner.ProjectId`, `PartnersEndpoints` | `PartnersTests.OneProjectsPartnersAreNeverAnothers` |
 | A project copied from an earlier one starts with no partners (AC-05.2) | `ProjectStructure.ApproveAsync` copies only structure | `PartnersTests.ACopiedProjectStartsWithNoPartners` |
@@ -56,6 +58,6 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 
 | What | Use case |
 | --- | --- |
-| Capital movements, and a withdrawn partner's zero balance and `IsActive = false` (FR-25) | The capital movement use cases |
+| Capital movements, and a withdrawn partner's zero balance (FR-25); `IsActive` was removed by findings row 148 | The capital movement use cases |
 | Each partner's capital and share, and someone seeing only their own (BR-05, BR-31) | UC-044 "Compute partner shares" |
 | A partner's pocket account | Retired by redix-api #99: adding a partner makes no account |

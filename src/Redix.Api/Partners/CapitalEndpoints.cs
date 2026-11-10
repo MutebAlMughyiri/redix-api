@@ -33,7 +33,7 @@ public static class CapitalEndpoints
     {
         var balances = await BalancesAsync(projectId, db);
         var total = balances.Values.Sum();
-        var partners = (await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees);
+        var partners = (await db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees);
         var lines = partners.OrderByDescending(partner => balances.GetValueOrDefault(partner.Id)).ThenBy(partner => partner.Id).Select(partner =>
         {
             var balance = balances.GetValueOrDefault(partner.Id);
@@ -73,7 +73,8 @@ public static class CapitalEndpoints
         return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
-    private static async Task<Dictionary<Guid, decimal>> BalancesAsync(Guid projectId, RedixDbContext db)
+    /// <summary>Each partner's capital in the project, from its approved movements: the one owner of a partner's balance (BR-05), which deleting a partner asks too (redix-api #100).</summary>
+    public static async Task<Dictionary<Guid, decimal>> BalancesAsync(Guid projectId, RedixDbContext db)
     {
         var rows = await (
             from details in db.CapitalMovementDetails

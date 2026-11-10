@@ -272,7 +272,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<Partner>(partner =>
         {
             partner.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
-            partner.HasIndex(p => new { p.ProjectId, p.UserId }).IsUnique().HasFilter($"[UserId] <> '{Guid.Empty}'");
+            partner.HasIndex(p => new { p.ProjectId, p.UserId }).IsUnique().HasFilter($"[UserId] <> '{Guid.Empty}' AND [IsDeleted] = 0");
             partner.HasOne<Project>().WithMany().HasForeignKey(p => p.ProjectId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ChosenPartner>(chosen =>

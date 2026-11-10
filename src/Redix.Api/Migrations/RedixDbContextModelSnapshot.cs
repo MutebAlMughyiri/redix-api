@@ -973,6 +973,9 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1000,7 +1003,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId", "UserId")
                         .IsUnique()
-                        .HasFilter("[UserId] <> '00000000-0000-0000-0000-000000000000'");
+                        .HasFilter("[UserId] <> '00000000-0000-0000-0000-000000000000' AND [IsDeleted] = 0");
 
                     b.ToTable("Partners");
                 });
@@ -11569,6 +11572,76 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("8e45b5bb-7f01-5d36-875a-1d3ab5deef47"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("08357229-1958-81f5-3bac-8309b59996a4"),
+                            Value = "Delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("879ba48c-03e4-2bb8-59a5-1c18d126ce1b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("08357229-1958-81f5-3bac-8309b59996a4"),
+                            Value = "حذف"
+                        },
+                        new
+                        {
+                            Id = new Guid("9057b474-7571-8890-57a4-5013e0327e68"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("864fa9d1-6598-ddae-41ff-c8c448ff16eb"),
+                            Value = "Delete the partner?"
+                        },
+                        new
+                        {
+                            Id = new Guid("46f448aa-8ba6-ee59-f620-17e6b19a2ed0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("864fa9d1-6598-ddae-41ff-c8c448ff16eb"),
+                            Value = "حذف الشريك؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("f845e027-dfd4-22b0-b7c6-d43587f7d7e4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a123bfd7-b572-5e1e-b32a-7bff2dc87be8"),
+                            Value = "They leave Partners and Add entry; their movements stay in the books and reports."
+                        },
+                        new
+                        {
+                            Id = new Guid("05eb65ed-3eb2-9dc3-0625-17d9e0491794"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a123bfd7-b572-5e1e-b32a-7bff2dc87be8"),
+                            Value = "يختفي من الشركاء ومن إضافة قيد، وتبقى حركاته في السجلات والتقارير."
+                        },
+                        new
+                        {
+                            Id = new Guid("90edf415-ebb0-6eb2-34c0-da83a9a2427f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4989a434-0337-c6d1-2409-7fdbbf9376ff"),
+                            Value = "Partner deleted."
+                        },
+                        new
+                        {
+                            Id = new Guid("53792625-fd5b-2d21-30ef-290f67988a2a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4989a434-0337-c6d1-2409-7fdbbf9376ff"),
+                            Value = "تم حذف الشريك."
+                        },
+                        new
+                        {
+                            Id = new Guid("797a2634-a804-c5e8-d043-001d135ddebf"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a7863f42-dee1-5ffc-ca2c-d1704003e515"),
+                            Value = "A partner is deleted only at zero capital with nothing waiting."
+                        },
+                        new
+                        {
+                            Id = new Guid("fa6b554a-91eb-31c5-6c93-9d6f1b9d273c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a7863f42-dee1-5ffc-ca2c-d1704003e515"),
+                            Value = "لا يُحذف الشريك إلا ورأس ماله صفر ولا ينتظر له قيد."
+                        },
+                        new
+                        {
                             Id = new Guid("e38ba2fd-e815-7c4b-134e-9702bece859b"),
                             Language = "en",
                             TranslationKeyId = new Guid("79c8bd2c-4f2f-eff3-df8c-826c8386cfd1"),
@@ -17522,6 +17595,36 @@ namespace Redix.Api.Migrations
                             Id = new Guid("21575f31-6470-40a7-1f01-5c5e4b271c8f"),
                             Description = "",
                             Key = "partners.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("08357229-1958-81f5-3bac-8309b59996a4"),
+                            Description = "",
+                            Key = "partners.delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("864fa9d1-6598-ddae-41ff-c8c448ff16eb"),
+                            Description = "",
+                            Key = "partners.deleteQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("a123bfd7-b572-5e1e-b32a-7bff2dc87be8"),
+                            Description = "",
+                            Key = "partners.deleteKeepsMovements"
+                        },
+                        new
+                        {
+                            Id = new Guid("4989a434-0337-c6d1-2409-7fdbbf9376ff"),
+                            Description = "",
+                            Key = "partners.deleted"
+                        },
+                        new
+                        {
+                            Id = new Guid("a7863f42-dee1-5ffc-ca2c-d1704003e515"),
+                            Description = "",
+                            Key = "partners.partnerNotDeletable"
                         },
                         new
                         {

@@ -2,12 +2,17 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Auth;
+using Redix.Api.Entries;
+using Redix.Api.History;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Partners;
 
-/// <summary>A project's partners (UC-016). There is no delete yet: a partner who withdrew stays, with a zero balance and their history. Who sees each is ticked on people's permissions (redix-api #106).</summary>
+/// <summary>
+/// A project's partners (UC-016): added, read, renamed, and deleted softly at zero capital (redix-api #100), their movements staying in the books. Who sees each is ticked on people's
+/// permissions (redix-api #106).
+/// </summary>
 public static class PartnersEndpoints
 {
     /// <summary>Maps the route that reads a project's partners, for anyone who reads the project, and those that change them, for whoever holds <see cref="Permission.ManageSettings"/>.</summary>
@@ -18,20 +23,61 @@ public static class PartnersEndpoints
         var changes = app.MapProjectChanges(Permission.ManageSettings);
         changes.MapPost("/partners", Add);
         changes.MapPost("/partners/{partnerId:guid}", Edit);
+        changes.MapPost("/partners/{partnerId:guid}/delete", Delete);
     }
 
-    /// <summary>The project's partners the caller sees (BR-31, <see cref="PartnerSight"/>), in their tables' order, each with the name of their own login.</summary>
+    /// <summary>
+    /// The project's partners the caller sees (BR-31, <see cref="PartnerSight"/>), in their tables' order, each with the name of their own login and whether it may be deleted now; a deleted
+    /// partner is not among them (redix-api #100).
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
     public static async Task<List<PartnerView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var sight = await PartnerSight.OfAsync(principal, projectId, db);
-        var partners = (await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees).ToList();
+        var partners = (await db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees).ToList();
         var userIds = partners.Select(partner => partner.UserId).ToList();
         var names = await db.Users.Where(user => userIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
+        var deletable = await DeletableAsync(projectId, db);
         return partners.OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id)
-            .Select(partner => new PartnerView(partner.Id, partner.Name, Ids.Text(partner.UserId), names.GetValueOrDefault(partner.UserId, ""))).ToList();
+            .Select(partner => new PartnerView(partner.Id, partner.Name, Ids.Text(partner.UserId), names.GetValueOrDefault(partner.UserId, ""), deletable.Contains(partner.Id))).ToList();
+    }
+
+    /// <summary>
+    /// Deletes a partner softly (redix-api #100): they leave Partners, Add entry, the item's tables and the capital lines, and their movements stay in the entries, the reports and the History
+    /// table, which keeps the delete too. Only at zero capital with nothing waiting, drafted or rejected naming them, otherwise <c>partnerNotDeletable</c>; one deleted already is not found.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="partnerId">The partner.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database they live in.</param>
+    /// <param name="time">The current time, for the history row.</param>
+    public static async Task<IResult> Delete(Guid projectId, Guid partnerId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var partner = await db.Partners.Where(Partner.Kept).SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
+        if (partner is null)
+        {
+            return Results.NotFound();
+        }
+        if (!(await DeletableAsync(projectId, db)).Contains(partnerId))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "PartnerNotDeletable");
+        }
+        partner.IsDeleted = true;
+        db.AddHistory(partner, HistoryAction.Delete, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
+
+    /// <summary>The project's partners at zero capital that nothing unapproved names: the one answer of whether a partner may be deleted, which the list shows and the delete checks.</summary>
+    private static async Task<HashSet<Guid>> DeletableAsync(Guid projectId, RedixDbContext db)
+    {
+        var balances = await CapitalEndpoints.BalancesAsync(projectId, db);
+        var named = await db.CapitalMovementDetails.Where(details => db.Entries.Any(entry => entry.Id == details.EntryId && entry.ProjectId == projectId && entry.Status != EntryStatus.Approved))
+            .Select(details => details.PartnerId).Distinct().ToListAsync();
+        var partners = await db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).Select(partner => partner.Id).ToListAsync();
+        return [.. partners.Where(id => balances.GetValueOrDefault(id) == 0 && !named.Contains(id))];
     }
 
     /// <summary>
@@ -68,7 +114,7 @@ public static class PartnersEndpoints
     public static Task<IResult> Edit(Guid projectId, Guid partnerId, PartnerRequest request, RedixDbContext db) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            var partner = await db.Partners.SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
+            var partner = await db.Partners.Where(Partner.Kept).SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
             if (partner is null)
             {
                 return Results.NotFound();
@@ -108,7 +154,7 @@ public static class PartnersEndpoints
             return "UnknownUser";
         }
         var partnerId = partner.Id;
-        return await db.Partners.AnyAsync(other => other.ProjectId == projectId && other.UserId == userId && other.Id != partnerId) ? "UserTaken" : "";
+        return await db.Partners.Where(Partner.Kept).AnyAsync(other => other.ProjectId == projectId && other.UserId == userId && other.Id != partnerId) ? "UserTaken" : "";
     }
 }
 
@@ -125,4 +171,5 @@ public record PartnerRequest(string Name)
 /// <param name="Name">The partner's name.</param>
 /// <param name="UserId">Their own login; empty for a partner with no login.</param>
 /// <param name="UserName">That login's name; empty for a partner with no login.</param>
-public record PartnerView(Guid Id, string Name, string UserId, string UserName);
+/// <param name="MayDelete">True at zero capital with nothing unapproved naming them, when Delete is offered (redix-api #100).</param>
+public record PartnerView(Guid Id, string Name, string UserId, string UserName, bool MayDelete);

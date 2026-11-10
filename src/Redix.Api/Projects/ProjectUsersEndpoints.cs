@@ -70,7 +70,7 @@ public static class ProjectUsersEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPermission");
         }
         var partnerIds = request.Permissions.Contains(Permission.SeeChosenCapital) ? request.PartnerIds.Distinct().ToList() : [];
-        if (await db.Partners.CountAsync(partner => partner.ProjectId == projectId && partnerIds.Contains(partner.Id)) != partnerIds.Count)
+        if (await db.Partners.Where(Partner.Kept).CountAsync(partner => partner.ProjectId == projectId && partnerIds.Contains(partner.Id)) != partnerIds.Count)
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownPartner");
         }
@@ -229,7 +229,7 @@ public static class ProjectUsersEndpoints
     public static async Task<IResult> Choose(Guid projectId, Guid userId, Guid partnerId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
-        if (user == User.None || !await db.Partners.AnyAsync(partner => partner.Id == partnerId && partner.ProjectId == projectId))
+        if (user == User.None || !await db.Partners.Where(Partner.Kept).AnyAsync(partner => partner.Id == partnerId && partner.ProjectId == projectId))
         {
             return Results.NotFound();
         }

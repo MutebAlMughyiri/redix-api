@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Partners;
@@ -31,4 +32,10 @@ public class Partner : IOrdered
 
     /// <summary>Their table's place among the item's tables (AC-46.8).</summary>
     public int SortOrder { get; set; }
+
+    /// <summary>True once deleted, softly (redix-api #100): the partner leaves every place a new movement starts, and their movements stay in the books.</summary>
+    public bool IsDeleted { get; set; }
+
+    /// <summary>The partners still in their project: the one owner of leaving a deleted partner out (redix-api #100).</summary>
+    public static Expression<Func<Partner, bool>> Kept { get; } = partner => !partner.IsDeleted;
 }
