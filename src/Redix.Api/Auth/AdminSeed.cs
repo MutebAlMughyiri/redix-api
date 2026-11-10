@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Redix.Api.Auth;
 
 /// <summary>
-/// Creates the first user, the admin (BR-29), when the database has no user, from the <c>Admin</c> configuration section (the
-/// <c>REDIX_Admin__Username</c> and <c>REDIX_Admin__Password</c> environment variables), with a password that must be changed at first sign-in.
+/// Creates the first user, the admin (BR-29), when the database has no user, from the <c>Admin</c> configuration section (the username in the
+/// environment's <c>appsettings.{name}.json</c>, the password in its <c>REDIX_{name}_Admin__Password</c> variable, redix-api #118), with a password that must be changed at first sign-in.
 /// EF Core runs it after every migration, a rollback too; while a migration is still to apply, the tables it writes may not be there, so it waits.
 /// </summary>
 public static class AdminSeed
