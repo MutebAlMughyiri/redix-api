@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Attachments;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Documents;
@@ -30,8 +30,8 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The phones signed in, one per sign-in, each with its refresh token's hash.</summary>
     public DbSet<Device> Devices => Set<Device>();
 
-    /// <summary>Who did what to which record, and when (FR-21); append-only, guarded by the database's <c>AuditTrailIsAppendOnly</c> trigger (AC-21.1).</summary>
-    public DbSet<AuditRecord> AuditTrail => Set<AuditRecord>();
+    /// <summary>Who did what to which record, when, and in which project (FR-21, redix-app #89); append-only, guarded by the database's <c>HistoryIsAppendOnly</c> trigger (AC-21.1).</summary>
+    public DbSet<HistoryRecord> History => Set<HistoryRecord>();
 
     /// <summary>The real-estate development projects, each with its units.</summary>
     public DbSet<Project> Projects => Set<Project>();
@@ -65,6 +65,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>Where each project's money sits (FR-22).</summary>
     public DbSet<Account> Accounts => Set<Account>();
+
+    /// <summary>Money moved between a project's accounts (FR-23, redix-app #89): counted in both balances at once, never in the surplus.</summary>
+    public DbSet<Transfer> Transfers => Set<Transfer>();
 
     /// <summary>Who holds which account.</summary>
     public DbSet<AccountCustodian> AccountCustodians => Set<AccountCustodian>();
@@ -133,15 +136,15 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// Records <paramref name="action"/>, done by <paramref name="userId"/> at <paramref name="at"/>, to the tracked <paramref name="record"/>. Call it after the change
     /// and before <c>SaveChanges</c>, which saves the record and the change together.
     /// </summary>
-    public void Audit(object record, AuditAction action, Guid userId, DateTime at) => AuditTrail.Add(AuditRecord.Of(Entry(record), action, userId, at));
+    public void AddHistory(object record, HistoryAction action, Guid userId, DateTime at) => History.Add(HistoryRecord.Of(Entry(record), action, userId, at));
 
-    /// <summary>Records <paramref name="action"/> against each record the coming save changes, so one reached through a navigation is recorded like any other. Call it after the change, before any other audit record.</summary>
-    public void AuditChanges(AuditAction action, Guid userId, DateTime at)
+    /// <summary>Records <paramref name="action"/> against each record the coming save changes, so one reached through a navigation is recorded like any other. Call it after the change, before any other history row.</summary>
+    public void AddHistoryOfChanges(HistoryAction action, Guid userId, DateTime at)
     {
         ChangeTracker.DetectChanges();
         foreach (var changed in ChangeTracker.Entries().Where(entry => entry.State != EntityState.Unchanged).ToList())
         {
-            Audit(changed.Entity, action, userId, at);
+            AddHistory(changed.Entity, action, userId, at);
         }
     }
 
@@ -244,6 +247,19 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             account.Property(a => a.Name).HasMaxLength(Project.NameMaxLength);
             account.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);
             account.HasMany(a => a.Custodians).WithOne().HasForeignKey(c => c.AccountId);
+        });
+        modelBuilder.Entity<Transfer>(transfer =>
+        {
+            transfer.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Transfers_Amount", "[Amount] > 0");
+                table.HasCheckConstraint("CK_Transfers_TwoAccounts", "[FromAccountId] <> [ToAccountId]");
+            });
+            transfer.Property(t => t.Notes).HasMaxLength(Transfer.NotesMaxLength);
+            transfer.HasOne<Project>().WithMany().HasForeignKey(t => t.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            transfer.HasOne<Account>().WithMany().HasForeignKey(t => t.FromAccountId).OnDelete(DeleteBehavior.Restrict);
+            transfer.HasOne<Account>().WithMany().HasForeignKey(t => t.ToAccountId).OnDelete(DeleteBehavior.Restrict);
+            transfer.HasOne<User>().WithMany().HasForeignKey(t => t.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<AccountCustodian>(custodian =>
         {
@@ -440,14 +456,15 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             held.HasIndex(h => new { h.UserId, h.Permission }).IsUnique();
             held.HasOne<User>().WithMany().HasForeignKey(h => h.UserId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<AuditRecord>(audit =>
+        modelBuilder.Entity<HistoryRecord>(history =>
         {
-            audit.ToTable(nameof(AuditTrail), table => table.HasTrigger("AuditTrailIsAppendOnly"));
-            audit.Property(a => a.Action).HasConversion<string>().HasMaxLength(30).IsUnicode(false);
-            audit.Property(a => a.TableName).HasMaxLength(128).IsUnicode(false);
-            audit.Property(a => a.Before).HasColumnType("json");
-            audit.Property(a => a.After).HasColumnType("json");
-            audit.HasOne<User>().WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
+            history.ToTable(nameof(History), table => table.HasTrigger("HistoryIsAppendOnly"));
+            history.Property(a => a.Action).HasConversion<string>().HasMaxLength(30).IsUnicode(false);
+            history.Property(a => a.TableName).HasMaxLength(128).IsUnicode(false);
+            history.Property(a => a.Before).HasColumnType("json");
+            history.Property(a => a.After).HasColumnType("json");
+            history.HasOne<User>().WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
+            history.HasIndex(a => new { a.ProjectId, a.Id }).IncludeProperties(a => new { a.At, a.UserId, a.Action, a.TableName, a.RecordId });
         });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

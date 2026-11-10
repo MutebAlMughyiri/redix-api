@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Entries;
 using Redix.Api.Suppliers;
 using Xunit;
@@ -104,7 +104,6 @@ public class ApprovalsTests(MigratedApiFactory factory)
     public async Task AnAccountsBalanceMovesOnlyWithWhatIsApproved()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}", new EditAccountRequest("حساب المؤسسة", 1000m), Json)).EnsureSuccessStatusCode();
         var approved = await SentAsync(ledger, 300m);
         await SentAsync(ledger, 50m);
         await ledger.RecordAsync(ledger.Purchase(70m));
@@ -112,8 +111,7 @@ public class ApprovalsTests(MigratedApiFactory factory)
         await ApproveAsync(ledger, approved);
 
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single();
-        Assert.Equal(700m, account.Balance);
-        Assert.Equal(1000m, account.OpeningBalance);
+        Assert.Equal(-300m, account.Balance);
     }
 
     [Fact]
@@ -274,8 +272,8 @@ public class ApprovalsTests(MigratedApiFactory factory)
 
         Assert.Equal([EntryDecisionAction.Submit, EntryDecisionAction.Reject, EntryDecisionAction.Submit, EntryDecisionAction.Approve], decisions.Select(row => row.Action));
         Assert.Equal("المبلغ لا يطابق", decisions[1].Reason);
-        var trail = await factory.AuditTrailOfAsync(id);
-        Assert.Contains(trail, record => record.Action == AuditAction.Approve);
-        Assert.Contains(trail, record => record.Action == AuditAction.Reject);
+        var trail = await factory.HistoryOfAsync(id);
+        Assert.Contains(trail, record => record.Action == HistoryAction.Approve);
+        Assert.Contains(trail, record => record.Action == HistoryAction.Reject);
     }
 }

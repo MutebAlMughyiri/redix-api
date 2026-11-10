@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
@@ -29,7 +29,7 @@ public static class ReconciliationsEndpoints
         var moved = await AccountMoney.MovementsOfProjectAsync(projectId, db);
         var actual = latest.Balances.ToDictionary(row => row.AccountId, row => row.ActualBalance);
         var rows = accounts.Where(account => account.IsActive || actual.ContainsKey(account.Id)).OrderBy(account => account.Type).ThenBy(account => account.Id)
-            .Select(account => new ReconciliationBalanceView(account.Id, account.Name, account.Type, account.OpeningBalance + moved.GetValueOrDefault(account.Id), actual.GetValueOrDefault(account.Id), actual.ContainsKey(account.Id))).ToList();
+            .Select(account => new ReconciliationBalanceView(account.Id, account.Name, account.Type, moved.GetValueOrDefault(account.Id), actual.GetValueOrDefault(account.Id), actual.ContainsKey(account.Id))).ToList();
         var total = actual.Values.Sum();
         return new ReconciliationView(latest.At, surplus, total, total - surplus, rows);
     }
@@ -61,7 +61,7 @@ public static class ReconciliationsEndpoints
         var reconciliation = new Reconciliation { ProjectId = projectId, At = at, UserId = userId };
         reconciliation.Balances.AddRange(request.Balances.Select(row => new ReconciliationBalance { ReconciliationId = reconciliation.Id, AccountId = row.AccountId, ActualBalance = row.ActualBalance }));
         db.Reconciliations.Add(reconciliation);
-        db.Audit(reconciliation, AuditAction.Create, userId, at);
+        db.AddHistory(reconciliation, HistoryAction.Create, userId, at);
         await db.SaveChangesAsync();
         return Results.Ok(await Latest(projectId, db));
     }

@@ -35,10 +35,6 @@ namespace Redix.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<decimal>("OpeningBalance")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("decimal(19,4)");
-
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
@@ -133,6 +129,62 @@ namespace Redix.Api.Migrations
                     b.ToTable("ReconciliationBalance");
                 });
 
+            modelBuilder.Entity("Redix.Api.Accounts.Transfer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("FromAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("ToAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FromAccountId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("ToAccountId");
+
+                    b.ToTable("Transfers", t =>
+                        {
+                            t.HasCheckConstraint("CK_Transfers_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Transfers_TwoAccounts", "[FromAccountId] <> [ToAccountId]");
+                        });
+                });
+
             modelBuilder.Entity("Redix.Api.Attachments.Attachment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -187,61 +239,6 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ProjectId", "Sha256");
 
                     b.ToTable("Attachments");
-                });
-
-            modelBuilder.Entity("Redix.Api.Audit.AuditRecord", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(30)");
-
-                    b.Property<string>("After")
-                        .IsRequired()
-                        .HasColumnType("json");
-
-                    b.Property<DateTime>("At")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Before")
-                        .IsRequired()
-                        .HasColumnType("json");
-
-                    b.Property<Guid>("RecordId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<string>("TableName")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(128)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AuditTrail", null, t =>
-                        {
-                            t.HasTrigger("AuditTrailIsAppendOnly");
-                        });
-
-                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("Redix.Api.Auth.Device", b =>
@@ -815,6 +812,68 @@ namespace Redix.Api.Migrations
                     b.HasIndex("SupplierId");
 
                     b.ToTable("PurchaseDetails");
+                });
+
+            modelBuilder.Entity("Redix.Api.History.HistoryRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<string>("After")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Before")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("TableName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProjectId", "Id");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ProjectId", "Id"), new[] { "At", "UserId", "Action", "TableName", "RecordId" });
+
+                    b.ToTable("History", null, t =>
+                        {
+                            t.HasTrigger("HistoryIsAppendOnly");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
@@ -10302,20 +10361,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("6c3e6672-c81a-f1c4-eeab-10b19313241b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3dc858b4-fee2-1200-5223-57d9bc02c8cc"),
-                            Value = "Enter an opening balance in numbers, with at most two decimals."
-                        },
-                        new
-                        {
-                            Id = new Guid("4829d758-fd83-2fd2-d504-0e05c79b2b87"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3dc858b4-fee2-1200-5223-57d9bc02c8cc"),
-                            Value = "أدخل الرصيد الافتتاحي بالأرقام، بخانتين عشريتين على الأكثر."
-                        },
-                        new
-                        {
                             Id = new Guid("54376eb9-a582-9b74-e237-923b178fe856"),
                             Language = "en",
                             TranslationKeyId = new Guid("eb815a2c-5253-c40e-bce3-3ad40ae4384a"),
@@ -10341,20 +10386,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("ea46842b-3d2a-8204-111e-18e19350629a"),
                             Value = "هذا الشخص ليس في هذا المشروع."
-                        },
-                        new
-                        {
-                            Id = new Guid("5ece3a4c-3b6e-c7c6-4b32-1e2fcd503b38"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("6557b35c-28ae-0339-5b20-90d6fb2482b1"),
-                            Value = "This account has entries, so its opening balance cannot change."
-                        },
-                        new
-                        {
-                            Id = new Guid("1d18f432-1755-ba9b-d98b-e2c9c241c151"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("6557b35c-28ae-0339-5b20-90d6fb2482b1"),
-                            Value = "هذا الحساب عليه قيود، فلا يتغير رصيده الافتتاحي."
                         },
                         new
                         {
@@ -10484,20 +10515,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a7ee204a-f3ec-9e89-5335-d5d52ca5b79f"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("0b8adb2a-5662-9973-7dc1-6a4e6e1b2c8c"),
-                            Value = "Opening balance"
-                        },
-                        new
-                        {
-                            Id = new Guid("1572dc11-faf7-c9d5-b7f5-38f177012ec4"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("0b8adb2a-5662-9973-7dc1-6a4e6e1b2c8c"),
-                            Value = "الرصيد الافتتاحي"
-                        },
-                        new
-                        {
                             Id = new Guid("0438231d-e912-50dd-ade9-0a2554ffbced"),
                             Language = "en",
                             TranslationKeyId = new Guid("ac416bb0-0b76-e45d-5c5b-e8dd34b4bd29"),
@@ -10565,6 +10582,678 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("31356397-adb5-a92e-fab9-edbdae1ca503"),
                             Value = "ر.س"
+                        },
+                        new
+                        {
+                            Id = new Guid("c8226c38-6ed8-3a89-e2a8-96da616eab76"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7722eb1b-97ae-02db-f23a-fc2064eba698"),
+                            Value = "Counted at the last check: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("3cef95e3-7edd-406a-526d-393293701900"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7722eb1b-97ae-02db-f23a-fc2064eba698"),
+                            Value = "الفعلي في آخر مطابقة: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("38646627-4699-0b85-957e-8138cab4482a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("eff3f9a8-f4aa-bb09-f4a5-c7b1e423ee6a"),
+                            Value = "History"
+                        },
+                        new
+                        {
+                            Id = new Guid("86440aa5-6daf-329e-6911-46d350bc2278"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("eff3f9a8-f4aa-bb09-f4a5-c7b1e423ee6a"),
+                            Value = "السجل"
+                        },
+                        new
+                        {
+                            Id = new Guid("97e1b99f-765a-724b-d8cf-c9ace29c9513"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("963ecbda-35ee-c555-fabb-5c377d3b50e0"),
+                            Value = "Delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f90be0e-f505-e27b-d744-336d177d557f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("963ecbda-35ee-c555-fabb-5c377d3b50e0"),
+                            Value = "حذف"
+                        },
+                        new
+                        {
+                            Id = new Guid("6314437b-e392-fd3e-b551-ff02bfa40154"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c0967f38-4061-7441-a2f5-8319e20cf0c1"),
+                            Value = "Delete the account?"
+                        },
+                        new
+                        {
+                            Id = new Guid("1162fef6-abd5-2771-b60b-369e63b8cc46"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c0967f38-4061-7441-a2f5-8319e20cf0c1"),
+                            Value = "حذف الحساب؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("55f602c4-4b1c-3db4-f7f9-f9f18bb77996"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a30144a0-067f-9738-be76-58ce171612a5"),
+                            Value = "This cannot be undone."
+                        },
+                        new
+                        {
+                            Id = new Guid("dfac1ddd-60c1-8e56-04e8-b9515077db46"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a30144a0-067f-9738-be76-58ce171612a5"),
+                            Value = "لا يمكن التراجع عن الحذف."
+                        },
+                        new
+                        {
+                            Id = new Guid("043422b3-7647-3753-2954-63f4b1ee1393"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5b673e1a-ed7e-4212-3b9d-772705106db7"),
+                            Value = "Used by entries, checks or transfers, so it can only be disabled."
+                        },
+                        new
+                        {
+                            Id = new Guid("5d45640a-3d73-e747-8693-b34a9d3d76c6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5b673e1a-ed7e-4212-3b9d-772705106db7"),
+                            Value = "مستخدم في قيود أو مطابقات أو تحويلات، فيمكن تعطيله فقط."
+                        },
+                        new
+                        {
+                            Id = new Guid("dae75be4-a8c8-f10d-0bb6-5049c866c748"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e890cfcf-1cc2-5d22-91f3-9f7e866dc452"),
+                            Value = "Account deleted."
+                        },
+                        new
+                        {
+                            Id = new Guid("d1113ba1-239d-cf5f-8ab2-aef570600dc4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e890cfcf-1cc2-5d22-91f3-9f7e866dc452"),
+                            Value = "تم حذف الحساب."
+                        },
+                        new
+                        {
+                            Id = new Guid("2c5baad7-2442-ae4f-712b-bb71b86a5407"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5a51514e-0576-d48c-90bd-ef8839d2b98a"),
+                            Value = "Bank accounts"
+                        },
+                        new
+                        {
+                            Id = new Guid("1d0c0b18-decd-79e5-9acb-c571abe35e8e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5a51514e-0576-d48c-90bd-ef8839d2b98a"),
+                            Value = "الحسابات البنكية"
+                        },
+                        new
+                        {
+                            Id = new Guid("f8eb3403-bc93-f6ba-efe3-9c482b3f8710"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e289acbb-0b00-2518-4dc5-67b315187f91"),
+                            Value = "Cash custodies"
+                        },
+                        new
+                        {
+                            Id = new Guid("4a30c706-b1fe-298a-3ac6-5c0b52fc3ef3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e289acbb-0b00-2518-4dc5-67b315187f91"),
+                            Value = "العهد النقدية"
+                        },
+                        new
+                        {
+                            Id = new Guid("973d2b22-768d-85e8-4ff3-24e43cce082f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cd486259-ff5a-d472-f61b-2169e0f04c02"),
+                            Value = "Transfer between accounts"
+                        },
+                        new
+                        {
+                            Id = new Guid("48ecb1c6-2d74-1a48-87a5-f5a39260e539"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cd486259-ff5a-d472-f61b-2169e0f04c02"),
+                            Value = "تحويل بين الحسابات"
+                        },
+                        new
+                        {
+                            Id = new Guid("001c2473-59c6-4c79-c8bd-cd7210f93645"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c441eaa7-e92f-ec27-e0bc-e60d9f0d9510"),
+                            Value = "Transfer"
+                        },
+                        new
+                        {
+                            Id = new Guid("dc3cdff0-1164-a105-a310-b60e54f4e8a4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c441eaa7-e92f-ec27-e0bc-e60d9f0d9510"),
+                            Value = "تحويل"
+                        },
+                        new
+                        {
+                            Id = new Guid("6fe229df-5870-3913-b2a4-0ad2dcb32b88"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("592be19e-5277-8b9b-3aa1-dcc113fceba2"),
+                            Value = "From"
+                        },
+                        new
+                        {
+                            Id = new Guid("713aef6d-b027-7b8d-478a-4924cb333e42"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("592be19e-5277-8b9b-3aa1-dcc113fceba2"),
+                            Value = "من"
+                        },
+                        new
+                        {
+                            Id = new Guid("7e4e2ae5-06ef-6405-4006-e9372858893b"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3e1c052e-8583-4a49-c195-97db89e57466"),
+                            Value = "To"
+                        },
+                        new
+                        {
+                            Id = new Guid("50a061a0-b5b3-fb25-e183-e6311159a40b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3e1c052e-8583-4a49-c195-97db89e57466"),
+                            Value = "إلى"
+                        },
+                        new
+                        {
+                            Id = new Guid("267bc664-e781-2e21-8b08-3c4274e4220c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f23354f3-a95d-0349-e199-002851a61c15"),
+                            Value = "Holds now: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1e8bccf-9c1a-cc4a-2ef0-f1d8ce0d1665"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f23354f3-a95d-0349-e199-002851a61c15"),
+                            Value = "رصيده الآن: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("50d20cae-4408-fdd2-39a8-47d8014b6fd8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1ad78c31-0366-8535-b690-d668cfead1df"),
+                            Value = "Amount"
+                        },
+                        new
+                        {
+                            Id = new Guid("e9b39b25-e0b4-5c6a-b958-a9e297e20c09"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1ad78c31-0366-8535-b690-d668cfead1df"),
+                            Value = "المبلغ"
+                        },
+                        new
+                        {
+                            Id = new Guid("1a94905d-b7db-9426-6022-52ecf68252da"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("75246717-bf39-3cfa-5de7-7f8a65488ec7"),
+                            Value = "Date"
+                        },
+                        new
+                        {
+                            Id = new Guid("7fefdbce-3238-63eb-de35-6573500c2c6b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("75246717-bf39-3cfa-5de7-7f8a65488ec7"),
+                            Value = "التاريخ"
+                        },
+                        new
+                        {
+                            Id = new Guid("8dce01ff-e163-0770-3cef-03294fe56646"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d5743a65-2a5b-54e3-51ff-e497503ca7c2"),
+                            Value = "Notes"
+                        },
+                        new
+                        {
+                            Id = new Guid("abb1ad24-6a3f-8d72-1c07-ad9ce7148799"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d5743a65-2a5b-54e3-51ff-e497503ca7c2"),
+                            Value = "ملاحظات"
+                        },
+                        new
+                        {
+                            Id = new Guid("1a1944db-a39a-8ece-3821-6ade63ff1f5e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7a8e5906-932f-70eb-2be8-fe5c2bd446d5"),
+                            Value = "Transfer"
+                        },
+                        new
+                        {
+                            Id = new Guid("ca4b8363-fa30-36db-66c9-2c2f91126eb3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7a8e5906-932f-70eb-2be8-fe5c2bd446d5"),
+                            Value = "تحويل"
+                        },
+                        new
+                        {
+                            Id = new Guid("9f56048b-7076-42e9-b45e-773e748ed574"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e30fe533-e540-06cc-f84f-ba661fe21db9"),
+                            Value = "Choose another account to transfer to."
+                        },
+                        new
+                        {
+                            Id = new Guid("873a71aa-5b82-2a81-2cad-9844aa232bfa"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e30fe533-e540-06cc-f84f-ba661fe21db9"),
+                            Value = "اختر حسابا آخر للتحويل إليه."
+                        },
+                        new
+                        {
+                            Id = new Guid("54c9ba2e-2749-c51e-50c0-ccd1c56f7ef0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d681fd4a-60ac-accd-8bc0-132875a52b89"),
+                            Value = "Type an amount above zero."
+                        },
+                        new
+                        {
+                            Id = new Guid("d31d47f2-f844-03a9-734f-3d521cd67db5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d681fd4a-60ac-accd-8bc0-132875a52b89"),
+                            Value = "اكتب مبلغا أكبر من صفر."
+                        },
+                        new
+                        {
+                            Id = new Guid("d65613b2-a7af-4f13-ffc8-9e6d0edd23fa"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("84c516d0-6dc5-5a84-9df7-f00d9f3eb773"),
+                            Value = "A disabled account takes no transfer."
+                        },
+                        new
+                        {
+                            Id = new Guid("d8d3f074-8584-cc73-8c87-a238712d42ab"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("84c516d0-6dc5-5a84-9df7-f00d9f3eb773"),
+                            Value = "الحساب المعطل لا يقبل التحويل."
+                        },
+                        new
+                        {
+                            Id = new Guid("f46516ad-db2a-ed9c-eb91-a6bc9f81838f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3ce67a2d-e572-f1d6-965d-195e1bf271fc"),
+                            Value = "That is more than the account holds now."
+                        },
+                        new
+                        {
+                            Id = new Guid("210ebaf7-0b22-b12b-5ad0-b31c0c2c98c7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3ce67a2d-e572-f1d6-965d-195e1bf271fc"),
+                            Value = "المبلغ أكبر من رصيد الحساب الآن."
+                        },
+                        new
+                        {
+                            Id = new Guid("4df36ad6-8f02-af10-ef8c-69d7e61a70ea"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fbf5c1c6-0711-e783-e60d-f7b4b5909fa7"),
+                            Value = "An account is no longer in the project."
+                        },
+                        new
+                        {
+                            Id = new Guid("e71eea87-53cd-9cfd-ad88-009cd0a7a45a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fbf5c1c6-0711-e783-e60d-f7b4b5909fa7"),
+                            Value = "لم يعد أحد الحسابين في المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("0358ca3a-b06f-1b0d-6774-63f4d87ed9bf"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2ada6c71-bf65-bb92-803e-0668858d52c9"),
+                            Value = "Notes may have at most 1000 characters."
+                        },
+                        new
+                        {
+                            Id = new Guid("bf72b835-ae88-6b56-b8fb-18a69ef55559"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2ada6c71-bf65-bb92-803e-0668858d52c9"),
+                            Value = "الملاحظات 1000 حرف على الأكثر."
+                        },
+                        new
+                        {
+                            Id = new Guid("d850eb67-7433-6417-be41-71062508507e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6badde79-3784-70f8-5315-9ed699c74888"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("c84862fd-64a9-df39-5f68-c36a13b3a42f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6badde79-3784-70f8-5315-9ed699c74888"),
+                            Value = "لا اتصال بالخادم. حاول مجدداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("0f939def-ba49-d8b0-6cd9-c8374be39c6f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8a0d2cee-6618-8920-0e3b-b7756035d8a1"),
+                            Value = "This could not be done."
+                        },
+                        new
+                        {
+                            Id = new Guid("9599a4cf-e2cc-f5ff-9adc-c329b1b4ee65"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8a0d2cee-6618-8920-0e3b-b7756035d8a1"),
+                            Value = "تعذر تنفيذ ذلك."
+                        },
+                        new
+                        {
+                            Id = new Guid("d0caac3a-dd13-a692-ddd3-5672d6cb6eee"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aa0b31a4-08c7-6eb4-9d08-822660b39582"),
+                            Value = "This project is finished, so nothing in it changes."
+                        },
+                        new
+                        {
+                            Id = new Guid("3682633d-086d-2cf3-2391-b09233d41b8b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aa0b31a4-08c7-6eb4-9d08-822660b39582"),
+                            Value = "هذا المشروع منتهٍ، فلا يتغير فيه شيء."
+                        },
+                        new
+                        {
+                            Id = new Guid("601b7b56-a12b-d87b-23a5-f42b65290567"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f8d624df-18d9-793f-5c54-5c2d689e0c7a"),
+                            Value = "{0} holds {1}; {2} waits on it, {3} short."
+                        },
+                        new
+                        {
+                            Id = new Guid("e1f94ecb-f861-48f4-2103-dbea7cc2dd65"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f8d624df-18d9-793f-5c54-5c2d689e0c7a"),
+                            Value = "رصيد {0} {1}، وينتظر عليه {2}، فينقص {3}"
+                        },
+                        new
+                        {
+                            Id = new Guid("0c2280a7-51fc-c927-b6d1-46d24cd80569"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3532dea3-fa32-67e2-371b-a94dc6c0bc7d"),
+                            Value = "Note: the account does not hold enough for this amount."
+                        },
+                        new
+                        {
+                            Id = new Guid("016917c7-21f1-ceb8-7da5-2e121135e908"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3532dea3-fa32-67e2-371b-a94dc6c0bc7d"),
+                            Value = "تنبيه: رصيد الحساب لا يكفي لهذا المبلغ"
+                        },
+                        new
+                        {
+                            Id = new Guid("788bf328-781f-7ab3-9b54-6bd2908e8aa4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("336ceda2-1ef4-8711-5089-ebca466b1a73"),
+                            Value = "All accounts"
+                        },
+                        new
+                        {
+                            Id = new Guid("26d2f27f-1bf0-cd21-de22-193675cf876e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("336ceda2-1ef4-8711-5089-ebca466b1a73"),
+                            Value = "كل الحسابات"
+                        },
+                        new
+                        {
+                            Id = new Guid("14049f43-4660-131a-8696-4c91c9c705ba"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e93a435d-cfeb-0c29-a2fb-3ccab5b307ba"),
+                            Value = "What I did"
+                        },
+                        new
+                        {
+                            Id = new Guid("9f49ce8e-c825-8608-5c4f-812f4c92fe07"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e93a435d-cfeb-0c29-a2fb-3ccab5b307ba"),
+                            Value = "ما قمت به"
+                        },
+                        new
+                        {
+                            Id = new Guid("9c62c0bb-c98d-6df4-8cb1-35d85bec3e34"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7ce49ef4-21c4-c799-066f-a0e2b9432a7e"),
+                            Value = "Nothing yet."
+                        },
+                        new
+                        {
+                            Id = new Guid("abd7b6ae-81cc-5edb-6b57-a33d2ab65144"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7ce49ef4-21c4-c799-066f-a0e2b9432a7e"),
+                            Value = "لا شيء بعد."
+                        },
+                        new
+                        {
+                            Id = new Guid("1c9de493-b47c-ff5c-5bde-caaba82c15d0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("25ec3ba2-371a-b6e4-8fb1-49d2cba0e327"),
+                            Value = "Could not read the history. Check the network and try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("180821d0-2354-c568-12e3-f08d135d7c36"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("25ec3ba2-371a-b6e4-8fb1-49d2cba0e327"),
+                            Value = "تعذّرت قراءة السجل. تحقق من الشبكة وحاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("282e2102-a165-f0e1-7b59-00b3394a0c10"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("dedfe861-7fcd-cf05-2929-9bb938f970c7"),
+                            Value = "That account is not in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("155550a3-e5ea-154b-8eb6-392790d4101a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("dedfe861-7fcd-cf05-2929-9bb938f970c7"),
+                            Value = "هذا الحساب ليس في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("574ed884-311c-943e-4016-03d72adff5db"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7b0cb500-d2d4-c60d-a601-83f7b6210711"),
+                            Value = "Added the account {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("20787cab-bf3a-2686-0d90-59eb2db4f1c9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7b0cb500-d2d4-c60d-a601-83f7b6210711"),
+                            Value = "إضافة الحساب {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("05142cdd-c151-b525-bd99-edcd858edad7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("726d5c9b-bcc3-4192-453c-3eca88284762"),
+                            Value = "Changed {0}: {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("28e7c9e3-024d-b988-d0c8-26f5783ed79b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("726d5c9b-bcc3-4192-453c-3eca88284762"),
+                            Value = "تعديل {0}: {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("88453c8f-99fc-01bd-f0c5-2ac1e5d4f4dc"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("49a34959-b87d-1860-f555-25771b6897e8"),
+                            Value = "the name was {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("fe14f56a-6cba-8192-5772-1db987c46607"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("49a34959-b87d-1860-f555-25771b6897e8"),
+                            Value = "الاسم كان {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("b996a55c-99c7-a85e-7feb-6daec1d8a748"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d062adfa-7534-9d79-232f-8d7ebb5375d0"),
+                            Value = "Disabled {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("9c745c7a-7cc4-98c8-10d9-bf768249bbbe"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d062adfa-7534-9d79-232f-8d7ebb5375d0"),
+                            Value = "تعطيل {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("9fb4f1ac-eba2-e933-f119-714caaf01e96"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("25567d30-09c9-af1e-dc76-6ecc83c5bc0e"),
+                            Value = "Enabled {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("db0d1ce8-769e-0f7e-e39e-0b1e8305bb9f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("25567d30-09c9-af1e-dc76-6ecc83c5bc0e"),
+                            Value = "تفعيل {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("7d891732-73d3-f482-711d-c81e23098136"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("343d054d-7afb-5693-0444-a7954e933b1e"),
+                            Value = "Deleted {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("85783e6a-f3b4-0258-5d18-fa09d7058fa5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("343d054d-7afb-5693-0444-a7954e933b1e"),
+                            Value = "حذف {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("be76414a-bec5-9328-1aad-667a4376acee"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d2626f2e-4e55-cb7b-1207-2925df60e749"),
+                            Value = "{0} is now held by {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("37bc8571-e4db-517a-46f8-63d7277fae6b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d2626f2e-4e55-cb7b-1207-2925df60e749"),
+                            Value = "{0} أصبح مع {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("d62b6c6b-cd23-ba5c-ad5f-9bc340f92f6c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3ea858bc-cee7-2197-bdda-95ca1fc21d16"),
+                            Value = "Transferred {0} from {1} to {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("b557a25f-694a-e762-3979-a4a9ee538a31"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3ea858bc-cee7-2197-bdda-95ca1fc21d16"),
+                            Value = "تحويل {0} من {1} إلى {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("5eca2ccd-c0ce-08aa-2f05-ef3535940ec1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7eaac843-f0f3-1f45-b9dc-5fc32b5934b0"),
+                            Value = "{0} {1} into {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("459b6e4d-681a-e768-1672-3a84823203b6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7eaac843-f0f3-1f45-b9dc-5fc32b5934b0"),
+                            Value = "{0} {1} إلى {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("60b7af07-64c6-8e07-8e6d-6a00230dd157"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6ff27195-8804-5460-9908-204f4bf75070"),
+                            Value = "{0} {1} out of {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("d8bbe973-07e0-f170-47ea-6f188018793a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6ff27195-8804-5460-9908-204f4bf75070"),
+                            Value = "{0} {1} من {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("5f517095-b4f4-06d1-9094-4fd7bdf60c66"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ad95b12e-1ba6-6c6c-b01c-0d8c2b0e709b"),
+                            Value = "Reversed: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("0a41375a-0274-0c0c-437a-61f50545564c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ad95b12e-1ba6-6c6c-b01c-0d8c2b0e709b"),
+                            Value = "عكس: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("7726ace2-b636-acb7-1c29-43fc1a702dec"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f1614e9a-a1f6-f4cd-579f-80327444df72"),
+                            Value = "Counted the actual balances: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("15272de3-a481-c904-1650-6276f93f0055"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f1614e9a-a1f6-f4cd-579f-80327444df72"),
+                            Value = "مطابقة الأرصدة الفعلية: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("26df8882-7ec8-aaf4-881f-fbab3ac7b634"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3ef9fec2-4eac-7979-e614-e6fd0ed5ff44"),
+                            Value = "Approved by {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("a79038d5-81be-3a89-e011-75b4fa2e6e9e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3ef9fec2-4eac-7979-e614-e6fd0ed5ff44"),
+                            Value = "اعتمده {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("110abad0-c036-72f8-fc60-20ac37e7da13"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("666082ac-4221-7539-3047-ab60621f529c"),
+                            Value = "More"
+                        },
+                        new
+                        {
+                            Id = new Guid("3c319db8-027f-e7a4-2605-8f25f8c22b5a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("666082ac-4221-7539-3047-ab60621f529c"),
+                            Value = "المزيد"
                         },
                         new
                         {
@@ -16216,12 +16905,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("3dc858b4-fee2-1200-5223-57d9bc02c8cc"),
-                            Description = "",
-                            Key = "accounts.invalidOpeningBalance"
-                        },
-                        new
-                        {
                             Id = new Guid("eb815a2c-5253-c40e-bce3-3ad40ae4384a"),
                             Description = "",
                             Key = "accounts.custodianRequired"
@@ -16231,12 +16914,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("ea46842b-3d2a-8204-111e-18e19350629a"),
                             Description = "",
                             Key = "accounts.unknownCustodian"
-                        },
-                        new
-                        {
-                            Id = new Guid("6557b35c-28ae-0339-5b20-90d6fb2482b1"),
-                            Description = "",
-                            Key = "accounts.accountHasEntries"
                         },
                         new
                         {
@@ -16294,12 +16971,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("0b8adb2a-5662-9973-7dc1-6a4e6e1b2c8c"),
-                            Description = "",
-                            Key = "accounts.openingBalance"
-                        },
-                        new
-                        {
                             Id = new Guid("ac416bb0-0b76-e45d-5c5b-e8dd34b4bd29"),
                             Description = "",
                             Key = "accounts.disable"
@@ -16327,6 +16998,294 @@ namespace Redix.Api.Migrations
                             Id = new Guid("31356397-adb5-a92e-fab9-edbdae1ca503"),
                             Description = "",
                             Key = "accounts.riyal"
+                        },
+                        new
+                        {
+                            Id = new Guid("7722eb1b-97ae-02db-f23a-fc2064eba698"),
+                            Description = "",
+                            Key = "accounts.counted"
+                        },
+                        new
+                        {
+                            Id = new Guid("eff3f9a8-f4aa-bb09-f4a5-c7b1e423ee6a"),
+                            Description = "",
+                            Key = "accounts.history"
+                        },
+                        new
+                        {
+                            Id = new Guid("963ecbda-35ee-c555-fabb-5c377d3b50e0"),
+                            Description = "",
+                            Key = "accounts.delete"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0967f38-4061-7441-a2f5-8319e20cf0c1"),
+                            Description = "",
+                            Key = "accounts.deleteQuestion"
+                        },
+                        new
+                        {
+                            Id = new Guid("a30144a0-067f-9738-be76-58ce171612a5"),
+                            Description = "",
+                            Key = "accounts.deleteCannotUndo"
+                        },
+                        new
+                        {
+                            Id = new Guid("5b673e1a-ed7e-4212-3b9d-772705106db7"),
+                            Description = "",
+                            Key = "accounts.accountInUse"
+                        },
+                        new
+                        {
+                            Id = new Guid("e890cfcf-1cc2-5d22-91f3-9f7e866dc452"),
+                            Description = "",
+                            Key = "accounts.deleted"
+                        },
+                        new
+                        {
+                            Id = new Guid("5a51514e-0576-d48c-90bd-ef8839d2b98a"),
+                            Description = "",
+                            Key = "accounts.banks"
+                        },
+                        new
+                        {
+                            Id = new Guid("e289acbb-0b00-2518-4dc5-67b315187f91"),
+                            Description = "",
+                            Key = "accounts.custodies"
+                        },
+                        new
+                        {
+                            Id = new Guid("cd486259-ff5a-d472-f61b-2169e0f04c02"),
+                            Description = "",
+                            Key = "transfers.title"
+                        },
+                        new
+                        {
+                            Id = new Guid("c441eaa7-e92f-ec27-e0bc-e60d9f0d9510"),
+                            Description = "",
+                            Key = "transfers.button"
+                        },
+                        new
+                        {
+                            Id = new Guid("592be19e-5277-8b9b-3aa1-dcc113fceba2"),
+                            Description = "",
+                            Key = "transfers.from"
+                        },
+                        new
+                        {
+                            Id = new Guid("3e1c052e-8583-4a49-c195-97db89e57466"),
+                            Description = "",
+                            Key = "transfers.to"
+                        },
+                        new
+                        {
+                            Id = new Guid("f23354f3-a95d-0349-e199-002851a61c15"),
+                            Description = "",
+                            Key = "transfers.balanceNow"
+                        },
+                        new
+                        {
+                            Id = new Guid("1ad78c31-0366-8535-b690-d668cfead1df"),
+                            Description = "",
+                            Key = "transfers.amount"
+                        },
+                        new
+                        {
+                            Id = new Guid("75246717-bf39-3cfa-5de7-7f8a65488ec7"),
+                            Description = "",
+                            Key = "transfers.date"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5743a65-2a5b-54e3-51ff-e497503ca7c2"),
+                            Description = "",
+                            Key = "transfers.notes"
+                        },
+                        new
+                        {
+                            Id = new Guid("7a8e5906-932f-70eb-2be8-fe5c2bd446d5"),
+                            Description = "",
+                            Key = "transfers.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("e30fe533-e540-06cc-f84f-ba661fe21db9"),
+                            Description = "",
+                            Key = "transfers.sameAccount"
+                        },
+                        new
+                        {
+                            Id = new Guid("d681fd4a-60ac-accd-8bc0-132875a52b89"),
+                            Description = "",
+                            Key = "transfers.invalidAmount"
+                        },
+                        new
+                        {
+                            Id = new Guid("84c516d0-6dc5-5a84-9df7-f00d9f3eb773"),
+                            Description = "",
+                            Key = "transfers.accountDisabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("3ce67a2d-e572-f1d6-965d-195e1bf271fc"),
+                            Description = "",
+                            Key = "transfers.insufficientBalance"
+                        },
+                        new
+                        {
+                            Id = new Guid("fbf5c1c6-0711-e783-e60d-f7b4b5909fa7"),
+                            Description = "",
+                            Key = "transfers.unknownAccount"
+                        },
+                        new
+                        {
+                            Id = new Guid("2ada6c71-bf65-bb92-803e-0668858d52c9"),
+                            Description = "",
+                            Key = "transfers.invalidNotes"
+                        },
+                        new
+                        {
+                            Id = new Guid("6badde79-3784-70f8-5315-9ed699c74888"),
+                            Description = "",
+                            Key = "transfers.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("8a0d2cee-6618-8920-0e3b-b7756035d8a1"),
+                            Description = "",
+                            Key = "transfers.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("aa0b31a4-08c7-6eb4-9d08-822660b39582"),
+                            Description = "",
+                            Key = "transfers.projectFinished"
+                        },
+                        new
+                        {
+                            Id = new Guid("f8d624df-18d9-793f-5c54-5c2d689e0c7a"),
+                            Description = "",
+                            Key = "approvals.accountShort"
+                        },
+                        new
+                        {
+                            Id = new Guid("3532dea3-fa32-67e2-371b-a94dc6c0bc7d"),
+                            Description = "",
+                            Key = "entryShare.accountShort"
+                        },
+                        new
+                        {
+                            Id = new Guid("336ceda2-1ef4-8711-5089-ebca466b1a73"),
+                            Description = "",
+                            Key = "history.allAccounts"
+                        },
+                        new
+                        {
+                            Id = new Guid("e93a435d-cfeb-0c29-a2fb-3ccab5b307ba"),
+                            Description = "",
+                            Key = "history.mine"
+                        },
+                        new
+                        {
+                            Id = new Guid("7ce49ef4-21c4-c799-066f-a0e2b9432a7e"),
+                            Description = "",
+                            Key = "history.empty"
+                        },
+                        new
+                        {
+                            Id = new Guid("25ec3ba2-371a-b6e4-8fb1-49d2cba0e327"),
+                            Description = "",
+                            Key = "history.loadFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("dedfe861-7fcd-cf05-2929-9bb938f970c7"),
+                            Description = "",
+                            Key = "history.unknownAccount"
+                        },
+                        new
+                        {
+                            Id = new Guid("7b0cb500-d2d4-c60d-a601-83f7b6210711"),
+                            Description = "",
+                            Key = "history.accountCreated"
+                        },
+                        new
+                        {
+                            Id = new Guid("726d5c9b-bcc3-4192-453c-3eca88284762"),
+                            Description = "",
+                            Key = "history.accountChanged"
+                        },
+                        new
+                        {
+                            Id = new Guid("49a34959-b87d-1860-f555-25771b6897e8"),
+                            Description = "",
+                            Key = "history.nameWas"
+                        },
+                        new
+                        {
+                            Id = new Guid("d062adfa-7534-9d79-232f-8d7ebb5375d0"),
+                            Description = "",
+                            Key = "history.accountDisabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("25567d30-09c9-af1e-dc76-6ecc83c5bc0e"),
+                            Description = "",
+                            Key = "history.accountEnabled"
+                        },
+                        new
+                        {
+                            Id = new Guid("343d054d-7afb-5693-0444-a7954e933b1e"),
+                            Description = "",
+                            Key = "history.accountDeleted"
+                        },
+                        new
+                        {
+                            Id = new Guid("d2626f2e-4e55-cb7b-1207-2925df60e749"),
+                            Description = "",
+                            Key = "history.custodianChanged"
+                        },
+                        new
+                        {
+                            Id = new Guid("3ea858bc-cee7-2197-bdda-95ca1fc21d16"),
+                            Description = "",
+                            Key = "history.transfer"
+                        },
+                        new
+                        {
+                            Id = new Guid("7eaac843-f0f3-1f45-b9dc-5fc32b5934b0"),
+                            Description = "",
+                            Key = "history.entryIn"
+                        },
+                        new
+                        {
+                            Id = new Guid("6ff27195-8804-5460-9908-204f4bf75070"),
+                            Description = "",
+                            Key = "history.entryOut"
+                        },
+                        new
+                        {
+                            Id = new Guid("ad95b12e-1ba6-6c6c-b01c-0d8c2b0e709b"),
+                            Description = "",
+                            Key = "history.reversed"
+                        },
+                        new
+                        {
+                            Id = new Guid("f1614e9a-a1f6-f4cd-579f-80327444df72"),
+                            Description = "",
+                            Key = "history.check"
+                        },
+                        new
+                        {
+                            Id = new Guid("3ef9fec2-4eac-7979-e614-e6fd0ed5ff44"),
+                            Description = "",
+                            Key = "history.approvedBy"
+                        },
+                        new
+                        {
+                            Id = new Guid("666082ac-4221-7539-3047-ab60621f529c"),
+                            Description = "",
+                            Key = "history.more"
                         },
                         new
                         {
@@ -17392,6 +18351,33 @@ namespace Redix.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Redix.Api.Accounts.Transfer", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("FromAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("ToAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Redix.Api.Attachments.Attachment", b =>
                 {
                     b.HasOne("Redix.Api.Projects.Project", null)
@@ -17403,15 +18389,6 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UploadedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Redix.Api.Audit.AuditRecord", b =>
-                {
-                    b.HasOne("Redix.Api.Auth.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -17619,6 +18596,15 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Suppliers.Supplier", null)
                         .WithMany()
                         .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.History.HistoryRecord", b =>
+                {
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

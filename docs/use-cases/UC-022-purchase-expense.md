@@ -29,7 +29,7 @@ Its refusals are in the endpoint's Swagger summary. Each names a word the app sh
 
 ## Tables
 
-`Entries`, `ExpenseDetails`, `PurchaseDetails` and `EntryAttachments`, as the database design has them. Submitting here sets the status and writes the audit trail's `Submit`; UC-028 "Submit an entry for approval" adds the decision's row and the notification.
+`Entries`, `ExpenseDetails`, `PurchaseDetails` and `EntryAttachments`, as the database design has them. Submitting here sets the status and writes the History table's `Submit`; UC-028 "Submit an entry for approval" adds the decision's row and the notification.
 
 ## Rules
 
@@ -54,7 +54,7 @@ Tests are in `ExpensesTests` and `SimpleExpenseTests`.
 | BR-22: one file is on one expense | `EntryAttachments` | `SimpleExpenseTests.BR_22_TheSameFileOnASecondExpenseIsRefused`, `BR_22_TheSameFileSentAgainIsTheSameFileAndIsRefused`, `AFileKeptAndOnNoEntryIsFreeToUse` |
 | BR-33: nothing of another project | Each check | `ExpensesTests.BR_33_AFileOfAnotherProjectIsRefusedOnAnEntry`, `BR_33_AnAccountOfAnotherProjectIsRefused`, `BR_33_SomeoneOutsideTheProjectCannotRecordInIt` |
 | AC-16.3: an id used twice saves once | `EntryRecording.Record` | `ExpensesTests.AC_16_3_AnUploadSentAgainLandsOnceAndAnswersTheEntry`, `AnIdSomeoneElseUsedIsRefusedAndTellsThemNothingOfIt` |
-| FR-21: who recorded it and its total are in the audit trail | `db.Audit`, one record per table | `ExpensesTests.FR_21_AnExpenseIsInTheAuditTrailWithWhoAndItsTotal`, `ADraftIsCreatedInTheAuditTrailRatherThanSubmitted` |
+| FR-21: who recorded it and its total are in the History table | `db.AddHistory`, one record per table | `ExpensesTests.FR_21_AnExpenseIsInTheHistoryWithWhoAndItsTotal`, `ADraftIsCreatedInTheHistoryRatherThanSubmitted` |
 | AC-43.1: the caller's most used suppliers first | `SuppliersEndpoints.Search` | `ExpensesTests.AC_43_1_TheSearchPutsWhatTheCallerUsedMostFirstAndThenByName`, `AC_43_1_MostUsedIsTheCallersOwnNotSomeoneElses` |
 
 A QR code on the file fills the date, the total and the supplier in the app (UC-024, D21). The API takes no QR code value.

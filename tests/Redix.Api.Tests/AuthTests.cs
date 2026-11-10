@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 
 namespace Redix.Api.Tests;
@@ -123,15 +123,15 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ASignOutIsInTheAuditTrail()
+    public async Task ASignOutIsInTheHistory()
     {
         var user = await factory.AddUserAsync(Password);
         var session = await SessionOf(await SignInAsync(user.Username, Password));
 
         await SignOutAsync(session);
 
-        var record = (await factory.AuditTrailOfAsync(user.Id)).Last();
-        Assert.Equal(AuditAction.SignOut, record.Action);
+        var record = (await factory.HistoryOfAsync(user.Id)).Last();
+        Assert.Equal(HistoryAction.SignOut, record.Action);
         Assert.Equal(user.Id, record.UserId);
     }
 
@@ -144,29 +144,29 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ASignInIsInTheAuditTrailWithTheUserAndTheTime()
+    public async Task ASignInIsInTheHistoryWithTheUserAndTheTime()
     {
         var user = await factory.AddUserAsync(Password);
 
         await SessionOf(await SignInAsync(user.Username, Password));
 
-        var record = Assert.Single(await factory.AuditTrailOfAsync(user.Id));
-        Assert.Equal(AuditAction.SignIn, record.Action);
+        var record = Assert.Single(await factory.HistoryOfAsync(user.Id));
+        Assert.Equal(HistoryAction.SignIn, record.Action);
         Assert.Equal(user.Id, record.UserId);
         Assert.Equal("Users", record.TableName);
         Assert.Equal(factory.Time.GetUtcNow().UtcDateTime, record.At);
     }
 
     [Fact]
-    public async Task AWrongPasswordIsInTheAuditTrailAgainstTheUserAndNeverSaysWhatWasTyped()
+    public async Task AWrongPasswordIsInTheHistoryAgainstTheUserAndNeverSaysWhatWasTyped()
     {
         var user = await factory.AddUserAsync(Password);
         const string typed = "Someone-is-guessing-1";
 
         await SignInAsync(user.Username, typed);
 
-        var record = Assert.Single(await factory.AuditTrailOfAsync(user.Id));
-        Assert.Equal(AuditAction.SignInFailed, record.Action);
+        var record = Assert.Single(await factory.HistoryOfAsync(user.Id));
+        Assert.Equal(HistoryAction.SignInFailed, record.Action);
         Assert.Equal(user.Id, record.UserId);
         Assert.Equal("Users", record.TableName);
         Assert.Equal(factory.Time.GetUtcNow().UtcDateTime, record.At);
@@ -184,10 +184,10 @@ public class AuthTests(MigratedApiFactory factory)
             await SignInAsync(user.Username, "Wrong-password-1");
         }
 
-        var trail = await factory.AuditTrailOfAsync(user.Id);
+        var trail = await factory.HistoryOfAsync(user.Id);
         Assert.Equal(User.WrongPasswordsBeforeLock, trail.Count);
-        Assert.All(trail.SkipLast(1), record => Assert.Equal(AuditAction.SignInFailed, record.Action));
-        Assert.Equal(AuditAction.AccountLocked, trail[^1].Action);
+        Assert.All(trail.SkipLast(1), record => Assert.Equal(HistoryAction.SignInFailed, record.Action));
+        Assert.Equal(HistoryAction.AccountLocked, trail[^1].Action);
         Assert.Contains("LockedUntil", trail[^1].After);
     }
 
@@ -202,7 +202,7 @@ public class AuthTests(MigratedApiFactory factory)
 
         await SignInAsync(user.Username, Password);
 
-        Assert.Equal(AuditAction.SignInFailed, (await factory.AuditTrailOfAsync(user.Id))[^1].Action);
+        Assert.Equal(HistoryAction.SignInFailed, (await factory.HistoryOfAsync(user.Id))[^1].Action);
     }
 
     [Fact]
@@ -212,13 +212,13 @@ public class AuthTests(MigratedApiFactory factory)
 
         await SignInAsync(user.Username, Password);
 
-        Assert.Equal(AuditAction.SignInFailed, Assert.Single(await factory.AuditTrailOfAsync(user.Id)).Action);
+        Assert.Equal(HistoryAction.SignInFailed, Assert.Single(await factory.HistoryOfAsync(user.Id)).Action);
     }
 
     [Fact]
     public async Task AnUnknownUsernameRecordsNothing()
     {
-        long Newest(RedixDbContext db) => db.AuditTrail.OrderByDescending(record => record.Id).Select(record => record.Id).FirstOrDefault();
+        long Newest(RedixDbContext db) => db.History.OrderByDescending(record => record.Id).Select(record => record.Id).FirstOrDefault();
         var before = 0L;
         var after = 0L;
         await factory.WithDatabaseAsync(db => { before = Newest(db); return Task.CompletedTask; });
@@ -420,15 +420,15 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task TurningBiometricsOnAndOffIsAudited()
+    public async Task TurningBiometricsOnAndOffIsInHistory()
     {
         var user = await factory.AddUserAsync(Password);
         var turnedOn = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
 
         await SetBiometricsAsync(turnedOn, false);
 
-        var trail = await factory.AuditTrailOfAsync(user.Id);
-        Assert.Equal([AuditAction.SignIn, AuditAction.TurnOnBiometrics, AuditAction.TurnOffBiometrics], trail.Select(record => record.Action));
+        var trail = await factory.HistoryOfAsync(user.Id);
+        Assert.Equal([HistoryAction.SignIn, HistoryAction.TurnOnBiometrics, HistoryAction.TurnOffBiometrics], trail.Select(record => record.Action));
         Assert.All(trail, record => Assert.Equal(user.Id, record.UserId));
     }
 

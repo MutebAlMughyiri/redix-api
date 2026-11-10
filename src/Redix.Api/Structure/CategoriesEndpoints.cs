@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
@@ -156,7 +156,7 @@ public static class CategoriesEndpoints
     public static Task<IResult> EnableItem(Guid projectId, Guid itemId, RedixDbContext db) => ChangeItemAsync(projectId, itemId, db, item => item.IsActive = true);
 
     /// <summary>
-    /// Changes what an item is for while no entry names it, or <c>itemHasEntries</c>, and no contract does, or <c>itemHasContract</c>; it is in the audit trail. An item of purchases or of
+    /// Changes what an item is for while no entry names it, or <c>itemHasEntries</c>, and no contract does, or <c>itemHasContract</c>; it is in the History table. An item of purchases or of
     /// contractor payments may always become both, since every entry and contract it holds stays valid (Muteb, 7 Nov 2026, for a sub-table on a payments item). Its built-in columns
     /// become the project's default columns for the new type, because what an entry is asked follows them (FR-38); an entry keeps what it holds. The columns a person added stay, after them.
     /// </summary>
@@ -165,7 +165,7 @@ public static class CategoriesEndpoints
     /// <param name="request">What it becomes.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the structure lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> ChangeItemType(Guid projectId, Guid itemId, ChangeItemTypeRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
@@ -202,18 +202,18 @@ public static class CategoriesEndpoints
         {
             column.SortOrder = defaults.Count + place;
         }
-        db.Audit(item, AuditAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        db.AddHistory(item, HistoryAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok();
     }
 
-    /// <summary>Sets whether the item's sheet calculates each table's percentage of اجمالي الكل (AC-46.9), in the audit trail.</summary>
+    /// <summary>Sets whether the item's sheet calculates each table's percentage of اجمالي الكل (AC-46.9), in the History table.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
     /// <param name="request">Whether it does.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the structure lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> SetTablePercentages(Guid projectId, Guid itemId, TablePercentagesRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var item = await ProjectStructure.ItemOfAsync(projectId, itemId, db);
@@ -222,7 +222,7 @@ public static class CategoriesEndpoints
             return Results.NotFound();
         }
         item.ShowsTablePercentages = request.IsOn;
-        db.Audit(item, AuditAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        db.AddHistory(item, HistoryAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok();
     }

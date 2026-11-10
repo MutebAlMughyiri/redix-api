@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Redix.Api.Entries;
 
-/// <summary>One movement of money in the ledger, of any kind. Approval, audit, reversal, attachments and account balances are built once, on this. What only one kind has lives in a detail table keyed by the entry.</summary>
+/// <summary>One movement of money in the ledger, of any kind. Approval, history, reversal, attachments and account balances are built once, on this. What only one kind has lives in a detail table keyed by the entry.</summary>
 public class Entry
 {
     /// <summary>The longest notes an entry may have.</summary>

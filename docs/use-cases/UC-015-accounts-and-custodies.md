@@ -48,7 +48,7 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 | An account needs a name of 1 to 100 characters | `Account.RefusalOf` | `AccountsTests.AnAccountNeedsANameOfAtMost100Characters` |
 | An opening balance has two decimals (NFR-04) and a limit | `Account.RefusalOf` | `AccountsTests.AnOpeningBalanceHasTwoDecimalsAndALimit` |
 | An edit changes the name, the opening balance and the custodian; the type never changes | `AccountsEndpoints.Edit`, `Account.HandTo` | `AccountsTests.AnEditChangesTheNameTheOpeningBalanceAndTheCustodian`, `AnEditCanLeaveABankAccountWithNobody` |
-| A changed opening balance is in the audit trail, old and new | `AccountsEndpoints.Edit`, `RedixDbContext.Audit` | `AccountsTests.AChangedOpeningBalanceIsInTheAuditTrailOldAndNew` |
+| A changed opening balance is in the History table, old and new | `AccountsEndpoints.Edit`, `RedixDbContext.AddHistory` | `AccountsTests.AChangedOpeningBalanceIsInTheHistoryOldAndNew` |
 | An opening balance cannot change once any entry names the account, drafts included; its name still can | `AccountsEndpoints.Edit` | `AccountsTests.AnOpeningBalanceCannotChangeOnceTheAccountHasAnEntry`, `AnAccountWithAnEntryStillChangesItsName` |
 | A disabled account leaves entry and stays on the list (BR-15) | `Account.IsOfferedTo` | `AccountsTests.ADisabledAccountLeavesEntryAndStaysOnTheList`, `EnablingBringsAnAccountBackIntoEntry` |
 | Banks come first, then in the order added | `AccountsEndpoints.ViewsAsync` | `AccountsTests.BanksComeFirstThenInTheOrderTheyWereAdded` |

@@ -17,5 +17,5 @@
 | Rule | Code | Test |
 | --- | --- | --- |
 | A sign-out ends this device's tokens, and only this device's | `AuthEndpoints.SignOut`, `SessionPolicies.CheckSessionIsOpen` | `AuthTests.ASignOutEndsThisDeviceOnly` |
-| A sign-out is in the audit trail | `AuthEndpoints.SignOut` | `AuthTests.ASignOutIsInTheAuditTrail` |
+| A sign-out is in the History table | `AuthEndpoints.SignOut` | `AuthTests.ASignOutIsInTheHistory` |
 | Signing out needs a session | `SessionPolicies.MayChangePassword` | `AuthTests.SigningOutNeedsASession` |

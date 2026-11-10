@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -21,7 +21,6 @@ public class AccountsTests(MigratedApiFactory factory)
 
     public static TheoryData<string> UnacceptableNames => ["   ", new string('x', Project.NameMaxLength + 1)];
 
-    public static TheoryData<decimal> UnacceptableBalances => [1.234m, Money.Largest + 1, -Money.Largest - 1];
 
     private async Task<(HttpClient Client, ProjectView Project)> FinanceAsync(string name = "غصون 6")
     {
@@ -42,9 +41,9 @@ public class AccountsTests(MigratedApiFactory factory)
     private static async Task<List<AccountView>> AccountsOf(HttpClient client, Guid projectId, string path = "") =>
         (await client.GetFromJsonAsync<List<AccountView>>($"/projects/{projectId}/accounts{path}", Json))!;
 
-    private static async Task<AccountView> AddAsync(HttpClient client, Guid projectId, string name, AccountType type = AccountType.Bank, decimal openingBalance = 0, Guid custodianId = default)
+    private static async Task<AccountView> AddAsync(HttpClient client, Guid projectId, string name, AccountType type = AccountType.Bank, Guid custodianId = default)
     {
-        (await client.PostAsJsonAsync($"/projects/{projectId}/accounts", new AddAccountRequest(name, type, openingBalance) { CustodianId = custodianId }, Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{projectId}/accounts", new AddAccountRequest(name, type) { CustodianId = custodianId }, Json)).EnsureSuccessStatusCode();
         return (await AccountsOf(client, projectId)).Single(account => account.Name == name);
     }
 
@@ -52,15 +51,15 @@ public class AccountsTests(MigratedApiFactory factory)
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
 
     [Fact]
-    public async Task FinanceAddsABankAccountWithItsOpeningBalance()
+    public async Task R10_FinanceAddsABankAccountThatHoldsNothingUntilMoneyMovesIntoIt()
     {
         var (client, project) = await FinanceAsync();
 
-        var account = await AddAsync(client, project.Id, "حساب المؤسسة", openingBalance: 4210.35m);
+        var account = await AddAsync(client, project.Id, "حساب المؤسسة");
 
         Assert.Equal(AccountType.Bank, account.Type);
-        Assert.Equal(4210.35m, account.OpeningBalance);
-        Assert.Equal(4210.35m, account.Balance);
+        Assert.Equal(0m, account.Balance);
+        Assert.False(account.IsUsed);
         Assert.Equal("", account.CustodianId);
         Assert.Equal("", account.CustodianName);
         Assert.True(account.IsActive);
@@ -72,7 +71,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var (nawaf, _) = await MemberAsync(project, Field);
 
-        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 2750, nawaf.Id);
+        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
 
         Assert.Equal(AccountType.CashCustody, custody.Type);
         Assert.Equal(nawaf.Id.ToString(), custody.CustodianId);
@@ -91,19 +90,11 @@ public class AccountsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AnOverdrawnAccountMayOpenBelowZero()
-    {
-        var (client, project) = await FinanceAsync();
-
-        Assert.Equal(-120.40m, (await AddAsync(client, project.Id, "مكشوف", openingBalance: -120.40m)).OpeningBalance);
-    }
-
-    [Fact]
     public async Task ACashCustodyNeedsACustodian()
     {
         var (client, project) = await FinanceAsync();
 
-        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("كاش", AccountType.CashCustody, 0), Json);
+        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("كاش", AccountType.CashCustody), Json);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         Assert.Equal("custodianRequired", await CodeOf(refused));
@@ -115,9 +106,9 @@ public class AccountsTests(MigratedApiFactory factory)
     {
         var (client, project) = await FinanceAsync();
         var (nawaf, _) = await MemberAsync(project, Field);
-        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 0, nawaf.Id);
+        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
 
-        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{custody.Id}", new EditAccountRequest("كاش مع نواف", 0), Json);
+        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{custody.Id}", new EditAccountRequest("كاش مع نواف"), Json);
 
         Assert.Equal("custodianRequired", await CodeOf(refused));
     }
@@ -131,8 +122,8 @@ public class AccountsTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("كاش", AccountType.CashCustody, 0) { CustodianId = stranger.Id }, Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("حساب", 0) { CustodianId = stranger.Id }, Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("كاش", AccountType.CashCustody) { CustodianId = stranger.Id }, Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("حساب") { CustodianId = stranger.Id }, Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -149,8 +140,8 @@ public class AccountsTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest(name, AccountType.Bank, 0), Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest(name, 0), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest(name, AccountType.Bank), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest(name), Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -158,60 +149,34 @@ public class AccountsTests(MigratedApiFactory factory)
         }
     }
 
-    [Theory]
-    [MemberData(nameof(UnacceptableBalances))]
-    public async Task AnOpeningBalanceHasTwoDecimalsAndALimit(decimal openingBalance)
-    {
-        var (client, project) = await FinanceAsync();
-
-        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب", AccountType.Bank, openingBalance), Json);
-
-        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidOpeningBalance", await CodeOf(refused));
-    }
-
     [Fact]
-    public async Task AnEditChangesTheNameTheOpeningBalanceAndTheCustodian()
+    public async Task AnEditChangesTheNameAndTheCustodian()
     {
         var (client, project) = await FinanceAsync();
         var (nawaf, _) = await MemberAsync(project, Field);
         var (fawaz, _) = await MemberAsync(project, Field);
-        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 100, nawaf.Id);
+        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{custody.Id}", new EditAccountRequest("كاش مع فواز", 250.5m) { CustodianId = fawaz.Id }, Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{custody.Id}", new EditAccountRequest("كاش مع فواز") { CustodianId = fawaz.Id }, Json)).EnsureSuccessStatusCode();
 
         var edited = (await AccountsOf(client, project.Id)).Single();
         Assert.Equal("كاش مع فواز", edited.Name);
-        Assert.Equal(250.5m, edited.OpeningBalance);
         Assert.Equal(fawaz.Id.ToString(), edited.CustodianId);
         Assert.Equal(AccountType.CashCustody, edited.Type);
     }
 
     [Fact]
-    public async Task AChangedOpeningBalanceIsInTheAuditTrailOldAndNew()
+    public async Task R21_AChangedNameIsInTheHistoryOldAndNewWithItsProject()
     {
         var (client, project) = await FinanceAsync();
-        var account = await AddAsync(client, project.Id, "حساب المؤسسة", openingBalance: 100);
+        var account = await AddAsync(client, project.Id, "البنك");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("حساب المؤسسة", 250.5m), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("حساب المؤسسة"), Json)).EnsureSuccessStatusCode();
 
-        var record = Assert.Single(await factory.AuditTrailOfAsync(account.Id));
-        Assert.Equal(AuditAction.Update, record.Action);
-        Assert.Equal(100m, JsonDocument.Parse(record.Before).RootElement.GetProperty("OpeningBalance").GetDecimal());
-        Assert.Equal(250.5m, JsonDocument.Parse(record.After).RootElement.GetProperty("OpeningBalance").GetDecimal());
-    }
-
-    [Fact]
-    public async Task AnOpeningBalanceCannotChangeOnceTheAccountHasAnEntry()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.RecordAsync(ledger.Purchase());
-
-        var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}", new EditAccountRequest("حساب المؤسسة", 500), Json);
-
-        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("accountHasEntries", await CodeOf(refused));
-        Assert.Equal(0m, Assert.Single(await AccountsOf(ledger.Client, ledger.ProjectId)).OpeningBalance);
+        var record = (await factory.HistoryOfAsync(account.Id)).Last();
+        Assert.Equal((HistoryAction.Update, project.Id), (record.Action, record.ProjectId));
+        Assert.Equal("البنك", JsonDocument.Parse(record.Before).RootElement.GetProperty("Name").GetString());
+        Assert.Equal("حساب المؤسسة", JsonDocument.Parse(record.After).RootElement.GetProperty("Name").GetString());
     }
 
     [Fact]
@@ -220,7 +185,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ledger.RecordAsync(ledger.Purchase());
 
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}", new EditAccountRequest("الحساب الجاري", 0), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}", new EditAccountRequest("الحساب الجاري"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("الحساب الجاري", Assert.Single(await AccountsOf(ledger.Client, ledger.ProjectId)).Name);
     }
@@ -232,7 +197,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var (nawaf, _) = await MemberAsync(project, Field);
         var account = await AddAsync(client, project.Id, "البطاقة", custodianId: nawaf.Id);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("البطاقة", 0), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("البطاقة"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("", (await AccountsOf(client, project.Id)).Single().CustodianId);
         await factory.WithDatabaseAsync(async db => Assert.False(await db.AccountCustodians.AnyAsync(row => row.AccountId == account.Id)));
@@ -267,7 +232,7 @@ public class AccountsTests(MigratedApiFactory factory)
     {
         var (client, project) = await FinanceAsync();
         var (nawaf, _) = await MemberAsync(project, Field);
-        await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 0, nawaf.Id);
+        await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
         await AddAsync(client, project.Id, "الأول");
         await AddAsync(client, project.Id, "الثاني");
 
@@ -279,19 +244,18 @@ public class AccountsTests(MigratedApiFactory factory)
     {
         var (client, project) = await FinanceAsync();
         var (nawaf, nawafClient) = await MemberAsync(project, Field);
-        var bank = await AddAsync(client, project.Id, "حساب المؤسسة", openingBalance: 64250.75m);
-        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 2750, nawaf.Id);
+        var bank = await AddAsync(client, project.Id, "حساب المؤسسة");
+        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
 
         var seen = await AccountsOf(nawafClient, project.Id);
 
-        Assert.Equal(2750m, seen.Single(account => account.IsMine).Balance);
         Assert.Equal(custody.Id, seen.Single(account => account.IsMine).Id);
-        Assert.Equal(64250.75m, seen.Single(account => account.Id == bank.Id).Balance);
+        Assert.Contains(seen, account => account.Id == bank.Id);
         foreach (var refused in new[]
         {
-            await nawafClient.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حسابي", AccountType.Bank, 0), Json),
-            await nawafClient.PostAsJsonAsync($"/projects/{project.Id}/accounts/{bank.Id}", new EditAccountRequest("حسابي", 0), Json),
-            await nawafClient.PostAsJsonAsync($"/projects/{project.Id}/accounts/{custody.Id}", new EditAccountRequest("حسابي", 0) { CustodianId = nawaf.Id }, Json),
+            await nawafClient.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حسابي", AccountType.Bank), Json),
+            await nawafClient.PostAsJsonAsync($"/projects/{project.Id}/accounts/{bank.Id}", new EditAccountRequest("حسابي"), Json),
+            await nawafClient.PostAsJsonAsync($"/projects/{project.Id}/accounts/{custody.Id}", new EditAccountRequest("حسابي") { CustodianId = nawaf.Id }, Json),
             await nawafClient.PostAsync($"/projects/{project.Id}/accounts/{custody.Id}/disable", null),
         })
         {
@@ -305,7 +269,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var (nawaf, nawafClient) = await MemberAsync(project, Field);
         await AddAsync(client, project.Id, "حساب المؤسسة");
-        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 0, nawaf.Id);
+        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
 
         Assert.Equal([custody.Id], (await AccountsOf(nawafClient, project.Id, "/offered")).Select(account => account.Id));
     }
@@ -325,7 +289,7 @@ public class AccountsTests(MigratedApiFactory factory)
     {
         var (client, project) = await FinanceAsync();
         var (nawaf, nawafClient) = await MemberAsync(project, Field);
-        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 0, nawaf.Id);
+        var custody = await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
 
         (await client.PostAsync($"/projects/{project.Id}/accounts/{custody.Id}/disable", null)).EnsureSuccessStatusCode();
 
@@ -338,7 +302,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var (nawaf, _) = await MemberAsync(project, Field);
         await AddAsync(client, project.Id, "حساب المؤسسة");
-        await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, 0, nawaf.Id);
+        await AddAsync(client, project.Id, "كاش مع نواف", AccountType.CashCustody, nawaf.Id);
 
         Assert.Equal(2, (await AccountsOf(client, project.Id, "/offered")).Count);
     }
@@ -353,7 +317,7 @@ public class AccountsTests(MigratedApiFactory factory)
         Assert.Empty(await AccountsOf(client, project.Id));
         foreach (var missed in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{theirs.Id}", new EditAccountRequest("سرقة", 0), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{theirs.Id}", new EditAccountRequest("سرقة"), Json),
             await client.PostAsync($"/projects/{project.Id}/accounts/{theirs.Id}/disable", null),
         })
         {
@@ -371,8 +335,8 @@ public class AccountsTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("آخر", AccountType.Bank, 0), Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("آخر", 0), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("آخر", AccountType.Bank), Json),
+            await client.PostAsJsonAsync($"/projects/{project.Id}/accounts/{account.Id}", new EditAccountRequest("آخر"), Json),
             await client.PostAsync($"/projects/{project.Id}/accounts/{account.Id}/disable", null),
         })
         {
@@ -392,7 +356,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var (_, memberClient) = await MemberAsync(project, role);
 
         Assert.Single(await AccountsOf(memberClient, project.Id));
-        Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("آخر", AccountType.Bank, 0), Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("آخر", AccountType.Bank), Json)).StatusCode);
     }
 
     [Fact]

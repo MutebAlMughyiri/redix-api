@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -49,7 +49,7 @@ public static class InvoiceAttachEndpoints
     }
 
     /// <summary>
-    /// Puts the file on the expense, in the audit trail, and changes nothing else (D15). Someone else's, to whoever may not manage any entry, answers <c>notYourEntry</c>; one that has a file already, is a deduction or credit note, or was reversed answers <c>entryNotAttachable</c>; a file of no such attachment <c>unknownAttachment</c>,
+    /// Puts the file on the expense, in the History table, and changes nothing else (D15). Someone else's, to whoever may not manage any entry, answers <c>notYourEntry</c>; one that has a file already, is a deduction or credit note, or was reversed answers <c>entryNotAttachable</c>; a file of no such attachment <c>unknownAttachment</c>,
     /// and one already on an entry <c>invoiceAlreadyAttached</c> (BR-22).
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -86,7 +86,7 @@ public static class InvoiceAttachEndpoints
         var role = entry.Kind == EntryKind.ContractorPayment ? EntryAttachmentRole.Receipt : EntryAttachmentRole.Invoice;
         var file = new EntryAttachment { EntryId = entryId, AttachmentId = request.AttachmentId, Role = role };
         db.Add(file);
-        db.Audit(file, AuditAction.Create, userId, time.GetUtcNow().UtcDateTime);
+        db.AddHistory(file, HistoryAction.Create, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok(new EntryStatusView(entryId, entry.Status, ""));
     }

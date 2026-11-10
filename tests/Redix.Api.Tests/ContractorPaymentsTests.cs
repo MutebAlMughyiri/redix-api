@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Structure;
@@ -377,7 +377,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         Assert.Equal("accountNotOffered", await Ledger.CodeOf(refused));
 
-        (await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = fieldId }, Ledger.Json)).EnsureSuccessStatusCode();
+        (await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody) { CustodianId = fieldId }, Ledger.Json)).EnsureSuccessStatusCode();
         var custody = (await setup.Ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{setup.Ledger.ProjectId}/accounts", Ledger.Json))!.Single(account => account.Name == "عهدة نواف");
 
         var response = await PostAsync(setup, Payment(setup) with { AccountId = custody.Id }, field);
@@ -432,15 +432,15 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task FR_21_APaymentIsInTheAuditTrail()
+    public async Task FR_21_APaymentIsInTheHistory()
     {
         var setup = await ContractAsync();
         var request = Payment(setup) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
 
         await RecordAsync(setup, request);
 
-        var trail = await factory.AuditTrailOfAsync(request.Id);
+        var trail = await factory.HistoryOfAsync(request.Id);
         Assert.Equal(["Entries", "ExpenseDetails", "ContractorPaymentDetails", "EntryAttachments"], trail.Select(record => record.TableName));
-        Assert.Equal(AuditAction.Submit, trail[0].Action);
+        Assert.Equal(HistoryAction.Submit, trail[0].Action);
     }
 }

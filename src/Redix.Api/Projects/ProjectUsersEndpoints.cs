@@ -1,12 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 
 namespace Redix.Api.Projects;
 
-/// <summary>A project's people and what each may do in it (UC-009, FR-02, FR-36), for whoever manages its users. Every project keeps its own list (BR-33), and every change is saved with its audit record.</summary>
+/// <summary>A project's people and what each may do in it (UC-009, FR-02, FR-36), for whoever manages its users. Every project keeps its own list (BR-33), and every change is saved with its history row.</summary>
 public static class ProjectUsersEndpoints
 {
     /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for whoever manages its users <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, giving and taking a permission, and a person's role name.</summary>
@@ -53,7 +53,7 @@ public static class ProjectUsersEndpoints
     /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database the user joins.</param>
     /// <param name="hasher">Hashes the temporary password.</param>
-    /// <param name="time">The current time, for the user and the audit records.</param>
+    /// <param name="time">The current time, for the user and the history rows.</param>
     public static async Task<IResult> Create(Guid projectId, CreateUserRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
     {
         var roleName = request.RoleName.Trim();
@@ -73,7 +73,7 @@ public static class ProjectUsersEndpoints
         {
             return Refusal.Of(status, refusal);
         }
-        db.Audit(user, AuditAction.Create, AccessTokens.UserIdOf(principal), now);
+        db.AddHistory(user, HistoryAction.Create, AccessTokens.UserIdOf(principal), now);
         foreach (var permission in request.Permissions.Prepend(Permission.ReadProject).Distinct())
         {
             Add(projectId, user.Id, permission, principal, db, now);
@@ -88,7 +88,7 @@ public static class ProjectUsersEndpoints
     /// <param name="request">The exact username.</param>
     /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> AddExisting(Guid projectId, AddExistingUserRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var username = request.Username.Trim();
@@ -112,7 +112,7 @@ public static class ProjectUsersEndpoints
     /// <param name="permission">The permission's name.</param>
     /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Give(Guid projectId, Guid userId, string permission, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
@@ -142,7 +142,7 @@ public static class ProjectUsersEndpoints
     /// <param name="permission">The permission's name.</param>
     /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Take(Guid projectId, Guid userId, string permission, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
@@ -164,7 +164,7 @@ public static class ProjectUsersEndpoints
         foreach (var held in taken)
         {
             db.ProjectPermissions.Remove(held);
-            db.Audit(held, AuditAction.RemoveProject, AccessTokens.UserIdOf(principal), now);
+            db.AddHistory(held, HistoryAction.RemoveProject, AccessTokens.UserIdOf(principal), now);
         }
         if (taking == Permission.ReadProject)
         {
@@ -180,7 +180,7 @@ public static class ProjectUsersEndpoints
     /// <param name="request">The role name.</param>
     /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> SetRoleName(Guid projectId, Guid userId, RoleNameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var user = await InProjectAsync(projectId, userId, db);
@@ -204,7 +204,7 @@ public static class ProjectUsersEndpoints
     {
         var held = new ProjectPermission { ProjectId = projectId, UserId = userId, Permission = permission };
         db.ProjectPermissions.Add(held);
-        db.Audit(held, AuditAction.AssignProject, AccessTokens.UserIdOf(principal), now);
+        db.AddHistory(held, HistoryAction.AssignProject, AccessTokens.UserIdOf(principal), now);
     }
 
     private static async Task<User> InProjectAsync(Guid projectId, Guid userId, RedixDbContext db) =>

@@ -10,7 +10,7 @@
 
 A payment is a row in `Entries` of kind `ContractorPayment`, one in `ExpenseDetails` and one in `ContractorPaymentDetails`. The contract says the item and the contractor. It goes under the item's general subgroup: its contract is its table on the item's sheet, so it names no subgroup (redix-app #84, R11).
 
-Both kinds of expense share `EntryRequest` and `EntryRecording`: the payment method, the account (`ChargeAnyAccount` and `AccountCustodians`, BRS open question 4), the file, the custom columns, and how an entry reaches the ledger with its audit records. `EntryAnswers` owns which column a kind of entry answers, so what only a purchase holds is never asked of a payment.
+Both kinds of expense share `EntryRequest` and `EntryRecording`: the payment method, the account (`ChargeAnyAccount` and `AccountCustodians`, BRS open question 4), the file, the custom columns, and how an entry reaches the ledger with its history rows. `EntryAnswers` owns which column a kind of entry answers, so what only a purchase holds is never asked of a payment.
 
 **`ContractMoney` is the one owner of what a contract holds.** `Paid` is the approved payments inside it, and `Pending` the ones waiting, each by `Entries.Amount`, so a deduction takes away (AC-14.1). A payment outside the contract is neither (AC-13.1), and a draft or a rejected one is neither. BR-10 says only the approved counts, so that is what `Paid`, `Remaining` and the contract's overrun read.
 
@@ -50,5 +50,5 @@ Tests are in `ContractorPaymentsTests`.
 | AC-38.1: an item that takes no contractor payments | `ProjectStructure.OfferedItemAsync` | `AC_38_1_AContractWhoseItemIsDisabledTakesNoPayment` |
 | Open question 4: only what the user may charge | `EntryRecording.RefusalOfAsync` | `OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther` |
 | FR-41: its columns, and never a purchase's | `EntryAnswers` | `FR_41_ARequiredCustomColumnIsAskedOfAPaymentWhenSending`, `FR_41_WhatOnlyAPurchaseHoldsIsNeverAskedOfAPayment` |
-| What was typed; a disabled contract; a finished project; the audit trail; an id sent twice | `EntryRecording`, `ProjectChanges` | `WhatWasTypedIsRefusedWhenItCannotBeKept`, `ADisabledContractOrOneOfAnotherProjectIsRefused`, `AnEmptyIdIsRefused`, `AC_04_1_AFinishedProjectRecordsNoPayment`, `FR_21_APaymentIsInTheAuditTrail`, `AC_16_3_APaymentSentAgainLandsOnce` |
+| What was typed; a disabled contract; a finished project; the History table; an id sent twice | `EntryRecording`, `ProjectChanges` | `WhatWasTypedIsRefusedWhenItCannotBeKept`, `ADisabledContractOrOneOfAnotherProjectIsRefused`, `AnEmptyIdIsRefused`, `AC_04_1_AFinishedProjectRecordsNoPayment`, `FR_21_APaymentIsInTheHistory`, `AC_16_3_APaymentSentAgainLandsOnce` |
 | Editing a waiting payment counts it once, keeps the contract's other waiting payments, and answers 200 | `ContractMoney.OfProjectAsync` (`leftOut`), `ContractTable.AnswerOfAsync` | `ContractorPaymentsTests.EditingAWaitingPaymentCountsItOnceKeepsTheOthersAndAnswersOk` |

@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 
 namespace Redix.Api.Projects;
 
@@ -32,7 +32,7 @@ public class ProjectRoleName
     public static string RefusalOf(string roleName) => roleName.Length > MaxLength ? "InvalidRoleName" : "";
 
     /// <summary>
-    /// Names what <paramref name="userId"/> is called in <paramref name="projectId"/>, with its audit record by <paramref name="by"/>: a new name adds the row, another name changes
+    /// Names what <paramref name="userId"/> is called in <paramref name="projectId"/>, with its history row by <paramref name="by"/>: a new name adds the row, another name changes
     /// it, an empty one removes it, and the same name changes nothing. The caller saves.
     /// </summary>
     public static async Task NameAsync(Guid projectId, Guid userId, string roleName, Guid by, DateTime now, RedixDbContext db)
@@ -44,19 +44,19 @@ public class ProjectRoleName
         }
         var action = (named.RoleName.Length, roleName.Length) switch
         {
-            (0, _) => AuditAction.Create,
-            (_, 0) => AuditAction.Delete,
-            _ => AuditAction.Update,
+            (0, _) => HistoryAction.Create,
+            (_, 0) => HistoryAction.Delete,
+            _ => HistoryAction.Update,
         };
         named.RoleName = roleName;
-        if (action == AuditAction.Create)
+        if (action == HistoryAction.Create)
         {
             db.ProjectRoleNames.Add(named);
         }
-        else if (action == AuditAction.Delete)
+        else if (action == HistoryAction.Delete)
         {
             db.ProjectRoleNames.Remove(named);
         }
-        db.Audit(named, action, by, now);
+        db.AddHistory(named, action, by, now);
     }
 }

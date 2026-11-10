@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
@@ -53,7 +53,7 @@ public static class ProjectsEndpoints
     /// <param name="request">The project's name, start date and units.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project is added to.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Create(CreateProjectRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var (project, outcome) = Project.New(request.Name, request.StartDate, request.Units, request.Description);
@@ -80,16 +80,16 @@ public static class ProjectsEndpoints
         return Results.Created($"/projects/{project.Id}", await ViewOfAsync(project, userId, db));
     }
 
-    /// <summary>Adds a registered <paramref name="project"/> with <paramref name="managerId"/> holding every permission of a project in it, and their audit records; the caller saves them together.</summary>
+    /// <summary>Adds a registered <paramref name="project"/> with <paramref name="managerId"/> holding every permission of a project in it, and their history rows; the caller saves them together.</summary>
     public static void AddWithManager(Project project, Guid managerId, RedixDbContext db, DateTime now)
     {
         db.Projects.Add(project);
-        db.Audit(project, AuditAction.RegisterProject, managerId, now);
+        db.AddHistory(project, HistoryAction.RegisterProject, managerId, now);
         foreach (var permission in ProjectPermission.InAProject)
         {
             var held = new ProjectPermission { ProjectId = project.Id, UserId = managerId, Permission = permission };
             db.ProjectPermissions.Add(held);
-            db.Audit(held, AuditAction.AssignProject, managerId, now);
+            db.AddHistory(held, HistoryAction.AssignProject, managerId, now);
         }
     }
 
@@ -98,27 +98,27 @@ public static class ProjectsEndpoints
     /// <param name="request">The unit's name.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> AddUnit(Guid projectId, AddUnitRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, principal, db, time, AuditAction.Create, project => project.AddUnit(request.Name.Trim()));
+        ChangeAsync(projectId, principal, db, time, HistoryAction.Create, project => project.AddUnit(request.Name.Trim()));
 
     /// <summary>Renames a project while it is open (BR-38). A finished project answers <c>projectFinished</c>; an unacceptable name, <c>invalidName</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">Its new name.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Rename(Guid projectId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.Rename(request.Name.Trim()));
+        ChangeAsync(projectId, principal, db, time, HistoryAction.Update, project => project.Rename(request.Name.Trim()));
 
-    /// <summary>Keeps the project's description while it is open, in the audit trail as a rename is (redix-api 93). Over <see cref="Project.DescriptionMaxLength"/> characters it answers <c>invalidDescription</c>, and once finished <c>projectFinished</c>.</summary>
+    /// <summary>Keeps the project's description while it is open, in the History table as a rename is (redix-api 93). Over <see cref="Project.DescriptionMaxLength"/> characters it answers <c>invalidDescription</c>, and once finished <c>projectFinished</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">Its description; empty for none.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Describe(Guid projectId, DescriptionRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.Describe(request.Description.Trim()));
+        ChangeAsync(projectId, principal, db, time, HistoryAction.Update, project => project.Describe(request.Description.Trim()));
 
     /// <summary>Renames a unit while its project is open (BR-38). It answers as <see cref="AddUnit"/> does, and one outside the project 404.</summary>
     /// <param name="projectId">The project.</param>
@@ -126,18 +126,18 @@ public static class ProjectsEndpoints
     /// <param name="request">Its new name.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> RenameUnit(Guid projectId, Guid unitId, NameRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, principal, db, time, AuditAction.Update, project => project.RenameUnit(unitId, request.Name.Trim()));
+        ChangeAsync(projectId, principal, db, time, HistoryAction.Update, project => project.RenameUnit(unitId, request.Name.Trim()));
 
     /// <summary>Deletes a unit while its project is open (BR-38). A finished project answers <c>projectFinished</c>; one outside the project 404.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="unitId">The unit.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> DeleteUnit(Guid projectId, Guid unitId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, principal, db, time, AuditAction.Delete, project => project.RemoveUnit(unitId));
+        ChangeAsync(projectId, principal, db, time, HistoryAction.Delete, project => project.RemoveUnit(unitId));
 
     /// <summary>
     /// Closes a finished project: from then on it is read-only, and its reports stay available (AC-04.1). A finished project answers <c>projectFinished</c>; one with entries waiting for approval, <c>pendingEntries</c> (BR-35).
@@ -146,11 +146,11 @@ public static class ProjectsEndpoints
     /// <param name="projectId">The project to close.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Close(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var hasEntriesWaiting = await db.Entries.AnyAsync(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval);
-        return await ChangeAsync(projectId, principal, db, time, AuditAction.CloseProject, project => project.Close(hasEntriesWaiting));
+        return await ChangeAsync(projectId, principal, db, time, HistoryAction.CloseProject, project => project.Close(hasEntriesWaiting));
     }
 
     /// <summary>
@@ -186,7 +186,7 @@ public static class ProjectsEndpoints
         return new DefaultProjectView("");
     }
 
-    private static async Task<IResult> ChangeAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Func<Project, ProjectChangeOutcome> change)
+    private static async Task<IResult> ChangeAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, Func<Project, ProjectChangeOutcome> change)
     {
         var project = await db.Projects.Include(project => project.Units.OrderBy(unit => unit.SortOrder)).SingleOrDefaultAsync(project => project.Id == projectId);
         if (project is null)
@@ -205,7 +205,7 @@ public static class ProjectsEndpoints
             return Refusal.Of(status, outcome.ToString());
         }
         var userId = AccessTokens.UserIdOf(principal);
-        db.AuditChanges(action, userId, time.GetUtcNow().UtcDateTime);
+        db.AddHistoryOfChanges(action, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok(await ViewOfAsync(project, userId, db));
     }

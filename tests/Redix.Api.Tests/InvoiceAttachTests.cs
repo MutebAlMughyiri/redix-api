@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Entries;
 using Redix.Api.Notifications;
 using Xunit;
@@ -33,7 +33,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     private static async Task<(HttpClient Client, EntryRequest Request)> FieldRecordsAsync(Ledger ledger)
     {
         var (field, userId) = await ledger.MemberAsync("Field");
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         var request = ledger.Purchase(200m) with { AccountId = account.Id, Submit = true };
         (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", request, Json)).EnsureSuccessStatusCode();
@@ -92,7 +92,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var request = ledger.Purchase(115m) with { Submit = true };
         await ledger.RecordAsync(request);
         var file = await ledger.FileAsync();
-        var trailBefore = (await factory.AuditTrailOfAsync(request.Id)).Count;
+        var trailBefore = (await factory.HistoryOfAsync(request.Id)).Count;
 
         var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(file));
 
@@ -101,7 +101,7 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         Assert.Equal((file, EntryAttachmentRole.Invoice), (link.AttachmentId, link.Role));
         Assert.False(await ledger.ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id)));
         Assert.Equal(115m, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id))).Amount);
-        Assert.Equal(AuditAction.Create, Assert.Single((await factory.AuditTrailOfAsync(request.Id)).Skip(trailBefore)).Action);
+        Assert.Equal(HistoryAction.Create, Assert.Single((await factory.HistoryOfAsync(request.Id)).Skip(trailBefore)).Action);
     }
 
     [Fact]

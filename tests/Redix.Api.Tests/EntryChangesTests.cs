@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Xunit;
@@ -37,7 +37,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     private static async Task<(HttpClient Client, EntryRequest Request, Guid UserId)> FieldDraftAsync(Ledger ledger)
     {
         var (field, userId) = await ledger.MemberAsync("Field");
-        var custody = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json);
+        var custody = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody) { CustodianId = userId }, Json);
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         custody.EnsureSuccessStatusCode();
         var request = ledger.Purchase(200m) with { AccountId = account.Id };
@@ -90,7 +90,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task EveryChangeIsInTheAuditTrailWithTheValuesBeforeAndAfter()
+    public async Task EveryChangeIsInTheHistoryWithTheValuesBeforeAndAfter()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var request = ledger.Purchase(1150m);
@@ -98,7 +98,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
 
         (await EditAsync(ledger.Client, ledger, request with { Amount = 2300m })).EnsureSuccessStatusCode();
 
-        var update = (await factory.AuditTrailOfAsync(request.Id)).Last(record => record.Action == AuditAction.Update && record.TableName == "Entries");
+        var update = (await factory.HistoryOfAsync(request.Id)).Last(record => record.Action == HistoryAction.Update && record.TableName == "Entries");
         Assert.Equal(1150m, JsonDocument.Parse(update.Before).RootElement.GetProperty("Amount").GetDecimal());
         Assert.Equal(2300m, JsonDocument.Parse(update.After).RootElement.GetProperty("Amount").GetDecimal());
     }
@@ -247,7 +247,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ADeletedEntryLeavesNothingButTheAuditTrail()
+    public async Task ADeletedEntryLeavesNothingButTheHistory()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var request = ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Submit = true };
@@ -257,7 +257,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
 
         Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(row => row.Id == request.Id)));
         Assert.False(await ledger.ReadAsync(db => db.ExpenseDetails.AnyAsync(row => row.EntryId == request.Id)));
-        Assert.Contains(await factory.AuditTrailOfAsync(request.Id), record => record.Action == AuditAction.Delete);
+        Assert.Contains(await factory.HistoryOfAsync(request.Id), record => record.Action == HistoryAction.Delete);
     }
 
     [Fact]
@@ -292,7 +292,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         Assert.Equal((original.Amount, original.Status, original.Notes), (after.Amount, after.Status, after.Notes));
         Assert.False(await ledger.ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id || row.EntryId == reversal.Id)));
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single();
-        Assert.Equal(account.OpeningBalance, account.Balance);
+        Assert.Equal(0m, account.Balance);
     }
 
     [Fact]

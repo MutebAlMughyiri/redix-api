@@ -139,7 +139,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task FR_21_TheLinkIsInTheAuditTrail()
+    public async Task FR_21_TheLinkIsInTheHistory()
     {
         var ledger = await LedgerAsync();
         var bill = await BillAsync(ledger);
@@ -147,7 +147,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
 
         await ledger.RecordAsync(note);
 
-        var trail = await factory.AuditTrailOfAsync(note.Id);
+        var trail = await factory.HistoryOfAsync(note.Id);
         var link = JsonDocument.Parse(trail.Single(record => record.TableName == "EntryLinks").After).RootElement;
         Assert.Equal(bill, link.GetProperty("LinkedEntryId").GetGuid());
     }

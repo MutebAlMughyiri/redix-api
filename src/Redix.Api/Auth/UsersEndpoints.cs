@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Auth;
@@ -9,7 +9,7 @@ namespace Redix.Api.Auth;
 /// <summary>
 /// The logins (UC-007, FR-02): corrects, disables and resets them. A login is shared across projects, so one project's manager may change it only if they manage every
 /// project it is in, and never one holding a system permission; otherwise a reset could let them sign in to another project or as the admin (BR-33). Every change is saved
-/// with its audit record.
+/// with its history row.
 /// </summary>
 public static class UsersEndpoints
 {
@@ -40,7 +40,7 @@ public static class UsersEndpoints
     /// <param name="request">The new name and mobile.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the user lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Edit(Guid userId, EditUserRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var displayName = request.DisplayName.Trim();
@@ -50,7 +50,7 @@ public static class UsersEndpoints
         {
             return Task.FromResult(Refusal.Of(StatusCodes.Status400BadRequest, refusal));
         }
-        return ChangeAsync(userId, principal, db, time, AuditAction.Update, user =>
+        return ChangeAsync(userId, principal, db, time, HistoryAction.Update, user =>
         {
             user.DisplayName = displayName;
             user.Mobile = mobile;
@@ -67,14 +67,14 @@ public static class UsersEndpoints
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the user and devices live in.</param>
     /// <param name="hasher">Hashes the temporary password.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> ResetPassword(Guid userId, ResetPasswordRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
     {
         if (!User.IsLongEnough(request.TemporaryPassword))
         {
             return Task.FromResult(Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword"));
         }
-        return ChangeAsync(userId, principal, db, time, AuditAction.ResetPassword, async user =>
+        return ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, async user =>
         {
             await db.Devices.Where(device => device.UserId == userId).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
             user.ResetPassword(request.TemporaryPassword, hasher);
@@ -86,9 +86,9 @@ public static class UsersEndpoints
     /// <param name="userId">The user to disable.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the user lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Disable(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(userId, principal, db, time, AuditAction.Disable, async user =>
+        ChangeAsync(userId, principal, db, time, HistoryAction.Disable, async user =>
         {
             if (await ProjectManagers.IsTheLastOfAProjectAsync(userId, db))
             {
@@ -102,9 +102,9 @@ public static class UsersEndpoints
     /// <param name="userId">The user to enable.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the user lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Enable(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(userId, principal, db, time, AuditAction.Enable, user =>
+        ChangeAsync(userId, principal, db, time, HistoryAction.Enable, user =>
         {
             user.IsActive = true;
             return Task.FromResult("");
@@ -121,7 +121,7 @@ public static class UsersEndpoints
         return theirProjects.Count > 0 && theirProjects.All(project => access.In(project).Contains(Permission.ManageUsers));
     }
 
-    private static async Task<IResult> ChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Func<User, Task<string>> change)
+    private static async Task<IResult> ChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, Func<User, Task<string>> change)
     {
         var user = await db.Users.SingleOrDefaultAsync(user => user.Id == userId);
         if (user is null)
@@ -138,7 +138,7 @@ public static class UsersEndpoints
         {
             return Refusal.Of(StatusCodes.Status409Conflict, refusal);
         }
-        db.Audit(user, action, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        db.AddHistory(user, action, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         var projects = await ProjectsByUserAsync(db.ProjectPermissions.Where(held => held.UserId == userId), db);
         return Results.Ok(UserView.Of(user, projects[userId].ToList()));

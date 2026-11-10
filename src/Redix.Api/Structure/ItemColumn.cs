@@ -6,7 +6,7 @@ public class ItemColumn : Column
     /// <summary>The item that asks for it.</summary>
     public Guid ItemId { get; init; }
 
-    /// <summary>True once deleted: it leaves entry, while its values stay on their entries and in the audit trail (BR-21).</summary>
+    /// <summary>True once deleted: it leaves entry, while its values stay on their entries and in the History table (BR-21).</summary>
     public bool IsHidden { get; private set; }
 
     /// <summary>The column <paramref name="source"/> on the item <paramref name="itemId"/>, at <paramref name="sortOrder"/>.</summary>

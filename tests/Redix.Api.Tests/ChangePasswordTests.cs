@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 
 namespace Redix.Api.Tests;
@@ -61,9 +61,9 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         await ChangePasswordAsync(session.AccessToken, "wrong", NewPassword);
 
         Assert.Equal("accountLocked", await CodeOf(await ChangePasswordAsync(session.AccessToken, Password, NewPassword)));
-        var trail = await factory.AuditTrailOfAsync(user.Id);
-        Assert.Contains(trail, record => record.Action == AuditAction.AccountLocked);
-        Assert.Contains(trail, record => record.Action == AuditAction.SignInFailed);
+        var trail = await factory.HistoryOfAsync(user.Id);
+        Assert.Contains(trail, record => record.Action == HistoryAction.AccountLocked);
+        Assert.Contains(trail, record => record.Action == HistoryAction.SignInFailed);
     }
 
     [Theory]
@@ -97,15 +97,15 @@ public class ChangePasswordTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task APasswordChangeIsInTheAuditTrailWithTheValuesBeforeAndAfterButNeverThePasswordHash()
+    public async Task APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash()
     {
         var user = await factory.AddUserAsync(Password, mustChangePassword: true);
         var session = await SignInAsync(user.Username, Password);
 
         await ChangePasswordAsync(session.AccessToken, Password, NewPassword);
 
-        var record = (await factory.AuditTrailOfAsync(user.Id)).Last();
-        Assert.Equal(AuditAction.ChangePassword, record.Action);
+        var record = (await factory.HistoryOfAsync(user.Id)).Last();
+        Assert.Equal(HistoryAction.ChangePassword, record.Action);
         Assert.Equal(user.Id, record.UserId);
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse("""{"MustChangePassword": true}"""), JsonNode.Parse(record.Before)));
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse("""{"MustChangePassword": false}"""), JsonNode.Parse(record.After)));

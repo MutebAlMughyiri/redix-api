@@ -33,7 +33,7 @@ A user answers as `{ id, username, displayName, mobile, isActive, mustChangePass
 | An enabled user can sign in again | `UsersEndpoints.Enable` | `UsersTests.AnEnabledUserCanSignInAgain` |
 | A project's last active manager cannot be disabled, by anyone (BR-29) | `ProjectManagers.IsTheLastOfAProjectAsync` | `ProjectUsersTests.TheLastManagerCannotBeDisabled` |
 | A login is changed only by someone who manages every project it is in, and never the admin's (BR-33) | `UsersEndpoints.MayChangeAsync` | `UsersTests.SomeoneWithNoRoleOverALoginCannotChangeIt`, `ProjectUsersTests.AManagerCannotResetSomeoneInAnotherProject`, `AManagerCannotTakeOverTheAdmin` |
-| Every change is in the audit trail, never the password's hash | `db.Audit`, `[NotAudited]` | `UsersTests.EveryChangeIsInTheAuditTrailWithNoPasswordHash` |
+| Every change is in the History table, never the password's hash | `db.AddHistory`, `[NotInHistory]` | `UsersTests.EveryChangeIsInTheHistoryWithNoPasswordHash` |
 | The answer never carries the password's hash | `UserView` | `UsersTests.AnAnswerNeverCarriesThePasswordHash` |
 
 ## Left to later use cases

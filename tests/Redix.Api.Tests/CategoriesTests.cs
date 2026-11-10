@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
@@ -874,15 +874,15 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AChangedTypeIsInTheAuditTrailOldAndNew()
+    public async Task AChangedTypeIsInTheHistoryOldAndNew()
     {
         var (user, client, project) = await FinanceAsync();
         var item = (await CategoriesOf(client, project.Id))[2].Items[1];
 
         (await ChangeTypeAsync(client, project.Id, item.Id, ItemType.Both)).EnsureSuccessStatusCode();
 
-        var record = Assert.Single(await factory.AuditTrailOfAsync(item.Id));
-        Assert.Equal((AuditAction.Update, user.Id, "Items"), (record.Action, record.UserId, record.TableName));
+        var record = Assert.Single(await factory.HistoryOfAsync(item.Id));
+        Assert.Equal((HistoryAction.Update, user.Id, "Items"), (record.Action, record.UserId, record.TableName));
         Assert.Equal((int)ItemType.Purchases, JsonDocument.Parse(record.Before).RootElement.GetProperty("Type").GetInt32());
         Assert.Equal((int)ItemType.Both, JsonDocument.Parse(record.After).RootElement.GetProperty("Type").GetInt32());
     }
@@ -1011,7 +1011,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/table-percentages", new TablePercentagesRequest(isOn), Json);
 
     [Fact]
-    public async Task AC_46_9_AnItemsChoiceToCalculateEachTablesPercentageIsKeptAndInTheAuditTrail()
+    public async Task AC_46_9_AnItemsChoiceToCalculateEachTablesPercentageIsKeptAndInTheHistory()
     {
         var (user, client, project) = await FinanceAsync();
         var item = (await CategoriesOf(client, project.Id))[2].Items[1];
@@ -1020,8 +1020,8 @@ public class CategoriesTests(MigratedApiFactory factory)
         (await TablePercentagesAsync(client, project.Id, item.Id, true)).EnsureSuccessStatusCode();
 
         Assert.True((await CategoriesOf(client, project.Id))[2].Items[1].ShowsTablePercentages);
-        var record = Assert.Single(await factory.AuditTrailOfAsync(item.Id));
-        Assert.Equal((AuditAction.Update, user.Id), (record.Action, record.UserId));
+        var record = Assert.Single(await factory.HistoryOfAsync(item.Id));
+        Assert.Equal((HistoryAction.Update, user.Id), (record.Action, record.UserId));
         Assert.True(JsonDocument.Parse(record.After).RootElement.GetProperty("ShowsTablePercentages").GetBoolean());
     }
 

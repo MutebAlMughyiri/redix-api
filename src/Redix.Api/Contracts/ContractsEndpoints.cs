@@ -1,14 +1,14 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Attachments;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Contracts;
 
-/// <summary>A project's contracts (UC-020, FR-07). There is no delete, and every change is in the audit trail, because the remaining of a contract is money.</summary>
+/// <summary>A project's contracts (UC-020, FR-07). There is no delete, and every change is in the History table, because the remaining of a contract is money.</summary>
 public static class ContractsEndpoints
 {
     /// <summary>Maps the route that reads a project's contracts, for anyone who reads the project, and those that change them, for whoever holds <see cref="Permission.ManageSettings"/>.</summary>
@@ -53,7 +53,7 @@ public static class ContractsEndpoints
     /// <param name="request">The contractor and item, and the terms.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Add(Guid projectId, AddContractRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var refusal = await RefusalOfPartiesAsync(projectId, request.SupplierId, request.ItemId, db);
@@ -69,7 +69,7 @@ public static class ContractsEndpoints
         db.Contracts.Add(contract);
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
-        db.Audit(contract, AuditAction.Create, userId, at);
+        db.AddHistory(contract, HistoryAction.Create, userId, at);
         await AttachAsync(contract.Id, request.AttachmentIds, userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok();
@@ -77,14 +77,14 @@ public static class ContractsEndpoints
 
     /// <summary>
     /// Amends a contract's terms and adds to its documents, a document staying once attached, and changes its contractor or item while no payment names it, or answers <c>contractHasPayments</c> and changes nothing.
-    /// It answers as <see cref="Add"/> does for all of them, and all of it is in the audit trail.
+    /// It answers as <see cref="Add"/> does for all of them, and all of it is in the History table.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="contractId">The contract.</param>
     /// <param name="request">The new terms, and any new parties.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Amend(Guid projectId, Guid contractId, AmendContractRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var refusal = request.RefusalOfTerms();
@@ -112,7 +112,7 @@ public static class ContractsEndpoints
             }
         }
         var place = request.ItemOf(contract) == contract.ItemId ? contract.SortOrder : await ProjectStructure.NextTablePlaceAsync(request.ItemOf(contract), db);
-        return await ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Update, changed =>
+        return await ChangeAsync(projectId, contractId, principal, db, time, HistoryAction.Update, changed =>
         {
             request.ApplyAllTo(changed);
             changed.SortOrder = place;
@@ -124,18 +124,18 @@ public static class ContractsEndpoints
     /// <param name="contractId">The contract.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Disable(Guid projectId, Guid contractId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Disable, contract => contract.IsActive = false);
+        ChangeAsync(projectId, contractId, principal, db, time, HistoryAction.Disable, contract => contract.IsActive = false);
 
     /// <summary>Brings a disabled contract back.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="contractId">The contract.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database they live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Enable(Guid projectId, Guid contractId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(projectId, contractId, principal, db, time, AuditAction.Enable, contract => contract.IsActive = true);
+        ChangeAsync(projectId, contractId, principal, db, time, HistoryAction.Enable, contract => contract.IsActive = true);
 
     private static async Task<string> RefusalOfPartiesAsync(Guid projectId, Guid supplierId, Guid itemId, RedixDbContext db)
     {
@@ -159,11 +159,11 @@ public static class ContractsEndpoints
         {
             var link = new ContractAttachment { ContractId = contractId, AttachmentId = attachmentId };
             db.Add(link);
-            db.Audit(link, AuditAction.Attach, userId, at);
+            db.AddHistory(link, HistoryAction.Attach, userId, at);
         }
     }
 
-    private static async Task<IResult> ChangeAsync(Guid projectId, Guid contractId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, Action<Contract> change, params List<Guid> attachmentIds)
+    private static async Task<IResult> ChangeAsync(Guid projectId, Guid contractId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, Action<Contract> change, params List<Guid> attachmentIds)
     {
         var contract = await db.Contracts.SingleOrDefaultAsync(row => row.Id == contractId && row.ProjectId == projectId);
         if (contract is null)
@@ -173,7 +173,7 @@ public static class ContractsEndpoints
         change(contract);
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
-        db.Audit(contract, action, userId, at);
+        db.AddHistory(contract, action, userId, at);
         await AttachAsync(contractId, attachmentIds, userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok();

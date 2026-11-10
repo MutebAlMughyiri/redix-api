@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 
 namespace Redix.Api.Auth;
 
@@ -19,7 +19,7 @@ public static class AuthEndpoints
     }
 
     /// <summary>
-    /// Signs a user in, opens a session on a new device (FR-01, AC-01.1) and records the sign-in in the audit trail (UC-005). A wrong username, a wrong
+    /// Signs a user in, opens a session on a new device (FR-01, AC-01.1) and records the sign-in in the History table (UC-005). A wrong username, a wrong
     /// password and a disabled user all answer <c>invalidCredentials</c>; a locked account answers <c>accountLocked</c> (AC-01.2). A refusal is recorded against the user
     /// whose name was typed; an unknown username has nobody to record it against.
     /// </summary>
@@ -47,7 +47,7 @@ public static class AuthEndpoints
         var device = new Device { UserId = user.Id };
         var refreshToken = device.RenewRefreshToken(now);
         db.Devices.Add(device);
-        db.Audit(user, AuditAction.SignIn, user.Id, now);
+        db.AddHistory(user, HistoryAction.SignIn, user.Id, now);
         await db.SaveChangesAsync();
         return Results.Ok(await Session.OfAsync(user, device, accessTokens.Create(user, device.Id), refreshToken, db));
     }
@@ -79,7 +79,7 @@ public static class AuthEndpoints
     }
 
     /// <summary>
-    /// Replaces the signed-in user's password (UC-003, AC-02.1), records it in the audit trail (UC-005), and signs out the user's other devices; this device
+    /// Replaces the signed-in user's password (UC-003, AC-02.1), records it in the History table (UC-005), and signs out the user's other devices; this device
     /// stays signed in with a renewed session.
     /// A wrong current password answers <c>invalidCredentials</c> and counts toward the lockout (<c>accountLocked</c>); a new password shorter than
     /// <see cref="User.MinimumPasswordLength"/> or equal to the current one answers <c>weakPassword</c>.
@@ -113,21 +113,21 @@ public static class AuthEndpoints
         await db.Devices.Where(device => device.UserId == userId && device.Id != deviceId).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
         var thisDevice = await db.Devices.SingleAsync(device => device.Id == deviceId);
         var refreshToken = thisDevice.RenewRefreshToken(now);
-        db.Audit(user, AuditAction.ChangePassword, user.Id, now);
+        db.AddHistory(user, HistoryAction.ChangePassword, user.Id, now);
         await db.SaveChangesAsync();
         return Results.Ok(await Session.OfAsync(user, thisDevice, accessTokens.Create(user, thisDevice.Id), refreshToken, db));
     }
 
-    /// <summary>Ends the session on this device, and only this one (UC-062), and records it in the audit trail.</summary>
+    /// <summary>Ends the session on this device, and only this one (UC-062), and records it in the History table.</summary>
     /// <param name="principal">The session to end: its user and device.</param>
     /// <param name="db">The database the user and device live in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> SignOut(ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var userId = AccessTokens.UserIdOf(principal);
         var deviceId = AccessTokens.DeviceIdOf(principal);
         (await db.Devices.SingleAsync(device => device.Id == deviceId)).IsRevoked = true;
-        db.Audit(await db.Users.SingleAsync(user => user.Id == userId), AuditAction.SignOut, userId, time.GetUtcNow().UtcDateTime);
+        db.AddHistory(await db.Users.SingleAsync(user => user.Id == userId), HistoryAction.SignOut, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.NoContent();
     }
@@ -138,20 +138,20 @@ public static class AuthEndpoints
         var outcome = user.SignIn(password, hasher, now);
         if (outcome != SignInOutcome.Success)
         {
-            db.Audit(user, user.LockedUntil == lockedUntil ? AuditAction.SignInFailed : AuditAction.AccountLocked, user.Id, now);
+            db.AddHistory(user, user.LockedUntil == lockedUntil ? HistoryAction.SignInFailed : HistoryAction.AccountLocked, user.Id, now);
         }
         return outcome;
     }
 
     /// <summary>
-    /// Turns fingerprint or face on or off for this phone (UC-011, FR-35), and records it in the audit trail. The check runs on the phone; the server only remembers
+    /// Turns fingerprint or face on or off for this phone (UC-011, FR-35), and records it in the History table. The check runs on the phone; the server only remembers
     /// that this phone asks for it, so its session stops timing out. The token is renewed, so turning it off starts the 12 hours from now.
     /// </summary>
     /// <param name="request">Whether it is on.</param>
     /// <param name="principal">The signed-in session: its user and device.</param>
     /// <param name="db">The database the user and device live in.</param>
     /// <param name="accessTokens">Issues the renewed access token.</param>
-    /// <param name="time">The current time, for the renewed tokens and the audit record.</param>
+    /// <param name="time">The current time, for the renewed tokens and the history row.</param>
     public static async Task<IResult> SetBiometrics(SetBiometricsRequest request, ClaimsPrincipal principal, RedixDbContext db, AccessTokens accessTokens, TimeProvider time)
     {
         var now = time.GetUtcNow().UtcDateTime;
@@ -161,7 +161,7 @@ public static class AuthEndpoints
         var device = await db.Devices.SingleAsync(device => device.Id == deviceId);
         device.UsesBiometrics = request.On;
         var refreshToken = device.RenewRefreshToken(now);
-        db.Audit(user, request.On ? AuditAction.TurnOnBiometrics : AuditAction.TurnOffBiometrics, user.Id, now);
+        db.AddHistory(user, request.On ? HistoryAction.TurnOnBiometrics : HistoryAction.TurnOffBiometrics, user.Id, now);
         await db.SaveChangesAsync();
         return Results.Ok(await Session.OfAsync(user, device, accessTokens.Create(user, device.Id), refreshToken, db));
     }

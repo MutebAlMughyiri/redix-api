@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -64,7 +64,7 @@ public static class AttachmentsEndpoints
     }
 
     /// <summary>
-    /// Keeps <paramref name="file"/>, one of <paramref name="kinds"/>, for the project, its file written and its record added with its audit, saved with the change; the same file from the same person
+    /// Keeps <paramref name="file"/>, one of <paramref name="kinds"/>, for the project, its file written and its record added with its history row, saved with the change; the same file from the same person
     /// answers the one already kept. Answers why it cannot be kept, as <see cref="Attachment.RefusalOf"/> does, with no attachment; otherwise the attachment and whether it is new.
     /// </summary>
     public static async Task<(string Refusal, Attachment Attachment, bool IsNew)> KeepAsync(Guid projectId, IFormFile file, FileKinds kinds, Guid userId, RedixDbContext db, AttachmentOptions options, TimeProvider time)
@@ -90,7 +90,7 @@ public static class AttachmentsEndpoints
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllBytesAsync(path, content);
         db.Attachments.Add(attachment);
-        db.Audit(attachment, AuditAction.Attach, userId, at);
+        db.AddHistory(attachment, HistoryAction.Attach, userId, at);
         return ("", attachment, true);
     }
 }

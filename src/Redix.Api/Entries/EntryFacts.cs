@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Accounts;
 using Redix.Api.Projects;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
@@ -20,6 +21,8 @@ public sealed class EntryFacts
     private Dictionary<Guid, (string ContentType, string FileName)> _attachments = [];
     private Dictionary<Guid, string> _items = [];
     private Dictionary<Guid, string> _accounts = [];
+    private Dictionary<Guid, decimal> _balances = [];
+    private Dictionary<Guid, decimal> _waitingOut = [];
     private Dictionary<Guid, string> _paymentMethods = [];
     private Dictionary<Guid, Supplier> _suppliers = [];
     private Dictionary<Guid, Guid> _contractors = [];
@@ -45,6 +48,9 @@ public sealed class EntryFacts
             _attachments = await db.Attachments.Where(row => fileIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id, row => (row.ContentType, row.FileName)),
             _items = await ProjectStructure.ItemsOf(projectId, db).ToDictionaryAsync(item => item.Id, item => item.Name),
             _accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name),
+            _balances = await AccountMoney.MovementsOfProjectAsync(projectId, db),
+            _waitingOut = (await db.Entries.Where(row => row.ProjectId == projectId && row.Status == EntryStatus.PendingApproval).Select(row => new { row.AccountId, row.Kind, row.Amount }).ToListAsync())
+                .Where(row => row.Kind.Signed(row.Amount) < 0).GroupBy(row => row.AccountId).ToDictionary(group => group.Key, group => -group.Sum(row => row.Kind.Signed(row.Amount))),
             _paymentMethods = await db.PaymentMethods.Where(method => method.ProjectId == projectId).ToDictionaryAsync(method => method.Id, method => method.Name),
             _suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).ToDictionaryAsync(supplier => supplier.Id),
             _contractors = await db.Contracts.Where(contract => contract.ProjectId == projectId).ToDictionaryAsync(contract => contract.Id, contract => contract.SupplierId),
@@ -66,6 +72,23 @@ public sealed class EntryFacts
 
     /// <summary>The account that paid it.</summary>
     public string AccountNameOf(Entry entry) => _accounts.GetValueOrDefault(entry.AccountId, "");
+
+    /// <summary>What the entry's account holds now: its approved entries and transfers (redix-app #89).</summary>
+    public decimal AccountBalanceOf(Entry entry) => _balances.GetValueOrDefault(entry.AccountId);
+
+    /// <summary>
+    /// What waits to leave the entry's account: every entry taking money out of it that waits for approval, and the entry itself while it is a draft (Muteb, 10 Nov 2026:
+    /// the total, so two that each fit but together do not are both noted).
+    /// </summary>
+    public decimal AccountWaitingOf(Entry entry) =>
+        _waitingOut.GetValueOrDefault(entry.AccountId) + (entry.Status == EntryStatus.Draft && entry.Kind.Signed(entry.Amount) < 0 ? entry.Amount : 0);
+
+    /// <summary>
+    /// How much more what waits to leave the entry's account takes than the account holds now, for an entry taking money out that is not decided yet; nothing blocks it,
+    /// but the inbox and the shared entry say it (R5, R6, D4, D6). Zero for any other entry, and for one its account covers with all that waits on it.
+    /// </summary>
+    public decimal AccountShortByOf(Entry entry) =>
+        entry.Kind.Signed(entry.Amount) < 0 && entry.Status is EntryStatus.Draft or EntryStatus.PendingApproval ? Math.Max(0, AccountWaitingOf(entry) - AccountBalanceOf(entry)) : 0;
 
     /// <summary>How an expense was paid; empty when nobody said, and for any other entry.</summary>
     public string PaymentMethodNameOf(Entry entry) => _paymentMethods.GetValueOrDefault(ExpenseOf(entry).PaymentMethodId, "");

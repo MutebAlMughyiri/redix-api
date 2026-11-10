@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
@@ -388,14 +388,14 @@ public class ProjectsTests(MigratedApiFactory factory)
     private static JsonElement ValuesOf(string values) => JsonDocument.Parse(values).RootElement;
 
     [Fact]
-    public async Task CreatingAProjectIsInTheAuditTrailWithItsName()
+    public async Task CreatingAProjectIsInTheHistoryWithItsName()
     {
         var user = await StarterAsync();
 
         var project = await ProjectOf(await CreateAsync(await ClientOfAsync(user), "غصون 6"));
 
-        var record = Assert.Single(await factory.AuditTrailOfAsync(project.Id));
-        Assert.Equal((AuditAction.RegisterProject, user.Id, "Projects"), (record.Action, record.UserId, record.TableName));
+        var record = Assert.Single(await factory.HistoryOfAsync(project.Id));
+        Assert.Equal((HistoryAction.RegisterProject, user.Id, "Projects"), (record.Action, record.UserId, record.TableName));
         Assert.Equal("غصون 6", ValuesOf(record.After).GetProperty("Name").GetString());
     }
 
@@ -403,7 +403,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         client.PostAsJsonAsync($"/projects/{projectId}/description", new DescriptionRequest(description));
 
     [Fact]
-    public async Task More_info_ADescriptionIsKeptForEveryoneInTheProjectAndInTheAuditTrail()
+    public async Task More_info_ADescriptionIsKeptForEveryoneInTheProjectAndInTheHistory()
     {
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
         var reader = await factory.AddUserAsync(Password);
@@ -413,8 +413,8 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         Assert.Equal("فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027.", (await ProjectOf(answer)).Description);
         Assert.Equal("فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027.", (await ListAsync(await ClientOfAsync(reader)))!.Single(each => each.Id == project.Id).Description);
-        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
-        Assert.Equal((AuditAction.Update, "فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027."), (record.Action, ValuesOf(record.After).GetProperty("Description").GetString()));
+        var record = (await factory.HistoryOfAsync(project.Id)).Last();
+        Assert.Equal((HistoryAction.Update, "فيلتان سكنيتان في حي النرجس.\nالتسليم ديسمبر 2027."), (record.Action, ValuesOf(record.After).GetProperty("Description").GetString()));
     }
 
     [Fact]
@@ -491,26 +491,26 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AddingAUnitIsInTheAuditTrailWithItsName()
+    public async Task AddingAUnitIsInTheHistoryWithItsName()
     {
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
 
         var unit = (await ProjectOf(await AddUnitAsync(client, project.Id))).Units.Single();
 
-        var record = Assert.Single(await factory.AuditTrailOfAsync(unit.Id));
-        Assert.Equal((AuditAction.Create, "Units"), (record.Action, record.TableName));
+        var record = Assert.Single(await factory.HistoryOfAsync(unit.Id));
+        Assert.Equal((HistoryAction.Create, "Units"), (record.Action, record.TableName));
         Assert.Equal("الفلة الشرقية", ValuesOf(record.After).GetProperty("Name").GetString());
     }
 
     [Fact]
-    public async Task ClosingAProjectIsInTheAuditTrailWithItsStatusOldAndNew()
+    public async Task ClosingAProjectIsInTheHistoryWithItsStatusOldAndNew()
     {
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
 
         (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
 
-        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
-        Assert.Equal(AuditAction.CloseProject, record.Action);
+        var record = (await factory.HistoryOfAsync(project.Id)).Last();
+        Assert.Equal(HistoryAction.CloseProject, record.Action);
         Assert.Equal((int)ProjectStatus.Active, ValuesOf(record.Before).GetProperty("Status").GetInt32());
         Assert.Equal((int)ProjectStatus.Finished, ValuesOf(record.After).GetProperty("Status").GetInt32());
     }
@@ -599,15 +599,15 @@ public class ProjectsTests(MigratedApiFactory factory)
         client.PostAsync($"/projects/{projectId}/units/{unitId}/delete", null);
 
     [Fact]
-    public async Task BR_38_ARunningProjectIsRenamedAndTheAuditTrailShowsBothNames()
+    public async Task BR_38_ARunningProjectIsRenamedAndTheHistoryShowsBothNames()
     {
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6");
 
         var renamed = await ProjectOf(await RenameAsync(client, project.Id, "  غصون السادس  "));
 
         Assert.Equal("غصون السادس", renamed.Name);
-        var record = (await factory.AuditTrailOfAsync(project.Id)).Last();
-        Assert.Equal(AuditAction.Update, record.Action);
+        var record = (await factory.HistoryOfAsync(project.Id)).Last();
+        Assert.Equal(HistoryAction.Update, record.Action);
         Assert.Equal("غصون 6", ValuesOf(record.Before).GetProperty("Name").GetString());
         Assert.Equal("غصون السادس", ValuesOf(record.After).GetProperty("Name").GetString());
     }
@@ -623,15 +623,15 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_38_AUnitIsRenamedInPlaceAndTheAuditTrailShowsBothNames()
+    public async Task BR_38_AUnitIsRenamedInPlaceAndTheHistoryShowsBothNames()
     {
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية", "الفلة الشرقية");
 
         var renamed = await ProjectOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, " الفلة الجنوبية "));
 
         Assert.Equal(["الفلة الجنوبية", "الفلة الشرقية"], renamed.Units.Select(unit => unit.Name));
-        var record = (await factory.AuditTrailOfAsync(project.Units[0].Id)).Last();
-        Assert.Equal((AuditAction.Update, "Units"), (record.Action, record.TableName));
+        var record = (await factory.HistoryOfAsync(project.Units[0].Id)).Last();
+        Assert.Equal((HistoryAction.Update, "Units"), (record.Action, record.TableName));
         Assert.Equal("الفلة الغربية", ValuesOf(record.Before).GetProperty("Name").GetString());
         Assert.Equal("الفلة الجنوبية", ValuesOf(record.After).GetProperty("Name").GetString());
     }
@@ -649,15 +649,15 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_38_AUnitNothingUsesIsDeletedAndTheAuditTrailKeepsWhatItWas()
+    public async Task BR_38_AUnitNothingUsesIsDeletedAndTheHistoryKeepsWhatItWas()
     {
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية", "الفلة الشرقية");
 
         var left = await ProjectOf(await DeleteUnitAsync(client, project.Id, project.Units[0].Id));
 
         Assert.Equal(["الفلة الشرقية"], left.Units.Select(unit => unit.Name));
-        var record = (await factory.AuditTrailOfAsync(project.Units[0].Id)).Last();
-        Assert.Equal((AuditAction.Delete, "Units"), (record.Action, record.TableName));
+        var record = (await factory.HistoryOfAsync(project.Units[0].Id)).Last();
+        Assert.Equal((HistoryAction.Delete, "Units"), (record.Action, record.TableName));
         Assert.Equal("الفلة الغربية", ValuesOf(record.Before).GetProperty("Name").GetString());
         Assert.Equal("{}", record.After);
     }

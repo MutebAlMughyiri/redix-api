@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Revenue;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
 using Redix.Api.Projects;
@@ -49,8 +49,11 @@ public static class EntriesEndpoints
         return RowsAsync(projectId, userId, db, entry => entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId);
     }
 
-    /// <summary>The project's entries <paramref name="userId"/> may see: a partner's money only for whoever holds <see cref="Permission.SeeAllCapital"/>, or for that partner (BR-31).</summary>
-    private static async Task<IQueryable<Entry>> SeenByAsync(Guid projectId, Guid userId, RedixDbContext db)
+    /// <summary>The project's entries <paramref name="userId"/> may see: a partner's money only for whoever holds <see cref="Permission.SeeAllCapital"/>, or for that partner (BR-31). The one owner of that rule: the account history reads it too.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="userId">Who is looking.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static async Task<IQueryable<Entry>> SeenByAsync(Guid projectId, Guid userId, RedixDbContext db)
     {
         var sight = await Partners.PartnerSight.OfUserAsync(userId, projectId, db);
         return db.Entries.Where(entry => entry.ProjectId == projectId
@@ -81,7 +84,8 @@ public static class EntriesEndpoints
             facts.PartnerNameOf(entry),
             entry.Notes,
             facts.AccountNameOf(entry),
-            facts.PaymentMethodNameOf(entry))).ToList();
+            facts.PaymentMethodNameOf(entry),
+            facts.AccountShortByOf(entry))).ToList();
     }
 
     /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. A partner's money the caller may not see (BR-31), or anything else, answers 404.</summary>
@@ -103,7 +107,7 @@ public static class EntriesEndpoints
     /// <param name="entryId">The entry.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Submit(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var entry = await Entry.OfProjectAsync(projectId, entryId, db);
@@ -127,7 +131,7 @@ public static class EntriesEndpoints
         }
 
         entry.Status = EntryStatus.PendingApproval;
-        db.Audit(entry, AuditAction.Submit, userId, time.GetUtcNow().UtcDateTime);
+        db.AddHistory(entry, HistoryAction.Submit, userId, time.GetUtcNow().UtcDateTime);
         db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = time.GetUtcNow().UtcDateTime });
         await NotificationsEndpoints.TellDecidersAsync(entry, userId, time.GetUtcNow().UtcDateTime, db);
         await db.SaveChangesAsync();
@@ -186,7 +190,7 @@ public static class EntriesEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidNotes");
         }
         entry.Notes = notes;
-        db.Audit(entry, AuditAction.Update, userId, time.GetUtcNow().UtcDateTime);
+        db.AddHistory(entry, HistoryAction.Update, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok();
     }
@@ -282,7 +286,8 @@ public static class EntriesEndpoints
 /// <param name="Notes">What was noted; empty for nothing.</param>
 /// <param name="AccountName">The account it was paid from or reached.</param>
 /// <param name="PaymentMethodName">How an expense was paid; empty when nobody said, and for any other entry.</param>
-public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed, string PartnerName, string Notes, string AccountName, string PaymentMethodName);
+/// <param name="AccountShortBy">How much more what waits on its account takes than the account holds, which the shared entry notes without amounts (R6, R16); zero when it covers all of it.</param>
+public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed, string PartnerName, string Notes, string AccountName, string PaymentMethodName, decimal AccountShortBy);
 
 /// <summary>An entry's notes.</summary>
 /// <param name="Notes">The notes; may be empty.</param>

@@ -36,7 +36,7 @@ public class NotificationsTests(MigratedApiFactory factory)
     private static async Task<(HttpClient Client, EntryRequest Request)> FieldSendsAsync(Ledger ledger)
     {
         var (field, userId) = await ledger.MemberAsync("Field");
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest("عهدة نواف", AccountType.CashCustody) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single(row => row.Name == "عهدة نواف");
         var request = ledger.Purchase(200m) with { AccountId = account.Id, Submit = true };
         (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", request, Json)).EnsureSuccessStatusCode();

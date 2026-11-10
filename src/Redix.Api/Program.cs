@@ -100,6 +100,8 @@ app.MapCategories();
 app.MapColumns();
 app.MapPaymentMethods();
 app.MapAccounts();
+app.MapTransfers();
+app.MapAccountHistory();
 app.MapPartners();
 app.MapSuppliers();
 app.MapContracts();

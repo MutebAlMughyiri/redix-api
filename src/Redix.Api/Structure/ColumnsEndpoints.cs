@@ -119,7 +119,7 @@ public static class ColumnsEndpoints
     public static Task<IResult> EditOfItem(Guid projectId, Guid itemId, Guid columnId, EditColumnRequest request, RedixDbContext db) =>
         ChangeOfItemAsync(projectId, itemId, columnId, db, column => column.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewOptions));
 
-    /// <summary>Deletes a column of one item: it leaves entry, and its values stay on their entries and in the audit trail (AC-41.2). A core column answers <c>coreColumn</c>.</summary>
+    /// <summary>Deletes a column of one item: it leaves entry, and its values stay on their entries and in the History table (AC-41.2). A core column answers <c>coreColumn</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
     /// <param name="columnId">The column.</param>

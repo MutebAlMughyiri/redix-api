@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
 using Redix.Api.Structure;
@@ -31,7 +31,7 @@ public static class RegistrationEndpoints
     /// <param name="request">The project and its manager.</param>
     /// <param name="db">The database they join.</param>
     /// <param name="hasher">Hashes the password.</param>
-    /// <param name="time">The current time, for the user and the audit records.</param>
+    /// <param name="time">The current time, for the user and the history rows.</param>
     public static async Task<IResult> Register(RegisterProjectRequest request, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
     {
         var (project, outcome) = Project.New(request.Name, request.StartDate, request.Units, request.Description);
@@ -51,7 +51,7 @@ public static class RegistrationEndpoints
         {
             return Refusal.Of(status, refusal);
         }
-        db.Audit(manager, AuditAction.Create, manager.Id, now);
+        db.AddHistory(manager, HistoryAction.Create, manager.Id, now);
         ProjectsEndpoints.AddWithManager(project, manager.Id, db, now);
         db.Partners.AddRange(partners);
         await db.SaveChangesAsync();
@@ -83,20 +83,20 @@ public static class RegistrationEndpoints
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The admin's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Approve(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        DecideAsync(projectId, principal, db, time, AuditAction.ApproveProject, NotificationKind.ProjectApproved, project => ProjectStructure.ApproveAsync(project, AccessTokens.UserIdOf(principal), db));
+        DecideAsync(projectId, principal, db, time, HistoryAction.ApproveProject, NotificationKind.ProjectApproved, project => ProjectStructure.ApproveAsync(project, AccessTokens.UserIdOf(principal), db));
 
     /// <summary>Refuses a registered project, saying why (AC-52.2). A decided project answers <c>notPending</c>; a reason empty or too long, <c>invalidReason</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">Why it is refused.</param>
     /// <param name="principal">The admin's session.</param>
     /// <param name="db">The database the project lives in.</param>
-    /// <param name="time">The current time, for the audit record.</param>
+    /// <param name="time">The current time, for the history row.</param>
     public static Task<IResult> Reject(Guid projectId, RejectProjectRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        DecideAsync(projectId, principal, db, time, AuditAction.RejectProject, NotificationKind.ProjectRejected, project => Task.FromResult(project.Reject(request.Reason.Trim())));
+        DecideAsync(projectId, principal, db, time, HistoryAction.RejectProject, NotificationKind.ProjectRejected, project => Task.FromResult(project.Reject(request.Reason.Trim())));
 
-    private static async Task<IResult> DecideAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, AuditAction action, NotificationKind told, Func<Project, Task<ProjectChangeOutcome>> decide)
+    private static async Task<IResult> DecideAsync(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, NotificationKind told, Func<Project, Task<ProjectChangeOutcome>> decide)
     {
         var project = await db.Projects.SingleOrDefaultAsync(project => project.Id == projectId);
         if (project is null)
@@ -111,7 +111,7 @@ public static class RegistrationEndpoints
             return Refusal.Of(status, outcome.ToString());
         }
         var at = time.GetUtcNow().UtcDateTime;
-        db.Audit(project, action, AccessTokens.UserIdOf(principal), at);
+        db.AddHistory(project, action, AccessTokens.UserIdOf(principal), at);
         await NotificationsEndpoints.TellManagersAsync(project.Id, told, at, db);
         await db.SaveChangesAsync();
         return Results.Ok();

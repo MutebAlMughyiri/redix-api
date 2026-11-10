@@ -32,7 +32,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
         var supplierId = (await supplier.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!.Id;
         var item = (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories/offered?itemType={ItemType.Purchases}", Json))!.SelectMany(category => category.Items).First();
         var method = (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{project.Id}/payment-methods", Json))![0];
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب المؤسسة", AccountType.Bank, 0), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب المؤسسة", AccountType.Bank), Json)).EnsureSuccessStatusCode();
         var account = (await client.GetFromJsonAsync<List<AccountView>>($"/projects/{project.Id}/accounts", Json))!.Single();
         return new Ledger(factory, client, project, item.Id, item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, supplierId, method.Id, account.Id);
     }

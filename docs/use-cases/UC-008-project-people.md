@@ -35,7 +35,7 @@ A user's answer has `projects: [{ projectId, name, permissions }]`, one line per
 | Unticking `ReadProject` takes them out of the project | `ProjectUsersEndpoints.Take` | `ProjectUsersTests.UntickingSeeTheProjectTakesThemOutOfTheProject` |
 | The admin's permission, or an unknown name, is refused | `ProjectPermission.TryOf` | `ProjectUsersTests.TheAdminsPermissionOrAnUnknownNameIsRefused` |
 | A project keeps at least one active person managing its users (BR-29) | `ProjectManagers` | `ProjectUsersTests.TheLastWhoManagesUsersCannotLoseIt`, `WithASecondManagerTheFirstCanLeave`, `ADisabledManagerDoesNotCountAsTheOneWhoStays` |
-| Every permission ticked or unticked is in the audit trail | `db.Audit` | `ProjectUsersTests.EveryPermissionChangeIsInTheAuditTrail` |
+| Every permission ticked or unticked is in the History table | `db.AddHistory` | `ProjectUsersTests.EveryPermissionChangeIsInTheHistory` |
 
 ## Left to later use cases
 

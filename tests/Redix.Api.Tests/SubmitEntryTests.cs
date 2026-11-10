@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Structure;
@@ -208,7 +208,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task FR_21_SendingIsInTheAuditTrailAndARefusalIsNot()
+    public async Task FR_21_SendingIsInTheHistoryAndARefusalIsNot()
     {
         var ledger = await LedgerAsync();
         await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == ledger.ItemId && column.Key == "product").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
@@ -218,8 +218,8 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         await SubmitAsync(ledger, refused);
         await SubmitAsync(ledger, entryId);
 
-        Assert.DoesNotContain(await factory.AuditTrailOfAsync(refused), record => record.Action == AuditAction.Submit);
-        var sent = (await factory.AuditTrailOfAsync(entryId)).Single(record => record.Action == AuditAction.Submit);
+        Assert.DoesNotContain(await factory.HistoryOfAsync(refused), record => record.Action == HistoryAction.Submit);
+        var sent = (await factory.HistoryOfAsync(entryId)).Single(record => record.Action == HistoryAction.Submit);
         Assert.Equal("Entries", sent.TableName);
     }
 

@@ -29,7 +29,7 @@
 | A wrong current password is refused and counts toward the lockout | `User.SignIn` | `ChangePasswordTests.AWrongCurrentPasswordIsRefusedAndCountsTowardTheLockout` |
 | A new password has at least 8 characters and differs from the current one | `User.IsAcceptableNewPassword` | `ChangePasswordTests.ANewPasswordShorterThan8CharactersOrUnchangedIsRefused` |
 | The other devices are signed out; this one stays signed in | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.ChangingThePasswordSignsOutTheOtherDevicesAndKeepsThisOne` |
-| A password change is in the audit trail, never the password's hash (UC-005) | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.APasswordChangeIsInTheAuditTrailWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
+| A password change is in the History table, never the password's hash (UC-005) | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
 | Changing the password needs a session | `SessionPolicies.MayChangePassword` | `ChangePasswordTests.ChangingThePasswordNeedsASession` |
 | A disabled user's access token is refused at the next request (AC-01.3) | `SessionPolicies.CheckSessionIsOpen` | `ChangePasswordTests.ADisabledUsersAccessTokenIsRefusedAtTheNextRequest` |
 | A temporary-password session reaches nothing but the password change | `SessionPolicies.Working` | `ChangePasswordTests.EveryEndpointNotOpenToAllRefusesASessionWithATemporaryPassword` |

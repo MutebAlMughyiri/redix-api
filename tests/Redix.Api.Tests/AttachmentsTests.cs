@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Redix.Api.Attachments;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Contracts;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
@@ -265,14 +265,14 @@ public class AttachmentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task KeepingAFileIsInTheAuditTrail()
+    public async Task KeepingAFileIsInTheHistory()
     {
         var (client, project) = await FinanceAsync();
 
         var view = await UploadedAsync(client, project.Id, Jpeg);
 
-        var record = Assert.Single(await factory.AuditTrailOfAsync(view.Id));
-        Assert.Equal(AuditAction.Attach, record.Action);
+        var record = Assert.Single(await factory.HistoryOfAsync(view.Id));
+        Assert.Equal(HistoryAction.Attach, record.Action);
         Assert.Equal("Attachments", record.TableName);
     }
 
@@ -334,7 +334,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task LinkingADocumentToAContractIsInTheAuditTrailWithWhichOne()
+    public async Task LinkingADocumentToAContractIsInTheHistoryWithWhichOne()
     {
         var (client, project) = await FinanceAsync();
         var document = await UploadedAsync(client, project.Id, Pdf);
@@ -343,7 +343,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
         (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts", request, Json)).EnsureSuccessStatusCode();
 
         var contract = Assert.Single(await ContractsOf(client, project.Id));
-        var link = Assert.Single(await factory.AuditTrailOfAsync(contract.Id), record => record.Action == AuditAction.Attach);
+        var link = Assert.Single(await factory.HistoryOfAsync(contract.Id), record => record.Action == HistoryAction.Attach);
         Assert.Equal("ContractAttachments", link.TableName);
         Assert.Contains(document.Id.ToString(), link.After);
     }

@@ -20,9 +20,9 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
-    private static async Task<Guid> AccountAsync(Ledger ledger, string name, AccountType type = AccountType.Bank, decimal opening = 0)
+    private static async Task<Guid> AccountAsync(Ledger ledger, string name, AccountType type = AccountType.Bank)
     {
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest(name, type, opening), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/accounts", new AddAccountRequest(name, type), Json)).EnsureSuccessStatusCode();
         return (await AccountsAsync(ledger)).Single(row => row.Name == name).Id;
     }
 

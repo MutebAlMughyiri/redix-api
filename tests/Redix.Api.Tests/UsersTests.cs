@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -134,7 +134,7 @@ public class UsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task EveryChangeIsInTheAuditTrailWithNoPasswordHash()
+    public async Task EveryChangeIsInTheHistoryWithNoPasswordHash()
     {
         var managerUser = await factory.AddUserAsync(Password);
         var client = await factory.ClientSignedInAsAsync(managerUser, Password);
@@ -147,8 +147,8 @@ public class UsersTests(MigratedApiFactory factory)
         await client.PostAsync($"/users/{user.Id}/disable", null);
         await client.PostAsync($"/users/{user.Id}/enable", null);
 
-        var trail = await factory.AuditTrailOfAsync(user.Id);
-        Assert.Equal([AuditAction.Update, AuditAction.ResetPassword, AuditAction.Disable, AuditAction.Enable], trail.Select(record => record.Action));
+        var trail = await factory.HistoryOfAsync(user.Id);
+        Assert.Equal([HistoryAction.Update, HistoryAction.ResetPassword, HistoryAction.Disable, HistoryAction.Enable], trail.Select(record => record.Action));
         Assert.All(trail, record => Assert.Equal(managerUser.Id, record.UserId));
         Assert.Equal("نواف الأول", JsonNode.Parse(trail[0].After)!["DisplayName"]!.GetValue<string>());
         Assert.All(trail, record => Assert.DoesNotContain("PasswordHash", record.Before + record.After));

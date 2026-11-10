@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
@@ -264,7 +264,7 @@ public class ContractsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task EveryChangeOfAContractIsInTheAuditTrail()
+    public async Task EveryChangeOfAContractIsInTheHistory()
     {
         var (client, project) = await FinanceAsync();
         var contract = await AddAsync(client, project);
@@ -273,8 +273,8 @@ public class ContractsTests(MigratedApiFactory factory)
         (await client.PostAsync($"/projects/{project.Id}/contracts/{contract.Id}/disable", null)).EnsureSuccessStatusCode();
         (await client.PostAsync($"/projects/{project.Id}/contracts/{contract.Id}/enable", null)).EnsureSuccessStatusCode();
 
-        var trail = await factory.AuditTrailOfAsync(contract.Id);
-        Assert.Equal([AuditAction.Create, AuditAction.Update, AuditAction.Disable, AuditAction.Enable], trail.Select(record => record.Action));
+        var trail = await factory.HistoryOfAsync(contract.Id);
+        Assert.Equal([HistoryAction.Create, HistoryAction.Update, HistoryAction.Disable, HistoryAction.Enable], trail.Select(record => record.Action));
         Assert.Contains("34000", trail[1].Before);
         Assert.Contains("36000", trail[1].After);
     }
@@ -396,7 +396,7 @@ public class ContractsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AContractsPartiesChangeWhileItHasNoPaymentsAndTheAuditTrailShowsThemOldAndNew()
+    public async Task AContractsPartiesChangeWhileItHasNoPaymentsAndTheHistoryShowsThemOldAndNew()
     {
         var (client, project) = await FinanceAsync();
         var request = await RequestFor(client, project);
@@ -409,8 +409,8 @@ public class ContractsTests(MigratedApiFactory factory)
 
         var amended = Assert.Single(await ContractsOf(client, project.Id));
         Assert.Equal((contractor.Name, item.Name), (amended.SupplierName, amended.ItemName));
-        var record = (await factory.AuditTrailOfAsync(contract.Id)).Last();
-        Assert.Equal(AuditAction.Update, record.Action);
+        var record = (await factory.HistoryOfAsync(contract.Id)).Last();
+        Assert.Equal(HistoryAction.Update, record.Action);
         Assert.Equal(request.SupplierId, JsonDocument.Parse(record.Before).RootElement.GetProperty("SupplierId").GetGuid());
         Assert.Equal(contractor.Id, JsonDocument.Parse(record.After).RootElement.GetProperty("SupplierId").GetGuid());
         Assert.Equal(request.ItemId, JsonDocument.Parse(record.Before).RootElement.GetProperty("ItemId").GetGuid());

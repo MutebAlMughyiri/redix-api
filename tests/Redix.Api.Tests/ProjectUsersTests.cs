@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -473,7 +473,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task EveryPermissionChangeIsInTheAuditTrail()
+    public async Task EveryPermissionChangeIsInTheHistory()
     {
         var (manager, client, projectId) = await ManagerAsync();
         var user = await factory.AddUserAsync(Password);
@@ -483,25 +483,25 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         await factory.WithDatabaseAsync(async db => heldId = await db.ProjectPermissions.Where(row => row.UserId == user.Id && row.Permission == Permission.ApproveEntries).Select(row => row.Id).SingleAsync());
         await TakeAsync(client, projectId, user.Id, Permission.ApproveEntries);
 
-        var trail = await factory.AuditTrailOfAsync(heldId);
+        var trail = await factory.HistoryOfAsync(heldId);
 
-        Assert.Equal([AuditAction.AssignProject, AuditAction.RemoveProject], trail.Select(record => record.Action));
+        Assert.Equal([HistoryAction.AssignProject, HistoryAction.RemoveProject], trail.Select(record => record.Action));
         Assert.All(trail, record => Assert.Equal(manager.Id, record.UserId));
         Assert.Equal(Permission.ApproveEntries, (Permission)JsonNode.Parse(trail[0].After)!["Permission"]!.GetValue<int>());
         Assert.Equal("{}", trail[1].After.Replace(" ", ""));
     }
 
     [Fact]
-    public async Task ANewLoginIsInTheAuditTrailWithNoPasswordHash()
+    public async Task ANewLoginIsInTheHistoryWithNoPasswordHash()
     {
         var (manager, client, projectId) = await ManagerAsync();
         var username = NewUsername();
 
         var created = await ViewOf(await CreateAsync(client, projectId, username));
 
-        var trail = await factory.AuditTrailOfAsync(created.Id);
+        var trail = await factory.HistoryOfAsync(created.Id);
         var record = Assert.Single(trail);
-        Assert.Equal((AuditAction.Create, manager.Id), (record.Action, record.UserId));
+        Assert.Equal((HistoryAction.Create, manager.Id), (record.Action, record.UserId));
         Assert.Equal(username, JsonNode.Parse(record.After)!["Username"]!.GetValue<string>());
         Assert.DoesNotContain("PasswordHash", record.Before + record.After);
     }

@@ -2,7 +2,10 @@ using Redix.Api.Projects;
 
 namespace Redix.Api.Accounts;
 
-/// <summary>Where a project's money sits: a bank account or a cash custody (FR-22). It belongs to one project (BR-33), and is disabled rather than deleted (BR-15). It owns the rules of who may spend from it.</summary>
+/// <summary>
+/// Where a project's money sits: a bank account or a cash custody (FR-22). It belongs to one project (BR-33); once anything names it, it is disabled rather than deleted
+/// (BR-15). What it holds is what its approved entries and transfers moved (<see cref="AccountMoney"/>): it has no opening balance (redix-app #89). It owns the rules of who may spend from it.
+/// </summary>
 public class Account
 {
     /// <summary>The account's id, time-ordered.</summary>
@@ -16,9 +19,6 @@ public class Account
 
     /// <summary>The account's name, as it was typed.</summary>
     public required string Name { get; set; }
-
-    /// <summary>What it held before its first entry; negative for an overdrawn account.</summary>
-    public decimal OpeningBalance { get; set; }
 
     /// <summary>False once disabled: it disappears from entry and stays in the reports (BR-15).</summary>
     public bool IsActive { get; set; } = true;
@@ -35,16 +35,12 @@ public class Account
     /// <summary>Whether <paramref name="userId"/> may spend from it: only while it is active, and only if they hold it unless <paramref name="chargesAny"/> (BRS open question 4).</summary>
     public bool IsOfferedTo(Guid userId, bool chargesAny) => IsActive && (chargesAny || IsHeldBy(userId));
 
-    /// <summary>Why an account with these values cannot be kept: a name outside its limits, an opening balance beyond its limit or with more than two decimals, or a cash custody with nobody holding it. Empty when it can.</summary>
-    public static string RefusalOf(string name, AccountType type, decimal openingBalance, Guid custodianId)
+    /// <summary>Why an account with these values cannot be kept: a name outside its limits, or a cash custody with nobody holding it. Empty when it can.</summary>
+    public static string RefusalOf(string name, AccountType type, Guid custodianId)
     {
         if (!Project.IsAcceptableName(name))
         {
             return "InvalidName";
-        }
-        if (!Money.IsAcceptable(openingBalance))
-        {
-            return "InvalidOpeningBalance";
         }
         return type == AccountType.CashCustody && custodianId == Guid.Empty ? "CustodianRequired" : "";
     }

@@ -13,7 +13,7 @@ src/Redix.Api/
   Translations/         the words: their entities, seed and endpoint together
   Config/               the configurable values (UC-070): request and file timeouts, the VAT rate
   Auth/                 sign-in, users and permissions: users, devices, access tokens, the permission check, the system permissions and the admin's seed
-  Audit/                the audit trail: its records, its actions, and the mark that keeps a secret out of it
+  History/              the History table: its records, its actions, and the mark that keeps a secret out of it
   Projects/             projects and their units, registration and approval, and what every route that changes something in a project shares
   Structure/            what a project's entries are recorded against: categories, items, subgroups and columns, the default template, Add entry's tables
   Settings/             what a project keeps besides its structure: its payment methods
@@ -62,7 +62,7 @@ Every entry, whatever its table, is recorded by `EntryRecording` through one rou
 | Each environment is a name: `Dev` (dev, for automated runs, 127.0.0.1:5010, `RedixDev`) and `QA` (Muteb's own testing, 127.0.0.1:5012, `RedixQA`). Its port (`Urls`), database (`ConnectionStrings:Redix`) and admin username are in `appsettings.{name}.json`, chosen by the launch profile `dev` or `qa`, or by `--environment`; `appsettings.json` is the production base (redix-api #118) | `appsettings.*.json`, `launchSettings.json`, `DatabaseConnection` |
 | Secrets come from Windows user environment variables prefixed `REDIX_`, never a file: the sign-in key (`REDIX_Jwt__SigningKey`) and, where the database signs in with a SQL login rather than as Windows, that login (`REDIX_Database__User`, `REDIX_Database__Password`). An environment's own secrets and folders come from variables prefixed `REDIX_{name}_`, which win over the shared `REDIX_` ones: `REDIX_QA_Admin__Password`, `REDIX_QA_Attachments__Folder` | `Program.cs`, `DatabaseConnection` |
 | A business value someone may change while the API runs is a row of `ConfigValues` (UC-070), never a setting in a file | `ConfigValue`, `ConfigEndpoints` |
-| Every action a use case names is recorded in the audit trail, saved with the change itself; a secret is marked `[NotAudited]` | `RedixDbContext.Audit`, `AuditRecord` |
+| Every action a use case names is recorded in the History table, saved with the change itself; a secret is marked `[NotInHistory]` | `RedixDbContext.AddHistory`, `HistoryRecord` |
 
 The full data model is the pinned **Database design** issue; each use case builds the tables it needs.
 

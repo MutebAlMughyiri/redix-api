@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 using Redix.Api.Accounts;
 using Redix.Api.Attachments;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -37,7 +37,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var supplier = await SupplierAsync(client, project.Id, "شركة النخيل", MigratedApiFactory.NewVatNumber());
         var suppliers = (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers", Json))!;
         var methods = (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{project.Id}/payment-methods", Json))!;
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب المؤسسة", AccountType.Bank, 0), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب المؤسسة", AccountType.Bank), Json)).EnsureSuccessStatusCode();
         var account = (await client.GetFromJsonAsync<List<AccountView>>($"/projects/{project.Id}/accounts", Json))!.Single();
         var item = await PurchaseItemAsync(client, project.Id);
         return new Setup(client, project, item.Id, item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, supplier.Id, suppliers.Single(row => row.Name == Supplier.GeneralCashSupplierName).Id, methods[0].Id, account.Id);
@@ -255,7 +255,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
     private static async Task<Guid> CustodyOfAsync(Setup setup, Guid userId, string name = "عهدة")
     {
-        (await setup.Client.PostAsJsonAsync($"/projects/{setup.Project.Id}/accounts", new AddAccountRequest(name, AccountType.CashCustody, 0) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
+        (await setup.Client.PostAsJsonAsync($"/projects/{setup.Project.Id}/accounts", new AddAccountRequest(name, AccountType.CashCustody) { CustodianId = userId }, Json)).EnsureSuccessStatusCode();
         return (await setup.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{setup.Project.Id}/accounts", Json))!.Single(account => account.Name == name).Id;
     }
 
@@ -557,28 +557,28 @@ public class ExpensesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task FR_21_AnExpenseIsInTheAuditTrailWithWhoAndItsTotal()
+    public async Task FR_21_AnExpenseIsInTheHistoryWithWhoAndItsTotal()
     {
         var setup = await FinanceAsync();
         var attachmentId = await ImageAsync(setup.Client, setup.Project.Id);
 
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = attachmentId });
 
-        var trail = await factory.AuditTrailOfAsync(view.Id);
+        var trail = await factory.HistoryOfAsync(view.Id);
         Assert.Equal(["Entries", "ExpenseDetails", "PurchaseDetails", "EntryAttachments"], trail.Select(record => record.TableName));
-        Assert.Equal(AuditAction.Submit, trail[0].Action);
+        Assert.Equal(HistoryAction.Submit, trail[0].Action);
         Assert.Equal(6000m, JsonDocument.Parse(trail[0].After).RootElement.GetProperty("Amount").GetDecimal());
         Assert.Contains(attachmentId.ToString(), trail.Single(record => record.TableName == "EntryAttachments").After);
     }
 
     [Fact]
-    public async Task ADraftIsCreatedInTheAuditTrailRatherThanSubmitted()
+    public async Task ADraftIsCreatedInTheHistoryRatherThanSubmitted()
     {
         var setup = await FinanceAsync();
 
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup));
 
-        Assert.Equal(AuditAction.Create, (await factory.AuditTrailOfAsync(view.Id))[0].Action);
+        Assert.Equal(HistoryAction.Create, (await factory.HistoryOfAsync(view.Id))[0].Action);
     }
 
     [Fact]

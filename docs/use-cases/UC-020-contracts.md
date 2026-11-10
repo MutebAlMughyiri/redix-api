@@ -48,9 +48,9 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | The item takes contractor payments (the issue's precondition) | `Category.ItemsOfferedFor` | `TheItemTakesContractorPayments`, `ADisabledItemTakesNoNewContract` |
 | An amendment changes the terms and keeps the contractor | `ContractsEndpoints.Amend` | `AnAmendmentChangesTheTermsAndKeepsTheContractor`, `AnAmendmentCanMakeAContractOpenValue`, `AnAmendmentAnswersAsAddingDoes` |
 | A contract answers its parties, and whether any payment names it | `ContractView`, `ContractsEndpoints.List` | `AContractAnswersItsPartiesAndThatItHasNoPayments` |
-| A contract's contractor and item change while it has no payments, in the audit trail, old and new; new ones answer as adding does | `ContractsEndpoints.Amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheAuditTrailShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
+| A contract's contractor and item change while it has no payments, in the History table, old and new; new ones answer as adding does | `ContractsEndpoints.Amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheHistoryShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
 | Any payment, even a draft or a rejected one, holds them, and a refusal changes nothing; the terms can still change | `ContractsEndpoints.Amend` | `AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing`, `AContractWithAPaymentStillChangesItsTerms` |
-| Every change of a contract is in the audit trail | `ContractsEndpoints` | `EveryChangeOfAContractIsInTheAuditTrail` |
+| Every change of a contract is in the History table | `ContractsEndpoints` | `EveryChangeOfAContractIsInTheHistory` |
 | Disabled, it stays on the list, never deleted | No delete route | `ADisabledContractStaysOnTheListAndCanBeEnabled` |
 | Contracts show in the order added | `ContractsEndpoints.List` | `ContractsShowInTheOrderTheyWereAdded` |
 | Everyone with access reads them; only Finance changes them (BR-31) | `Permission.ReadProject`, `ManageSettings` | `EveryoneWithAccessReadsContractsAndOnlyFinanceChangesThem` |

@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -315,7 +315,7 @@ public class RegistrationTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task EveryDecisionIsInTheAuditTrail()
+    public async Task EveryDecisionIsInTheHistory()
     {
         var (_, client, approvedId) = await RegisteredAsync();
         var (_, _, rejectedId) = await RegisteredAsync();
@@ -326,16 +326,16 @@ public class RegistrationTests(MigratedApiFactory factory)
         await admin.PostAsync($"/projects/{approvedId}/approve", null);
         await RejectAsync(admin, rejectedId);
 
-        var approved = await factory.AuditTrailOfAsync(approvedId);
-        Assert.Equal([AuditAction.RegisterProject, AuditAction.ApproveProject], approved.Select(record => record.Action));
+        var approved = await factory.HistoryOfAsync(approvedId);
+        Assert.Equal([HistoryAction.RegisterProject, HistoryAction.ApproveProject], approved.Select(record => record.Action));
         Assert.Equal(adminUser.Id, approved[1].UserId);
-        var rejected = await factory.AuditTrailOfAsync(rejectedId);
-        Assert.Equal([AuditAction.RegisterProject, AuditAction.RejectProject], rejected.Select(record => record.Action));
+        var rejected = await factory.HistoryOfAsync(rejectedId);
+        Assert.Equal([HistoryAction.RegisterProject, HistoryAction.RejectProject], rejected.Select(record => record.Action));
         Assert.Equal("الاسم مكرر", JsonNode.Parse(rejected[1].After)!["RejectionReason"]!.GetValue<string>());
     }
 
     [Fact]
-    public async Task ANewLoginIsInTheAuditTrailWithNoPassword()
+    public async Task ANewLoginIsInTheHistoryWithNoPassword()
     {
         var username = NewUsername();
         await ProjectOf(await RegisterAsync(Request(username)));
@@ -345,9 +345,9 @@ public class RegistrationTests(MigratedApiFactory factory)
         await admin.PostAsync($"/projects/{project.Id}/approve", null);
         var userId = (await ListUsersAsync(client, project.Id)).Single().Id;
 
-        var record = (await factory.AuditTrailOfAsync(userId)).First();
+        var record = (await factory.HistoryOfAsync(userId)).First();
 
-        Assert.Equal((AuditAction.Create, userId), (record.Action, record.UserId));
+        Assert.Equal((HistoryAction.Create, userId), (record.Action, record.UserId));
         Assert.DoesNotContain("PasswordHash", record.Before + record.After);
     }
 

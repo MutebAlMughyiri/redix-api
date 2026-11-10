@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | An author changes their draft, and it holds the new values | `EntryRecording.Change`, `EntryChanges.ReplaceAsync` | `EntryChangesTests.AnAuthorChangesTheirDraftAndItHoldsTheNewValues` |
 | A change keeps who entered it and when | `EntryChanges.ReplaceAsync` | `EntryChangesTests.AChangeKeepsWhoEnteredItAndWhen` |
-| Every change is in the audit trail, before and after | `db.Audit` | `EntryChangesTests.EveryChangeIsInTheAuditTrailWithTheValuesBeforeAndAfter` |
+| Every change is in the History table, before and after | `db.AddHistory` | `EntryChangesTests.EveryChangeIsInTheHistoryWithTheValuesBeforeAndAfter` |
 | An edit goes through the checks of a new entry | `ExpensesEndpoints.SaveAsync` | `EntryChangesTests.AnEditGoesThroughTheChecksOfANewEntry` |
 | A rejected entry is fixed and sent in one edit | `EntryChanges.ReplaceAsync` | `EntryChangesTests.ARejectedEntryIsFixedAndSentAgainInOneEdit` |
 | An edit does not call its own file or number a repeat | The `editing` id | `EntryChangesTests.AnEditKeepsItsOwnFileAndInvoiceNumberWithoutCallingThemRepeats` |
@@ -23,7 +23,7 @@
 | Finance changes anything before approval | `EntryChanges.RefusalOf` | `EntryChangesTests.FinanceChangesAnyEntryBeforeApproval` |
 | AC-16.2: an edit arriving after approval is refused, and the server's version stays | `EntryChanges.RefusalOf` | `EntryChangesTests.AC_16_2_AnOfflineEditOfAnApprovedEntryIsRefusedAndTheServersVersionStays` |
 | AC-50.2: an approved entry's notes may change, and it is not deleted | `EntriesEndpoints.ChangeNotes`, `Delete` | `EntryChangesTests.AC_50_2_AnApprovedEntrysNotesMayChangeAndItIsNotDeleted` |
-| A deleted entry leaves only the audit trail | `EntryChanges.DeleteAsync` | `EntryChangesTests.ADeletedEntryLeavesNothingButTheAuditTrail` |
+| A deleted entry leaves only the History table | `EntryChanges.DeleteAsync` | `EntryChangesTests.ADeletedEntryLeavesNothingButTheHistory` |
 | A bill not approved is removed, whether a draft, waiting or rejected | `EntriesEndpoints.Delete` | `EntryChangesTests.ABillNotApprovedIsRemoved` |
 | An approved bill is not removed but reversed, both staying with a net of zero | `EntriesEndpoints.Delete`, `Reverse` | `EntryChangesTests.AnApprovedBillIsNotRemovedButReversedAndBothStayWithANetOfZero` |
 | Deleting is its own permission | The route | `EntryChangesTests.DeletingIsItsOwnPermission` |

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
@@ -113,10 +113,10 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    public async Task<List<AuditRecord>> AuditTrailOfAsync(Guid recordId)
+    public async Task<List<HistoryRecord>> HistoryOfAsync(Guid recordId)
     {
         using var scope = Services.CreateScope();
-        return await scope.ServiceProvider.GetRequiredService<RedixDbContext>().AuditTrail.Where(record => record.RecordId == recordId).OrderBy(record => record.Id).ToListAsync();
+        return await scope.ServiceProvider.GetRequiredService<RedixDbContext>().History.Where(record => record.RecordId == recordId).OrderBy(record => record.Id).ToListAsync();
     }
 
     /// <summary>Gives <paramref name="permissions"/> in a project straight in the database, those not held already, for a test whose subject is something else.</summary>

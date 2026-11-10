@@ -31,4 +31,4 @@ A project answers `status`, now also `pendingApproval` or `rejected`, and `rejec
 | A project is decided once | `Project.Approve`, `Project.Reject` | `RegistrationTests.AProjectIsDecidedOnce` |
 | A project manager cannot take over the admin | `UsersEndpoints.MayChangeAsync`, `ProjectUsersEndpoints.AddExisting` | `ProjectUsersTests.AManagerCannotTakeOverTheAdmin` |
 | Too many tries from one address are refused | The rate limiter in `Program.cs` | `RegistrationTests.TooManyTriesAreRefused` |
-| Every registration and decision is in the audit trail | `db.Audit` | `RegistrationTests.EveryDecisionIsInTheAuditTrail` |
+| Every registration and decision is in the History table | `db.AddHistory` | `RegistrationTests.EveryDecisionIsInTheHistory` |

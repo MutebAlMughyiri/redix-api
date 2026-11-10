@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Redix.Api.Attachments;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 
@@ -76,7 +76,7 @@ public static class DocumentsEndpoints
         var at = time.GetUtcNow().UtcDateTime;
         var document = new Document { ProjectId = projectId, AttachmentId = attachment.Id, Name = name, Group = group, UploadedByUserId = userId, UploadedAt = at };
         db.Documents.Add(document);
-        db.Audit(document, AuditAction.Create, userId, at);
+        db.AddHistory(document, HistoryAction.Create, userId, at);
         await db.SaveChangesAsync();
         return Results.Ok(new DocumentIdView(document.Id));
     }
@@ -95,7 +95,7 @@ public static class DocumentsEndpoints
             return Results.NotFound();
         }
 
-        db.Audit(document, AuditAction.Delete, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+        db.AddHistory(document, HistoryAction.Delete, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
         db.Documents.Remove(document);
         await db.SaveChangesAsync();
         return Results.Ok(new DocumentIdView(document.Id));

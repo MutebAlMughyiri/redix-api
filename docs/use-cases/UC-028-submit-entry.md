@@ -12,7 +12,7 @@ An entry sent as it is recorded goes through its own route's checks. One saved a
 
 `POST .../submit` answers every key the entry lacks under `missing`: `attachment` for a file with no reason in its place, and each required column left empty, so a person fixes them all at once. The app does not call it yet, and a draft cannot be changed until UC-033 "Edit or delete an unapproved entry", so one that lacks something stays as it is until then.
 
-Telling Finance belongs to UC-036 "Send push notifications": nothing is faked here, and the audit trail records who sent what. `EntryDecisions` belongs to UC-032 "Approve or reject entries", the first to need it.
+Telling Finance belongs to UC-036 "Send push notifications": nothing is faked here, and the History table records who sent what. `EntryDecisions` belongs to UC-032 "Approve or reject entries", the first to need it.
 
 ## Endpoints
 
@@ -38,7 +38,7 @@ Tests are in `SubmitEntryTests`.
 | Only a draft or a rejected entry | `Entry.CanBeSubmitted` | `UC_033_ARejectedEntryCanBeSentAgain`, `AnEntryAlreadySentCannotBeSentAgain` |
 | Field sends their own; Finance anyone's | `Permission.ManageAnyEntry` | `FieldSendsTheirOwnEntryAndNotAnothersAndFinanceSendsAnyones`, `WhoHoldsNoRecordEntriesCannotSendAnEntry` |
 | BR-33 and a finished project | `ProjectChanges`, the query by project | `BR_33_AnEntryOfAnotherProjectIsNotFoundAndSomeoneOutsideIsRefused`, `AC_04_1_AFinishedProjectSendsNothing` |
-| FR-21: sending is in the audit trail | `RedixDbContext.Audit` | `FR_21_SendingIsInTheAuditTrailAndARefusalIsNot` |
+| FR-21: sending is in the History table | `RedixDbContext.AddHistory` | `FR_21_SendingIsInTheHistoryAndARefusalIsNot` |
 | An entry reads back whole | `ViewOfAsync` | `ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest`, `ReadingACreditNoteAnswersWhatItIsLinkedTo` |
 | A rejected revenue or partner entry is sent again and waits once more; it has no columns to check | `EntriesEndpoints.MissingOfAsync` | `RevenueTests.ARejectedRevenueEntryIsSentAgainAndWaitsOnceMore` |
 | BR-31: one partner's money read by its id answers 404 to anyone but that partner and whoever holds `seeAllCapital`; the list and the single read share one filter | `EntriesEndpoints.SeenByAsync`, `Read` | `RevenueTests.BR_31_OnePartnersMoneyReadByItsIdIsLeftToThatPartnerAndWhoeverSeesAllCapital` |

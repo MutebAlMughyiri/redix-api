@@ -34,4 +34,4 @@ Sign-in, renewal and a password change answer `usesBiometrics` too. A new sign-i
 | Every session answer says whether it is on | `Session.OfAsync` | `AuthTests.TurningBiometricsOnIsAnswered` |
 | Changing the password keeps it on this phone | `AuthEndpoints.ChangePassword` | `AuthTests.ChangingThePasswordKeepsBiometricsOnThisPhone` |
 | A temporary password cannot turn it on | `SessionPolicies.Working` | `AuthTests.ATemporaryPasswordCannotTurnBiometricsOn` |
-| Turning it on and off is audited | `AuthEndpoints.SetBiometrics` | `AuthTests.TurningBiometricsOnAndOffIsAudited` |
+| Turning it on and off is in the History table | `AuthEndpoints.SetBiometrics` | `AuthTests.TurningBiometricsOnAndOffIsInHistory` |

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 
 namespace Redix.Api.Auth;
 
@@ -12,7 +12,7 @@ public class User
     public static User None { get; } = new() { Username = "" };
 
     /// <summary>
-    /// Adds a new login from what was typed, for the caller to save and audit. A field outside its limit answers its code with status 400, a username already taken <c>usernameTaken</c> with 409;
+    /// Adds a new login from what was typed, for the caller to save and write to the History table. A field outside its limit answers its code with status 400, a username already taken <c>usernameTaken</c> with 409;
     /// the user is <see cref="None"/> then.
     /// </summary>
     public static async Task<(User User, int Status, string Refusal)> AddNewAsync(string displayName, string username, string mobile, string password, bool mustChangePassword, RedixDbContext db, IPasswordHasher<User> hasher, DateTime now)
@@ -70,7 +70,7 @@ public class User
     public string Mobile { get; set; } = "";
 
     /// <summary>The password, hashed by ASP.NET Core's <see cref="PasswordHasher{TUser}"/>; never the password itself.</summary>
-    [NotAudited]
+    [NotInHistory]
     public string PasswordHash { get; private set; } = "";
 
     /// <summary>True while the password is a temporary one the user must change before anything else.</summary>

@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
 using Redix.Api.Revenue;
@@ -32,7 +32,7 @@ public static class EntryChanges
     /// <summary>The same question, reading what <paramref name="userId"/> holds in the entry's project.</summary>
     public static async Task<bool> MayHandleAsync(Entry entry, Guid userId, RedixDbContext db) => MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(entry.ProjectId));
 
-    /// <summary>Replaces what <paramref name="existing"/> holds with <paramref name="edited"/> and <paramref name="details"/>, keeping who entered it and when, and its status unless it is sent now. The audit trail holds the values before and after.</summary>
+    /// <summary>Replaces what <paramref name="existing"/> holds with <paramref name="edited"/> and <paramref name="details"/>, keeping who entered it and when, and its status unless it is sent now. The History table holds the values before and after.</summary>
     public static async Task ReplaceAsync(Entry existing, Entry edited, List<object> details, Guid userId, DateTime at, RedixDbContext db)
     {
         await using var transaction = await db.Database.BeginTransactionAsync();
@@ -46,7 +46,7 @@ public static class EntryChanges
         existing.AccountId = edited.AccountId;
         existing.Notes = edited.Notes;
         existing.Status = edited.Status == EntryStatus.PendingApproval ? EntryStatus.PendingApproval : existing.Status;
-        db.Audit(existing, sending ? AuditAction.Submit : AuditAction.Update, userId, at);
+        db.AddHistory(existing, sending ? HistoryAction.Submit : HistoryAction.Update, userId, at);
         if (sending)
         {
             db.EntryDecisions.Add(new EntryDecision { EntryId = existing.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = at });
@@ -55,19 +55,19 @@ public static class EntryChanges
         foreach (var detail in details)
         {
             db.Add(detail);
-            db.Audit(detail, AuditAction.Create, userId, at);
+            db.AddHistory(detail, HistoryAction.Create, userId, at);
         }
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
     }
 
-    /// <summary>Removes an entry that was never approved, with all it holds. The audit trail keeps what it held.</summary>
+    /// <summary>Removes an entry that was never approved, with all it holds. The History table keeps what it held.</summary>
     public static async Task DeleteAsync(Entry entry, Guid userId, DateTime at, RedixDbContext db)
     {
         await RemoveDetailsAsync(entry.Id, userId, at, db);
         db.EntryDecisions.RemoveRange(await db.EntryDecisions.Where(row => row.EntryId == entry.Id).ToListAsync());
         db.Notifications.RemoveRange(await db.Notifications.Where(row => row.EntryId == entry.Id).ToListAsync());
-        db.Audit(entry, AuditAction.Delete, userId, at);
+        db.AddHistory(entry, HistoryAction.Delete, userId, at);
         db.Entries.Remove(entry);
         await db.SaveChangesAsync();
     }
@@ -87,7 +87,7 @@ public static class EntryChanges
         ];
         foreach (var detail in details)
         {
-            db.Audit(detail, AuditAction.Delete, userId, at);
+            db.AddHistory(detail, HistoryAction.Delete, userId, at);
             db.Remove(detail);
         }
     }

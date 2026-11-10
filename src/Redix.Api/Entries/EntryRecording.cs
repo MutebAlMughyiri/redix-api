@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
 using Redix.Api.Projects;
@@ -10,7 +10,7 @@ namespace Redix.Api.Entries;
 
 /// <summary>
 /// Recording any entry, whatever its table (redix-api #110): one route records it and one changes it before approval. It is recorded once per id, goes only into a table the
-/// caller is offered, passes the checks every entry shares by its item's side, then its table's own, and reaches the ledger with its audit, its decision and the deciders told.
+/// caller is offered, passes the checks every entry shares by its item's side, then its table's own, and reaches the ledger with its history row, its decision and the deciders told.
 /// </summary>
 public static class EntryRecording
 {
@@ -210,13 +210,13 @@ public static class EntryRecording
     }
 
     /// <summary>
-    /// Adds <paramref name="entry"/> with its <paramref name="details"/> and the audit record of each (FR-21), saved with the change. One sent for approval is a decision and tells
+    /// Adds <paramref name="entry"/> with its <paramref name="details"/> and the history row of each (FR-21), saved with the change. One sent for approval is a decision and tells
     /// the deciders; one approved at once, a reversal, is a decision too; a draft is neither.
     /// </summary>
     public static async Task AddAsync(Entry entry, List<object> details, Guid userId, RedixDbContext db)
     {
         db.Add(entry);
-        db.Audit(entry, entry.Status == EntryStatus.PendingApproval ? AuditAction.Submit : AuditAction.Create, userId, entry.CreatedAt);
+        db.AddHistory(entry, entry.Status switch { EntryStatus.PendingApproval => HistoryAction.Submit, EntryStatus.Approved => HistoryAction.Reverse, _ => HistoryAction.Create }, userId, entry.CreatedAt);
         if (entry.Status != EntryStatus.Draft)
         {
             db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = entry.Status == EntryStatus.Approved ? EntryDecisionAction.Approve : EntryDecisionAction.Submit, UserId = userId, At = entry.CreatedAt });
@@ -228,7 +228,7 @@ public static class EntryRecording
         foreach (var detail in details)
         {
             db.Add(detail);
-            db.Audit(detail, AuditAction.Create, userId, entry.CreatedAt);
+            db.AddHistory(detail, HistoryAction.Create, userId, entry.CreatedAt);
         }
     }
 }

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Audit;
+using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
 using Redix.Api.Partners;
@@ -32,7 +32,7 @@ public static class ApprovalsEndpoints
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.FileNameOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry))).ToList();
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.FileNameOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry), facts.AccountBalanceOf(entry), facts.AccountWaitingOf(entry), facts.AccountShortByOf(entry))).ToList();
     }
 
     /// <summary>
@@ -63,7 +63,7 @@ public static class ApprovalsEndpoints
             entry!.Status = EntryStatus.Approved;
             entry.ApprovedAt = at;
             db.EntryDecisions.Add(new EntryDecision { EntryId = id, Action = EntryDecisionAction.Approve, UserId = userId, At = at });
-            db.Audit(entry, AuditAction.Approve, userId, at);
+            db.AddHistory(entry, HistoryAction.Approve, userId, at);
             NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryApproved, userId, at, db);
             await ApproveItsSupplierAsync(id, userId, at, db);
             approved.Add(id);
@@ -100,7 +100,7 @@ public static class ApprovalsEndpoints
         var at = time.GetUtcNow().UtcDateTime;
         entry.Status = EntryStatus.Rejected;
         db.EntryDecisions.Add(new EntryDecision { EntryId = entryId, Action = EntryDecisionAction.Reject, UserId = userId, At = at, Reason = reason });
-        db.Audit(entry, AuditAction.Reject, userId, at);
+        db.AddHistory(entry, HistoryAction.Reject, userId, at);
         NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryRejected, userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok();
@@ -121,7 +121,7 @@ public static class ApprovalsEndpoints
         if (supplier is not null)
         {
             supplier.Status = SupplierStatus.Approved;
-            db.Audit(supplier, AuditAction.Update, userId, at);
+            db.AddHistory(supplier, HistoryAction.Update, userId, at);
         }
     }
 }
@@ -141,7 +141,10 @@ public static class ApprovalsEndpoints
 /// <param name="FileName">The file's name; empty when it has none.</param>
 /// <param name="AuthorName">Who entered it.</param>
 /// <param name="PartnerName">A capital movement's partner; empty for any other entry (redix-api #101).</param>
-public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string FileName, string AuthorName, string PartnerName);
+/// <param name="AccountBalance">What its account holds now (redix-app #89).</param>
+/// <param name="AccountWaiting">What waits to leave its account, this entry among it.</param>
+/// <param name="AccountShortBy">How much more what waits on its account takes than the account holds; zero when it covers all of it, so the inbox notes only a short one (R5, D4).</param>
+public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string FileName, string AuthorName, string PartnerName, decimal AccountBalance, decimal AccountWaiting, decimal AccountShortBy);
 
 /// <summary>The entries to approve.</summary>
 /// <param name="EntryIds">Their ids.</param>

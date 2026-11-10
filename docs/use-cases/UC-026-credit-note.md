@@ -38,7 +38,7 @@ Tests are in `CreditNoteTests`.
 | A credit note is typed as a plain amount | `PurchaseTable.RefusalOfTyped` | `ACreditNoteIsTypedAsAPlainAmount` |
 | AC-14.1: a deduction of 136 reduces the item total and names no bill | `EntryRequest.IsDeduction` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndNamesNoBill` |
 | BR-31: anyone who reads the project sees what can be returned | `Creditable` | `BR_31_AnyoneWhoReadsTheProjectSeesWhatCanBeReturned` |
-| FR-21: the link is in the audit trail | `RedixDbContext.Audit` | `FR_21_TheLinkIsInTheAuditTrail` |
+| FR-21: the link is in the History table | `RedixDbContext.AddHistory` | `FR_21_TheLinkIsInTheHistory` |
 | AC-04.1: a finished project records no credit note | `ProjectChanges` | `AFinishedProjectRecordsNoCreditNote` |
 
 D14, a deduction saying why in its notes, is proved in `SimpleExpenseTests.D14_ADeductionSaysWhyInItsNotes`.
