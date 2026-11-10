@@ -12626,6 +12626,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("c692285c-b140-52e3-3ef7-240e8ba9fa6f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0258dbfc-ff28-d70b-adb9-50e9eb52a057"),
+                            Value = "Hide details"
+                        },
+                        new
+                        {
+                            Id = new Guid("cf56166f-ccdd-60b1-38b8-a78c5fbbfb52"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0258dbfc-ff28-d70b-adb9-50e9eb52a057"),
+                            Value = "إخفاء التفاصيل"
+                        },
+                        new
+                        {
+                            Id = new Guid("18739dda-0f8a-cb22-82e9-cc1c583dcc04"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3331cac9-1828-89fe-b4f4-fcc7ca394d54"),
+                            Value = "Show details"
+                        },
+                        new
+                        {
+                            Id = new Guid("d82b471d-24c9-f838-c1f3-ff3a97cc2189"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3331cac9-1828-89fe-b4f4-fcc7ca394d54"),
+                            Value = "إظهار التفاصيل"
+                        },
+                        new
+                        {
                             Id = new Guid("46fca222-75ab-9a64-f590-5d22e9323f40"),
                             Language = "en",
                             TranslationKeyId = new Guid("bd6c01ee-b87b-def0-a719-6f05a583e17d"),
@@ -17153,6 +17181,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("3e235119-ab31-5245-6304-aefa87cb07f1"),
                             Description = "",
                             Key = "contracts.afterApproval"
+                        },
+                        new
+                        {
+                            Id = new Guid("0258dbfc-ff28-d70b-adb9-50e9eb52a057"),
+                            Description = "",
+                            Key = "home.hideDetails"
+                        },
+                        new
+                        {
+                            Id = new Guid("3331cac9-1828-89fe-b4f4-fcc7ca394d54"),
+                            Description = "",
+                            Key = "home.showDetails"
                         },
                         new
                         {
