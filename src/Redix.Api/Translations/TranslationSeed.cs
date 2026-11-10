@@ -132,7 +132,7 @@ public static class TranslationSeed
         ("permissions.manageAnyEntry", "Handle others' entries", "إدارة قيود الآخرين"),
         ("permissions.manageAnyEntryHint", "Edits, sends and deletes an entry someone else sent, or one waiting, before approval.", "يعدّل ويرسل ويحذف قيداً أرسله غيره، أو قيداً ينتظر، قبل اعتماده."),
         ("permissions.deleteEntries", "Delete entries", "حذف القيود"),
-        ("permissions.deleteEntriesHint", "Deletes a bill or a payment not yet approved: their own, or someone else's with \"Handle others' entries\".", "يحذف فاتورة أو دفعة لم تُعتمد: قيده، أو قيد غيره مع «إدارة قيود الآخرين»."),
+        ("permissions.deleteEntriesHint", "Deletes a bill or a payment not yet approved: their own, or one someone else sent, with \"Handle others' entries\".", "يحذف فاتورة أو دفعة لم تُعتمد: قيده، أو قيداً أرسله غيره مع «إدارة قيود الآخرين»."),
         ("permissions.attachFiles", "Attach files", "إرفاق الملفات"),
         ("permissions.attachFilesHint", "Photographs or chooses the file of an invoice, a receipt or a contract.", "يصوّر أو يختار ملف الفاتورة أو الإيصال أو العقد."),
         ("permissions.approveEntries", "Approve entries", "اعتماد القيود"),

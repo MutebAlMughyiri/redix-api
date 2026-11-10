@@ -4526,14 +4526,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("7cec74d2-98ca-19ea-2405-4cd1058e2bd0"),
                             Language = "en",
                             TranslationKeyId = new Guid("a5fc4e4e-6b11-94e8-7857-1d4cccf3065c"),
-                            Value = "Deletes a bill or a payment not yet approved: their own, or someone else's with \"Handle others' entries\"."
+                            Value = "Deletes a bill or a payment not yet approved: their own, or one someone else sent, with \"Handle others' entries\"."
                         },
                         new
                         {
                             Id = new Guid("86d887f0-969a-12cf-fd9a-3e3e1807118f"),
                             Language = "ar",
                             TranslationKeyId = new Guid("a5fc4e4e-6b11-94e8-7857-1d4cccf3065c"),
-                            Value = "يحذف فاتورة أو دفعة لم تُعتمد: قيده، أو قيد غيره مع «إدارة قيود الآخرين»."
+                            Value = "يحذف فاتورة أو دفعة لم تُعتمد: قيده، أو قيداً أرسله غيره مع «إدارة قيود الآخرين»."
                         },
                         new
                         {
