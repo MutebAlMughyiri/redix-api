@@ -103,6 +103,7 @@ app.MapAccounts();
 app.MapTransfers();
 app.MapAccountHistory();
 app.MapPartners();
+app.MapPartnerHistory();
 app.MapSuppliers();
 app.MapContracts();
 app.MapAttachments();

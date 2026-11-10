@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
@@ -13,9 +12,6 @@ namespace Redix.Api.Accounts;
 /// </summary>
 public static class AccountHistory
 {
-    /// <summary>How many lines a page holds.</summary>
-    public const int PageSize = 50;
-
     private static readonly string[] AccountTables = ["Accounts", "AccountCustodians", "Transfers", "Reconciliations"];
 
     /// <summary>Maps the route that reads it, for anyone who reads the project, as the accounts themselves (D9).</summary>
@@ -45,14 +41,6 @@ public static class AccountHistory
         var seen = (await EntriesEndpoints.SeenByAsync(projectId, userId, db)).Select(entry => entry.Id);
         var rows = db.History.Where(row => row.ProjectId == projectId
             && (AccountTables.Contains(row.TableName) || (row.TableName == "Entries" && (row.Action == HistoryAction.Approve || row.Action == HistoryAction.Reverse) && seen.Contains(row.RecordId))));
-        if (mine)
-        {
-            rows = rows.Where(row => row.UserId == userId);
-        }
-        if (before > 0)
-        {
-            rows = rows.Where(row => row.Id < before);
-        }
         if (accountId != Guid.Empty)
         {
             var transfers = db.Transfers.Where(transfer => transfer.FromAccountId == accountId || transfer.ToAccountId == accountId).Select(transfer => transfer.Id);
@@ -60,7 +48,7 @@ public static class AccountHistory
             var checks = db.Reconciliations.Where(check => check.Balances.Any(balance => balance.AccountId == accountId)).Select(check => check.Id);
             rows = rows.Where(row => row.RecordId == accountId || transfers.Contains(row.RecordId) || entries.Contains(row.RecordId) || checks.Contains(row.RecordId));
         }
-        var page = await rows.OrderByDescending(row => row.Id).Take(PageSize).ToListAsync();
+        var page = await HistoryPage.Of(rows, userId, mine, before).ToListAsync();
         return Results.Ok(await LinesAsync(projectId, page, db));
     }
 
@@ -71,15 +59,15 @@ public static class AccountHistory
         var entries = await db.Entries.Where(entry => ids.Contains(entry.Id)).ToDictionaryAsync(entry => entry.Id);
         var checks = await db.Reconciliations.Include(check => check.Balances).Where(check => ids.Contains(check.Id)).ToDictionaryAsync(check => check.Id);
         var accountNames = await AccountNamesAsync(projectId, db);
-        var people = page.Select(row => row.UserId).Concat(page.Where(row => row.TableName == "AccountCustodians").Select(row => IdIn(row.After, "UserId"))).Distinct().ToList();
+        var people = page.Select(row => row.UserId).Concat(page.Where(row => row.TableName == "AccountCustodians").Select(row => HistoryPage.IdIn(row.After, "UserId"))).Distinct().ToList();
         var names = await db.Users.Where(user => people.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
         return page.Select(row =>
         {
             var line = new AccountHistoryLine(row.Id, row.At, names.GetValueOrDefault(row.UserId, ""), AccountHistoryKind.AccountChanged, "", "", 0, EntryKind.Purchase, "", "");
             return row.TableName switch
             {
-                "Accounts" => line with { Kind = KindOf(row.Action), Account = accountNames.GetValueOrDefault(row.RecordId, ""), NameWas = row.Action == HistoryAction.Update ? TextIn(row.Before, "Name") : "" },
-                "AccountCustodians" => line with { Kind = AccountHistoryKind.CustodianChanged, Account = accountNames.GetValueOrDefault(row.RecordId, ""), Custodian = names.GetValueOrDefault(IdIn(row.After, "UserId"), "") },
+                "Accounts" => line with { Kind = KindOf(row.Action), Account = accountNames.GetValueOrDefault(row.RecordId, ""), NameWas = row.Action == HistoryAction.Update ? HistoryPage.TextIn(row.Before, "Name") : "" },
+                "AccountCustodians" => line with { Kind = AccountHistoryKind.CustodianChanged, Account = accountNames.GetValueOrDefault(row.RecordId, ""), Custodian = names.GetValueOrDefault(HistoryPage.IdIn(row.After, "UserId"), "") },
                 "Transfers" => line with { Kind = AccountHistoryKind.Transfer, Account = accountNames.GetValueOrDefault(transfers[row.RecordId].FromAccountId, ""), OtherAccount = accountNames.GetValueOrDefault(transfers[row.RecordId].ToAccountId, ""), Amount = transfers[row.RecordId].Amount },
                 "Reconciliations" => line with { Kind = AccountHistoryKind.Check, Amount = checks[row.RecordId].Balances.Sum(balance => balance.ActualBalance) },
                 _ => EntryLine(line, row, entries[row.RecordId], accountNames),
@@ -111,15 +99,10 @@ public static class AccountHistory
         var deleted = await db.History.Where(row => row.ProjectId == projectId && row.TableName == "Accounts" && row.Action == HistoryAction.Delete).Select(row => new { row.RecordId, row.Before }).ToListAsync();
         foreach (var row in deleted)
         {
-            names[row.RecordId] = TextIn(row.Before, "Name");
+            names[row.RecordId] = HistoryPage.TextIn(row.Before, "Name");
         }
         return names;
     }
-
-    private static string TextIn(string values, string name) =>
-        JsonDocument.Parse(values).RootElement.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()! : "";
-
-    private static Guid IdIn(string values, string name) => Guid.TryParse(TextIn(values, name), out var id) ? id : Guid.Empty;
 }
 
 /// <summary>What a line of the account history says was done.</summary>

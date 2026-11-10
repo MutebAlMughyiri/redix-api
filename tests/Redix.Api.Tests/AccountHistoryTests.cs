@@ -251,7 +251,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         var first = await HistoryAsync(ledger);
         var second = await HistoryAsync(ledger, before: first[^1].Id);
 
-        Assert.Equal(AccountHistory.PageSize, first.Count);
+        Assert.Equal(HistoryPage.Size, first.Count);
         Assert.Equal(11, second.Count);
         Assert.Empty(first.Select(line => line.Id).Intersect(second.Select(line => line.Id)));
         Assert.True(first[^1].Id > second[0].Id);

@@ -11138,6 +11138,118 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("88cd47f4-c279-ebe2-9b64-360b63587623"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0e1e4791-4f58-d359-c0b2-9b81a680e8ff"),
+                            Value = "All partners"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0e20d03-0801-d147-1f92-f084e7d197c0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0e1e4791-4f58-d359-c0b2-9b81a680e8ff"),
+                            Value = "كل الشركاء"
+                        },
+                        new
+                        {
+                            Id = new Guid("b50efa0c-f73b-3a6d-1e99-8b79c73ff267"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bd77c634-cf0c-8392-135f-a3d7e0c232aa"),
+                            Value = "That partner is not in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("47b7d4c5-b8b2-0602-891c-e8747f5e994e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bd77c634-cf0c-8392-135f-a3d7e0c232aa"),
+                            Value = "هذا الشريك ليس في هذا المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("480cde1f-ec1c-df55-65ad-d0857a68ec85"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f593f3b0-6790-8886-e822-f6b5a951f42e"),
+                            Value = "Added the partner {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("96803f30-457b-d836-4a29-eebe739af674"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f593f3b0-6790-8886-e822-f6b5a951f42e"),
+                            Value = "إضافة الشريك {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("16fcbcfc-20ab-15a0-4bdb-61e594e17745"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("dfb2bc2a-67b4-74e9-ac8f-11055235e2eb"),
+                            Value = "Changed the partner {0}: {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("5652f47e-a4ff-58bf-1bb7-0b5f1d251317"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("dfb2bc2a-67b4-74e9-ac8f-11055235e2eb"),
+                            Value = "تعديل الشريك {0}: {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("8cc9437d-8965-496d-3359-273f355fc542"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("adac30c0-6957-9b47-7e6c-6eab5993367b"),
+                            Value = "The partner {0}'s account: {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("c4182e16-8b04-06eb-d26c-a55114c0c2b4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("adac30c0-6957-9b47-7e6c-6eab5993367b"),
+                            Value = "حساب الشريك {0}: {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("5ba06fc6-a02a-810b-bb75-852e3e2b6bb6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a04a00e5-b6ca-496f-9dc4-cd4a480a07cb"),
+                            Value = "Deleted the partner {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("562b0891-0800-e684-ec3b-0f528948a91e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a04a00e5-b6ca-496f-9dc4-cd4a480a07cb"),
+                            Value = "حذف الشريك {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("890aae98-e1fa-05b6-c938-b7f516ec44f8"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c36975f1-9c37-7149-dc27-cb52654d11ac"),
+                            Value = "Capital {0} from {1} into {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("15de3ae3-f14a-ee73-b0dc-b196a00cfa88"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c36975f1-9c37-7149-dc27-cb52654d11ac"),
+                            Value = "رأس مال {0} من {1} إلى {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("802fa457-18b6-ef8f-835a-4dc814b65498"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("696720c5-0c62-2420-70d4-04467ae4060c"),
+                            Value = "Withdrew {0} for {1} from {2}"
+                        },
+                        new
+                        {
+                            Id = new Guid("d7794096-77d7-6539-5d2f-14ec8917f148"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("696720c5-0c62-2420-70d4-04467ae4060c"),
+                            Value = "سحب {0} لـ{1} من {2}"
+                        },
+                        new
+                        {
                             Id = new Guid("14049f43-4660-131a-8696-4c91c9c705ba"),
                             Language = "en",
                             TranslationKeyId = new Guid("e93a435d-cfeb-0c29-a2fb-3ccab5b307ba"),
@@ -11569,6 +11681,20 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("21575f31-6470-40a7-1f01-5c5e4b271c8f"),
                             Value = "حفظ"
+                        },
+                        new
+                        {
+                            Id = new Guid("6612c2a8-4db5-ff66-b871-060ac4ca758d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("af34908b-a227-3b20-f64c-5789425cc04e"),
+                            Value = "History"
+                        },
+                        new
+                        {
+                            Id = new Guid("8d166f86-6476-b963-2ada-3bb6c4bba42a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("af34908b-a227-3b20-f64c-5789425cc04e"),
+                            Value = "السجل"
                         },
                         new
                         {
@@ -17412,6 +17538,54 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("0e1e4791-4f58-d359-c0b2-9b81a680e8ff"),
+                            Description = "",
+                            Key = "history.allPartners"
+                        },
+                        new
+                        {
+                            Id = new Guid("bd77c634-cf0c-8392-135f-a3d7e0c232aa"),
+                            Description = "",
+                            Key = "history.unknownPartner"
+                        },
+                        new
+                        {
+                            Id = new Guid("f593f3b0-6790-8886-e822-f6b5a951f42e"),
+                            Description = "",
+                            Key = "history.partnerCreated"
+                        },
+                        new
+                        {
+                            Id = new Guid("dfb2bc2a-67b4-74e9-ac8f-11055235e2eb"),
+                            Description = "",
+                            Key = "history.partnerChanged"
+                        },
+                        new
+                        {
+                            Id = new Guid("adac30c0-6957-9b47-7e6c-6eab5993367b"),
+                            Description = "",
+                            Key = "history.partnerAccount"
+                        },
+                        new
+                        {
+                            Id = new Guid("a04a00e5-b6ca-496f-9dc4-cd4a480a07cb"),
+                            Description = "",
+                            Key = "history.partnerDeleted"
+                        },
+                        new
+                        {
+                            Id = new Guid("c36975f1-9c37-7149-dc27-cb52654d11ac"),
+                            Description = "",
+                            Key = "history.capitalIn"
+                        },
+                        new
+                        {
+                            Id = new Guid("696720c5-0c62-2420-70d4-04467ae4060c"),
+                            Description = "",
+                            Key = "history.capitalOut"
+                        },
+                        new
+                        {
                             Id = new Guid("e93a435d-cfeb-0c29-a2fb-3ccab5b307ba"),
                             Description = "",
                             Key = "history.mine"
@@ -17595,6 +17769,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("21575f31-6470-40a7-1f01-5c5e4b271c8f"),
                             Description = "",
                             Key = "partners.save"
+                        },
+                        new
+                        {
+                            Id = new Guid("af34908b-a227-3b20-f64c-5789425cc04e"),
+                            Description = "",
+                            Key = "partners.history"
                         },
                         new
                         {

@@ -87,8 +87,10 @@ public static class PartnersEndpoints
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The partner's name, and their own login if they have one.</param>
+    /// <param name="principal">The caller's session, for the history row (redix-app #101).</param>
     /// <param name="db">The database they live in.</param>
-    public static Task<IResult> Add(Guid projectId, PartnerRequest request, RedixDbContext db) =>
+    /// <param name="time">The current time, for the history row.</param>
+    public static Task<IResult> Add(Guid projectId, PartnerRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             var itemId = await ProjectStructure.ItemsOf(projectId, db).Where(item => item.Type == ItemType.Capital).Select(item => item.Id).SingleOrDefaultAsync();
@@ -101,7 +103,9 @@ public static class PartnersEndpoints
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
             }
-            db.Partners.Add(new Partner { ProjectId = projectId, UserId = request.UserId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) });
+            var partner = new Partner { ProjectId = projectId, UserId = request.UserId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
+            db.Partners.Add(partner);
+            db.AddHistory(partner, HistoryAction.Create, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
             await db.SaveChangesAsync();
             return Results.Ok();
         });
@@ -110,8 +114,10 @@ public static class PartnersEndpoints
     /// <param name="projectId">The project.</param>
     /// <param name="partnerId">The partner.</param>
     /// <param name="request">The partner's name, and their own login if they have one.</param>
+    /// <param name="principal">The caller's session, for the history row (redix-app #101).</param>
     /// <param name="db">The database they live in.</param>
-    public static Task<IResult> Edit(Guid projectId, Guid partnerId, PartnerRequest request, RedixDbContext db) =>
+    /// <param name="time">The current time, for the history row.</param>
+    public static Task<IResult> Edit(Guid projectId, Guid partnerId, PartnerRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
             var partner = await db.Partners.Where(Partner.Kept).SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
@@ -126,6 +132,10 @@ public static class PartnersEndpoints
             }
             partner.Name = name;
             partner.UserId = request.UserId;
+            if (db.Entry(partner).State == EntityState.Modified)
+            {
+                db.AddHistory(partner, HistoryAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+            }
             await db.SaveChangesAsync();
             return Results.Ok();
         });
