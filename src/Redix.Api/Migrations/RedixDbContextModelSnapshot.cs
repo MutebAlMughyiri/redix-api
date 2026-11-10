@@ -4498,14 +4498,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("94ed53b4-1874-de23-89c5-fd33eb1a3c38"),
                             Language = "en",
                             TranslationKeyId = new Guid("b025a21a-81a7-10b8-602d-817a66f2158d"),
-                            Value = "Edits, sends and deletes an entry someone else entered, or one waiting, before approval."
+                            Value = "Edits, sends and deletes an entry someone else sent, or one waiting, before approval."
                         },
                         new
                         {
                             Id = new Guid("50c76735-8650-fb66-8df0-19d905c97439"),
                             Language = "ar",
                             TranslationKeyId = new Guid("b025a21a-81a7-10b8-602d-817a66f2158d"),
-                            Value = "يعدّل ويرسل ويحذف قيداً أدخله غيره، أو قيداً ينتظر، قبل اعتماده."
+                            Value = "يعدّل ويرسل ويحذف قيداً أرسله غيره، أو قيداً ينتظر، قبل اعتماده."
                         },
                         new
                         {

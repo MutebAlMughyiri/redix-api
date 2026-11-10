@@ -29,7 +29,7 @@ public static class EntryKinds
 /// <summary>Where an entry stands. Only approved entries count in any total (BR-10).</summary>
 public enum EntryStatus : byte
 {
-    /// <summary>Saved by who entered it, and seen by nobody's inbox.</summary>
+    /// <summary>Saved by who entered it, and seen and handled by nobody else until it is sent (BR-42).</summary>
     Draft,
 
     /// <summary>Sent, and waiting for Finance.</summary>

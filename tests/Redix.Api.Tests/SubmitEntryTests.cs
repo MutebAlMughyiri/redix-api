@@ -140,7 +140,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task FieldSendsTheirOwnEntryAndNotAnothersAndFinanceSendsAnyones()
+    public async Task FieldSendsTheirOwnEntryAndNotAnothersAndFinanceSendsAnyonesRejectedEntryButNotTheirDraft()
     {
         var ledger = await LedgerAsync();
         var (field, fieldId) = await ledger.MemberAsync("Field");
@@ -151,7 +151,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         Assert.Equal("notYourEntry", await Ledger.CodeOf(refused));
 
         var (other, otherId) = await ledger.MemberAsync("Field");
-        var fieldEntries = new[] { Guid.CreateVersion7(), Guid.CreateVersion7() };
+        var fieldEntries = new[] { Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7() };
         await factory.WithDatabaseAsync(async db =>
         {
             var source = await db.Entries.AsNoTracking().SingleAsync(row => row.Id == financeEntry);
@@ -163,10 +163,14 @@ public class SubmitEntryTests(MigratedApiFactory factory)
             }
             await db.SaveChangesAsync();
         });
+        await ledger.SetStatusAsync(fieldEntries[1], EntryStatus.Rejected);
 
         (await SubmitAsync(ledger, fieldEntries[0], field)).EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.Forbidden, (await SubmitAsync(ledger, fieldEntries[1], other)).StatusCode);
         (await SubmitAsync(ledger, fieldEntries[1])).EnsureSuccessStatusCode();
+        var draft = await SubmitAsync(ledger, fieldEntries[2]);
+        Assert.Equal(HttpStatusCode.Forbidden, draft.StatusCode);
+        Assert.Equal("notYourEntry", await Ledger.CodeOf(draft));
     }
 
     [Theory]
@@ -228,9 +232,8 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
         var entryId = await DraftAsync(ledger, ledger.Purchase(1150m) with { Product = "أسمنت", AttachmentId = await ledger.FileAsync() });
-        var (reader, _) = await ledger.MemberAsync("Reader");
 
-        var entry = await ReadAsync(ledger, entryId, reader);
+        var entry = await ReadAsync(ledger, entryId);
 
         Assert.Equal("draft", entry.GetProperty("entry").GetProperty("status").GetString());
         Assert.Equal(1150m, entry.GetProperty("entry").GetProperty("amount").GetDecimal());

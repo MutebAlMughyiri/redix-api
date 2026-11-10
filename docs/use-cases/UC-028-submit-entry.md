@@ -3,7 +3,7 @@
 # UC-028: Submit an entry for approval
 
 **What it is for:** moving a draft into Finance's inbox.
-**Who uses it:** whoever holds `RecordEntries`, on an entry they entered; whoever holds `ManageAnyEntry`, which is Finance, on anyone's. Anyone who reads the project can read an entry.
+**Who uses it:** whoever holds `RecordEntries`, on an entry they entered; whoever holds `ManageAnyEntry`, which is Finance, on anyone's rejected entry, never on another person's draft (BR-42). Anyone who reads the project can read an entry, but a draft only its author.
 **Issue:** redix-api #45. It has no app issue.
 
 ## How it fits together
@@ -36,7 +36,7 @@ Tests are in `SubmitEntryTests`.
 | FR-41: each required column is named | `EntryAnswers.MissingOf` | `FR_41_EveryRequiredColumnLeftEmptyIsNamed`, `FR_41_WhatADraftHoldsIsWhatAnswersItsColumns` |
 | D16: a contractor payment is sent with or without its receipt, and once sent waits on its contract | `MissingOfAsync`, `ContractMoney` | `D16_ADraftContractorPaymentIsSentWithOrWithoutItsReceiptAndWaitsOnItsContract` |
 | Only a draft or a rejected entry | `Entry.CanBeSubmitted` | `UC_033_ARejectedEntryCanBeSentAgain`, `AnEntryAlreadySentCannotBeSentAgain` |
-| Field sends their own; Finance anyone's | `Permission.ManageAnyEntry` | `FieldSendsTheirOwnEntryAndNotAnothersAndFinanceSendsAnyones`, `WhoHoldsNoRecordEntriesCannotSendAnEntry` |
+| BR-42: a draft is its author's alone until it is sent; Finance sends anyone's rejected entry again | `EntriesEndpoints.SeenByAsync`, `EntryChanges.MayHandle` | `FieldSendsTheirOwnEntryAndNotAnothersAndFinanceSendsAnyonesRejectedEntryButNotTheirDraft`, `EntryChangesTests.BR_42_ADraftIsItsAuthorsAloneUntilItIsSent`, `WhoHoldsNoRecordEntriesCannotSendAnEntry` |
 | BR-33 and a finished project | `ProjectChanges`, the query by project | `BR_33_AnEntryOfAnotherProjectIsNotFoundAndSomeoneOutsideIsRefused`, `AC_04_1_AFinishedProjectSendsNothing` |
 | FR-21: sending is in the History table | `RedixDbContext.AddHistory` | `FR_21_SendingIsInTheHistoryAndARefusalIsNot` |
 | An entry reads back whole | `ViewOfAsync` | `ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest`, `ReadingACreditNoteAnswersWhatItIsLinkedTo` |

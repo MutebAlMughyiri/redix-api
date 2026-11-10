@@ -36,10 +36,10 @@ public enum Permission
     /// <summary>Records a purchase or a contractor payment in one project's ledger (FR-08, FR-12).</summary>
     RecordEntries,
 
-    /// <summary>Sends for approval an entry someone else entered in one project; without it, only one's own (UC-028).</summary>
+    /// <summary>Changes, sends again and deletes an entry someone else sent in one project, before approval; without it, only one's own (UC-028). Never someone else's draft (BR-42).</summary>
     ManageAnyEntry,
 
-    /// <summary>Deletes an entry of one project that is not approved: one's own draft or rejected entry, or with <see cref="ManageAnyEntry"/> anyone's or one waiting (UC-033).</summary>
+    /// <summary>Deletes an entry of one project that is not approved: one's own draft or rejected entry, or with <see cref="ManageAnyEntry"/> anyone's sent entry or one waiting (UC-033, BR-42).</summary>
     DeleteEntries,
 
     /// <summary>Keeps a picture or a PDF in one project, for an entry or a contract (FR-09).</summary>

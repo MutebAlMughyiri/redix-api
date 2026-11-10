@@ -49,7 +49,7 @@ public static class InvoiceAttachEndpoints
     }
 
     /// <summary>
-    /// Puts the file on the expense, in the History table, and changes nothing else (D15). Someone else's, to whoever may not manage any entry, answers <c>notYourEntry</c>; one that has a file already, is a deduction or credit note, or was reversed answers <c>entryNotAttachable</c>; a file of no such attachment <c>unknownAttachment</c>,
+    /// Puts the file on the expense, in the History table, and changes nothing else (D15). Someone else's draft, or someone else's sent entry to whoever may not manage any entry, answers <c>notYourEntry</c> (BR-42); one that has a file already, is a deduction or credit note, or was reversed answers <c>entryNotAttachable</c>; a file of no such attachment <c>unknownAttachment</c>,
     /// and one already on an entry <c>invoiceAlreadyAttached</c> (BR-22).
     /// </summary>
     /// <param name="projectId">The project.</param>

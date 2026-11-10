@@ -11,7 +11,7 @@ public static class EntryChanges
 {
     /// <summary>
     /// Why <paramref name="entry"/> cannot be changed by <paramref name="userId"/>, holding <paramref name="held"/>; empty when it can. What is approved never changes (BR-11), and an edit made offline that arrives after
-    /// the approval learns so (AC-16.2). Whoever holds <see cref="Permission.ManageAnyEntry"/> changes anything before approval; anyone else only their own, and only while it is not waiting for a decision.
+    /// the approval learns so (AC-16.2). Whoever holds <see cref="Permission.ManageAnyEntry"/> changes anything sent before approval; anyone else only their own, and only while it is not waiting for a decision.
     /// </summary>
     public static (int Status, string Reason) RefusalOf(Entry entry, Guid userId, List<Permission> held)
     {
@@ -26,8 +26,9 @@ public static class EntryChanges
         return entry.Status == EntryStatus.PendingApproval && !held.Contains(Permission.ManageAnyEntry) ? (StatusCodes.Status409Conflict, "EntryWaitingForDecision") : (0, "");
     }
 
-    /// <summary>Whether <paramref name="userId"/>, holding <paramref name="held"/>, may act on <paramref name="entry"/> at all: they entered it, or they hold <see cref="Permission.ManageAnyEntry"/>.</summary>
-    public static bool MayHandle(Entry entry, Guid userId, List<Permission> held) => entry.CreatedByUserId == userId || held.Contains(Permission.ManageAnyEntry);
+    /// <summary>Whether <paramref name="userId"/>, holding <paramref name="held"/>, may act on <paramref name="entry"/> at all: they entered it, or it was sent and they hold <see cref="Permission.ManageAnyEntry"/>. A draft is its author's alone until it is sent (BR-42).</summary>
+    public static bool MayHandle(Entry entry, Guid userId, List<Permission> held) =>
+        entry.CreatedByUserId == userId || (entry.Status != EntryStatus.Draft && held.Contains(Permission.ManageAnyEntry));
 
     /// <summary>The same question, reading what <paramref name="userId"/> holds in the entry's project.</summary>
     public static async Task<bool> MayHandleAsync(Entry entry, Guid userId, RedixDbContext db) => MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(entry.ProjectId));

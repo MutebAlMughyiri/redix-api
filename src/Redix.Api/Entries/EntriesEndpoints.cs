@@ -39,17 +39,17 @@ public static class EntriesEndpoints
         return RowsAsync(projectId, userId, db, entry => entry.CreatedByUserId == userId);
     }
 
-    /// <summary>Every entry of the project, newest first: everyone who reads a project sees all its expenses and revenue, partners' money as BR-31 allows (Muteb, 8 Nov 2026), and drafts only of their own.</summary>
+    /// <summary>Every entry of the project <paramref name="principal"/> may see, newest first: everyone who reads a project sees all its expenses and revenue (Muteb, 8 Nov 2026), as <see cref="SeenByAsync"/> decides.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
-    {
-        var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId);
-    }
+    public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) =>
+        RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entry => true);
 
-    /// <summary>The project's entries <paramref name="userId"/> may see: a partner's money only for whoever holds <see cref="Permission.SeeAllCapital"/>, or for that partner (BR-31). The one owner of that rule: the account history reads it too.</summary>
+    /// <summary>
+    /// The project's entries <paramref name="userId"/> may see: a draft only for who entered it (BR-42), and a partner's money only for whoever holds <see cref="Permission.SeeAllCapital"/>, or for that partner (BR-31).
+    /// The one owner of both rules: the list, one entry read by its id and the account history read it.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">Who is looking.</param>
     /// <param name="db">The database the ledger lives in.</param>
@@ -57,6 +57,7 @@ public static class EntriesEndpoints
     {
         var sight = await Partners.PartnerSight.OfUserAsync(userId, projectId, db);
         return db.Entries.Where(entry => entry.ProjectId == projectId
+            && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId)
             && (sight.SeesAll || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && db.Partners.Any(partner => partner.Id == details.PartnerId && partner.UserId != userId))));
     }
 
@@ -100,7 +101,7 @@ public static class EntriesEndpoints
     }
 
     /// <summary>
-    /// Sends a draft or a rejected entry for approval, and answers it (UC-028). Only its author sends it, unless the caller holds <see cref="Permission.ManageAnyEntry"/>: otherwise <c>notYourEntry</c>. Anything already sent answers <c>entryNotSubmittable</c>.
+    /// Sends a draft or a rejected entry for approval, and answers it (UC-028). Only its author sends it, unless it is a rejected entry and the caller holds <see cref="Permission.ManageAnyEntry"/>: otherwise <c>notYourEntry</c> (BR-42). Anything already sent answers <c>entryNotSubmittable</c>.
     /// What it still lacks answers <c>entryIncomplete</c> with every key under <c>missing</c>: each required column left empty (FR-41). Telling Finance is UC-036 "Send push notifications".
     /// </summary>
     /// <param name="projectId">The project.</param>
