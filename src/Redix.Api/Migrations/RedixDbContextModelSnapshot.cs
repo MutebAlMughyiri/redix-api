@@ -11828,6 +11828,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("4538616f-59a3-cf02-5dc7-44e579d9c65c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4c26822e-e06b-e9e2-f35f-c777dbe621d8"),
+                            Value = "A file must be smaller than 25 MB."
+                        },
+                        new
+                        {
+                            Id = new Guid("e46aa106-94d9-1082-7dd1-b7cd04c860ba"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4c26822e-e06b-e9e2-f35f-c777dbe621d8"),
+                            Value = "يجب أن يكون الملف أقل من 25 ميجابايت."
+                        },
+                        new
+                        {
                             Id = new Guid("666a4015-5ba1-6afb-363b-3c9d6ad3648f"),
                             Language = "en",
                             TranslationKeyId = new Guid("bb817023-ef08-1dd2-4025-1f63199a3b89"),
@@ -16839,6 +16853,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d32a2de0-209f-c23e-6578-86f483e06f7b"),
                             Description = "",
                             Key = "attachments.imageTooLarge"
+                        },
+                        new
+                        {
+                            Id = new Guid("4c26822e-e06b-e9e2-f35f-c777dbe621d8"),
+                            Description = "",
+                            Key = "attachments.fileTooLarge"
                         },
                         new
                         {

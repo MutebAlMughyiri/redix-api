@@ -658,6 +658,7 @@ public static class TranslationSeed
         ("contracts.unknownAttachment", "That document is not in this project.", "هذا المستند ليس في هذا المشروع."),
         ("attachments.invalidFileType", "Only a picture or a PDF can be kept.", "يمكن حفظ صورة أو ملف PDF فقط."),
         ("attachments.imageTooLarge", "The picture must be smaller than 1 MB.", "يجب أن تكون الصورة أقل من 1 ميجابايت."),
+        ("attachments.fileTooLarge", "A file must be smaller than 25 MB.", "يجب أن يكون الملف أقل من 25 ميجابايت."),
         ("attachments.projectFinished", "This project is finished. Nothing in it can change.", "هذا المشروع منتهٍ، ولا يمكن تغيير شيء فيه."),
         ("attachments.noConnection", "No connection to the server. Try again.", "لا يوجد اتصال بالخادم. حاول مرة أخرى."),
         ("attachments.refused", "The file could not be kept.", "تعذّر حفظ الملف."),
