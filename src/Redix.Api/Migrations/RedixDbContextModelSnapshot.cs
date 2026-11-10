@@ -5069,17 +5069,59 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("e98e96c5-7a16-1f35-ea6d-23225a6d6846"),
+                            Id = new Guid("95a954d2-4cf5-497b-7b6d-34e8c7bfed75"),
                             Language = "en",
-                            TranslationKeyId = new Guid("a81cac79-7208-4f80-8bda-b8881cd8323b"),
-                            Value = "Dark mode"
+                            TranslationKeyId = new Guid("e197ff82-0114-e69a-45cd-99467e47eba9"),
+                            Value = "Appearance"
                         },
                         new
                         {
-                            Id = new Guid("eb401c0d-0dee-c2f4-a2bf-e6b3b271ed14"),
+                            Id = new Guid("8a9070b1-2af3-6b99-a2c4-29b522cbfb76"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("a81cac79-7208-4f80-8bda-b8881cd8323b"),
-                            Value = "الوضع الداكن"
+                            TranslationKeyId = new Guid("e197ff82-0114-e69a-45cd-99467e47eba9"),
+                            Value = "المظهر"
+                        },
+                        new
+                        {
+                            Id = new Guid("76de0119-2172-a198-4763-844f1a9a05ed"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7c0675ad-0ac1-8f57-7ce1-3ac6f9acfcd0"),
+                            Value = "System"
+                        },
+                        new
+                        {
+                            Id = new Guid("0dc91d60-c309-90a8-583b-29f24651409b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7c0675ad-0ac1-8f57-7ce1-3ac6f9acfcd0"),
+                            Value = "النظام"
+                        },
+                        new
+                        {
+                            Id = new Guid("b130dd15-6cf1-87eb-c083-ca3cf6135e1e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1efac1a6-f5a6-5ad3-a43b-f54268a613f5"),
+                            Value = "Light"
+                        },
+                        new
+                        {
+                            Id = new Guid("5cc6bba5-6613-2892-3e72-5feab68d8c5f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1efac1a6-f5a6-5ad3-a43b-f54268a613f5"),
+                            Value = "فاتح"
+                        },
+                        new
+                        {
+                            Id = new Guid("a48e5aae-8851-95c8-b440-5fa518b12842"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7f045587-a0fa-3148-b7a0-5b4e0497c480"),
+                            Value = "Dark"
+                        },
+                        new
+                        {
+                            Id = new Guid("ed32b049-bd8e-372e-ebd7-931f3535d192"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7f045587-a0fa-3148-b7a0-5b4e0497c480"),
+                            Value = "داكن"
                         },
                         new
                         {
@@ -14637,9 +14679,27 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a81cac79-7208-4f80-8bda-b8881cd8323b"),
+                            Id = new Guid("e197ff82-0114-e69a-45cd-99467e47eba9"),
                             Description = "",
-                            Key = "generalSettings.darkMode"
+                            Key = "generalSettings.appearance"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c0675ad-0ac1-8f57-7ce1-3ac6f9acfcd0"),
+                            Description = "",
+                            Key = "generalSettings.themeSystem"
+                        },
+                        new
+                        {
+                            Id = new Guid("1efac1a6-f5a6-5ad3-a43b-f54268a613f5"),
+                            Description = "",
+                            Key = "generalSettings.themeLight"
+                        },
+                        new
+                        {
+                            Id = new Guid("7f045587-a0fa-3148-b7a0-5b4e0497c480"),
+                            Description = "",
+                            Key = "generalSettings.themeDark"
                         },
                         new
                         {
