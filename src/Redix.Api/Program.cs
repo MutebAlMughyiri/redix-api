@@ -28,6 +28,7 @@ using Redix.Api.Translations;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddEnvironmentVariables("REDIX_");
+builder.Configuration.AddEnvironmentVariables($"REDIX_{builder.Environment.EnvironmentName}_");
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();

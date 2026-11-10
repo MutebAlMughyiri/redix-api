@@ -9,13 +9,21 @@ How it works is in the [documentation](docs/README.md).
 Needs the .NET 10 SDK, SQL Server 2025 (Developer edition, Windows authentication) and the EF Core tools (`dotnet tool install --global dotnet-ef`).
 
 ```
-dotnet ef database update --project src/Redix.Api
-dotnet run --project src/Redix.Api
+dotnet ef database update --project src/Redix.Api -- --environment Dev
+dotnet run --project src/Redix.Api --launch-profile dev
 ```
 
-The API listens on http://localhost:5010. `GET /health` answers `Healthy` when the database is reachable.
+Each environment is a name, and the name alone picks the port, the database and the admin, from `appsettings.{name}.json` (redix-api #118):
 
-Swagger UI is at http://localhost:5010/swagger and the OpenAPI document at `/openapi/v1.json`, in every environment except Production, where both answer 404.
+| Environment | Start it | Address | Database |
+| --- | --- | --- | --- |
+| dev, automated runs | `--launch-profile dev` | http://127.0.0.1:5010 | `RedixDev` |
+| qa, Muteb's own testing | `--launch-profile qa`, or `dotnet Redix.Api.dll --environment QA` from its own copy of the build | http://127.0.0.1:5012 | `RedixQA` |
+| Production | Added when the server is published | | |
+
+A migration reaches an environment's database with `dotnet ef database update --project src/Redix.Api -- --environment QA`. Its secrets are Windows user variables prefixed `REDIX_{name}_`, such as `REDIX_QA_Admin__Password`. `GET /health` answers `Healthy` when the database is reachable.
+
+Swagger UI is at http://127.0.0.1:5010/swagger and the OpenAPI document at `/openapi/v1.json`, in every environment except Production, where both answer 404.
 
 ## Words
 
