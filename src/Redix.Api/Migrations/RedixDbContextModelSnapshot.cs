@@ -5010,6 +5010,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("3f8a9725-8632-6380-41b4-f9dc04a66af1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("93237c57-3ce7-8e41-52fa-8620884cfc06"),
+                            Value = "Dark mode"
+                        },
+                        new
+                        {
+                            Id = new Guid("972c19b6-535e-c396-c199-7edb1b8ddd33"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("93237c57-3ce7-8e41-52fa-8620884cfc06"),
+                            Value = "الوضع الداكن"
+                        },
+                        new
+                        {
                             Id = new Guid("c02775dc-0135-6f76-5c2f-e6ffab2bd0a0"),
                             Language = "en",
                             TranslationKeyId = new Guid("56188aab-17e8-90db-33b8-57ef5761ad3c"),
@@ -13931,6 +13945,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("52258464-29b6-3faa-92f6-fb62564c9634"),
                             Description = "",
                             Key = "settings.switchProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("93237c57-3ce7-8e41-52fa-8620884cfc06"),
+                            Description = "",
+                            Key = "settings.darkMode"
                         },
                         new
                         {

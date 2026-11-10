@@ -171,6 +171,7 @@ public static class TranslationSeed
         ("settings.defaultProject", "Default project", "المشروع الافتراضي"),
         ("settings.defaultProjectHint", "Tick the project that opens when you sign in. Untick it to see the list instead.", "اختر المشروع الذي يُفتح عند الدخول، أو ألغِ اختياره لتظهر القائمة."),
         ("settings.switchProject", "Switch project", "تبديل المشروع"),
+        ("settings.darkMode", "Dark mode", "الوضع الداكن"),
         ("biometrics.signIn", "Sign in with fingerprint or face", "الدخول بالبصمة أو الوجه"),
         ("biometrics.hint", "Opening the app asks for it, and you stay signed in until you sign out.", "يطلبها التطبيق عند فتحه، وتبقى مسجّلاً حتى تخرج."),
         ("biometrics.or", "or", "أو"),
