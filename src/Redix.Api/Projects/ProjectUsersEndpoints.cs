@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.History;
 using Redix.Api.Auth;
+using Redix.Api.Partners;
 
 namespace Redix.Api.Projects;
 
@@ -19,6 +20,8 @@ public static class ProjectUsersEndpoints
         project.MapPost("/users/existing", AddExisting);
         project.MapPost("/users/{userId:guid}/permissions/{permission}", Give);
         project.MapPost("/users/{userId:guid}/permissions/{permission}/remove", Take);
+        project.MapPost("/users/{userId:guid}/partners/{partnerId:guid}", Choose);
+        project.MapPost("/users/{userId:guid}/partners/{partnerId:guid}/remove", Unchoose);
         project.MapPost("/users/{userId:guid}/role-name", SetRoleName);
     }
 
@@ -62,9 +65,14 @@ public static class ProjectUsersEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, roleRefusal);
         }
-        if (!request.Permissions.All(ProjectPermission.InAProject.Contains))
+        if (!request.Permissions.All(ProjectPermission.InAProject.Contains) || CapitalSight.HoldsBoth(request.Permissions))
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPermission");
+        }
+        var partnerIds = request.Permissions.Contains(Permission.SeeChosenCapital) ? request.PartnerIds.Distinct().ToList() : [];
+        if (await db.Partners.CountAsync(partner => partner.ProjectId == projectId && partnerIds.Contains(partner.Id)) != partnerIds.Count)
+        {
+            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownPartner");
         }
 
         var now = time.GetUtcNow().UtcDateTime;
@@ -77,6 +85,10 @@ public static class ProjectUsersEndpoints
         foreach (var permission in request.Permissions.Prepend(Permission.ReadProject).Distinct())
         {
             Add(projectId, user.Id, permission, principal, db, now);
+        }
+        foreach (var partnerId in partnerIds)
+        {
+            CapitalSight.Choose(projectId, user.Id, partnerId, AccessTokens.UserIdOf(principal), now, db);
         }
         await ProjectRoleName.NameAsync(projectId, user.Id, roleName, AccessTokens.UserIdOf(principal), now, db);
         await db.SaveChangesAsync();
@@ -106,7 +118,10 @@ public static class ProjectUsersEndpoints
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
-    /// <summary>Gives someone in this project one permission; holding it already changes nothing. A name that is not a permission of a project answers <c>invalidPermission</c>.</summary>
+    /// <summary>
+    /// Gives someone in this project one permission; holding it already changes nothing. Giving one of <see cref="Permission.SeeAllCapital"/> and <see cref="Permission.SeeChosenCapital"/> takes
+    /// the other (redix-api #106). A name that is not a permission of a project answers <c>invalidPermission</c>.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">The person, who must be in this project.</param>
     /// <param name="permission">The permission's name.</param>
@@ -125,11 +140,8 @@ public static class ProjectUsersEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidPermission");
         }
 
-        if (!await db.ProjectPermissions.AnyAsync(held => held.ProjectId == projectId && held.UserId == userId && held.Permission == given))
-        {
-            Add(projectId, userId, given, principal, db, time.GetUtcNow().UtcDateTime);
-            await db.SaveChangesAsync();
-        }
+        await GiveAsync(projectId, userId, given, principal, db, time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
@@ -166,6 +178,10 @@ public static class ProjectUsersEndpoints
             db.ProjectPermissions.Remove(held);
             db.AddHistory(held, HistoryAction.RemoveProject, AccessTokens.UserIdOf(principal), now);
         }
+        if (taken.Any(held => held.Permission == Permission.SeeChosenCapital))
+        {
+            await CapitalSight.ClearAsync(projectId, userId, AccessTokens.UserIdOf(principal), now, db);
+        }
         if (taking == Permission.ReadProject)
         {
             await ProjectRoleName.NameAsync(projectId, userId, "", AccessTokens.UserIdOf(principal), now, db);
@@ -198,6 +214,77 @@ public static class ProjectUsersEndpoints
         await ProjectRoleName.NameAsync(projectId, userId, roleName, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
         await db.SaveChangesAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
+    }
+
+    /// <summary>
+    /// Chooses a partner of this project whose capital someone in it sees (redix-api #106), giving them <see cref="Permission.SeeChosenCapital"/>, which takes <see cref="Permission.SeeAllCapital"/>.
+    /// Chosen already changes nothing; a person or a partner not of this project is not found.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="userId">The person, who must be in this project.</param>
+    /// <param name="partnerId">The partner, who must be of this project.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
+    /// <param name="db">The database they live in.</param>
+    /// <param name="time">The current time, for the history rows.</param>
+    public static async Task<IResult> Choose(Guid projectId, Guid userId, Guid partnerId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var user = await InProjectAsync(projectId, userId, db);
+        if (user == User.None || !await db.Partners.AnyAsync(partner => partner.Id == partnerId && partner.ProjectId == projectId))
+        {
+            return Results.NotFound();
+        }
+
+        var now = time.GetUtcNow().UtcDateTime;
+        await GiveAsync(projectId, userId, Permission.SeeChosenCapital, principal, db, now);
+        if (!await db.ChosenPartners.AnyAsync(row => row.ProjectId == projectId && row.UserId == userId && row.PartnerId == partnerId))
+        {
+            CapitalSight.Choose(projectId, userId, partnerId, AccessTokens.UserIdOf(principal), now, db);
+        }
+        await db.SaveChangesAsync();
+        return Results.Ok(await ViewInProjectAsync(user, projectId, db));
+    }
+
+    /// <summary>Takes one chosen partner from someone in this project (redix-api #106); not chosen changes nothing. A person not of this project is not found.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="userId">The person, who must be in this project.</param>
+    /// <param name="partnerId">The partner.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
+    /// <param name="db">The database they live in.</param>
+    /// <param name="time">The current time, for the history row.</param>
+    public static async Task<IResult> Unchoose(Guid projectId, Guid userId, Guid partnerId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var user = await InProjectAsync(projectId, userId, db);
+        if (user == User.None)
+        {
+            return Results.NotFound();
+        }
+
+        await CapitalSight.ClearAsync(projectId, userId, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db, partnerId);
+        await db.SaveChangesAsync();
+        return Results.Ok(await ViewInProjectAsync(user, projectId, db));
+    }
+
+    /// <summary>Gives <paramref name="given"/> unless it is held, and takes the other capital tick when it is one of them (redix-api #106); the caller saves.</summary>
+    private static async Task GiveAsync(Guid projectId, Guid userId, Permission given, ClaimsPrincipal principal, RedixDbContext db, DateTime now)
+    {
+        var held = await db.ProjectPermissions.Where(row => row.ProjectId == projectId && row.UserId == userId).ToListAsync();
+        if (held.All(row => row.Permission != given))
+        {
+            Add(projectId, userId, given, principal, db, now);
+        }
+        if (!CapitalSight.Ticks.Contains(given))
+        {
+            return;
+        }
+        foreach (var other in held.Where(row => CapitalSight.Ticks.Contains(row.Permission) && row.Permission != given))
+        {
+            db.ProjectPermissions.Remove(other);
+            db.AddHistory(other, HistoryAction.RemoveProject, AccessTokens.UserIdOf(principal), now);
+        }
+        if (given == Permission.SeeAllCapital)
+        {
+            await CapitalSight.ClearAsync(projectId, userId, AccessTokens.UserIdOf(principal), now, db);
+        }
     }
 
     private static void Add(Guid projectId, Guid userId, Permission permission, ClaimsPrincipal principal, RedixDbContext db, DateTime now)
@@ -242,4 +329,7 @@ public record CreateUserRequest(string DisplayName, string Username, string Mobi
 
     /// <summary>What they are called in the project; may be empty (Muteb, 9 Nov 2026).</summary>
     public string RoleName { get; init; } = "";
+
+    /// <summary>The partners whose capital they see, kept only when <see cref="Permission.SeeChosenCapital"/> is ticked (redix-api #106); a partner not of the project answers <c>unknownPartner</c>.</summary>
+    public List<Guid> PartnerIds { get; init; } = [];
 }

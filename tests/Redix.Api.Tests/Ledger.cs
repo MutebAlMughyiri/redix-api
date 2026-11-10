@@ -39,6 +39,9 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
 
     public DateOnly Today => Entry.Today(Factory.Time);
 
+    /// <summary>The project's registrant chooses the partner <paramref name="partnerId"/> for <paramref name="userId"/>, who then sees that partner's capital (redix-api #106).</summary>
+    public async Task ChooseAsync(Guid userId, Guid partnerId) => (await Client.PostAsync($"/projects/{ProjectId}/users/{userId}/partners/{partnerId}", null)).EnsureSuccessStatusCode();
+
     public async Task<(HttpClient Client, Guid UserId)> MemberAsync(string holds)
     {
         var user = await Factory.AddUserAsync(Password);

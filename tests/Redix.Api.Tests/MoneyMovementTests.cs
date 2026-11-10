@@ -30,10 +30,16 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
     private static async Task<decimal> BalanceAsync(Ledger ledger, Guid accountId) => (await AccountsAsync(ledger)).Single(row => row.Id == accountId).Balance;
 
-    private static async Task<Guid> PartnerAsync(HttpClient client, Guid projectId, string name, Guid userId = default)
+    /// <summary>Adds the partner <paramref name="name"/>, chosen for <paramref name="seenBy"/> when given, who then sees their capital (redix-api #106).</summary>
+    private static async Task<Guid> PartnerAsync(HttpClient client, Guid projectId, string name, Guid seenBy = default)
     {
-        (await client.PostAsJsonAsync($"/projects/{projectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(client, projectId)) { UserId = userId }, Json)).EnsureSuccessStatusCode();
-        return (await client.GetFromJsonAsync<List<PartnerView>>($"/projects/{projectId}/partners", Json))!.Single(row => row.Name == name).Id;
+        (await client.PostAsJsonAsync($"/projects/{projectId}/partners", new PartnerRequest(name), Json)).EnsureSuccessStatusCode();
+        var id = (await client.GetFromJsonAsync<List<PartnerView>>($"/projects/{projectId}/partners", Json))!.Single(row => row.Name == name).Id;
+        if (seenBy != default)
+        {
+            (await client.PostAsync($"/projects/{projectId}/users/{seenBy}/partners/{id}", null)).EnsureSuccessStatusCode();
+        }
+        return id;
     }
 
     private static Task<HttpResponseMessage> MoveAsync(Ledger ledger, EntryRequest request) => ledger.PostAsync(request);
@@ -146,7 +152,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_31_APartnerSeesTheTotalAndTheirOwnLineAndNoOneElses()
+    public async Task BR_31_SomeoneSeesTheTotalAndTheLineOfThePartnerChosenForThemAndNoOneElses()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (reader, readerId) = await ledger.MemberAsync("Reader");
@@ -159,7 +165,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
         Assert.Equal(400m, capital.Total);
         var line = Assert.Single(capital.Partners);
-        Assert.Equal((own, true, 25m), (line.Id, line.IsMine, line.SharePercent));
+        Assert.Equal((own, 25m), (line.Id, line.SharePercent));
         Assert.Equal(HttpStatusCode.OK, (await reader.GetAsync($"/projects/{ledger.ProjectId}/partners/{own}/movements")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await reader.GetAsync($"/projects/{ledger.ProjectId}/partners/{other}/movements")).StatusCode);
     }
@@ -201,7 +207,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/items/{capital}/disable", null)).EnsureSuccessStatusCode();
 
         var moved = await MoveAsync(ledger, await ContributionAsync(ledger, partner, 100));
-        var renamed = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{partner}", new PartnerRequest("شريك أول", capital), Json);
+        var renamed = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{partner}", new PartnerRequest("شريك أول"), Json);
 
         Assert.Equal((HttpStatusCode.BadRequest, "unknownTable"), (moved.StatusCode, await Ledger.CodeOf(moved)));
         renamed.EnsureSuccessStatusCode();

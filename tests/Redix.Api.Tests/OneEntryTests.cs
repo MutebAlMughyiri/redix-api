@@ -14,7 +14,7 @@ public class OneEntryTests(MigratedApiFactory factory)
 {
     private static async Task<Guid> PartnerAsync(Ledger ledger, string name)
     {
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name), Ledger.Json)).EnsureSuccessStatusCode();
         return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Ledger.Json))!.Single(row => row.Name == name).Id;
     }
 

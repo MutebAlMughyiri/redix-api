@@ -62,10 +62,10 @@ public record PeriodicReportSnapshot(
     public decimal RevenueWithoutSales => Revenue - Sales;
 
     /// <summary>
-    /// The same report for someone who sees only their own capital (BR-31): the total, and no partner but theirs. The item reports, رأس المال's holding every partner's money (redix-api #109),
-    /// stay for the files, which only whoever sees all capital takes.
+    /// The same report for someone who does not see all capital (BR-31): the total, and only the partners <paramref name="sight"/> sees. A report issued before redix-api #106 kept no partner's id,
+    /// so it shows them none. The item reports, رأس المال's holding every partner's money (redix-api #109), stay for the files, which only whoever sees all capital takes.
     /// </summary>
-    public PeriodicReportSnapshot ForPartnerOf(Guid userId) => this with { Partners = Partners.Where(partner => partner.UserId == userId).ToList(), Items = [] };
+    public PeriodicReportSnapshot SeenBy(PartnerSight sight) => this with { Partners = Partners.Where(partner => sight.Sees(partner.Id)).ToList(), Items = [] };
 }
 
 /// <summary>An account's balance in a report.</summary>
@@ -76,7 +76,7 @@ public record ReportAccountView(string Name, AccountType Type, decimal Balance);
 
 /// <summary>A partner in a report.</summary>
 /// <param name="Name">Their name.</param>
-/// <param name="UserId">Their login; empty when they have none.</param>
+/// <param name="Id">The partner; empty in a report issued before redix-api #106.</param>
 /// <param name="Balance">Their capital.</param>
 /// <param name="SharePercent">Their share, with ten decimals.</param>
-public record ReportPartnerView(string Name, Guid UserId, decimal Balance, decimal SharePercent);
+public record ReportPartnerView(string Name, Guid Id, decimal Balance, decimal SharePercent);

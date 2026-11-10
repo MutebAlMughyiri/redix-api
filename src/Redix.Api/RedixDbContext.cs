@@ -75,6 +75,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The partners of each project (UC-016).</summary>
     public DbSet<Partner> Partners => Set<Partner>();
 
+    /// <summary>Which partners each person sees in each project, beside seeing them all (BR-31, redix-api #106).</summary>
+    public DbSet<ChosenPartner> ChosenPartners => Set<ChosenPartner>();
+
     /// <summary>The supplier register of each project (FR-06).</summary>
     public DbSet<Supplier> Suppliers => Set<Supplier>();
 
@@ -271,6 +274,13 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             partner.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
             partner.HasIndex(p => new { p.ProjectId, p.UserId }).IsUnique().HasFilter($"[UserId] <> '{Guid.Empty}'");
             partner.HasOne<Project>().WithMany().HasForeignKey(p => p.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ChosenPartner>(chosen =>
+        {
+            chosen.HasIndex(c => new { c.ProjectId, c.UserId, c.PartnerId }).IsUnique();
+            chosen.HasOne<Project>().WithMany().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            chosen.HasOne<User>().WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Restrict);
+            chosen.HasOne<Partner>().WithMany().HasForeignKey(c => c.PartnerId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Supplier>(supplier =>
         {

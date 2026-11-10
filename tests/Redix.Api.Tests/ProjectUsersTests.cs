@@ -281,14 +281,14 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInIt()
+    public async Task WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInItSeeingAllCapitalRatherThanChosenPartners()
     {
         var (manager, client, projectId) = await ManagerAsync();
 
         var listed = (await ListAsync(client, projectId))!.Single(user => user.Id == manager.Id);
 
-        Assert.Equal(ProjectPermission.InAProject.Order(), HeldIn(listed));
-        Assert.Equal(14, ProjectPermission.InAProject.Count);
+        Assert.Equal(ProjectPermission.InAProject.Where(permission => permission != Permission.SeeChosenCapital).Order(), HeldIn(listed));
+        Assert.Equal(15, ProjectPermission.InAProject.Count);
     }
 
     [Fact]

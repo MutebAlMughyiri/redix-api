@@ -47,7 +47,7 @@ public static class EntriesEndpoints
         RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entry => true);
 
     /// <summary>
-    /// The project's entries <paramref name="userId"/> may see: a draft only for who entered it (BR-42), and a partner's money only for whoever holds <see cref="Permission.SeeAllCapital"/>, or for that partner (BR-31).
+    /// The project's entries <paramref name="userId"/> may see: a draft only for who entered it (BR-42), and a partner's money only for whoever sees that partner (BR-31, <see cref="Partners.PartnerSight"/>).
     /// The one owner of both rules: the list, one entry read by its id and the account history read it.
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -56,9 +56,11 @@ public static class EntriesEndpoints
     public static async Task<IQueryable<Entry>> SeenByAsync(Guid projectId, Guid userId, RedixDbContext db)
     {
         var sight = await Partners.PartnerSight.OfUserAsync(userId, projectId, db);
+        var seesAll = sight.SeesAll;
+        var chosen = sight.Chosen;
         return db.Entries.Where(entry => entry.ProjectId == projectId
             && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId)
-            && (sight.SeesAll || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && db.Partners.Any(partner => partner.Id == details.PartnerId && partner.UserId != userId))));
+            && (seesAll || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && !chosen.Contains(details.PartnerId))));
     }
 
     /// <summary>The entries <paramref name="shown"/> keeps of those the caller may see, newest first.</summary>

@@ -16,7 +16,7 @@ There are no roles. A route names a permission, and a database row says who hold
 | `SystemPermissions` | What a user holds everywhere: the admin's `ApproveProjects`, made with the admin at the first start |
 | `ProjectPermissions` | What a user holds in one project, one row per permission ticked |
 
-Holding `ReadProject` is being in the project. Whoever registers a project holds all 14 permissions of a project in it. `ApproveProjects` is never held in a project: the API refuses it and the database's check refuses it too.
+Holding `ReadProject` is being in the project. Whoever registers a project holds every permission of a project in it, of the two capital ticks `SeeAllCapital`. `ApproveProjects` is never held in a project: the API refuses it and the database's check refuses it too.
 
 ## The permissions
 
@@ -26,6 +26,7 @@ Holding `ReadProject` is being in the project. Whoever registers a project holds
 | `ReadProject` | A project | Opening the project and reading everything in it |
 | `ManageUsers` | A project | Adding people to the project and ticking their permissions |
 | `SeeAllCapital` | A project | Seeing every partner's capital, and the report files |
+| `SeeChosenCapital` | A project | Seeing only the partners chosen for one, in `ChosenPartners` (redix-api #106); it and `SeeAllCapital` exclude each other |
 | `ManageProject` | A project | Its name, units and documents, and closing it |
 | `ManageStructure` | A project | Categories, items, subgroups and columns |
 | `ManageSettings` | A project | Payment methods, accounts, partners, suppliers and contracts |
@@ -46,10 +47,11 @@ A new permission is code: a route has to name it, and a migration adds it. The d
 | --- | --- | --- |
 | `GET /projects` | Any session | The projects they hold `ReadProject` in, and those they registered that wait, each with `permissions` |
 | `GET /projects/{projectId}/users` | `ManageUsers` | `200` this project's people, each with what they hold in it |
-| `POST /projects/{projectId}/users` | `ManageUsers` | `201` a new login holding `ReadProject` and the `permissions` ticked; `400` `invalidPermission` |
+| `POST /projects/{projectId}/users` | `ManageUsers` | `201` a new login holding `ReadProject`, the `permissions` ticked and, with `SeeChosenCapital`, the `partnerIds` chosen; `400` `invalidPermission` (also both capital ticks) or `unknownPartner` |
 | `POST /projects/{projectId}/users/existing` | `ManageUsers` | `200` adds `{ username }` holding `ReadProject`; `404` `unknownUser` |
-| `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | `ManageUsers` | `200`; `400` `invalidPermission`; `404` someone not in the project |
-| `POST /projects/{projectId}/users/{userId}/permissions/{permission}/remove` | `ManageUsers` | `200`; `ReadProject` takes every one of theirs; `409` `lastManager` |
+| `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | `ManageUsers` | `200`; giving one capital tick takes the other, and `SeeAllCapital` forgets the chosen partners; `400` `invalidPermission`; `404` someone not in the project |
+| `POST /projects/{projectId}/users/{userId}/permissions/{permission}/remove` | `ManageUsers` | `200`; `ReadProject` takes every one of theirs; taking `SeeChosenCapital` forgets the chosen partners; `409` `lastManager` |
+| `POST /projects/{projectId}/users/{userId}/partners/{partnerId}` and `.../remove` | `ManageUsers` | `200` chooses a partner whose capital they see, giving `SeeChosenCapital`, or takes it (redix-api #106); `404` a person or a partner not of the project |
 | `POST /projects/{projectId}/users/{userId}/role-name` | `ManageUsers` | `200` names `{ roleName }`, a label only that decides nothing; `400` `invalidRoleName` |
 | `POST /users/{userId}`, `/reset-password`, `/disable`, `/enable` | See below | `200`; `403` `otherProject`; `409` `lastManager` on disable |
 
@@ -71,6 +73,7 @@ The migration `PermissionsPerPerson` gave each person every permission their rol
 | A change in the database counts at the next request | `UserAccess` | `PermissionsTests.ANewRowGivesAPermissionAtTheNextRequest` |
 | A permission held everywhere reaches every project | `UserAccess.In` | `PermissionsTests.APermissionHeldEverywhereReachesEveryProjectAndAnUnknownOneIsNotFound` |
 | The database refuses an unknown permission, and the admin's in a project (BR-32) | `RedixDbContext` | `PermissionsTests.TheDatabaseRefusesAPermissionTheCodeDoesNotKnowAndTheAdminsInAProject` |
+| redix-api #106: the two capital ticks exclude each other, choosing a partner gives `SeeChosenCapital`, taking it forgets the partners, and whoever registers a project sees all | `ProjectUsersEndpoints.Give`, `Choose`, `CapitalSight` | `PartnersTests.UC_106_SeeAllAndChosenCapitalExcludeEachOtherAndARegistrantSeesAll`, `UC_106_ChoosingAPartnerGivesChosenCapitalAndTakesSeeAllAndTakingChosenCapitalForgetsThePartners`, `UC_106_APersonIsCreatedWithChosenPartnersButNotWithBothCapitalTicksNorAnotherProjectsPartner`, `UC_106_ChoosingAPartnerOfAnotherProjectOrForSomeoneOutsideIsNotFound`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInItSeeingAllCapitalRatherThanChosenPartners` |
 | Every route that changes something names a policy | The routes | `PermissionsTests.EveryChangingRouteNamesAPolicy` |
 | Every route of a project names a permission | The routes | `PermissionsTests.EveryRouteOfAProjectNamesAPermission` |
 | Every route refuses whoever lacks its permission and opens once it is held | `PermissionHandler` | `PermissionsTests.EveryRouteRefusesWhoeverLacksItsPermissionAndOpensOnceItIsTicked` |

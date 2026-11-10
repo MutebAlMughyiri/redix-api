@@ -59,7 +59,7 @@ public static class PeriodicReportsEndpoints
         return Results.Ok(new PeriodicReportRowView(report.Number, report.IssuedAt, report.ExpensesTotal));
     }
 
-    /// <summary>A report as it was issued: every partner for whoever sees all capital, otherwise the total and only the caller's own line (BR-31). A number not issued is not found.</summary>
+    /// <summary>A report as it was issued: every partner for whoever sees all capital, otherwise the total and only the lines of the partners the caller sees (BR-31). A number not issued is not found.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="number">The report's number.</param>
     /// <param name="principal">The caller's session.</param>
@@ -72,7 +72,7 @@ public static class PeriodicReportsEndpoints
             return Results.NotFound();
         }
         var sight = await PartnerSight.OfAsync(principal, projectId, db);
-        return Results.Ok(sight.SeesAll ? snapshot : snapshot.ForPartnerOf(sight.UserId));
+        return Results.Ok(sight.SeesAll ? snapshot : snapshot.SeenBy(sight));
     }
 
     /// <summary>The report as a PDF laid out as report 23 (UC-054).</summary>
@@ -105,11 +105,10 @@ public static class PeriodicReportsEndpoints
     {
         var project = await db.Projects.SingleAsync(row => row.Id == projectId);
         var figures = await ProjectFigures.OfAsync(projectId, db);
-        var capital = await CapitalEndpoints.ViewOfAsync(projectId, Guid.Empty, true, db);
+        var capital = await CapitalEndpoints.ViewOfAsync(projectId, PartnerSight.All, db);
         var summary = await SummaryEndpoints.OfAsync(projectId, db);
         var reconciliation = await ReconciliationsEndpoints.Latest(projectId, db);
-        var partners = await db.Partners.Where(partner => partner.ProjectId == projectId).ToDictionaryAsync(partner => partner.Id);
-        var partnerViews = capital.Partners.Select(line => new ReportPartnerView(line.Name, partners[line.Id].UserId, line.Balance, line.SharePercent)).ToList();
+        var partnerViews = capital.Partners.Select(line => new ReportPartnerView(line.Name, line.Id, line.Balance, line.SharePercent)).ToList();
         var itemIds = summary.Categories.Concat(summary.RevenueCategories).SelectMany(category => category.Items).Where(item => item.Total != 0).Select(item => item.Id).ToList();
         var items = await db.Items.Include(row => row.Subgroups).Include(row => row.Columns).Where(row => itemIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id);
         var itemReports = new List<ItemReportView>();

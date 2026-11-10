@@ -15,8 +15,11 @@ public enum Permission
     /// <summary>Sees one project and everything in it (BR-31).</summary>
     ReadProject,
 
-    /// <summary>Sees every partner in one project and their capital, not only their own (BR-31).</summary>
+    /// <summary>Sees every partner in one project and their capital, and takes the report files (BR-31). Holding it takes <see cref="SeeChosenCapital"/> (redix-api #106).</summary>
     SeeAllCapital,
+
+    /// <summary>Sees only the partners of one project chosen for them, and their capital (BR-31, redix-api #106). Holding it takes <see cref="SeeAllCapital"/>.</summary>
+    SeeChosenCapital,
 
     /// <summary>Renames one project, adds, renames and deletes its units, and closes it (FR-04, BR-38).</summary>
     ManageProject,

@@ -605,7 +605,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
     private static async Task<Guid> PartnerAsync(Ledger ledger, string name)
     {
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name), Json)).EnsureSuccessStatusCode();
         return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
     }
 
@@ -632,18 +632,16 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task UC_109_APartnerIsATableOfACapitalItemLastAmongItsTablesAndNoOtherItemTakesOne()
+    public async Task UC_109_APartnerIsATableOfTheCapitalItemLastAmongItsTables()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
         var nawaf = await PartnerAsync(ledger, "نواف");
         var reem = await PartnerAsync(ledger, "ريم");
 
-        var refused = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("سالم", ledger.ItemId), Json);
         var tables = (await ledger.Client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{ledger.ProjectId}/items/{capital}/tables", Json))!;
         var reordered = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{capital}/tables/reorder", new ReorderRequest([reem, nawaf]), Json);
 
-        Assert.Equal((HttpStatusCode.BadRequest, "itemNotOffered"), (refused.StatusCode, await Ledger.CodeOf(refused)));
         Assert.Equal([(nawaf, ItemTableKind.Partner, "نواف"), (reem, ItemTableKind.Partner, "ريم")], tables.Select(table => (table.Id, table.Kind, table.Name)));
         reordered.EnsureSuccessStatusCode();
         Assert.Equal([reem, nawaf], (await ledger.Client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{ledger.ProjectId}/items/{capital}/tables", Json))!.Select(table => table.Id));
@@ -665,13 +663,13 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_31_UC_109_RasAlMalsTablesShowEveryPartnerToWhoeverSeesAllCapitalTheirOwnToAPartnerAndNoneToAnyoneElse()
+    public async Task BR_31_UC_109_RasAlMalsTablesShowEveryPartnerToWhoeverSeesAllCapitalTheChosenOnesToWhoeverTheyAreChosenForAndNoneToAnyoneElse()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
         var (partnerReader, partnerReaderId) = await ledger.MemberAsync("Reader");
         var (otherReader, _) = await ledger.MemberAsync("Reader");
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("القارئ", capital) { UserId = partnerReaderId }, Json)).EnsureSuccessStatusCode();
+        await ledger.ChooseAsync(partnerReaderId, await PartnerAsync(ledger, "القارئ"));
         await PartnerAsync(ledger, "غيره");
 
         async Task<List<string>> TablesSeenBy(HttpClient client) =>

@@ -311,7 +311,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("SystemPermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_SystemPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney')");
+                            t.HasCheckConstraint("CK_SystemPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney')");
                         });
                 });
 
@@ -936,6 +936,38 @@ namespace Redix.Api.Migrations
                     b.ToTable("CapitalMovementDetails");
                 });
 
+            modelBuilder.Entity("Redix.Api.Partners.ChosenPartner", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PartnerId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProjectId", "UserId", "PartnerId")
+                        .IsUnique();
+
+                    b.ToTable("ChosenPartners");
+                });
+
             modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1061,7 +1093,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("ProjectPermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_ProjectPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney') AND [Permission] <> 'ApproveProjects'");
+                            t.HasCheckConstraint("CK_ProjectPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney') AND [Permission] <> 'ApproveProjects'");
                         });
                 });
 
@@ -4159,6 +4191,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("d4b31d3d-581e-ada5-8dbd-4b13375d4d7d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("de911436-2d9c-22a8-8bab-2a6ed5ba2820"),
+                            Value = "That partner is not in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("3cdc625a-c1a7-ea31-6477-fed56a1b1fd7"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("de911436-2d9c-22a8-8bab-2a6ed5ba2820"),
+                            Value = "هذا الشريك ليس في هذا المشروع."
+                        },
+                        new
+                        {
                             Id = new Guid("59304d44-5c0d-b30f-d917-51ae73d98459"),
                             Language = "en",
                             TranslationKeyId = new Guid("d4c24f38-a771-b643-5e84-e06c66dc48bd"),
@@ -4302,14 +4348,56 @@ namespace Redix.Api.Migrations
                             Id = new Guid("a947585d-dd93-22bb-e2d2-137655018a8e"),
                             Language = "en",
                             TranslationKeyId = new Guid("92c24db1-d4f0-7ab5-7a5c-cf5daa120472"),
-                            Value = "Sees every partner's capital, not only their own, and takes the report files."
+                            Value = "Sees every partner's capital, and takes the report files."
                         },
                         new
                         {
                             Id = new Guid("d0885057-f7c0-0d35-9645-8bcb5079de25"),
                             Language = "ar",
                             TranslationKeyId = new Guid("92c24db1-d4f0-7ab5-7a5c-cf5daa120472"),
-                            Value = "يرى رأس مال كل الشركاء لا رأس ماله وحده، ويأخذ ملفات التقارير."
+                            Value = "يرى رأس مال كل الشركاء، ويأخذ ملفات التقارير."
+                        },
+                        new
+                        {
+                            Id = new Guid("7cc07d3c-fde6-76b8-3c7a-de0c36cbd338"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cce4eecf-9d81-da0a-b60a-e5c2c5854cae"),
+                            Value = "Chosen partners' capital"
+                        },
+                        new
+                        {
+                            Id = new Guid("0199efec-33f4-a9f2-cb18-93268bda0778"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cce4eecf-9d81-da0a-b60a-e5c2c5854cae"),
+                            Value = "رأس مال شركاء محددين"
+                        },
+                        new
+                        {
+                            Id = new Guid("0986f892-50b0-1c00-b9b5-1a3acced1fb1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("49b771c9-e288-eb67-996b-2d28a1d369ea"),
+                            Value = "Sees only the capital of the partners ticked under it."
+                        },
+                        new
+                        {
+                            Id = new Guid("67f430e2-0127-d902-8316-332c98f880bf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("49b771c9-e288-eb67-996b-2d28a1d369ea"),
+                            Value = "يرى رأس مال الشركاء المؤشَّرين تحته فقط."
+                        },
+                        new
+                        {
+                            Id = new Guid("41cf1f59-890c-c866-c203-4da297d3830c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e113ddf6-29dc-cbcc-8d08-6e6b221f4428"),
+                            Value = "Capital"
+                        },
+                        new
+                        {
+                            Id = new Guid("0c5e8604-a75a-b0fb-bfca-31f5c2e5e9aa"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e113ddf6-29dc-cbcc-8d08-6e6b221f4428"),
+                            Value = "رأس المال"
                         },
                         new
                         {
@@ -11428,28 +11516,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("eb310cf0-0aeb-4a41-afa5-9e6ef8401eee"),
                             Language = "en",
                             TranslationKeyId = new Guid("8bb3b13e-37cd-23f0-c804-e753030b9a71"),
-                            Value = "Choose a capital item of this project for the partner's table."
+                            Value = "This project's capital item is disabled or missing, so a partner cannot be added."
                         },
                         new
                         {
                             Id = new Guid("683dc7c7-c7a9-cc35-2bd5-bd74cb20762a"),
                             Language = "ar",
                             TranslationKeyId = new Guid("8bb3b13e-37cd-23f0-c804-e753030b9a71"),
-                            Value = "اختر بنداً من رأس المال في هذا المشروع لجدول الشريك."
-                        },
-                        new
-                        {
-                            Id = new Guid("64a38862-a25b-36b3-207e-560bd60a8ba6"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3a6b9e30-8016-72ce-0899-328e433edcf8"),
-                            Value = "Capital item"
-                        },
-                        new
-                        {
-                            Id = new Guid("274ca25e-b961-63f2-3d96-41a19e7a034a"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3a6b9e30-8016-72ce-0899-328e433edcf8"),
-                            Value = "بند رأس المال"
+                            Value = "بند رأس المال في هذا المشروع معطّل أو غير موجود، فلا يُضاف شريك."
                         },
                         new
                         {
@@ -11512,14 +11586,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("eeeed37e-ca44-83a6-0d16-1cf0c9cc94e3"),
                             Language = "en",
                             TranslationKeyId = new Guid("ab4c2d48-928b-1109-1660-5c47d7108d91"),
-                            Value = "Their login"
+                            Value = "Partner's account"
                         },
                         new
                         {
                             Id = new Guid("e6ebdc9a-0eef-7821-1fcb-24851593c2fd"),
                             Language = "ar",
                             TranslationKeyId = new Guid("ab4c2d48-928b-1109-1660-5c47d7108d91"),
-                            Value = "حساب دخوله"
+                            Value = "حساب الشريك"
                         },
                         new
                         {
@@ -11540,14 +11614,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9a112cb9-5f3e-498f-bf95-e13593dc6336"),
                             Language = "en",
                             TranslationKeyId = new Guid("adef17b4-d853-0bd6-6df4-733bd6dc75a8"),
-                            Value = "With a login, they see their own capital in this project and nobody else's."
+                            Value = "Whose account this partner is in the app. What anyone sees of the capital is ticked in Permissions."
                         },
                         new
                         {
                             Id = new Guid("1ba6638c-5385-2d57-0ebb-c5cca4f90ffb"),
                             Language = "ar",
                             TranslationKeyId = new Guid("adef17b4-d853-0bd6-6df4-733bd6dc75a8"),
-                            Value = "بحساب الدخول يرى رأس ماله في هذا المشروع دون غيره."
+                            Value = "حساب هذا الشريك في التطبيق. وما يراه أي شخص من رأس المال يُحدَّد في الصلاحيات."
                         },
                         new
                         {
@@ -14289,6 +14363,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("de911436-2d9c-22a8-8bab-2a6ed5ba2820"),
+                            Description = "",
+                            Key = "users.unknownPartner"
+                        },
+                        new
+                        {
                             Id = new Guid("d4c24f38-a771-b643-5e84-e06c66dc48bd"),
                             Description = "",
                             Key = "permissions.title"
@@ -14352,6 +14432,24 @@ namespace Redix.Api.Migrations
                             Id = new Guid("92c24db1-d4f0-7ab5-7a5c-cf5daa120472"),
                             Description = "",
                             Key = "permissions.seeAllCapitalHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("cce4eecf-9d81-da0a-b60a-e5c2c5854cae"),
+                            Description = "",
+                            Key = "permissions.seeChosenCapital"
+                        },
+                        new
+                        {
+                            Id = new Guid("49b771c9-e288-eb67-996b-2d28a1d369ea"),
+                            Description = "",
+                            Key = "permissions.seeChosenCapitalHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("e113ddf6-29dc-cbcc-8d08-6e6b221f4428"),
+                            Description = "",
+                            Key = "permissions.capitalGroup"
                         },
                         new
                         {
@@ -17409,12 +17507,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("3a6b9e30-8016-72ce-0899-328e433edcf8"),
-                            Description = "",
-                            Key = "partners.item"
-                        },
-                        new
-                        {
                             Id = new Guid("03e55979-5b42-cb95-2cd4-fe90242f98e9"),
                             Description = "",
                             Key = "partners.new"
@@ -18689,6 +18781,27 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Partners.Partner", null)
                         .WithMany()
                         .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Partners.ChosenPartner", b =>
+                {
+                    b.HasOne("Redix.Api.Partners.Partner", null)
+                        .WithMany()
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

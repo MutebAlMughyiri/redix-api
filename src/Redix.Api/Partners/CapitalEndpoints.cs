@@ -21,26 +21,23 @@ public static class CapitalEndpoints
         app.MapGet("/projects/{projectId:guid}/partners/{partnerId:guid}/movements", Movements).RequireAuthorization(nameof(Permission.ReadProject));
     }
 
-    /// <summary>The project's total capital, and each partner's balance and share, computed unrounded and given with ten decimals (BR-05, BR-28). Everyone who reads the project sees the total and their own line; whoever holds <see cref="Permission.SeeAllCapital"/> sees every line (BR-31).</summary>
+    /// <summary>The project's total capital, and each partner's balance and share, computed unrounded and given with ten decimals (BR-05, BR-28). Everyone who reads the project sees the total; each line shows to whoever sees that partner (BR-31, <see cref="PartnerSight"/>).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static async Task<CapitalView> Capital(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
-    {
-        var sight = await PartnerSight.OfAsync(principal, projectId, db);
-        return await ViewOfAsync(projectId, sight.UserId, sight.SeesAll, db);
-    }
+    public static async Task<CapitalView> Capital(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) =>
+        await ViewOfAsync(projectId, await PartnerSight.OfAsync(principal, projectId, db), db);
 
-    /// <summary>The project's capital with every line when <paramref name="seesAll"/>, otherwise only <paramref name="userId"/>'s: the one owner of balances and shares (BR-05, BR-28).</summary>
-    public static async Task<CapitalView> ViewOfAsync(Guid projectId, Guid userId, bool seesAll, RedixDbContext db)
+    /// <summary>The project's capital with the lines <paramref name="sight"/> sees: the one owner of balances and shares (BR-05, BR-28).</summary>
+    public static async Task<CapitalView> ViewOfAsync(Guid projectId, PartnerSight sight, RedixDbContext db)
     {
         var balances = await BalancesAsync(projectId, db);
         var total = balances.Values.Sum();
-        var partners = await db.Partners.Where(partner => partner.ProjectId == projectId && (seesAll || partner.UserId == userId)).ToListAsync();
+        var partners = (await db.Partners.Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees);
         var lines = partners.OrderByDescending(partner => balances.GetValueOrDefault(partner.Id)).ThenBy(partner => partner.Id).Select(partner =>
         {
             var balance = balances.GetValueOrDefault(partner.Id);
-            return new PartnerCapitalView(partner.Id, partner.Name, partner.UserId == userId, balance, total == 0 ? 0 : decimal.Round(balance / total * 100, SharePercentDecimals, MidpointRounding.AwayFromZero));
+            return new PartnerCapitalView(partner.Id, partner.Name, balance, total == 0 ? 0 : decimal.Round(balance / total * 100, SharePercentDecimals, MidpointRounding.AwayFromZero));
         }).ToList();
         return new CapitalView(total, lines);
     }
@@ -53,7 +50,7 @@ public static class CapitalEndpoints
     public static async Task<IResult> Movements(Guid projectId, Guid partnerId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var sight = await PartnerSight.OfAsync(principal, projectId, db);
-        if (!await db.Partners.AnyAsync(partner => partner.Id == partnerId && partner.ProjectId == projectId && (sight.SeesAll || partner.UserId == sight.UserId)))
+        if (!sight.Sees(partnerId) || !await db.Partners.AnyAsync(partner => partner.Id == partnerId && partner.ProjectId == projectId))
         {
             return Results.NotFound();
         }
@@ -96,10 +93,9 @@ public record CapitalView(decimal Total, List<PartnerCapitalView> Partners);
 /// <summary>One partner's capital.</summary>
 /// <param name="Id">The partner.</param>
 /// <param name="Name">Their name.</param>
-/// <param name="IsMine">True when this is the caller's own.</param>
 /// <param name="Balance">Their capital.</param>
 /// <param name="SharePercent">Their share of the total, as a percentage with ten decimals (BR-28).</param>
-public record PartnerCapitalView(Guid Id, string Name, bool IsMine, decimal Balance, decimal SharePercent);
+public record PartnerCapitalView(Guid Id, string Name, decimal Balance, decimal SharePercent);
 
 /// <summary>One movement of a partner's capital.</summary>
 /// <param name="Id">The entry.</param>

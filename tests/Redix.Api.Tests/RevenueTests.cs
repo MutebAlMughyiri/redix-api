@@ -53,13 +53,14 @@ public class RevenueTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_31_OnePartnersMoneyReadByItsIdIsLeftToThatPartnerAndWhoeverSeesAllCapital()
+    public async Task BR_31_OnePartnersMoneyReadByItsIdIsLeftToWhoeverItIsChosenForAndWhoeverSeesAllCapital()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (reader, readerId) = await ledger.MemberAsync("Reader");
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("القارئ", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)) { UserId = readerId }, Ledger.Json)).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("غيره", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("القارئ"), Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("غيره"), Ledger.Json)).EnsureSuccessStatusCode();
         var partners = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Ledger.Json))!;
+        await ledger.ChooseAsync(readerId, partners.Single(row => row.Name == "القارئ").Id);
         async Task<Guid> ContributeAsync(string name) =>
             await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partners.Single(row => row.Name == name).Id, 100, notes: ""), Ledger.Json));
         var own = await ContributeAsync("القارئ");
@@ -224,7 +225,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task OneList_TheEntriesListHoldsRevenueAndPartnersMoneyWithTheirStatus()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
         var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
         var revenue = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, "")));
         var capital = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 500, notes: ""), Json);
@@ -240,7 +241,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task OneList_AWaitingRevenueOrPartnerEntryIsDeletedWithEverythingItHolds()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
         var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
         var revenue = (await (await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, ""))).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
         var capital = (await (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 500, notes: ""), Json)).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
@@ -254,13 +255,14 @@ public class RevenueTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BR_31_InTheEntriesListAPartnerSeesTheirOwnMoneyAndNoOneElses()
+    public async Task BR_31_InTheEntriesListSomeoneSeesTheMoneyOfThePartnerChosenForThemAndNoOneElses()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (reader, readerId) = await ledger.MemberAsync("Reader");
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("القارئ", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)) { UserId = readerId }, Json)).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("غيره", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("القارئ"), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("غيره"), Json)).EnsureSuccessStatusCode();
         var partners = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!;
+        await ledger.ChooseAsync(readerId, partners.Single(row => row.Name == "القارئ").Id);
         async Task<Guid> ContributeAsync(string name) =>
             await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partners.Single(row => row.Name == name).Id, 100, notes: ""), Json));
         var own = await ContributeAsync("القارئ");
@@ -288,7 +290,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task BR_06_TheSummaryGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
         var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
         await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 500, notes: ""), Json));
         await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, "")));

@@ -80,12 +80,15 @@ public static class ProjectsEndpoints
         return Results.Created($"/projects/{project.Id}", await ViewOfAsync(project, userId, db));
     }
 
-    /// <summary>Adds a registered <paramref name="project"/> with <paramref name="managerId"/> holding every permission of a project in it, and their history rows; the caller saves them together.</summary>
+    /// <summary>
+    /// Adds a registered <paramref name="project"/> with <paramref name="managerId"/> holding every permission of a project in it, of the two capital ticks seeing all (redix-api #106), and their
+    /// history rows; the caller saves them together.
+    /// </summary>
     public static void AddWithManager(Project project, Guid managerId, RedixDbContext db, DateTime now)
     {
         db.Projects.Add(project);
         db.AddHistory(project, HistoryAction.RegisterProject, managerId, now);
-        foreach (var permission in ProjectPermission.InAProject)
+        foreach (var permission in ProjectPermission.InAProject.Where(permission => permission != Permission.SeeChosenCapital))
         {
             var held = new ProjectPermission { ProjectId = project.Id, UserId = managerId, Permission = permission };
             db.ProjectPermissions.Add(held);

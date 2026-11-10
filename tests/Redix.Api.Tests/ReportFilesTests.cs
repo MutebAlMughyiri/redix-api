@@ -289,12 +289,12 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public void BR_31_UC_109_AReportForAPartnerHoldsTheirLineAndNoItemReportWhichOnlyTheFilesTake()
+    public void BR_31_UC_109_AReportForSomeoneWithChosenPartnersHoldsTheirLinesAndNoItemReportWhichOnlyTheFilesTake()
     {
         var khaled = Guid.NewGuid();
         var report = Report([Capital(("سالم", 150), ("خالد", 50))]) with { Partners = [new ReportPartnerView("سالم", Guid.NewGuid(), 150, 75), new ReportPartnerView("خالد", khaled, 50, 25)] };
 
-        var seen = report.ForPartnerOf(khaled);
+        var seen = report.SeenBy(new PartnerSight(false, [khaled]));
 
         Assert.Equal("خالد", Assert.Single(seen.Partners).Name);
         Assert.Empty(seen.Items);
@@ -509,9 +509,15 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal(("الاجمالي", "SUM(F3:F3)"), (sheet.Cell(4, 1).GetString(), sheet.Cell(4, 6).FormulaA1));
     }
 
-    private static async Task<Guid> PartnerAsync(Ledger ledger, string name, Guid userId = default)
+    /// <summary>Adds the partner <paramref name="name"/>, chosen for <paramref name="seenBy"/> when given (redix-api #106).</summary>
+    private static async Task<Guid> PartnerAsync(Ledger ledger, string name, Guid seenBy = default)
     {
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name, await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)) { UserId = userId }, Json)).EnsureSuccessStatusCode();
-        return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name), Json)).EnsureSuccessStatusCode();
+        var id = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
+        if (seenBy != default)
+        {
+            await ledger.ChooseAsync(seenBy, id);
+        }
+        return id;
     }
 }

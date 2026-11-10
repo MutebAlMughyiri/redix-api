@@ -178,7 +178,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
     public async Task H9_APartnersMoneyShowsOnlyToWhoeverSeesAllCapital()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("شريك", await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId)), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("شريك"), Json)).EnsureSuccessStatusCode();
         var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
         await ledger.ApproveAsync(await ledger.PostAsync(await ledger.PartnerEntryAsync(partner, 5000m)));
         var (reader, _) = await ledger.MemberAsync("Reader");

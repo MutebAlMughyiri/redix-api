@@ -17,13 +17,16 @@ public class Partner : IOrdered
     /// <summary>The project they are a partner in (BR-33).</summary>
     public Guid ProjectId { get; init; }
 
-    /// <summary>The login whose capital this is, so that person sees it as their own (BR-31); <see cref="Guid.Empty"/> for a partner with no login.</summary>
+    /// <summary>
+    /// The partner's own login: whose account this partner is, shown beside their name; <see cref="Guid.Empty"/> for a partner with no login. It gives no sight of capital: what anyone sees
+    /// is ticked on their permissions (redix-api #106, Muteb 11 Nov 2026), so an accountant who sees the figures is never taken for a partner.
+    /// </summary>
     public Guid UserId { get; set; }
 
     /// <summary>The partner's name, as it was typed, which names their table.</summary>
     public required string Name { get; set; }
 
-    /// <summary>The capital item whose table they are.</summary>
+    /// <summary>The project's capital item, whose table they are.</summary>
     public Guid ItemId { get; set; }
 
     /// <summary>Their table's place among the item's tables (AC-46.8).</summary>
