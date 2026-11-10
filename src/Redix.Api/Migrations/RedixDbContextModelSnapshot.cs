@@ -5604,14 +5604,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("4fe0d45b-bada-bc47-9016-a1bd40f6d23f"),
                             Language = "en",
                             TranslationKeyId = new Guid("2b172b5d-394e-1ae8-51c2-c06c285eda7b"),
-                            Value = "Table"
+                            Value = "Item"
                         },
                         new
                         {
                             Id = new Guid("933d15b2-8b99-72b0-077b-358732d39b51"),
                             Language = "ar",
                             TranslationKeyId = new Guid("2b172b5d-394e-1ae8-51c2-c06c285eda7b"),
-                            Value = "الجدول"
+                            Value = "البند"
                         },
                         new
                         {
@@ -5632,14 +5632,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("e1f5a845-9682-8efa-0269-5929fc8776cc"),
                             Language = "en",
                             TranslationKeyId = new Guid("f199e153-a803-98f3-82ad-fa9cbca08c22"),
-                            Value = "No table matches the search."
+                            Value = "No item matches the search."
                         },
                         new
                         {
                             Id = new Guid("0b0b8889-94ab-cda6-eeae-99a0fc39b180"),
                             Language = "ar",
                             TranslationKeyId = new Guid("f199e153-a803-98f3-82ad-fa9cbca08c22"),
-                            Value = "لا جدول يطابق البحث."
+                            Value = "لا بند يطابق البحث."
                         },
                         new
                         {
