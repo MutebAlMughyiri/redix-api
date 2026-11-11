@@ -5678,20 +5678,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("fcdbce38-dcc3-b303-1564-61e08f824aba"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("60ebd03f-285e-78b7-dded-d778c38b36e8"),
-                            Value = "All"
-                        },
-                        new
-                        {
-                            Id = new Guid("b387e1e0-396a-4592-4bd8-288b84b909f4"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("60ebd03f-285e-78b7-dded-d778c38b36e8"),
-                            Value = "الكل"
-                        },
-                        new
-                        {
                             Id = new Guid("eb88ea9a-4dc7-5cc7-a84c-8facbb35040c"),
                             Language = "en",
                             TranslationKeyId = new Guid("5a6d64e4-bbf8-955e-45af-d8cdba56450d"),
@@ -11222,31 +11208,45 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("788bf328-781f-7ab3-9b54-6bd2908e8aa4"),
+                            Id = new Guid("7403d59f-215f-18b4-1dba-71c8f1aa4c7b"),
                             Language = "en",
-                            TranslationKeyId = new Guid("336ceda2-1ef4-8711-5089-ebca466b1a73"),
-                            Value = "All accounts"
+                            TranslationKeyId = new Guid("6961eeab-eced-6391-4369-fa1d7dea2807"),
+                            Value = "Account"
                         },
                         new
                         {
-                            Id = new Guid("26d2f27f-1bf0-cd21-de22-193675cf876e"),
+                            Id = new Guid("bb67ef87-cdbe-de54-d31f-2d269f8a6576"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("336ceda2-1ef4-8711-5089-ebca466b1a73"),
-                            Value = "كل الحسابات"
+                            TranslationKeyId = new Guid("6961eeab-eced-6391-4369-fa1d7dea2807"),
+                            Value = "الحساب"
                         },
                         new
                         {
-                            Id = new Guid("88cd47f4-c279-ebe2-9b64-360b63587623"),
+                            Id = new Guid("dd73dad7-06cd-1f93-6496-ec5376c11b58"),
                             Language = "en",
-                            TranslationKeyId = new Guid("0e1e4791-4f58-d359-c0b2-9b81a680e8ff"),
-                            Value = "All partners"
+                            TranslationKeyId = new Guid("218c9be0-b314-2316-5af3-bebb4c2e08fd"),
+                            Value = "Partner"
                         },
                         new
                         {
-                            Id = new Guid("a0e20d03-0801-d147-1f92-f084e7d197c0"),
+                            Id = new Guid("55b45fdc-f947-833e-1fb3-957cd14ea4fc"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("0e1e4791-4f58-d359-c0b2-9b81a680e8ff"),
-                            Value = "كل الشركاء"
+                            TranslationKeyId = new Guid("218c9be0-b314-2316-5af3-bebb4c2e08fd"),
+                            Value = "الشريك"
+                        },
+                        new
+                        {
+                            Id = new Guid("51d0682e-0e80-81a6-206a-aa1dbcd1768c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7c46044b-11e2-c91d-47d8-c6e2ac25ff42"),
+                            Value = "All"
+                        },
+                        new
+                        {
+                            Id = new Guid("e6652c43-48e0-9aa1-c34c-a6b26b1951a5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7c46044b-11e2-c91d-47d8-c6e2ac25ff42"),
+                            Value = "الكل"
                         },
                         new
                         {
@@ -15324,12 +15324,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("60ebd03f-285e-78b7-dded-d778c38b36e8"),
-                            Description = "",
-                            Key = "entries.all"
-                        },
-                        new
-                        {
                             Id = new Guid("5a6d64e4-bbf8-955e-45af-d8cdba56450d"),
                             Description = "",
                             Key = "entries.showMore"
@@ -17700,15 +17694,21 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("336ceda2-1ef4-8711-5089-ebca466b1a73"),
+                            Id = new Guid("6961eeab-eced-6391-4369-fa1d7dea2807"),
                             Description = "",
-                            Key = "history.allAccounts"
+                            Key = "history.account"
                         },
                         new
                         {
-                            Id = new Guid("0e1e4791-4f58-d359-c0b2-9b81a680e8ff"),
+                            Id = new Guid("218c9be0-b314-2316-5af3-bebb4c2e08fd"),
                             Description = "",
-                            Key = "history.allPartners"
+                            Key = "history.partner"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c46044b-11e2-c91d-47d8-c6e2ac25ff42"),
+                            Description = "",
+                            Key = "history.all"
                         },
                         new
                         {
