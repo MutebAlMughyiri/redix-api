@@ -36,15 +36,19 @@ public static class EntriesEndpoints
     public static Task<List<EntryRowView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.CreatedByUserId == userId);
+        return RowsAsync(projectId, userId, db, entry => entry.CreatedByUserId == userId, 0);
     }
 
-    /// <summary>Every entry of the project <paramref name="principal"/> may see, newest first: everyone who reads a project sees all its expenses and revenue (Muteb, 8 Nov 2026), as <see cref="SeenByAsync"/> decides.</summary>
+    /// <summary>
+    /// The entries of the project <paramref name="principal"/> may see, newest first: everyone who reads a project sees all its expenses and revenue (Muteb, 8 Nov 2026), as <see cref="SeenByAsync"/> decides.
+    /// Only the newest <paramref name="take"/> when it is above 0, as the app's home reads them (redix-app #105); every one otherwise.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db) =>
-        RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entry => true);
+    /// <param name="take">How many of the newest to give; 0 for every one.</param>
+    public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, int take = 0) =>
+        RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entry => true, take);
 
     /// <summary>
     /// The project's entries <paramref name="userId"/> may see: a draft only for who entered it (BR-42), and a partner's money only for whoever sees that partner (BR-31, <see cref="Partners.PartnerSight"/>).
@@ -63,10 +67,11 @@ public static class EntriesEndpoints
             && (seesAll || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && !chosen.Contains(details.PartnerId))));
     }
 
-    /// <summary>The entries <paramref name="shown"/> keeps of those the caller may see, newest first.</summary>
-    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown)
+    /// <summary>The entries <paramref name="shown"/> keeps of those the caller may see, newest first: only the newest <paramref name="take"/> when it is above 0.</summary>
+    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown, int take)
     {
-        var entries = await (await SeenByAsync(projectId, userId, db)).Where(shown).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id).ToListAsync();
+        var newestFirst = (await SeenByAsync(projectId, userId, db)).Where(shown).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id);
+        var entries = await (take > 0 ? newestFirst.Take(take) : newestFirst).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var rejections = (await db.EntryDecisions.Where(row => ids.Contains(row.EntryId) && row.Action == EntryDecisionAction.Reject).OrderBy(row => row.Id).ToListAsync()).GroupBy(row => row.EntryId).ToDictionary(group => group.Key, group => group.Last().Reason);

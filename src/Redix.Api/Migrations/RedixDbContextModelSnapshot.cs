@@ -5216,6 +5216,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("555eb16f-bbf6-874c-fa77-89bba965b2ee"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("53038282-4269-1366-be57-56958dad11a6"),
+                            Value = "Entries shown"
+                        },
+                        new
+                        {
+                            Id = new Guid("64276b86-36c3-7d98-efa2-b35f315bcbe9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("53038282-4269-1366-be57-56958dad11a6"),
+                            Value = "عدد القيود المعروضة"
+                        },
+                        new
+                        {
+                            Id = new Guid("ea1779aa-19c7-fe8f-d884-f6e8146264a0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("6b38ca68-e080-1d1b-d552-23c9c87fad0a"),
+                            Value = "How many entries the home shows, and how many each Show more adds."
+                        },
+                        new
+                        {
+                            Id = new Guid("76d8affa-b976-88a7-850c-cb610593e451"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("6b38ca68-e080-1d1b-d552-23c9c87fad0a"),
+                            Value = "عدد القيود في الرئيسية، وعدد ما يضيفه كل «عرض المزيد»."
+                        },
+                        new
+                        {
                             Id = new Guid("c02775dc-0135-6f76-5c2f-e6ffab2bd0a0"),
                             Language = "en",
                             TranslationKeyId = new Guid("56188aab-17e8-90db-33b8-57ef5761ad3c"),
@@ -5650,17 +5678,17 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a89b5b26-0a78-a41b-4356-c49f7683e6b0"),
+                            Id = new Guid("eb88ea9a-4dc7-5cc7-a84c-8facbb35040c"),
                             Language = "en",
-                            TranslationKeyId = new Guid("37bda13f-26e0-1aa4-fc29-45772db0ddc8"),
-                            Value = "All entries"
+                            TranslationKeyId = new Guid("5a6d64e4-bbf8-955e-45af-d8cdba56450d"),
+                            Value = "Show more"
                         },
                         new
                         {
-                            Id = new Guid("a4b402bc-e919-54e5-baf3-9bbf207ff9cc"),
+                            Id = new Guid("d153a608-8621-9b9c-b829-d9b4f844a1b6"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("37bda13f-26e0-1aa4-fc29-45772db0ddc8"),
-                            Value = "كل القيود"
+                            TranslationKeyId = new Guid("5a6d64e4-bbf8-955e-45af-d8cdba56450d"),
+                            Value = "عرض المزيد"
                         },
                         new
                         {
@@ -15028,6 +15056,18 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("53038282-4269-1366-be57-56958dad11a6"),
+                            Description = "",
+                            Key = "generalSettings.entriesShown"
+                        },
+                        new
+                        {
+                            Id = new Guid("6b38ca68-e080-1d1b-d552-23c9c87fad0a"),
+                            Description = "",
+                            Key = "generalSettings.entriesShownHint"
+                        },
+                        new
+                        {
                             Id = new Guid("56188aab-17e8-90db-33b8-57ef5761ad3c"),
                             Description = "",
                             Key = "biometrics.signIn"
@@ -15214,9 +15254,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("37bda13f-26e0-1aa4-fc29-45772db0ddc8"),
+                            Id = new Guid("5a6d64e4-bbf8-955e-45af-d8cdba56450d"),
                             Description = "",
-                            Key = "entries.seeAll"
+                            Key = "entries.showMore"
                         },
                         new
                         {

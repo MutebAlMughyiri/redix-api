@@ -6,6 +6,7 @@ using Redix.Api.Accounts;
 using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
+using Redix.Api.Structure;
 using Xunit;
 
 namespace Redix.Api.Tests;
@@ -243,6 +244,23 @@ public class EntryChangesTests(MigratedApiFactory factory)
         Assert.Contains(listed, row => row.Id == request.Id);
         (await ledger.Client.GetAsync(path)).EnsureSuccessStatusCode();
         (await EditAsync(ledger.Client, ledger, corrected)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task App_105_R3_TheListGivesOnlyTheNewestAsManyAsAskedAndEveryOneWhenNotAsked()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        foreach (var amount in new[] { 100m, 200m, 300m })
+        {
+            await ledger.RecordAsync(await ledger.RevenueAsync(ItemType.OtherRevenue, amount));
+        }
+        var path = $"/projects/{ledger.ProjectId}/entries";
+
+        var every = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>(path, Json))!;
+        var newest = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"{path}?take=2", Json))!;
+
+        Assert.True(every.Count >= 3);
+        Assert.Equal(every.Take(2).Select(row => row.Id), newest.Select(row => row.Id));
     }
 
     [Fact]
