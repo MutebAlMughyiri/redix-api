@@ -3774,6 +3774,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("d783a220-203d-52d7-daeb-bfe3e3437318"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9d2895f5-b4b6-b6fe-2e61-3da054109597"),
+                            Value = "No user matches."
+                        },
+                        new
+                        {
+                            Id = new Guid("71e4cc35-36cc-62ee-f963-39d00a94175d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9d2895f5-b4b6-b6fe-2e61-3da054109597"),
+                            Value = "لا يوجد مستخدم مطابق."
+                        },
+                        new
+                        {
                             Id = new Guid("1c11b7d7-e069-0b2b-2ef4-a67430835f22"),
                             Language = "en",
                             TranslationKeyId = new Guid("47245a21-fa0d-0f99-b5fe-c01ba2f395f1"),
@@ -5871,20 +5885,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("2a797bf4-71b0-94fd-cc76-459353a103d9"),
                             Value = "مسح التصفية"
-                        },
-                        new
-                        {
-                            Id = new Guid("41ce2cd4-bd69-986e-f46f-738db04bab78"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("12dd46fc-7db1-d9d5-b7e0-8f5134e5c573"),
-                            Value = "{0} entries"
-                        },
-                        new
-                        {
-                            Id = new Guid("20cc0dfa-08a1-7a9c-7b86-d4ba5e5f3e3c"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("12dd46fc-7db1-d9d5-b7e0-8f5134e5c573"),
-                            Value = "{0} قيد"
                         },
                         new
                         {
@@ -12342,6 +12342,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("df20d423-6470-a0ec-1caf-cb2aa3d86f60"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9f70a91f-7c59-9706-ab0e-ff8f610345e8"),
+                            Value = "No table matches."
+                        },
+                        new
+                        {
+                            Id = new Guid("2cb2b3b6-de2c-891d-1a09-8f21e8a6e737"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9f70a91f-7c59-9706-ab0e-ff8f610345e8"),
+                            Value = "لا يوجد جدول مطابق."
+                        },
+                        new
+                        {
                             Id = new Guid("95ccb243-4dfa-ffef-1f95-e0798ee51e92"),
                             Language = "en",
                             TranslationKeyId = new Guid("a1b9d41a-10d5-3f31-b67f-358cc0a46ddc"),
@@ -14508,6 +14522,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("9d2895f5-b4b6-b6fe-2e61-3da054109597"),
+                            Description = "",
+                            Key = "users.noMatch"
+                        },
+                        new
+                        {
                             Id = new Guid("47245a21-fa0d-0f99-b5fe-c01ba2f395f1"),
                             Description = "",
                             Key = "users.new"
@@ -15405,12 +15425,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("2a797bf4-71b0-94fd-cc76-459353a103d9"),
                             Description = "",
                             Key = "entries.clearFilters"
-                        },
-                        new
-                        {
-                            Id = new Guid("12dd46fc-7db1-d9d5-b7e0-8f5134e5c573"),
-                            Description = "",
-                            Key = "entries.found"
                         },
                         new
                         {
@@ -18177,6 +18191,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("14591419-de9f-6241-35d5-f33de2c90d77"),
                             Description = "",
                             Key = "suppliers.noMatch"
+                        },
+                        new
+                        {
+                            Id = new Guid("9f70a91f-7c59-9706-ab0e-ff8f610345e8"),
+                            Description = "",
+                            Key = "categories.noTableMatch"
                         },
                         new
                         {
