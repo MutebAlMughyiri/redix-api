@@ -287,7 +287,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
         var listed = (await ListAsync(client, projectId))!.Single(user => user.Id == manager.Id);
 
-        Assert.Equal(ProjectPermission.InAProject.Where(permission => permission != Permission.SeeChosenCapital).Order(), HeldIn(listed));
+        Assert.Equal(ProjectPermission.OfWhoeverStarts.Order(), HeldIn(listed));
         Assert.Equal(15, ProjectPermission.InAProject.Count);
     }
 

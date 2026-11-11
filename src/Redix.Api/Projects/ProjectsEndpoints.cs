@@ -88,7 +88,7 @@ public static class ProjectsEndpoints
     {
         db.Projects.Add(project);
         db.AddHistory(project, HistoryAction.RegisterProject, managerId, now);
-        foreach (var permission in ProjectPermission.InAProject.Where(permission => permission != Permission.SeeChosenCapital))
+        foreach (var permission in ProjectPermission.OfWhoeverStarts)
         {
             var held = new ProjectPermission { ProjectId = project.Id, UserId = managerId, Permission = permission };
             db.ProjectPermissions.Add(held);

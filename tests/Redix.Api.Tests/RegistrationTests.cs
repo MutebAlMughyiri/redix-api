@@ -80,7 +80,7 @@ public class RegistrationTests(MigratedApiFactory factory)
 
         Assert.Equal(("غصون 8", ProjectStatus.PendingApproval), (project.Name, project.Status));
         Assert.Equal(["الفلة الغربية"], project.Units.Select(unit => unit.Name));
-        Assert.Equal(ProjectPermission.InAProject.Count, await HeldInAsync(project.Id));
+        Assert.Equal(ProjectPermission.OfWhoeverStarts.Count, await HeldInAsync(project.Id));
         var client = factory.CreateClient();
         var session = (await (await client.PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, Password))).Content.ReadFromJsonAsync<Session>(Json))!;
         Assert.False(session.MustChangePassword);
@@ -148,7 +148,7 @@ public class RegistrationTests(MigratedApiFactory factory)
 
         var project = await ProjectOf(created);
         Assert.Equal(ProjectStatus.PendingApproval, project.Status);
-        Assert.Equal(ProjectPermission.InAProject.Count, await HeldInAsync(project.Id));
+        Assert.Equal(ProjectPermission.OfWhoeverStarts.Count, await HeldInAsync(project.Id));
         Assert.Empty(project.Permissions);
     }
 

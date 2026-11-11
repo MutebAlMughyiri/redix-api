@@ -83,7 +83,7 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         var project = await factory.ApprovedProjectAsync(client, "غصون 7");
 
-        Assert.Equal(ProjectPermission.InAProject.Order(), project.Permissions.Order());
+        Assert.Equal(ProjectPermission.OfWhoeverStarts.Order(), project.Permissions.Order());
     }
 
     [Fact]
