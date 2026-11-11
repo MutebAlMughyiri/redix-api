@@ -46,6 +46,36 @@ public class EntryChangesTests(MigratedApiFactory factory)
         return (field, request, userId);
     }
 
+    private static Task<HttpResponseMessage> RowAsync(HttpClient client, Ledger ledger, Guid id) => client.GetAsync($"/projects/{ledger.ProjectId}/entries/{id}/row");
+
+    [Fact]
+    public async Task Row_201_AnOpenedEntryReadsItselfByItsIdAndSaysItIsReversedOnceReversed()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var entry = await ledger.RecordAsync(ledger.Purchase(450m) with { Submit = true });
+        await ApproveAsync(ledger, entry.Id);
+
+        var approved = (await (await RowAsync(ledger.Client, ledger, entry.Id)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryRowView>(Json))!;
+        (await ReverseAsync(ledger.Client, ledger, entry.Id)).EnsureSuccessStatusCode();
+        var reversed = (await (await RowAsync(ledger.Client, ledger, entry.Id)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryRowView>(Json))!;
+
+        Assert.Equal((entry.Id, EntryStatus.Approved, false, 450m), (approved.Id, approved.Status, approved.IsReversed, approved.Amount));
+        Assert.Equal((EntryStatus.Approved, true), (reversed.Status, reversed.IsReversed));
+    }
+
+    [Fact]
+    public async Task Row_201_SomeoneElsesDraftAndAnEntryThatDoesNotExistAreNotFound()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (author, _) = await ledger.MemberAsync("Finance");
+        var draft = ledger.Purchase(200m);
+        (await ledger.PostAsync(draft, author)).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.OK, (await RowAsync(author, ledger, draft.Id)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await RowAsync(ledger.Client, ledger, draft.Id)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await RowAsync(ledger.Client, ledger, Guid.CreateVersion7())).StatusCode);
+    }
+
     [Fact]
     public async Task NotesLongerThanTheLimitAreRefusedAndNotesOfTheLimitAreKept()
     {

@@ -21,6 +21,7 @@ public static class EntriesEndpoints
     public static void MapEntries(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/entries/{entryId:guid}", Read).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/projects/{projectId:guid}/entries/{entryId:guid}/row", Row).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapGet("/projects/{projectId:guid}/entries/mine", Mine).RequireAuthorization(nameof(Permission.ReadProject));
         app.MapGet("/projects/{projectId:guid}/entries", List).RequireAuthorization(nameof(Permission.ReadProject));
         var changes = app.MapProjectChanges(Permission.RecordEntries);
@@ -121,6 +122,20 @@ public static class EntriesEndpoints
             facts.AccountNameOf(entry),
             facts.PaymentMethodNameOf(entry),
             facts.AccountShortByOf(entry))).ToList();
+    }
+
+    /// <summary>
+    /// One entry as the lists show it (findings row 201): where it stands and what the caller may do with it, for a screen that opened it, whichever list it came from or whether
+    /// that list still holds it. One the caller does not see (BR-31, BR-42), or none, answers 404.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="entryId">The entry.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static async Task<IResult> Row(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db)
+    {
+        var rows = await RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entry => entry.Id == entryId, 0);
+        return rows.Count == 1 ? Results.Ok(rows[0]) : Results.NotFound();
     }
 
     /// <summary>One entry of the project, with what its kind has. What it does not have comes empty, with an empty id. A partner's money the caller may not see (BR-31), or anything else, answers 404.</summary>
