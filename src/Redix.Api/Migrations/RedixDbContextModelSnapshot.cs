@@ -3284,6 +3284,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("09472c98-9f15-bdb9-1965-9ab8fd80ad40"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9204e426-af38-ad74-31fe-b90cdd796f65"),
+                            Value = "Search {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("e3398233-b521-bba9-a5a2-05fd743d420c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9204e426-af38-ad74-31fe-b90cdd796f65"),
+                            Value = "ابحث في {0}"
+                        },
+                        new
+                        {
                             Id = new Guid("c6b0a403-2128-32cd-ce1a-8f6af5c8f074"),
                             Language = "en",
                             TranslationKeyId = new Guid("58bcb203-6d38-d376-4cb1-1db18f028703"),
@@ -5829,6 +5843,34 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("a12c2484-9af8-73db-511a-e98d0d2108ad"),
                             Value = "الفترة"
+                        },
+                        new
+                        {
+                            Id = new Guid("d268dba9-834d-f034-f2e4-cf910a79ee59"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7bbb8fdb-be82-0c5b-4117-031834f49b7f"),
+                            Value = "Kind"
+                        },
+                        new
+                        {
+                            Id = new Guid("02152fcc-f2d4-300a-e52e-8948b647b0dd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7bbb8fdb-be82-0c5b-4117-031834f49b7f"),
+                            Value = "النوع"
+                        },
+                        new
+                        {
+                            Id = new Guid("56961017-ea49-5af0-a1c2-6260eee19d0e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("bbd4f711-998d-29d0-6006-7b82407fbc0c"),
+                            Value = "Status"
+                        },
+                        new
+                        {
+                            Id = new Guid("1f26116e-ec23-1c04-fe2d-fd8d4157b7a2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("bbd4f711-998d-29d0-6006-7b82407fbc0c"),
+                            Value = "الحالة"
                         },
                         new
                         {
@@ -14256,6 +14298,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("9204e426-af38-ad74-31fe-b90cdd796f65"),
+                            Description = "",
+                            Key = "common.searchIn"
+                        },
+                        new
+                        {
                             Id = new Guid("58bcb203-6d38-d376-4cb1-1db18f028703"),
                             Description = "",
                             Key = "projects.active"
@@ -15345,6 +15393,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("a12c2484-9af8-73db-511a-e98d0d2108ad"),
                             Description = "",
                             Key = "entries.period"
+                        },
+                        new
+                        {
+                            Id = new Guid("7bbb8fdb-be82-0c5b-4117-031834f49b7f"),
+                            Description = "",
+                            Key = "entries.kind"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbd4f711-998d-29d0-6006-7b82407fbc0c"),
+                            Description = "",
+                            Key = "entries.status"
                         },
                         new
                         {

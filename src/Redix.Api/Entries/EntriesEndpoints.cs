@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Revenue;
@@ -41,14 +42,40 @@ public static class EntriesEndpoints
 
     /// <summary>
     /// The entries of the project <paramref name="principal"/> may see, newest first: everyone who reads a project sees all its expenses and revenue (Muteb, 8 Nov 2026), as <see cref="SeenByAsync"/> decides.
-    /// Only the newest <paramref name="take"/> when it is above 0, as the app's home reads them (redix-app #105); every one otherwise.
+    /// Only those an <see cref="EntrySearch"/> keeps when anything narrows them (redix-app #104), and only the newest <paramref name="take"/> of them when it is above 0, as the
+    /// app's home and Entries screen read them a page at a time (redix-app #105); every one otherwise.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="kinds">The kinds kept, as their names travel; none for every kind.</param>
+    /// <param name="statuses">Where the kept entries stand; none for any.</param>
     /// <param name="take">How many of the newest to give; 0 for every one.</param>
-    public static Task<List<EntryRowView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, int take = 0) =>
-        RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entry => true, take);
+    /// <param name="text">What was typed; empty for any.</param>
+    /// <param name="mine">True to keep only the caller's own.</param>
+    /// <param name="from">The first day kept, as an ISO date; empty for no first day.</param>
+    /// <param name="to">The last day kept, as an ISO date; empty for no last day.</param>
+    public static async Task<List<EntryRowView>> List(
+        Guid projectId,
+        ClaimsPrincipal principal,
+        RedixDbContext db,
+        [FromQuery] string[] kinds,
+        [FromQuery] string[] statuses,
+        int take = 0,
+        string text = "",
+        bool mine = false,
+        string from = "",
+        string to = "")
+    {
+        var userId = AccessTokens.UserIdOf(principal);
+        var search = EntrySearch.Of(text, mine, kinds, statuses, from, to);
+        if (!search.Narrows)
+        {
+            return await RowsAsync(projectId, userId, db, entry => true, take);
+        }
+        var kept = (await RowsAsync(projectId, userId, db, entry => true, 0)).Where(search.Keeps);
+        return [.. take > 0 ? kept.Take(take) : kept];
+    }
 
     /// <summary>
     /// The project's entries <paramref name="userId"/> may see: a draft only for who entered it (BR-42), and a partner's money only for whoever sees that partner (BR-31, <see cref="Partners.PartnerSight"/>).
