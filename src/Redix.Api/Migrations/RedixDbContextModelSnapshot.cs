@@ -3298,6 +3298,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("042648c9-dacd-554c-342e-264f1b6f3fb7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("cef9eb7b-5faf-e8d4-a27a-de09b2f28e4a"),
+                            Value = "Search"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce9e01fe-93ce-8325-0b26-25fdf38f6bb4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("cef9eb7b-5faf-e8d4-a27a-de09b2f28e4a"),
+                            Value = "بحث"
+                        },
+                        new
+                        {
+                            Id = new Guid("e773f6e7-f71c-3206-a1c7-a10243befe56"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fea6811e-cbc3-d4a9-30db-48746629ea6e"),
+                            Value = "Filter"
+                        },
+                        new
+                        {
+                            Id = new Guid("b809ee8f-3e36-fa4d-5711-e8ca9399c91e"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fea6811e-cbc3-d4a9-30db-48746629ea6e"),
+                            Value = "تصفية"
+                        },
+                        new
+                        {
                             Id = new Guid("c6b0a403-2128-32cd-ce1a-8f6af5c8f074"),
                             Language = "en",
                             TranslationKeyId = new Guid("58bcb203-6d38-d376-4cb1-1db18f028703"),
@@ -14315,6 +14343,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9204e426-af38-ad74-31fe-b90cdd796f65"),
                             Description = "",
                             Key = "common.searchIn"
+                        },
+                        new
+                        {
+                            Id = new Guid("cef9eb7b-5faf-e8d4-a27a-de09b2f28e4a"),
+                            Description = "",
+                            Key = "common.search"
+                        },
+                        new
+                        {
+                            Id = new Guid("fea6811e-cbc3-d4a9-30db-48746629ea6e"),
+                            Description = "",
+                            Key = "common.filter"
                         },
                         new
                         {

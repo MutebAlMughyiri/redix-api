@@ -42,6 +42,8 @@ public static class TranslationSeed
         ("projects.loadFailed", "Could not load the projects. Check the network and try again.", "تعذّر تحميل المشاريع. تحقق من الشبكة وحاول مرة أخرى."),
         ("common.retry", "Try again", "حاول مرة أخرى"),
         ("common.searchIn", "Search {0}", "ابحث في {0}"),
+        ("common.search", "Search", "بحث"),
+        ("common.filter", "Filter", "تصفية"),
         ("projects.active", "Active", "نشط"),
         ("projects.finished", "Finished", "منتهٍ"),
         ("projects.readOnly", "Read-only", "للقراءة فقط"),
