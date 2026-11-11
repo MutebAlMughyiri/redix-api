@@ -77,6 +77,7 @@ public static class PartnersEndpoints
             return Refusal.Of(StatusCodes.Status409Conflict, "PartnerNotDeletable");
         }
         var at = time.GetUtcNow().UtcDateTime;
+        await using var transaction = await db.Database.BeginTransactionAsync();
         foreach (var draftId in drafts.Where(draft => draft.PartnerId == partnerId).Select(draft => draft.EntryId).Distinct())
         {
             await EntryChanges.DeleteAsync(await db.Entries.SingleAsync(entry => entry.Id == draftId), userId, at, db);
@@ -84,6 +85,7 @@ public static class PartnersEndpoints
         partner.IsDeleted = true;
         db.AddHistory(partner, HistoryAction.Delete, userId, at);
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return Results.Ok();
     }
 

@@ -50,8 +50,7 @@ public static class AccountHistory
             var checks = db.Reconciliations.Where(check => check.Balances.Any(balance => balance.AccountId == accountId)).Select(check => check.Id);
             rows = rows.Where(row => row.RecordId == accountId || transfers.Contains(row.RecordId) || entries.Contains(row.RecordId) || checks.Contains(row.RecordId));
         }
-        return Results.Ok(await HistoryPage.LinesAsync(
-            rows, userId, mine, before, text, page => LinesAsync(projectId, page, db), line => ArabicSpelling.Holds(text, line.Amount, line.By, line.Account, line.OtherAccount, line.NameWas, line.Custodian)));
+        return Results.Ok(await HistoryPage.LinesAsync(rows, userId, mine, before, text, page => LinesAsync(projectId, page, db)));
     }
 
     private static async Task<List<AccountHistoryLine>> LinesAsync(Guid projectId, List<HistoryRecord> page, RedixDbContext db)
@@ -155,4 +154,10 @@ public enum AccountHistoryKind
 /// <param name="EntryKind">An entry's kind, for an entry's line.</param>
 /// <param name="NameWas">An account's name before it changed; empty otherwise.</param>
 /// <param name="Custodian">Who holds an account now, for a custodian's change; empty when nobody does.</param>
-public record AccountHistoryLine(long Id, DateTime At, string By, AccountHistoryKind Kind, string Account, string OtherAccount, decimal Amount, EntryKind EntryKind, string NameWas, string Custodian);
+public record AccountHistoryLine(long Id, DateTime At, string By, AccountHistoryKind Kind, string Account, string OtherAccount, decimal Amount, EntryKind EntryKind, string NameWas, string Custodian)
+    : IHistoryLine
+{
+    /// <summary>Whether <paramref name="text"/> is in its accounts, who did it, the name it had, the custodian, or its amount.</summary>
+    /// <param name="text">What was typed.</param>
+    public bool Holds(string text) => ArabicSpelling.Holds(text, Amount, By, Account, OtherAccount, NameWas, Custodian);
+}

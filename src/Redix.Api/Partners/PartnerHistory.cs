@@ -44,8 +44,7 @@ public static class PartnerHistory
         var rows = db.History.Where(row => row.ProjectId == projectId
             && ((row.TableName == "Partners" && shown.Contains(row.RecordId))
                 || (row.TableName == "Entries" && (row.Action == HistoryAction.Approve || row.Action == HistoryAction.Reverse) && movements.Contains(row.RecordId))));
-        return Results.Ok(await HistoryPage.LinesAsync(
-            rows, userId, mine, before, text, page => LinesAsync(projectId, page, db), line => ArabicSpelling.Holds(text, line.Amount, line.By, line.Partner, line.Account, line.NameWas, line.Login)));
+        return Results.Ok(await HistoryPage.LinesAsync(rows, userId, mine, before, text, page => LinesAsync(projectId, page, db)));
     }
 
     private static async Task<List<PartnerHistoryLine>> LinesAsync(Guid projectId, List<HistoryRecord> page, RedixDbContext db)
@@ -120,4 +119,10 @@ public enum PartnerHistoryKind
 /// <param name="Amount">How much moved; zero for a partner's own action.</param>
 /// <param name="NameWas">A partner's name before it changed; empty otherwise.</param>
 /// <param name="Login">The account a partner was given; empty for none, and for any other line.</param>
-public record PartnerHistoryLine(long Id, DateTime At, string By, PartnerHistoryKind Kind, string Partner, string Account, decimal Amount, string NameWas, string Login);
+public record PartnerHistoryLine(long Id, DateTime At, string By, PartnerHistoryKind Kind, string Partner, string Account, decimal Amount, string NameWas, string Login)
+    : IHistoryLine
+{
+    /// <summary>Whether <paramref name="text"/> is in its partner, account, who did it, the name it had, the login, or its amount.</summary>
+    /// <param name="text">What was typed.</param>
+    public bool Holds(string text) => ArabicSpelling.Holds(text, Amount, By, Partner, Account, NameWas, Login);
+}

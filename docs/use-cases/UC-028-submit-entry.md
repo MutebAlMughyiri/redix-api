@@ -18,6 +18,7 @@ Telling Finance belongs to UC-036 "Send push notifications": nothing is faked he
 
 | Route | Who | Does |
 | --- | --- | --- |
+| `GET /projects/{id}/entries?take=&text=&mine=&kinds=&statuses=&from=&to=` | `ReadProject` | The entries the caller may see (BR-31, BR-42), newest first: the newest `take` of them, every one for 0 (redix-app #105); `text` matched against the item, partner, supplier, who entered it, a bill's number and the amount, Arabic spelling read alike; `mine` the caller's own; `kinds` and `statuses` repeated for several (a reversed entry stands `reversed`); `from` and `to` ISO days, both included (redix-app #104, `EntrySearch`) |
 | `GET /projects/{id}/entries/{entryId}` | `ReadProject` | The entry, with what its kind has. What it does not have comes empty, with an empty `entryId` |
 | `POST /projects/{id}/entries/{entryId}/submit` | `RecordEntries` | Sends a draft or a rejected entry. Answers `notYourEntry`, `entryNotSubmittable` or `entryIncomplete` with `missing` |
 
