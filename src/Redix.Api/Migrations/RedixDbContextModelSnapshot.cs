@@ -11922,6 +11922,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("ab39459a-caa2-fbf3-5060-86259feda8a0"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aa3cad16-a1ce-3a2d-3390-e51b9947de81"),
+                            Value = "Your drafts name them, and deleting those needs Delete entries."
+                        },
+                        new
+                        {
+                            Id = new Guid("fae7bcdb-f6d4-c5da-8b34-12361e353a10"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aa3cad16-a1ce-3a2d-3390-e51b9947de81"),
+                            Value = "مسوداتك تذكره، وحذفها يحتاج صلاحية حذف القيود."
+                        },
+                        new
+                        {
                             Id = new Guid("e38ba2fd-e815-7c4b-134e-9702bece859b"),
                             Language = "en",
                             TranslationKeyId = new Guid("79c8bd2c-4f2f-eff3-df8c-826c8386cfd1"),
@@ -18039,6 +18053,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("78c8f6e2-468d-81ad-0c0c-7c46de910feb"),
                             Description = "",
                             Key = "partners.deleteRemovesMyDrafts"
+                        },
+                        new
+                        {
+                            Id = new Guid("aa3cad16-a1ce-3a2d-3390-e51b9947de81"),
+                            Description = "",
+                            Key = "partners.myDraftsNeedDeleteEntries"
                         },
                         new
                         {

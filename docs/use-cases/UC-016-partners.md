@@ -16,11 +16,11 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `GET /projects/{projectId}/partners` | `ReadProject` | `200` in their tables' order, as `{ id, name, userId, userName, mayDelete }`, deleted partners left out: everyone with `SeeAllCapital`, the chosen ones with `SeeChosenCapital`, otherwise none. `userId` and `userName` are empty for a partner with no login |
+| `GET /projects/{projectId}/partners` | `ReadProject` | `200` in their tables' order, as `{ id, name, userId, userName, mayDelete, othersDrafts, myDrafts }`: `othersDrafts` names whoever else holds a draft naming the partner, told only to whoever holds `ManageSettings` (BR-42, findings row 203), and `myDrafts` lists the caller's own drafts naming them, with their date and amount, deleted partners left out: everyone with `SeeAllCapital`, the chosen ones with `SeeChosenCapital`, otherwise none. `userId` and `userName` are empty for a partner with no login |
 | `POST /projects/{projectId}/partners` with `{ name, userId }` | `ManageSettings` | `200`, a table of the project's one capital item; `400` `invalidName`, `itemNotOffered` (that item is disabled or no longer of capital), `unknownUser` or `userTaken` |
 | `POST /projects/{projectId}/partners/{id}` with `{ name, userId }` | `ManageSettings` | The same, but for the item; `404`, also for a deleted partner |
 | `GET /projects/{projectId}/partners/history?partner=&mine=&before=&text=` | `ReadProject` | `200` a page of the partners' history (redix-app #101): partners added, changed, given or losing an account, deleted; capital movements approved or reversed; newest first, 50 a page, only partners the caller sees (BR-31); `text` keeps the lines whose partner, account, who did it, the name it had, the login or the amount hold it, Arabic spelling read alike (redix-app #104); `400` `unknownPartner` for one not seen |
-| `POST /projects/{projectId}/partners/{id}/delete` | `ManageSettings` | `200` deletes softly (redix-api #100); `404`, also once deleted; `409` `partnerNotDeletable` unless their capital is 0 and nothing unapproved names them |
+| `POST /projects/{projectId}/partners/{id}/delete` | `ManageSettings` | `200` deletes softly (redix-api #100); `404`, also once deleted; `409` `partnerNotDeletable` unless their capital is 0, nothing waiting or rejected names them and no one else's draft does (findings row 199). The caller's own drafts naming them are deleted with them, so only when the caller also holds `DeleteEntries` (findings row 202) |
 
 **A partner is a table (redix-api #109).** Each partner is a table of a capital item of the structure, رأس المال, as a contract is a table of its item: Add entry lists رأس المال with its partners under it, its report and its sheet are a table per partner, and its percentages give each one's share (BR-05). The list answers each partner's `itemId` and `itemName` too, in their tables' order.
 
@@ -55,6 +55,9 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 | One project's partners are never another's (BR-33) | `Partner.ProjectId`, `PartnersEndpoints` | `PartnersTests.OneProjectsPartnersAreNeverAnothers` |
 | A project copied from an earlier one starts with no partners (AC-05.2) | `ProjectStructure.ApproveAsync` copies only structure | `PartnersTests.ACopiedProjectStartsWithNoPartners` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `PartnersTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+| Findings row 199: someone else's draft keeps a partner from being deleted and says whose; the caller's own drafts are deleted with them | `PartnersEndpoints.DeletableAsync`, `PartnersEndpoints.Delete` | `PartnerDeleteTests.Row_199_SomeoneElsesDraftHoldsThePartnerAndSaysWhoseWhileTheCallersOwnDraftsAreDeletedWithThem` |
+| Findings row 202: a delete that would take the caller's own drafts needs `DeleteEntries` too | `PartnersEndpoints.DeletableAsync` | `PartnerDeleteTests.Row_202_ADeleteThatTakesTheCallersOwnDraftsNeedsDeleteEntriesTooWhileOneWithNoDraftOfTheirsDoesNot` |
+| Findings row 203, BR-42: whose draft names a partner is told only to whoever holds `ManageSettings` | `PartnersEndpoints.List` | `PartnerDeleteTests.Row_203_WhoseDraftNamesAPartnerIsToldOnlyToWhoeverMayDeletePartners` |
 
 ## Left to later use cases
 

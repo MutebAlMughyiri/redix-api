@@ -40,8 +40,10 @@ public static class PartnersEndpoints
         var userIds = partners.Select(partner => partner.UserId).ToList();
         var names = await db.Users.Where(user => userIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
         var userId = AccessTokens.UserIdOf(principal);
+        var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
         var drafts = await DraftsAsync(projectId, db);
-        var deletable = await DeletableAsync(projectId, userId, drafts, db);
+        var deletable = await DeletableAsync(projectId, userId, held, drafts, db);
+        var seesWhoseDrafts = held.Contains(Permission.ManageSettings);
         return partners.OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id)
             .Select(partner => new PartnerView(
                 partner.Id,
@@ -49,14 +51,15 @@ public static class PartnersEndpoints
                 Ids.Text(partner.UserId),
                 names.GetValueOrDefault(partner.UserId, ""),
                 deletable.Contains(partner.Id),
-                [.. drafts.Where(draft => draft.PartnerId == partner.Id && draft.AuthorId != userId).Select(draft => draft.AuthorName).Distinct()],
+                [.. drafts.Where(draft => seesWhoseDrafts && draft.PartnerId == partner.Id && draft.AuthorId != userId).Select(draft => draft.AuthorName).Distinct()],
                 [.. drafts.Where(draft => draft.PartnerId == partner.Id && draft.AuthorId == userId).Select(draft => new PartnerDraftView(draft.EntryDate, draft.Amount))])).ToList();
     }
 
     /// <summary>
     /// Deletes a partner softly (redix-api #100): they leave Partners, Add entry, the item's tables and the capital lines, and their movements stay in the entries, the reports and the History
     /// table, which keeps the delete too. Only at zero capital with nothing waiting or rejected naming them, and no one else's draft (findings row 199), otherwise
-    /// <c>partnerNotDeletable</c>; the caller's own drafts naming them are deleted with them, as a delete of each entry is. One deleted already is not found.
+    /// <c>partnerNotDeletable</c>; the caller's own drafts naming them are deleted with them, as a delete of each entry is, so only by whoever also holds
+    /// <see cref="Permission.DeleteEntries"/> (findings row 202). One deleted already is not found.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="partnerId">The partner.</param>
@@ -72,7 +75,7 @@ public static class PartnersEndpoints
         }
         var userId = AccessTokens.UserIdOf(principal);
         var drafts = await DraftsAsync(projectId, db);
-        if (!(await DeletableAsync(projectId, userId, drafts, db)).Contains(partnerId))
+        if (!(await DeletableAsync(projectId, userId, (await UserAccess.OfAsync(userId, db)).In(projectId), drafts, db)).Contains(partnerId))
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "PartnerNotDeletable");
         }
@@ -100,18 +103,19 @@ public static class PartnersEndpoints
          select new PartnerDraft(details.PartnerId, entry.Id, author.Id, author.DisplayName, entry.EntryDate, entry.Amount)).ToListAsync();
 
     /// <summary>
-    /// The project's partners <paramref name="userId"/> may delete: at zero capital, with nothing waiting or rejected naming them, and no draft of anyone else's, since their own go with
-    /// them: the one answer of whether a partner may be deleted, which the list shows and the delete checks.
+    /// The project's partners <paramref name="userId"/>, holding <paramref name="held"/>, may delete: at zero capital, with nothing waiting or rejected naming them, and no draft of anyone
+    /// else's, since their own go with them, which only whoever holds <see cref="Permission.DeleteEntries"/> may delete (findings row 202): the one answer of whether a partner may be
+    /// deleted, which the list shows and the delete checks.
     /// </summary>
-    private static async Task<HashSet<Guid>> DeletableAsync(Guid projectId, Guid userId, List<PartnerDraft> drafts, RedixDbContext db)
+    private static async Task<HashSet<Guid>> DeletableAsync(Guid projectId, Guid userId, List<Permission> held, List<PartnerDraft> drafts, RedixDbContext db)
     {
         var balances = await CapitalEndpoints.BalancesAsync(projectId, db);
         var waiting = await db.CapitalMovementDetails
             .Where(details => db.Entries.Any(entry => entry.Id == details.EntryId && entry.ProjectId == projectId && entry.Status != EntryStatus.Approved && entry.Status != EntryStatus.Draft))
             .Select(details => details.PartnerId).Distinct().ToListAsync();
-        var heldByOthers = drafts.Where(draft => draft.AuthorId != userId).Select(draft => draft.PartnerId).ToHashSet();
+        var heldByDrafts = drafts.Where(draft => draft.AuthorId != userId || !held.Contains(Permission.DeleteEntries)).Select(draft => draft.PartnerId).ToHashSet();
         var partners = await db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).Select(partner => partner.Id).ToListAsync();
-        return [.. partners.Where(id => balances.GetValueOrDefault(id) == 0 && !waiting.Contains(id) && !heldByOthers.Contains(id))];
+        return [.. partners.Where(id => balances.GetValueOrDefault(id) == 0 && !waiting.Contains(id) && !heldByDrafts.Contains(id))];
     }
 
     /// <summary>
@@ -215,8 +219,10 @@ public record PartnerRequest(string Name)
 /// <param name="Name">The partner's name.</param>
 /// <param name="UserId">Their own login; empty for a partner with no login.</param>
 /// <param name="UserName">That login's name; empty for a partner with no login.</param>
-/// <param name="MayDelete">True when the caller may delete them: at zero capital with nothing waiting or rejected naming them and no one else's draft (redix-api #100, findings row 199).</param>
-/// <param name="OthersDrafts">Who else holds a draft naming them, which keeps them from being deleted until it is sent or deleted.</param>
+/// <param name="MayDelete">True when the caller may delete them: at zero capital with nothing waiting or rejected naming them, no one else's draft, and none of the caller's own
+/// unless they hold <see cref="Permission.DeleteEntries"/> (redix-api #100, findings rows 199 and 202).</param>
+/// <param name="OthersDrafts">Who else holds a draft naming them, which keeps them from being deleted until it is sent or deleted: told only to whoever holds
+/// <see cref="Permission.ManageSettings"/>, who may delete partners, since a draft is its author's alone (BR-42, findings row 203); empty for anyone else.</param>
 /// <param name="MyDrafts">The caller's own drafts naming them, which deleting them deletes too.</param>
 public record PartnerView(Guid Id, string Name, string UserId, string UserName, bool MayDelete, List<string> OthersDrafts, List<PartnerDraftView> MyDrafts);
 

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.History;
 using Redix.Api.Partners;
@@ -16,8 +17,8 @@ public class PartnerDeleteTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
-    private static async Task<List<PartnerView>> PartnersAsync(Ledger ledger) =>
-        (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!;
+    private static async Task<List<PartnerView>> PartnersAsync(Ledger ledger, HttpClient? client = null) =>
+        (await (client ?? ledger.Client).GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!;
 
     private static async Task<Guid> PartnerAsync(Ledger ledger, string name, Guid userId = default)
     {
@@ -25,7 +26,16 @@ public class PartnerDeleteTests(MigratedApiFactory factory)
         return (await PartnersAsync(ledger)).Single(row => row.Name == name).Id;
     }
 
-    private static Task<HttpResponseMessage> DeleteAsync(Ledger ledger, Guid partnerId) => ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/partners/{partnerId}/delete", null);
+    private static Task<HttpResponseMessage> DeleteAsync(Ledger ledger, Guid partnerId, HttpClient? client = null) =>
+        (client ?? ledger.Client).PostAsync($"/projects/{ledger.ProjectId}/partners/{partnerId}/delete", null);
+
+    /// <summary>Someone in <paramref name="ledger"/>'s project holding <paramref name="holds"/>, signed in, and their id.</summary>
+    private async Task<(HttpClient Client, Guid UserId)> HoldingAsync(Ledger ledger, IEnumerable<Permission> holds)
+    {
+        var user = await factory.AddUserAsync(Ledger.Password);
+        await factory.GiveAsync(user.Id, ledger.ProjectId, holds);
+        return (await factory.ClientSignedInAsAsync(user, Ledger.Password), user.Id);
+    }
 
     private static async Task<HttpResponseMessage> MovementAsync(Ledger ledger, Guid partnerId, decimal amount, bool isWithdrawal = false) =>
         await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partnerId, amount, isWithdrawal), Json);
@@ -108,6 +118,48 @@ public class PartnerDeleteTests(MigratedApiFactory factory)
         Assert.Empty(free.OthersDrafts);
         Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(entry => entry.Id == myDraft.Id)));
         Assert.True(await ledger.ReadAsync(db => db.History.AnyAsync(row => row.Action == HistoryAction.Delete && row.RecordId == myDraft.Id)));
+    }
+
+    [Fact]
+    public async Task Row_202_ADeleteThatTakesTheCallersOwnDraftsNeedsDeleteEntriesTooWhileOneWithNoDraftOfTheirsDoesNot()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (manager, managerId) = await HoldingAsync(ledger, Holds.Finance.Where(permission => permission != Permission.DeleteEntries));
+        var drafted = await PartnerAsync(ledger, "شريك مسودتي");
+        var free = await PartnerAsync(ledger, "شريك بلا مسودة");
+        var draft = await ledger.PartnerEntryAsync(drafted, 300m) with { Submit = false };
+        (await ledger.PostAsync(draft, manager)).EnsureSuccessStatusCode();
+
+        var listed = (await PartnersAsync(ledger, manager)).ToDictionary(row => row.Id, row => row.MayDelete);
+        var refused = await DeleteAsync(ledger, drafted, manager);
+
+        Assert.Equal((false, true), (listed[drafted], listed[free]));
+        Assert.Equal((HttpStatusCode.Conflict, "partnerNotDeletable"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+        Assert.True(await ledger.ReadAsync(db => db.Entries.AnyAsync(entry => entry.Id == draft.Id)));
+        (await DeleteAsync(ledger, free, manager)).EnsureSuccessStatusCode();
+
+        await factory.GiveAsync(managerId, ledger.ProjectId, [Permission.DeleteEntries]);
+        Assert.True((await PartnersAsync(ledger, manager)).Single(row => row.Id == drafted).MayDelete);
+        (await DeleteAsync(ledger, drafted, manager)).EnsureSuccessStatusCode();
+        Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(entry => entry.Id == draft.Id)));
+    }
+
+    [Fact]
+    public async Task Row_203_WhoseDraftNamesAPartnerIsToldOnlyToWhoeverMayDeletePartners()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partnerId = await PartnerAsync(ledger, "شريك المسودة");
+        var (author, authorId) = await ledger.MemberAsync("Finance");
+        await factory.WithDatabaseAsync(db => db.Users.Where(user => user.Id == authorId).ExecuteUpdateAsync(user => user.SetProperty(row => row.DisplayName, "نواف")));
+        (await ledger.PostAsync(await ledger.PartnerEntryAsync(partnerId, 500m) with { Submit = false }, author)).EnsureSuccessStatusCode();
+        var (reader, _) = await HoldingAsync(ledger, [Permission.ReadProject, Permission.SeeAllCapital]);
+
+        var toTheManager = (await PartnersAsync(ledger)).Single(row => row.Id == partnerId);
+        var toTheReader = (await PartnersAsync(ledger, reader)).Single(row => row.Id == partnerId);
+
+        Assert.Equal(["نواف"], toTheManager.OthersDrafts);
+        Assert.Empty(toTheReader.OthersDrafts);
+        Assert.False(toTheReader.MayDelete);
     }
 
     [Fact]
