@@ -5,7 +5,7 @@ namespace Redix.Api.Entries;
 
 /// <summary>
 /// What a search of a project's entries keeps (redix-app #104): every filter given must hold, and one left empty keeps everything. The app's Entries screen asks it a page
-/// at a time, so no screen reads every entry. What was typed is matched as <see cref="ArabicSpelling"/> reads it, over what the entry's row says: its item, partner,
+/// at a time, so no screen reads every entry. What was typed is matched as <see cref="ArabicSpelling.Holds"/> reads it, over what the entry's row says: its item, partner,
 /// supplier, who entered it, its invoice's number and its amount.
 /// </summary>
 /// <param name="Text">What was typed; empty for any.</param>
@@ -38,19 +38,7 @@ public record EntrySearch(string Text, bool Mine, string[] Kinds, string[] Statu
         && (Statuses.Length == 0 || Statuses.Contains(row.IsReversed ? "reversed" : NameOf(row.Status)))
         && row.EntryDate >= From
         && (To == DateOnly.MinValue || row.EntryDate <= To)
-        && Searchable(TextOf(row)).Contains(Searchable(Text));
+        && ArabicSpelling.Holds(Text, row.Amount, row.ItemName, row.PartnerName, row.SupplierName, row.AuthorName, row.InvoiceNumber);
 
     private static string NameOf<TEnum>(TEnum value) where TEnum : struct, Enum => JsonNamingPolicy.CamelCase.ConvertName(value.ToString());
-
-    private static string Searchable(string text) => ArabicSpelling.Normalize(text.Trim()).ToLowerInvariant();
-
-    private static string TextOf(EntryRowView row) => string.Join(
-        ' ',
-        row.ItemName,
-        row.PartnerName,
-        row.SupplierName,
-        row.AuthorName,
-        row.InvoiceNumber,
-        row.Amount.ToString("0.##", CultureInfo.InvariantCulture),
-        row.Amount.ToString("#,0.00", CultureInfo.InvariantCulture));
 }

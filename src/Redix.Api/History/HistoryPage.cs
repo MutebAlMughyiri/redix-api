@@ -1,19 +1,31 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace Redix.Api.History;
 
 /// <summary>
-/// What every history screen shares (redix-app #101): a page of History rows, newest first, after the last line already shown and, when asked, only what the caller did; and reading a
-/// value a row kept. The accounts' history and the partners' history both read through it.
+/// What every history screen shares (redix-app #101): a page of lines, newest first, after the last line already shown and, when asked, only what the caller did and only the
+/// lines holding what was typed (redix-app #104); and reading a value a row kept. The accounts' history and the partners' history both read through it.
 /// </summary>
 public static class HistoryPage
 {
     /// <summary>How many lines a page holds.</summary>
     public const int Size = 50;
 
-    /// <summary>The page of <paramref name="rows"/> after the line <paramref name="before"/> (0 for the newest), only <paramref name="userId"/>'s own when <paramref name="mine"/>.</summary>
-    public static IQueryable<HistoryRecord> Of(IQueryable<HistoryRecord> rows, Guid userId, bool mine, long before) =>
-        rows.Where(row => (!mine || row.UserId == userId) && (before <= 0 || row.Id < before)).OrderByDescending(row => row.Id).Take(Size);
+    /// <summary>
+    /// The page of lines <paramref name="linesOf"/> makes of <paramref name="rows"/> after the line <paramref name="before"/> (0 for the newest), only <paramref name="userId"/>'s own
+    /// when <paramref name="mine"/>, and, once something was typed in <paramref name="text"/>, only those <paramref name="keeps"/> keeps. A line's names are read after its row, so a
+    /// search makes the lines of every row after <paramref name="before"/> and keeps a page of them.
+    /// </summary>
+    public static async Task<List<TLine>> LinesAsync<TLine>(IQueryable<HistoryRecord> rows, Guid userId, bool mine, long before, string text, Func<List<HistoryRecord>, Task<List<TLine>>> linesOf, Func<TLine, bool> keeps)
+    {
+        var newest = rows.Where(row => (!mine || row.UserId == userId) && (before <= 0 || row.Id < before)).OrderByDescending(row => row.Id);
+        if (text.Trim().Length == 0)
+        {
+            return await linesOf(await newest.Take(Size).ToListAsync());
+        }
+        return [.. (await linesOf(await newest.ToListAsync())).Where(keeps).Take(Size)];
+    }
 
     /// <summary>The text a row kept under <paramref name="name"/>; empty when it kept none.</summary>
     public static string TextIn(string values, string name) =>

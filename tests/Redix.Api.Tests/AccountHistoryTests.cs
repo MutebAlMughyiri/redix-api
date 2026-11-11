@@ -21,11 +21,11 @@ public class AccountHistoryTests(MigratedApiFactory factory)
 
     private static readonly AccountHistoryKind[] EntryKinds = [AccountHistoryKind.EntryIn, AccountHistoryKind.EntryOut, AccountHistoryKind.Reversed];
 
-    private static string PathOf(Ledger ledger, Guid accountId = default, bool mine = false, long before = 0) =>
-        $"/projects/{ledger.ProjectId}/accounts/history?account={accountId}&mine={mine}&before={before}";
+    private static string PathOf(Ledger ledger, Guid accountId = default, bool mine = false, long before = 0, string text = "") =>
+        $"/projects/{ledger.ProjectId}/accounts/history?account={accountId}&mine={mine}&before={before}&text={Uri.EscapeDataString(text)}";
 
-    private static async Task<List<AccountHistoryLine>> HistoryAsync(Ledger ledger, HttpClient? client = null, Guid accountId = default, bool mine = false, long before = 0) =>
-        (await (client ?? ledger.Client).GetFromJsonAsync<List<AccountHistoryLine>>(PathOf(ledger, accountId, mine, before), Json))!;
+    private static async Task<List<AccountHistoryLine>> HistoryAsync(Ledger ledger, HttpClient? client = null, Guid accountId = default, bool mine = false, long before = 0, string text = "") =>
+        (await (client ?? ledger.Client).GetFromJsonAsync<List<AccountHistoryLine>>(PathOf(ledger, accountId, mine, before, text), Json))!;
 
     private static async Task<Guid> AccountAsync(Ledger ledger, string name)
     {
@@ -254,6 +254,38 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         Assert.Equal(HistoryPage.Size, first.Count);
         Assert.Equal(11, second.Count);
         Assert.Empty(first.Select(line => line.Id).Intersect(second.Select(line => line.Id)));
+        Assert.True(first[^1].Id > second[0].Id);
+    }
+
+    [Fact]
+    public async Task R104_WhatWasTypedKeepsTheLinesWhoseAccountsOrAmountHoldItWhicheverWayArabicIsSpelled()
+    {
+        var (ledger, _) = await BusyProjectAsync();
+
+        var named = await HistoryAsync(ledger, text: "مُدير");
+        var byAmount = await HistoryAsync(ledger, text: "1,000");
+
+        Assert.Equal([AccountHistoryKind.Transfer, AccountHistoryKind.AccountCreated], named.Select(line => line.Kind));
+        Assert.Equal([AccountHistoryKind.Check, AccountHistoryKind.EntryIn], byAmount.Select(line => line.Kind));
+    }
+
+    [Fact]
+    public async Task R104_ASearchedHistoryComesAPageAtATimeTooEachStartingAfterTheLastLineShown()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        for (var i = 0; i < 30; i++)
+        {
+            (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}/disable", null)).EnsureSuccessStatusCode();
+            (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}/enable", null)).EnsureSuccessStatusCode();
+        }
+        await AccountAsync(ledger, "كاش");
+
+        var first = await HistoryAsync(ledger, text: "المؤسسه");
+        var second = await HistoryAsync(ledger, before: first[^1].Id, text: "المؤسسه");
+
+        Assert.Equal(HistoryPage.Size, first.Count);
+        Assert.Equal(11, second.Count);
+        Assert.All(first.Concat(second), line => Assert.Equal("حساب المؤسسة", line.Account));
         Assert.True(first[^1].Id > second[0].Id);
     }
 

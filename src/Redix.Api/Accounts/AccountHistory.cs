@@ -21,7 +21,8 @@ public static class AccountHistory
     /// <summary>
     /// A page of the project's account history (D10): accounts added, changed, disabled, enabled or deleted, a custodian changed, transfers, entries once approved or reversed,
     /// and actual-balances checks; never a draft, a send or a rejection. <paramref name="account"/> keeps one account's lines, and an account not in the project answers
-    /// <c>unknownAccount</c>; <paramref name="mine"/> keeps the caller's own; <paramref name="before"/> starts after the last line of the page before.
+    /// <c>unknownAccount</c>; <paramref name="mine"/> keeps the caller's own; <paramref name="text"/> keeps the lines whose accounts, people or amount hold it (redix-app #104);
+    /// <paramref name="before"/> starts after the last line of the page before.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
@@ -29,7 +30,8 @@ public static class AccountHistory
     /// <param name="account">The id of one account of the project, or nothing for every account: read as text, since a query's <see cref="Guid"/> cannot default.</param>
     /// <param name="mine">True for what the caller did alone.</param>
     /// <param name="before">The id of the last line already shown, or 0 for the newest.</param>
-    public static async Task<IResult> Read(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, string account = "", bool mine = false, long before = 0)
+    /// <param name="text">What was typed in the search line; empty for every line.</param>
+    public static async Task<IResult> Read(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, string account = "", bool mine = false, long before = 0, string text = "")
     {
         var accountId = Guid.TryParse(account, out var id) ? id : Guid.Empty;
         if (accountId != Guid.Empty && !await db.Accounts.AnyAsync(row => row.Id == accountId && row.ProjectId == projectId))
@@ -48,8 +50,8 @@ public static class AccountHistory
             var checks = db.Reconciliations.Where(check => check.Balances.Any(balance => balance.AccountId == accountId)).Select(check => check.Id);
             rows = rows.Where(row => row.RecordId == accountId || transfers.Contains(row.RecordId) || entries.Contains(row.RecordId) || checks.Contains(row.RecordId));
         }
-        var page = await HistoryPage.Of(rows, userId, mine, before).ToListAsync();
-        return Results.Ok(await LinesAsync(projectId, page, db));
+        return Results.Ok(await HistoryPage.LinesAsync(
+            rows, userId, mine, before, text, page => LinesAsync(projectId, page, db), line => ArabicSpelling.Holds(text, line.Amount, line.By, line.Account, line.OtherAccount, line.NameWas, line.Custodian)));
     }
 
     private static async Task<List<AccountHistoryLine>> LinesAsync(Guid projectId, List<HistoryRecord> page, RedixDbContext db)

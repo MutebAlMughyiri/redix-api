@@ -55,6 +55,22 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R104_WhatWasTypedKeepsTheLinesWhosePartnerOrAmountHoldItWhicheverWayArabicIsSpelled()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var khaled = await PartnerAsync(ledger, "خالد");
+        var nour = await PartnerAsync(ledger, "نور");
+        await MoveAsync(ledger, khaled, 1500);
+        await MoveAsync(ledger, nour, 700);
+
+        var named = await HistoryAsync(ledger.Client, ledger, $"?text={Uri.EscapeDataString("نُور")}");
+        var byAmount = await HistoryAsync(ledger.Client, ledger, "?text=1,500");
+
+        Assert.Equal([(PartnerHistoryKind.CapitalIn, "نور"), (PartnerHistoryKind.PartnerCreated, "نور")], named.Select(line => (line.Kind, line.Partner)));
+        Assert.Equal([(PartnerHistoryKind.CapitalIn, "خالد")], byAmount.Select(line => (line.Kind, line.Partner)));
+    }
+
+    [Fact]
     public async Task UC_101_OnePartnersLinesAndWhatICanBeKeptAlone()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

@@ -18,7 +18,8 @@ public static class PartnerHistory
 
     /// <summary>
     /// A page of the project's partner history. <paramref name="partner"/> keeps one partner's lines, and a partner not in the project, or not seen, answers <c>unknownPartner</c>;
-    /// <paramref name="mine"/> keeps the caller's own; <paramref name="before"/> starts after the last line of the page before.
+    /// <paramref name="mine"/> keeps the caller's own; <paramref name="text"/> keeps the lines whose partner, account, people or amount hold it (redix-app #104);
+    /// <paramref name="before"/> starts after the last line of the page before.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
@@ -26,7 +27,8 @@ public static class PartnerHistory
     /// <param name="partner">The id of one partner, or nothing for every partner: read as text, since a query's <see cref="Guid"/> cannot default.</param>
     /// <param name="mine">True for what the caller did alone.</param>
     /// <param name="before">The id of the last line already shown, or 0 for the newest.</param>
-    public static async Task<IResult> Read(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, string partner = "", bool mine = false, long before = 0)
+    /// <param name="text">What was typed in the search line; empty for every line.</param>
+    public static async Task<IResult> Read(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, string partner = "", bool mine = false, long before = 0, string text = "")
     {
         var userId = AccessTokens.UserIdOf(principal);
         var sight = await PartnerSight.OfUserAsync(userId, projectId, db);
@@ -42,8 +44,8 @@ public static class PartnerHistory
         var rows = db.History.Where(row => row.ProjectId == projectId
             && ((row.TableName == "Partners" && shown.Contains(row.RecordId))
                 || (row.TableName == "Entries" && (row.Action == HistoryAction.Approve || row.Action == HistoryAction.Reverse) && movements.Contains(row.RecordId))));
-        var page = await HistoryPage.Of(rows, userId, mine, before).ToListAsync();
-        return Results.Ok(await LinesAsync(projectId, page, db));
+        return Results.Ok(await HistoryPage.LinesAsync(
+            rows, userId, mine, before, text, page => LinesAsync(projectId, page, db), line => ArabicSpelling.Holds(text, line.Amount, line.By, line.Partner, line.Account, line.NameWas, line.Login)));
     }
 
     private static async Task<List<PartnerHistoryLine>> LinesAsync(Guid projectId, List<HistoryRecord> page, RedixDbContext db)

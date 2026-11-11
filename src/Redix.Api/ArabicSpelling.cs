@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Redix.Api;
 
 /// <summary>
@@ -24,6 +26,15 @@ public static class ArabicSpelling
     /// <summary><paramref name="text"/> with one form of each letter and no tashkeel; anything else stays as it is.</summary>
     public static string Normalize(string text) =>
         string.Concat(text.Where(letter => letter is < FirstTashkeel or > LastTashkeel).Select(letter => Letters.GetValueOrDefault(letter, letter)));
+
+    /// <summary>
+    /// Whether <paramref name="typed"/>, read as this rule reads it and in any case, is in one of <paramref name="words"/> or in <paramref name="amount"/> written plain
+    /// (<c>1234.5</c>) or grouped (<c>1,234.50</c>); true when nothing was typed. The one way a list searched on the API matches what was typed (redix-app #104).
+    /// </summary>
+    public static bool Holds(string typed, decimal amount, params string[] words) =>
+        Searchable(string.Join(' ', [.. words, amount.ToString("0.##", CultureInfo.InvariantCulture), amount.ToString("#,0.00", CultureInfo.InvariantCulture)])).Contains(Searchable(typed));
+
+    private static string Searchable(string text) => Normalize(text.Trim()).ToLowerInvariant();
 
     /// <summary>The same rule over the column <paramref name="column"/>, as a SQL expression, for the migration that fills rows saved before it.</summary>
     public static string SqlOf(string column)
