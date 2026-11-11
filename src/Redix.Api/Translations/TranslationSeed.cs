@@ -651,6 +651,8 @@ public static class TranslationSeed
         ("partners.deleteKeepsMovements", "They leave Partners and Add entry; their movements stay in the books and reports.", "يختفي من الشركاء ومن إضافة قيد، وتبقى حركاته في السجلات والتقارير."),
         ("partners.deleted", "Partner deleted.", "تم حذف الشريك."),
         ("partners.partnerNotDeletable", "A partner is deleted only at zero capital with nothing waiting.", "لا يُحذف الشريك إلا ورأس ماله صفر ولا ينتظر له قيد."),
+        ("partners.draftsBy", "A draft by {0} names them.", "مسودة لـ{0} تذكره."),
+        ("partners.deleteRemovesMyDrafts", "Your drafts naming them are deleted with them:", "وتُحذف معه مسوداتك التي تذكره:"),
         ("partners.name", "Partner name", "اسم الشريك"),
         ("partners.login", "Partner's account", "حساب الشريك"),
         ("partners.noLogin", "No login", "بدون حساب دخول"),

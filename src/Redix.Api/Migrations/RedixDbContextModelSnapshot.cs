@@ -11824,6 +11824,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("41862f4c-661b-5d95-c629-8f00a0937b4f"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8f49d7b4-08aa-6c94-9aad-334dac55b2da"),
+                            Value = "A draft by {0} names them."
+                        },
+                        new
+                        {
+                            Id = new Guid("ea134a38-26b0-5b1f-83a7-aa03b4db147b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8f49d7b4-08aa-6c94-9aad-334dac55b2da"),
+                            Value = "مسودة لـ{0} تذكره."
+                        },
+                        new
+                        {
+                            Id = new Guid("4278aa6c-1d4e-bef1-c377-5695d3ef30b9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("78c8f6e2-468d-81ad-0c0c-7c46de910feb"),
+                            Value = "Your drafts naming them are deleted with them:"
+                        },
+                        new
+                        {
+                            Id = new Guid("6e82f6c8-d992-41a4-0633-34ad24225097"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("78c8f6e2-468d-81ad-0c0c-7c46de910feb"),
+                            Value = "وتُحذف معه مسوداتك التي تذكره:"
+                        },
+                        new
+                        {
                             Id = new Guid("e38ba2fd-e815-7c4b-134e-9702bece859b"),
                             Language = "en",
                             TranslationKeyId = new Guid("79c8bd2c-4f2f-eff3-df8c-826c8386cfd1"),
@@ -17885,6 +17913,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("a7863f42-dee1-5ffc-ca2c-d1704003e515"),
                             Description = "",
                             Key = "partners.partnerNotDeletable"
+                        },
+                        new
+                        {
+                            Id = new Guid("8f49d7b4-08aa-6c94-9aad-334dac55b2da"),
+                            Description = "",
+                            Key = "partners.draftsBy"
+                        },
+                        new
+                        {
+                            Id = new Guid("78c8f6e2-468d-81ad-0c0c-7c46de910feb"),
+                            Description = "",
+                            Key = "partners.deleteRemovesMyDrafts"
                         },
                         new
                         {

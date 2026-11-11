@@ -81,6 +81,36 @@ public class PartnerDeleteTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Row_199_SomeoneElsesDraftHoldsThePartnerAndSaysWhoseWhileTheCallersOwnDraftsAreDeletedWithThem()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partnerId = await PartnerAsync(ledger, "شريك المسودات");
+        var (other, otherId) = await ledger.MemberAsync("Finance");
+        await factory.WithDatabaseAsync(db => db.Users.Where(user => user.Id == otherId).ExecuteUpdateAsync(user => user.SetProperty(row => row.DisplayName, "نواف")));
+        var othersDraft = await ledger.PartnerEntryAsync(partnerId, 500m) with { Submit = false };
+        (await ledger.PostAsync(othersDraft, other)).EnsureSuccessStatusCode();
+        var myDraft = await ledger.PartnerEntryAsync(partnerId, 300m) with { Submit = false };
+        (await ledger.PostAsync(myDraft)).EnsureSuccessStatusCode();
+
+        var held = (await PartnersAsync(ledger)).Single(row => row.Id == partnerId);
+        var refused = await DeleteAsync(ledger, partnerId);
+
+        Assert.False(held.MayDelete);
+        Assert.Equal(["نواف"], held.OthersDrafts);
+        Assert.Equal([300m], held.MyDrafts.Select(draft => draft.Amount));
+        Assert.Equal((HttpStatusCode.Conflict, "partnerNotDeletable"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+
+        (await other.PostAsync($"/projects/{ledger.ProjectId}/entries/{othersDraft.Id}/delete", null)).EnsureSuccessStatusCode();
+        var free = (await PartnersAsync(ledger)).Single(row => row.Id == partnerId);
+        (await DeleteAsync(ledger, partnerId)).EnsureSuccessStatusCode();
+
+        Assert.True(free.MayDelete);
+        Assert.Empty(free.OthersDrafts);
+        Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(entry => entry.Id == myDraft.Id)));
+        Assert.True(await ledger.ReadAsync(db => db.History.AnyAsync(row => row.Action == HistoryAction.Delete && row.RecordId == myDraft.Id)));
+    }
+
+    [Fact]
     public async Task UC_100_ADeletedPartnerCannotBeChosenForSomeone()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
