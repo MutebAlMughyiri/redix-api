@@ -9,6 +9,7 @@
 | Route | What it answers |
 | --- | --- |
 | `GET /projects/{id}/entries/pending` | What waits, oldest first: its date, total, item, supplier, an older bill's number, account, notes and author, with its file when it has one |
+| `GET /projects/{id}/approvals/history` | What was decided, newest first, 50 a page: each entry approved or rejected, by whom and when, a rejection with its reason; `kind`, `mine`, `text` and `before` as the other histories take them (Muteb, 12 Nov 2026) |
 
 | Rule | Code | Test |
 | --- | --- | --- |
