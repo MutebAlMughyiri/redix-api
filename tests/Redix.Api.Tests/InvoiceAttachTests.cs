@@ -6,7 +6,6 @@ using Redix.Api.Accounts;
 using Redix.Api.History;
 using Redix.Api.Entries;
 using Redix.Api.Notifications;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

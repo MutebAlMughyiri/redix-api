@@ -2,10 +2,8 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Projects;
-using Redix.Api.Structure;
 
 namespace Redix.Api.History;
 

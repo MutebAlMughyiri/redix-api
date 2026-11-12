@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
-using Redix.Api.Projects;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;

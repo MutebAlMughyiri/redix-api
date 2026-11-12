@@ -10,7 +10,6 @@ using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
-using Redix.Api.Revenue;
 
 namespace Redix.Api.Tests;
 

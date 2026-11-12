@@ -1,7 +1,6 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Entries;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

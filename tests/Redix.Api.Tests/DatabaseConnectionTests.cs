@@ -1,6 +1,5 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

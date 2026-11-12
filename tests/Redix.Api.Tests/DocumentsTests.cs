@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Redix.Api.Attachments;
 using Redix.Api.Documents;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

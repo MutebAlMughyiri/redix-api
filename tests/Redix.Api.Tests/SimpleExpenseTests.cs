@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Attachments;
 using Redix.Api.Entries;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

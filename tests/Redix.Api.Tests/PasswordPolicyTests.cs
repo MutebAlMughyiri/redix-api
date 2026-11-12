@@ -1,5 +1,4 @@
 using Redix.Api.Auth;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

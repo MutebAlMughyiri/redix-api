@@ -7,7 +7,6 @@ using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Reports;
 using Redix.Api.Structure;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

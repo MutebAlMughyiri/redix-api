@@ -6,11 +6,8 @@ using Redix.Api.Accounts;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Notifications;
-using Redix.Api.Projects;
 using Redix.Api.Reports;
-using Redix.Api.Revenue;
 using Redix.Api.Structure;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

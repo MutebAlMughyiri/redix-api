@@ -16,7 +16,6 @@ using Redix.Api.Documents;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Reports;
-using Redix.Api.Revenue;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
 using Redix.Api.Structure;

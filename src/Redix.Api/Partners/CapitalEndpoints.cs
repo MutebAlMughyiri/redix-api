@@ -1,10 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Redix.Api.Accounts;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
-using Redix.Api.Projects;
-using Redix.Api.Structure;
 
 namespace Redix.Api.Partners;
 

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Auth;
-using Redix.Api.Entries;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;

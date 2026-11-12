@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Text.Json;
 using ClosedXML.Excel;
 using Redix.Api.Accounts;
-using Redix.Api.Partners;
 using Redix.Api.Structure;
 using Redix.Api.Translations;
 

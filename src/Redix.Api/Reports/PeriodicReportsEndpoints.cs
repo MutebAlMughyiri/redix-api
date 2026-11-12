@@ -3,10 +3,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Auth;
-using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
-using Redix.Api.Revenue;
 
 namespace Redix.Api.Reports;
 

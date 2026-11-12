@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Notifications;
-using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Suppliers;
 

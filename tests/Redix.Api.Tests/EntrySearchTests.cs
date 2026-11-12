@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net.Http.Json;
 using Redix.Api.Entries;
 using Redix.Api.Structure;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

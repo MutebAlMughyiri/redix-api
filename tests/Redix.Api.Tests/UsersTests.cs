@@ -4,7 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Redix.Api.History;
 using Redix.Api.Auth;
-using Redix.Api.Projects;
 
 namespace Redix.Api.Tests;
 

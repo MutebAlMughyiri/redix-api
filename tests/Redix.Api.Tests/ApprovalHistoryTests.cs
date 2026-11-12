@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Entries;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

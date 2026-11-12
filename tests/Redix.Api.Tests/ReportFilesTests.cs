@@ -12,7 +12,6 @@ using Redix.Api.Partners;
 using Redix.Api.Reports;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

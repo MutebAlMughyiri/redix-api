@@ -4,7 +4,6 @@ using System.Text.Json;
 using Redix.Api.Entries;
 using Redix.Api.Structure;
 using Redix.Api.Sync;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
-using Redix.Api.Projects;
 
 namespace Redix.Api.Notifications;
 

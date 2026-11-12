@@ -7,7 +7,6 @@ using Redix.Api.Accounts;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Notifications;
-using Xunit;
 
 namespace Redix.Api.Tests;
 

@@ -5,7 +5,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
-using Redix.Api.Structure;
 using Redix.Api.Suppliers;
 
 namespace Redix.Api.Tests;
