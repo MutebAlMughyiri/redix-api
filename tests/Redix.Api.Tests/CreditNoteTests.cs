@@ -26,7 +26,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
     public async Task AC_14_2_D4_ACreditNoteIsANegativeTotalOfItsOwnThatTakesFromTheItem()
     {
         var ledger = await LedgerAsync();
-        await ledger.RecordAsync(ledger.Purchase(1150m) with { Submit = true });
+        await ledger.RecordAsync(ledger.Purchase() with { Submit = true });
 
         var view = await ledger.RecordAsync(CreditNote(ledger, 320m) with { Submit = true });
 
@@ -51,7 +51,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
     public async Task D4_ACreditNoteIsApprovedAloneWhereverItsBillStands()
     {
         var ledger = await LedgerAsync();
-        var bill = ledger.Purchase(1150m) with { Submit = true };
+        var bill = ledger.Purchase() with { Submit = true };
         await ledger.RecordAsync(bill);
         var note = CreditNote(ledger, 100m) with { Submit = true, AttachmentId = await ledger.FileAsync() };
         await ledger.RecordAsync(note);

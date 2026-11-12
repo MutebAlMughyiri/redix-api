@@ -84,7 +84,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     public async Task EditingAWaitingPaymentCountsItOnceKeepsTheOthersAndAnswersOk()
     {
         var setup = await ContractAsync(10000m);
-        var request = Payment(setup, 3000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
+        var request = Payment(setup) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true };
         await RecordAsync(setup, request);
         await RecordAsync(setup, Payment(setup, 1000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
 

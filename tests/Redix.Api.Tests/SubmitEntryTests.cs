@@ -231,7 +231,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest()
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.Purchase(1150m) with { Product = "أسمنت", AttachmentId = await ledger.FileAsync() });
+        var entryId = await DraftAsync(ledger, ledger.Purchase() with { Product = "أسمنت", AttachmentId = await ledger.FileAsync() });
 
         var entry = await ReadAsync(ledger, entryId);
 

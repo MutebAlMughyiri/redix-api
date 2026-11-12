@@ -70,7 +70,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         await ledger.RecordAsync(ledger.Purchase(5) with { Submit = true });
         (await ledger.PostAsync(await ledger.PartnerEntryAsync(partner, 300))).EnsureSuccessStatusCode();
         (await ledger.PostAsync(await ledger.PartnerEntryAsync(partner, 100, isWithdrawal: true))).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.RevenueAsync(ItemType.OtherRevenue, 70, ""), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.RevenueAsync(ItemType.OtherRevenue, 70), Json)).EnsureSuccessStatusCode();
 
         var summary = await ledger.Client.GetFromJsonAsync<SummaryView>($"/projects/{ledger.ProjectId}/summary", Json);
         var next = await ledger.Client.GetFromJsonAsync<NextReportView>($"/projects/{ledger.ProjectId}/periodic-reports/next", Json);
@@ -107,7 +107,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public async Task App_119_D4_ACreditNotePrintsAsItsOwnMinusRowInTheStatementsFormat()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.Purchase(1150));
+        await ApprovedAsync(ledger, ledger.Purchase());
         await ApprovedAsync(ledger, ledger.Purchase(320) with { IsCreditNote = true });
         await IssueAsync(ledger);
 

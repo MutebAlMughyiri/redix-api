@@ -25,7 +25,7 @@ public class SimpleExpenseTests(MigratedApiFactory factory)
     public async Task AC_1_AnExpenseIsSentWithItsItemSupplierDateTotalAccountAndMethodAndNoFile()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var expense = ledger.Purchase(1150m) with { Submit = true };
+        var expense = ledger.Purchase() with { Submit = true };
 
         var response = await ledger.PostAsync(expense);
 
@@ -40,7 +40,7 @@ public class SimpleExpenseTests(MigratedApiFactory factory)
     public async Task D11_ANewExpenseWritesNoInvoiceRow()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var expense = ledger.Purchase(1150m) with { AttachmentId = await ledger.FileAsync(), Submit = true };
+        var expense = ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Submit = true };
 
         await ledger.RecordAsync(expense);
 

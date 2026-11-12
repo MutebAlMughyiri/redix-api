@@ -42,7 +42,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task ARejectedRevenueEntryIsSentAgainAndWaitsOnceMore()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var sent = await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, ""));
+        var sent = await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70));
         var id = (await sent.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Ledger.Json))!.Id;
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/reject", new RejectEntryRequest("المبلغ خطأ"), Ledger.Json)).EnsureSuccessStatusCode();
 
@@ -79,7 +79,7 @@ public class RevenueTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var itemId = await ledger.RevenueItemAsync(ItemType.OtherRevenue);
         var category = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories", Ledger.Json))!.Single(row => row.Items.Any(item => item.Id == itemId));
-        var request = await ledger.RevenueOnAsync(itemId, 70, "");
+        var request = await ledger.RevenueOnAsync(itemId, 70);
         (await SendAsync(ledger, request)).EnsureSuccessStatusCode();
         (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/categories/{category.Id}/disable", null)).EnsureSuccessStatusCode();
 
@@ -95,7 +95,7 @@ public class RevenueTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var before = await FiguresAsync(ledger);
 
-        var id = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.VatRefund, 140, "")));
+        var id = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.VatRefund, 140)));
 
         var after = await FiguresAsync(ledger);
         Assert.Equal(before.Revenue + 140, after.Revenue);
@@ -153,7 +153,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task App_119_RemovingASaleTakesItOutOfTheRevenue()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var id = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.Sale, 1150, "")));
+        var id = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.Sale, 1150)));
         Assert.Equal(1150m, (await FiguresAsync(ledger)).Sales);
 
         await RemoveAsync(ledger, id);
@@ -235,7 +235,7 @@ public class RevenueTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
         var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
-        var revenue = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, "")));
+        var revenue = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70)));
         var capital = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 500, notes: ""), Json);
         var capitalId = (await capital.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
 
@@ -251,7 +251,7 @@ public class RevenueTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
         var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
-        var revenue = (await (await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, ""))).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
+        var revenue = (await (await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70))).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
         var capital = (await (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 500, notes: ""), Json)).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
 
         (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{revenue}")).EnsureSuccessStatusCode();
@@ -301,7 +301,7 @@ public class RevenueTests(MigratedApiFactory factory)
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
         var partner = (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single().Id;
         await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 500, notes: ""), Json));
-        await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, "")));
+        await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70)));
         var (reader, _) = await ledger.MemberAsync("Reader");
 
         var summary = (await reader.GetFromJsonAsync<SummaryView>($"/projects/{ledger.ProjectId}/summary", Json))!;
@@ -315,7 +315,7 @@ public class RevenueTests(MigratedApiFactory factory)
     public async Task AC_46_7_TheSummaryKeepsRevenueCategoriesApartFromExpenseOnes()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.VatRefund, 40, "")));
+        await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.VatRefund, 40)));
 
         var summary = (await ledger.Client.GetFromJsonAsync<SummaryView>($"/projects/{ledger.ProjectId}/summary", Json))!;
 

@@ -87,7 +87,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     public async Task AnAuthorChangesTheirDraftAndItHoldsTheNewValues()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(1150m);
+        var request = ledger.Purchase();
         await ledger.RecordAsync(request);
 
         (await EditAsync(ledger.Client, ledger, request with { Amount = 2300m, Notes = "بعد التصحيح" })).EnsureSuccessStatusCode();
@@ -118,7 +118,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     public async Task EveryChangeIsInTheHistoryWithTheValuesBeforeAndAfter()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(1150m);
+        var request = ledger.Purchase();
         await ledger.RecordAsync(request);
 
         (await EditAsync(ledger.Client, ledger, request with { Amount = 2300m })).EnsureSuccessStatusCode();

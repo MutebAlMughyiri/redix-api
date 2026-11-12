@@ -107,7 +107,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
 
         var refused = await UploadAsync(client, project.Id, "<script>"u8.ToArray(), "invoice.pdf", "application/pdf");
-        var kept = await UploadAsync(client, project.Id, Pdf, "invoice.jpg", "image/jpeg");
+        var kept = await UploadAsync(client, project.Id, Pdf, "invoice.png", "image/png");
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         Assert.Equal("invalidFileType", await CodeOf(refused));

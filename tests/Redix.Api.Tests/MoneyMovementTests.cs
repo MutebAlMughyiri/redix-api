@@ -275,7 +275,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "نواف");
         await MoveAsync(ledger, await ContributionAsync(ledger, partner, 1000));
         var item = await ledger.RevenueItemAsync(ItemType.VatRefund);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.RevenueOnAsync(item, 140, ""), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.RevenueOnAsync(item, 140), Json)).EnsureSuccessStatusCode();
 
         var waiting = (await ledger.Client.GetFromJsonAsync<List<PendingEntryView>>($"/projects/{ledger.ProjectId}/entries/pending", Json))!;
 

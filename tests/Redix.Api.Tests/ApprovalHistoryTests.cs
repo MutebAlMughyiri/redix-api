@@ -19,7 +19,7 @@ public class ApprovalHistoryTests(MigratedApiFactory factory)
     private async Task<Ledger> DecidedAsync()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.ApproveAsync(await ledger.PostAsync(ledger.Purchase(1150m) with { Submit = true }));
+        await ledger.ApproveAsync(await ledger.PostAsync(ledger.Purchase() with { Submit = true }));
         var rejected = (await (await ledger.PostAsync(ledger.Purchase(300m) with { Submit = true })).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{rejected}/reject", new RejectEntryRequest("فاتورة مكررة"), Json)).EnsureSuccessStatusCode();
         await factory.WithDatabaseAsync(db => db.Users.Where(user => db.History.Any(row => row.ProjectId == ledger.ProjectId && row.TableName == "Entries" && row.UserId == user.Id))
