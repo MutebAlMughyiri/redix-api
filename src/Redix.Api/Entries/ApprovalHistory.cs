@@ -29,7 +29,7 @@ public static class ApprovalHistory
     /// <param name="text">What was typed in the search line; empty for every line.</param>
     public static async Task<IResult> Read(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, string kind = "", bool mine = false, long before = 0, string text = "")
     {
-        EntryKind[] kinds = Enum.TryParse<EntryKind>(kind, true, out var chosen) ? [chosen] : Enum.GetValues<EntryKind>();
+        IReadOnlyList<EntryKind> kinds = Enum.TryParse<EntryKind>(kind, true, out var chosen) ? [chosen] : Enum.GetValues<EntryKind>();
         var decided = db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status != EntryStatus.Removed && kinds.Contains(entry.Kind)).Select(entry => entry.Id);
         var rows = db.History.Where(row => row.ProjectId == projectId && row.TableName == "Entries"
             && (row.Action == HistoryAction.Approve || row.Action == HistoryAction.Reject) && decided.Contains(row.RecordId));

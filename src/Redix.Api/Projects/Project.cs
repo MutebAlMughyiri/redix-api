@@ -51,7 +51,7 @@ public class Project
     public bool IsReadOnly => Status == ProjectStatus.Finished;
 
     /// <summary>Where a project stands once the admin has let it in, so permissions count in it (BR-34).</summary>
-    public static readonly ProjectStatus[] ApprovedStatuses = [ProjectStatus.Active, ProjectStatus.Finished];
+    public static readonly IReadOnlyList<ProjectStatus> ApprovedStatuses = [ProjectStatus.Active, ProjectStatus.Finished];
 
     /// <summary>True once the admin has let it in, so permissions count in it (BR-34).</summary>
     public bool IsApproved => ApprovedStatuses.Contains(Status);
