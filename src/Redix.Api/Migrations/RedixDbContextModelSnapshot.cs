@@ -6275,6 +6275,62 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("1e79722a-e349-6e16-bf81-1e6d89752e97"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d08b5b27-7569-2575-31ea-7b34b9f9e878"),
+                            Value = "Remove it?"
+                        },
+                        new
+                        {
+                            Id = new Guid("009cb907-266d-c459-8d48-670708f7e3e6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d08b5b27-7569-2575-31ea-7b34b9f9e878"),
+                            Value = "حذفه؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("4faf3b4a-e2c7-30ab-f1e0-5347398e6127"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e731e945-d131-6d29-8c16-9323b51e3c8f"),
+                            Value = "Removed."
+                        },
+                        new
+                        {
+                            Id = new Guid("8ef0379e-38ee-015d-7acb-862575173b37"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e731e945-d131-6d29-8c16-9323b51e3c8f"),
+                            Value = "حُذف."
+                        },
+                        new
+                        {
+                            Id = new Guid("a77e7b43-a910-603b-c0b9-fcf5735c0f84"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e1c72b1e-831a-6c6e-aab3-b646bf173c80"),
+                            Value = "Undo"
+                        },
+                        new
+                        {
+                            Id = new Guid("7b181123-b765-2047-838f-02a6733014de"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e1c72b1e-831a-6c6e-aab3-b646bf173c80"),
+                            Value = "تراجع"
+                        },
+                        new
+                        {
+                            Id = new Guid("5bc47b9c-6b4e-b110-7c46-44c7b4491220"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ad754a8d-9ee5-26fa-dd40-b6caa50d56a3"),
+                            Value = "Remove this approved entry?"
+                        },
+                        new
+                        {
+                            Id = new Guid("1d9788c3-5124-5869-63ae-8644ef92f74a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ad754a8d-9ee5-26fa-dd40-b6caa50d56a3"),
+                            Value = "حذف هذا القيد المعتمد؟"
+                        },
+                        new
+                        {
                             Id = new Guid("37987c1b-10fb-1f47-e59c-a1d31626a59c"),
                             Language = "en",
                             TranslationKeyId = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
@@ -15432,6 +15488,30 @@ namespace Redix.Api.Migrations
                             Id = new Guid("a600acec-e37d-ba1c-1ec4-322b87ac9712"),
                             Description = "",
                             Key = "swipe.remove"
+                        },
+                        new
+                        {
+                            Id = new Guid("d08b5b27-7569-2575-31ea-7b34b9f9e878"),
+                            Description = "",
+                            Key = "swipe.question"
+                        },
+                        new
+                        {
+                            Id = new Guid("e731e945-d131-6d29-8c16-9323b51e3c8f"),
+                            Description = "",
+                            Key = "swipe.removed"
+                        },
+                        new
+                        {
+                            Id = new Guid("e1c72b1e-831a-6c6e-aab3-b646bf173c80"),
+                            Description = "",
+                            Key = "common.undo"
+                        },
+                        new
+                        {
+                            Id = new Guid("ad754a8d-9ee5-26fa-dd40-b6caa50d56a3"),
+                            Description = "",
+                            Key = "entries.removeQuestion"
                         },
                         new
                         {

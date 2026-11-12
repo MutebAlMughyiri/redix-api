@@ -429,3 +429,6 @@ FodyWeavers.xsd
 
 # Rider: its folder stays on the machine, because it can hold data-source settings
 .idea/
+
+# Coverage reports (tools/coverage.ps1)
+/coverage/

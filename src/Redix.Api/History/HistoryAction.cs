@@ -72,6 +72,9 @@ public enum HistoryAction
     /// <summary>A unit, a document, an account nothing named or an entry was deleted (redix-api #96, redix-app #89), or an approved entry removed softly (redix-api #119).</summary>
     Delete,
 
+    /// <summary>An approved entry removed softly was brought back, the undo of its removal (redix-api #119).</summary>
+    Restore,
+
     /// <summary>
     /// An entry approved at once as the opposite of another, written by reversing before it went (redix-api #119, D5). Nothing writes it now; it stays because History rows never
     /// change (AC-21.1), and the histories read it as the approval of an ordinary entry.

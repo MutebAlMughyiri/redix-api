@@ -205,6 +205,37 @@ public class RemoveApprovedEntryTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Undo_ARemovedEntryComesBackWithEveryFigureAndTheHistorySaysWho()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (remover, removerId) = await RemoverAsync(ledger);
+        var id = await ApprovedAsync(ledger, ledger.Purchase(300m));
+        (await DeleteAsync(remover, ledger, id)).EnsureSuccessStatusCode();
+
+        (await remover.PostAsync($"/projects/{ledger.ProjectId}/entries/{id}/restore", null)).EnsureSuccessStatusCode();
+
+        Assert.Equal(EntryStatus.Approved, await StatusOfAsync(ledger, id));
+        Assert.Equal(300m, (await ReadAsync<SummaryView>(ledger, "summary")).Expenses);
+        Assert.Contains(id, (await ReadAsync<List<EntryRowView>>(ledger, "entries")).Select(row => row.Id));
+        var restored = (await factory.HistoryOfAsync(id)).Last();
+        Assert.Equal((HistoryAction.Restore, removerId), (restored.Action, restored.UserId));
+    }
+
+    [Fact]
+    public async Task Undo_OnlyARemovedEntryComesBackAndOnlyForWhoeverHoldsTheRemoval()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (remover, _) = await RemoverAsync(ledger);
+        var id = await ApprovedAsync(ledger, ledger.Purchase(300m));
+
+        Assert.Equal(HttpStatusCode.NotFound, (await remover.PostAsync($"/projects/{ledger.ProjectId}/entries/{id}/restore", null)).StatusCode);
+        (await DeleteAsync(remover, ledger, id)).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Forbidden, (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{id}/restore", null)).StatusCode);
+
+        Assert.Equal(EntryStatus.Removed, await StatusOfAsync(ledger, id));
+    }
+
+    [Fact]
     public async Task D2_AReportIssuedBeforeKeepsTheRemovedEntryAndTheNextShowsTheDifference()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

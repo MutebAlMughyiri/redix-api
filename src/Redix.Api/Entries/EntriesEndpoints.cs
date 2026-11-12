@@ -28,6 +28,7 @@ public static class EntriesEndpoints
         changes.MapPost("/entries/{entryId:guid}/submit", Submit);
         changes.MapPut("/entries/{entryId:guid}/notes", ChangeNotes);
         app.MapProjectChanges(Permission.ReadProject).MapDelete("/entries/{entryId:guid}", Delete);
+        app.MapProjectChanges(Permission.RemoveApprovedEntries).MapPost("/entries/{entryId:guid}/restore", Restore);
     }
 
     /// <summary>Where the caller's own entries stand in the project, newest first.</summary>
@@ -225,6 +226,26 @@ public static class EntriesEndpoints
             return Refusal.Of(status, refusal);
         }
         await EntryChanges.DeleteAsync(entry, userId, at, db);
+        return Results.Ok();
+    }
+
+    /// <summary>
+    /// Brings back an approved entry removed softly, the undo of its removal (redix-api #119, Muteb 12 Nov 2026): it is approved again with all it held, so it is back in every
+    /// list and figure, and the History table keeps who brought it back and when. One that is not removed, or not this project's, answers 404.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="entryId">The entry.</param>
+    /// <param name="principal">The caller's session.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="time">The current time.</param>
+    public static async Task<IResult> Restore(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var entry = await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId && row.Status == EntryStatus.Removed);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        await EntryChanges.RestoreAsync(entry, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
         return Results.Ok();
     }
 

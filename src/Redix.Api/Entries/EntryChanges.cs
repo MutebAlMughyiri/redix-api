@@ -85,6 +85,14 @@ public static class EntryChanges
         await db.SaveChangesAsync();
     }
 
+    /// <summary>Brings back an entry <see cref="RemoveAsync"/> removed: approved again, back in every list and figure, with a History row saying who and when.</summary>
+    public static async Task RestoreAsync(Entry entry, Guid userId, DateTime at, RedixDbContext db)
+    {
+        entry.Status = EntryStatus.Approved;
+        db.AddHistory(entry, HistoryAction.Restore, userId, at);
+        await db.SaveChangesAsync();
+    }
+
     private static async Task RemoveDetailsAsync(Guid entryId, Guid userId, DateTime at, RedixDbContext db)
     {
         List<object> details =
