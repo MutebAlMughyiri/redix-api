@@ -6798,20 +6798,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("1354ddba-a368-af89-4f5d-ef95c9b077c2"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("154538a6-9cb8-c1a1-f668-ff761eaa4c86"),
-                            Value = "Revenue and expenses"
-                        },
-                        new
-                        {
-                            Id = new Guid("f6db13d7-0a0d-c42d-e0dc-cd5cf80bf1ba"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("154538a6-9cb8-c1a1-f668-ff761eaa4c86"),
-                            Value = "الإيرادات والمصروفات"
-                        },
-                        new
-                        {
                             Id = new Guid("27551e78-834a-b2be-5c05-da732d084acd"),
                             Language = "en",
                             TranslationKeyId = new Guid("a8a282dd-76f5-b557-a0d1-b8916c10db8c"),
@@ -11614,6 +11600,48 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("591e93bf-4d7d-4960-163d-c20d7eb72311"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("658b933b-4e23-f89c-a3f2-f3854b064465"),
+                            Value = "Approved: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("267604cc-9d02-d756-d785-7fd2e3b2d03a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("658b933b-4e23-f89c-a3f2-f3854b064465"),
+                            Value = "اعتماد: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("54b7566e-df19-911a-587d-3fec3321a9f1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a303f630-0e5c-ceb7-348c-4724d9f37752"),
+                            Value = "Rejected: {0}, because {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("9d7feb18-5b2e-8d12-1792-05188d3f865d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a303f630-0e5c-ceb7-348c-4724d9f37752"),
+                            Value = "رفض: {0}، والسبب: {1}"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0cd70d9-d4a3-c98a-eb0e-1ea41f8086ca"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c7dce5a3-7e8d-86fa-8fd9-7ad75dc54007"),
+                            Value = "History"
+                        },
+                        new
+                        {
+                            Id = new Guid("1a4c4f3e-3fe2-7d5d-794e-5ea391d9be98"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c7dce5a3-7e8d-86fa-8fd9-7ad75dc54007"),
+                            Value = "السجل"
+                        },
+                        new
+                        {
                             Id = new Guid("110abad0-c036-72f8-fc60-20ac37e7da13"),
                             Language = "en",
                             TranslationKeyId = new Guid("666082ac-4221-7539-3047-ab60621f529c"),
@@ -15860,12 +15888,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("154538a6-9cb8-c1a1-f668-ff761eaa4c86"),
-                            Description = "",
-                            Key = "reports.revenueAndExpenses"
-                        },
-                        new
-                        {
                             Id = new Guid("a8a282dd-76f5-b557-a0d1-b8916c10db8c"),
                             Description = "",
                             Key = "reports.partners"
@@ -17921,6 +17943,24 @@ namespace Redix.Api.Migrations
                             Id = new Guid("3ef9fec2-4eac-7979-e614-e6fd0ed5ff44"),
                             Description = "",
                             Key = "history.approvedBy"
+                        },
+                        new
+                        {
+                            Id = new Guid("658b933b-4e23-f89c-a3f2-f3854b064465"),
+                            Description = "",
+                            Key = "history.entryApproved"
+                        },
+                        new
+                        {
+                            Id = new Guid("a303f630-0e5c-ceb7-348c-4724d9f37752"),
+                            Description = "",
+                            Key = "history.entryRejected"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7dce5a3-7e8d-86fa-8fd9-7ad75dc54007"),
+                            Description = "",
+                            Key = "approvals.history"
                         },
                         new
                         {

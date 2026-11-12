@@ -104,6 +104,7 @@ app.MapTransfers();
 app.MapAccountHistory();
 app.MapPartners();
 app.MapPartnerHistory();
+app.MapApprovalHistory();
 app.MapSuppliers();
 app.MapContracts();
 app.MapAttachments();
