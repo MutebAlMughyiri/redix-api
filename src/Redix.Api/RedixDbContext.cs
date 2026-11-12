@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Attachments;
@@ -6,6 +7,7 @@ using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Documents;
 using Redix.Api.Entries;
+using Redix.Api.Notifications;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Settings;
@@ -21,6 +23,9 @@ namespace Redix.Api;
 /// </summary>
 public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContext(options)
 {
+    /// <summary>How long an enum member's name may be where the database stores it: in a lookup table, and in a column that stores the enum by name.</summary>
+    private const int EnumNameMaxLength = 30;
+
     /// <summary>Every word the app shows, with its value in each language.</summary>
     public DbSet<TranslationKey> TranslationKeys => Set<TranslationKey>();
 
@@ -457,13 +462,28 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<HistoryRecord>(history =>
         {
             history.ToTable(nameof(History), table => table.HasTrigger("HistoryIsAppendOnly"));
-            history.Property(a => a.Action).HasConversion<string>().HasMaxLength(30).IsUnicode(false);
+            history.Property(a => a.Action).HasConversion<string>().HasMaxLength(EnumNameMaxLength).IsUnicode(false);
             history.Property(a => a.TableName).HasMaxLength(128).IsUnicode(false);
             history.Property(a => a.Before).HasColumnType("json");
             history.Property(a => a.After).HasColumnType("json");
             history.HasOne<User>().WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
             history.HasIndex(a => new { a.ProjectId, a.Id }).IncludeProperties(a => new { a.At, a.UserId, a.Action, a.TableName, a.RecordId });
         });
+
+        HasLookup(modelBuilder, (Account account) => account.Type);
+        HasLookup(modelBuilder, (Entry entry) => entry.Kind);
+        HasLookup(modelBuilder, (Entry entry) => entry.Status);
+        HasLookup(modelBuilder, (EntryAttachment entryAttachment) => entryAttachment.Role);
+        HasLookup(modelBuilder, (EntryDecision decision) => decision.Action);
+        HasLookup(modelBuilder, (CapitalMovementDetails details) => details.Type);
+        HasLookup(modelBuilder, (Notification notification) => notification.Kind);
+        HasLookup(modelBuilder, (Project project) => project.Status);
+        HasLookup(modelBuilder, (Item item) => item.Type);
+        HasLookup(modelBuilder, (DefaultColumn column) => column.ItemType);
+        HasLookup(modelBuilder, (DefaultColumn column) => column.DataType);
+        HasLookup(modelBuilder, (ItemColumn column) => column.DataType);
+        HasLookup(modelBuilder, (Supplier supplier) => supplier.Status);
+        HasLookup(modelBuilder, (HistoryRecord history) => history.Action);
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
@@ -477,4 +497,27 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     }
 
     private static string NamesOf<TEnum>() where TEnum : struct, Enum => string.Join(", ", Enum.GetNames<TEnum>().Select(name => $"'{name}'"));
+
+    /// <summary>
+    /// Points <paramref name="column"/> at its enum's lookup table, <c>LK_{enum}</c> (redix-api #87), made the first time a column names the enum and seeded from its members, so it cannot
+    /// drift from the enum. The foreign key goes to the member's number, or to its name where the column stores the name, so no stored row changes.
+    /// </summary>
+    private static void HasLookup<TEntity, TEnum>(ModelBuilder modelBuilder, Expression<Func<TEntity, TEnum>> column) where TEntity : class where TEnum : struct, Enum
+    {
+        if (modelBuilder.Model.FindEntityType(typeof(Lookup<TEnum>)) is null)
+        {
+            modelBuilder.Entity<Lookup<TEnum>>(lookup =>
+            {
+                lookup.ToTable($"LK_{typeof(TEnum).Name}");
+                lookup.Property(row => row.Name).HasConversion<string>().HasMaxLength(EnumNameMaxLength).IsUnicode(false);
+                lookup.HasAlternateKey(row => row.Name);
+                lookup.HasData(Enum.GetValues<TEnum>().Select(member => new Lookup<TEnum> { Id = member, Name = member }));
+            });
+        }
+
+        var entity = modelBuilder.Entity<TEntity>();
+        var stored = entity.Property(column).Metadata;
+        var key = stored.GetProviderClrType() == typeof(string) ? nameof(Lookup<TEnum>.Name) : nameof(Lookup<TEnum>.Id);
+        entity.HasOne<Lookup<TEnum>>().WithMany().HasForeignKey(stored.Name).HasPrincipalKey(key).OnDelete(DeleteBehavior.Restrict);
+    }
 }

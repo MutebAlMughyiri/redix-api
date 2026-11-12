@@ -5,6 +5,7 @@ The server of REDIX (Real Estate Development Intelligence): it keeps every proje
 | Page | Read it to |
 | --- | --- |
 | [Architecture](ARCHITECTURE.md) | See how the API is built, where each thing lives, and how a request flows |
+| [Database](database.md) | See every table, its columns and keys, what each points at, the lookup tables and their values, and the diagrams of how the tables relate |
 | [Decisions](decisions.md) | Know why things are as they are |
 | [Use cases](#use-cases) | Know what each part does, who may use it, and where each rule lives in the code |
 | Swagger, at `/swagger` outside production | Call an endpoint: its purpose, request, response and errors come from the code's doc comments |

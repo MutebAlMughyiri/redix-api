@@ -51,6 +51,8 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId");
 
+                    b.HasIndex("Type");
+
                     b.ToTable("Accounts");
                 });
 
@@ -618,6 +620,10 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("Kind");
+
+                    b.HasIndex("Status");
+
                     b.HasIndex("ProjectId", "Status");
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ProjectId", "Status"), new[] { "Kind", "Amount", "AccountId" });
@@ -645,6 +651,8 @@ namespace Redix.Api.Migrations
                     b.HasKey("EntryId", "AttachmentId");
 
                     b.HasIndex("AttachmentId");
+
+                    b.HasIndex("Role");
 
                     b.ToTable("EntryAttachments");
                 });
@@ -681,6 +689,8 @@ namespace Redix.Api.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Action");
 
                     b.HasIndex("EntryId");
 
@@ -829,6 +839,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Action");
+
                     b.HasIndex("UserId");
 
                     b.HasIndex("ProjectId", "Id");
@@ -841,6 +853,666 @@ namespace Redix.Api.Migrations
                         });
 
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Accounts.AccountType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_AccountType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Bank"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "CashCustody"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryAttachmentRole>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryAttachmentRole", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Invoice"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Receipt"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "BankReceipt"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Other"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryDecisionAction>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryDecisionAction", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Submit"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Approve"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Reject"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryKind>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryKind", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Purchase"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "ContractorPayment"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "CapitalIn"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "CapitalOut"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "Revenue"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryStatus>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryStatus", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Draft"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "PendingApproval"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Approved"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Rejected"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "Removed"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.History.HistoryAction>", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LK_HistoryAction", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 0,
+                            Name = "SignIn"
+                        },
+                        new
+                        {
+                            Id = 1,
+                            Name = "SignOut"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "SignInFailed"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "AccountLocked"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "ChangePassword"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "Create"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "Update"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Name = "ResetPassword"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Name = "Disable"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Name = "Enable"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Name = "AssignProject"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Name = "RemoveProject"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Name = "RegisterProject"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Name = "ApproveProject"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Name = "Approve"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Name = "Reject"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Name = "RejectProject"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Name = "TurnOnBiometrics"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Name = "TurnOffBiometrics"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Name = "Submit"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Name = "Attach"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Name = "CloseProject"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Name = "Delete"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Name = "Restore"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Name = "Reverse"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Notifications.NotificationKind>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_NotificationKind", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "EntrySubmitted"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "EntryApproved"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "EntryRejected"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "ProjectApproved"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "ProjectRejected"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Partners.CapitalMovementType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_CapitalMovementType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Contribution"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Withdrawal"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Projects.ProjectStatus>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_ProjectStatus", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Active"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Finished"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "PendingApproval"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Rejected"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Structure.ColumnDataType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_ColumnDataType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Text"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Number"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Amount"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Date"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "List"
+                        },
+                        new
+                        {
+                            Id = (byte)5,
+                            Name = "File"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Structure.ItemType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_ItemType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Purchases"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "ContractorPayments"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Both"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Sale"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "VatRefund"
+                        },
+                        new
+                        {
+                            Id = (byte)5,
+                            Name = "OtherRevenue"
+                        },
+                        new
+                        {
+                            Id = (byte)6,
+                            Name = "Capital"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Suppliers.SupplierStatus>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_SupplierStatus", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Approved"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "PendingApproval"
+                        });
                 });
 
             modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
@@ -874,6 +1546,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Kind");
+
                     b.HasIndex("UserId", "At");
 
                     b.ToTable("Notifications");
@@ -899,6 +1573,8 @@ namespace Redix.Api.Migrations
                     b.HasKey("EntryId");
 
                     b.HasIndex("PartnerId");
+
+                    b.HasIndex("Type");
 
                     b.ToTable("CapitalMovementDetails");
                 });
@@ -1014,6 +1690,8 @@ namespace Redix.Api.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("Projects");
 
@@ -1434,6 +2112,10 @@ namespace Redix.Api.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DataType");
+
+                    b.HasIndex("ItemType");
 
                     b.HasIndex("ProjectId", "ItemType", "Key")
                         .IsUnique();
@@ -1926,6 +2608,8 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("Type");
+
                     b.ToTable("Items");
 
                     b.HasData(
@@ -2340,6 +3024,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DataType");
+
                     b.HasIndex("ItemId", "Key")
                         .IsUnique();
 
@@ -2680,6 +3366,8 @@ namespace Redix.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("ProjectId", "Name");
 
@@ -18786,6 +19474,12 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Accounts.AccountType>", null)
+                        .WithMany()
+                        .HasForeignKey("Type")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Accounts.AccountCustodian", b =>
@@ -18979,9 +19673,21 @@ namespace Redix.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryKind>", null)
+                        .WithMany()
+                        .HasForeignKey("Kind")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryStatus>", null)
+                        .WithMany()
+                        .HasForeignKey("Status")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -18999,10 +19705,22 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("EntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryAttachmentRole>", null)
+                        .WithMany()
+                        .HasForeignKey("Role")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.EntryDecision", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryDecisionAction>", null)
+                        .WithMany()
+                        .HasForeignKey("Action")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Entries.Entry", null)
                         .WithMany()
                         .HasForeignKey("EntryId")
@@ -19069,6 +19787,13 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.History.HistoryRecord", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.History.HistoryAction>", null)
+                        .WithMany()
+                        .HasForeignKey("Action")
+                        .HasPrincipalKey("Name")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -19078,6 +19803,12 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Notifications.NotificationKind>", null)
+                        .WithMany()
+                        .HasForeignKey("Kind")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -19096,6 +19827,12 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Partners.Partner", null)
                         .WithMany()
                         .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Partners.CapitalMovementType>", null)
+                        .WithMany()
+                        .HasForeignKey("Type")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -19126,6 +19863,15 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.Project", b =>
+                {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Projects.ProjectStatus>", null)
+                        .WithMany()
+                        .HasForeignKey("Status")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -19240,6 +19986,18 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.Structure.DefaultColumn", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ColumnDataType>", null)
+                        .WithMany()
+                        .HasForeignKey("DataType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ItemType>", null)
+                        .WithMany()
+                        .HasForeignKey("ItemType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
@@ -19254,10 +20012,22 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ItemType>", null)
+                        .WithMany()
+                        .HasForeignKey("Type")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Structure.ItemColumn", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ColumnDataType>", null)
+                        .WithMany()
+                        .HasForeignKey("DataType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Structure.Item", null)
                         .WithMany("Columns")
                         .HasForeignKey("ItemId")
@@ -19285,6 +20055,12 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Suppliers.SupplierStatus>", null)
+                        .WithMany()
+                        .HasForeignKey("Status")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

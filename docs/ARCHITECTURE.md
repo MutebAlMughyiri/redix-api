@@ -31,6 +31,7 @@ src/Redix.Api/
   Refusal.cs            the answer to a refused request: problem details with a code
   Ids.cs                how an id that may be absent travels: as text, empty when none
   StableIds.cs          ids derived from a name, so every database and migration agree on seeded rows
+  Lookup.cs             a row of an enum's lookup table, LK_{enum}, which every column holding the enum points at
   Money.cs              what every amount a person types shares: two decimals and a limit
   ArabicSpelling.cs     what a search treats alike in Arabic, and the one owner of that rule
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database, in four collections with a database each
@@ -57,6 +58,7 @@ Every entry, whatever its table, is recorded by `EntryRecording` through one rou
 | Every table has a required `rowversion`, for sync and concurrency | `RedixDbContext.OnModelCreating` |
 | Ids are time-ordered GUIDs (`Guid.CreateVersion7`) made in code, never by the database | Each entity's `Id`; `RedixDbContext.OnModelCreating` |
 | No NULL column: an optional value is an empty value of its own type or a row in a link table | Each entity |
+| Every column holding an enum has a foreign key to the enum's lookup table, `LK_{enum}`, seeded from the enum's members: to its `Id` for a column storing the number, to its `Name` for one storing the name (redix-api #87); the permission columns wait for redix-api #120 | `RedixDbContext.HasLookup`, `Lookup`, `LookupTablesTests` |
 | The API sends codes, never words; the app shows the word for the code | `Refusal.Of`, and the words in `Translations` |
 | Enums travel as camelCase names, such as `active` | `ConfigureHttpJsonOptions` in `Program.cs` |
 | Each environment is a name: `Dev` (dev, for automated runs, 127.0.0.1:5010, `RedixDev`) and `QA` (Muteb's own testing, 127.0.0.1:5012, `RedixQA`). Its port (`Urls`), database (`ConnectionStrings:Redix`) and admin username are in `appsettings.{name}.json`, chosen by the launch profile `dev` or `qa`, or by `--environment`; `appsettings.json` is the production base (redix-api #118) | `appsettings.*.json`, `launchSettings.json`, `DatabaseConnection` |
@@ -64,7 +66,7 @@ Every entry, whatever its table, is recorded by `EntryRecording` through one rou
 | A business value someone may change while the API runs is a row of `ConfigValues` (UC-070), never a setting in a file | `ConfigValue`, `ConfigEndpoints` |
 | Every action a use case names is recorded in the History table, saved with the change itself; a secret is marked `[NotInHistory]` | `RedixDbContext.AddHistory`, `HistoryRecord` |
 
-The full data model is the pinned **Database design** issue; each use case builds the tables it needs.
+The full data model is the pinned **Database design** issue; each use case builds the tables it needs. The database as it stands, every table, column and relation, is mapped in [Database](database.md).
 
 ## Tests
 
