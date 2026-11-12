@@ -27,7 +27,7 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
         await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partnerId, amount, isWithdrawal), Json));
 
     [Fact]
-    public async Task UC_101_EachPartnerActionAndApprovedOrReversedCapitalMovementIsALineNewestFirst()
+    public async Task UC_101_EachPartnerActionAndApprovedCapitalMovementIsALineNewestFirst()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (_, memberId) = await ledger.MemberAsync("Reader");
@@ -35,16 +35,15 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
         var khaled = await PartnerAsync(ledger, "خالد م");
         (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{khaled}", new PartnerRequest("خالد"), Json)).EnsureSuccessStatusCode();
         (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{khaled}", new PartnerRequest("خالد") { UserId = memberId }, Json)).EnsureSuccessStatusCode();
-        var cameIn = await MoveAsync(ledger, khaled, 1000);
+        await MoveAsync(ledger, khaled, 1000);
         await MoveAsync(ledger, khaled, 200, isWithdrawal: true);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{cameIn}/reverse", new RejectEntryRequest("إدخال خاطئ"), Json)).EnsureSuccessStatusCode();
         var nour = await PartnerAsync(ledger, "نور");
         (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/partners/{nour}")).EnsureSuccessStatusCode();
 
         var lines = await HistoryAsync(ledger.Client, ledger);
 
         Assert.Equal(
-            [PartnerHistoryKind.PartnerDeleted, PartnerHistoryKind.PartnerCreated, PartnerHistoryKind.Reversed, PartnerHistoryKind.CapitalOut, PartnerHistoryKind.CapitalIn, PartnerHistoryKind.PartnerAccount, PartnerHistoryKind.PartnerChanged, PartnerHistoryKind.PartnerCreated],
+            [PartnerHistoryKind.PartnerDeleted, PartnerHistoryKind.PartnerCreated, PartnerHistoryKind.CapitalOut, PartnerHistoryKind.CapitalIn, PartnerHistoryKind.PartnerAccount, PartnerHistoryKind.PartnerChanged, PartnerHistoryKind.PartnerCreated],
             lines.Select(line => line.Kind));
         Assert.Equal(("نور", "خالد"), (lines[0].Partner, lines[^1].Partner));
         Assert.Equal("خالد م", lines.Single(line => line.Kind == PartnerHistoryKind.PartnerChanged).NameWas);

@@ -111,7 +111,7 @@ public static class PartnersEndpoints
     {
         var balances = await CapitalEndpoints.BalancesAsync(projectId, db);
         var waiting = await db.CapitalMovementDetails
-            .Where(details => db.Entries.Any(entry => entry.Id == details.EntryId && entry.ProjectId == projectId && entry.Status != EntryStatus.Approved && entry.Status != EntryStatus.Draft))
+            .Where(details => db.Entries.Any(entry => entry.Id == details.EntryId && entry.ProjectId == projectId && (entry.Status == EntryStatus.PendingApproval || entry.Status == EntryStatus.Rejected)))
             .Select(details => details.PartnerId).Distinct().ToListAsync();
         var heldByDrafts = drafts.Where(draft => draft.AuthorId != userId || !held.Contains(Permission.DeleteEntries)).Select(draft => draft.PartnerId).ToHashSet();
         var partners = await db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).Select(partner => partner.Id).ToListAsync();

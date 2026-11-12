@@ -183,13 +183,13 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AReversedEntryIsNotOffered()
+    public async Task App_119_ARemovedEntryIsNotOffered()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var request = ledger.Purchase(200m) with { Submit = true };
         await ledger.RecordAsync(request);
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
+        await ledger.SetStatusAsync(request.Id, EntryStatus.Removed);
 
         Assert.Empty(await AttachableAsync(ledger.Client, ledger));
     }

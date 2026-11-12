@@ -40,7 +40,8 @@ public static class PartnerHistory
         }
 
         var shown = partnerId == Guid.Empty ? seen : [partnerId];
-        var movements = db.CapitalMovementDetails.Where(details => shown.Contains(details.PartnerId)).Select(details => details.EntryId);
+        var movements = db.CapitalMovementDetails
+            .Where(details => shown.Contains(details.PartnerId) && db.Entries.Any(entry => entry.Id == details.EntryId && entry.Status != EntryStatus.Removed)).Select(details => details.EntryId);
         var rows = db.History.Where(row => row.ProjectId == projectId
             && ((row.TableName == "Partners" && shown.Contains(row.RecordId))
                 || (row.TableName == "Entries" && (row.Action == HistoryAction.Approve || row.Action == HistoryAction.Reverse) && movements.Contains(row.RecordId))));
@@ -66,7 +67,7 @@ public static class PartnerHistory
             var entry = entries[row.RecordId];
             return line with
             {
-                Kind = row.Action == HistoryAction.Reverse ? PartnerHistoryKind.Reversed : entry.Kind == EntryKind.CapitalOut ? PartnerHistoryKind.CapitalOut : PartnerHistoryKind.CapitalIn,
+                Kind = entry.Kind == EntryKind.CapitalOut ? PartnerHistoryKind.CapitalOut : PartnerHistoryKind.CapitalIn,
                 Partner = partners.GetValueOrDefault(partnerOf.GetValueOrDefault(row.RecordId), ""),
                 Account = accounts.GetValueOrDefault(entry.AccountId, ""),
                 Amount = entry.Amount,
@@ -104,9 +105,6 @@ public enum PartnerHistoryKind
 
     /// <summary>Capital went out to a partner, approved.</summary>
     CapitalOut,
-
-    /// <summary>An approved capital movement was reversed.</summary>
-    Reversed,
 }
 
 /// <summary>One line of the partner history.</summary>

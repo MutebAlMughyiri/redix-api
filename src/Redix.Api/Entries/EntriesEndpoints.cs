@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Revenue;
 using Redix.Api.History;
@@ -16,7 +15,8 @@ public static class EntriesEndpoints
 {
     /// <summary>
     /// Maps the routes that read an entry, the caller's own and the project's list, for anyone who reads the project; those that send it and change its notes, for whoever holds
-    /// <see cref="Permission.RecordEntries"/>; reversing, for <see cref="Permission.ApproveEntries"/>; and deleting, for <see cref="Permission.DeleteEntries"/>.
+    /// <see cref="Permission.RecordEntries"/>; and deleting, for anyone who reads the project, since what it asks for follows the entry:
+    /// <see cref="Permission.DeleteEntries"/> before approval, <see cref="Permission.RemoveApprovedEntries"/> after it (redix-api #119).
     /// </summary>
     public static void MapEntries(this WebApplication app)
     {
@@ -27,8 +27,7 @@ public static class EntriesEndpoints
         var changes = app.MapProjectChanges(Permission.RecordEntries);
         changes.MapPost("/entries/{entryId:guid}/submit", Submit);
         changes.MapPut("/entries/{entryId:guid}/notes", ChangeNotes);
-        app.MapProjectChanges(Permission.ApproveEntries).MapPost("/entries/{entryId:guid}/reverse", Reverse);
-        app.MapProjectChanges(Permission.DeleteEntries).MapDelete("/entries/{entryId:guid}", Delete);
+        app.MapProjectChanges(Permission.ReadProject).MapDelete("/entries/{entryId:guid}", Delete);
     }
 
     /// <summary>Where the caller's own entries stand in the project, newest first.</summary>
@@ -79,7 +78,7 @@ public static class EntriesEndpoints
     }
 
     /// <summary>
-    /// The project's entries <paramref name="userId"/> may see: a draft only for who entered it (BR-42), and a partner's money only for whoever sees that partner (BR-31, <see cref="Partners.PartnerSight"/>).
+    /// The project's entries <paramref name="userId"/> may see, never a removed one (redix-api #119): a draft only for who entered it (BR-42), and a partner's money only for whoever sees that partner (BR-31, <see cref="Partners.PartnerSight"/>).
     /// The one owner of both rules: the list, one entry read by its id and the account history read it.
     /// </summary>
     /// <param name="projectId">The project.</param>
@@ -91,6 +90,7 @@ public static class EntriesEndpoints
         var seesAll = sight.SeesAll;
         var chosen = sight.Chosen;
         return db.Entries.Where(entry => entry.ProjectId == projectId
+            && entry.Status != EntryStatus.Removed
             && (entry.Status != EntryStatus.Draft || entry.CreatedByUserId == userId)
             && (seesAll || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && !chosen.Contains(details.PartnerId))));
     }
@@ -103,7 +103,6 @@ public static class EntriesEndpoints
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
         var rejections = (await db.EntryDecisions.Where(row => ids.Contains(row.EntryId) && row.Action == EntryDecisionAction.Reject).OrderBy(row => row.Id).ToListAsync()).GroupBy(row => row.EntryId).ToDictionary(group => group.Key, group => group.Last().Reason);
-        var reversed = (await db.EntryLinks.Where(link => link.Type == EntryLinkType.Reversal && (ids.Contains(link.EntryId) || ids.Contains(link.LinkedEntryId))).ToListAsync()).SelectMany(link => new[] { link.EntryId, link.LinkedEntryId }).ToHashSet();
         return entries.Select(entry => new EntryRowView(
             entry.Id,
             entry.Kind,
@@ -116,7 +115,6 @@ public static class EntriesEndpoints
             facts.InvoiceOf(entry).Number,
             facts.AuthorNameOf(entry),
             entry.CreatedByUserId == userId,
-            reversed.Contains(entry.Id),
             facts.PartnerNameOf(entry),
             entry.Notes,
             facts.AccountNameOf(entry),
@@ -188,7 +186,11 @@ public static class EntriesEndpoints
         return Results.Ok(await ViewOfAsync(entry, db));
     }
 
-    /// <summary>Removes an entry never approved (UC-033), with the refusals of <see cref="EntryChanges.RefusalOf"/>. One a credit note names answers <c>entryHasCreditNote</c>.</summary>
+    /// <summary>
+    /// Deletes an entry. One never approved goes, with all it holds (UC-033), for whoever holds <see cref="Permission.DeleteEntries"/>, with the refusals of <see cref="EntryChanges.RefusalOf"/>.
+    /// An approved one is removed softly for whoever holds <see cref="Permission.RemoveApprovedEntries"/> (redix-api #119), as <see cref="EntryChanges.RemoveAsync"/> does. Without the
+    /// permission the entry asks for, the answer is 403, as a route's own permission answers.
+    /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>
     /// <param name="principal">The caller's session.</param>
@@ -202,16 +204,27 @@ public static class EntriesEndpoints
             return Results.NotFound();
         }
         var userId = AccessTokens.UserIdOf(principal);
-        var (status, refusal) = EntryChanges.RefusalOf(entry, userId, (await UserAccess.OfAsync(userId, db)).In(projectId));
+        var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
+        var at = time.GetUtcNow().UtcDateTime;
+        if (entry.Status == EntryStatus.Approved)
+        {
+            if (!held.Contains(Permission.RemoveApprovedEntries))
+            {
+                return Results.Forbid();
+            }
+            await EntryChanges.RemoveAsync(entry, userId, at, db);
+            return Results.Ok();
+        }
+        if (!held.Contains(Permission.DeleteEntries))
+        {
+            return Results.Forbid();
+        }
+        var (status, refusal) = EntryChanges.RefusalOf(entry, userId, held);
         if (refusal.Length > 0)
         {
             return Refusal.Of(status, refusal);
         }
-        if (await db.EntryLinks.AnyAsync(link => link.LinkedEntryId == entryId))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "EntryHasCreditNote");
-        }
-        await EntryChanges.DeleteAsync(entry, userId, time.GetUtcNow().UtcDateTime, db);
+        await EntryChanges.DeleteAsync(entry, userId, at, db);
         return Results.Ok();
     }
 
@@ -245,53 +258,6 @@ public static class EntriesEndpoints
         return Results.Ok();
     }
 
-    /// <summary>
-    /// Reverses an approved entry (UC-035, FR-50): an opposite entry of the same amount, tied to the original and approved at once, so both show in the reports and the net effect is zero. The original does not change.
-    /// No reason answers <c>reasonRequired</c>; an entry not approved <c>entryNotApproved</c>; and one already reversed, or itself a reversal, <c>alreadyReversed</c>.
-    /// </summary>
-    /// <param name="projectId">The project.</param>
-    /// <param name="entryId">The entry.</param>
-    /// <param name="request">Why.</param>
-    /// <param name="principal">The caller's session.</param>
-    /// <param name="db">The database the ledger lives in.</param>
-    /// <param name="time">The current time.</param>
-    public static async Task<IResult> Reverse(Guid projectId, Guid entryId, RejectEntryRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
-    {
-        var entry = await Entry.OfProjectAsync(projectId, entryId, db);
-        if (entry == Entry.None)
-        {
-            return Results.NotFound();
-        }
-        var reason = request.Reason.Trim();
-        if (reason.Length is 0 or > ApprovalsEndpoints.ReasonMaxLength)
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "ReasonRequired");
-        }
-        if (entry.Status != EntryStatus.Approved)
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "EntryNotApproved");
-        }
-        if (await db.EntryLinks.AnyAsync(link => link.Type == EntryLinkType.Reversal && (link.LinkedEntryId == entryId || link.EntryId == entryId)))
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, "AlreadyReversed");
-        }
-
-        var userId = AccessTokens.UserIdOf(principal);
-        var at = time.GetUtcNow().UtcDateTime;
-        var today = Entry.Today(time);
-        var reversal = await EntryReversal.AddAsync(entry, reason, userId, at, today, db);
-        try
-        {
-            await db.SaveChangesAsync();
-        }
-        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 })
-        {
-            // A second request for the same entry passed the check above before the first was saved: the one-reversal index refuses it.
-            return Refusal.Of(StatusCodes.Status409Conflict, "AlreadyReversed");
-        }
-        return Results.Created($"/projects/{projectId}/entries/{reversal.Id}", new EntryStatusView(reversal.Id, reversal.Status, ""));
-    }
-
     private static async Task<List<string>> MissingOfAsync(Entry entry, RedixDbContext db)
     {
         var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ExpenseDetails();
@@ -314,8 +280,7 @@ public static class EntriesEndpoints
             await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new PurchaseDetails(),
             payment,
             await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new Invoice(),
-            await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync(),
-            await db.EntryLinks.Where(row => row.EntryId == entry.Id).ToListAsync());
+            await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync());
     }
 }
 
@@ -331,13 +296,12 @@ public static class EntriesEndpoints
 /// <param name="InvoiceNumber">Its invoice's number; empty when it has none.</param>
 /// <param name="AuthorName">Who entered it.</param>
 /// <param name="IsMine">True when the caller entered it.</param>
-/// <param name="IsReversed">True when it was reversed, or is itself a reversal.</param>
 /// <param name="PartnerName">A capital movement's partner; empty for any other entry.</param>
 /// <param name="Notes">What was noted; empty for nothing.</param>
 /// <param name="AccountName">The account it was paid from or reached.</param>
 /// <param name="PaymentMethodName">How an expense was paid; empty when nobody said, and for any other entry.</param>
 /// <param name="AccountShortBy">How much more what waits on its account takes than the account holds, which the shared entry notes without amounts (R6, R16); zero when it covers all of it.</param>
-public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, bool IsReversed, string PartnerName, string Notes, string AccountName, string PaymentMethodName, decimal AccountShortBy);
+public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, string PartnerName, string Notes, string AccountName, string PaymentMethodName, decimal AccountShortBy);
 
 /// <summary>An entry's notes.</summary>
 /// <param name="Notes">The notes; may be empty.</param>
@@ -351,5 +315,4 @@ public record ChangeNotesRequest(string Notes);
 /// <param name="ContractorPayment">What only a contractor payment has.</param>
 /// <param name="Invoice">The bill number it was entered with before REDIX stopped asking for one; empty on a newer entry (redix-api #96, D2).</param>
 /// <param name="Attachments">The files it carries.</param>
-/// <param name="Links">What ties it to other entries.</param>
-public record EntryView(Entry Entry, Guid TableId, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments, List<EntryLink> Links);
+public record EntryView(Entry Entry, Guid TableId, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments);

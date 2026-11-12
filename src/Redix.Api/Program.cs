@@ -108,7 +108,6 @@ app.MapApprovalHistory();
 app.MapSuppliers();
 app.MapContracts();
 app.MapAttachments();
-app.MapExpenses();
 app.MapEntryRecording();
 app.MapEntries();
 app.MapApprovals();

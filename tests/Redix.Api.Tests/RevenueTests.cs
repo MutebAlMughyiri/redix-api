@@ -141,14 +141,22 @@ public class RevenueTests(MigratedApiFactory factory)
         Assert.Equal((HttpStatusCode.BadRequest, "unknownTable"), (refused.StatusCode, await Ledger.CodeOf(refused)));
     }
 
+    /// <summary>Removes the approved entry <paramref name="id"/> softly, as someone holding the removal does (redix-api #119).</summary>
+    private static async Task RemoveAsync(Ledger ledger, Guid id)
+    {
+        var (remover, removerId) = await ledger.MemberAsync("Reader");
+        await ledger.Factory.GiveAsync(removerId, ledger.ProjectId, [Redix.Api.Auth.Permission.RemoveApprovedEntries]);
+        (await remover.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{id}")).EnsureSuccessStatusCode();
+    }
+
     [Fact]
-    public async Task ReversingASaleTakesItOutOfTheRevenue()
+    public async Task App_119_RemovingASaleTakesItOutOfTheRevenue()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var id = await ledger.ApproveAsync(await SendAsync(ledger, await ledger.RevenueAsync(ItemType.Sale, 1150, "")));
         Assert.Equal(1150m, (await FiguresAsync(ledger)).Sales);
 
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
+        await RemoveAsync(ledger, id);
 
         Assert.Equal(0m, (await FiguresAsync(ledger)).Sales);
     }
@@ -170,19 +178,19 @@ public class RevenueTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task UC_026_ACreditNoteAndAReversalTakeAwayFromTheStatementWhatTheirBillsCounted()
+    public async Task UC_026_ACreditNoteTakesAwayFromTheStatementAndARemovedPurchaseLeavesIt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var bill = ledger.Purchase(115m) with { Submit = true };
         await ApprovedAsync(ledger, bill);
-        await ApprovedAsync(ledger, ledger.Purchase(15m) with { IsCreditNote = true, OriginalEntryId = bill.Id, Submit = true });
+        await ApprovedAsync(ledger, ledger.Purchase(15m) with { IsCreditNote = true, Submit = true });
         var mistaken = ledger.Purchase(50m) with { Submit = true };
         await ApprovedAsync(ledger, mistaken);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{mistaken.Id}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
+        await RemoveAsync(ledger, mistaken.Id);
 
         var quarter = Assert.Single(await StatementAsync(ledger));
 
-        Assert.Equal(new[] { -50m, -15m, 50m, 115m }, quarter.Purchases.Select(row => row.Total).Order());
+        Assert.Equal(new[] { -15m, 115m }, quarter.Purchases.Select(row => row.Total).Order());
         Assert.Equal(100m, quarter.Purchases.Sum(row => row.Total));
     }
 

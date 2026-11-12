@@ -45,6 +45,9 @@ public enum Permission
     /// <summary>Deletes an entry of one project that is not approved: one's own draft or rejected entry, or with <see cref="ManageAnyEntry"/> anyone's sent entry or one waiting (UC-033, BR-42).</summary>
     DeleteEntries,
 
+    /// <summary>Removes an approved entry of one project softly (redix-api #119): it leaves every list and figure as if never approved, and stays in the database with its history.</summary>
+    RemoveApprovedEntries,
+
     /// <summary>Keeps a picture or a PDF in one project, for an entry or a contract (FR-09).</summary>
     AttachFiles,
 

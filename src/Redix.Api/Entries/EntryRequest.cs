@@ -50,11 +50,8 @@ public record EntryRequest(Guid Id)
     /// <summary>How many; left out when not used.</summary>
     public decimal Quantity { get; init; }
 
-    /// <summary>True for a credit note: a total coming back to the bill <see cref="OriginalEntryId"/> names, typed as a plain amount and kept negative (D13).</summary>
+    /// <summary>True for a credit note, a مرتجع: a total typed as a plain amount and kept negative, its own row as in Muteb's statement, naming no bill (redix-api #119, D4).</summary>
     public bool IsCreditNote { get; init; }
-
-    /// <summary>The bill a credit note returns; required for a credit note, and only for one (D13).</summary>
-    public Guid OriginalEntryId { get; init; }
 
     /// <summary>True for a contractor payment outside the contract, which counts in the item's total and leaves the remaining alone (FR-13).</summary>
     public bool IsOutsideContract { get; init; }

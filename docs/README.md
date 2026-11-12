@@ -48,7 +48,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-030](use-cases/UC-030-sync.md) | Send a phone what it keeps to work without a network | The app, for anyone who reads the project |
 | [UC-031](use-cases/UC-031-pending-entries.md) | List what waits for approval, oldest first, with its file | Whoever decides entries |
 | [UC-032](use-cases/UC-032-approve-reject.md) | Approve one or many, or reject saying why | Whoever decides entries |
-| [UC-033, UC-034, UC-035](use-cases/UC-033-change-entry.md) | Change an unapproved entry, keep the approved version, reverse an approved one | Who entered it, and whoever decides entries |
+| [UC-033, UC-034, UC-035](use-cases/UC-033-change-entry.md) | Change an unapproved entry, keep the approved version, remove an approved one | Who entered it, and whoever decides entries |
 | [UC-036](use-cases/UC-036-notifications.md) | Tell people what happened to an entry or a project | Everyone signed in |
 | [UC-039](use-cases/UC-039-attach-invoice.md) | Attach an invoice to an expense entered without one | Whoever enters expenses |
 | [UC-061](use-cases/UC-061-liquidation.md) | Retired 8 Nov 2026: liquidation and closing removed | — |

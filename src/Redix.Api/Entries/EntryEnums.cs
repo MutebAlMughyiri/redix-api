@@ -40,6 +40,9 @@ public enum EntryStatus : byte
 
     /// <summary>Refused, saying why.</summary>
     Rejected,
+
+    /// <summary>Removed after approval by whoever holds <see cref="Auth.Permission.RemoveApprovedEntries"/> (redix-api #119): kept in the database with its history, and read by no list and no figure.</summary>
+    Removed,
 }
 
 /// <summary>What a file is to the entry that carries it.</summary>
@@ -71,12 +74,3 @@ public enum EntryDecisionAction : byte
     Reject,
 }
 
-/// <summary>What ties two entries. Each keeps the number it is stored as, since the transfer's pair (0) and the carry's (1) were removed (Muteb, 8 Nov 2026).</summary>
-public enum EntryLinkType : byte
-{
-    /// <summary>The entry that reverses an approved one (FR-50).</summary>
-    Reversal = 2,
-
-    /// <summary>The credit note of an invoice (BR-18).</summary>
-    CreditNoteOf = 3,
-}

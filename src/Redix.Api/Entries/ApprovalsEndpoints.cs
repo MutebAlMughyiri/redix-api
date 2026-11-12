@@ -37,7 +37,7 @@ public static class ApprovalsEndpoints
 
     /// <summary>
     /// Approves the entries named, each on its own: what cannot be approved comes back by id with its reason, and nothing is approved in silence (AC-19.2). An entry not found answers <c>unknownEntry</c>, one nobody
-    /// is waiting on <c>entryNotPending</c>, and a credit note whose invoice is not approved and is not among these, <c>originalNotApproved</c>. The first expense on a supplier waiting for approval approves it too.
+    /// is waiting on <c>entryNotPending</c>. The first expense on a supplier waiting for approval approves it too.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">The entries.</param>
@@ -54,7 +54,7 @@ public static class ApprovalsEndpoints
         var failed = new List<EntryFailureView>();
         foreach (var id in named)
         {
-            var refusal = !entries.TryGetValue(id, out var entry) ? "unknownEntry" : entry.Status != EntryStatus.PendingApproval ? "entryNotPending" : await RefusalOfOriginalAsync(id, named, db);
+            var refusal = !entries.TryGetValue(id, out var entry) ? "unknownEntry" : entry.Status != EntryStatus.PendingApproval ? "entryNotPending" : "";
             if (refusal.Length > 0)
             {
                 failed.Add(new EntryFailureView(id, refusal));
@@ -104,13 +104,6 @@ public static class ApprovalsEndpoints
         NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryRejected, userId, at, db);
         await db.SaveChangesAsync();
         return Results.Ok();
-    }
-
-    private static async Task<string> RefusalOfOriginalAsync(Guid entryId, List<Guid> named, RedixDbContext db)
-    {
-        var originals = await db.EntryLinks.Where(link => link.EntryId == entryId && link.Type == EntryLinkType.CreditNoteOf).Select(link => link.LinkedEntryId).ToListAsync();
-        var waiting = await db.Entries.AnyAsync(entry => originals.Contains(entry.Id) && entry.Status != EntryStatus.Approved && !named.Contains(entry.Id));
-        return waiting ? "originalNotApproved" : "";
     }
 
     private static async Task ApproveItsSupplierAsync(Guid entryId, Guid userId, DateTime at, RedixDbContext db)

@@ -102,6 +102,22 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task App_119_D4_ACreditNotePrintsAsItsOwnMinusRowInTheStatementsFormat()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ApprovedAsync(ledger, ledger.Purchase(1150));
+        await ApprovedAsync(ledger, ledger.Purchase(320) with { IsCreditNote = true });
+        await IssueAsync(ledger);
+
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
+
+        var minus = workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.CellsUsed()).Where(cell => cell.Value.IsNumber && cell.Value.GetNumber() == -320).ToList();
+        Assert.NotEmpty(minus);
+        Assert.All(minus, cell => Assert.Equal(("#,##0.00;(#,##0.00)", "(320.00)"), (cell.Style.NumberFormat.Format, cell.GetFormattedString())));
+        Assert.Contains(workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.CellsUsed()), cell => cell.Value.IsNumber && cell.Value.GetNumber() == 830);
+    }
+
+    [Fact]
     public async Task AC_29_2_AnEntryApprovedLaterLeavesTheIssuedReportAndIsNewInTheNext()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

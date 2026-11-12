@@ -14,7 +14,7 @@
 | `GET /projects/{id}/partners/{partnerId}/movements` | One partner's movements |
 | `POST /projects/{id}/entries` | Keeps a contribution, or with `isWithdrawal` a withdrawal, as a draft or sent for approval, the partner being its table (redix-api #110) |
 
-`ProjectFigures` is the one owner of capital, revenue and surplus. `EntryRecording` is the one way every entry is recorded, capital and revenue as an expense, and a reversal, approved at once (redix-api #110). `EntryReversal` is the one way to reverse.
+`ProjectFigures` is the one owner of capital, revenue and surplus. `EntryRecording` is the one way every entry is recorded, capital and revenue as an expense (redix-api #110). An approved movement is removed as any approved entry is (redix-api #119), and nothing is reversed.
 
 **One way in.** Since 8 November 2026 (redix-api #101) a partner's money is entered from Add entry, where `GET /entry-tables` offers whoever holds `MoveMoney` the revenue items with their tables and, right after the last category holding one, each active partner in a group with no id and no name, which the app heads الإيرادات · رأس المال: capital is revenue (BR-06). A movement is a contribution or a withdrawal only: settlement and exit, carry to another project, in kind and refundable advance went with حركة, with the carry route and the carry's link. RedixReal held none of them.
 

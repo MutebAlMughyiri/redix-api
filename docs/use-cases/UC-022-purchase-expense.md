@@ -22,7 +22,7 @@ The id is made on the phone (the database design's principle 4, AC-16.3), so an 
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/entries` | `RecordEntries`, through the table on offer (redix-api #110) | Records a draft, or with `submit` one pending approval, from `{ id, itemId, tableId, supplierId, date, amount, product, unitPrice, quantity, accountId, paymentMethodId, notes, customValues, attachmentId, isCreditNote, originalEntryId, submit }` |
+| `POST /projects/{id}/entries` | `RecordEntries`, through the table on offer (redix-api #110) | Records a draft, or with `submit` one pending approval, from `{ id, itemId, tableId, supplierId, date, amount, product, unitPrice, quantity, accountId, paymentMethodId, notes, customValues, attachmentId, isCreditNote, submit }` |
 | `GET /projects/{id}/suppliers/search` | `ReadProject` | Puts what the caller used most first, and answers `timesUsed` |
 
 Its refusals are in the endpoint's Swagger summary. Each names a word the app shows.

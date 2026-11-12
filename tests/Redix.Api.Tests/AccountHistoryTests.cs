@@ -19,7 +19,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
-    private static readonly AccountHistoryKind[] EntryKinds = [AccountHistoryKind.EntryIn, AccountHistoryKind.EntryOut, AccountHistoryKind.Reversed];
+    private static readonly AccountHistoryKind[] EntryKinds = [AccountHistoryKind.EntryIn, AccountHistoryKind.EntryOut];
 
     private static string PathOf(Ledger ledger, Guid accountId = default, bool mine = false, long before = 0, string text = "") =>
         $"/projects/{ledger.ProjectId}/accounts/history?account={accountId}&mine={mine}&before={before}&text={Uri.EscapeDataString(text)}";
@@ -45,7 +45,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         return request.Id;
     }
 
-    /// <summary>A project with a line of every kind History shows: an account added, a transfer, an approval, a reversal and a check.</summary>
+    /// <summary>A project with a line of every kind History shows: an account added, a transfer, an approval and a check.</summary>
     private async Task<(Ledger Ledger, Guid Custody)> BusyProjectAsync()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
@@ -53,7 +53,6 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         await FundAsync(ledger, 1000m);
         await TransferAsync(ledger, ledger.AccountId, custody, 400m);
         var purchase = await ledger.ApproveAsync(await SentPurchaseAsync(ledger, 300m));
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{purchase}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 600m), new(custody, 400m)]), Json)).EnsureSuccessStatusCode();
         return (ledger, custody);
     }
@@ -71,7 +70,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         var lines = await HistoryAsync(ledger, reader);
 
         Assert.Equal(
-            [AccountHistoryKind.Check, AccountHistoryKind.Reversed, AccountHistoryKind.EntryOut, AccountHistoryKind.Transfer, AccountHistoryKind.EntryIn, AccountHistoryKind.AccountCreated, AccountHistoryKind.AccountCreated],
+            [AccountHistoryKind.Check, AccountHistoryKind.EntryOut, AccountHistoryKind.Transfer, AccountHistoryKind.EntryIn, AccountHistoryKind.AccountCreated, AccountHistoryKind.AccountCreated],
             lines.Select(line => line.Kind));
         Assert.Equal(lines.OrderByDescending(line => line.Id).Select(line => line.Id), lines.Select(line => line.Id));
         var transfer = lines.Single(line => line.Kind == AccountHistoryKind.Transfer);
@@ -224,7 +223,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
 
         var rows = await ledger.ReadAsync(db => db.History.Where(row => row.ProjectId == ledger.ProjectId).Select(row => row.TableName).Distinct().ToListAsync());
 
-        Assert.Superset(new HashSet<string> { "Accounts", "Entries", "PurchaseDetails", "ExpenseDetails", "Transfers", "Reconciliations", "EntryLinks" }, rows.ToHashSet());
+        Assert.Superset(new HashSet<string> { "Accounts", "Entries", "PurchaseDetails", "ExpenseDetails", "Transfers", "Reconciliations" }, rows.ToHashSet());
         Assert.False(await ledger.ReadAsync(db => db.History.AnyAsync(row => row.ProjectId == other.ProjectId && row.TableName == "Transfers")));
     }
 

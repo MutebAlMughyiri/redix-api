@@ -11,7 +11,7 @@
 | `GET /projects/{id}/entries/attachable?itemId=&vatNumber=&total=&date=` | What in the item can take a file, matching ones first |
 | `POST /projects/{id}/entries/{entryId}/invoice` with `{ attachmentId }` | Puts the file on it |
 
-An expense can take a file when it has none, is positive, and is not reversed or a reversal. Attaching puts only the file on it and writes it in the History table (redix-api #96, D15): its status stays as it was, an approved one included, and nobody is asked again.
+An expense can take a file when it has none, is positive, and was not removed (redix-api #119). Attaching puts only the file on it and writes it in the History table (redix-api #96, D15): its status stays as it was, an approved one included, and nobody is asked again.
 
 The capital movement option of AC-49.4 comes with UC-042 "Record a capital movement".
 
@@ -24,5 +24,5 @@ The capital movement option of AC-49.4 comes with UC-042 "Record a capital movem
 | D15: every entry keeps its status, an approved one included, and nobody is asked again | `InvoiceAttachEndpoints.Attach` | `InvoiceAttachTests.AWaitingEntryStaysWaitingAndADraftStaysADraft`, `D15_AnApprovedEntryStaysApprovedAndNobodyIsAskedAgain` |
 | BR-22: a file already on an entry is refused | `EntryRecording.IsFileOnAnEntryAsync` | `InvoiceAttachTests.AFileAlreadyOnAnEntryIsRefused` |
 | Someone else's entry is refused to Field | `InvoiceAttachEndpoints.Attach` | `InvoiceAttachTests.SomeoneElsesEntryIsRefusedToField` |
-| What cannot take a file is refused or not offered | `InvoiceAttachEndpoints.AttachableIn` | `InvoiceAttachTests.WhatCannotTakeAFileIsRefused`, `AReversedEntryIsNotOffered` |
+| What cannot take a file is refused or not offered | `InvoiceAttachEndpoints.AttachableIn` | `InvoiceAttachTests.WhatCannotTakeAFileIsRefused`, `App_119_ARemovedEntryIsNotOffered` |
 | A file of no such attachment is refused | `InvoiceAttachEndpoints.Attach` | `InvoiceAttachTests.AFileOfNoSuchAttachmentIsRefused` |

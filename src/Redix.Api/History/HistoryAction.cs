@@ -69,9 +69,12 @@ public enum HistoryAction
     /// <summary>A project was closed, which cannot be undone (UC-006).</summary>
     CloseProject,
 
-    /// <summary>A unit, a document or an account nothing named was deleted (redix-api #96, redix-app #89).</summary>
+    /// <summary>A unit, a document, an account nothing named or an entry was deleted (redix-api #96, redix-app #89), or an approved entry removed softly (redix-api #119).</summary>
     Delete,
 
-    /// <summary>An approved entry was reversed: the opposite entry, approved at once (UC-035, redix-app #89).</summary>
+    /// <summary>
+    /// An entry approved at once as the opposite of another, written by reversing before it went (redix-api #119, D5). Nothing writes it now; it stays because History rows never
+    /// change (AC-21.1), and the histories read it as the approval of an ordinary entry.
+    /// </summary>
     Reverse,
 }

@@ -35,7 +35,7 @@ public record EntrySearch(string Text, bool Mine, string[] Kinds, string[] Statu
     public bool Keeps(EntryRowView row) =>
         (!Mine || row.IsMine)
         && (Kinds.Length == 0 || Kinds.Contains(NameOf(row.Kind)))
-        && (Statuses.Length == 0 || Statuses.Contains(row.IsReversed ? "reversed" : NameOf(row.Status)))
+        && (Statuses.Length == 0 || Statuses.Contains(NameOf(row.Status)))
         && row.EntryDate >= From
         && (To == DateOnly.MinValue || row.EntryDate <= To)
         && ArabicSpelling.Holds(Text, row.Amount, row.ItemName, row.PartnerName, row.SupplierName, row.AuthorName, row.InvoiceNumber);

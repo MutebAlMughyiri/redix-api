@@ -78,7 +78,7 @@ public static class AccountHistory
 
     private static AccountHistoryLine EntryLine(AccountHistoryLine line, HistoryRecord row, Entry entry, Dictionary<Guid, string> accountNames) => line with
     {
-        Kind = row.Action == HistoryAction.Reverse ? AccountHistoryKind.Reversed : entry.Kind.Signed(entry.Amount) >= 0 ? AccountHistoryKind.EntryIn : AccountHistoryKind.EntryOut,
+        Kind = entry.Kind.Signed(entry.Amount) >= 0 ? AccountHistoryKind.EntryIn : AccountHistoryKind.EntryOut,
         Account = accountNames.GetValueOrDefault(entry.AccountId, ""),
         Amount = Math.Abs(entry.Amount),
         EntryKind = entry.Kind,
@@ -135,9 +135,6 @@ public enum AccountHistoryKind
 
     /// <summary>An approved entry took money out of an account.</summary>
     EntryOut,
-
-    /// <summary>An approved entry was reversed.</summary>
-    Reversed,
 
     /// <summary>The actual balances were counted.</summary>
     Check,

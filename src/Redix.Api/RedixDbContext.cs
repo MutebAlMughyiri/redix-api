@@ -108,9 +108,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The bill numbers of expenses entered before REDIX stopped asking for one (redix-api #96, D2).</summary>
     public DbSet<Invoice> Invoices => Set<Invoice>();
 
-    /// <summary>What ties one entry to another.</summary>
-    public DbSet<EntryLink> EntryLinks => Set<EntryLink>();
-
     /// <summary>What only a capital movement has.</summary>
     public DbSet<Redix.Api.Partners.CapitalMovementDetails> CapitalMovementDetails => Set<Redix.Api.Partners.CapitalMovementDetails>();
 
@@ -415,15 +412,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             decision.HasIndex(d => d.EntryId);
             decision.HasOne<Entry>().WithMany().HasForeignKey(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             decision.HasOne<User>().WithMany().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Restrict);
-        });
-        modelBuilder.Entity<EntryLink>(link =>
-        {
-            link.HasKey(l => new { l.EntryId, l.Type });
-            link.Property(l => l.Reason).HasMaxLength(ApprovalsEndpoints.ReasonMaxLength);
-            link.HasIndex(l => l.LinkedEntryId);
-            link.HasIndex(l => l.LinkedEntryId, "IX_EntryLinks_OneReversal").IsUnique().HasFilter($"[Type] = {(byte)EntryLinkType.Reversal}");
-            link.HasOne<Entry>().WithMany().HasForeignKey(l => l.EntryId).OnDelete(DeleteBehavior.Restrict);
-            link.HasOne<Entry>().WithMany().HasForeignKey(l => l.LinkedEntryId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<EntryAttachment>(link =>
         {

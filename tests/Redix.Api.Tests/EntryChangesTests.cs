@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Redix.Api.Tests;
 
-/// <summary>UC-033, UC-034 and UC-035: changing an entry before approval, and reversing one after.</summary>
+/// <summary>UC-033 and UC-034: changing an entry before approval. Removing one after it is in <see cref="RemoveApprovedEntryTests"/> (redix-api #119).</summary>
 [Collection(ThirdDatabaseCollection.Name)]
 public class EntryChangesTests(MigratedApiFactory factory)
 {
@@ -22,9 +22,6 @@ public class EntryChangesTests(MigratedApiFactory factory)
 
     private static Task<HttpResponseMessage> DeleteAsync(HttpClient client, Ledger ledger, Guid id) =>
         client.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{id}");
-
-    private static Task<HttpResponseMessage> ReverseAsync(HttpClient client, Ledger ledger, Guid id, string reason = "إدخال خاطئ") =>
-        client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/reverse", new RejectEntryRequest(reason), Json);
 
     private static async Task ApproveAsync(Ledger ledger, Guid id) =>
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/approve", new ApproveEntriesRequest([id]), Json)).EnsureSuccessStatusCode();
@@ -49,18 +46,15 @@ public class EntryChangesTests(MigratedApiFactory factory)
     private static Task<HttpResponseMessage> RowAsync(HttpClient client, Ledger ledger, Guid id) => client.GetAsync($"/projects/{ledger.ProjectId}/entries/{id}/row");
 
     [Fact]
-    public async Task Row_201_AnOpenedEntryReadsItselfByItsIdAndSaysItIsReversedOnceReversed()
+    public async Task Row_201_AnOpenedEntryReadsItselfByItsId()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var entry = await ledger.RecordAsync(ledger.Purchase(450m) with { Submit = true });
         await ApproveAsync(ledger, entry.Id);
 
         var approved = (await (await RowAsync(ledger.Client, ledger, entry.Id)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryRowView>(Json))!;
-        (await ReverseAsync(ledger.Client, ledger, entry.Id)).EnsureSuccessStatusCode();
-        var reversed = (await (await RowAsync(ledger.Client, ledger, entry.Id)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryRowView>(Json))!;
 
-        Assert.Equal((entry.Id, EntryStatus.Approved, false, 450m), (approved.Id, approved.Status, approved.IsReversed, approved.Amount));
-        Assert.Equal((EntryStatus.Approved, true), (reversed.Status, reversed.IsReversed));
+        Assert.Equal((entry.Id, EntryStatus.Approved, 450m), (approved.Id, approved.Status, approved.Amount));
     }
 
     [Fact]
@@ -192,23 +186,6 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AnApprovedBillIsNotRemovedButReversedAndBothStayWithANetOfZero()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(request);
-        await ApproveAsync(ledger, request.Id);
-
-        await AssertRefused(await DeleteAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Conflict, "entryApproved");
-        var reversal = (await (await ReverseAsync(ledger.Client, ledger, request.Id)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!;
-
-        var both = await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == request.Id || row.Id == reversal.Id).ToListAsync());
-        Assert.Equal(2, both.Count);
-        Assert.All(both, row => Assert.Equal(EntryStatus.Approved, row.Status));
-        Assert.Equal(0m, both.Sum(row => row.Amount));
-    }
-
-    [Fact]
     public async Task DeletingIsItsOwnPermission()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
@@ -308,7 +285,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_50_2_AnApprovedEntrysNotesMayChangeAndItIsNotDeleted()
+    public async Task AC_50_2_AnApprovedEntrysNotesMayChangeAndDeletingIsNotEnoughToRemoveIt()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var request = ledger.Purchase(200m) with { Submit = true };
@@ -318,7 +295,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/notes", new ChangeNotesRequest("ملاحظة بعد الاعتماد"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("ملاحظة بعد الاعتماد", await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == request.Id).Select(row => row.Notes).SingleAsync()));
-        await AssertRefused(await DeleteAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Conflict, "entryApproved");
+        Assert.Equal(HttpStatusCode.Forbidden, (await DeleteAsync(ledger.Client, ledger, request.Id)).StatusCode);
     }
 
     [Fact]
@@ -333,73 +310,6 @@ public class EntryChangesTests(MigratedApiFactory factory)
         Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(row => row.Id == request.Id)));
         Assert.False(await ledger.ReadAsync(db => db.ExpenseDetails.AnyAsync(row => row.EntryId == request.Id)));
         Assert.Contains(await factory.HistoryOfAsync(request.Id), record => record.Action == HistoryAction.Delete);
-    }
-
-    [Fact]
-    public async Task AnInvoiceACreditNoteReturnsIsNotDeleted()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var invoice = ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Submit = true };
-        await ledger.RecordAsync(invoice);
-        await ledger.RecordAsync(ledger.Purchase(100m) with { IsCreditNote = true, OriginalEntryId = invoice.Id });
-
-        await AssertRefused(await DeleteAsync(ledger.Client, ledger, invoice.Id), HttpStatusCode.Conflict, "entryHasCreditNote");
-    }
-
-    [Fact]
-    public async Task AC_50_1_AReversalIsAnOppositeEntryTiedToTheOriginalAndTheNetEffectIsZero()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(1150m) with { AttachmentId = await ledger.FileAsync(), Submit = true };
-        await ledger.RecordAsync(request);
-        await ApproveAsync(ledger, request.Id);
-        var original = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
-
-        var response = await ReverseAsync(ledger.Client, ledger, request.Id);
-
-        var reversal = (await response.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!;
-        Assert.Equal(EntryStatus.Approved, reversal.Status);
-        var opposite = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == reversal.Id));
-        Assert.Equal(-1150m, opposite.Amount);
-        var link = await ledger.ReadAsync(db => db.EntryLinks.SingleAsync(row => row.EntryId == reversal.Id));
-        Assert.Equal((EntryLinkType.Reversal, request.Id, "إدخال خاطئ"), (link.Type, link.LinkedEntryId, link.Reason));
-        var after = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
-        Assert.Equal((original.Amount, original.Status, original.Notes), (after.Amount, after.Status, after.Notes));
-        Assert.False(await ledger.ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id || row.EntryId == reversal.Id)));
-        var account = (await ledger.Client.GetFromJsonAsync<List<AccountView>>($"/projects/{ledger.ProjectId}/accounts", Json))!.Single();
-        Assert.Equal(0m, account.Balance);
-    }
-
-    [Fact]
-    public async Task OnlyAnApprovedEntryIsReversedOnceAndWithAReason()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(request);
-
-        await AssertRefused(await ReverseAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Conflict, "entryNotApproved");
-
-        await ApproveAsync(ledger, request.Id);
-        await AssertRefused(await ReverseAsync(ledger.Client, ledger, request.Id, "  "), HttpStatusCode.BadRequest, "reasonRequired");
-
-        var reversal = (await (await ReverseAsync(ledger.Client, ledger, request.Id)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!;
-        await AssertRefused(await ReverseAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Conflict, "alreadyReversed");
-        await AssertRefused(await ReverseAsync(ledger.Client, ledger, reversal.Id), HttpStatusCode.Conflict, "alreadyReversed");
-    }
-
-    [Fact]
-    public async Task TwoReversalsSentAtOnceReverseTheEntryOnce()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(request);
-        await ApproveAsync(ledger, request.Id);
-
-        var answers = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => ReverseAsync(ledger.Client, ledger, request.Id)));
-
-        Assert.Single(answers, answer => answer.StatusCode == HttpStatusCode.Created);
-        Assert.All(answers.Where(answer => answer.StatusCode != HttpStatusCode.Created), answer => Assert.Equal(HttpStatusCode.Conflict, answer.StatusCode));
-        Assert.Equal(1, await ledger.ReadAsync(db => db.EntryLinks.CountAsync(link => link.LinkedEntryId == request.Id && link.Type == EntryLinkType.Reversal)));
     }
 
     [Fact]
@@ -433,32 +343,5 @@ public class EntryChangesTests(MigratedApiFactory factory)
         Assert.Equal("شركة النخيل", row.SupplierName);
         Assert.Equal(2, own.Count);
         Assert.All(own, entry => Assert.True(entry.IsMine));
-    }
-
-    [Fact]
-    public async Task AReversedEntryAndItsReversalAreMarkedOnTheList()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(request);
-        await ApproveAsync(ledger, request.Id);
-        (await ReverseAsync(ledger.Client, ledger, request.Id)).EnsureSuccessStatusCode();
-
-        var rows = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
-
-        Assert.Equal(2, rows.Count);
-        Assert.All(rows, row => Assert.True(row.IsReversed));
-    }
-
-    [Fact]
-    public async Task OnlyWhoeverDecidesEntriesReversesThem()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (field, _) = await ledger.MemberAsync("Field");
-        var request = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(request);
-        await ApproveAsync(ledger, request.Id);
-
-        Assert.Equal(HttpStatusCode.Forbidden, (await ReverseAsync(field, ledger, request.Id)).StatusCode);
     }
 }

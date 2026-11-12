@@ -11,9 +11,9 @@ public class Entry
     /// <summary>No entry: what a lookup answers when there is none, and what "keep this as a new entry" passes for the entry it replaces, so no caller holds a null.</summary>
     public static Entry None { get; } = new();
 
-    /// <summary>The entry <paramref name="entryId"/> if it belongs to <paramref name="projectId"/> (BR-33); <see cref="None"/> otherwise.</summary>
+    /// <summary>The entry <paramref name="entryId"/> if it belongs to <paramref name="projectId"/> (BR-33) and was not removed (redix-api #119); <see cref="None"/> otherwise.</summary>
     public static async Task<Entry> OfProjectAsync(Guid projectId, Guid entryId, RedixDbContext db) =>
-        await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId) ?? None;
+        await db.Entries.SingleOrDefaultAsync(row => row.Id == entryId && row.ProjectId == projectId && row.Status != EntryStatus.Removed) ?? None;
 
     /// <summary>The <see cref="ApprovedAt"/> of an entry not approved yet.</summary>
     public static readonly DateTime NotApproved = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);

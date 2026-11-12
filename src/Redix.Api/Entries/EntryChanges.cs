@@ -73,6 +73,18 @@ public static class EntryChanges
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Removes an approved entry softly (redix-api #119, D1): it is marked <see cref="EntryStatus.Removed"/>, which no list and no figure reads, so it leaves the summary, its account, its
+    /// item, its contract's paid amount and a partner's capital as if never approved; it stays in the database with all it holds, and the History table keeps who removed it and when.
+    /// A periodic report issued before keeps it, as issued (BR-26).
+    /// </summary>
+    public static async Task RemoveAsync(Entry entry, Guid userId, DateTime at, RedixDbContext db)
+    {
+        entry.Status = EntryStatus.Removed;
+        db.AddHistory(entry, HistoryAction.Delete, userId, at);
+        await db.SaveChangesAsync();
+    }
+
     private static async Task RemoveDetailsAsync(Guid entryId, Guid userId, DateTime at, RedixDbContext db)
     {
         List<object> details =
@@ -84,7 +96,6 @@ public static class EntryChanges
             .. await db.EntryAttachments.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.Set<RevenueDetails>().Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.CapitalMovementDetails.Where(row => row.EntryId == entryId).ToListAsync(),
-            .. await db.EntryLinks.Where(row => row.EntryId == entryId && row.Type == EntryLinkType.CreditNoteOf).ToListAsync(),
         ];
         foreach (var detail in details)
         {

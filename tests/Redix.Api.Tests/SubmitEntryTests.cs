@@ -253,17 +253,4 @@ public class SubmitEntryTests(MigratedApiFactory factory)
 
         Assert.Equal(Guid.Empty, entry.GetProperty("invoice").GetProperty("entryId").GetGuid());
     }
-
-    [Fact]
-    public async Task ReadingACreditNoteAnswersWhatItIsLinkedTo()
-    {
-        var ledger = await LedgerAsync();
-        var original = await DraftAsync(ledger, ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Submit = true });
-        var note = await DraftAsync(ledger, ledger.Purchase(100m) with { IsCreditNote = true, OriginalEntryId = original });
-
-        var entry = await ReadAsync(ledger, note);
-
-        var link = Assert.Single(entry.GetProperty("links").EnumerateArray());
-        Assert.Equal(("creditNoteOf", original), (link.GetProperty("type").GetString(), link.GetProperty("linkedEntryId").GetGuid()));
-    }
 }

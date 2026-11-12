@@ -4,7 +4,7 @@
 
 **Purpose:** record money that comes in other than capital, and give the VAT statement of any period as the accountant's workbook.
 
-**No Revenue screen and no sales invoice** (Muteb, 8 Nov 2026: "remove those completely"). Revenue is entered from Add entry, on a revenue item's table, waits for approval, and shows in القيود with every other entry, where it is reversed. The sales invoice, its route and its table went; RedixReal held none. The VAT statement keeps its purchases.
+**No Revenue screen and no sales invoice** (Muteb, 8 Nov 2026: "remove those completely"). Revenue is entered from Add entry, on a revenue item's table, waits for approval, and shows in القيود with every other entry, where an approved one is removed by whoever holds the removal (redix-api #119). The sales invoice, its route and its table went; RedixReal held none. The VAT statement keeps its purchases.
 
 **Who uses it:** whoever holds `MoveMoney` records; everyone who reads the project reads; whoever holds `SeeAllCapital` takes the statement's workbook.
 
@@ -31,7 +31,7 @@
 | FR-28: revenue goes on a revenue item's table, and an entry on an expense table is an expense (redix-api #110) | `EntryTable.OfferedAsync` | `RevenueTests.FR_28_RevenueGoesOnARevenueItemAndAnExpenseTablesEntryIsAnExpense` |
 | AC-46.7: the summary keeps revenue categories apart from expense ones | `SummaryEndpoints.Summary` | `RevenueTests.AC_46_7_TheSummaryKeepsRevenueCategoriesApartFromExpenseOnes` |
 | BR-06, AC-46.7: the summary's revenue side is its revenue categories, رأس المال first as the structure orders it (redix-api #109), adding up to the revenue for every reader, as the periodic report's does | `SummaryEndpoints.OfAsync`, `ItemTotals` | `RevenueTests.BR_06_TheSummaryGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue` |
-| Reversing a sale takes it out of the revenue | `EntryReversal` | `RevenueTests.ReversingASaleTakesItOutOfTheRevenue` |
+| Removing an approved sale takes it out of the revenue | `EntriesEndpoints.Delete` | `RevenueTests.App_119_RemovingASaleTakesItOutOfTheRevenue` |
 | The entries list holds revenue and partners' money with their status; a partner's money shows only to whoever sees all capital, or to that partner (BR-31) | `EntriesEndpoints.RowsAsync` | `RevenueTests.OneList_TheEntriesListHoldsRevenueAndPartnersMoneyWithTheirStatus`, `BR_31_InTheEntriesListAPartnerSeesTheirOwnMoneyAndNoOneElses` |
 | redix-app #83: an entry on the list carries its notes, the account it was paid from or reached and, for an expense, its payment method, which the app's shared text holds | `EntryRowView`, `EntryFacts.AccountNameOf`, `PaymentMethodNameOf` | `EntryChangesTests.UC_083_AnEntryOnTheListCarriesItsNotesAccountAndPaymentMethodForItsSharedText` |
 | A waiting revenue or partner entry is deleted with everything it holds | `EntryChanges.RemoveDetailsAsync` | `RevenueTests.OneList_AWaitingRevenueOrPartnerEntryIsDeletedWithEverythingItHolds` |

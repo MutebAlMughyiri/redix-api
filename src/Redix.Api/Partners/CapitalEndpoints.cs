@@ -68,9 +68,7 @@ public static class CapitalEndpoints
             select new { entry, details }).ToListAsync();
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        var ids = entries.Select(entry => entry.Id).ToList();
-        var reversed = (await db.EntryLinks.Where(link => link.Type == EntryLinkType.Reversal && (ids.Contains(link.EntryId) || ids.Contains(link.LinkedEntryId))).ToListAsync()).SelectMany(link => new[] { link.EntryId, link.LinkedEntryId }).ToHashSet();
-        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry), reversed.Contains(row.entry.Id)) { FileName = facts.FileNameOf(row.entry) }).ToList();
+        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
     /// <summary>Each partner's capital in the project, from its approved movements: the one owner of a partner's balance (BR-05), which deleting a partner asks too (redix-api #100).</summary>
@@ -107,8 +105,7 @@ public record PartnerCapitalView(Guid Id, string Name, decimal Balance, decimal 
 /// <param name="AccountName">The account it moved through.</param>
 /// <param name="AttachmentId">Its receipt; empty when none.</param>
 /// <param name="ContentType">What the receipt is; empty when none.</param>
-/// <param name="IsReversed">True when it was reversed, or is itself a reversal.</param>
-public record CapitalMovementView(Guid Id, CapitalMovementType Type, DateOnly Date, decimal Amount, string Description, string AccountName, string AttachmentId, string ContentType, bool IsReversed)
+public record CapitalMovementView(Guid Id, CapitalMovementType Type, DateOnly Date, decimal Amount, string Description, string AccountName, string AttachmentId, string ContentType)
 {
     /// <summary>The receipt's name, so the phone hands it over by that name (findings row 158); empty when none, and in a report issued before 8 Nov 2026.</summary>
     public string FileName { get; init; } = "";

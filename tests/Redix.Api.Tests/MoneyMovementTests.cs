@@ -52,9 +52,6 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
     private static Task<decimal> SurplusAsync(Ledger ledger) => ledger.ReadAsync(async db => (await ProjectFigures.OfAsync(ledger.ProjectId, db)).Surplus);
 
-    private static async Task ReverseAsync(HttpClient client, Guid projectId, Guid entryId) =>
-        (await client.PostAsJsonAsync($"/projects/{projectId}/entries/{entryId}/reverse", new RejectEntryRequest("خطأ"), Json)).EnsureSuccessStatusCode();
-
     [Fact]
     public async Task AC_24_1_TheDifferenceIsTheActualBalancesLessTheSurplus()
     {

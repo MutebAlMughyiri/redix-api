@@ -222,43 +222,6 @@ public class ApprovalsTests(MigratedApiFactory factory)
         Assert.Equal(SupplierStatus.PendingApproval, await ledger.ReadAsync(db => db.Suppliers.Where(row => row.Id == supplierId).Select(row => row.Status).SingleAsync()));
     }
 
-    private static async Task<(Guid Invoice, Guid CreditNote)> InvoiceAndCreditNoteAsync(Ledger ledger)
-    {
-        var invoice = ledger.Purchase() with { Submit = true, AttachmentId = await ledger.FileAsync() };
-        await ledger.RecordAsync(invoice);
-        var credit = ledger.Purchase(100m) with { IsCreditNote = true, OriginalEntryId = invoice.Id, Submit = true, AttachmentId = await ledger.FileAsync() };
-        await ledger.RecordAsync(credit);
-        return (invoice.Id, credit.Id);
-    }
-
-    [Fact]
-    public async Task ACreditNoteWaitsForItsInvoice()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (_, credit) = await InvoiceAndCreditNoteAsync(ledger);
-
-        Assert.Equal("originalNotApproved", (await ApproveAsync(ledger, credit)).Failed.Single().Code);
-    }
-
-    [Fact]
-    public async Task ACreditNoteWhoseInvoiceWasRejectedStaysRefused()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (invoice, credit) = await InvoiceAndCreditNoteAsync(ledger);
-        (await RejectAsync(ledger, invoice, "مكررة")).EnsureSuccessStatusCode();
-
-        Assert.Equal("originalNotApproved", (await ApproveAsync(ledger, credit)).Failed.Single().Code);
-    }
-
-    [Fact]
-    public async Task ACreditNoteGoesWithItsInvoiceInOneApproval()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var (invoice, credit) = await InvoiceAndCreditNoteAsync(ledger);
-
-        Assert.Equal([credit, invoice], (await ApproveAsync(ledger, credit, invoice)).Approved);
-    }
-
     [Fact]
     public async Task EachSendingAndDecisionIsRecordedWithWhoAndWhy()
     {

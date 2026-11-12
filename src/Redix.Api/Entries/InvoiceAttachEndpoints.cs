@@ -91,12 +91,12 @@ public static class InvoiceAttachEndpoints
         return Results.Ok(new EntryStatusView(entryId, entry.Status, ""));
     }
 
-    /// <summary>The one answer to what can take a file later: an expense with none yet, not a deduction or credit note, which pay nothing, and not reversed, or itself a reversal.</summary>
+    /// <summary>The one answer to what can take a file later: an expense with none yet, not a deduction or credit note, which pay nothing, and not removed (redix-api #119).</summary>
     private static IQueryable<Entry> AttachableIn(Guid projectId, RedixDbContext db) =>
         db.Entries.Where(entry => entry.ProjectId == projectId && entry.Amount > 0
             && db.ExpenseDetails.Any(row => row.EntryId == entry.Id)
             && !db.EntryAttachments.Any(file => file.EntryId == entry.Id)
-            && !db.EntryLinks.Any(link => link.Type == EntryLinkType.Reversal && (link.EntryId == entry.Id || link.LinkedEntryId == entry.Id)));
+            && entry.Status != EntryStatus.Removed);
 }
 
 /// <summary>An expense that can take a file.</summary>

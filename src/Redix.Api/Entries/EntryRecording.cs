@@ -211,18 +211,16 @@ public static class EntryRecording
 
     /// <summary>
     /// Adds <paramref name="entry"/> with its <paramref name="details"/> and the history row of each (FR-21), saved with the change. One sent for approval is a decision and tells
-    /// the deciders; one approved at once, a reversal, is a decision too; a draft is neither.
+    /// the deciders; a draft is neither.
     /// </summary>
     public static async Task AddAsync(Entry entry, List<object> details, Guid userId, RedixDbContext db)
     {
         db.Add(entry);
-        db.AddHistory(entry, entry.Status switch { EntryStatus.PendingApproval => HistoryAction.Submit, EntryStatus.Approved => HistoryAction.Reverse, _ => HistoryAction.Create }, userId, entry.CreatedAt);
-        if (entry.Status != EntryStatus.Draft)
+        var sent = entry.Status == EntryStatus.PendingApproval;
+        db.AddHistory(entry, sent ? HistoryAction.Submit : HistoryAction.Create, userId, entry.CreatedAt);
+        if (sent)
         {
-            db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = entry.Status == EntryStatus.Approved ? EntryDecisionAction.Approve : EntryDecisionAction.Submit, UserId = userId, At = entry.CreatedAt });
-        }
-        if (entry.Status == EntryStatus.PendingApproval)
-        {
+            db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = entry.CreatedAt });
             await NotificationsEndpoints.TellDecidersAsync(entry, userId, entry.CreatedAt, db);
         }
         foreach (var detail in details)

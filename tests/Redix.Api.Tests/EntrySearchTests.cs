@@ -12,8 +12,8 @@ public class EntrySearchTests(MigratedApiFactory factory)
 {
     private static readonly DateOnly Day = new(2026, 11, 10);
 
-    private static EntryRowView Row(string supplierName = "مؤسسة الأفق", EntryKind kind = EntryKind.Purchase, EntryStatus status = EntryStatus.Approved, bool isReversed = false, bool isMine = true, decimal amount = 6000m) =>
-        new(Guid.CreateVersion7(), kind, status, "", Day, amount, "البلاط", supplierName, "", "نواف", isMine, isReversed, "", "", "البنك", "", 0m);
+    private static EntryRowView Row(string supplierName = "مؤسسة الأفق", EntryKind kind = EntryKind.Purchase, EntryStatus status = EntryStatus.Approved, bool isMine = true, decimal amount = 6000m) =>
+        new(Guid.CreateVersion7(), kind, status, "", Day, amount, "البلاط", supplierName, "", "نواف", isMine, "", "", "البنك", "", 0m);
 
     private static EntrySearch Search(string text = "", bool mine = false, DateOnly from = default, DateOnly to = default) => new(text, mine, [], [], from, to);
 
@@ -29,12 +29,12 @@ public class EntrySearchTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public void App_104_EachFilterGivenMustHoldAndAReversedEntryStandsReversed()
+    public void App_104_EachFilterGivenMustHold()
     {
         Assert.True((Search() with { Kinds = ["purchase"] }).Keeps(Row()));
         Assert.False((Search() with { Kinds = ["contractorPayment", "revenue"] }).Keeps(Row()));
-        Assert.True((Search() with { Statuses = ["reversed"] }).Keeps(Row(isReversed: true)));
-        Assert.False((Search() with { Statuses = ["approved"] }).Keeps(Row(isReversed: true)));
+        Assert.True((Search() with { Statuses = ["approved"] }).Keeps(Row()));
+        Assert.False((Search() with { Statuses = ["rejected"] }).Keeps(Row()));
         Assert.True((Search() with { Statuses = ["draft"] }).Keeps(Row(status: EntryStatus.Draft)));
         Assert.False(Search(mine: true).Keeps(Row(isMine: false)));
         Assert.True(Search(from: Day, to: Day).Keeps(Row()));
