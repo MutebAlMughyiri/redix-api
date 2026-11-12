@@ -449,10 +449,9 @@ public class SuppliersTests(MigratedApiFactory factory)
     public async Task ASearchAnswersAtMost20SuppliersWithinASecond()
     {
         var (client, project) = await FinanceAsync();
-        var userId = Guid.Empty;
         await factory.WithDatabaseAsync(async db =>
         {
-            userId = await db.ProjectPermissions.Where(held => held.ProjectId == project.Id).Select(held => held.UserId).FirstAsync();
+            var userId = await db.ProjectPermissions.Where(held => held.ProjectId == project.Id).Select(held => held.UserId).FirstAsync();
             db.Suppliers.AddRange(Enumerable.Range(0, 500).Select(number => new Supplier { ProjectId = project.Id, Name = $"مورد البناء {number}", CreatedByUserId = userId }));
             await db.SaveChangesAsync();
         });

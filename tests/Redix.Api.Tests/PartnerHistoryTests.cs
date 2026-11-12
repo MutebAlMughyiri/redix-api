@@ -21,7 +21,7 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
         return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
     }
 
-    private static async Task<Guid> MoveAsync(Ledger ledger, Guid partnerId, decimal amount, bool isWithdrawal = false) =>
+    private static async Task MoveAsync(Ledger ledger, Guid partnerId, decimal amount, bool isWithdrawal = false) =>
         await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partnerId, amount, isWithdrawal), Json));
 
     [Fact]

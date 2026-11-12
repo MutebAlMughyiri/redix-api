@@ -150,7 +150,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
         Assert.Equal("notYourEntry", await Ledger.CodeOf(refused));
 
-        var (other, otherId) = await ledger.MemberAsync("Field");
+        var (other, _) = await ledger.MemberAsync("Field");
         var fieldEntries = new[] { Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7() };
         await factory.WithDatabaseAsync(async db =>
         {

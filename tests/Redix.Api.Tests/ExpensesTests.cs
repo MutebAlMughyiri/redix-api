@@ -26,7 +26,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
-    private sealed record Setup(HttpClient Client, ProjectView Project, Guid ItemId, Guid TableId, Guid SupplierId, Guid CashSupplierId, Guid MethodId, Guid AccountId);
+    private sealed record Setup(HttpClient Client, ProjectView Project, Guid ItemId, Guid TableId, Guid SupplierId, Guid MethodId, Guid AccountId);
 
     private async Task<Setup> FinanceAsync(string name = "غصون 6")
     {
@@ -35,12 +35,11 @@ public class ExpensesTests(MigratedApiFactory factory)
         var project = await factory.ApprovedProjectAsync(client, name, "الفلة الغربية");
         await factory.GiveAsync(user.Id, project.Id, Holds.Of(Finance));
         var supplier = await SupplierAsync(client, project.Id, "شركة النخيل", MigratedApiFactory.NewVatNumber());
-        var suppliers = (await client.GetFromJsonAsync<List<SupplierView>>($"/projects/{project.Id}/suppliers", Json))!;
         var methods = (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{project.Id}/payment-methods", Json))!;
         (await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("حساب المؤسسة", AccountType.Bank), Json)).EnsureSuccessStatusCode();
         var account = (await client.GetFromJsonAsync<List<AccountView>>($"/projects/{project.Id}/accounts", Json))!.Single();
         var item = await PurchaseItemAsync(client, project.Id);
-        return new Setup(client, project, item.Id, item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, supplier.Id, suppliers.Single(row => row.Name == Supplier.GeneralCashSupplierName).Id, methods[0].Id, account.Id);
+        return new Setup(client, project, item.Id, item.Subgroups.Single(row => row.Name == Subgroup.GeneralName).Id, supplier.Id, methods[0].Id, account.Id);
     }
 
     private static async Task<SupplierView> SupplierAsync(HttpClient client, Guid projectId, string name, string vatNumber)

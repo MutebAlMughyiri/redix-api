@@ -47,8 +47,6 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
     private static async Task<CapitalView> CapitalAsync(HttpClient client, Guid projectId) => (await client.GetFromJsonAsync<CapitalView>($"/projects/{projectId}/capital", Json))!;
 
-    private static Task<decimal> SurplusAsync(Ledger ledger) => ledger.ReadAsync(async db => (await ProjectFigures.OfAsync(ledger.ProjectId, db)).Surplus);
-
     [Fact]
     public async Task AC_24_1_TheDifferenceIsTheActualBalancesLessTheSurplus()
     {

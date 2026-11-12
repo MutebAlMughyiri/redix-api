@@ -18,11 +18,10 @@ public class SummaryTests(MigratedApiFactory factory)
 
     private static async Task<SummaryView> SummaryAsync(HttpClient client, Guid projectId) => (await client.GetFromJsonAsync<SummaryView>($"/projects/{projectId}/summary", Json))!;
 
-    private static async Task<Guid> ApprovedAsync(Ledger ledger, EntryRequest request)
+    private static async Task ApprovedAsync(Ledger ledger, EntryRequest request)
     {
         await ledger.RecordAsync(request with { Submit = true, AttachmentId = await ledger.FileAsync() });
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
-        return request.Id;
     }
 
     [Fact]

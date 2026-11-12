@@ -53,7 +53,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         var custody = await AccountAsync(ledger, "كاش مع مدير المشروع");
         await FundAsync(ledger, 1000m);
         await TransferAsync(ledger, ledger.AccountId, custody, 400m);
-        var purchase = await ledger.ApproveAsync(await SentPurchaseAsync(ledger, 300m));
+        await ledger.ApproveAsync(await SentPurchaseAsync(ledger, 300m));
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 600m), new(custody, 400m)]), Json)).EnsureSuccessStatusCode();
         return (ledger, custody);
     }

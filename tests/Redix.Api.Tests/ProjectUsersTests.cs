@@ -182,7 +182,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     public async Task AManagerSeesOnlyTheirProjectsPeopleAndNoneOfTheirOtherProjects()
     {
         var (manager, client, projectId) = await ManagerAsync();
-        var (_, otherClient, otherProjectId) = await ManagerAsync();
+        var (_, _, otherProjectId) = await ManagerAsync();
         var shared = await factory.AddUserAsync(Password);
         var stranger = await factory.AddUserAsync(Password);
         await factory.GiveAsync(shared.Id, projectId, Holds.Field);
