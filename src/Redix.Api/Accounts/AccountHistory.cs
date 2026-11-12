@@ -71,12 +71,12 @@ public static class AccountHistory
                 "AccountCustodians" => line with { Kind = AccountHistoryKind.CustodianChanged, Account = accountNames.GetValueOrDefault(row.RecordId, ""), Custodian = names.GetValueOrDefault(HistoryPage.IdIn(row.After, "UserId"), "") },
                 "Transfers" => line with { Kind = AccountHistoryKind.Transfer, Account = accountNames.GetValueOrDefault(transfers[row.RecordId].FromAccountId, ""), OtherAccount = accountNames.GetValueOrDefault(transfers[row.RecordId].ToAccountId, ""), Amount = transfers[row.RecordId].Amount },
                 "Reconciliations" => line with { Kind = AccountHistoryKind.Check, Amount = checks[row.RecordId].Balances.Sum(balance => balance.ActualBalance) },
-                _ => EntryLine(line, row, entries[row.RecordId], accountNames),
+                _ => EntryLine(line, entries[row.RecordId], accountNames),
             };
         }).ToList();
     }
 
-    private static AccountHistoryLine EntryLine(AccountHistoryLine line, HistoryRecord row, Entry entry, Dictionary<Guid, string> accountNames) => line with
+    private static AccountHistoryLine EntryLine(AccountHistoryLine line, Entry entry, Dictionary<Guid, string> accountNames) => line with
     {
         Kind = entry.Kind.Signed(entry.Amount) >= 0 ? AccountHistoryKind.EntryIn : AccountHistoryKind.EntryOut,
         Account = accountNames.GetValueOrDefault(entry.AccountId, ""),
