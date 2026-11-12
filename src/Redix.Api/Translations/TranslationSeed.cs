@@ -504,6 +504,7 @@ public static class TranslationSeed
         ("projects.defaultTemplate", "The default template", "القالب الافتراضي"),
         ("projects.unknownSource", "You cannot copy from that project.", "لا يمكنك النسخ من ذلك المشروع."),
         ("projects.importSettings", "Import project settings", "استيراد إعدادات المشروع"),
+        ("projects.exportSettings", "Export project settings", "تصدير إعدادات المشروع"),
         ("columns.title", "Columns", "الأعمدة"),
         ("columns.template", "Default template", "القالب الافتراضي"),
         ("columns.thisItem", "This item only", "هذا البند فقط"),

@@ -9766,6 +9766,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("7277f98f-f4ab-08c2-7cdd-ed34a4cc3b8c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b2c007d5-af70-bb8e-ea39-a7599e19bb85"),
+                            Value = "Export project settings"
+                        },
+                        new
+                        {
+                            Id = new Guid("e09c9942-0742-1b5d-1385-68735c76100c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b2c007d5-af70-bb8e-ea39-a7599e19bb85"),
+                            Value = "تصدير إعدادات المشروع"
+                        },
+                        new
+                        {
                             Id = new Guid("3be681f9-b871-25f4-e0d4-f47a864b86e0"),
                             Language = "en",
                             TranslationKeyId = new Guid("96118bfd-4008-580d-d590-9a2bf23e8ea6"),
@@ -17185,6 +17199,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("f0e2c210-2c77-ee5d-54d1-611ab13f2097"),
                             Description = "",
                             Key = "projects.importSettings"
+                        },
+                        new
+                        {
+                            Id = new Guid("b2c007d5-af70-bb8e-ea39-a7599e19bb85"),
+                            Description = "",
+                            Key = "projects.exportSettings"
                         },
                         new
                         {
