@@ -10,8 +10,8 @@ namespace Redix.Api.Entries;
 /// <param name="Category">The category its item is in.</param>
 /// <param name="Item">The item.</param>
 /// <param name="Contract">The contract.</param>
-/// <param name="Contractor">The contractor's name.</param>
-public sealed record ContractTable(Category Category, Item Item, Contract Contract, string Contractor) : EntryTable(Category, Item, Contract.Id, Contractor, ItemTableKind.Contract, Contract.SortOrder)
+/// <param name="Name">The contractor's name, the table's name in the picker.</param>
+public sealed record ContractTable(Category Category, Item Item, Contract Contract, string Name) : EntryTable(Category, Item, Contract.Id, Name, ItemTableKind.Contract, Contract.SortOrder)
 {
     /// <inheritdoc />
     public override EntryKind EntryKindOf(EntryRequest request) => EntryKind.ContractorPayment;
