@@ -113,10 +113,10 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
 
-        var minus = workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.CellsUsed()).Where(cell => cell.Value.IsNumber && cell.Value.GetNumber() == -320).ToList();
+        var minus = workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.CellsUsed()).Where(cell => cell.Value.IsNumber && cell.GetValue<decimal>() == -320m).ToList();
         Assert.NotEmpty(minus);
         Assert.All(minus, cell => Assert.Equal(("#,##0.00;(#,##0.00)", "(320.00)"), (cell.Style.NumberFormat.Format, cell.GetFormattedString())));
-        Assert.Contains(workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.CellsUsed()), cell => cell.Value.IsNumber && cell.Value.GetNumber() == 830);
+        Assert.Contains(workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.CellsUsed()), cell => cell.Value.IsNumber && cell.GetValue<decimal>() == 830m);
     }
 
     [Fact]
