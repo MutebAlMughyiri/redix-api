@@ -3,8 +3,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Redix.Api.Auth;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
@@ -634,39 +632,6 @@ public class SuppliersTests(MigratedApiFactory factory)
         (await DisableAsync(client, project.Id, named.Id)).EnsureSuccessStatusCode();
     }
 
-    /// <summary>A project written as the schema of these older migrations has it, so a column added to projects later does not reach back into them.</summary>
-    private static async Task<Guid> OldProjectAsync(RedixDbContext db, string name)
-    {
-        var id = Guid.CreateVersion7();
-        await db.Database.ExecuteSqlAsync($"INSERT INTO Projects (Id, Name, StartDate, Status, RejectionReason, IsTemplate, StructureSourceId, VatRate) VALUES ({id}, {name}, {new DateOnly(2026, 11, 1)}, 1, '', 0, {Guid.Empty}, 0.15)");
-        return id;
-    }
-
-    [Fact]
-    public Task TheMigrationMarksTheRowTheApprovalNamedInAProjectApprovedBeforeIt() =>
-        factory.OnScratchDatabaseAsync("RedixGeneralCashTests", async db =>
-        {
-            var migrator = db.GetService<IMigrator>();
-            var names = db.GetService<IMigrationsAssembly>().Migrations.Keys.ToList();
-            var target = names.Single(name => name.EndsWith("_GeneralCashSupplierFlag"));
-            await migrator.MigrateAsync(names[names.IndexOf(target) - 1]);
-            var user = new User { Username = "approver", CreatedAt = factory.Time.GetUtcNow().UtcDateTime };
-            db.Add(user);
-            await db.SaveChangesAsync();
-            var project = await OldProjectAsync(db, "غصون 6");
-            var otherProject = await OldProjectAsync(db, "غصون 7");
-            Guid general = Guid.CreateVersion7(), other = Guid.CreateVersion7(), renamed = Guid.CreateVersion7();
-            foreach (var (id, projectId, name) in new[] { (general, project, Supplier.GeneralCashSupplierName), (other, project, "شركة النخيل"), (renamed, otherProject, "نقدي") })
-            {
-                await db.Database.ExecuteSqlAsync($"INSERT INTO Suppliers (Id, ProjectId, Name, VatNumber, Mobile, Status, IsActive, CreatedByUserId) VALUES ({id}, {projectId}, {name}, '', '', 0, 1, {user.Id})");
-            }
-
-            await migrator.MigrateAsync(target);
-
-            var marked = await db.Database.SqlQuery<Guid>($"SELECT Id AS Value FROM Suppliers WHERE IsGeneralCash = 1").ToListAsync();
-            Assert.Equal(general, Assert.Single(marked));
-        });
-
     [Theory]
     [InlineData("أحمد للمقاولات", "احمد")]
     [InlineData("مؤسسة الواحة", "مؤسسه")]
@@ -725,26 +690,4 @@ public class SuppliersTests(MigratedApiFactory factory)
     [InlineData("شَدَّة وتنوينًا ٍ", "شده وتنوينا ")]
     [InlineData("Company 15", "Company 15")]
     public void ArabicSpellingKeepsOneFormOfEachLetterAndNoTashkeel(string text, string normalized) => Assert.Equal(normalized, ArabicSpelling.Normalize(text));
-
-    [Fact]
-    public Task TheMigrationFillsTheNormalizedNameOfSuppliersSavedBeforeIt() =>
-        factory.OnScratchDatabaseAsync("RedixNormalizedNameTests", async db =>
-        {
-            var migrator = db.GetService<IMigrator>();
-            var names = db.GetService<IMigrationsAssembly>().Migrations.Keys.ToList();
-            var target = names.Single(name => name.EndsWith("_SupplierNormalizedName"));
-            await migrator.MigrateAsync(names[names.IndexOf(target) - 1]);
-            var user = new User { Username = "approver", CreatedAt = factory.Time.GetUtcNow().UtcDateTime };
-            db.Add(user);
-            await db.SaveChangesAsync();
-            var project = await OldProjectAsync(db, "غصون 6");
-            const string name = "أَحْمَد إبراهيم مؤسسة آل مصطفى شئون";
-            var id = Guid.CreateVersion7();
-            await db.Database.ExecuteSqlAsync($"INSERT INTO Suppliers (Id, ProjectId, Name, VatNumber, Mobile, Status, IsActive, IsGeneralCash, CreatedByUserId) VALUES ({id}, {project}, {name}, '', '', 0, 1, 0, {user.Id})");
-
-            await migrator.MigrateAsync(target);
-
-            var kept = await db.Database.SqlQuery<string>($"SELECT NormalizedName AS Value FROM Suppliers WHERE Id = {id}").SingleAsync();
-            Assert.Equal(ArabicSpelling.Normalize(name), kept);
-        });
 }

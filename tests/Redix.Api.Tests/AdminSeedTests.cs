@@ -7,15 +7,13 @@ namespace Redix.Api.Tests;
 [Collection(FourthDatabaseCollection.Name)]
 public class AdminSeedTests(MigratedApiFactory factory)
 {
-    private const string BeforeUsersExist = "20261101003509_InitialCreate";
-
     [Fact]
     public Task AMigrationThatStopsBeforeTheUsersTableSeedsNothingAndSucceeds_AsARollbackDoes() =>
         factory.OnScratchDatabaseAsync("RedixSeedTests", async db =>
         {
-            db.GetService<IMigrator>().Migrate(BeforeUsersExist);
-            await db.GetService<IMigrator>().MigrateAsync(BeforeUsersExist);
+            db.GetService<IMigrator>().Migrate(Migration.InitialDatabase);
+            await db.GetService<IMigrator>().MigrateAsync(Migration.InitialDatabase);
 
-            Assert.Equal([BeforeUsersExist], db.Database.GetAppliedMigrations());
+            Assert.Empty(db.Database.GetAppliedMigrations());
         });
 }

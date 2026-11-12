@@ -37,7 +37,7 @@ description: How REDIX API code is written - best practice of ASP.NET Core and E
 
 - One folder per feature under `src/Redix.Api`, holding its entities, seed and endpoint (for example `Translations/`). Tests mirror it.
 - Every table follows the pinned **Database design** issue. A change to the model is made there first, then in a migration.
-- Each use case adds one migration, named after what it adds.
+- The database starts from one baseline migration (Muteb, 13 Nov 2026, redix-api #123). A change adds a step named after what it adds; before a release is published, its steps merge into one, proven by comparing a database built fresh with RedixQA, so the folder holds the baseline and one step a release.
 
 ## The skills that hold each part in detail
 

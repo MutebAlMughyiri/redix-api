@@ -17,7 +17,7 @@ Ask each of every file in the diff, in this order.
 | --- | --- | --- | --- |
 | 1 | **Is it simple?** The direct form, fewest parts, fewest lines for the same behavior, the framework's feature before one of ours | A helper, flag or parameter that carries what the caller already knows; a hand-written copy of a framework feature | `deliver-smallest-change`, `use-what-the-platform-has` |
 | 2 | **Is it clean?** No NULL and no nullable column or property, simple names with `using`, no dead code, zero build warnings | A `?` meaning "not set", a qualified name in a line, an unused parameter | `redix-code-standard`, `using-never-qualify` |
-| 3 | **Is it well structured?** Each class one job its name says, in its feature folder; each use case one migration | Routes mapped and rules decided in one class; a query a report needs inside a change class | `a-class-does-one-job`, `logic-lives-with-its-owner` |
+| 3 | **Is it well structured?** Each class one job its name says, in its feature folder; a change one migration step, merged into one a release | Routes mapped and rules decided in one class; a query a report needs inside a change class | `a-class-does-one-job`, `logic-lives-with-its-owner` |
 | 4 | **Does every shared rule have one owner?** Who sees what, money precision, a word | The same condition written in two endpoints | `centralize-shared-design` |
 | 5 | **No customization?** One route or surface for every case, each refusing with its reason | A per-screen variant of an endpoint | `one-surface-many-states` |
 | 6 | **Is everything named for the business?** The glossary's words, in full | `Dto`, `Data`, a shortened word, a near-twin name | `names-say-the-business` |
@@ -38,7 +38,7 @@ In this order.
 
 1. `dotnet build`: zero warnings. A warning is fixed, never suppressed.
 2. `dotnet test`: the whole suite, and never two suites at once (they share one SQL Server).
-3. A migration: `dotnet ef migrations add <WhatItAdds>`, one per use case. The qa database is backed up before it is migrated.
+3. A migration: `dotnet ef migrations add <WhatItAdds>`, one step a change, merged into one before a release is published. The qa database is backed up before it is migrated.
 4. When the app sees the change: deploy to qa (on Muteb's PC, `C:\Users\mtb\REDIX\.night\qa97.ps1`, which backs up first) and run the app's Patrol classes that reach it (redix-app's `redix-review`).
 
 ## Reporting it

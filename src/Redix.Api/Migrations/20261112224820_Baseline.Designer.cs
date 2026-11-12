@@ -12,8 +12,8 @@ using Redix.Api;
 namespace Redix.Api.Migrations
 {
     [DbContext(typeof(RedixDbContext))]
-    [Migration("20261112021650_ExportSettingsWord")]
-    partial class ExportSettingsWord
+    [Migration("20261112224820_Baseline")]
+    partial class Baseline
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -53,6 +53,8 @@ namespace Redix.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProjectId");
+
+                    b.HasIndex("Type");
 
                     b.ToTable("Accounts");
                 });
@@ -314,7 +316,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("SystemPermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_SystemPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney')");
+                            t.HasCheckConstraint("CK_SystemPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'RemoveApprovedEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney')");
                         });
                 });
 
@@ -621,6 +623,10 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("Kind");
+
+                    b.HasIndex("Status");
+
                     b.HasIndex("ProjectId", "Status");
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ProjectId", "Status"), new[] { "Kind", "Amount", "AccountId" });
@@ -648,6 +654,8 @@ namespace Redix.Api.Migrations
                     b.HasKey("EntryId", "AttachmentId");
 
                     b.HasIndex("AttachmentId");
+
+                    b.HasIndex("Role");
 
                     b.ToTable("EntryAttachments");
                 });
@@ -685,44 +693,13 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Action");
+
                     b.HasIndex("EntryId");
 
                     b.HasIndex("UserId");
 
                     b.ToTable("EntryDecisions");
-                });
-
-            modelBuilder.Entity("Redix.Api.Entries.EntryLink", b =>
-                {
-                    b.Property<Guid>("EntryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte>("Type")
-                        .HasColumnType("tinyint");
-
-                    b.Property<Guid>("LinkedEntryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.HasKey("EntryId", "Type");
-
-                    b.HasIndex("LinkedEntryId");
-
-                    b.HasIndex(new[] { "LinkedEntryId" }, "IX_EntryLinks_OneReversal")
-                        .IsUnique()
-                        .HasFilter("[Type] = 2");
-
-                    b.ToTable("EntryLinks");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.ExpenseDetails", b =>
@@ -865,6 +842,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Action");
+
                     b.HasIndex("UserId");
 
                     b.HasIndex("ProjectId", "Id");
@@ -877,6 +856,666 @@ namespace Redix.Api.Migrations
                         });
 
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Accounts.AccountType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_AccountType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Bank"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "CashCustody"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryAttachmentRole>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryAttachmentRole", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Invoice"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Receipt"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "BankReceipt"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Other"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryDecisionAction>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryDecisionAction", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Submit"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Approve"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Reject"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryKind>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryKind", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Purchase"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "ContractorPayment"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "CapitalIn"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "CapitalOut"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "Revenue"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Entries.EntryStatus>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EntryStatus", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Draft"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "PendingApproval"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Approved"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Rejected"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "Removed"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.History.HistoryAction>", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LK_HistoryAction", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 0,
+                            Name = "SignIn"
+                        },
+                        new
+                        {
+                            Id = 1,
+                            Name = "SignOut"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "SignInFailed"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "AccountLocked"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "ChangePassword"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "Create"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "Update"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Name = "ResetPassword"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Name = "Disable"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Name = "Enable"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Name = "AssignProject"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Name = "RemoveProject"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Name = "RegisterProject"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Name = "ApproveProject"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Name = "Approve"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Name = "Reject"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Name = "RejectProject"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Name = "TurnOnBiometrics"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Name = "TurnOffBiometrics"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Name = "Submit"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Name = "Attach"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Name = "CloseProject"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Name = "Delete"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Name = "Restore"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Name = "Reverse"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Notifications.NotificationKind>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_NotificationKind", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "EntrySubmitted"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "EntryApproved"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "EntryRejected"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "ProjectApproved"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "ProjectRejected"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Partners.CapitalMovementType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_CapitalMovementType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Contribution"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Withdrawal"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Projects.ProjectStatus>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_ProjectStatus", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Active"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Finished"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "PendingApproval"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Rejected"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Structure.ColumnDataType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_ColumnDataType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Text"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "Number"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Amount"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Date"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "List"
+                        },
+                        new
+                        {
+                            Id = (byte)5,
+                            Name = "File"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Structure.ItemType>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_ItemType", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Purchases"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "ContractorPayments"
+                        },
+                        new
+                        {
+                            Id = (byte)2,
+                            Name = "Both"
+                        },
+                        new
+                        {
+                            Id = (byte)3,
+                            Name = "Sale"
+                        },
+                        new
+                        {
+                            Id = (byte)4,
+                            Name = "VatRefund"
+                        },
+                        new
+                        {
+                            Id = (byte)5,
+                            Name = "OtherRevenue"
+                        },
+                        new
+                        {
+                            Id = (byte)6,
+                            Name = "Capital"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Suppliers.SupplierStatus>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_SupplierStatus", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "Approved"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "PendingApproval"
+                        });
                 });
 
             modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
@@ -910,6 +1549,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Kind");
+
                     b.HasIndex("UserId", "At");
 
                     b.ToTable("Notifications");
@@ -935,6 +1576,8 @@ namespace Redix.Api.Migrations
                     b.HasKey("EntryId");
 
                     b.HasIndex("PartnerId");
+
+                    b.HasIndex("Type");
 
                     b.ToTable("CapitalMovementDetails");
                 });
@@ -1051,6 +1694,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Status");
+
                     b.ToTable("Projects");
 
                     b.HasData(
@@ -1099,7 +1744,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("ProjectPermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_ProjectPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney') AND [Permission] <> 'ApproveProjects'");
+                            t.HasCheckConstraint("CK_ProjectPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'RemoveApprovedEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney') AND [Permission] <> 'ApproveProjects'");
                         });
                 });
 
@@ -1470,6 +2115,10 @@ namespace Redix.Api.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DataType");
+
+                    b.HasIndex("ItemType");
 
                     b.HasIndex("ProjectId", "ItemType", "Key")
                         .IsUnique();
@@ -1962,6 +2611,8 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("Type");
+
                     b.ToTable("Items");
 
                     b.HasData(
@@ -2376,6 +3027,8 @@ namespace Redix.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DataType");
+
                     b.HasIndex("ItemId", "Key")
                         .IsUnique();
 
@@ -2716,6 +3369,8 @@ namespace Redix.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("ProjectId", "Name");
 
@@ -4701,6 +5356,34 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("aa6d1b53-6702-9735-845b-c7279b35a913"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f5cf763d-3c5a-ecec-7da8-900d83593bc0"),
+                            Value = "Remove approved entries"
+                        },
+                        new
+                        {
+                            Id = new Guid("3d99b2a2-3292-4ead-2398-247109cce373"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f5cf763d-3c5a-ecec-7da8-900d83593bc0"),
+                            Value = "حذف القيود المعتمدة"
+                        },
+                        new
+                        {
+                            Id = new Guid("0dcb0200-576a-1061-7dda-d5109bd5dae7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("689a982e-37ec-94f4-2980-b26a0563e156"),
+                            Value = "Removes an approved entry: it leaves every list and figure, and its history stays."
+                        },
+                        new
+                        {
+                            Id = new Guid("c3fb2f69-2c21-ee75-975e-113586377cb3"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("689a982e-37ec-94f4-2980-b26a0563e156"),
+                            Value = "يحذف القيد المعتمد: يخرج من كل القوائم والأرقام، ويبقى سجله."
+                        },
+                        new
+                        {
                             Id = new Guid("b6c86106-2a29-f9b1-0270-cbf71ffa6ed7"),
                             Language = "en",
                             TranslationKeyId = new Guid("1d54d895-bc6f-b0bb-95b3-04b0adfb2786"),
@@ -4746,14 +5429,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b49b5d53-aac8-c57c-5092-36c83230e76d"),
                             Language = "en",
                             TranslationKeyId = new Guid("e75adf00-c3b4-ff87-6747-4821be7d85ea"),
-                            Value = "Approves or rejects what waits, and reverses an approved entry."
+                            Value = "Approves or rejects what waits."
                         },
                         new
                         {
                             Id = new Guid("b38ae88e-cbfb-aae2-39c4-c4179c696ea6"),
                             Language = "ar",
                             TranslationKeyId = new Guid("e75adf00-c3b4-ff87-6747-4821be7d85ea"),
-                            Value = "يعتمد ما ينتظر أو يرفضه، ويعكس القيد المعتمد."
+                            Value = "يعتمد ما ينتظر أو يرفضه."
                         },
                         new
                         {
@@ -5653,20 +6336,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("1f6b8966-00b7-308d-7b23-f7b41f6687ef"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("3c41c81f-0bd5-6108-a85f-b49d449924a6"),
-                            Value = "A credit note returns this invoice, so it cannot be deleted."
-                        },
-                        new
-                        {
-                            Id = new Guid("8c0601ee-c4da-4edc-022a-e11c367fb930"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("3c41c81f-0bd5-6108-a85f-b49d449924a6"),
-                            Value = "مرتجع يعيد هذه الفاتورة، فلا تُحذف."
-                        },
-                        new
-                        {
                             Id = new Guid("b908cf51-8972-34ea-abb4-58f7bfd7488f"),
                             Language = "en",
                             TranslationKeyId = new Guid("ebfe1024-9d74-67cc-c710-eff7ab5b337a"),
@@ -5678,34 +6347,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("ebfe1024-9d74-67cc-c710-eff7ab5b337a"),
                             Value = "اذكر السبب."
-                        },
-                        new
-                        {
-                            Id = new Guid("16879e8e-745e-5921-3ea0-7f1680a38f62"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("765796e5-4f37-dbab-d121-c4047ec5eec6"),
-                            Value = "Only an approved entry can be reversed."
-                        },
-                        new
-                        {
-                            Id = new Guid("c7ba7166-640a-9c59-2812-f69518b7e9a3"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("765796e5-4f37-dbab-d121-c4047ec5eec6"),
-                            Value = "لا يُعكس إلا القيد المعتمد."
-                        },
-                        new
-                        {
-                            Id = new Guid("0ad10ec7-88f3-277a-b0bc-eb9e58b8a4c2"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9180bb24-8611-f55d-1c59-278fe50adf46"),
-                            Value = "This entry was already reversed."
-                        },
-                        new
-                        {
-                            Id = new Guid("01694d75-7033-d04e-06d9-306c04c2db34"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9180bb24-8611-f55d-1c59-278fe50adf46"),
-                            Value = "عُكس هذا القيد من قبل."
                         },
                         new
                         {
@@ -6045,20 +6686,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a250177a-544c-04fc-930b-cf7b5fff9c3d"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("31777cd1-60a8-52f7-7344-3f55662a5459"),
-                            Value = "Reversed"
-                        },
-                        new
-                        {
-                            Id = new Guid("31335350-a480-235b-d0b4-c0f3d2918f8f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("31777cd1-60a8-52f7-7344-3f55662a5459"),
-                            Value = "معكوس"
-                        },
-                        new
-                        {
                             Id = new Guid("088a74a6-b6ac-6ea6-c0a6-1b1170ca3c57"),
                             Language = "en",
                             TranslationKeyId = new Guid("cef9c77e-4b66-df0c-bdfb-aee431fbc39c"),
@@ -6339,6 +6966,62 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("1e79722a-e349-6e16-bf81-1e6d89752e97"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("d08b5b27-7569-2575-31ea-7b34b9f9e878"),
+                            Value = "Remove it?"
+                        },
+                        new
+                        {
+                            Id = new Guid("009cb907-266d-c459-8d48-670708f7e3e6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("d08b5b27-7569-2575-31ea-7b34b9f9e878"),
+                            Value = "حذفه؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("4faf3b4a-e2c7-30ab-f1e0-5347398e6127"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e731e945-d131-6d29-8c16-9323b51e3c8f"),
+                            Value = "Removed."
+                        },
+                        new
+                        {
+                            Id = new Guid("8ef0379e-38ee-015d-7acb-862575173b37"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e731e945-d131-6d29-8c16-9323b51e3c8f"),
+                            Value = "حُذف."
+                        },
+                        new
+                        {
+                            Id = new Guid("a77e7b43-a910-603b-c0b9-fcf5735c0f84"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e1c72b1e-831a-6c6e-aab3-b646bf173c80"),
+                            Value = "Undo"
+                        },
+                        new
+                        {
+                            Id = new Guid("7b181123-b765-2047-838f-02a6733014de"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e1c72b1e-831a-6c6e-aab3-b646bf173c80"),
+                            Value = "تراجع"
+                        },
+                        new
+                        {
+                            Id = new Guid("5bc47b9c-6b4e-b110-7c46-44c7b4491220"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ad754a8d-9ee5-26fa-dd40-b6caa50d56a3"),
+                            Value = "Remove this approved entry?"
+                        },
+                        new
+                        {
+                            Id = new Guid("1d9788c3-5124-5869-63ae-8644ef92f74a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ad754a8d-9ee5-26fa-dd40-b6caa50d56a3"),
+                            Value = "حذف هذا القيد المعتمد؟"
+                        },
+                        new
+                        {
                             Id = new Guid("37987c1b-10fb-1f47-e59c-a1d31626a59c"),
                             Language = "en",
                             TranslationKeyId = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
@@ -6367,16 +7050,16 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("fbd93af4-c12c-a781-50d7-8b94e1597b2b"),
+                            Id = new Guid("46d429e9-91ff-ab3f-a5c3-6cc7e61e32d6"),
                             Language = "en",
-                            TranslationKeyId = new Guid("72685414-803a-e33f-9629-d4021c1518ed"),
+                            TranslationKeyId = new Guid("18ee31d1-4060-e5d1-a3cc-6f6d8fcd21ec"),
                             Value = "Remove"
                         },
                         new
                         {
-                            Id = new Guid("276e0c02-f441-86d6-e744-ec59a7f911bd"),
+                            Id = new Guid("751e7cc9-ecbb-9284-bce2-a3fa0af82a05"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("72685414-803a-e33f-9629-d4021c1518ed"),
+                            TranslationKeyId = new Guid("18ee31d1-4060-e5d1-a3cc-6f6d8fcd21ec"),
                             Value = "حذف"
                         },
                         new
@@ -6423,48 +7106,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("1ed669e7-afc6-36ca-7823-5d19ecb95952"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("f02ebbf0-5d27-3984-ab37-0aa1b719436a"),
-                            Value = "Reverse this approved entry"
-                        },
-                        new
-                        {
-                            Id = new Guid("591b3266-4151-1e1c-6a7a-7214427bfda5"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("f02ebbf0-5d27-3984-ab37-0aa1b719436a"),
-                            Value = "عكس هذا القيد المعتمد"
-                        },
-                        new
-                        {
-                            Id = new Guid("74293746-66ae-0f3e-4d08-05c0ca97fdb8"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e90fe5e4-95c3-2916-834e-4b9060c80126"),
-                            Value = "Reason (required)"
-                        },
-                        new
-                        {
-                            Id = new Guid("386c21e1-bb40-666d-117d-7fe443230bd2"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e90fe5e4-95c3-2916-834e-4b9060c80126"),
-                            Value = "السبب (إلزامي)"
-                        },
-                        new
-                        {
-                            Id = new Guid("da3c932a-97a1-f9bc-a825-824932e35d3c"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("31fddf41-54af-9aee-2106-9788e3b924b3"),
-                            Value = "An opposite entry is added, tied to this one and approved at once. Both show in the reports, and their net is zero. This one does not change."
-                        },
-                        new
-                        {
-                            Id = new Guid("d518697f-d192-4e67-cf26-77c7932d3e1e"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("31fddf41-54af-9aee-2106-9788e3b924b3"),
-                            Value = "يُضاف قيد مقابل مرتبط بهذا القيد ومعتمد فوراً. يظهران في التقارير وصافيهما صفر. ولا يتغيّر هذا القيد."
-                        },
-                        new
-                        {
                             Id = new Guid("aba727bb-c6fd-dedd-f8b8-0356a52a044c"),
                             Language = "en",
                             TranslationKeyId = new Guid("6c698dc5-6913-7700-ae5d-3936e93fc45f"),
@@ -6493,20 +7134,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c8b21ef9-b0a3-e4a3-95a4-df794a11f315"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("8d9f89f7-6f6f-2c60-f2fd-97b9cb038610"),
-                            Value = "A credit note returns this invoice, so it cannot be deleted."
-                        },
-                        new
-                        {
-                            Id = new Guid("910e13a3-9bbd-343b-d29e-ce3ff1f94bfb"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("8d9f89f7-6f6f-2c60-f2fd-97b9cb038610"),
-                            Value = "مرتجع يعيد هذه الفاتورة، فلا تُحذف."
-                        },
-                        new
-                        {
                             Id = new Guid("cd61fbfa-ad7e-a23b-5b5c-e781be3f0056"),
                             Language = "en",
                             TranslationKeyId = new Guid("49918492-7c51-8293-228b-6515961524d9"),
@@ -6518,34 +7145,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("49918492-7c51-8293-228b-6515961524d9"),
                             Value = "اذكر السبب."
-                        },
-                        new
-                        {
-                            Id = new Guid("b57355cb-cfb7-9027-c354-74805711707a"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("07ebee71-3de0-cd34-05c1-4ac7531e3e4f"),
-                            Value = "Only an approved entry can be reversed."
-                        },
-                        new
-                        {
-                            Id = new Guid("83181a9f-53d2-9d80-c082-6ff417656f32"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("07ebee71-3de0-cd34-05c1-4ac7531e3e4f"),
-                            Value = "لا يُعكس إلا القيد المعتمد."
-                        },
-                        new
-                        {
-                            Id = new Guid("4e9f3d8f-f146-c123-5b76-7404413f51ff"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d496a29e-93aa-0fa0-edad-cdf08c4c269f"),
-                            Value = "This entry was already reversed."
-                        },
-                        new
-                        {
-                            Id = new Guid("a8f39fc0-eeed-f4bf-5205-1b9379bb2c18"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d496a29e-93aa-0fa0-edad-cdf08c4c269f"),
-                            Value = "عُكس هذا القيد من قبل."
                         },
                         new
                         {
@@ -6622,14 +7221,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d5323b40-30fd-f6e5-aac2-6a6eafe2c2cd"),
                             Language = "en",
                             TranslationKeyId = new Guid("8f6a9ff1-d7db-fc89-d679-f6379ed7d682"),
-                            Value = "It holds what is approved now and never changes. Entries waiting for approval ({1}) show apart: expenses on one line, revenue and capital on another."
+                            Value = "It holds what is approved now and never changes. Entries waiting for approval ({0}) show apart: expenses on one line, revenue and capital on another."
                         },
                         new
                         {
                             Id = new Guid("03ca8285-ff93-b8f9-88a5-47b271085b20"),
                             Language = "ar",
                             TranslationKeyId = new Guid("8f6a9ff1-d7db-fc89-d679-f6379ed7d682"),
-                            Value = "يشمل المعتمد الآن ولا يتغير بعد إصداره. والقيود المنتظرة للاعتماد ({1}) تظهر منفصلة: المصروفات في سطر، والإيرادات ورأس المال في سطر."
+                            Value = "يشمل المعتمد الآن ولا يتغير بعد إصداره. والقيود المنتظرة للاعتماد ({0}) تظهر منفصلة: المصروفات في سطر، والإيرادات ورأس المال في سطر."
                         },
                         new
                         {
@@ -7963,34 +8562,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("72e5cf78-de07-cce0-de7f-40b2df611cc1"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("d0e1db96-0500-364b-5ffc-8900ea1a3671"),
-                            Value = "Reversed"
-                        },
-                        new
-                        {
-                            Id = new Guid("415926f7-be77-7e60-32c6-b148d88126b2"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("d0e1db96-0500-364b-5ffc-8900ea1a3671"),
-                            Value = "معكوسة"
-                        },
-                        new
-                        {
-                            Id = new Guid("91a310b2-092b-6c89-176c-eb345c0790dd"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("760df9e8-0e1c-d474-ffc9-cee2e2cd98c7"),
-                            Value = "Reverse"
-                        },
-                        new
-                        {
-                            Id = new Guid("9073838a-2f46-ad27-73cf-c6b0ae20d925"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("760df9e8-0e1c-d474-ffc9-cee2e2cd98c7"),
-                            Value = "عكس"
-                        },
-                        new
-                        {
                             Id = new Guid("9a336727-b6fe-d5b0-991a-145fadb70768"),
                             Language = "en",
                             TranslationKeyId = new Guid("931cdb8d-0d2f-5f7b-3bce-87dafd6fdb4b"),
@@ -9094,20 +9665,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("bfdad1c5-52c9-a786-2af4-af7f283bcde7"),
                             Value = "هذا القيد لم يعد هنا."
-                        },
-                        new
-                        {
-                            Id = new Guid("364aea71-34c3-b58a-083d-84d7e26b7a09"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("b69a5f55-cf11-eda2-9d54-f11d11e89ab8"),
-                            Value = "The invoice this credit note returns is not approved."
-                        },
-                        new
-                        {
-                            Id = new Guid("ce5c80aa-7aea-17f4-c433-fc160700ca3d"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("b69a5f55-cf11-eda2-9d54-f11d11e89ab8"),
-                            Value = "الفاتورة التي يعيدها هذا المرتجع غير معتمدة."
                         },
                         new
                         {
@@ -11589,20 +12146,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("5f517095-b4f4-06d1-9094-4fd7bdf60c66"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ad95b12e-1ba6-6c6c-b01c-0d8c2b0e709b"),
-                            Value = "Reversed: {0}"
-                        },
-                        new
-                        {
-                            Id = new Guid("0a41375a-0274-0c0c-437a-61f50545564c"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ad95b12e-1ba6-6c6c-b01c-0d8c2b0e709b"),
-                            Value = "عكس: {0}"
-                        },
-                        new
-                        {
                             Id = new Guid("7726ace2-b636-acb7-1c29-43fc1a702dec"),
                             Language = "en",
                             TranslationKeyId = new Guid("f1614e9a-a1f6-f4cd-579f-80327444df72"),
@@ -13297,20 +13840,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("48d1b75f-6c76-2b8a-5411-49d61e13f079"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9b62df50-4782-25e5-db95-b0535b1cbc29"),
-                            Value = "Choose the bill this credit note returns."
-                        },
-                        new
-                        {
-                            Id = new Guid("45a53f0c-d82a-832e-b674-ccdccf84fddb"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9b62df50-4782-25e5-db95-b0535b1cbc29"),
-                            Value = "اختر الفاتورة التي يرجعها هذا المرتجع."
-                        },
-                        new
-                        {
                             Id = new Guid("1e4b5bb0-edc6-c704-8c95-42f19d64fcb8"),
                             Language = "en",
                             TranslationKeyId = new Guid("302fd9fd-584a-c19d-e9fb-0437027fbcb5"),
@@ -14070,56 +14599,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("15c4e47d-c133-91cd-1390-391c811dbcfb"),
                             Language = "en",
                             TranslationKeyId = new Guid("5ccfb2fd-cf81-3f4a-5156-a391715acd5a"),
-                            Value = "Recorded as a negative against the bill it returns"
+                            Value = "Recorded as its own row with a minus amount"
                         },
                         new
                         {
                             Id = new Guid("653f1c12-8398-3dc7-d855-c2d16b3f9f45"),
                             Language = "ar",
                             TranslationKeyId = new Guid("5ccfb2fd-cf81-3f4a-5156-a391715acd5a"),
-                            Value = "يُسجَّل بالسالب على الفاتورة التي يرجعها"
-                        },
-                        new
-                        {
-                            Id = new Guid("b1bea701-6f9c-b217-c4e9-217a2c00f16b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("dd222740-ec12-f979-f92b-d8946a1f4293"),
-                            Value = "Original invoice"
-                        },
-                        new
-                        {
-                            Id = new Guid("0eb3ccf6-1dbe-47fc-c422-d56ea0e8468f"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("dd222740-ec12-f979-f92b-d8946a1f4293"),
-                            Value = "الفاتورة الأصلية"
-                        },
-                        new
-                        {
-                            Id = new Guid("353550c9-aef4-1a44-71f7-b2b06a51a9a7"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("7f7a43e9-e415-4905-8160-e2de3ff1d90a"),
-                            Value = "This supplier has no invoice to return yet."
-                        },
-                        new
-                        {
-                            Id = new Guid("7b58b828-c2cf-e53c-8478-cbe48ed06600"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("7f7a43e9-e415-4905-8160-e2de3ff1d90a"),
-                            Value = "لا توجد لهذا المورد فاتورة يمكن إرجاعها بعد."
-                        },
-                        new
-                        {
-                            Id = new Guid("c2309f13-f67c-b053-d1d6-2a5511eb2cd3"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("235b58bb-a013-b56d-484b-3275929fac9f"),
-                            Value = "Left to return"
-                        },
-                        new
-                        {
-                            Id = new Guid("be853c47-44da-82bf-9b52-4f1a8daea502"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("235b58bb-a013-b56d-484b-3275929fac9f"),
-                            Value = "المتبقي للإرجاع"
+                            Value = "يُسجَّل صفاً مستقلاً بمبلغ سالب"
                         },
                         new
                         {
@@ -14134,34 +14621,6 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
                             Value = "تعذّرت قراءة الفواتير."
-                        },
-                        new
-                        {
-                            Id = new Guid("d6df82f5-26ef-9d4c-348b-0b6a574c5654"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("1fa9acf7-0b4a-cb33-2c6b-92a535596b0d"),
-                            Value = "A credit note cannot go above what is left of its original invoice."
-                        },
-                        new
-                        {
-                            Id = new Guid("acfc8c1c-7588-4d1f-ff57-316c21eeb9a4"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("1fa9acf7-0b4a-cb33-2c6b-92a535596b0d"),
-                            Value = "لا يمكن أن يتجاوز المرتجع المتبقي من فاتورته الأصلية."
-                        },
-                        new
-                        {
-                            Id = new Guid("37019142-7349-cf37-1450-a08c64ecf923"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("ec6bd3ce-2065-9244-3217-653bd057a20d"),
-                            Value = "Choose an invoice of this supplier that was sent for approval."
-                        },
-                        new
-                        {
-                            Id = new Guid("36f70000-08c5-72d2-deee-fac0a3d1c321"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("ec6bd3ce-2065-9244-3217-653bd057a20d"),
-                            Value = "اختر فاتورة لهذا المورد أُرسلت للاعتماد."
                         },
                         new
                         {
@@ -15033,6 +15492,18 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("f5cf763d-3c5a-ecec-7da8-900d83593bc0"),
+                            Description = "",
+                            Key = "permissions.removeApprovedEntries"
+                        },
+                        new
+                        {
+                            Id = new Guid("689a982e-37ec-94f4-2980-b26a0563e156"),
+                            Description = "",
+                            Key = "permissions.removeApprovedEntriesHint"
+                        },
+                        new
+                        {
                             Id = new Guid("1d54d895-bc6f-b0bb-95b3-04b0adfb2786"),
                             Description = "",
                             Key = "permissions.attachFiles"
@@ -15441,27 +15912,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("3c41c81f-0bd5-6108-a85f-b49d449924a6"),
-                            Description = "",
-                            Key = "expenses.entryHasCreditNote"
-                        },
-                        new
-                        {
                             Id = new Guid("ebfe1024-9d74-67cc-c710-eff7ab5b337a"),
                             Description = "",
                             Key = "expenses.reasonRequired"
-                        },
-                        new
-                        {
-                            Id = new Guid("765796e5-4f37-dbab-d121-c4047ec5eec6"),
-                            Description = "",
-                            Key = "expenses.entryNotApproved"
-                        },
-                        new
-                        {
-                            Id = new Guid("9180bb24-8611-f55d-1c59-278fe50adf46"),
-                            Description = "",
-                            Key = "expenses.alreadyReversed"
                         },
                         new
                         {
@@ -15609,12 +16062,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("31777cd1-60a8-52f7-7344-3f55662a5459"),
-                            Description = "",
-                            Key = "entries.reversed"
-                        },
-                        new
-                        {
                             Id = new Guid("cef9c77e-4b66-df0c-bdfb-aee431fbc39c"),
                             Description = "",
                             Key = "entries.share"
@@ -15735,6 +16182,30 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("d08b5b27-7569-2575-31ea-7b34b9f9e878"),
+                            Description = "",
+                            Key = "swipe.question"
+                        },
+                        new
+                        {
+                            Id = new Guid("e731e945-d131-6d29-8c16-9323b51e3c8f"),
+                            Description = "",
+                            Key = "swipe.removed"
+                        },
+                        new
+                        {
+                            Id = new Guid("e1c72b1e-831a-6c6e-aab3-b646bf173c80"),
+                            Description = "",
+                            Key = "common.undo"
+                        },
+                        new
+                        {
+                            Id = new Guid("ad754a8d-9ee5-26fa-dd40-b6caa50d56a3"),
+                            Description = "",
+                            Key = "entries.removeQuestion"
+                        },
+                        new
+                        {
                             Id = new Guid("53945eef-ca15-df6a-f8d8-901efa608b7c"),
                             Description = "",
                             Key = "documents.download"
@@ -15747,9 +16218,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("72685414-803a-e33f-9629-d4021c1518ed"),
+                            Id = new Guid("18ee31d1-4060-e5d1-a3cc-6f6d8fcd21ec"),
                             Description = "",
-                            Key = "entries.reverse"
+                            Key = "entries.remove"
                         },
                         new
                         {
@@ -15771,24 +16242,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("f02ebbf0-5d27-3984-ab37-0aa1b719436a"),
-                            Description = "",
-                            Key = "entries.reverseTitle"
-                        },
-                        new
-                        {
-                            Id = new Guid("e90fe5e4-95c3-2916-834e-4b9060c80126"),
-                            Description = "",
-                            Key = "entries.reverseReason"
-                        },
-                        new
-                        {
-                            Id = new Guid("31fddf41-54af-9aee-2106-9788e3b924b3"),
-                            Description = "",
-                            Key = "entries.reverseExplain"
-                        },
-                        new
-                        {
                             Id = new Guid("6c698dc5-6913-7700-ae5d-3936e93fc45f"),
                             Description = "",
                             Key = "entries.entryApproved"
@@ -15801,27 +16254,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("8d9f89f7-6f6f-2c60-f2fd-97b9cb038610"),
-                            Description = "",
-                            Key = "entries.entryHasCreditNote"
-                        },
-                        new
-                        {
                             Id = new Guid("49918492-7c51-8293-228b-6515961524d9"),
                             Description = "",
                             Key = "entries.reasonRequired"
-                        },
-                        new
-                        {
-                            Id = new Guid("07ebee71-3de0-cd34-05c1-4ac7531e3e4f"),
-                            Description = "",
-                            Key = "entries.entryNotApproved"
-                        },
-                        new
-                        {
-                            Id = new Guid("d496a29e-93aa-0fa0-edad-cdf08c4c269f"),
-                            Description = "",
-                            Key = "entries.alreadyReversed"
                         },
                         new
                         {
@@ -16431,18 +16866,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("d0e1db96-0500-364b-5ffc-8900ea1a3671"),
-                            Description = "",
-                            Key = "capital.reversed"
-                        },
-                        new
-                        {
-                            Id = new Guid("760df9e8-0e1c-d474-ffc9-cee2e2cd98c7"),
-                            Description = "",
-                            Key = "capital.reverse"
-                        },
-                        new
-                        {
                             Id = new Guid("931cdb8d-0d2f-5f7b-3bce-87dafd6fdb4b"),
                             Description = "",
                             Key = "capital.loadFailed"
@@ -16914,12 +17337,6 @@ namespace Redix.Api.Migrations
                             Id = new Guid("bfdad1c5-52c9-a786-2af4-af7f283bcde7"),
                             Description = "",
                             Key = "approvals.unknownEntry"
-                        },
-                        new
-                        {
-                            Id = new Guid("b69a5f55-cf11-eda2-9d54-f11d11e89ab8"),
-                            Description = "",
-                            Key = "approvals.originalNotApproved"
                         },
                         new
                         {
@@ -17985,12 +18402,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("ad95b12e-1ba6-6c6c-b01c-0d8c2b0e709b"),
-                            Description = "",
-                            Key = "history.reversed"
-                        },
-                        new
-                        {
                             Id = new Guid("f1614e9a-a1f6-f4cd-579f-80327444df72"),
                             Description = "",
                             Key = "history.check"
@@ -18717,12 +19128,6 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("9b62df50-4782-25e5-db95-b0535b1cbc29"),
-                            Description = "",
-                            Key = "expenses.creditNoteNeedsOriginal"
-                        },
-                        new
-                        {
                             Id = new Guid("302fd9fd-584a-c19d-e9fb-0437027fbcb5"),
                             Description = "",
                             Key = "expenses.product"
@@ -19053,39 +19458,9 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("dd222740-ec12-f979-f92b-d8946a1f4293"),
-                            Description = "",
-                            Key = "expenses.originalInvoice"
-                        },
-                        new
-                        {
-                            Id = new Guid("7f7a43e9-e415-4905-8160-e2de3ff1d90a"),
-                            Description = "",
-                            Key = "expenses.noCreditableInvoice"
-                        },
-                        new
-                        {
-                            Id = new Guid("235b58bb-a013-b56d-484b-3275929fac9f"),
-                            Description = "",
-                            Key = "expenses.returnable"
-                        },
-                        new
-                        {
                             Id = new Guid("0dc9579b-f7dd-d811-e38d-4839b21a14a0"),
                             Description = "",
                             Key = "expenses.loadFailed"
-                        },
-                        new
-                        {
-                            Id = new Guid("1fa9acf7-0b4a-cb33-2c6b-92a535596b0d"),
-                            Description = "",
-                            Key = "expenses.creditNoteAboveOriginal"
-                        },
-                        new
-                        {
-                            Id = new Guid("ec6bd3ce-2065-9244-3217-653bd057a20d"),
-                            Description = "",
-                            Key = "expenses.unknownOriginalInvoice"
                         },
                         new
                         {
@@ -19100,6 +19475,12 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Accounts.AccountType>", null)
+                        .WithMany()
+                        .HasForeignKey("Type")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -19295,9 +19676,21 @@ namespace Redix.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryKind>", null)
+                        .WithMany()
+                        .HasForeignKey("Kind")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryStatus>", null)
+                        .WithMany()
+                        .HasForeignKey("Status")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -19315,10 +19708,22 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("EntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryAttachmentRole>", null)
+                        .WithMany()
+                        .HasForeignKey("Role")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.EntryDecision", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Entries.EntryDecisionAction>", null)
+                        .WithMany()
+                        .HasForeignKey("Action")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Entries.Entry", null)
                         .WithMany()
                         .HasForeignKey("EntryId")
@@ -19328,21 +19733,6 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Redix.Api.Entries.EntryLink", b =>
-                {
-                    b.HasOne("Redix.Api.Entries.Entry", null)
-                        .WithMany()
-                        .HasForeignKey("EntryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Redix.Api.Entries.Entry", null)
-                        .WithMany()
-                        .HasForeignKey("LinkedEntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -19400,6 +19790,13 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.History.HistoryRecord", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.History.HistoryAction>", null)
+                        .WithMany()
+                        .HasForeignKey("Action")
+                        .HasPrincipalKey("Name")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -19409,6 +19806,12 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Notifications.NotificationKind>", null)
+                        .WithMany()
+                        .HasForeignKey("Kind")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -19427,6 +19830,12 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Partners.Partner", null)
                         .WithMany()
                         .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Partners.CapitalMovementType>", null)
+                        .WithMany()
+                        .HasForeignKey("Type")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -19457,6 +19866,15 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.Project", b =>
+                {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Projects.ProjectStatus>", null)
+                        .WithMany()
+                        .HasForeignKey("Status")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -19571,6 +19989,18 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.Structure.DefaultColumn", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ColumnDataType>", null)
+                        .WithMany()
+                        .HasForeignKey("DataType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ItemType>", null)
+                        .WithMany()
+                        .HasForeignKey("ItemType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
@@ -19585,10 +20015,22 @@ namespace Redix.Api.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ItemType>", null)
+                        .WithMany()
+                        .HasForeignKey("Type")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Redix.Api.Structure.ItemColumn", b =>
                 {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Structure.ColumnDataType>", null)
+                        .WithMany()
+                        .HasForeignKey("DataType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Structure.Item", null)
                         .WithMany("Columns")
                         .HasForeignKey("ItemId")
@@ -19616,6 +20058,12 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Suppliers.SupplierStatus>", null)
+                        .WithMany()
+                        .HasForeignKey("Status")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
