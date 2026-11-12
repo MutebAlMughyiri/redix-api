@@ -93,7 +93,7 @@ public static class ProjectStructure
     }
 
     /// <summary>Puts <paramref name="rows"/> in the order of <paramref name="ids"/>, the order of the report (AC-39.1). Anything but every row exactly once changes nothing, and answers false.</summary>
-    public static bool PutInOrder<T>(List<T> rows, List<Guid> ids) where T : IOrdered
+    public static bool PutInOrder<T>(List<T> rows, List<Guid> ids) where T : class, IOrdered
     {
         if (!ids.Order().SequenceEqual(rows.Select(row => row.Id).Order()))
         {

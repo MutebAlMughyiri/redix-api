@@ -389,7 +389,7 @@ public static class CategoriesEndpoints
             .Include(category => category.Items.OrderBy(item => item.SortOrder)).ThenInclude(item => item.Subgroups.OrderBy(subgroup => subgroup.SortOrder))
             .ToListAsync();
 
-    private static async Task<IResult> ReorderAsync<T>(List<T> rows, ReorderRequest request, RedixDbContext db) where T : IOrdered
+    private static async Task<IResult> ReorderAsync<T>(List<T> rows, ReorderRequest request, RedixDbContext db) where T : class, IOrdered
     {
         if (!ProjectStructure.PutInOrder(rows, request.Ids))
         {
