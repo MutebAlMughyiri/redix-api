@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Attachments;
@@ -495,6 +496,22 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             {
                 entity.Property(keyName).ValueGeneratedNever();
             }
+        }
+    }
+
+    /// <summary>
+    /// Saves a tick someone may send twice at the same moment, a permission, a chosen partner or a role name: when a unique index refuses the second because the first
+    /// saved the same row, the change is already made, so it answers as saved (findings row 190). Any other refusal is thrown as before.
+    /// </summary>
+    public async Task SaveOnceAsync()
+    {
+        try
+        {
+            await SaveChangesAsync();
+        }
+        catch (DbUpdateException refused) when (refused.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            ChangeTracker.Clear();
         }
     }
 

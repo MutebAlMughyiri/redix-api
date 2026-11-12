@@ -141,7 +141,7 @@ public static class ProjectUsersEndpoints
         }
 
         await GiveAsync(projectId, userId, given, principal, db, time.GetUtcNow().UtcDateTime);
-        await db.SaveChangesAsync();
+        await db.SaveOnceAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
@@ -212,7 +212,7 @@ public static class ProjectUsersEndpoints
         }
 
         await ProjectRoleName.NameAsync(projectId, userId, roleName, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
-        await db.SaveChangesAsync();
+        await db.SaveOnceAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
@@ -240,7 +240,7 @@ public static class ProjectUsersEndpoints
         {
             CapitalSight.Choose(projectId, userId, partnerId, AccessTokens.UserIdOf(principal), now, db);
         }
-        await db.SaveChangesAsync();
+        await db.SaveOnceAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 

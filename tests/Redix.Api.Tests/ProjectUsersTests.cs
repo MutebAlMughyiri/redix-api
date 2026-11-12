@@ -512,4 +512,41 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         Assert.Equal(username, JsonNode.Parse(record.After)!["Username"]!.GetValue<string>());
         Assert.DoesNotContain("PasswordHash", record.Before + record.After);
     }
+
+    [Fact]
+    public async Task Row190_ManyTicksOfOnePermissionAtTheSameMomentAllAnswerAsSavedAndKeepOneRow()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var created = await ViewOf(await CreateAsync(client, projectId, NewUsername()));
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => GiveAsync(client, projectId, created.Id, Permission.ApproveEntries)));
+
+        Assert.All(answers, answer => Assert.Equal(HttpStatusCode.OK, answer.StatusCode));
+        await factory.WithDatabaseAsync(async db =>
+            Assert.Equal(1, await db.ProjectPermissions.CountAsync(row => row.ProjectId == projectId && row.UserId == created.Id && row.Permission == Permission.ApproveEntries)));
+    }
+
+    [Fact]
+    public async Task Row190_ManyFirstRoleNamesAtTheSameMomentAllAnswerAsSavedAndKeepOneRow()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var created = await ViewOf(await CreateAsync(client, projectId, NewUsername()));
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => NameRoleAsync(client, projectId, created.Id, "مشرف مالي")));
+
+        Assert.All(answers, answer => Assert.Equal(HttpStatusCode.OK, answer.StatusCode));
+        await factory.WithDatabaseAsync(async db =>
+            Assert.Equal("مشرف مالي", (await db.ProjectRoleNames.SingleAsync(row => row.ProjectId == projectId && row.UserId == created.Id)).RoleName));
+    }
+
+    [Fact]
+    public async Task Row190_ASaveRefusedForAnythingButTheSameRowTwiceIsStillRefused()
+    {
+        await factory.WithDatabaseAsync(async db =>
+        {
+            db.ProjectPermissions.Add(new ProjectPermission { ProjectId = Guid.CreateVersion7(), UserId = Guid.CreateVersion7(), Permission = Permission.ApproveEntries });
+
+            await Assert.ThrowsAsync<DbUpdateException>(db.SaveOnceAsync);
+        });
+    }
 }
