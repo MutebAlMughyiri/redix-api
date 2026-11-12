@@ -261,10 +261,10 @@ public class ColumnsTests(MigratedApiFactory factory)
     {
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
-        var column = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == key);
+        var inItem = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == key);
         var inTemplate = (await TemplateOf(client, project.Id)).Single(column => column.Key == key);
 
-        var refused = await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}");
+        var refused = await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{inItem.Id}");
         var refusedInTemplate = await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}?applyToAllItems=true");
 
         Assert.Equal((HttpStatusCode.Conflict, "coreColumn"), (refused.StatusCode, await CodeOf(refused)));

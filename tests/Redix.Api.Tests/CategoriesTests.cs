@@ -80,8 +80,8 @@ public class CategoriesTests(MigratedApiFactory factory)
     public async Task ASubgroupRevenueIsKeptOnIsNotRemoved()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var category = (await CategoriesOf(ledger.Client, ledger.ProjectId))[0];
-        var itemId = (await AddItemAsync(ledger.Client, ledger.ProjectId, category.Id, "إيجار المعدات")).Id;
+        var firstCategory = (await CategoriesOf(ledger.Client, ledger.ProjectId))[0];
+        var itemId = (await AddItemAsync(ledger.Client, ledger.ProjectId, firstCategory.Id, "إيجار المعدات")).Id;
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/subgroups", new NameRequest("إيجار"), Ledger.Json)).EnsureSuccessStatusCode();
         (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Ledger.Json)).EnsureSuccessStatusCode();
         var subgroup = (await CategoriesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == itemId).Subgroups[1];
