@@ -50,11 +50,8 @@ public class TransfersTests(MigratedApiFactory factory)
         return request.Id;
     }
 
-    private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code)
-    {
-        Assert.Equal(status, response.StatusCode);
-        Assert.Equal(code, await Ledger.CodeOf(response));
-    }
+    private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code) =>
+        Assert.Equal((status, code), (response.StatusCode, await Ledger.CodeOf(response)));
 
     [Fact]
     public async Task FR_23_ATransferMovesMoneyBetweenTwoAccountsAtOnceAndNeverTheSurplus()

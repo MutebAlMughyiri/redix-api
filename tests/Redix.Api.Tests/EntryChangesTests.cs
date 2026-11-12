@@ -25,11 +25,8 @@ public class EntryChangesTests(MigratedApiFactory factory)
     private static async Task ApproveAsync(Ledger ledger, Guid id) =>
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/approve", new ApproveEntriesRequest([id]), Json)).EnsureSuccessStatusCode();
 
-    private static async Task AssertRefused(HttpResponseMessage response, HttpStatusCode status, string code)
-    {
-        Assert.Equal(status, response.StatusCode);
-        Assert.Equal(code, await Ledger.CodeOf(response));
-    }
+    private static async Task AssertRefused(HttpResponseMessage response, HttpStatusCode status, string code) =>
+        Assert.Equal((status, code), (response.StatusCode, await Ledger.CodeOf(response)));
 
     private static async Task<(HttpClient Client, EntryRequest Request, Guid UserId)> FieldDraftAsync(Ledger ledger)
     {
