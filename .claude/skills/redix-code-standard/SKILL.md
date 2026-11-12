@@ -38,3 +38,17 @@ description: How REDIX API code is written - best practice of ASP.NET Core and E
 - One folder per feature under `src/Redix.Api`, holding its entities, seed and endpoint (for example `Translations/`). Tests mirror it.
 - Every table follows the pinned **Database design** issue. A change to the model is made there first, then in a migration.
 - Each use case adds one migration, named after what it adds.
+
+## The skills that hold each part in detail
+
+Brought from the Testin project on 12 November 2026; read the one a change touches.
+
+| Skill | Holds |
+| --- | --- |
+| `a-class-does-one-job` | A class does one job, and its name says which |
+| `names-say-the-business` | Every name is the glossary's word, in full |
+| `code-cites-its-rule` | The doc comment names its rule; the use case page's tables change in the same commit |
+| `use-what-the-platform-has` | The framework's feature first; what the API already uses |
+| `using-never-qualify` | A type by its simple name, with a `using` |
+| `redix-review` | The seven questions and the checks before a commit |
+| `redix-story` | The issue format, labels and milestone, for both repos |

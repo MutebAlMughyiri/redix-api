@@ -6,4 +6,5 @@ The server of REDIX (Real Estate Development Intelligence): ASP.NET Core on .NET
 - **The database:** the pinned **Database design** issue.
 - **Findings:** every gap, bug and finding, from either repo, goes into the pinned issue "Findings: open gaps, bugs and decisions" as a row, never only into a chat.
 - **Secrets:** Windows user environment variables prefixed `REDIX_` (for example `REDIX_Jwt__SigningKey`), read by `AddEnvironmentVariables("REDIX_")`; an environment's own ones are prefixed `REDIX_{name}_`, such as `REDIX_QA_Admin__Password` (redix-api #118). Never in the repo.
+- **Issues:** written in the `redix-story` skill's format (`.claude/skills/`), for both repos.
 - **Before writing any code:** read `docs/ARCHITECTURE.md` and the `redix-code-standard` skill in `.claude/skills/`.
