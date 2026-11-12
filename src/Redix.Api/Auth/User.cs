@@ -42,9 +42,6 @@ public class User
     /// <summary>How long a locked account stays locked (AC-01.2).</summary>
     public static readonly TimeSpan LockDuration = TimeSpan.FromMinutes(15);
 
-    /// <summary>The shortest password accepted when a password is changed (UC-003); the BRS sets no rule, so this is a recorded decision.</summary>
-    public const int MinimumPasswordLength = 8;
-
     /// <summary>The longest name a user may have.</summary>
     public const int NameMaxLength = 100;
 
@@ -91,12 +88,6 @@ public class User
     /// <summary>Replaces the password; only its hash is kept.</summary>
     public void SetPassword(string password, IPasswordHasher<User> hasher) => PasswordHash = hasher.HashPassword(this, password);
 
-    /// <summary>Whether <paramref name="password"/> has at least <see cref="MinimumPasswordLength"/> characters.</summary>
-    public static bool IsLongEnough(string password) => password.Length >= MinimumPasswordLength;
-
-    /// <summary>Whether <paramref name="newPassword"/> may replace <paramref name="currentPassword"/>: long enough, and different.</summary>
-    public static bool IsAcceptableNewPassword(string newPassword, string currentPassword) => IsLongEnough(newPassword) && newPassword != currentPassword;
-
     /// <summary>Whether <paramref name="mobile"/>, already trimmed, may be kept, for a user or a supplier: empty, or ASCII digits with a leading plus at most, in at most <see cref="MobileMaxLength"/> characters. The column holds nothing else, so Arabic digits would become question marks.</summary>
     public static bool IsAcceptableMobile(string mobile) => mobile.Length <= MobileMaxLength && Regex.IsMatch(mobile, @"\A(\+?[0-9]+)?\z");
 
@@ -117,7 +108,7 @@ public class User
         {
             return "InvalidUsername";
         }
-        return IsLongEnough(temporaryPassword) ? RefusalOfDetails(displayName, mobile) : "WeakPassword";
+        return PasswordPolicy.Holds(temporaryPassword, username) ? RefusalOfDetails(displayName, mobile) : "WeakPassword";
     }
 
     /// <summary>Replaces the password with a temporary one: the user must change it, and a lock from wrong passwords ends.</summary>

@@ -63,7 +63,7 @@ public static class UsersEndpoints
 
     /// <summary>
     /// Sets a new temporary password for a forgotten one: the user must change it, a lock from wrong passwords ends, and every device is signed out.
-    /// One shorter than <see cref="User.MinimumPasswordLength"/> answers <c>weakPassword</c>.
+    /// One <see cref="PasswordPolicy"/> refuses for that user answers <c>weakPassword</c>.
     /// </summary>
     /// <param name="userId">The user to reset.</param>
     /// <param name="request">The new temporary password.</param>
@@ -71,13 +71,14 @@ public static class UsersEndpoints
     /// <param name="db">The database the user and devices live in.</param>
     /// <param name="hasher">Hashes the temporary password.</param>
     /// <param name="time">The current time, for the history row.</param>
-    public static Task<IResult> ResetPassword(Guid userId, ResetPasswordRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
+    public static async Task<IResult> ResetPassword(Guid userId, ResetPasswordRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
     {
-        if (!User.IsLongEnough(request.TemporaryPassword))
+        var username = await db.Users.Where(user => user.Id == userId).Select(user => user.Username).SingleOrDefaultAsync() ?? "";
+        if (!PasswordPolicy.Holds(request.TemporaryPassword, username))
         {
-            return Task.FromResult(Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword"));
+            return Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword");
         }
-        return ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, async user =>
+        return await ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, async user =>
         {
             await db.Devices.Where(device => device.UserId == userId).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
             user.ResetPassword(request.TemporaryPassword, hasher);

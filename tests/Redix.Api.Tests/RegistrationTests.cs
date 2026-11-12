@@ -101,6 +101,7 @@ public class RegistrationTests(MigratedApiFactory factory)
     [InlineData("غصون 8", "ريم", "012345678901234567890", Password, "invalidMobile")]
     [InlineData("غصون 8", "ريم", "٠٥٠٠٠٠٠٠٠٠", Password, "invalidMobile")]
     [InlineData("غصون 8", "ريم", "0500000000", "Short-1", "weakPassword")]
+    [InlineData("غصون 8", "ريم", "0500000000", "only-letters", "weakPassword")]
     public async Task ABadFieldCreatesNothing(string name, string displayName, string mobile, string password, string code)
     {
         var username = NewUsername();

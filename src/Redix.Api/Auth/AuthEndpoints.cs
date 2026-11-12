@@ -82,7 +82,7 @@ public static class AuthEndpoints
     /// Replaces the signed-in user's password (UC-003, AC-02.1), records it in the History table (UC-005), and signs out the user's other devices; this device
     /// stays signed in with a renewed session.
     /// A wrong current password answers <c>invalidCredentials</c> and counts toward the lockout (<c>accountLocked</c>); a new password shorter than
-    /// <see cref="User.MinimumPasswordLength"/> or equal to the current one answers <c>weakPassword</c>.
+    /// one <see cref="PasswordPolicy"/> refuses, or equal to the current one, answers <c>weakPassword</c>.
     /// </summary>
     /// <param name="request">The current password and the new one.</param>
     /// <param name="principal">The signed-in session: its user and device.</param>
@@ -103,7 +103,7 @@ public static class AuthEndpoints
             await db.SaveChangesAsync();
             return Refusal.Of(StatusCodes.Status400BadRequest, outcome.ToString());
         }
-        if (!User.IsAcceptableNewPassword(request.NewPassword, request.CurrentPassword))
+        if (!PasswordPolicy.MayReplace(request.NewPassword, request.CurrentPassword, user.Username))
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword");
         }

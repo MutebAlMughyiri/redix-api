@@ -82,6 +82,8 @@ public class UsersTests(MigratedApiFactory factory)
         var signedIn = (await (await SignInAsync(user.Username, Temporary)).Content.ReadFromJsonAsync<Session>(Json))!;
         Assert.True(signedIn.MustChangePassword);
         Assert.Equal("weakPassword", await CodeOf(await ResetAsync(manager, user.Id, "Short-1")));
+        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(manager, user.Id, "only-letters")));
+        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(manager, user.Id, user.Username)));
     }
 
     [Fact]

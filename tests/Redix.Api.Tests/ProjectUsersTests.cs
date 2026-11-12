@@ -116,6 +116,9 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     [InlineData("n", "   ", "", Temporary, "invalidUsername")]
     [InlineData("n", "u", "012345678901234567890", Temporary, "invalidMobile")]
     [InlineData("n", "u", "", "Short-1", "weakPassword")]
+    [InlineData("n", "u", "", "only-letters", "weakPassword")]
+    [InlineData("n", "u", "", "1234567890", "weakPassword")]
+    [InlineData("n", "user-name-9", "", "USER-NAME-9", "weakPassword")]
     public async Task AFieldOutsideItsLimitIsRefused(string displayName, string username, string mobile, string password, string code)
     {
         var (_, client, projectId) = await ManagerAsync();

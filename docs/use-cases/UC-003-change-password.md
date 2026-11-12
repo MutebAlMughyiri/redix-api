@@ -27,7 +27,7 @@
 | --- | --- | --- |
 | Changing a temporary password ends the forced change, and the new password works (AC-02.1) | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.ChangingATemporaryPasswordEndsTheForcedChangeAndTheNewPasswordWorks` |
 | A wrong current password is refused and counts toward the lockout | `User.SignIn` | `ChangePasswordTests.AWrongCurrentPasswordIsRefusedAndCountsTowardTheLockout` |
-| A new password has at least 8 characters and differs from the current one | `User.IsAcceptableNewPassword` | `ChangePasswordTests.ANewPasswordShorterThan8CharactersOrUnchangedIsRefused` |
+| A new password holds the password policy (redix-api #113: at least 8 characters, with a letter and a digit, not the user name) and differs from the current one | `PasswordPolicy.MayReplace` | `ChangePasswordTests.R113_ANewPasswordShortWithoutALetterOrADigitOrUnchangedIsRefused`, `R113_ANewPasswordThatIsTheUserNameIsRefused`; `PasswordPolicyTests` |
 | The other devices are signed out; this one stays signed in | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.ChangingThePasswordSignsOutTheOtherDevicesAndKeepsThisOne` |
 | A password change is in the History table, never the password's hash (UC-005) | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
 | Changing the password needs a session | `SessionPolicies.MayChangePassword` | `ChangePasswordTests.ChangingThePasswordNeedsASession` |

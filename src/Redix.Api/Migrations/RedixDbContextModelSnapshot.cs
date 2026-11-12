@@ -3063,14 +3063,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b4e4d543-fa12-5ad4-302a-cb1db1520ac1"),
                             Language = "en",
                             TranslationKeyId = new Guid("6e6f2043-3714-fbfe-aaa6-8274f5ff1098"),
-                            Value = "Use at least 8 characters, different from the current password."
+                            Value = "Use at least 8 characters with a letter and a digit, not your user name, and different from the current password."
                         },
                         new
                         {
                             Id = new Guid("669900fc-707d-4455-33c3-9dce46e0c16b"),
                             Language = "ar",
                             TranslationKeyId = new Guid("6e6f2043-3714-fbfe-aaa6-8274f5ff1098"),
-                            Value = "استخدم 8 أحرف على الأقل، مختلفة عن كلمة المرور الحالية."
+                            Value = "استخدم 8 أحرف على الأقل فيها حرف ورقم، ليست اسم المستخدم، ومختلفة عن كلمة المرور الحالية."
                         },
                         new
                         {
@@ -3295,6 +3295,20 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("9204e426-af38-ad74-31fe-b90cdd796f65"),
                             Value = "ابحث في {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("71e5ae9f-3dfd-8342-d089-89a008936b52"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ab1f493e-24de-51d9-c2c0-6d65e8a8d07e"),
+                            Value = "At least 8 characters, with a letter and a digit, not the user name."
+                        },
+                        new
+                        {
+                            Id = new Guid("1aeca5a0-c348-8d0b-d78f-68a77bc8cbd2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ab1f493e-24de-51d9-c2c0-6d65e8a8d07e"),
+                            Value = "8 أحرف على الأقل، فيها حرف ورقم، وليست اسم المستخدم."
                         },
                         new
                         {
@@ -4155,14 +4169,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("7f1c7913-3212-6c3d-8bc6-938f059a033e"),
                             Language = "en",
                             TranslationKeyId = new Guid("1a09023f-e56b-1467-f632-099aef723ce3"),
-                            Value = "Use at least 8 characters."
+                            Value = "Use at least 8 characters with a letter and a digit, not the user name."
                         },
                         new
                         {
                             Id = new Guid("a8fd20c5-eedd-da6a-7a8a-dd5e35e7c419"),
                             Language = "ar",
                             TranslationKeyId = new Guid("1a09023f-e56b-1467-f632-099aef723ce3"),
-                            Value = "استخدم 8 أحرف على الأقل."
+                            Value = "استخدم 8 أحرف على الأقل فيها حرف ورقم، وليست اسم المستخدم."
                         },
                         new
                         {
@@ -4883,14 +4897,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9baea722-2831-1387-5e7d-fdf507b22847"),
                             Language = "en",
                             TranslationKeyId = new Guid("a26bc0f3-c210-7458-5766-d6352b305d8e"),
-                            Value = "Use at least 8 characters."
+                            Value = "Use at least 8 characters with a letter and a digit, not the user name."
                         },
                         new
                         {
                             Id = new Guid("7a888b79-0b27-2870-0879-9a584a4670d8"),
                             Language = "ar",
                             TranslationKeyId = new Guid("a26bc0f3-c210-7458-5766-d6352b305d8e"),
-                            Value = "استخدم 8 أحرف على الأقل."
+                            Value = "استخدم 8 أحرف على الأقل فيها حرف ورقم، وليست اسم المستخدم."
                         },
                         new
                         {
@@ -14399,6 +14413,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9204e426-af38-ad74-31fe-b90cdd796f65"),
                             Description = "",
                             Key = "common.searchIn"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab1f493e-24de-51d9-c2c0-6d65e8a8d07e"),
+                            Description = "",
+                            Key = "common.passwordRules"
                         },
                         new
                         {

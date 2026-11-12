@@ -68,8 +68,10 @@ public class ChangePasswordTests(MigratedApiFactory factory)
 
     [Theory]
     [InlineData("Short-1")]
+    [InlineData("only-letters")]
+    [InlineData("1234567890")]
     [InlineData(Password)]
-    public async Task ANewPasswordShorterThan8CharactersOrUnchangedIsRefused(string newPassword)
+    public async Task R113_ANewPasswordShortWithoutALetterOrADigitOrUnchangedIsRefused(string newPassword)
     {
         var user = await factory.AddUserAsync(Password);
         var session = await SignInAsync(user.Username, Password);
@@ -138,5 +140,17 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         var claim = Assert.Single(fallback.Requirements.OfType<Microsoft.AspNetCore.Authorization.Infrastructure.ClaimsAuthorizationRequirement>());
         Assert.Equal(AccessTokens.MustChangePasswordClaim, claim.ClaimType);
         Assert.Equal(["false"], claim.AllowedValues);
+    }
+
+    [Fact]
+    public async Task R113_ANewPasswordThatIsTheUserNameIsRefused()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var session = await SignInAsync(user.Username, Password);
+
+        var response = await ChangePasswordAsync(session.AccessToken, Password, user.Username.ToUpperInvariant());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("weakPassword", await CodeOf(response));
     }
 }
