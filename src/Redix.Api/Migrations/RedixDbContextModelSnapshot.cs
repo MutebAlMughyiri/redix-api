@@ -7218,14 +7218,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("d5323b40-30fd-f6e5-aac2-6a6eafe2c2cd"),
                             Language = "en",
                             TranslationKeyId = new Guid("8f6a9ff1-d7db-fc89-d679-f6379ed7d682"),
-                            Value = "It holds what is approved now and never changes. Entries waiting for approval ({1}) show apart: expenses on one line, revenue and capital on another."
+                            Value = "It holds what is approved now and never changes. Entries waiting for approval ({0}) show apart: expenses on one line, revenue and capital on another."
                         },
                         new
                         {
                             Id = new Guid("03ca8285-ff93-b8f9-88a5-47b271085b20"),
                             Language = "ar",
                             TranslationKeyId = new Guid("8f6a9ff1-d7db-fc89-d679-f6379ed7d682"),
-                            Value = "يشمل المعتمد الآن ولا يتغير بعد إصداره. والقيود المنتظرة للاعتماد ({1}) تظهر منفصلة: المصروفات في سطر، والإيرادات ورأس المال في سطر."
+                            Value = "يشمل المعتمد الآن ولا يتغير بعد إصداره. والقيود المنتظرة للاعتماد ({0}) تظهر منفصلة: المصروفات في سطر، والإيرادات ورأس المال في سطر."
                         },
                         new
                         {

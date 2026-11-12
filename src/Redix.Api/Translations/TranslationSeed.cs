@@ -275,7 +275,7 @@ public static class TranslationSeed
         ("reports.noneIssued", "No report issued yet.", "لم يُصدر تقرير بعد."),
         ("reports.issue", "Issue number {0}", "إصدار رقم {0}"),
         ("reports.issueQuestion", "Issue report number {0}?", "إصدار التقرير رقم {0}؟"),
-        ("reports.issueExplain", "It holds what is approved now and never changes. Entries waiting for approval ({1}) show apart: expenses on one line, revenue and capital on another.", "يشمل المعتمد الآن ولا يتغير بعد إصداره. والقيود المنتظرة للاعتماد ({1}) تظهر منفصلة: المصروفات في سطر، والإيرادات ورأس المال في سطر."),
+        ("reports.issueExplain", "It holds what is approved now and never changes. Entries waiting for approval ({0}) show apart: expenses on one line, revenue and capital on another.", "يشمل المعتمد الآن ولا يتغير بعد إصداره. والقيود المنتظرة للاعتماد ({0}) تظهر منفصلة: المصروفات في سطر، والإيرادات ورأس المال في سطر."),
         ("reports.issued", "Report issued.", "صدر التقرير."),
         ("reports.reportNumber", "Report number", "تقرير رقم"),
         ("reports.previous", "Previous report's expenses", "مصروفات التقرير السابق"),
