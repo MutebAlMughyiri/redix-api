@@ -465,6 +465,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<HistoryRecord>(history =>
         {
             history.ToTable(nameof(History), table => table.HasTrigger("HistoryIsAppendOnly"));
+            history.HasKey(a => a.Id);
             history.Property(a => a.Action).HasConversion<string>().HasMaxLength(EnumNameMaxLength).IsUnicode(false);
             history.Property(a => a.TableName).HasMaxLength(128).IsUnicode(false);
             history.Property(a => a.Before).HasColumnType("json");

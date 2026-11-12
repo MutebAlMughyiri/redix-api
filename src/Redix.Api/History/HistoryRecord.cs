@@ -13,8 +13,8 @@ namespace Redix.Api.History;
 /// </summary>
 public class HistoryRecord
 {
-    /// <summary>The record's number, in the order records were written.</summary>
-    public long Id { get; private set; }
+    /// <summary>The record's number, given by the database in the order records were written.</summary>
+    public long Id { get; }
 
     /// <summary>When it was done.</summary>
     public DateTime At { get; private init; }
