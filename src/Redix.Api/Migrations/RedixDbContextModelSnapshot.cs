@@ -13140,6 +13140,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("ea197b2d-f1ec-396b-c690-1cf5abc648fe"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2b347c6e-15bb-bf2c-9812-fc7c8e36fe1e"),
+                            Value = "That file is empty. Pick another."
+                        },
+                        new
+                        {
+                            Id = new Guid("84b082ac-44dd-dd3e-1bda-41c632d65cf4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2b347c6e-15bb-bf2c-9812-fc7c8e36fe1e"),
+                            Value = "الملف فارغ. اختر ملفاً آخر."
+                        },
+                        new
+                        {
                             Id = new Guid("e9fd8ffe-e017-a51d-a59a-365eed5432b2"),
                             Language = "en",
                             TranslationKeyId = new Guid("ded470ed-f243-7198-f2d2-b8bd5ea2fff0"),
@@ -18603,6 +18617,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("554cb4c3-3ff5-2643-ec96-eba12e29997f"),
                             Description = "",
                             Key = "attachments.unreadable"
+                        },
+                        new
+                        {
+                            Id = new Guid("2b347c6e-15bb-bf2c-9812-fc7c8e36fe1e"),
+                            Description = "",
+                            Key = "attachments.fileEmpty"
                         },
                         new
                         {

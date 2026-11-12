@@ -745,6 +745,7 @@ public static class TranslationSeed
         ("attachments.refused", "The file could not be kept.", "تعذّر حفظ الملف."),
         ("attachments.cameraFailed", "The camera could not open. Pick the invoice from your files.", "تعذّر فتح الكاميرا. اختر الفاتورة من ملفاتك."),
         ("attachments.unreadable", "That file could not be read. Pick another.", "تعذّرت قراءة الملف. اختر ملفاً آخر."),
+        ("attachments.fileEmpty", "That file is empty. Pick another.", "الملف فارغ. اختر ملفاً آخر."),
         ("attachments.invoicePhoto", "Invoice picture", "صورة الفاتورة"),
         ("attachments.retake", "Take again", "إعادة التصوير"),
         ("attachments.takePhoto", "Take a picture", "تصوير الفاتورة"),
