@@ -34,7 +34,7 @@ public static class UsersEndpoints
         var chosen = (await db.ChosenPartners.Where(row => held.Any(heldRow => heldRow.UserId == row.UserId && heldRow.ProjectId == row.ProjectId)).ToListAsync())
             .ToLookup(row => (row.UserId, row.ProjectId), row => row.PartnerId);
         return rows.GroupBy(row => (row.UserId, row.ProjectId, row.Name)).OrderBy(line => line.Key.Name)
-            .ToLookup(line => line.Key.UserId, line => new UserProjectView(line.Key.ProjectId, line.Key.Name, line.Select(row => row.Permission).Order().ToList(),
+            .ToLookup(line => line.Key.UserId, line => new UserProjectView(line.Key.ProjectId, line.Select(row => row.Permission).Order().ToList(),
                 roleNames.GetValueOrDefault((line.Key.UserId, line.Key.ProjectId), ""), [.. chosen[(line.Key.UserId, line.Key.ProjectId)]]));
     }
 
@@ -160,11 +160,10 @@ public record ResetPasswordRequest(string TemporaryPassword);
 
 /// <summary>What a user holds in one project, as their answer shows it.</summary>
 /// <param name="ProjectId">The project's id.</param>
-/// <param name="Name">The project's name.</param>
 /// <param name="Permissions">What the user may do there.</param>
 /// <param name="RoleName">What they are called there; empty when nothing was typed.</param>
 /// <param name="PartnerIds">The partners chosen for them there, seen with <see cref="Permission.SeeChosenCapital"/> (redix-api #106).</param>
-public record UserProjectView(Guid ProjectId, string Name, List<Permission> Permissions, string RoleName, List<Guid> PartnerIds);
+public record UserProjectView(Guid ProjectId, List<Permission> Permissions, string RoleName, List<Guid> PartnerIds);
 
 /// <summary>A user as the app shows them. It names its fields, so the password's hash and any new column stay out.</summary>
 /// <param name="Id">The user's id.</param>

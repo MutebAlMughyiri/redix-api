@@ -34,7 +34,7 @@ public static class DocumentsEndpoints
         join attachment in db.Attachments on document.AttachmentId equals attachment.Id
         where document.ProjectId == projectId
         orderby document.Group, document.UploadedAt descending
-        select new DocumentView(document.Id, document.Name, document.Group, attachment.Id, attachment.FileName, attachment.ContentType, attachment.SizeBytes, document.UploadedAt)).ToListAsync();
+        select new DocumentView(document.Id, document.Name, document.Group, attachment.Id, attachment.FileName, attachment.ContentType, document.UploadedAt)).ToListAsync();
 
     /// <summary>
     /// Keeps <paramref name="file"/>, of any kind, as a document of the project under its name and group. A name empty or longer than 200 letters answers <c>invalidName</c>; a group longer than
@@ -119,9 +119,8 @@ public class DocumentFields
 /// <param name="AttachmentId">Its file.</param>
 /// <param name="FileName">The file's name.</param>
 /// <param name="ContentType">What the file is.</param>
-/// <param name="SizeBytes">The file's size.</param>
 /// <param name="UploadedAt">When it was kept.</param>
-public record DocumentView(Guid Id, string Name, string Group, Guid AttachmentId, string FileName, string ContentType, int SizeBytes, DateTime UploadedAt);
+public record DocumentView(Guid Id, string Name, string Group, Guid AttachmentId, string FileName, string ContentType, DateTime UploadedAt);
 
 /// <summary>The document a change was made to.</summary>
 /// <param name="Id">The document.</param>
