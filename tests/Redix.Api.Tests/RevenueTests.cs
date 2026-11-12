@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
+using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Reports;
@@ -145,7 +146,7 @@ public class RevenueTests(MigratedApiFactory factory)
     private static async Task RemoveAsync(Ledger ledger, Guid id)
     {
         var (remover, removerId) = await ledger.MemberAsync("Reader");
-        await ledger.Factory.GiveAsync(removerId, ledger.ProjectId, [Redix.Api.Auth.Permission.RemoveApprovedEntries]);
+        await ledger.Factory.GiveAsync(removerId, ledger.ProjectId, [Permission.RemoveApprovedEntries]);
         (await remover.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{id}")).EnsureSuccessStatusCode();
     }
 

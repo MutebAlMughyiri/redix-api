@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -97,7 +98,7 @@ public static class EntriesEndpoints
     }
 
     /// <summary>The entries <paramref name="shown"/> keeps of those the caller may see, newest first: only the newest <paramref name="take"/> when it is above 0.</summary>
-    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, System.Linq.Expressions.Expression<Func<Entry, bool>> shown, int take)
+    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, Expression<Func<Entry, bool>> shown, int take)
     {
         var newestFirst = (await SeenByAsync(projectId, userId, db)).Where(shown).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id);
         var entries = await (take > 0 ? newestFirst.Take(take) : newestFirst).ToListAsync();

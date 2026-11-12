@@ -1,7 +1,10 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Entries;
@@ -179,8 +182,8 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
         var pdf = await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/pdf");
 
-        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
-        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(System.Text.Encoding.Latin1.GetString(pdf), @"/Type\s*/Page(?!s)").Count);
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.Equal(2, Regex.Matches(Encoding.Latin1.GetString(pdf), @"/Type\s*/Page(?!s)").Count);
     }
 
     [Fact]
@@ -484,7 +487,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         [.. workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.Column(sheet.LastColumnUsed()!.ColumnNumber()).CellsUsed())
             .Where(cell => cell.Value.IsNumber)
             .Select(cell => cell.Style.NumberFormat.Format.Contains('%')
-                ? ((decimal)cell.Value.GetNumber() * 100).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "%"
+                ? ((decimal)cell.Value.GetNumber() * 100).ToString("0.00", CultureInfo.InvariantCulture) + "%"
                 : ReportFormats.Money((decimal)cell.Value.GetNumber()))];
 
     /// <summary>Every one of <paramref name="figures"/> is a word of <paramref name="pdf"/>, as many times as the workbook shows it, so no figure can stand in for another.</summary>
@@ -505,7 +508,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         using var item = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}/xlsx")));
         using var contracts = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/contracts/xlsx")));
 
-        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(pdf, 0, 4));
         Assert.Single(item.Worksheets);
         Assert.Equal("العقود", contracts.Worksheet(1).Name);
     }

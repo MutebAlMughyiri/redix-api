@@ -23,19 +23,15 @@ CustomValues = JsonSerializer.Serialize(request.CustomValuesKept()),
 
 A qualified name in the middle of a line is a namespace path the reader has to skip to find the word that matters, and it hides a dependency the `using` list would have shown. It is almost always the quick way out of adding a `using` during a small edit, which is exactly when it slips in.
 
-## The one exception: two types with one simple name
+## The one exception: the simple name already means something else
 
-Qualify only when the simple name already means another type in that file. C# has a using alias for it (`using SqlException = Microsoft.Data.SqlClient.SqlException;`); prefer the alias to a qualified name repeated in the code.
+Qualify only when the simple name already means another type or member in that file. For a type, C# has a using alias (`using SqlException = Microsoft.Data.SqlClient.SqlException;`); prefer the alias to a qualified name repeated in the code.
 
-## Measured, 12 November 2026
+Two lines in `RedixDbContext` stay qualified, as `global::Redix.Api.Entries.Entry.NotesMaxLength` and `global::Redix.Api.Entries.PurchaseDetails.ProductMaxLength`: inside a `DbContext`, `Entry` is its method and `PurchaseDetails` its property, so the simple name would mean them.
 
-13 lines, a row in #76:
+## Fixed, 13 November 2026
 
-| Where | Written out |
-| --- | --- |
-| `src/Redix.Api/Entries/EntriesEndpoints.cs:100` | `System.Linq.Expressions.Expression` |
-| `src/Redix.Api/Entries/EntryTable.cs:92` | `System.Text.Json.JsonSerializer` |
-| `tests/` (11 lines in 7 files) | `System.Text.Encoding`, `System.Text.Json.JsonSerializerOptions`, `System.Globalization.CultureInfo`, `System.Diagnostics.Stopwatch`, `Microsoft.Data.SqlClient.SqlException`, `Microsoft.AspNetCore.Authorization.Infrastructure.ClaimsAuthorizationRequirement` |
+The 23 lines measured on 12 November (findings row 212), in `EntriesEndpoints`, `EntryTable`, `RedixDbContext` and 8 test files, now use a `using`. In a type argument, `DbSet<PeriodicReport>`, the simple name is safe even beside a property of the same name: C# looks only for types there.
 
 ## Checking
 

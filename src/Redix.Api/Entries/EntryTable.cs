@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Structure;
+using System.Text.Json;
 
 namespace Redix.Api.Entries;
 
@@ -89,7 +90,7 @@ public abstract record EntryTable(Category Category, Item Item, Guid Id, string 
         ItemId = Item.Id,
         SubgroupId = subgroupId,
         PaymentMethodId = request.PaymentMethodId,
-        CustomValues = System.Text.Json.JsonSerializer.Serialize(request.CustomValuesKept()),
+        CustomValues = JsonSerializer.Serialize(request.CustomValuesKept()),
     };
 }
 

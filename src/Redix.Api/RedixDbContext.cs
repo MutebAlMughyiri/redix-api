@@ -10,6 +10,8 @@ using Redix.Api.Entries;
 using Redix.Api.Notifications;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
+using Redix.Api.Reports;
+using Redix.Api.Revenue;
 using Redix.Api.Settings;
 using Redix.Api.Structure;
 using Redix.Api.Suppliers;
@@ -114,16 +116,16 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     public DbSet<Invoice> Invoices => Set<Invoice>();
 
     /// <summary>What only a capital movement has.</summary>
-    public DbSet<Redix.Api.Partners.CapitalMovementDetails> CapitalMovementDetails => Set<Redix.Api.Partners.CapitalMovementDetails>();
+    public DbSet<CapitalMovementDetails> CapitalMovementDetails => Set<CapitalMovementDetails>();
 
     /// <summary>Each periodic report as it was issued.</summary>
-    public DbSet<Redix.Api.Reports.PeriodicReport> PeriodicReports => Set<Redix.Api.Reports.PeriodicReport>();
+    public DbSet<PeriodicReport> PeriodicReports => Set<PeriodicReport>();
 
     /// <summary>Each check of the accounts against the books.</summary>
     public DbSet<Reconciliation> Reconciliations => Set<Reconciliation>();
 
     /// <summary>What each person was told about an entry.</summary>
-    public DbSet<Redix.Api.Notifications.Notification> Notifications => Set<Redix.Api.Notifications.Notification>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     /// <summary>Each entry's steps through approval.</summary>
     public DbSet<EntryDecision> EntryDecisions => Set<EntryDecision>();
@@ -373,21 +375,21 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             invoice.HasIndex(i => i.Number);
             invoice.HasOne<Entry>().WithOne().HasForeignKey<Invoice>(i => i.EntryId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<Redix.Api.Revenue.RevenueDetails>(details =>
+        modelBuilder.Entity<RevenueDetails>(details =>
         {
             details.HasKey(d => d.EntryId);
-            details.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Revenue.RevenueDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Entry>().WithOne().HasForeignKey<RevenueDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Item>().WithMany().HasForeignKey(d => d.ItemId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Subgroup>().WithMany().HasForeignKey(d => d.SubgroupId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<Redix.Api.Partners.CapitalMovementDetails>(details =>
+        modelBuilder.Entity<CapitalMovementDetails>(details =>
         {
             details.HasKey(d => d.EntryId);
             details.HasIndex(d => d.PartnerId);
-            details.HasOne<Entry>().WithOne().HasForeignKey<Redix.Api.Partners.CapitalMovementDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
+            details.HasOne<Entry>().WithOne().HasForeignKey<CapitalMovementDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Partner>().WithMany().HasForeignKey(d => d.PartnerId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<Redix.Api.Reports.PeriodicReport>(report =>
+        modelBuilder.Entity<PeriodicReport>(report =>
         {
             report.HasIndex(r => new { r.ProjectId, r.Number }).IsUnique();
             report.Property(r => r.Snapshot).HasColumnType("json");
@@ -406,7 +408,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             balance.HasKey(b => new { b.ReconciliationId, b.AccountId });
             balance.HasOne<Account>().WithMany().HasForeignKey(b => b.AccountId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<Redix.Api.Notifications.Notification>(notification =>
+        modelBuilder.Entity<Notification>(notification =>
         {
             notification.HasIndex(n => new { n.UserId, n.At });
             notification.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);

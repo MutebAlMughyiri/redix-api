@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Redix.Api.History;
 using Redix.Api.Auth;
@@ -137,7 +138,7 @@ public class ChangePasswordTests(MigratedApiFactory factory)
     {
         var fallback = (await factory.Services.GetRequiredService<IAuthorizationPolicyProvider>().GetFallbackPolicyAsync())!;
 
-        var claim = Assert.Single(fallback.Requirements.OfType<Microsoft.AspNetCore.Authorization.Infrastructure.ClaimsAuthorizationRequirement>());
+        var claim = Assert.Single(fallback.Requirements.OfType<ClaimsAuthorizationRequirement>());
         Assert.Equal(AccessTokens.MustChangePasswordClaim, claim.ClaimType);
         Assert.Equal(["false"], claim.AllowedValues);
     }

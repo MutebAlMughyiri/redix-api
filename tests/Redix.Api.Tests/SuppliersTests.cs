@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -460,7 +461,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         });
         await SearchAsync(client, project.Id, "");
 
-        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var watch = Stopwatch.StartNew();
         var found = await SearchAsync(client, project.Id, "البناء");
         watch.Stop();
 

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Redix.Api.History;
 using Redix.Api.Auth;
@@ -108,7 +109,7 @@ public class ProjectsTests(MigratedApiFactory factory)
     {
         var client = await ClientOfAsync(await StarterAsync());
 
-        var response = await client.PostAsync("/projects", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+        var response = await client.PostAsync("/projects", new StringContent(body, Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

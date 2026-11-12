@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Entries;
@@ -296,8 +297,8 @@ public class AccountHistoryTests(MigratedApiFactory factory)
 
         await factory.WithDatabaseAsync(async db =>
         {
-            await Assert.ThrowsAsync<Microsoft.Data.SqlClient.SqlException>(() => db.History.Where(kept => kept.Id == row.Id).ExecuteUpdateAsync(kept => kept.SetProperty(history => history.ProjectId, Guid.Empty)));
-            await Assert.ThrowsAsync<Microsoft.Data.SqlClient.SqlException>(() => db.History.Where(kept => kept.Id == row.Id).ExecuteDeleteAsync());
+            await Assert.ThrowsAsync<SqlException>(() => db.History.Where(kept => kept.Id == row.Id).ExecuteUpdateAsync(kept => kept.SetProperty(history => history.ProjectId, Guid.Empty)));
+            await Assert.ThrowsAsync<SqlException>(() => db.History.Where(kept => kept.Id == row.Id).ExecuteDeleteAsync());
         });
         Assert.Equal(ledger.ProjectId, (await factory.HistoryOfAsync(ledger.AccountId)).Single().ProjectId);
     }

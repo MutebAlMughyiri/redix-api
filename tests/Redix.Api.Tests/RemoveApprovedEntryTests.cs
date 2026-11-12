@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Auth;
@@ -21,7 +22,7 @@ namespace Redix.Api.Tests;
 [Collection(DatabaseCollection.Name)]
 public class RemoveApprovedEntryTests(MigratedApiFactory factory)
 {
-    private static readonly System.Text.Json.JsonSerializerOptions Json = Ledger.Json;
+    private static readonly JsonSerializerOptions Json = Ledger.Json;
 
     /// <summary>Someone who reads the project and holds the removal alone.</summary>
     private static async Task<(HttpClient Client, Guid UserId)> RemoverAsync(Ledger ledger)
