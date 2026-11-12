@@ -588,11 +588,11 @@ public class ColumnsTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, ["شرق"]), Json)).EnsureSuccessStatusCode();
         var column = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last();
-        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new() { [column.Key] = "شمال" } }, "invalidColumnValue");
+        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = "شمال" } }, "invalidColumnValue");
 
         (await EditItemColumnAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, column, "شمال")).EnsureSuccessStatusCode();
 
-        await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new() { [column.Key] = "شمال" } });
+        await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = "شمال" } });
     }
 
     [Theory]

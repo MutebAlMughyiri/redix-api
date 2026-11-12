@@ -235,7 +235,7 @@ public record CreateProjectRequest(string Name, DateOnly StartDate, List<string>
     public string Description { get; init; } = "";
 
     /// <summary>The names of its partners, in order, each a table of its رأس المال once approved (redix-api #109); left out for none.</summary>
-    public List<string> Partners { get; init; } = [];
+    public IReadOnlyList<string> Partners { get; init; } = [];
 }
 
 /// <summary>What the app sends to keep a project's description.</summary>

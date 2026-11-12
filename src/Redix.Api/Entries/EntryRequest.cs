@@ -30,7 +30,7 @@ public record EntryRequest(Guid Id)
     public string Notes { get; init; } = "";
 
     /// <summary>The values of the item's custom columns, by each column's key (FR-41).</summary>
-    public Dictionary<string, string> CustomValues { get; init; } = [];
+    public IReadOnlyDictionary<string, string> CustomValues { get; init; } = new Dictionary<string, string>();
 
     /// <summary>The file, already kept; left out when there is none, which every entry may be (D3, D16).</summary>
     public Guid AttachmentId { get; init; }

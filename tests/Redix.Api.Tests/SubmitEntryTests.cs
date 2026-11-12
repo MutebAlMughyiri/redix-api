@@ -85,7 +85,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         var ledger = await LedgerAsync();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("المرحلة", ColumnDataType.Text, false, false, []), Ledger.Json)).EnsureSuccessStatusCode();
         var custom = (await ledger.Client.GetFromJsonAsync<List<ColumnView>>($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", Ledger.Json))!.Single(column => column.Name == "المرحلة").Key;
-        var entryId = await DraftAsync(ledger, ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Product = "أسمنت", Notes = "دفعة أولى", CustomValues = new() { [custom] = "الأرضي" } });
+        var entryId = await DraftAsync(ledger, ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Product = "أسمنت", Notes = "دفعة أولى", CustomValues = new Dictionary<string, string> { [custom] = "الأرضي" } });
         await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == ledger.ItemId && (column.Key == "product" || column.Key == "notes" || column.Key == custom)).ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
 
         (await SubmitAsync(ledger, entryId)).EnsureSuccessStatusCode();

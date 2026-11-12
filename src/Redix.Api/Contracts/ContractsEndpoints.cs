@@ -263,7 +263,7 @@ public record ContractView(Guid Id, Guid ItemId, string SupplierName, string Ite
     public bool HasPayments { get; init; }
 
     /// <summary>The documents it carries, in the order they were kept.</summary>
-    public List<AttachmentView> Documents { get; init; } = [];
+    public IReadOnlyList<AttachmentView> Documents { get; init; } = [];
 
     /// <summary>The view of <paramref name="contract"/> with <paramref name="money"/> inside it, between the parties named.</summary>
     public static ContractView Of(Contract contract, ContractMoney money, string supplierName, string itemName) =>
