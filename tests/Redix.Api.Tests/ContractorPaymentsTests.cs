@@ -443,4 +443,56 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         Assert.Equal(["Entries", "ExpenseDetails", "ContractorPaymentDetails", "EntryAttachments"], trail.Select(record => record.TableName));
         Assert.Equal(HistoryAction.Submit, trail[0].Action);
     }
+
+    /// <summary>Two contracts on one item, 3000 paid on the first and 777 on the second, both approved.</summary>
+    private async Task<(Setup First, Setup Second)> TwoPaidContractsAsync()
+    {
+        var first = await ContractAsync();
+        var second = await ContractOfAsync(first.Ledger, 5000m, false);
+        await ApprovedAsync(first, 3000m);
+        await ApprovedAsync(second, 777m);
+        return (first, second);
+    }
+
+    [Fact]
+    public async Task Muteb12Nov_AContractsReportIsItsItemsReportHoldingThatContractsTableAlone()
+    {
+        var (first, _) = await TwoPaidContractsAsync();
+
+        var report = (await first.Ledger.Client.GetFromJsonAsync<Reports.ItemReportView>($"/projects/{first.Ledger.ProjectId}/reports/contracts/{first.ContractId}", Ledger.Json))!;
+
+        Assert.Equal(first.ItemId, report.ItemId);
+        Assert.Empty(report.Subgroups);
+        var contract = Assert.Single(report.Contracts);
+        Assert.Equal(first.ContractId, contract.Id);
+        Assert.Equal([3000m], contract.Payments.Select(payment => payment.Amount));
+        Assert.Equal(3000m, contract.PaymentsTotal);
+    }
+
+    [Fact]
+    public async Task Muteb12Nov_AContractsPdfAndWorkbookHoldItsOwnPaymentsAndNotAnothersOnTheSameItem()
+    {
+        var (first, _) = await TwoPaidContractsAsync();
+        var address = $"/projects/{first.Ledger.ProjectId}/reports/contracts/{first.ContractId}";
+
+        var pdf = await first.Ledger.Client.GetByteArrayAsync($"{address}/pdf");
+        using var workbook = new ClosedXML.Excel.XLWorkbook(new MemoryStream(await first.Ledger.Client.GetByteArrayAsync($"{address}/xlsx")));
+        var amounts = workbook.Worksheets.SelectMany(sheet => sheet.CellsUsed()).Where(cell => cell.DataType == ClosedXML.Excel.XLDataType.Number).Select(cell => (decimal)cell.Value.GetNumber()).ToList();
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.Contains(3000m, amounts);
+        Assert.DoesNotContain(777m, amounts);
+    }
+
+    [Fact]
+    public async Task Muteb12Nov_AContractThatIsNotThisProjectsHasNoReportAndNoFiles()
+    {
+        var setup = await ContractAsync();
+        var address = $"/projects/{setup.Ledger.ProjectId}/reports/contracts/{Guid.CreateVersion7()}";
+
+        foreach (var route in new[] { address, $"{address}/pdf", $"{address}/xlsx" })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, (await setup.Ledger.Client.GetAsync(route)).StatusCode);
+        }
+    }
 }

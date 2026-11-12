@@ -23,6 +23,8 @@ public static class ReportFilesEndpoints
         files.MapGet("/reports/items/{itemId:guid}/xlsx", (Guid projectId, Guid itemId, RedixDbContext db) => ItemFileAsync(projectId, itemId, db, false));
         files.MapGet("/reports/contracts/pdf", ContractsPdf);
         files.MapGet("/reports/contracts/xlsx", ContractsExcel);
+        files.MapGet("/reports/contracts/{contractId:guid}/pdf", (Guid projectId, Guid contractId, RedixDbContext db) => ContractFileAsync(projectId, contractId, db, true));
+        files.MapGet("/reports/contracts/{contractId:guid}/xlsx", (Guid projectId, Guid contractId, RedixDbContext db) => ContractFileAsync(projectId, contractId, db, false));
     }
 
     /// <summary>The كشف الضريبة from <paramref name="from"/> to <paramref name="to"/> as the accountant's workbook, at the rate of the config value <c>vatRatePercent</c> (D18, D19). A period ending before it starts answers <c>invalidPeriod</c>.</summary>
@@ -46,6 +48,17 @@ public static class ReportFilesEndpoints
     /// <summary>The contracts report as a workbook.</summary>
     public static async Task<IResult> ContractsExcel(Guid projectId, RedixDbContext db) =>
         Results.File(ItemReportFiles.ContractsExcel(await ContractsEndpoints.List(projectId, db)), ExcelType, "contracts.xlsx");
+
+    /// <summary>One contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); a contract of another project is not found.</summary>
+    private static async Task<IResult> ContractFileAsync(Guid projectId, Guid contractId, RedixDbContext db, bool isPdf)
+    {
+        var report = await ItemReportEndpoints.OfContractAsync(projectId, contractId, db);
+        if (report == ItemReportView.None)
+        {
+            return Results.NotFound();
+        }
+        return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "contract.pdf") : Results.File(ItemReportFiles.Excel(report), ExcelType, "contract.xlsx");
+    }
 
     private static async Task<IResult> ItemFileAsync(Guid projectId, Guid itemId, RedixDbContext db, bool isPdf)
     {

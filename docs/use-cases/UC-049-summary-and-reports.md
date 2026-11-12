@@ -10,6 +10,7 @@
 | --- | --- |
 | `GET /projects/{id}/summary` | Revenue, expenses, the surplus, the reconciliation difference, what waits as two figures (`WaitingFigures`), each category and item's total, the capital with the partners' lines the caller may see (BR-31), the completion |
 | `GET /projects/{id}/reports/items/{itemId}` | An item's purchases by subgroup, then each contract with its payments |
+| `GET /projects/{id}/reports/contracts/{contractId}` | One contract's table, as the Contracts screen opens it: its item's report holding that contract alone (Muteb, 12 Nov 2026); another project's contract is not found |
 | `GET /projects/{id}/contracts` | Each contract's value, paid, remaining and overrun (UC-020), which is the contracts report |
 
 `ItemTotals` is the one owner of what each item cost (BR-02). The summary reads it on every request, so an approval shows at once.

@@ -15,10 +15,39 @@ namespace Redix.Api.Reports;
 /// </summary>
 public static class ItemReportEndpoints
 {
-    /// <summary>Maps the route, for anyone who reads the project.</summary>
+    /// <summary>Maps the routes of an item's report and of a contract's, for anyone who reads the project.</summary>
     /// <param name="app">The app.</param>
-    public static void MapItemReport(this WebApplication app) =>
+    public static void MapItemReport(this WebApplication app)
+    {
         app.MapGet("/projects/{projectId:guid}/reports/items/{itemId:guid}", Report).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/projects/{projectId:guid}/reports/contracts/{contractId:guid}", ContractReport).RequireAuthorization(nameof(Permission.ReadProject));
+    }
+
+    /// <summary>
+    /// The report of one contract, as the Contracts screen opens it (Muteb, 12 Nov 2026): its item's report holding that contract's table alone, its payments, value, paid and
+    /// remaining. A contract of another project is not found.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="contractId">The contract.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static async Task<IResult> ContractReport(Guid projectId, Guid contractId, RedixDbContext db)
+    {
+        var report = await OfContractAsync(projectId, contractId, db);
+        return report == ItemReportView.None ? Results.NotFound() : Results.Ok(report);
+    }
+
+    /// <summary>The report of the contract <paramref name="contractId"/>, for its screen and its files: its item's report holding that contract's table alone; none for a contract of another project.</summary>
+    public static async Task<ItemReportView> OfContractAsync(Guid projectId, Guid contractId, RedixDbContext db)
+    {
+        var itemId = await db.Contracts.Where(contract => contract.Id == contractId && contract.ProjectId == projectId).Select(contract => contract.ItemId).SingleOrDefaultAsync();
+        var item = await ProjectStructure.ItemWithTablesAsync(projectId, itemId, db);
+        if (item == Item.None)
+        {
+            return ItemReportView.None;
+        }
+        var report = await OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, _ => false);
+        return report with { Subgroups = [], Contracts = [.. report.Contracts.Where(contract => contract.Id == contractId)] };
+    }
 
     /// <summary>
     /// The report of the item, from what is approved, in date order. Its subgroups and its contracts' payments add up to its total (AC-30.1). A capital item shows the caller only their own
@@ -124,6 +153,9 @@ public static class ItemReportEndpoints
 /// <param name="Contracts">Its contracts, each with its payments.</param>
 public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, decimal Total, List<string> Columns, List<SubgroupReportView> Subgroups, List<ContractReportView> Contracts)
 {
+    /// <summary>No report: what a contract of another project answers.</summary>
+    public static readonly ItemReportView None = new(Guid.Empty, "", "", 0, [], [], []);
+
     /// <summary>True when its sheet calculates each table's percentage (AC-46.9); false in a report issued before the choice existed.</summary>
     public bool ShowsTablePercentages { get; init; }
 
