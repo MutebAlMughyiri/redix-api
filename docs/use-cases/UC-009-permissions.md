@@ -50,10 +50,10 @@ A new permission is code: a route has to name it, and a migration adds it. The d
 | `POST /projects/{projectId}/users` | `ManageUsers` | `201` a new login holding `ReadProject`, the `permissions` ticked and, with `SeeChosenCapital`, the `partnerIds` chosen; `400` `invalidPermission` (also both capital ticks) or `unknownPartner` |
 | `POST /projects/{projectId}/users/existing` | `ManageUsers` | `200` adds `{ username }` holding `ReadProject`; `404` `unknownUser` |
 | `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | `ManageUsers` | `200`; giving one capital tick takes the other, and `SeeAllCapital` forgets the chosen partners; `400` `invalidPermission`; `404` someone not in the project |
-| `POST /projects/{projectId}/users/{userId}/permissions/{permission}/remove` | `ManageUsers` | `200`; `ReadProject` takes every one of theirs; taking `SeeChosenCapital` forgets the chosen partners; `409` `lastManager` |
-| `POST /projects/{projectId}/users/{userId}/partners/{partnerId}` and `.../remove` | `ManageUsers` | `200` chooses a partner whose capital they see, giving `SeeChosenCapital`, or takes it (redix-api #106); `404` a person or a partner not of the project |
-| `POST /projects/{projectId}/users/{userId}/role-name` | `ManageUsers` | `200` names `{ roleName }`, a label only that decides nothing; `400` `invalidRoleName` |
-| `POST /users/{userId}`, `/reset-password`, `/disable`, `/enable` | See below | `200`; `403` `otherProject`; `409` `lastManager` on disable |
+| `DELETE /projects/{projectId}/users/{userId}/permissions/{permission}` | `ManageUsers` | `200`; `ReadProject` takes every one of theirs; taking `SeeChosenCapital` forgets the chosen partners; `409` `lastManager` |
+| `POST /projects/{projectId}/users/{userId}/partners/{partnerId}`, and `DELETE` on the same path | `ManageUsers` | `200` chooses a partner whose capital they see, giving `SeeChosenCapital`, or takes it (redix-api #106); `404` a person or a partner not of the project |
+| `PUT /projects/{projectId}/users/{userId}/role-name` | `ManageUsers` | `200` names `{ roleName }`, a label only that decides nothing; `400` `invalidRoleName` |
+| `PUT /users/{userId}`; `POST` to its `/reset-password`, `/disable` and `/enable` | See below | `200`; `403` `otherProject`; `409` `lastManager` on disable |
 
 A permission is named in the route as the app names it, `approveEntries`, whatever its case.
 

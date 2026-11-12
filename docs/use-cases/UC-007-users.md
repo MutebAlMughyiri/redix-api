@@ -12,7 +12,7 @@ A login is shared across projects, so changing one needs `ManageUsers` in every 
 
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
-| `POST /users/{userId}` | Changes a user's name and mobile | `200` the user; `400` `invalidName` or `invalidMobile`; `404` |
+| `PUT /users/{userId}` | Changes a user's name and mobile | `200` the user; `400` `invalidName` or `invalidMobile`; `404` |
 | `POST /users/{userId}/reset-password` | Sets a new temporary password, ends the lock, and signs the user out everywhere | `200` the user; `400` `weakPassword`; `404` |
 | `POST /users/{userId}/disable` | Disables a user, whose session ends at the next request | `200` the user; `409` `lastManager`; `404` |
 | `POST /users/{userId}/enable` | Lets a disabled user sign in again | `200` the user; `404` |

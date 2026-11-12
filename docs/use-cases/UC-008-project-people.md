@@ -16,8 +16,8 @@ All need `ManageUsers` in the project, and answer `403` to anyone else.
 | `POST /projects/{projectId}/users` | Creates a login in this project holding `ReadProject` and the `permissions` ticked | `201` the user; `400` `invalidName`, `invalidUsername`, `invalidMobile`, `weakPassword` or `invalidPermission`; `409` `usernameTaken` |
 | `POST /projects/{projectId}/users/existing` with `{ username }` | Adds someone who already has a login, holding `ReadProject` | `200` the user; `404` `unknownUser` |
 | `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | Ticks one permission | `200` the user; `400` `invalidPermission`; `404` |
-| `POST /projects/{projectId}/users/{userId}/permissions/{permission}/remove` | Unticks one; `readProject` takes them out of the project | `200` the user; `409` `lastManager`; `404` |
-| `POST /projects/{projectId}/users/{userId}/role-name` with `{ roleName }` | Names what the person is called in this project, free text shown under the project's name on their home; empty clears it, and taking them out of the project clears it too (Muteb, 9 Nov 2026) | `200` the user; `400` `invalidRoleName` past 50 characters; `404` someone not in the project |
+| `DELETE /projects/{projectId}/users/{userId}/permissions/{permission}` | Unticks one; `readProject` takes them out of the project | `200` the user; `409` `lastManager`; `404` |
+| `PUT /projects/{projectId}/users/{userId}/role-name` with `{ roleName }` | Names what the person is called in this project, free text shown under the project's name on their home; empty clears it, and taking them out of the project clears it too (Muteb, 9 Nov 2026) | `200` the user; `400` `invalidRoleName` past 50 characters; `404` someone not in the project |
 | `GET /projects` | Open to every session: the projects they hold `ReadProject` in, each with `permissions` | `200` the projects |
 
 A user's answer has `projects: [{ projectId, name, permissions }]`, one line per project.

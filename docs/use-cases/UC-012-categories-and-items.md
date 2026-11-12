@@ -20,20 +20,20 @@ A project's structure is copied **when the admin approves it** (`ProjectStructur
 | `GET /projects/{projectId}/categories/offered?itemType=` | `ReadProject` | `200` what an entry of `purchases` or `contractorPayments` may choose from; `400` for another word. The entry use cases call it |
 | `POST /projects/{projectId}/categories` with `{ name }` | `ManageStructure` | `201` the category, at the end; `400` `invalidName` |
 | `POST /projects/{projectId}/categories/reorder` with `{ ids }` | `ManageStructure` | `200`; `400` `invalidOrder` |
-| `POST /projects/{projectId}/categories/{categoryId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
+| `PUT /projects/{projectId}/categories/{categoryId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/categories/{categoryId}/disable`, `/enable` | `ManageStructure` | `200`; `404` |
 | `POST /projects/{projectId}/categories/{categoryId}/items` with `{ name, type }` | `ManageStructure` | `201` the item, at the end, with its general group; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/categories/{categoryId}/items/reorder` with `{ ids }` | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
-| `POST /projects/{projectId}/items/{itemId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
+| `PUT /projects/{projectId}/items/{itemId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/disable`, `/enable` | `ManageStructure` | `200`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/subgroups` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName` or `itemTakesNoPurchases`; `404` |
-| `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `generalSubgroup` |
+| `PUT /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}` with `{ name }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `generalSubgroup` |
 | `GET /projects/{projectId}/items/{itemId}/tables` | `ReadProject` | `200` the item's tables in the order its sheet prints them: its general table (named after the item), each named subgroup, each contract's payments (named after its contractor), with how many approved entries each holds; `404` |
 | `POST /projects/{projectId}/items/{itemId}/tables/reorder` with `{ ids }`, every subgroup and contract of the item | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
 | `GET /projects/{projectId}/entry-tables` | `ReadProject` | `200` every table an expense may go into (redix-app #84): each active category's items taking purchases or contractor payments, `{ id, name, items: [{ id, name, tables: [{ id, kind, name }] }] }`, each item's tables in its sheet's order. An item's general and named tables show when it takes purchases, its active contracts when it takes contractor payments; an item or a category with nothing to offer, and every revenue item, is left out |
-| `POST /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}/delete` | `ManageStructure` | `200`; `404`; `409` `generalSubgroup` or `subgroupInUse` |
-| `POST /projects/{projectId}/items/{itemId}/type` with `{ type }` | `ManageStructure` | `200`; `404`; `409` `itemHasEntries` or `itemHasContract`, except an item of purchases or of contractor payments becoming both, which every entry and contract stays valid for |
-| `POST /projects/{projectId}/items/{itemId}/table-percentages` with `{ isOn }` | `ManageStructure` | `200`; `404`. Whether the item's sheet in the periodic report calculates each table's percentage (AC-46.9); off until chosen, in the History table |
+| `DELETE /projects/{projectId}/items/{itemId}/subgroups/{subgroupId}` | `ManageStructure` | `200`; `404`; `409` `generalSubgroup` or `subgroupInUse` |
+| `PUT /projects/{projectId}/items/{itemId}/type` with `{ type }` | `ManageStructure` | `200`; `404`; `409` `itemHasEntries` or `itemHasContract`, except an item of purchases or of contractor payments becoming both, which every entry and contract stays valid for |
+| `PUT /projects/{projectId}/items/{itemId}/table-percentages` with `{ isOn }` | `ManageStructure` | `200`; `404`. Whether the item's sheet in the periodic report calculates each table's percentage (AC-46.9); off until chosen, in the History table |
 
 Every change also answers `409` `projectFinished` in a finished project. `type` is an expense type, `purchases`, `contractorPayments` or `both`, or a revenue type, `sale`, `vatRefund` or `otherRevenue` (UC-068, FR-38): the type says the item's side. Entering an expense offers the items of its type or of both; entering revenue of any kind offers every revenue item. A revenue item asks no columns (`revenueTakesNoColumns`), and its type changes, even across sides, only while no entry names it.
 

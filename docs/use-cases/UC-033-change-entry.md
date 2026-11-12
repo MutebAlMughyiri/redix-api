@@ -6,9 +6,9 @@
 
 | Route | Who | What it does |
 | --- | --- | --- |
-| `POST /projects/{id}/entries/{entryId}` | Whoever may enter its table (redix-api #110) | Replaces what it holds, through every check a new one passes, whatever its table; moved to a table of another kind, it becomes that kind |
-| `POST /projects/{id}/entries/{entryId}/delete` | `DeleteEntries` | Removes one never approved: one's own draft or rejected entry, or with `ManageAnyEntry` anyone's or one waiting |
-| `POST /projects/{id}/entries/{entryId}/notes` | `RecordEntries` | Changes its notes, even once approved |
+| `PUT /projects/{id}/entries/{entryId}` | Whoever may enter its table (redix-api #110) | Replaces what it holds, through every check a new one passes, whatever its table; moved to a table of another kind, it becomes that kind |
+| `DELETE /projects/{id}/entries/{entryId}` | `DeleteEntries` | Removes one never approved: one's own draft or rejected entry, or with `ManageAnyEntry` anyone's or one waiting |
+| `PUT /projects/{id}/entries/{entryId}/notes` | `RecordEntries` | Changes its notes, even once approved |
 | `POST /projects/{id}/entries/{entryId}/reverse` | `ApproveEntries` | Adds an opposite entry tied to the original, approved at once |
 
 | Rule | Code | Test |

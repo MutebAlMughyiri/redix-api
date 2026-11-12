@@ -318,7 +318,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var project = await factory.ApprovedProjectAsync(client, "غصون 6");
         await SetDefaultAsync(client, project.Id);
 
-        var answer = await client.PostAsync("/projects/default/remove", null);
+        var answer = await client.DeleteAsync("/projects/default");
 
         Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
         Assert.Equal("", (await SessionOfAsync(user)).DefaultProjectId);
@@ -335,7 +335,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         await SetDefaultAsync(client, project.Id);
         Assert.Equal(project.Id.ToString(), (await SessionOfAsync(user)).DefaultProjectId);
 
-        await starter.PostAsync($"/projects/{project.Id}/users/{user.Id}/permissions/readProject/remove", null);
+        await starter.DeleteAsync($"/projects/{project.Id}/users/{user.Id}/permissions/readProject");
 
         Assert.Equal("", (await SessionOfAsync(user)).DefaultProjectId);
     }
@@ -400,7 +400,7 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     private static Task<HttpResponseMessage> DescribeAsync(HttpClient client, Guid projectId, string description) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/description", new DescriptionRequest(description));
+        client.PutAsJsonAsync($"/projects/{projectId}/description", new DescriptionRequest(description));
 
     [Fact]
     public async Task More_info_ADescriptionIsKeptForEveryoneInTheProjectAndInTheHistory()
@@ -590,13 +590,13 @@ public class ProjectsTests(MigratedApiFactory factory)
     }
 
     private static Task<HttpResponseMessage> RenameAsync(HttpClient client, Guid projectId, string name) =>
-        client.PostAsJsonAsync($"/projects/{projectId}", new { name });
+        client.PutAsJsonAsync($"/projects/{projectId}", new { name });
 
     private static Task<HttpResponseMessage> RenameUnitAsync(HttpClient client, Guid projectId, Guid unitId, string name) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/units/{unitId}", new { name });
+        client.PutAsJsonAsync($"/projects/{projectId}/units/{unitId}", new { name });
 
     private static Task<HttpResponseMessage> DeleteUnitAsync(HttpClient client, Guid projectId, Guid unitId) =>
-        client.PostAsync($"/projects/{projectId}/units/{unitId}/delete", null);
+        client.DeleteAsync($"/projects/{projectId}/units/{unitId}");
 
     [Fact]
     public async Task BR_38_ARunningProjectIsRenamedAndTheHistoryShowsBothNames()

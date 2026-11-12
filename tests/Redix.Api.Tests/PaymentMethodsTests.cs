@@ -54,7 +54,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
             (await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest(name), MigratedApiFactory.Json)).EnsureSuccessStatusCode();
         }
         var first = (await MethodsOf(client, project.Id)).First();
-        (await client.PostAsync($"/projects/{project.Id}/payment-methods/{first.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/payment-methods/{first.Id}")).EnsureSuccessStatusCode();
 
         (await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest("نقد"), MigratedApiFactory.Json)).EnsureSuccessStatusCode();
 
@@ -113,7 +113,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var card = (await MethodsOf(client, project.Id))[0];
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("بطاقة"))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("بطاقة"))).EnsureSuccessStatusCode();
 
         Assert.Equal("بطاقة", (await MethodsOf(client, project.Id))[0].Name);
     }
@@ -128,7 +128,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest(name)),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest(name)),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest(name)),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -167,7 +167,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var cash = (await MethodsOf(client, project.Id))[2];
 
-        (await client.PostAsync($"/projects/{project.Id}/payment-methods/{cash.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/payment-methods/{cash.Id}")).EnsureSuccessStatusCode();
 
         Assert.DoesNotContain(await MethodsOf(client, project.Id), method => method.Id == cash.Id);
     }
@@ -178,7 +178,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ledger.RecordAsync(ledger.Purchase(100));
 
-        var refused = await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/payment-methods/{ledger.MethodId}/delete", null);
+        var refused = await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/payment-methods/{ledger.MethodId}");
 
         Assert.Equal((HttpStatusCode.Conflict, "paymentMethodUsed"), (refused.StatusCode, await CodeOf(refused)));
         Assert.Contains(await MethodsOf(ledger.Client, ledger.ProjectId), method => method.Id == ledger.MethodId);
@@ -205,9 +205,9 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
 
         foreach (var missed in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods/{theirs.Id}", new NameRequest("سرقة")),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/payment-methods/{theirs.Id}", new NameRequest("سرقة")),
             await client.PostAsync($"/projects/{project.Id}/payment-methods/{theirs.Id}/disable", null),
-            await client.PostAsync($"/projects/{project.Id}/payment-methods/{theirs.Id}/delete", null),
+            await client.DeleteAsync($"/projects/{project.Id}/payment-methods/{theirs.Id}"),
         })
         {
             Assert.Equal(HttpStatusCode.NotFound, missed.StatusCode);
@@ -229,9 +229,9 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await member.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest("مدى")),
-            await member.PostAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("مدى")),
+            await member.PutAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("مدى")),
             await member.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/disable", null),
-            await member.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/delete", null),
+            await member.DeleteAsync($"/projects/{project.Id}/payment-methods/{card.Id}"),
         })
         {
             Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
@@ -248,9 +248,9 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods", new NameRequest("مدى")),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("مدى")),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/payment-methods/{card.Id}", new NameRequest("مدى")),
             await client.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/disable", null),
-            await client.PostAsync($"/projects/{project.Id}/payment-methods/{card.Id}/delete", null),
+            await client.DeleteAsync($"/projects/{project.Id}/payment-methods/{card.Id}"),
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);

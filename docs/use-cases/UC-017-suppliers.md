@@ -22,7 +22,7 @@ The register starts with the general cash supplier (`Supplier.GeneralCashSupplie
 | --- | --- | --- |
 | `GET /projects/{projectId}/suppliers` | `ReadProject` | `200` by name, disabled ones included, as `{ id, name, vatNumber, mobile, defaultItemId, defaultItemName, status, isActive }`. The empty string stands for no number, mobile or default item; `status` is `approved` or `pendingApproval` |
 | `POST /projects/{projectId}/suppliers` with `{ name, vatNumber, mobile, defaultItemId }` | `AddSupplier` (UC-019) | `201` with the supplier; `400` `invalidName`, `invalidVatNumber`, `invalidMobile` or `unknownItem`; `409` `vatNumberTaken`, naming the holder as `existing` |
-| `POST /projects/{projectId}/suppliers/{id}` with the same | `ManageSettings` | `200`; the same refusals, leaving a supplier its own number; `404` |
+| `PUT /projects/{projectId}/suppliers/{id}` with the same | `ManageSettings` | `200`; the same refusals, leaving a supplier its own number; `404` |
 | `POST /projects/{projectId}/suppliers/{id}/disable`, `.../enable` | `ManageSettings` | `200`; `404`; disabling the general cash supplier `409` `generalCashSupplier` |
 
 Anything but `name` may be left out. Every change also answers `409` `projectFinished` in a finished project.

@@ -19,7 +19,7 @@ public static class EntryRecording
     {
         var changes = app.MapProjectChanges(Permission.ReadProject);
         changes.MapPost("/entries", Record);
-        changes.MapPost("/entries/{entryId:guid}", Change);
+        changes.MapPut("/entries/{entryId:guid}", Change);
     }
 
     /// <summary>

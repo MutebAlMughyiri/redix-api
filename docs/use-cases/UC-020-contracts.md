@@ -20,7 +20,7 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 | --- | --- | --- |
 | `GET /projects/{projectId}/contracts` | `ReadProject` | `200` in the order added, disabled ones included, as `{ id, supplierName, itemName, unitName, value, isOpenValue, unitPrice, quantity, notes, paid, remaining, isOverrun, isActive }` |
 | `POST /projects/{projectId}/contracts` with `{ supplierId, itemId, unitId, value, isOpenValue, unitPrice, quantity, notes }` | `ManageSettings` | `200`; `400` `unknownSupplier`, `itemNotOffered`, `unknownUnit`, `invalidValue`, `invalidUnitPrice`, `invalidQuantity` or `invalidNotes` |
-| `POST /projects/{projectId}/contracts/{id}` with `{ value, isOpenValue, unitPrice, quantity, notes }`, and `{ supplierId, itemId, unitId }` for any that is to change | `ManageSettings` | `200`; `400` for the terms and the parties, as above; `404`; `409` `contractHasPayments`, changing nothing |
+| `PUT /projects/{projectId}/contracts/{id}` with `{ value, isOpenValue, unitPrice, quantity, notes }`, and `{ supplierId, itemId, unitId }` for any that is to change | `ManageSettings` | `200`; `400` for the terms and the parties, as above; `404`; `409` `contractHasPayments`, changing nothing |
 | `POST /projects/{projectId}/contracts/{id}/disable`, `.../enable` | `ManageSettings` | `200`; `404` |
 
 `unitPrice`, `quantity` and `notes` may be left out. Every change also answers `409` `projectFinished` in a finished project.

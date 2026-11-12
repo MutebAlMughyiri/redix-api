@@ -184,7 +184,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var supplier = await AddAsync(client, project.Id, "شركة النخيل");
         var itemId = await AnItemOfAsync(project.Id);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("النخيل") { VatNumber = VatNumber, Mobile = "0511111111", DefaultItemId = itemId }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("النخيل") { VatNumber = VatNumber, Mobile = "0511111111", DefaultItemId = itemId }, Json)).EnsureSuccessStatusCode();
 
         var edited = (await RegisterOf(client, project.Id)).Single(row => row.Id == supplier.Id);
         Assert.Equal("النخيل", edited.Name);
@@ -200,7 +200,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var added = await PostAsync(client, project.Id, new SupplierRequest("شركة النخيل") { VatNumber = VatNumber, DefaultItemId = await AnItemOfAsync(project.Id) });
         var supplier = (await added.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!;
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("شركة النخيل"), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("شركة النخيل"), Json)).EnsureSuccessStatusCode();
 
         var edited = (await RegisterOf(client, project.Id)).Single(row => row.Id == supplier.Id);
         Assert.Equal("", edited.VatNumber);
@@ -215,7 +215,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         await AddAsync(client, project.Id, "شركة النخيل");
         var supplier = await AddAsync(client, project.Id, "شركة الأفق", OtherVatNumber);
 
-        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("شركة الأفق") { VatNumber = VatNumber }, Json);
+        var refused = await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("شركة الأفق") { VatNumber = VatNumber }, Json);
 
         Assert.Equal("vatNumberTaken", await CodeOf(refused));
     }
@@ -248,8 +248,8 @@ public class SuppliersTests(MigratedApiFactory factory)
         var supplier = await AddAsync(client, project.Id, "مورد");
 
         Assert.Equal("invalidMobile", await CodeOf(await PostAsync(client, project.Id, new SupplierRequest("مورد آخر") { Mobile = "٠٥٠٠٠٠٠٠٠٠" })));
-        Assert.Equal("invalidMobile", await CodeOf(await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "050 000" }, Json)));
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "+966500000000" }, Json)).EnsureSuccessStatusCode();
+        Assert.Equal("invalidMobile", await CodeOf(await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "050 000" }, Json)));
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "+966500000000" }, Json)).EnsureSuccessStatusCode();
     }
 
     [Fact]
@@ -350,7 +350,7 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         foreach (var refused in new[]
         {
-            await memberClient.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber }, Json),
+            await memberClient.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber }, Json),
             await memberClient.PostAsync($"/projects/{project.Id}/suppliers/{supplier.Id}/disable", null),
             await memberClient.PostAsync($"/projects/{project.Id}/suppliers/{supplier.Id}/enable", null),
         })
@@ -367,7 +367,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var theirs = await AddAsync(otherClient, other.Id, "موردهم");
 
         Assert.DoesNotContain(await RegisterOf(client, project.Id), row => row.Id == theirs.Id);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{theirs.Id}", new SupplierRequest("سرقة") { VatNumber = OtherVatNumber }, Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{theirs.Id}", new SupplierRequest("سرقة") { VatNumber = OtherVatNumber }, Json)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"/projects/{project.Id}/suppliers/{theirs.Id}/disable", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{other.Id}/suppliers")).StatusCode);
     }
@@ -584,7 +584,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await PostAsync(client, project.Id, new SupplierRequest("مورد") { VatNumber = OtherVatNumber }),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber }, Json),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber }, Json),
             await client.PostAsync($"/projects/{project.Id}/suppliers/{supplier.Id}/disable", null),
         })
         {
@@ -616,7 +616,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var general = Assert.Single(await RegisterOf(client, project.Id));
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{general.Id}", new SupplierRequest("نقدي"), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{general.Id}", new SupplierRequest("نقدي"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("نقدي", Assert.Single(await RegisterOf(client, project.Id)).Name);
         Assert.Equal("generalCashSupplier", await CodeOf(await DisableAsync(client, project.Id, general.Id)));
@@ -627,7 +627,7 @@ public class SuppliersTests(MigratedApiFactory factory)
     {
         var (client, project) = await FinanceAsync();
         var general = Assert.Single(await RegisterOf(client, project.Id));
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{general.Id}", new SupplierRequest("نقدي"), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{general.Id}", new SupplierRequest("نقدي"), Json)).EnsureSuccessStatusCode();
         var named = await AddAsync(client, project.Id, Supplier.GeneralCashSupplierName);
 
         (await DisableAsync(client, project.Id, named.Id)).EnsureSuccessStatusCode();
@@ -699,7 +699,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var supplier = await AddAsync(client, project.Id, "أحمد للمقاولات");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مؤسسة الواحة") { VatNumber = VatNumber }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مؤسسة الواحة") { VatNumber = VatNumber }, Json)).EnsureSuccessStatusCode();
 
         Assert.Equal(supplier.Id, Assert.Single(await SearchAsync(client, project.Id, "مؤسسه")).Id);
         Assert.Empty(await SearchAsync(client, project.Id, "احمد"));

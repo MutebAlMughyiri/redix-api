@@ -21,9 +21,10 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 | `GET /projects/{projectId}/accounts` | `ReadProject` | `200` every account, banks first and then in the order added, disabled ones too |
 | `GET /projects/{projectId}/accounts/offered` | `ReadProject` | `200` what the caller may spend from |
 | `POST /projects/{projectId}/accounts` with `{ type, name, openingBalance, custodianId }` | `ManageSettings` | `200`; `400` `invalidName`, `invalidOpeningBalance`, `custodianRequired` or `unknownCustodian` |
-| `POST /projects/{projectId}/accounts/{id}` with `{ name, openingBalance, custodianId }` | `ManageSettings` | The same; `404`; `409` `accountHasEntries` for a new opening balance once any entry names the account |
+| `PUT /projects/{projectId}/accounts/{id}` with `{ name, openingBalance, custodianId }` | `ManageSettings` | The same; `404`; `409` `accountHasEntries` for a new opening balance once any entry names the account |
 | `POST /projects/{projectId}/accounts/{id}/disable` | `ManageSettings` | `200`; `404` |
 | `POST /projects/{projectId}/accounts/{id}/enable` | `ManageSettings` | `200`; `404` |
+| `DELETE /projects/{projectId}/accounts/{id}` | `ManageSettings` | `200` deletes an account nothing names, its history staying; `404`; `409` `accountInUse` when an entry, an actual-balances check or a transfer names it (BR-15) |
 | `GET /projects/{projectId}/accounts/history?account=&mine=&before=&text=` | `ReadProject` | `200` a page of the accounts' history (redix-app #89): accounts added, changed, disabled, enabled or deleted, a custodian changed, transfers, entries once approved or reversed, actual-balances checks; newest first, 50 a page, the next after `before`; `account` keeps one account's lines, `mine` the caller's own, `text` the lines whose accounts, people, the name it had or the amount hold it, Arabic spelling read alike (redix-app #104); a partner's money only for whoever sees it (BR-31); `400` `unknownAccount` for one not in the project |
 | `GET /projects/{projectId}/members` | `ReadProject` | `200` the project's active people by name, once each, as `{ id, displayName }`, for choosing a custodian |
 

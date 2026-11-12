@@ -17,7 +17,7 @@ public static class UsersEndpoints
     public static void MapUsers(this WebApplication app)
     {
         var users = app.MapGroup("/users/{userId:guid}").RequireAuthorization(SessionPolicies.Working);
-        users.MapPost("", Edit);
+        users.MapPut("", Edit);
         users.MapPost("/reset-password", ResetPassword);
         users.MapPost("/disable", Disable);
         users.MapPost("/enable", Enable);

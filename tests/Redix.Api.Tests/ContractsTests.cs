@@ -231,7 +231,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var contract = await AddAsync(client, project);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(36000m, false) { UnitPrice = 400m, Quantity = 90m, Notes = "زيادة بملحق" }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(36000m, false) { UnitPrice = 400m, Quantity = 90m, Notes = "زيادة بملحق" }, Json)).EnsureSuccessStatusCode();
 
         var amended = Assert.Single(await ContractsOf(client, project.Id));
         Assert.Equal(36000m, amended.Value);
@@ -247,7 +247,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var contract = await AddAsync(client, project);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(0m, true), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(0m, true), Json)).EnsureSuccessStatusCode();
 
         var amended = Assert.Single(await ContractsOf(client, project.Id));
         Assert.True(amended.IsOpenValue);
@@ -260,7 +260,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var contract = await AddAsync(client, project);
 
-        Assert.Equal("invalidValue", await CodeOf(await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(0m, false), Json)));
+        Assert.Equal("invalidValue", await CodeOf(await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(0m, false), Json)));
     }
 
     [Fact]
@@ -269,7 +269,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var contract = await AddAsync(client, project);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(36000m, false), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(36000m, false), Json)).EnsureSuccessStatusCode();
         (await client.PostAsync($"/projects/{project.Id}/contracts/{contract.Id}/disable", null)).EnsureSuccessStatusCode();
         (await client.PostAsync($"/projects/{project.Id}/contracts/{contract.Id}/enable", null)).EnsureSuccessStatusCode();
 
@@ -317,7 +317,7 @@ public class ContractsTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await PostAsync(memberClient, project.Id, await RequestFor(client, project)),
-            await memberClient.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(1m, false), Json),
+            await memberClient.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(1m, false), Json),
             await memberClient.PostAsync($"/projects/{project.Id}/contracts/{contract.Id}/disable", null),
             await memberClient.PostAsync($"/projects/{project.Id}/contracts/{contract.Id}/enable", null),
         })
@@ -334,7 +334,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var theirs = await AddAsync(otherClient, other);
 
         Assert.Empty(await ContractsOf(client, project.Id));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{theirs.Id}", new ContractTerms(1m, false), Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{theirs.Id}", new ContractTerms(1m, false), Json)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"/projects/{project.Id}/contracts/{theirs.Id}/disable", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{other.Id}/contracts")).StatusCode);
     }
@@ -364,7 +364,7 @@ public class ContractsTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await PostAsync(client, project.Id, request),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(1m, false), Json),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(1m, false), Json),
             await client.PostAsync($"/projects/{project.Id}/contracts/{contract.Id}/disable", null),
         })
         {
@@ -375,7 +375,7 @@ public class ContractsTests(MigratedApiFactory factory)
     }
 
     private static Task<HttpResponseMessage> AmendAsync(HttpClient client, Guid projectId, Guid contractId, object body) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/contracts/{contractId}", body, Json);
+        client.PutAsJsonAsync($"/projects/{projectId}/contracts/{contractId}", body, Json);
 
     private static async Task<SupplierView> AnotherContractorAsync(HttpClient client, Guid projectId) =>
         (await (await client.PostAsJsonAsync($"/projects/{projectId}/suppliers", new SupplierRequest("مؤسسة الواحة"), Json)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!;

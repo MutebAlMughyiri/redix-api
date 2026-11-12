@@ -141,7 +141,7 @@ public class NotificationsTests(MigratedApiFactory factory)
         Assert.NotEmpty((await MineAsync(other))!);
         (await other.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/reject", new RejectEntryRequest("الصورة غير واضحة"), Json)).EnsureSuccessStatusCode();
 
-        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}")).EnsureSuccessStatusCode();
 
         Assert.Empty((await MineAsync(other))!);
         Assert.Empty((await MineAsync(ledger.Client))!);

@@ -22,7 +22,7 @@ A contract's documents join here (UC-020 step 3): adding or amending a contract 
 | --- | --- | --- |
 | `POST /projects/{id}/attachments` | `AttachFiles` | Keeps the multipart `file`, and answers its `AttachmentView` |
 | `GET /projects/{id}/attachments/{attachmentId}` | `ReadProject` | Serves the file; one of another project is not found |
-| `POST /projects/{id}/contracts`, `.../contracts/{contractId}` | `ManageSettings` | Now also take `attachmentIds`; `GET .../contracts` answers each contract's `documents` |
+| `POST /projects/{id}/contracts`, `PUT .../contracts/{contractId}` | `ManageSettings` | Now also take `attachmentIds`; `GET .../contracts` answers each contract's `documents` |
 
 ## Tables
 

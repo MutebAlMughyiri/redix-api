@@ -11,7 +11,7 @@
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
 | `POST /projects/{projectId}/default` | `ReadProject` in it | `200` `{ defaultProjectId }`; `403` without access |
-| `POST /projects/default/remove` | Any session | `200` `{ defaultProjectId: "" }` |
+| `DELETE /projects/default` | Any session | `200` `{ defaultProjectId: "" }` |
 
 A session answers `defaultProjectId`, the project sign-in opens; empty when there is none or when access to it is gone.
 

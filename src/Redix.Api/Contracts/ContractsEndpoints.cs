@@ -18,7 +18,7 @@ public static class ContractsEndpoints
 
         var changes = app.MapProjectChanges(Permission.ManageSettings);
         changes.MapPost("/contracts", Add);
-        changes.MapPost("/contracts/{contractId:guid}", Amend);
+        changes.MapPut("/contracts/{contractId:guid}", Amend);
         changes.MapPost("/contracts/{contractId:guid}/disable", Disable);
         changes.MapPost("/contracts/{contractId:guid}/enable", Enable);
     }

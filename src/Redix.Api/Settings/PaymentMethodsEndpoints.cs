@@ -17,10 +17,10 @@ public static class PaymentMethodsEndpoints
 
         var changes = app.MapProjectChanges(Permission.ManageSettings);
         changes.MapPost("/payment-methods", Add);
-        changes.MapPost("/payment-methods/{paymentMethodId:guid}", Rename);
+        changes.MapPut("/payment-methods/{paymentMethodId:guid}", Rename);
         changes.MapPost("/payment-methods/{paymentMethodId:guid}/disable", Disable);
         changes.MapPost("/payment-methods/{paymentMethodId:guid}/enable", Enable);
-        changes.MapPost("/payment-methods/{paymentMethodId:guid}/delete", Delete);
+        changes.MapDelete("/payment-methods/{paymentMethodId:guid}", Delete);
     }
 
     /// <summary>Every payment method of the project, disabled ones included, in order.</summary>

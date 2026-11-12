@@ -128,7 +128,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var (nawaf, _) = await MemberAsync(project, Field);
         var partner = await AddAsync(client, project.Id, "نوف");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف") { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف") { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
 
         var edited = (await PartnersOf(client, project.Id)).Single();
         Assert.Equal("نواف", edited.Name);
@@ -142,7 +142,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var (nawaf, _) = await MemberAsync(project, Field);
         var partner = await AddAsync(client, project.Id, "نواف", nawaf.Id);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("", (await PartnersOf(client, project.Id)).Single().UserId);
     }
@@ -157,7 +157,7 @@ public class PartnersTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest(name), Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest(name), Json),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest(name), Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -175,7 +175,7 @@ public class PartnersTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف") { UserId = stranger.Id }, Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب") { UserId = stranger.Id }, Json),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب") { UserId = stranger.Id }, Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -194,13 +194,13 @@ public class PartnersTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف الثاني") { UserId = nawaf.Id }, Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{other.Id}", new PartnerRequest("فواز") { UserId = nawaf.Id }, Json),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{other.Id}", new PartnerRequest("فواز") { UserId = nawaf.Id }, Json),
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
             Assert.Equal("userTaken", await CodeOf(refused));
         }
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{mine.Id}", new PartnerRequest("نواف بن محمد") { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{mine.Id}", new PartnerRequest("نواف بن محمد") { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
     }
 
     [Fact]
@@ -262,7 +262,7 @@ public class PartnersTests(MigratedApiFactory factory)
 
         (await client.PostAsync($"/projects/{project.Id}/users/{nawaf.Id}/partners/{partner.Id}", null)).EnsureSuccessStatusCode();
         var chosen = await HeldAsync(client, project.Id, nawaf.Id);
-        (await client.PostAsync($"/projects/{project.Id}/users/{nawaf.Id}/permissions/{Permission.SeeChosenCapital}/remove", null)).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/users/{nawaf.Id}/permissions/{Permission.SeeChosenCapital}")).EnsureSuccessStatusCode();
         var taken = await HeldAsync(client, project.Id, nawaf.Id);
 
         Assert.Equal([partner.Id], chosen.PartnerIds);
@@ -359,8 +359,8 @@ public class PartnersTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف"), Json),
-            await memberClient.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب") { UserId = member.Id }, Json),
-            await memberClient.PostAsync($"/projects/{project.Id}/partners/{partner.Id}/delete", null),
+            await memberClient.PutAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("متعب") { UserId = member.Id }, Json),
+            await memberClient.DeleteAsync($"/projects/{project.Id}/partners/{partner.Id}"),
         })
         {
             Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
@@ -375,7 +375,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var theirs = await AddAsync(otherClient, other.Id, "شريكهم");
 
         Assert.Empty(await PartnersOf(client, project.Id));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{theirs.Id}", new PartnerRequest("سرقة"), Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{theirs.Id}", new PartnerRequest("سرقة"), Json)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/projects/{other.Id}/partners")).StatusCode);
     }
 
@@ -403,8 +403,8 @@ public class PartnersTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("نواف"), Json),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json),
-            await client.PostAsync($"/projects/{project.Id}/partners/{partner.Id}/delete", null),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json),
+            await client.DeleteAsync($"/projects/{project.Id}/partners/{partner.Id}"),
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);

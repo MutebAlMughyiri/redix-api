@@ -21,10 +21,10 @@ public static class AccountsEndpoints
 
         var changes = app.MapProjectChanges(Permission.ManageSettings);
         changes.MapPost("/accounts", Add);
-        changes.MapPost("/accounts/{accountId:guid}", Edit);
+        changes.MapPut("/accounts/{accountId:guid}", Edit);
         changes.MapPost("/accounts/{accountId:guid}/disable", Disable);
         changes.MapPost("/accounts/{accountId:guid}/enable", Enable);
-        changes.MapPost("/accounts/{accountId:guid}/delete", Delete);
+        changes.MapDelete("/accounts/{accountId:guid}", Delete);
     }
 
     /// <summary>Every account of the project, disabled ones included, banks first and then in the order they were added (AC-22.1).</summary>

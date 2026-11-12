@@ -22,8 +22,8 @@ public static class PartnersEndpoints
 
         var changes = app.MapProjectChanges(Permission.ManageSettings);
         changes.MapPost("/partners", Add);
-        changes.MapPost("/partners/{partnerId:guid}", Edit);
-        changes.MapPost("/partners/{partnerId:guid}/delete", Delete);
+        changes.MapPut("/partners/{partnerId:guid}", Edit);
+        changes.MapDelete("/partners/{partnerId:guid}", Delete);
     }
 
     /// <summary>

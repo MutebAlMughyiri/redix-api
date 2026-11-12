@@ -16,14 +16,14 @@ public static class ProjectsEndpoints
     {
         app.MapGet("/projects", List);
         app.MapPost("/projects", Create).RequireAuthorization(SessionPolicies.Working);
-        app.MapPost("/projects/{projectId:guid}", Rename).RequireAuthorization(nameof(Permission.ManageProject));
-        app.MapPost("/projects/{projectId:guid}/description", Describe).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPut("/projects/{projectId:guid}", Rename).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPut("/projects/{projectId:guid}/description", Describe).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/units", AddUnit).RequireAuthorization(nameof(Permission.ManageProject));
-        app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}", RenameUnit).RequireAuthorization(nameof(Permission.ManageProject));
-        app.MapPost("/projects/{projectId:guid}/units/{unitId:guid}/delete", DeleteUnit).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapPut("/projects/{projectId:guid}/units/{unitId:guid}", RenameUnit).RequireAuthorization(nameof(Permission.ManageProject));
+        app.MapDelete("/projects/{projectId:guid}/units/{unitId:guid}", DeleteUnit).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/close", Close).RequireAuthorization(nameof(Permission.ManageProject));
         app.MapPost("/projects/{projectId:guid}/default", SetDefault).RequireAuthorization(nameof(Permission.ReadProject));
-        app.MapPost("/projects/default/remove", RemoveDefault).RequireAuthorization(SessionPolicies.Working);
+        app.MapDelete("/projects/default", RemoveDefault).RequireAuthorization(SessionPolicies.Working);
     }
 
     /// <summary>

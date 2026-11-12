@@ -33,13 +33,13 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
         var (_, memberId) = await ledger.MemberAsync("Reader");
         await factory.WithDatabaseAsync(db => db.Users.Where(user => user.Id == memberId).ExecuteUpdateAsync(user => user.SetProperty(row => row.DisplayName, "نواف")));
         var khaled = await PartnerAsync(ledger, "خالد م");
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{khaled}", new PartnerRequest("خالد"), Json)).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{khaled}", new PartnerRequest("خالد") { UserId = memberId }, Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{khaled}", new PartnerRequest("خالد"), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{khaled}", new PartnerRequest("خالد") { UserId = memberId }, Json)).EnsureSuccessStatusCode();
         var cameIn = await MoveAsync(ledger, khaled, 1000);
         await MoveAsync(ledger, khaled, 200, isWithdrawal: true);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{cameIn}/reverse", new RejectEntryRequest("إدخال خاطئ"), Json)).EnsureSuccessStatusCode();
         var nour = await PartnerAsync(ledger, "نور");
-        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/partners/{nour}/delete", null)).EnsureSuccessStatusCode();
+        (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/partners/{nour}")).EnsureSuccessStatusCode();
 
         var lines = await HistoryAsync(ledger.Client, ledger);
 

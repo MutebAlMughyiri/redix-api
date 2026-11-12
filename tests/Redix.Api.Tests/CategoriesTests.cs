@@ -84,7 +84,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var category = (await CategoriesOf(ledger.Client, ledger.ProjectId))[0];
         var itemId = (await AddItemAsync(ledger.Client, ledger.ProjectId, category.Id, "إيجار المعدات")).Id;
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/subgroups", new NameRequest("إيجار"), Ledger.Json)).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Ledger.Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/items/{itemId}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Ledger.Json)).EnsureSuccessStatusCode();
         var subgroup = (await CategoriesOf(ledger.Client, ledger.ProjectId)).SelectMany(category => category.Items).Single(item => item.Id == itemId).Subgroups[1];
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", (await ledger.RevenueOnAsync(itemId, 70)) with { TableId = subgroup.Id }, Ledger.Json)).EnsureSuccessStatusCode();
 
@@ -286,9 +286,9 @@ public class CategoriesTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/categories", new NameRequest(name)),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest(name)),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest(name)),
             await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}/items", new AddItemRequest(name, ItemType.Both)),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/items/{itemId}", new NameRequest(name)),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/items/{itemId}", new NameRequest(name)),
             await client.PostAsJsonAsync($"/projects/{project.Id}/items/{itemId}/subgroups", new NameRequest(name)),
         })
         {
@@ -303,8 +303,8 @@ public class CategoriesTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var category = (await CategoriesOf(client, project.Id))[2];
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest("الهيكل"))).EnsureSuccessStatusCode();
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{category.Items[0].Id}", new NameRequest("بند الحفر"))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest("الهيكل"))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/items/{category.Items[0].Id}", new NameRequest("بند الحفر"))).EnsureSuccessStatusCode();
 
         var renamed = (await CategoriesOf(client, project.Id))[2];
         Assert.Equal(("الهيكل", "بند الحفر"), (renamed.Name, renamed.Items[0].Name));
@@ -456,7 +456,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var subgroups = (await CategoriesOf(client, project.Id))[3].Items[5].Subgroups;
         Assert.Equal(["", "مواد", "دفان"], subgroups.Select(subgroup => subgroup.Name));
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups/{subgroups[1].Id}", new NameRequest("أسمنت"))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups/{subgroups[1].Id}", new NameRequest("أسمنت"))).EnsureSuccessStatusCode();
 
         Assert.Equal(["", "أسمنت", "دفان"], (await CategoriesOf(client, project.Id))[3].Items[5].Subgroups.Select(subgroup => subgroup.Name));
     }
@@ -467,7 +467,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var item = (await CategoriesOf(client, project.Id))[3].Items[5];
 
-        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups/{item.Subgroups[0].Id}", new NameRequest("عام"));
+        var refused = await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups/{item.Subgroups[0].Id}", new NameRequest("عام"));
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Equal("generalSubgroup", await CodeOf(refused));
@@ -499,14 +499,14 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         foreach (var missed in new[]
         {
-            await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest("سرقة")),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest("سرقة")),
             await client.PostAsync($"/projects/{project.Id}/categories/{category.Id}/disable", null),
             await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}/items", new AddItemRequest("سرقة", ItemType.Both)),
             await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}/items/reorder", new ReorderRequest([.. category.Items.Select(row => row.Id)])),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}", new NameRequest("سرقة")),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}", new NameRequest("سرقة")),
             await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/disable", null),
             await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups", new NameRequest("سرقة")),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups/{item.Subgroups[0].Id}", new NameRequest("سرقة")),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups/{item.Subgroups[0].Id}", new NameRequest("سرقة")),
         })
         {
             Assert.Equal(HttpStatusCode.NotFound, missed.StatusCode);
@@ -524,7 +524,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/categories", new NameRequest("الملاحق")),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest("الهيكل")),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}", new NameRequest("الهيكل")),
             await client.PostAsync($"/projects/{project.Id}/items/{category.Items[0].Id}/disable", null),
         })
         {
@@ -688,7 +688,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var refund = await ledger.RevenueItemAsync(ItemType.VatRefund);
 
         var added = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/categories/{category.Id}/items", new AddItemRequest("رأس مال أحمد", ItemType.Capital), Json);
-        var retyped = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{refund}/type", new ChangeItemTypeRequest(ItemType.Capital), Json);
+        var retyped = await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/items/{refund}/type", new ChangeItemTypeRequest(ItemType.Capital), Json);
 
         Assert.Equal((HttpStatusCode.Conflict, "capitalItemExists"), (added.StatusCode, await Ledger.CodeOf(added)));
         Assert.Equal((HttpStatusCode.Conflict, "capitalItemExists"), (retyped.StatusCode, await Ledger.CodeOf(retyped)));
@@ -701,7 +701,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var capital = await Ledger.CapitalItemOfAsync(ledger.Client, ledger.ProjectId);
         await PartnerAsync(ledger, "نواف");
 
-        var retyped = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{capital}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Json);
+        var retyped = await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/items/{capital}/type", new ChangeItemTypeRequest(ItemType.OtherRevenue), Json);
         var subTable = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{capital}/subgroups", new NameRequest("دفعة أولى"), Json);
 
         Assert.Equal((HttpStatusCode.Conflict, "itemHasPartners"), (retyped.StatusCode, await Ledger.CodeOf(retyped)));
@@ -741,7 +741,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         (await client.GetFromJsonAsync<List<ItemTableView>>($"/projects/{projectId}/items/{itemId}/tables", Json))!;
 
     private static Task<HttpResponseMessage> DeleteSubgroupAsync(HttpClient client, Guid projectId, Guid itemId, Guid subgroupId) =>
-        client.PostAsync($"/projects/{projectId}/items/{itemId}/subgroups/{subgroupId}/delete", null);
+        client.DeleteAsync($"/projects/{projectId}/items/{itemId}/subgroups/{subgroupId}");
 
     [Fact]
     public async Task ASubgroupNoEntryUsesIsRemoved()
@@ -852,7 +852,7 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     private static Task<HttpResponseMessage> ChangeTypeAsync(HttpClient client, Guid projectId, Guid itemId, ItemType type) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/type", new { type }, Json);
+        client.PutAsJsonAsync($"/projects/{projectId}/items/{itemId}/type", new { type }, Json);
 
     private static async Task<List<ColumnView>> ColumnsOfAsync(HttpClient client, Guid projectId, Guid itemId) =>
         (await client.GetFromJsonAsync<List<ColumnView>>($"/projects/{projectId}/items/{itemId}/columns", Json))!;
@@ -1006,7 +1006,7 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     private static Task<HttpResponseMessage> TablePercentagesAsync(HttpClient client, Guid projectId, Guid itemId, bool isOn) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/table-percentages", new TablePercentagesRequest(isOn), Json);
+        client.PutAsJsonAsync($"/projects/{projectId}/items/{itemId}/table-percentages", new TablePercentagesRequest(isOn), Json);
 
     [Fact]
     public async Task AC_46_9_AnItemsChoiceToCalculateEachTablesPercentageIsKeptAndInTheHistory()

@@ -19,10 +19,10 @@ A project has no VAT rate of its own any more. REDIX stores no VAT: the VAT stat
 | `GET /projects/{projectId}/payment-methods` | `ReadProject` | `200` every method in order, disabled ones too, as `{ id, name, isActive }` |
 | `GET /projects/{projectId}/payment-methods/offered` | `ReadProject` | `200` what an entry may choose: the active ones |
 | `POST /projects/{projectId}/payment-methods` with `{ name }` | `ManageSettings` | `200`; `400` `invalidName` |
-| `POST /projects/{projectId}/payment-methods/{id}` with `{ name }` | `ManageSettings` | `200`; `400` `invalidName`; `404` |
+| `PUT /projects/{projectId}/payment-methods/{id}` with `{ name }` | `ManageSettings` | `200`; `400` `invalidName`; `404` |
 | `POST /projects/{projectId}/payment-methods/{id}/disable` | `ManageSettings` | `200`; `404` |
 | `POST /projects/{projectId}/payment-methods/{id}/enable` | `ManageSettings` | `200`; `404` |
-| `POST /projects/{projectId}/payment-methods/{id}/delete` | `ManageSettings` | `200`; `409` `paymentMethodUsed` when an expense was paid with it; `404` |
+| `DELETE /projects/{projectId}/payment-methods/{id}` | `ManageSettings` | `200`; `409` `paymentMethodUsed` when an expense was paid with it; `404` |
 
 Every change also answers `409` `projectFinished` in a finished project.
 

@@ -23,7 +23,7 @@ public static class DocumentsEndpoints
         app.MapGet("/projects/{projectId:guid}/documents", List).RequireAuthorization(nameof(Permission.ReadProject));
         var changes = app.MapProjectChanges(Permission.ManageProject);
         changes.MapPost("/documents", Add).DisableAntiforgery().WithMetadata(new RequestSizeLimitAttribute(FormOptions.DefaultMultipartBodyLengthLimit));
-        changes.MapPost("/documents/{documentId:guid}/delete", Remove);
+        changes.MapDelete("/documents/{documentId:guid}", Remove);
     }
 
     /// <summary>The project's documents: those in no group first, then each group in order, newest first within each.</summary>

@@ -308,8 +308,8 @@ public class AttachmentsTests(MigratedApiFactory factory)
         (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts", request, Json)).EnsureSuccessStatusCode();
         var contract = Assert.Single(await ContractsOf(client, project.Id));
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(34000m, false) { AttachmentIds = [second.Id, first.Id] }, Json)).EnsureSuccessStatusCode();
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(35000m, false), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(34000m, false) { AttachmentIds = [second.Id, first.Id] }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(35000m, false), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal([first.Id, second.Id], Assert.Single(await ContractsOf(client, project.Id)).Documents.Select(document => document.Id));
     }

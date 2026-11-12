@@ -23,20 +23,20 @@ public static class CategoriesEndpoints
         var changes = app.MapProjectChanges(Permission.ManageStructure);
         changes.MapPost("/categories", AddCategory);
         changes.MapPost("/categories/reorder", ReorderCategories);
-        changes.MapPost("/categories/{categoryId:guid}", RenameCategory);
+        changes.MapPut("/categories/{categoryId:guid}", RenameCategory);
         changes.MapPost("/categories/{categoryId:guid}/disable", DisableCategory);
         changes.MapPost("/categories/{categoryId:guid}/enable", EnableCategory);
         changes.MapPost("/categories/{categoryId:guid}/items", AddItem);
         changes.MapPost("/categories/{categoryId:guid}/items/reorder", ReorderItems);
-        changes.MapPost("/items/{itemId:guid}", RenameItem);
+        changes.MapPut("/items/{itemId:guid}", RenameItem);
         changes.MapPost("/items/{itemId:guid}/disable", DisableItem);
         changes.MapPost("/items/{itemId:guid}/enable", EnableItem);
         changes.MapPost("/items/{itemId:guid}/subgroups", AddSubgroup);
-        changes.MapPost("/items/{itemId:guid}/type", ChangeItemType);
-        changes.MapPost("/items/{itemId:guid}/table-percentages", SetTablePercentages);
+        changes.MapPut("/items/{itemId:guid}/type", ChangeItemType);
+        changes.MapPut("/items/{itemId:guid}/table-percentages", SetTablePercentages);
         changes.MapPost("/items/{itemId:guid}/tables/reorder", ReorderTables);
-        changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}", RenameSubgroup);
-        changes.MapPost("/items/{itemId:guid}/subgroups/{subgroupId:guid}/delete", DeleteSubgroup);
+        changes.MapPut("/items/{itemId:guid}/subgroups/{subgroupId:guid}", RenameSubgroup);
+        changes.MapDelete("/items/{itemId:guid}/subgroups/{subgroupId:guid}", DeleteSubgroup);
     }
 
     /// <summary>Every category and item of the project, disabled ones included, in the order of the periodic report (AC-39.1).</summary>

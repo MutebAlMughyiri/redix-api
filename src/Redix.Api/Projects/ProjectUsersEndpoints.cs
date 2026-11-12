@@ -19,10 +19,10 @@ public static class ProjectUsersEndpoints
         project.MapPost("/users", Create);
         project.MapPost("/users/existing", AddExisting);
         project.MapPost("/users/{userId:guid}/permissions/{permission}", Give);
-        project.MapPost("/users/{userId:guid}/permissions/{permission}/remove", Take);
+        project.MapDelete("/users/{userId:guid}/permissions/{permission}", Take);
         project.MapPost("/users/{userId:guid}/partners/{partnerId:guid}", Choose);
-        project.MapPost("/users/{userId:guid}/partners/{partnerId:guid}/remove", Unchoose);
-        project.MapPost("/users/{userId:guid}/role-name", SetRoleName);
+        project.MapDelete("/users/{userId:guid}/partners/{partnerId:guid}", Unchoose);
+        project.MapPut("/users/{userId:guid}/role-name", SetRoleName);
     }
 
     /// <summary>The active people of this project by name, once each, for choosing who holds something in it. Only their names show (BR-33).</summary>

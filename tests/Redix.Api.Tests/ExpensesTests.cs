@@ -462,7 +462,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var key = await CustomColumnAsync(setup.Client, setup.Project.Id, setup.ItemId, ColumnDataType.Number, isRequired: true);
         var column = (await setup.Client.GetFromJsonAsync<List<ColumnView>>($"/projects/{setup.Project.Id}/items/{setup.ItemId}/columns", Json))!.Single(row => row.Key == key);
-        (await setup.Client.PostAsync($"/projects/{setup.Project.Id}/items/{setup.ItemId}/columns/{column.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await setup.Client.DeleteAsync($"/projects/{setup.Project.Id}/items/{setup.ItemId}/columns/{column.Id}")).EnsureSuccessStatusCode();
 
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = await ImageAsync(setup.Client, setup.Project.Id) });
 

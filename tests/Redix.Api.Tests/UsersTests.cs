@@ -46,10 +46,10 @@ public class UsersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var manager = await ManagerOfAsync(user);
 
-        var edited = await ViewOf(await manager.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111")));
+        var edited = await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111")));
 
         Assert.Equal((user.Username, "نواف الأول", "0511111111"), (edited.Username, edited.DisplayName, edited.Mobile));
-        Assert.Equal("invalidName", await CodeOf(await manager.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", ""))));
+        Assert.Equal("invalidName", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", ""))));
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class UsersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var manager = await ManagerOfAsync(user);
 
-        Assert.Equal("invalidMobile", await CodeOf(await manager.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "٠٥١١١١١١١١"))));
+        Assert.Equal("invalidMobile", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "٠٥١١١١١١١١"))));
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class UsersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         await factory.GiveAsync(user.Id, project.Id, Holds.Of("Field"));
 
-        await client.PostAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0500000000"));
+        await client.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0500000000"));
         await ResetAsync(client, user.Id);
         await client.PostAsync($"/users/{user.Id}/disable", null);
         await client.PostAsync($"/users/{user.Id}/enable", null);

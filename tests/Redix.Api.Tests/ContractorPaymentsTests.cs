@@ -87,7 +87,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         await RecordAsync(setup, request);
         await RecordAsync(setup, Payment(setup, 1000m) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
 
-        var edited = await setup.Ledger.Client.PostAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/entries/{request.Id}", request with { Amount = 4000m }, Ledger.Json);
+        var edited = await setup.Ledger.Client.PutAsJsonAsync($"/projects/{setup.Ledger.ProjectId}/entries/{request.Id}", request with { Amount = 4000m }, Ledger.Json);
 
         Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
         var view = (await edited.Content.ReadFromJsonAsync<ContractorPaymentView>(Ledger.Json))!;

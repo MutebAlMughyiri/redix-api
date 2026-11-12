@@ -18,10 +18,10 @@ public class EntryChangesTests(MigratedApiFactory factory)
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
     private static Task<HttpResponseMessage> EditAsync(HttpClient client, Ledger ledger, EntryRequest request) =>
-        client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}", request, Json);
+        client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}", request, Json);
 
     private static Task<HttpResponseMessage> DeleteAsync(HttpClient client, Ledger ledger, Guid id) =>
-        client.PostAsync($"/projects/{ledger.ProjectId}/entries/{id}/delete", null);
+        client.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{id}");
 
     private static Task<HttpResponseMessage> ReverseAsync(HttpClient client, Ledger ledger, Guid id, string reason = "إدخال خاطئ") =>
         client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/reverse", new RejectEntryRequest(reason), Json);
@@ -83,8 +83,8 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var entry = await ledger.RecordAsync(ledger.Purchase());
         var path = $"/projects/{ledger.ProjectId}/entries/{entry.Id}/notes";
 
-        var refused = await ledger.Client.PostAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength + 1)), Json);
-        var kept = await ledger.Client.PostAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength)), Json);
+        var refused = await ledger.Client.PutAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength + 1)), Json);
+        var kept = await ledger.Client.PutAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength)), Json);
 
         await AssertRefused(refused, HttpStatusCode.BadRequest, "invalidNotes");
         Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
@@ -263,7 +263,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.GetAsync(path)).StatusCode);
         await AssertRefused(await ledger.Client.PostAsync($"{path}/submit", null), HttpStatusCode.Forbidden, "notYourEntry");
         await AssertRefused(await EditAsync(ledger.Client, ledger, corrected), HttpStatusCode.Forbidden, "notYourEntry");
-        await AssertRefused(await ledger.Client.PostAsJsonAsync($"{path}/notes", new ChangeNotesRequest("ملاحظة المالي"), Json), HttpStatusCode.Forbidden, "notYourEntry");
+        await AssertRefused(await ledger.Client.PutAsJsonAsync($"{path}/notes", new ChangeNotesRequest("ملاحظة المالي"), Json), HttpStatusCode.Forbidden, "notYourEntry");
         await AssertRefused(await DeleteAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Forbidden, "notYourEntry");
         await AssertRefused(await ledger.Client.PostAsJsonAsync($"{path}/invoice", new AttachInvoiceRequest(await ledger.FileAsync()), Json), HttpStatusCode.Forbidden, "notYourEntry");
         (await field.GetAsync(path)).EnsureSuccessStatusCode();
@@ -315,7 +315,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         await ledger.RecordAsync(request);
         await ApproveAsync(ledger, request.Id);
 
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/notes", new ChangeNotesRequest("ملاحظة بعد الاعتماد"), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/notes", new ChangeNotesRequest("ملاحظة بعد الاعتماد"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("ملاحظة بعد الاعتماد", await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == request.Id).Select(row => row.Notes).SingleAsync()));
         await AssertRefused(await DeleteAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Conflict, "entryApproved");

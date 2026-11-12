@@ -154,7 +154,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         var a = await Ledger.WithFinanceAsync(factory);
         var b = await Ledger.WithFinanceAsync(factory);
         var spare = await AccountAsync(a, "احتياطي");
-        (await a.Client.PostAsync($"/projects/{a.ProjectId}/accounts/{spare}/delete", null)).EnsureSuccessStatusCode();
+        (await a.Client.DeleteAsync($"/projects/{a.ProjectId}/accounts/{spare}")).EnsureSuccessStatusCode();
 
         var lines = await HistoryAsync(a);
 

@@ -106,7 +106,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     public Task<HttpResponseMessage> PostAsync(EntryRequest request, HttpClient? client = null) => (client ?? Client).PostAsJsonAsync($"/projects/{ProjectId}/entries", request, Json);
 
     /// <summary>Posts <paramref name="request"/> as a change of its entry (UC-033), as <paramref name="client"/> or else Finance.</summary>
-    public Task<HttpResponseMessage> ChangeAsync(EntryRequest request, HttpClient? client = null) => (client ?? Client).PostAsJsonAsync($"/projects/{ProjectId}/entries/{request.Id}", request, Json);
+    public Task<HttpResponseMessage> ChangeAsync(EntryRequest request, HttpClient? client = null) => (client ?? Client).PutAsJsonAsync($"/projects/{ProjectId}/entries/{request.Id}", request, Json);
 
     public async Task<RecordedEntryView> RecordAsync(EntryRequest request) => (await (await PostAsync(request)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<RecordedEntryView>(Json))!;
 

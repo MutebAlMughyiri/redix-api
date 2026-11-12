@@ -27,7 +27,7 @@ public class PartnerDeleteTests(MigratedApiFactory factory)
     }
 
     private static Task<HttpResponseMessage> DeleteAsync(Ledger ledger, Guid partnerId, HttpClient? client = null) =>
-        (client ?? ledger.Client).PostAsync($"/projects/{ledger.ProjectId}/partners/{partnerId}/delete", null);
+        (client ?? ledger.Client).DeleteAsync($"/projects/{ledger.ProjectId}/partners/{partnerId}");
 
     /// <summary>Someone in <paramref name="ledger"/>'s project holding <paramref name="holds"/>, signed in, and their id.</summary>
     private async Task<(HttpClient Client, Guid UserId)> HoldingAsync(Ledger ledger, IEnumerable<Permission> holds)
@@ -66,7 +66,7 @@ public class PartnerDeleteTests(MigratedApiFactory factory)
         Assert.True(await ledger.ReadAsync(db => db.History.AnyAsync(row => row.RecordId == haitham && row.Action == HistoryAction.Delete)));
         Assert.True(await ledger.ReadAsync(db => db.Partners.Where(row => row.Id == haitham).Select(row => row.IsDeleted).SingleAsync()));
         Assert.Equal(HttpStatusCode.NotFound, (await DeleteAsync(ledger, haitham)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{haitham}", new PartnerRequest("هيثم"), Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{haitham}", new PartnerRequest("هيثم"), Json)).StatusCode);
         await PartnerAsync(ledger, "هيثم الثاني", memberId);
     }
 
@@ -110,7 +110,7 @@ public class PartnerDeleteTests(MigratedApiFactory factory)
         Assert.Equal([300m], held.MyDrafts.Select(draft => draft.Amount));
         Assert.Equal((HttpStatusCode.Conflict, "partnerNotDeletable"), (refused.StatusCode, await Ledger.CodeOf(refused)));
 
-        (await other.PostAsync($"/projects/{ledger.ProjectId}/entries/{othersDraft.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await other.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{othersDraft.Id}")).EnsureSuccessStatusCode();
         var free = (await PartnersAsync(ledger)).Single(row => row.Id == partnerId);
         (await DeleteAsync(ledger, partnerId)).EnsureSuccessStatusCode();
 

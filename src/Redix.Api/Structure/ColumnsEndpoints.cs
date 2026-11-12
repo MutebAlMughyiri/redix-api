@@ -20,12 +20,12 @@ public static class ColumnsEndpoints
         var changes = app.MapProjectChanges(Permission.ManageStructure);
         changes.MapPost("/items/{itemId:guid}/columns", AddToItem);
         changes.MapPost("/items/{itemId:guid}/columns/reorder", ReorderOfItem);
-        changes.MapPost("/items/{itemId:guid}/columns/{columnId:guid}", EditOfItem);
-        changes.MapPost("/items/{itemId:guid}/columns/{columnId:guid}/delete", DeleteOfItem);
+        changes.MapPut("/items/{itemId:guid}/columns/{columnId:guid}", EditOfItem);
+        changes.MapDelete("/items/{itemId:guid}/columns/{columnId:guid}", DeleteOfItem);
         changes.MapPost("/default-columns/{itemType}", AddToTemplate);
         changes.MapPost("/default-columns/{itemType}/reorder", ReorderOfTemplate);
-        changes.MapPost("/default-columns/{itemType}/{columnId:guid}", EditOfTemplate);
-        changes.MapPost("/default-columns/{itemType}/{columnId:guid}/delete", DeleteOfTemplate);
+        changes.MapPut("/default-columns/{itemType}/{columnId:guid}", EditOfTemplate);
+        changes.MapDelete("/default-columns/{itemType}/{columnId:guid}", DeleteOfTemplate);
     }
 
     /// <summary>The columns an item asks for, in order; a deleted one is not among them.</summary>
@@ -221,9 +221,9 @@ public static class ColumnsEndpoints
     /// <param name="projectId">The project.</param>
     /// <param name="itemType"><c>purchases</c>, <c>contractorPayments</c> or <c>both</c>.</param>
     /// <param name="columnId">The column.</param>
-    /// <param name="request">Whether existing items follow.</param>
+    /// <param name="applyToAllItems">Whether existing items follow, sent in the query since a delete has no body (redix-api #98).</param>
     /// <param name="db">The database the structure lives in.</param>
-    public static async Task<IResult> DeleteOfTemplate(Guid projectId, ItemTypeInUrl itemType, Guid columnId, ApplyToAllItemsRequest request, RedixDbContext db)
+    public static async Task<IResult> DeleteOfTemplate(Guid projectId, ItemTypeInUrl itemType, Guid columnId, bool applyToAllItems, RedixDbContext db)
     {
         var column = await TemplateOf(projectId, itemType, db).SingleOrDefaultAsync(column => column.Id == columnId);
         if (column is null)
@@ -236,7 +236,7 @@ public static class ColumnsEndpoints
         }
 
         db.DefaultColumns.Remove(column);
-        if (request.ApplyToAllItems)
+        if (applyToAllItems)
         {
             foreach (var ofItem in await ColumnsOfItemsOf(projectId, itemType, db).Where(row => row.Key == column.Key).ToListAsync())
             {
@@ -316,10 +316,6 @@ public record EditDefaultColumnRequest(string Name, bool IsRequired, bool ShowIn
 /// <param name="Ids">Every column's id, in the new order.</param>
 /// <param name="ApplyToAllItems">Whether every existing item of this type follows.</param>
 public record ReorderDefaultColumnsRequest(List<Guid> Ids, bool ApplyToAllItems);
-
-/// <summary>What the app sends to delete a column of the default template.</summary>
-/// <param name="ApplyToAllItems">Whether every existing item of this type follows.</param>
-public record ApplyToAllItemsRequest(bool ApplyToAllItems);
 
 /// <summary>A column as the app shows it.</summary>
 /// <param name="Id">The column's id.</param>

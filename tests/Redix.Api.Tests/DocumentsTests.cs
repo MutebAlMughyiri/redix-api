@@ -96,7 +96,7 @@ public class DocumentsTests(MigratedApiFactory factory)
         (await AddAsync(ledger, "مخطط الكهرباء", "مخططات")).EnsureSuccessStatusCode();
         var kept = Assert.Single(await ListAsync(ledger.Client, ledger.ProjectId));
 
-        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/documents/{kept.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/documents/{kept.Id}")).EnsureSuccessStatusCode();
 
         Assert.Empty(await ListAsync(ledger.Client, ledger.ProjectId));
         Assert.Equal(HttpStatusCode.OK, (await ledger.Client.GetAsync($"/projects/{ledger.ProjectId}/attachments/{kept.AttachmentId}")).StatusCode);

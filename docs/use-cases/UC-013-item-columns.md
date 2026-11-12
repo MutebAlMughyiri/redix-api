@@ -22,12 +22,12 @@ An item of the template holds no column rows of its own: its columns are its typ
 | `GET /projects/{projectId}/default-columns/{itemType}` | `ReadProject` | `200` the template for `purchases`, `contractorPayments` or `both`; `400` for another word |
 | `POST /projects/{projectId}/items/{itemId}/columns` with `{ name, dataType, isRequired, showInReports, options }` | `ManageStructure` | `200`; `400` `invalidName`, `invalidDataType` or `invalidOptions`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/columns/reorder` with `{ ids }` | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
-| `POST /projects/{projectId}/items/{itemId}/columns/{columnId}` with `{ name, isRequired, showInReports, newOptions }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `coreColumn` |
-| `POST /projects/{projectId}/items/{itemId}/columns/{columnId}/delete` | `ManageStructure` | `200`; `404`; `409` `coreColumn` |
+| `PUT /projects/{projectId}/items/{itemId}/columns/{columnId}` with `{ name, isRequired, showInReports, newOptions }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `coreColumn` |
+| `DELETE /projects/{projectId}/items/{itemId}/columns/{columnId}` | `ManageStructure` | `200`; `404`; `409` `coreColumn` |
 | `POST /projects/{projectId}/default-columns/{itemType}` with the same, and `applyToAllItems` | `ManageStructure` | As on an item |
 | `POST /projects/{projectId}/default-columns/{itemType}/reorder` with `{ ids, applyToAllItems }` | `ManageStructure` | As on an item |
-| `POST /projects/{projectId}/default-columns/{itemType}/{columnId}` with the same, and `applyToAllItems` | `ManageStructure` | As on an item |
-| `POST /projects/{projectId}/default-columns/{itemType}/{columnId}/delete` with `{ applyToAllItems }` | `ManageStructure` | As on an item |
+| `PUT /projects/{projectId}/default-columns/{itemType}/{columnId}` with the same, and `applyToAllItems` | `ManageStructure` | As on an item |
+| `DELETE /projects/{projectId}/default-columns/{itemType}/{columnId}?applyToAllItems=true` or `=false`, in the query since a delete has no body | `ManageStructure` | As on an item |
 
 Every change also answers `409` `projectFinished` in a finished project. A column answers as `{ id, key, name, dataType, isCore, isCustom, isRequired, showInReports, options }`.
 

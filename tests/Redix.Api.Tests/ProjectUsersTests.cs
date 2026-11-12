@@ -49,12 +49,12 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         client.PostAsync($"/projects/{projectId}/users/{userId}/permissions/{JsonNamingPolicy.CamelCase.ConvertName(permission.ToString())}", null);
 
     private static Task<HttpResponseMessage> TakeAsync(HttpClient client, Guid projectId, Guid userId, Permission permission) =>
-        client.PostAsync($"/projects/{projectId}/users/{userId}/permissions/{JsonNamingPolicy.CamelCase.ConvertName(permission.ToString())}/remove", null);
+        client.DeleteAsync($"/projects/{projectId}/users/{userId}/permissions/{JsonNamingPolicy.CamelCase.ConvertName(permission.ToString())}");
 
     private static List<Permission> HeldIn(UserView user) => Assert.Single(user.Projects).Permissions;
 
     private static Task<HttpResponseMessage> NameRoleAsync(HttpClient client, Guid projectId, Guid userId, string roleName) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/users/{userId}/role-name", new RoleNameRequest(roleName));
+        client.PutAsJsonAsync($"/projects/{projectId}/users/{userId}/role-name", new RoleNameRequest(roleName));
 
     private static Task<HttpResponseMessage> ResetAsync(HttpClient client, Guid userId) =>
         client.PostAsJsonAsync($"/users/{userId}/reset-password", new ResetPasswordRequest(Temporary));
@@ -428,7 +428,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
         Assert.Equal("otherProject", await CodeOf(refused));
         Assert.Equal("otherProject", await CodeOf(await client.PostAsync($"/users/{shared.Id}/disable", null)));
-        Assert.Equal("otherProject", await CodeOf(await client.PostAsJsonAsync($"/users/{shared.Id}", new EditUserRequest("x", ""))));
+        Assert.Equal("otherProject", await CodeOf(await client.PutAsJsonAsync($"/users/{shared.Id}", new EditUserRequest("x", ""))));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(shared.Username, Password)).StatusCode);
         var renewal = await factory.CreateClient().PostAsJsonAsync("/auth/refresh", new RefreshRequest(theirSession.RefreshToken));
         Assert.Equal(HttpStatusCode.OK, renewal.StatusCode);
@@ -449,7 +449,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, reset.StatusCode);
         Assert.Equal("otherProject", await CodeOf(reset));
         Assert.Equal("otherProject", await CodeOf(await client.PostAsync($"/users/{admin.Id}/disable", null)));
-        Assert.Equal("otherProject", await CodeOf(await client.PostAsJsonAsync($"/users/{admin.Id}", new EditUserRequest("x", ""))));
+        Assert.Equal("otherProject", await CodeOf(await client.PutAsJsonAsync($"/users/{admin.Id}", new EditUserRequest("x", ""))));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(admin.Username, Password)).StatusCode);
     }
 

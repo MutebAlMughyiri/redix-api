@@ -10,7 +10,7 @@
 | --- | --- |
 | `GET /projects/{id}/documents` | The documents: those in no group first, then each group in order, newest first in each |
 | `POST /projects/{id}/documents` | Keeps a file, sent with its name and group, as a document of the project |
-| `POST /projects/{id}/documents/{documentId}/delete` | Takes a document off the list; its file stays |
+| `DELETE /projects/{id}/documents/{documentId}` | Takes a document off the list; its file stays |
 
 A document is any file of at most 25 MB, kept in the attachment store outside the database and opened through `GET /projects/{id}/attachments/{attachmentId}` like any other file. A picture or a PDF is known by its first bytes; any other file is named by its extension, so the phone knows which app opens it. Only a document may be any file: the attachment route that entries, contracts and receipts use still keeps only pictures and PDFs.
 

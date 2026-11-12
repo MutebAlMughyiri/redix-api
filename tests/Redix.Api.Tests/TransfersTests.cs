@@ -202,7 +202,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var spare = await AccountAsync(ledger, "احتياطي");
         Assert.False((await AccountOf(ledger, spare)).IsUsed);
 
-        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{spare}/delete", null)).EnsureSuccessStatusCode();
+        (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{spare}")).EnsureSuccessStatusCode();
 
         Assert.DoesNotContain(await AccountsAsync(ledger), row => row.Id == spare);
         var history = await factory.HistoryOfAsync(spare);
@@ -217,7 +217,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ledger.RecordAsync(ledger.Purchase(70m));
 
-        await AssertRefusedAsync(await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}/delete", null), HttpStatusCode.Conflict, "accountInUse");
+        await AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}"), HttpStatusCode.Conflict, "accountInUse");
 
         Assert.True((await AccountOf(ledger, ledger.AccountId)).IsUsed);
     }
@@ -230,7 +230,7 @@ public class TransfersTests(MigratedApiFactory factory)
         await FundAsync(ledger, 100m);
         (await TransferAsync(ledger, ledger.AccountId, custody, 100m)).EnsureSuccessStatusCode();
 
-        await AssertRefusedAsync(await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{custody}/delete", null), HttpStatusCode.Conflict, "accountInUse");
+        await AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{custody}"), HttpStatusCode.Conflict, "accountInUse");
 
         Assert.True((await AccountOf(ledger, custody)).IsUsed);
     }
@@ -242,7 +242,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var spare = await AccountAsync(ledger, "احتياطي");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 0m), new(spare, 0m)]), Json)).EnsureSuccessStatusCode();
 
-        await AssertRefusedAsync(await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{spare}/delete", null), HttpStatusCode.Conflict, "accountInUse");
+        await AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{spare}"), HttpStatusCode.Conflict, "accountInUse");
     }
 
     [Fact]
@@ -252,7 +252,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var spare = await AccountAsync(ledger, "احتياطي");
         var (field, _) = await ledger.MemberAsync("Field");
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await field.PostAsync($"/projects/{ledger.ProjectId}/accounts/{spare}/delete", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await field.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{spare}")).StatusCode);
         Assert.Contains(await AccountsAsync(ledger), row => row.Id == spare);
     }
 

@@ -147,7 +147,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         foreach (var refused in new[]
         {
             await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { Name = unacceptable }),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}", new EditColumnRequest(unacceptable, column.IsRequired, column.ShowInReports)),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}", new EditColumnRequest(unacceptable, column.IsRequired, column.ShowInReports)),
             await AddToTemplateAsync(client, project.Id, false, unacceptable),
         })
         {
@@ -204,7 +204,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var columns = await ColumnsOf(client, project.Id, item.Id);
         var date = columns.Single(column => column.Key == "date");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{date.Id}", new EditColumnRequest(" تاريخ الفاتورة ", date.IsRequired, date.ShowInReports))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{date.Id}", new EditColumnRequest(" تاريخ الفاتورة ", date.IsRequired, date.ShowInReports))).EnsureSuccessStatusCode();
         List<Guid> reversed = [.. columns.Select(column => column.Id).Reverse()];
         (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/reorder", new ReorderRequest(reversed))).EnsureSuccessStatusCode();
 
@@ -220,7 +220,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var item = await ItemOfType(client, project.Id, ItemType.Both);
         var date = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "date");
 
-        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{date.Id}", new EditColumnRequest(date.Name, !date.IsRequired, date.ShowInReports));
+        var refused = await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{date.Id}", new EditColumnRequest(date.Name, !date.IsRequired, date.ShowInReports));
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Equal("coreColumn", await CodeOf(refused));
@@ -233,7 +233,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var item = await ItemOfType(client, project.Id, ItemType.Both);
         var method = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}", new EditColumnRequest("وسيلة الدفع", true, true))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}", new EditColumnRequest("وسيلة الدفع", true, true))).EnsureSuccessStatusCode();
 
         var changed = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
         Assert.Equal(("وسيلة الدفع", true, true), (changed.Name, changed.IsRequired, changed.ShowInReports));
@@ -246,7 +246,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var item = await ItemOfType(client, project.Id, ItemType.Both);
         var quantity = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "quantity");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{quantity.Id}", new { name = quantity.Name, isRequired = false, showInReports = true, dataType = "text" })).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{quantity.Id}", new { name = quantity.Name, isRequired = false, showInReports = true, dataType = "text" })).EnsureSuccessStatusCode();
 
         Assert.Equal(ColumnDataType.Number, (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "quantity").DataType);
     }
@@ -264,8 +264,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         var column = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == key);
         var inTemplate = (await TemplateOf(client, project.Id)).Single(column => column.Key == key);
 
-        var refused = await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}/delete", null);
-        var refusedInTemplate = await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}/delete", new ApplyToAllItemsRequest(true));
+        var refused = await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}");
+        var refusedInTemplate = await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}?applyToAllItems=true");
 
         Assert.Equal((HttpStatusCode.Conflict, "coreColumn"), (refused.StatusCode, await CodeOf(refused)));
         Assert.Equal((HttpStatusCode.Conflict, "coreColumn"), (refusedInTemplate.StatusCode, await CodeOf(refusedInTemplate)));
@@ -280,7 +280,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn)).EnsureSuccessStatusCode();
         var area = (await ColumnsOf(client, project.Id, item.Id)).Last();
 
-        (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{area.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{area.Id}")).EnsureSuccessStatusCode();
 
         Assert.DoesNotContain(await ColumnsOf(client, project.Id, item.Id), column => column.Id == area.Id);
         await factory.WithDatabaseAsync(async db => Assert.True((await db.ItemColumns.SingleAsync(column => column.Id == area.Id)).IsHidden));
@@ -293,7 +293,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var item = await ItemOfType(client, project.Id, ItemType.Both);
         var method = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
 
-        (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}/delete", null)).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}")).EnsureSuccessStatusCode();
 
         Assert.DoesNotContain(await ColumnsOf(client, project.Id, item.Id), column => column.Key == "paymentMethod");
     }
@@ -304,10 +304,10 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
         var method = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Key == "paymentMethod");
-        await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}/delete", null);
+        await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}");
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}/delete", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}", new EditColumnRequest("الوحدة", false, false))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{method.Id}", new EditColumnRequest("الوحدة", false, false))).StatusCode);
     }
 
     [Fact]
@@ -335,10 +335,10 @@ public class ColumnsTests(MigratedApiFactory factory)
         (await AddToTemplateAsync(client, project.Id, applyToAllItems: false)).EnsureSuccessStatusCode();
         var template = await TemplateOf(client, project.Id);
         var method = template.Single(column => column.Key == "paymentMethod");
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{method.Id}", Renamed(method, "وسيلة الدفع", false))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/default-columns/both/{method.Id}", Renamed(method, "وسيلة الدفع", false))).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/reorder", new ReorderDefaultColumnsRequest([.. template.Select(column => column.Id).Reverse()], false))).EnsureSuccessStatusCode();
         var notes = template.Single(column => column.Key == "notes");
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}/delete", new ApplyToAllItemsRequest(false))).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}?applyToAllItems=false")).EnsureSuccessStatusCode();
 
         Assert.Equal(before, (await ColumnsOf(client, project.Id, item.Id)).Select(column => (column.Key, column.Name)));
     }
@@ -349,7 +349,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         (await AddToTemplateAsync(client, project.Id, applyToAllItems: false)).EnsureSuccessStatusCode();
         var notes = (await TemplateOf(client, project.Id)).Single(column => column.Key == "notes");
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}/delete", new ApplyToAllItemsRequest(false))).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}?applyToAllItems=false")).EnsureSuccessStatusCode();
         var category = (await CategoriesOf(client, project.Id))[3];
 
         var added = await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}/items", new AddItemRequest("بند الدرج", ItemType.Both));
@@ -385,7 +385,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var steel = await ItemOfType(client, project.Id, ItemType.Purchases);
         var date = (await TemplateOf(client, project.Id)).Single(column => column.Key == "date");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{date.Id}", Renamed(date, "تاريخ الدفع", true))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/default-columns/both/{date.Id}", Renamed(date, "تاريخ الدفع", true))).EnsureSuccessStatusCode();
 
         Assert.Equal("تاريخ الدفع", (await ColumnsOf(client, project.Id, first.Id)).Single(column => column.Key == "date").Name);
         Assert.Equal("تاريخ الدفع", (await ColumnsOf(client, project.Id, second.Id)).Single(column => column.Key == "date").Name);
@@ -399,7 +399,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var item = await ItemOfType(client, project.Id, ItemType.Both);
         var notes = (await TemplateOf(client, project.Id)).Single(column => column.Key == "notes");
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}/delete", new ApplyToAllItemsRequest(true))).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}?applyToAllItems=true")).EnsureSuccessStatusCode();
 
         Assert.DoesNotContain(await TemplateOf(client, project.Id), column => column.Key == "notes");
         Assert.DoesNotContain(await ColumnsOf(client, project.Id, item.Id), column => column.Key == "notes");
@@ -442,7 +442,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var item = await ItemOfType(client, earlier.Id, ItemType.Both);
         (await client.PostAsJsonAsync($"/projects/{earlier.Id}/items/{item.Id}/columns", AreaColumn)).EnsureSuccessStatusCode();
         var method = (await ColumnsOf(client, earlier.Id, item.Id)).Single(column => column.Key == "paymentMethod");
-        await client.PostAsync($"/projects/{earlier.Id}/items/{item.Id}/columns/{method.Id}/delete", null);
+        await client.DeleteAsync($"/projects/{earlier.Id}/items/{item.Id}/columns/{method.Id}");
         (await AddToTemplateAsync(client, earlier.Id, applyToAllItems: false)).EnsureSuccessStatusCode();
 
         var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 7", new DateOnly(2026, 11, 1), []) { StructureSourceId = earlier.Id });
@@ -488,10 +488,10 @@ public class ColumnsTests(MigratedApiFactory factory)
             await client.GetAsync($"/projects/{project.Id}/items/{item.Id}/columns"),
             await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn),
             await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/reorder", new ReorderRequest([column.Id])),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}", new EditColumnRequest("سرقة", false, false)),
-            await client.PostAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}/delete", null),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}", Renamed(inTemplate, "سرقة", true)),
-            await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}/delete", new ApplyToAllItemsRequest(true)),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}", new EditColumnRequest("سرقة", false, false)),
+            await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{column.Id}"),
+            await client.PutAsJsonAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}", Renamed(inTemplate, "سرقة", true)),
+            await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}?applyToAllItems=true"),
         })
         {
             Assert.Equal(HttpStatusCode.NotFound, missed.StatusCode);
@@ -533,7 +533,7 @@ public class ColumnsTests(MigratedApiFactory factory)
     }
 
     private static Task<HttpResponseMessage> EditItemColumnAsync(HttpClient client, Guid projectId, Guid itemId, ColumnView column, params List<string> newOptions) =>
-        client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new { name = column.Name, isRequired = column.IsRequired, showInReports = column.ShowInReports, newOptions }, Json);
+        client.PutAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new { name = column.Name, isRequired = column.IsRequired, showInReports = column.ShowInReports, newOptions }, Json);
 
     [Fact]
     public async Task APickListGainsChoicesAndKeepsItsOwnInTheirOrder()
@@ -552,7 +552,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var (_, projectId, itemId, column) = await PickListAsync(client, project.Id);
 
-        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new EditColumnRequest("الجهة الأصلية", false, false), Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new EditColumnRequest("الجهة الأصلية", false, false), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal(["شرق", "غرب"], (await ColumnsOf(client, projectId, itemId)).Last().Options);
     }
@@ -605,7 +605,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var column = (await TemplateOf(client, project.Id)).Last();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/{column.Id}", new { name = column.Name, isRequired = false, showInReports = false, applyToAllItems, newOptions = new[] { "شمال" } }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/default-columns/both/{column.Id}", new { name = column.Name, isRequired = false, showInReports = false, applyToAllItems, newOptions = new[] { "شمال" } }, Json)).EnsureSuccessStatusCode();
 
         Assert.Equal(["شرق", "شمال"], (await TemplateOf(client, project.Id)).Last().Options);
         Assert.Equal(applyToAllItems ? ["شرق", "شمال"] : ["شرق"], (await ColumnsOf(client, project.Id, item.Id)).Single(row => row.Key == column.Key).Options);

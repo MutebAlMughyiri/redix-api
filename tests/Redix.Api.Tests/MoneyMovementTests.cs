@@ -207,7 +207,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/items/{capital}/disable", null)).EnsureSuccessStatusCode();
 
         var moved = await MoveAsync(ledger, await ContributionAsync(ledger, partner, 100));
-        var renamed = await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{partner}", new PartnerRequest("شريك أول"), Json);
+        var renamed = await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{partner}", new PartnerRequest("شريك أول"), Json);
 
         Assert.Equal((HttpStatusCode.BadRequest, "unknownTable"), (moved.StatusCode, await Ledger.CodeOf(moved)));
         renamed.EnsureSuccessStatusCode();
@@ -222,7 +222,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         await ContributeAsync(ledger, partner, 100);
         var entryId = (await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!.Single().Id;
 
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/notes", new ChangeNotesRequest("تحويل من البنك"), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/notes", new ChangeNotesRequest("تحويل من البنك"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("تحويل من البنك", (await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!.Single().Description);
         var report = (await ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{capital}", Json))!;

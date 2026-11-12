@@ -47,7 +47,7 @@ docs/                   these pages
 
 ## Recording an entry
 
-Every entry, whatever its table, is recorded by `EntryRecording` through one route, `POST /projects/{id}/entries`, and changed through `POST /projects/{id}/entries/{entryId}` (redix-api #110). The phone names the entry's id, so a second post of the same entry answers the first. The recorder finds the entry's table among the tables `EntryTable.OfferedAsync` offers the caller, the same list the picker shows, then checks what every entry shares by its item's side, then asks the table's kind for its own checks and rows. A kind is one class behind `EntryTable` (`PurchaseTable`, `ContractTable`, `RevenueTable`, `PartnerTable`); no other class asks which kind a table is.
+Every entry, whatever its table, is recorded by `EntryRecording` through one route, `POST /projects/{id}/entries`, and changed through `PUT /projects/{id}/entries/{entryId}` (redix-api #110). The phone names the entry's id, so a second post of the same entry answers the first. The recorder finds the entry's table among the tables `EntryTable.OfferedAsync` offers the caller, the same list the picker shows, then checks what every entry shares by its item's side, then asks the table's kind for its own checks and rows. A kind is one class behind `EntryTable` (`PurchaseTable`, `ContractTable`, `RevenueTable`, `PartnerTable`); no other class asks which kind a table is.
 
 ## Rules every part follows
 

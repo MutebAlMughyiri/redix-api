@@ -26,9 +26,9 @@ public static class EntriesEndpoints
         app.MapGet("/projects/{projectId:guid}/entries", List).RequireAuthorization(nameof(Permission.ReadProject));
         var changes = app.MapProjectChanges(Permission.RecordEntries);
         changes.MapPost("/entries/{entryId:guid}/submit", Submit);
-        changes.MapPost("/entries/{entryId:guid}/notes", ChangeNotes);
+        changes.MapPut("/entries/{entryId:guid}/notes", ChangeNotes);
         app.MapProjectChanges(Permission.ApproveEntries).MapPost("/entries/{entryId:guid}/reverse", Reverse);
-        app.MapProjectChanges(Permission.DeleteEntries).MapPost("/entries/{entryId:guid}/delete", Delete);
+        app.MapProjectChanges(Permission.DeleteEntries).MapDelete("/entries/{entryId:guid}", Delete);
     }
 
     /// <summary>Where the caller's own entries stand in the project, newest first.</summary>

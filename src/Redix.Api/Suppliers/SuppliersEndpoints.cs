@@ -19,7 +19,7 @@ public static class SuppliersEndpoints
         app.MapProjectChanges(Permission.AddSupplier).MapPost("/suppliers", Add);
 
         var changes = app.MapProjectChanges(Permission.ManageSettings);
-        changes.MapPost("/suppliers/{supplierId:guid}", Edit);
+        changes.MapPut("/suppliers/{supplierId:guid}", Edit);
         changes.MapPost("/suppliers/{supplierId:guid}/disable", Disable);
         changes.MapPost("/suppliers/{supplierId:guid}/enable", Enable);
     }

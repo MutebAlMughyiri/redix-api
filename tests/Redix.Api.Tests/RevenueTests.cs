@@ -246,8 +246,8 @@ public class RevenueTests(MigratedApiFactory factory)
         var revenue = (await (await SendAsync(ledger, await ledger.RevenueAsync(ItemType.OtherRevenue, 70, ""))).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
         var capital = (await (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 500, notes: ""), Json)).Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Id;
 
-        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{revenue}/delete", null)).EnsureSuccessStatusCode();
-        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{capital}/delete", null)).EnsureSuccessStatusCode();
+        (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{revenue}")).EnsureSuccessStatusCode();
+        (await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/entries/{capital}")).EnsureSuccessStatusCode();
 
         Assert.DoesNotContain(await EntriesAsync(ledger), row => row.Id == revenue || row.Id == capital);
         Assert.False(await ledger.ReadAsync(db => db.Set<RevenueDetails>().AnyAsync(row => row.EntryId == revenue)));
