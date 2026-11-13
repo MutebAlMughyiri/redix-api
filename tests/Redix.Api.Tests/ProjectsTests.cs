@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
@@ -375,6 +376,39 @@ public class ProjectsTests(MigratedApiFactory factory)
         await SetDefaultAsync(client, project.Id);
 
         Assert.Equal("", (await SessionOfAsync(other)).DefaultProjectId);
+    }
+
+    [Fact]
+    public async Task R216_ADefaultProjectIsARowKeyedByItsUserSoANewDefaultChangesThatRow()
+    {
+        var user = await StarterAsync();
+        var client = await ClientOfAsync(user);
+        var first = await factory.ApprovedProjectAsync(client, "غصون 6");
+        var second = await factory.ApprovedProjectAsync(client, "غصون 7");
+
+        await SetDefaultAsync(client, first.Id);
+        await SetDefaultAsync(client, second.Id);
+
+        await factory.WithDatabaseAsync(async db => Assert.Equal(second.Id, (await db.UserDefaultProjects.SingleAsync(row => row.UserId == user.Id)).ProjectId));
+    }
+
+    [Fact]
+    public async Task R216_TheDatabaseRefusesASecondDefaultProjectForOneUserByItsKey()
+    {
+        var user = await StarterAsync();
+        var client = await ClientOfAsync(user);
+        var first = await factory.ApprovedProjectAsync(client, "غصون 6");
+        var second = await factory.ApprovedProjectAsync(client, "غصون 7");
+        await SetDefaultAsync(client, first.Id);
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            db.UserDefaultProjects.Add(new UserDefaultProject { UserId = user.Id, ProjectId = second.Id });
+
+            var refused = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+            Assert.Contains("PK_UserDefaultProjects", refused.InnerException!.Message);
+        });
     }
 
     [Fact]

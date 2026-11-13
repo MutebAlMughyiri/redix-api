@@ -2,7 +2,7 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `ReconciliationBalancesPlural` (13 Nov 2026, findings row 215). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `UserDefaultProjectsKeyedByUser` (13 Nov 2026, findings row 216). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
@@ -349,15 +349,14 @@ Other indexes: `UserId`.
 
 ### UserDefaultProjects
 
-The project each user chose to land on (FR-37).
+The project each user chose to land on (FR-37), keyed by the user, as `AccountCustodians` is by its account (findings row 216).
 
 | Column | SQL type | Null | Key | Points at |
 | --- | --- | --- | --- | --- |
-| Id | uniqueidentifier | not null | PK |  |
-| UserId | uniqueidentifier | not null | FK | `Users.Id` |
+| UserId | uniqueidentifier | not null | PK FK | `Users.Id` |
 | ProjectId | uniqueidentifier | not null | FK | `Projects.Id` |
 
-Unique: `UserId`.
+Unique: the key only.
 
 Other indexes: `ProjectId`.
 

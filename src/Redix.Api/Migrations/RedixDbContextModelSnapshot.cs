@@ -1870,7 +1870,7 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.Projects.UserDefaultProject", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ProjectId")
@@ -1882,15 +1882,9 @@ namespace Redix.Api.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
+                    b.HasKey("UserId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
 
                     b.ToTable("UserDefaultProjects");
                 });

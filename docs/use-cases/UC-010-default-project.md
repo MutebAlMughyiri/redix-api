@@ -19,7 +19,7 @@ A session answers `defaultProjectId`, the project sign-in opens; empty when ther
 
 | Table | Holds |
 | --- | --- |
-| `UserDefaultProjects` | A user's default project, which sign-in opens; no row means none |
+| `UserDefaultProjects` | A user's default project, which sign-in opens, keyed by the user (findings row 216); no row means none |
 
 ## Rules and where they live
 
@@ -31,6 +31,6 @@ A session answers `defaultProjectId`, the project sign-in opens; empty when ther
 | A project without access cannot be the default (BR-33) | `Permission.ReadProject` | `ProjectsTests.AProjectWithoutAccessCannotBeTheDefault` |
 | A project waiting for approval cannot be the default | `Permission.ReadProject` | `ProjectsTests.AWaitingProjectCannotBeTheDefault` |
 | A finished project can be the default | `Permission.ReadProject` | `ProjectsTests.AFinishedProjectCanBeTheDefault` |
-| A new default replaces the old, one row per user | The unique index, `ProjectsEndpoints.SetDefault` | `ProjectsTests.ANewDefaultReplacesTheOld` |
+| A new default replaces the old, one row per user, the user being its key (findings row 216) | The key, `ProjectsEndpoints.SetDefault` | `ProjectsTests.ANewDefaultReplacesTheOld`, `R216_ADefaultProjectIsARowKeyedByItsUserSoANewDefaultChangesThatRow`, `R216_TheDatabaseRefusesASecondDefaultProjectForOneUserByItsKey`, `MigrationStepsTests.R216_UserDefaultProjectsKeyedByUser_EveryDefaultStaysKeyedByItsUserAndItsOwnIdGoes` |
 | Removing the default leaves none, so sign-in shows the list | `ProjectsEndpoints.RemoveDefault` | `ProjectsTests.RemovingTheDefaultLeavesNoneSoSignInShowsTheList` |
 | One user's default changes nothing for another | `UserDefaultProject.UserId` | `ProjectsTests.ADefaultIsOneUsersAlone` |

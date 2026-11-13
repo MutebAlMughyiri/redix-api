@@ -483,7 +483,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         });
         modelBuilder.Entity<UserDefaultProject>(chosen =>
         {
-            chosen.HasIndex(row => row.UserId).IsUnique();
+            chosen.HasKey(row => row.UserId);
             chosen.HasOne<User>().WithMany().HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Restrict);
             chosen.HasOne<Project>().WithMany().HasForeignKey(row => row.ProjectId).OnDelete(DeleteBehavior.Restrict);
         });

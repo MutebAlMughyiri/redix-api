@@ -121,4 +121,23 @@ public class MigrationStepsTests(MigratedApiFactory factory)
             Assert.Empty(await ValuesAsync(db, "SELECT name AS Value FROM sys.tables WHERE name = 'ReconciliationBalance'"));
         });
     }
+
+    [Fact]
+    public Task R216_UserDefaultProjectsKeyedByUser_EveryDefaultStaysKeyedByItsUserAndItsOwnIdGoes()
+    {
+        var (user, other, project) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var today = string.Concat(User(user), User(other), Project(project),
+            $"INSERT INTO UserDefaultProjects (Id, UserId, ProjectId) VALUES (NEWID(), '{user}', '{project}'), (NEWID(), '{other}', '{project}');");
+
+        return ThroughAsync("UserDefaultProjectsKeyedByUser", today, async db =>
+        {
+            Assert.Equal(new[] { $"{user} {project}", $"{other} {project}" }.Order(), (await ValuesAsync(db, "SELECT LOWER(CONCAT(UserId, ' ', ProjectId)) AS Value FROM UserDefaultProjects")).Order());
+            Assert.Equal(["UserId"], await ValuesAsync(db, """
+                SELECT COL_NAME(part.object_id, part.column_id) AS Value FROM sys.index_columns part
+                JOIN sys.indexes primary_key ON primary_key.object_id = part.object_id AND primary_key.index_id = part.index_id
+                WHERE primary_key.is_primary_key = 1 AND part.object_id = OBJECT_ID('UserDefaultProjects')
+                """));
+            Assert.Empty(await ValuesAsync(db, "SELECT name AS Value FROM sys.columns WHERE object_id = OBJECT_ID('UserDefaultProjects') AND name = 'Id'"));
+        });
+    }
 }
