@@ -25,14 +25,26 @@ public abstract record EntryTable(Category Category, Item Item, Guid Id, string 
     /// <summary>What the entry's file is.</summary>
     public abstract EntryAttachmentRole FileRole { get; }
 
+    /// <summary>Whether this kind of table asks <paramref name="column"/> of its item's: every one, unless the kind says otherwise.</summary>
+    protected virtual bool Asks(ItemColumn column) => true;
+
+    /// <summary>The columns its entry is asked, in their order: its item's, those not deleted that this kind of table asks (FR-41).</summary>
+    public List<ItemColumn> Columns => [.. Item.Columns.Where(column => !column.IsHidden && Asks(column)).OrderBy(column => column.SortOrder)];
+
+    /// <summary>The sign of what <paramref name="request"/> chose in the table's list whose choices carry one (redix-api #129); none when it has no such list or chose nothing.</summary>
+    protected ChoiceSign SignOf(EntryRequest request) => Column.SignedChoiceOf(Columns, request.ColumnValuesKept()).Sign;
+
     /// <summary>The total <paramref name="request"/> comes to, as it was typed.</summary>
     public virtual decimal TotalOf(EntryRequest request) => request.Amount;
 
-    /// <summary>The amount the ledger keeps for <paramref name="request"/>.</summary>
-    public virtual decimal AmountOf(EntryRequest request) => TotalOf(request);
+    /// <summary>
+    /// The amount the ledger keeps for <paramref name="request"/>: its total, taken away when the choice of its table's signed list is «−», as «مرتجع» makes a purchase a credit note
+    /// whose total takes away what its bill counted (redix-api #119 D4, #129).
+    /// </summary>
+    public virtual decimal AmountOf(EntryRequest request) => SignOf(request) == ChoiceSign.Minus ? -TotalOf(request) : TotalOf(request);
 
-    /// <summary>Why what was typed for this kind of table cannot be kept; empty when it can.</summary>
-    public virtual string RefusalOfTyped(EntryRequest request) => "";
+    /// <summary>Why what was typed for this kind of table cannot be kept; empty when it can. A choice that takes the amount away is typed as a plain amount, never a deduction: <c>invalidAmount</c>.</summary>
+    public virtual string RefusalOfTyped(EntryRequest request) => SignOf(request) == ChoiceSign.Minus && TotalOf(request) < 0 ? "InvalidAmount" : "";
 
     /// <summary>Why <paramref name="request"/> cannot go into this table, by what the project holds; empty when it can. <paramref name="editing"/> is the entry being changed.</summary>
     public virtual Task<string> RefusalOfAsync(Guid projectId, EntryRequest request, Guid userId, List<Permission> held, Guid editing, RedixDbContext db) => Task.FromResult("");

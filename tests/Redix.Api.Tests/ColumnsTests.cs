@@ -16,7 +16,7 @@ public class ColumnsTests(MigratedApiFactory factory)
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
-    private static readonly List<string> CoreColumns = ["date", "supplier", "total", "account", "attachment"];
+    private static readonly List<string> CoreColumns = ["date", "supplier", "total", "account", "attachment", "entryType"];
 
     private static AddColumnRequest AreaColumn => new("المساحة م²", ColumnDataType.Number, true, true, []);
 
@@ -58,7 +58,7 @@ public class ColumnsTests(MigratedApiFactory factory)
     private static EditDefaultColumnRequest Renamed(ColumnView column, string name, bool applyToAllItems) => new(name, column.IsRequired, column.ShowInReports, applyToAllItems);
 
     [Fact]
-    public async Task TheCoreColumnsOfAPurchaseAreTheFiveLeftOfBr20()
+    public async Task TheCoreColumnsOfAPurchaseAreTheFiveLeftOfBr20AndNawAlQaydWhichDecidesItsSign()
     {
         var (_, client, project) = await FinanceAsync();
 
@@ -77,16 +77,62 @@ public class ColumnsTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AnItemOfBothTypesHoldsThePurchaseColumnsThenWhatOnlyAContractorPaymentHas()
+    public async Task AnItemOfBothTypesHoldsThePurchaseColumnsWithWhatOnlyAContractorPaymentHasAfterWhatItFollows()
     {
         var (_, client, project) = await FinanceAsync();
         var purchases = await TemplateOf(client, project.Id, "purchases");
 
         var both = await TemplateOf(client, project.Id);
 
-        Assert.Equal(purchases.Select(column => column.Key), both.Take(purchases.Count).Select(column => column.Key));
-        Assert.Equal(["contract", "amount", "outsideContract"], both.Skip(purchases.Count).Select(column => column.Key));
-        Assert.All(both.Skip(purchases.Count), column => Assert.False(column.IsRequired));
+        List<string> paymentsOwn = ["outsideContract", "contract", "amount"];
+        Assert.Equal(purchases.Select(column => column.Key), both.Where(column => !paymentsOwn.Contains(column.Key)).Select(column => column.Key));
+        Assert.Equal(["supplier", "date", "outsideContract", "product", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "contract", "notes", "amount", "total"], both.Select(column => column.Key));
+        Assert.All(both.Where(column => paymentsOwn.Contains(column.Key)), column => Assert.False(column.IsRequired));
+    }
+
+    [Theory]
+    [InlineData("purchases", new[] { "supplier", "date", "product", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "notes", "total" })]
+    [InlineData("contractorPayments", new[] { "date", "outsideContract", "account", "paymentMethod", "attachment", "contract", "supplier", "notes", "amount" })]
+    [InlineData("capital", new[] { "movementType", "date", "account", "attachment", "amount" })]
+    [InlineData("vatRefund", new[] { "date", "account", "attachment", "amount" })]
+    public async Task R129_EachTemplateHoldsItsColumnsInTheOrderOfTheApprovedWorkbook(string itemType, string[] keys)
+    {
+        var (_, client, project) = await FinanceAsync();
+
+        Assert.Equal(keys, (await TemplateOf(client, project.Id, itemType)).Select(column => column.Key));
+    }
+
+    [Fact]
+    public async Task R129_ThePurchaseTemplatePrintsTheSupplierTheAccountTheMethodAndTheFileButNotTheNotes()
+    {
+        var (_, client, project) = await FinanceAsync();
+
+        var printed = (await TemplateOf(client, project.Id, "purchases")).Where(column => column.ShowInReports).Select(column => column.Key);
+
+        Assert.Equal(["supplier", "date", "product", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "total"], printed);
+    }
+
+    [Fact]
+    public async Task R129_RasAlMalAsksNawAlHarakaWhoseChoicesPutInAndTakeOut()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var capital = await ItemOfType(client, project.Id, ItemType.Capital);
+
+        var movementType = (await ColumnsOf(client, project.Id, capital.Id)).Single(column => column.Key == "movementType");
+
+        Assert.Equal([(StructureSeed.ContributionChoiceId, "إضافة مبلغ", ChoiceSign.Plus), (StructureSeed.WithdrawalChoiceId, "سحب مبلغ", ChoiceSign.Minus)], movementType.Choices.Select(choice => (choice.Id, choice.Name, choice.Sign)));
+    }
+
+    [Fact]
+    public async Task R129_APersonStillAddsNoColumnToARevenueItem()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var capital = await ItemOfType(client, project.Id, ItemType.Capital);
+
+        var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{capital.Id}/columns", AreaColumn, Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("revenueTakesNoColumns", await CodeOf(refused));
     }
 
     [Theory]

@@ -3,7 +3,8 @@ namespace Redix.Api.Entries;
 /// <summary>
 /// What the app sends for any entry, whatever its table (redix-api #110): the table it goes into, its date, its amount, its account, its notes, its file when there is one, the
 /// values of its item's columns, and whether it is sent for approval or kept as a draft. What only one kind of table asks is here too, and every other kind leaves it out: a
-/// purchase's supplier and whether it is a credit note (D13), a contractor payment's place inside or outside its contract (FR-13), and a partner's withdrawal (BR-06).
+/// purchase's supplier, and a contractor payment's place inside or outside its contract (FR-13). Whether a purchase is a credit note and whether a partner's money is a withdrawal
+/// are the choices of their table's lists, «نوع القيد» and «نوع الحركة», among the column values (redix-api #129).
 /// </summary>
 /// <param name="Id">The entry's id, made on the phone, so a second post of it answers the first (AC-16.3).</param>
 public record EntryRequest(Guid Id)
@@ -41,14 +42,8 @@ public record EntryRequest(Guid Id)
     /// <summary>A purchase's supplier, from the project's register; left out when it names none, which a purchase may (Muteb, 13 Nov 2026, redix-api #129).</summary>
     public Guid SupplierId { get; init; }
 
-    /// <summary>True for a credit note, a مرتجع: a total typed as a plain amount and kept negative, its own row as in Muteb's statement, naming no bill (redix-api #119, D4).</summary>
-    public bool IsCreditNote { get; init; }
-
     /// <summary>True for a contractor payment outside the contract, which counts in the item's total and leaves the remaining alone (FR-13).</summary>
     public bool IsOutsideContract { get; init; }
-
-    /// <summary>True for a partner taking money out of their capital; otherwise they put it in (BR-06).</summary>
-    public bool IsWithdrawal { get; init; }
 
     /// <summary>The column values that hold something, trimmed.</summary>
     public Dictionary<string, string> ColumnValuesKept() => ColumnValues.Where(value => value.Value.Trim().Length > 0).ToDictionary(value => value.Key, value => value.Value.Trim());

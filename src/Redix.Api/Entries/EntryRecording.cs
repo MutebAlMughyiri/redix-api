@@ -110,8 +110,7 @@ public static class EntryRecording
         {
             return (StatusCodes.Status400BadRequest, refusal, "");
         }
-        var kind = table.EntryKindOf(request);
-        var (reason, columnKey) = RefusalOfColumns(request, table.Item.Columns.Where(column => !column.IsHidden && column.IsAskedOf(kind)).OrderBy(column => column.SortOrder).ToList());
+        var (reason, columnKey) = RefusalOfColumns(request, table.Columns);
         if (reason.Length > 0)
         {
             return (StatusCodes.Status400BadRequest, reason, columnKey);

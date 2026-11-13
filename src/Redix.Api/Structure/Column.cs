@@ -72,6 +72,13 @@ public abstract class Column : IOrdered
         _ => value.Length <= ValueMaxLength,
     };
 
+    /// <summary>
+    /// The choice <paramref name="values"/> give the one list among <paramref name="columns"/>, a table's, whose choices carry a sign (redix-api #129): what decides the direction of the
+    /// entry's amount. <see cref="ColumnChoice.None"/>, which gives no sign, when the table has no such list or the entry chose none.
+    /// </summary>
+    public static ColumnChoice SignedChoiceOf(IEnumerable<Column> columns, IReadOnlyDictionary<string, string> values) =>
+        columns.Where(column => column.IsSigned).Select(column => column.ChoiceOf(values.GetValueOrDefault(column.Key, ""))).FirstOrDefault(ColumnChoice.None);
+
     /// <summary>The choice whose id <paramref name="value"/> holds; <see cref="ColumnChoice.None"/> when it names none of this column's.</summary>
     public ColumnChoice ChoiceOf(string value) => Guid.TryParse(value, out var id) ? Choices.FirstOrDefault(choice => choice.Id == id, ColumnChoice.None) : ColumnChoice.None;
 

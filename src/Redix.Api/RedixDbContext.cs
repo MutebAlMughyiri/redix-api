@@ -521,7 +521,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         HasLookup(modelBuilder, (Entry entry) => entry.Status);
         HasLookup(modelBuilder, (EntryAttachment entryAttachment) => entryAttachment.Role);
         HasLookup(modelBuilder, (EntryDecision decision) => decision.Action);
-        HasLookup(modelBuilder, (CapitalMovementDetails details) => details.Type);
         HasLookup(modelBuilder, (Notification notification) => notification.Kind);
         HasLookup(modelBuilder, (Project project) => project.Status);
         HasLookup(modelBuilder, (Item item) => item.Type);

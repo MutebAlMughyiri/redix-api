@@ -51,6 +51,31 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<ContractorPaymentView>(Ledger.Json))!;
     }
 
+    [Fact]
+    public async Task R129_R3_APaymentIsAskedNothingOnlyAPurchaseHasAndAPurchaseNothingOnlyAPaymentHas()
+    {
+        var setup = await ContractAsync();
+
+        var tables = (await setup.Ledger.Client.GetFromJsonAsync<List<TableCategoryView>>($"/projects/{setup.Ledger.ProjectId}/entry-tables", Ledger.Json))!.SelectMany(category => category.Items).Single(item => item.Id == setup.ItemId).Tables;
+
+        var payment = tables.Single(table => table.Id == setup.ContractId).ColumnKeys;
+        Assert.Contains("outsideContract", payment);
+        Assert.Contains("amount", payment);
+        Assert.DoesNotContain(payment, key => key is "supplier" or "product" or "unitPrice" or "quantity" or "entryType" or "total");
+        Assert.All(tables.Where(table => table.Kind != ItemTableKind.Contract), table => Assert.DoesNotContain(table.ColumnKeys, key => key is "outsideContract" or "contract" or "amount"));
+    }
+
+    [Fact]
+    public async Task R129_AUnitPriceRequiredOfThePurchasesIsNotAskedOfAPaymentOnTheSameItem()
+    {
+        var setup = await ContractAsync();
+        await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == setup.ItemId && column.Key == "unitPrice").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
+
+        var sent = await RecordAsync(setup, Payment(setup) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
+
+        Assert.Equal(EntryStatus.PendingApproval, sent.Status);
+    }
+
     /// <summary>A payment recorded through the API and sent with its receipt, and then approved as UC-032 "Approve or reject entries" will: by changing its status.</summary>
     private static async Task<EntryRequest> ApprovedAsync(Setup setup, decimal amount, bool isOutsideContract = false)
     {

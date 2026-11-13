@@ -16,12 +16,14 @@ A list's choices live in its definition, `Choices` (redix-api #129): each has an
 
 An item of the template holds no column rows of its own: its columns are its type's defaults, and its copy takes them. That keeps about 550 rows out of the migrations.
 
+Each type's template holds its columns in the order of the report workbook Muteb approved on 13 Nov 2026 (redix-api #129): a purchase المورد, التاريخ, الصنف, سعر الوحدة, العدد, نوع القيد, الحساب, طريقة الدفع, المرفق, ملاحظات and الإجمالي; a contractor payment التاريخ, داخل أو خارج العقد, الحساب, طريقة الدفع, المرفق, العقد, المورد, ملاحظات and المبلغ; an item of both types the purchase's, each column only a payment has after the one it follows in a payment's; رأس المال نوع الحركة, التاريخ, الحساب, المرفق and المبلغ; revenue التاريخ, الحساب, المرفق and المبلغ. «نوع القيد» and «نوع الحركة» are the lists whose signs decide the amount's direction. A person adds no column to a revenue item, رأس المال among them: it asks what its template gives it. A contractor payment is not asked the supplier, which its contract names.
+
 ## Endpoints
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
 | `GET /projects/{projectId}/items/{itemId}/columns` | `ReadProject` | `200` what the item asks for, in order, without deleted ones; `404` |
-| `GET /projects/{projectId}/default-columns/{itemType}` | `ReadProject` | `200` the template for `purchases`, `contractorPayments` or `both`; `400` for another word |
+| `GET /projects/{projectId}/default-columns/{itemType}` | `ReadProject` | `200` the template for `purchases`, `contractorPayments`, `both`, `capital`, `sale`, `vatRefund` or `otherRevenue`; `400` for another word |
 | `POST /projects/{projectId}/items/{itemId}/columns` with `{ name, dataType, isRequired, showInReports, choices: [{ name, sign }] }` | `ManageStructure` | `200`; `400` `invalidName`, `invalidDataType`, `invalidOptions` or `signedListExists`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/columns/reorder` with `{ ids }` | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
 | `PUT /projects/{projectId}/items/{itemId}/columns/{columnId}` with `{ name, isRequired, showInReports, newChoices: [{ name, sign }] }` | `ManageStructure` | `200`; `400` `invalidName`, `invalidOptions` or `signedListExists`; `404`; `409` `coreColumn` |
@@ -31,7 +33,7 @@ An item of the template holds no column rows of its own: its columns are its typ
 | `PUT /projects/{projectId}/default-columns/{itemType}/{columnId}` with the same, and `applyToAllItems` | `ManageStructure` | As on an item |
 | `DELETE /projects/{projectId}/default-columns/{itemType}/{columnId}?applyToAllItems=true` or `=false`, in the query since a delete has no body | `ManageStructure` | As on an item |
 
-Every change also answers `409` `projectFinished` in a finished project. A column answers as `{ id, key, name, dataType, isCore, isCustom, isRequired, showInReports, choices: [{ id, name, sign }] }`.
+Every change also answers `409` `projectFinished` in a finished project. A column answers as `{ id, key, name, dataType, isCore, isCustom, isRequired, showInReports, choices: [{ id, name, sign }], isEntryField }`.
 
 ## Tables
 
@@ -46,8 +48,12 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | --- | --- | --- |
 | A new item inherits the default columns of its type (FR-38) | `Item.New` | `ColumnsTests.ANewItemInheritsTheDefaultColumnsOfItsType` |
 | A template item is copied with the columns of its type | `Item.CopyFor` | `ColumnsTests.ATemplateItemIsCopiedWithTheColumnsOfItsType` |
-| The core columns of a purchase are the five left of BR-20: date, supplier, total, account and file; the bill number left with D2 (findings row 150) | `StructureSeed` | `ColumnsTests.TheCoreColumnsOfAPurchaseAreTheFiveLeftOfBr20` |
-| An item of both types holds the purchase columns, then what only a contractor payment has | `StructureSeed.DefaultColumns` | `ColumnsTests.AnItemOfBothTypesHoldsThePurchaseColumnsThenWhatOnlyAContractorPaymentHas` |
+| The core columns of a purchase are the five left of BR-20: date, supplier, total, account and file, the bill number left with D2 (findings row 150); and «نوع القيد», which decides the total's sign (redix-api #129) | `StructureSeed` | `ColumnsTests.TheCoreColumnsOfAPurchaseAreTheFiveLeftOfBr20AndNawAlQaydWhichDecidesItsSign` |
+| An item of both types holds the purchase columns, with what only a contractor payment has after the column it follows | `StructureSeed.BothColumns` | `ColumnsTests.AnItemOfBothTypesHoldsThePurchaseColumnsWithWhatOnlyAContractorPaymentHasAfterWhatItFollows` |
+| Each template holds its columns in the order of the approved workbook, and a purchase's prints the supplier, the account, the method and the file (redix-api #129) | `StructureSeed` | `ColumnsTests.R129_EachTemplateHoldsItsColumnsInTheOrderOfTheApprovedWorkbook`, `R129_ThePurchaseTemplatePrintsTheSupplierTheAccountTheMethodAndTheFileButNotTheNotes` |
+| A person adds no column to a revenue item; رأس المال asks «نوع الحركة» from its template (FR-38, redix-api #129) | `ColumnsEndpoints.AddToItem`, `StructureSeed.CapitalColumns` | `ColumnsTests.R129_APersonStillAddsNoColumnToARevenueItem`, `R129_RasAlMalAsksNawAlHarakaWhoseChoicesPutInAndTakeOut` |
+| A payment is asked nothing only a purchase has, the supplier among it, and a purchase nothing only a payment has; the tables Add entry offers name the columns each asks (FR-38, redix-api #129, R3) | `StructureSeed.IsAsked`, `EntryTable.Columns`, `EntryTableView.ColumnKeys` | `ContractorPaymentsTests.R129_R3_APaymentIsAskedNothingOnlyAPurchaseHasAndAPurchaseNothingOnlyAPaymentHas`, `R129_AUnitPriceRequiredOfThePurchasesIsNotAskedOfAPaymentOnTheSameItem` |
+| Every item and every project's template took the new columns, and the old ones follow the approved order and print as it does, a person's own after them (redix-api #129, R6) | Migration `EntryTypeAndMovementTypeLists` | `MigrationStepsTests.R129_EntryTypeAndMovementTypeLists_EveryEntryKeepsItsFigureAndTakesTheChoiceItsSignSays` |
 | A column added to one item is asked in that item only (AC-41.1) | `ColumnsEndpoints.AddToItem` | `ColumnsTests.AColumnAddedToOneItemIsAskedInThatItemOnly` |
 | A column needs a name of 1 to 100 characters | `Column.CheckNew`, `Column.Edit` | `ColumnsTests.AColumnNeedsANameOfAtMost100Characters` |
 | A list a person added gains choices; those it has stay, in their order, because entries hold them; a new choice has the limit of a name; the template's reach items only when applied (BR-21) | `Column.Edit`, `ColumnsEndpoints.EditOfItem`, `EditOfTemplate` | `ColumnsTests.APickListGainsChoicesAndKeepsItsOwnInTheirOrder`, `AnEditThatGivesNoNewChoiceChangesNoChoice`, `ANewChoiceIsWithinTheLimitOfAName`, `OnlyAPickListAPersonAddedGainsChoices`, `AnEntryCanHoldTheChoiceAListGained`, `AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied` |
@@ -55,6 +61,7 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | A list's choices live in its definition, each with its own id and an optional sign, + or − (redix-api #129) | `ColumnChoice`, `Column.ChoicesOf` | `ColumnsTests.R129_AListsChoicesEachHaveAnIdAndASignOfTheirOwn` |
 | An item holds at most one list whose choices give a sign, so the amount's direction has one answer (redix-api #129) | `ColumnsEndpoints.HasTwoSignedLists` | `ColumnsTests.R129_AnItemTakesOneListWhoseChoicesGiveASignSoTheAmountsDirectionHasOneAnswer` |
 | An entry keeps the id of the choice chosen, and a choice's name is refused (redix-api #129, R5) | `Column.Accepts`, `Column.ChoiceOf` | `ColumnsTests.R129_R5_AnEntryKeepsTheIdOfTheChoiceChosenAndIsRefusedItsName`, `ExpensesTests.FR_41_AValueThatFitsItsColumnIsKept` |
+| Every choice kept before got an id and no sign, and every value naming one holds its id (redix-api #129) | Migration `ListChoicesWithSigns` | `MigrationStepsTests.R129_ListChoicesWithSigns_EveryChoiceGetsAnIdAndNoSignAndEveryValueNamingOneHoldsItsId` |
 | A person chooses among five types | `Column.CheckNew` | `ColumnsTests.APersonCannotAddAFileColumn` |
 | A core column is renamed and reordered (BR-20) | `Column.Edit`, `ProjectStructure.PutInOrder` | `ColumnsTests.ACoreColumnIsRenamedAndReordered` |
 | A core column changes nothing but its name (BR-20) | `Column.Edit` | `ColumnsTests.ACoreColumnChangesNothingButItsName` |

@@ -518,7 +518,7 @@ public static class TranslationSeed
         ("columns.signPlus", "Plus (+)", "موجب (+)"),
         ("columns.signMinus", "Minus (−)", "سالب (−)"),
         ("columns.coreColumn", "A core column cannot be deleted, and only its name changes.", "العمود الأساسي لا يُحذف، ولا يتغير منه إلا اسمه."),
-        ("columns.revenueTakesNoColumns", "A revenue item asks no columns.", "بند الإيرادات لا يطلب أعمدة."),
+        ("columns.revenueTakesNoColumns", "No column is added to a revenue item: it asks what its template gives it.", "لا يُضاف عمود إلى بند إيرادات: يطلب ما يعطيه قالبه."),
         ("columns.new", "Add column", "إضافة عمود"),
         ("columns.name", "Column name", "اسم العمود"),
         ("columns.type", "Type", "النوع"),

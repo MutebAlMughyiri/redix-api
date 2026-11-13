@@ -183,7 +183,7 @@ public class RevenueTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var bill = ledger.Purchase(115m) with { Submit = true };
         await ApprovedAsync(ledger, bill);
-        await ApprovedAsync(ledger, ledger.Purchase(15m) with { IsCreditNote = true, Submit = true });
+        await ApprovedAsync(ledger, ledger.CreditNote(15m) with { Submit = true });
         var mistaken = ledger.Purchase(50m) with { Submit = true };
         await ApprovedAsync(ledger, mistaken);
         await RemoveAsync(ledger, mistaken.Id);

@@ -25,7 +25,6 @@ One per enum the database stores, named `LK_{enum}`: `Id` is the member's number
 | Lookup table | `Id` type | Held by |
 | --- | --- | --- |
 | [LK_AccountType](#lk_accounttype) | tinyint | `Accounts.Type` |
-| [LK_CapitalMovementType](#lk_capitalmovementtype) | tinyint | `CapitalMovementDetails.Type` |
 | [LK_ColumnDataType](#lk_columndatatype) | tinyint | `DefaultColumns.DataType`, `ItemColumns.DataType` |
 | [LK_EntryAttachmentRole](#lk_entryattachmentrole) | tinyint | `EntryAttachments.Role` |
 | [LK_EntryDecisionAction](#lk_entrydecisionaction) | tinyint | `EntryDecisions.Action` |
@@ -43,13 +42,6 @@ One per enum the database stores, named `LK_{enum}`: `Id` is the member's number
 | --- | --- | --- |
 | 0 | Bank | A bank account (حساب بنكي). |
 | 1 | CashCustody | Cash held by one person (عهدة نقدية). |
-
-### LK_CapitalMovementType
-
-| Id | Name | Meaning |
-| --- | --- | --- |
-| 0 | Contribution | A partner put money in. |
-| 1 | Withdrawal | A partner took money out. |
 
 ### LK_ColumnDataType
 
@@ -203,7 +195,6 @@ erDiagram
     LK_SupplierStatus ||--o{ Suppliers : "Status"
     LK_EntryKind ||--o{ Entries : "Kind"
     LK_EntryStatus ||--o{ Entries : "Status"
-    LK_CapitalMovementType ||--o{ CapitalMovementDetails : "Type"
     LK_EntryDecisionAction ||--o{ EntryDecisions : "Action"
     LK_EntryAttachmentRole ||--o{ EntryAttachments : "Role"
     LK_AccountType ||--o{ Accounts : "Type"
@@ -749,17 +740,16 @@ Other indexes: `ItemId`; `SubgroupId`.
 
 ### CapitalMovementDetails
 
-What only a capital movement has: the partner and whether money went in or out (FR-25).
+What only a capital movement has: the partner (FR-25). Whether money went in or out is its entry's kind, which the choice of «نوع الحركة» in its column values decides (redix-api #129).
 
 | Column | SQL type | Null | Key | Points at |
 | --- | --- | --- | --- | --- |
 | EntryId | uniqueidentifier | not null | PK FK | `Entries.Id` |
 | PartnerId | uniqueidentifier | not null | FK | `Partners.Id` |
-| Type | tinyint | not null | FK | `LK_CapitalMovementType.Id`: 0 Contribution, 1 Withdrawal |
 
 Unique: the key only.
 
-Other indexes: `PartnerId`; `Type`.
+Other indexes: `PartnerId`.
 
 ### Invoices
 

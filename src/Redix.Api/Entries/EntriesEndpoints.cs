@@ -282,8 +282,11 @@ public static class EntriesEndpoints
 
     private static async Task<List<string>> MissingOfAsync(Entry entry, RedixDbContext db)
     {
-        var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ExpenseDetails();
-        var columns = (await db.Set<ItemColumn>().Where(column => column.ItemId == expense.ItemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync()).Where(column => column.IsAskedOf(entry.Kind));
+        var itemId = await db.ExpenseDetails.Where(row => row.EntryId == entry.Id).Select(row => row.ItemId)
+            .Concat(db.Set<RevenueDetails>().Where(row => row.EntryId == entry.Id).Select(row => row.ItemId))
+            .Concat(from movement in db.CapitalMovementDetails join partner in db.Partners on movement.PartnerId equals partner.Id where movement.EntryId == entry.Id select partner.ItemId)
+            .FirstOrDefaultAsync();
+        var columns = (await db.Set<ItemColumn>().Where(column => column.ItemId == itemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync()).Where(column => column.IsAskedOf(entry.Kind));
         return new EntryAnswers(entry.Notes, entry.ColumnValuesByKey()).MissingOf(columns);
     }
 

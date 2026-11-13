@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Partners;
 
@@ -65,7 +66,8 @@ public static class CapitalEndpoints
             select new { entry, details }).ToListAsync();
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return rows.Select(row => new CapitalMovementView(row.entry.Id, row.details.Type, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry)) { FileName = facts.FileNameOf(row.entry) }).ToList();
+        var columns = await db.ItemColumns.Where(column => !column.IsHidden && db.Partners.Any(partner => partner.Id == partnerId && partner.ItemId == column.ItemId)).ToListAsync();
+        return rows.Select(row => new CapitalMovementView(row.entry.Id, Column.SignedChoiceOf(columns, row.entry.ColumnValuesByKey()).Name, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
     /// <summary>Each partner's capital in the project, from its approved movements: the one owner of a partner's balance (BR-05), which deleting a partner asks too (redix-api #100).</summary>
@@ -95,14 +97,14 @@ public record PartnerCapitalView(Guid Id, string Name, decimal Balance, decimal 
 
 /// <summary>One movement of a partner's capital.</summary>
 /// <param name="Id">The entry.</param>
-/// <param name="Type">What it is.</param>
+/// <param name="MovementName">What it is: the name of the choice of «نوع الحركة» it took (redix-api #129); empty when it took none.</param>
 /// <param name="Date">The day it moved.</param>
 /// <param name="Amount">What it did to the capital: negative when it took some away.</param>
 /// <param name="Description">What was said about it.</param>
 /// <param name="AccountName">The account it moved through.</param>
 /// <param name="AttachmentId">Its receipt; empty when none.</param>
 /// <param name="ContentType">What the receipt is; empty when none.</param>
-public record CapitalMovementView(Guid Id, CapitalMovementType Type, DateOnly Date, decimal Amount, string Description, string AccountName, string AttachmentId, string ContentType)
+public record CapitalMovementView(Guid Id, string MovementName, DateOnly Date, decimal Amount, string Description, string AccountName, string AttachmentId, string ContentType)
 {
     /// <summary>The receipt's name, so the phone hands it over by that name (findings row 158); empty when none, and in a report issued before 8 Nov 2026.</summary>
     public string FileName { get; init; } = "";

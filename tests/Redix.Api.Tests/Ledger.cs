@@ -71,6 +71,9 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
         AccountId = AccountId,
     };
 
+    /// <summary>A credit note of <paramref name="amount"/>: a purchase whose «نوع القيد» is «مرتجع», typed as a plain amount and kept negative (redix-api #119 D4, #129).</summary>
+    public EntryRequest CreditNote(decimal amount) => Purchase(amount) with { ColumnValues = new Dictionary<string, string> { ["entryType"] = StructureSeed.CreditNoteChoiceId.ToString() } };
+
     /// <summary>A deduction of <paramref name="amount"/>, below zero, saying why in its notes (D14).</summary>
     public EntryRequest Deduction(decimal amount, string notes = "خصم من المورد") => Purchase(amount) with { Notes = notes };
 
@@ -98,7 +101,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
         Amount = amount,
         AccountId = AccountId,
         Notes = notes,
-        IsWithdrawal = isWithdrawal,
+        ColumnValues = new Dictionary<string, string> { ["movementType"] = (isWithdrawal ? StructureSeed.WithdrawalChoiceId : StructureSeed.ContributionChoiceId).ToString() },
         Submit = true,
     };
 

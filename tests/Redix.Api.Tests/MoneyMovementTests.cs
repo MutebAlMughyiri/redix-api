@@ -253,6 +253,32 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R129_NawAlHarakaDecidesWhetherAPartnerPutsMoneyInOrTakesItOutAndTheMovementNamesItsChoice()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+        var putIn = await ledger.ApproveAsync(await MoveAsync(ledger, await ledger.PartnerEntryAsync(partner, 300)));
+        var takenOut = await ledger.ApproveAsync(await MoveAsync(ledger, await ledger.PartnerEntryAsync(partner, 100, isWithdrawal: true)));
+
+        var kinds = await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == putIn || row.Id == takenOut).ToDictionaryAsync(row => row.Id, row => (row.Kind, row.Amount)));
+        var movements = (await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!;
+
+        Assert.Equal((EntryKind.CapitalIn, 300m), kinds[putIn]);
+        Assert.Equal((EntryKind.CapitalOut, 100m), kinds[takenOut]);
+        Assert.Equal(("إضافة مبلغ", 300m), movements.Where(row => row.Id == putIn).Select(row => (row.MovementName, row.Amount)).Single());
+        Assert.Equal(("سحب مبلغ", -100m), movements.Where(row => row.Id == takenOut).Select(row => (row.MovementName, row.Amount)).Single());
+    }
+
+    [Fact]
+    public async Task R129_APartnersMoneyIsNeverTakenOutByAChoiceOfAnotherList()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var partner = await PartnerAsync(ledger.Client, ledger.ProjectId, "شريك");
+
+        await ledger.AssertRefusedAsync(await ledger.PartnerEntryAsync(partner, 100) with { ColumnValues = new Dictionary<string, string> { ["movementType"] = StructureSeed.CreditNoteChoiceId.ToString() } }, "invalidColumnValue");
+    }
+
+    [Fact]
     public async Task R10_AMovementWaitsForApprovalAndCountsOnlyOnceApproved()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

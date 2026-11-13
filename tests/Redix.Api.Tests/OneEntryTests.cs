@@ -95,7 +95,7 @@ public class OneEntryTests(MigratedApiFactory factory)
         Assert.Equal(EntryKind.CapitalOut, (await EntryAsync(ledger, purchase.Id)).Kind);
         Assert.Empty(await ledger.ReadAsync(db => db.PurchaseDetails.Where(row => row.EntryId == purchase.Id).ToListAsync()));
         Assert.Empty(await ledger.ReadAsync(db => db.ExpenseDetails.Where(row => row.EntryId == purchase.Id).ToListAsync()));
-        Assert.Equal(CapitalMovementType.Withdrawal, (await ledger.ReadAsync(db => db.CapitalMovementDetails.SingleAsync(row => row.EntryId == purchase.Id))).Type);
+        Assert.Equal(partner, (await ledger.ReadAsync(db => db.CapitalMovementDetails.SingleAsync(row => row.EntryId == purchase.Id))).PartnerId);
     }
 
     [Fact]

@@ -1,11 +1,8 @@
 using System.Globalization;
 using System.Reflection;
-using System.Text.Json;
 using QuestPDF.Drawing;
 using QuestPDF.Infrastructure;
 using Redix.Api.Entries;
-using Redix.Api.Partners;
-using Redix.Api.Translations;
 
 namespace Redix.Api.Reports;
 
@@ -45,9 +42,6 @@ public static class ReportFormats
         var text = Math.Abs(decimal.Round(amount, 2, MidpointRounding.AwayFromZero)).ToString("#,##0.00", CultureInfo.InvariantCulture);
         return amount < 0 ? $"({text})" : text;
     }
-
-    /// <summary>What a partner's movement is, in the statement's Arabic, for a movement with no description of its own: both report files say the same.</summary>
-    public static string Movement(CapitalMovementType type) => TranslationSeed.Arabic($"capital.{JsonNamingPolicy.CamelCase.ConvertName(type.ToString())}");
 
     /// <summary>A date as dd.MM.yyyy.</summary>
     public static string Date(DateOnly date) => date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);

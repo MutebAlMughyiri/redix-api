@@ -8,7 +8,8 @@ namespace Redix.Api.Entries;
 
 /// <summary>
 /// A purchase table (UC-022, FR-08): a group of an item that takes purchases, its general one going by the item's name. Its entry may name a supplier, one the caller may use (BR-19),
-/// and as a credit note is kept negative, naming no bill (redix-api #119, D4); its file is the invoice. What was bought, its unit price and its quantity are its item's columns.
+/// and when «نوع القيد» says «مرتجع» it is a credit note, kept negative, naming no bill (redix-api #119 D4, #129); its file is the invoice. What was bought, its unit price and its
+/// quantity are its item's columns.
 /// </summary>
 /// <param name="Category">The category its item is in.</param>
 /// <param name="Item">The item.</param>
@@ -34,11 +35,8 @@ public sealed record PurchaseTable(Category Category, Item Item, Subgroup Subgro
         return unitPrice > 0 && quantity > 0 && unitPrice <= Money.Largest / quantity ? unitPrice * quantity : 0;
     }
 
-    /// <summary>The total, kept negative for a credit note, so that wherever totals are added up it takes away what its bill counted.</summary>
-    public override decimal AmountOf(EntryRequest request) => request.IsCreditNote ? -TotalOf(request) : TotalOf(request);
-
-    /// <summary>A credit note is no deduction, <c>invalidAmount</c>.</summary>
-    public override string RefusalOfTyped(EntryRequest request) => request.IsCreditNote && TotalOf(request) < 0 ? "InvalidAmount" : "";
+    /// <summary>Everything of its item but what only a contractor payment has (FR-38).</summary>
+    protected override bool Asks(ItemColumn column) => column.IsAskedOf(EntryKind.Purchase);
 
     /// <summary>A supplier named that the caller may not use answers <c>unknownSupplier</c> (BR-19); none named is no refusal (redix-api #129).</summary>
     public override async Task<string> RefusalOfAsync(Guid projectId, EntryRequest request, Guid userId, List<Permission> held, Guid editing, RedixDbContext db) =>

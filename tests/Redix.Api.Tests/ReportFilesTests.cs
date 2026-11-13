@@ -35,17 +35,6 @@ public class ReportFilesTests(MigratedApiFactory factory)
     private static async Task<PeriodicReportSnapshot> ReadAsync(HttpClient client, Guid projectId, int number) =>
         (await client.GetFromJsonAsync<PeriodicReportSnapshot>($"/projects/{projectId}/periodic-reports/{number}", Json))!;
 
-    [Fact]
-    public void APartnersMovementWithNoDescriptionIsNamedInArabicNeverByItsCode()
-    {
-        foreach (var type in Enum.GetValues<CapitalMovementType>())
-        {
-            var name = ReportFormats.Movement(type);
-
-            Assert.Equal(Translations.TranslationSeed.Arabic($"capital.{JsonNamingPolicy.CamelCase.ConvertName(type.ToString())}"), name);
-            Assert.NotEqual(type.ToString(), name);
-        }
-    }
 
     [Fact]
     public async Task AC_29_3_ReportsAreNumberedWithNoGapsAndTheNextSaysWhatWaits()
@@ -108,7 +97,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ApprovedAsync(ledger, ledger.Purchase());
-        await ApprovedAsync(ledger, ledger.Purchase(320) with { IsCreditNote = true });
+        await ApprovedAsync(ledger, ledger.CreditNote(320));
         await IssueAsync(ledger);
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));

@@ -290,7 +290,7 @@ public static class CategoriesEndpoints
         (await EntryTable.OfferedAsync(projectId, (await UserAccess.OfAsync(AccessTokens.UserIdOf(principal), db)).In(projectId), db))
             .GroupBy(table => table.Category)
             .Select(category => new TableCategoryView(category.Key.Id, category.Key.Name, category.GroupBy(table => table.Item)
-                .Select(item => new TableItemView(item.Key.Id, item.Key.Name, item.Select(table => new EntryTableView(table.Id, table.Kind, table.Name)).ToList(), item.Key.Type.IsRevenue()))
+                .Select(item => new TableItemView(item.Key.Id, item.Key.Name, item.Select(table => new EntryTableView(table.Id, table.Kind, table.Name) { ColumnKeys = [.. table.Columns.Select(column => column.Key)] }).ToList(), item.Key.Type.IsRevenue()))
                 .ToList()))
             .ToList();
 
@@ -493,7 +493,11 @@ public record TableItemView(Guid Id, string Name, List<EntryTableView> Tables, b
 /// <param name="Id">The subgroup, contract or partner it prints.</param>
 /// <param name="Kind">What it prints.</param>
 /// <param name="Name">The item's name for its general table, the subgroup's, the contractor's, or the partner's.</param>
-public record EntryTableView(Guid Id, ItemTableKind Kind, string Name);
+public record EntryTableView(Guid Id, ItemTableKind Kind, string Name)
+{
+    /// <summary>The keys of its item's columns an entry in it is asked, in their order (FR-41, redix-api #129, R3); empty where the tables of an item are only listed.</summary>
+    public List<string> ColumnKeys { get; init; } = [];
+}
 
 /// <summary>What a table of an item's sheet prints.</summary>
 public enum ItemTableKind : byte

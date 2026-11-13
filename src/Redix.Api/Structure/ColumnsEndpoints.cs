@@ -362,9 +362,10 @@ public record ReorderDefaultColumnsRequest(List<Guid> Ids, bool ApplyToAllItems)
 /// <param name="IsRequired">Whether entry asks for it.</param>
 /// <param name="ShowInReports">Whether it prints in the reports.</param>
 /// <param name="Choices">The choices of a list kept in its definition, each with its id and its sign (redix-api #129); empty for any other column, a register's list included.</param>
-public record ColumnView(Guid Id, string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsCustom, bool IsRequired, bool ShowInReports, List<ColumnChoice> Choices)
+/// <param name="IsEntryField">True for a column the entry answers in a field of its own; false for one whose value it keeps under the column's key (redix-api #129, R5).</param>
+public record ColumnView(Guid Id, string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsCustom, bool IsRequired, bool ShowInReports, List<ColumnChoice> Choices, bool IsEntryField)
 {
     /// <summary>The view of <paramref name="column"/>.</summary>
     public static ColumnView Of(Column column) =>
-        new(column.Id, column.Key, column.Name, column.DataType, column.IsCore, column.IsCustom, column.IsRequired, column.ShowInReports, column.Choices);
+        new(column.Id, column.Key, column.Name, column.DataType, column.IsCore, column.IsCustom, column.IsRequired, column.ShowInReports, column.Choices, column.IsEntryField);
 }
