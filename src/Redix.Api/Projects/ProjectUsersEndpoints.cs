@@ -154,8 +154,8 @@ public static class ProjectUsersEndpoints
 
     /// <summary>
     /// Takes one permission from someone in this project; taking <see cref="Permission.ReadProject"/> takes every one of theirs, which takes them out of it, and ends their being inactive
-    /// there, so someone added again arrives active (redix-api #126). What would leave the project with nobody active managing its users answers <c>lastManager</c> (BR-29); a name that is
-    /// not a permission of a project, <c>invalidPermission</c>.
+    /// there, so someone added again arrives active (redix-api #126). Taken twice at the same moment, the second answers as the first (findings row 190). What would leave the project
+    /// with nobody active managing its users answers <c>lastManager</c> (BR-29); a name that is not a permission of a project, <c>invalidPermission</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">The person, who must be in this project.</param>
@@ -195,7 +195,7 @@ public static class ProjectUsersEndpoints
             await ProjectRoleName.NameAsync(projectId, userId, "", AccessTokens.UserIdOf(principal), now, db);
             await InactiveMember.EndAsync(projectId, userId, HistoryAction.RemoveProject, AccessTokens.UserIdOf(principal), now, db);
         }
-        await db.SaveChangesAsync();
+        await db.SaveOnceAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
@@ -253,7 +253,7 @@ public static class ProjectUsersEndpoints
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 
-    /// <summary>Takes one chosen partner from someone in this project (redix-api #106); not chosen changes nothing. A person not of this project is not found.</summary>
+    /// <summary>Takes one chosen partner from someone in this project (redix-api #106); not chosen changes nothing, at the same moment too (findings row 190). A person not of this project is not found.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">The person, who must be in this project.</param>
     /// <param name="partnerId">The partner.</param>
@@ -269,7 +269,7 @@ public static class ProjectUsersEndpoints
         }
 
         await CapitalSight.ClearAsync(projectId, userId, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db, partnerId);
-        await db.SaveChangesAsync();
+        await db.SaveOnceAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 

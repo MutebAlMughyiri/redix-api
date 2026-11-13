@@ -540,9 +540,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     }
 
     /// <summary>
-    /// Saves a tick someone may send twice at the same moment, a permission, a chosen partner, a role name or being inactive in a project: when a unique index refuses the
-    /// second because the first saved the same row, or the row the second removes is already gone because the first removed it (redix-api #126), the change is already made,
-    /// so it answers as saved (findings row 190). Any other refusal is thrown as before.
+    /// Saves a tick or an untick someone may send twice at the same moment, of a permission, a chosen partner, a role name or being inactive in a project: when a unique
+    /// index refuses the second because the first saved the same row, or the row the second removes is already gone because the first removed it (redix-api #126), the
+    /// change is already made, so it answers as saved (findings row 190). Any other refusal is thrown as before.
     /// </summary>
     public async Task SaveOnceAsync()
     {
