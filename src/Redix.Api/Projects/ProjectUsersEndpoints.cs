@@ -306,8 +306,8 @@ public static class ProjectUsersEndpoints
     }
 
     /// <summary>
-    /// Makes someone inactive in this project active there again (redix-api #126), with its History line: he holds what he held before. Active already changes nothing; a person not of
-    /// this project is not found.
+    /// Makes someone inactive in this project active there again (redix-api #126), with its History line: he holds what he held before. Active already changes nothing, at the
+    /// same moment too (findings row 190); a person not of this project is not found.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">The person, who must be in this project.</param>
@@ -323,7 +323,7 @@ public static class ProjectUsersEndpoints
         }
 
         await InactiveMember.EndAsync(projectId, userId, HistoryAction.Enable, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
-        await db.SaveChangesAsync();
+        await db.SaveOnceAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }
 

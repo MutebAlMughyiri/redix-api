@@ -540,8 +540,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     }
 
     /// <summary>
-    /// Saves a tick someone may send twice at the same moment, a permission, a chosen partner or a role name: when a unique index refuses the second because the first
-    /// saved the same row, the change is already made, so it answers as saved (findings row 190). Any other refusal is thrown as before.
+    /// Saves a tick someone may send twice at the same moment, a permission, a chosen partner, a role name or being inactive in a project: when a unique index refuses the
+    /// second because the first saved the same row, or the row the second removes is already gone because the first removed it (redix-api #126), the change is already made,
+    /// so it answers as saved (findings row 190). Any other refusal is thrown as before.
     /// </summary>
     public async Task SaveOnceAsync()
     {
@@ -550,6 +551,10 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             await SaveChangesAsync();
         }
         catch (DbUpdateException refused) when (refused.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            ChangeTracker.Clear();
+        }
+        catch (DbUpdateConcurrencyException refused) when (refused.Entries.All(entry => entry.State == EntityState.Deleted))
         {
             ChangeTracker.Clear();
         }
