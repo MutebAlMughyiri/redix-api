@@ -31,8 +31,8 @@ public class Notification
     /// <summary>The project it is about.</summary>
     public Guid ProjectId { get; init; }
 
-    /// <summary>The entry tapping it opens; empty when it is about the project itself.</summary>
-    public Guid EntryId { get; init; }
+    /// <summary>The entry tapping it opens, one row at most; none when it is about the project itself (findings row 214).</summary>
+    public List<NotificationEntry> Entries { get; init; } = [];
 
     /// <summary>What happened.</summary>
     public NotificationKind Kind { get; init; }

@@ -18,8 +18,9 @@ public static class ProjectStructure
         var outcome = project.Approve();
         if (outcome == ProjectChangeOutcome.Done)
         {
-            var defaults = await db.DefaultColumns.AsNoTracking().Where(column => column.ProjectId == project.StructureSource).ToListAsync();
-            var categories = await db.Categories.AsNoTracking().Where(category => category.ProjectId == project.StructureSource && category.IsActive)
+            var source = await ProjectStructureSource.OfAsync(project.Id, db);
+            var defaults = await db.DefaultColumns.AsNoTracking().Where(column => column.ProjectId == source).ToListAsync();
+            var categories = await db.Categories.AsNoTracking().Where(category => category.ProjectId == source && category.IsActive)
                 .Include(category => category.Items).ThenInclude(item => item.Subgroups)
                 .Include(category => category.Items).ThenInclude(item => item.Columns)
                 .AsSplitQuery().ToListAsync();

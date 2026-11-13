@@ -35,7 +35,7 @@ public static class PartnersEndpoints
     public static async Task<List<PartnerView>> List(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var sight = await PartnerSight.OfAsync(principal, projectId, db);
-        var partners = (await db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees).ToList();
+        var partners = (await db.Partners.Include(partner => partner.Users).Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).ToListAsync()).Where(sight.Sees).ToList();
         var userIds = partners.Select(partner => partner.UserId).ToList();
         var names = await db.Users.Where(user => userIds.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
         var userId = AccessTokens.UserIdOf(principal);
@@ -56,7 +56,8 @@ public static class PartnersEndpoints
 
     /// <summary>
     /// Deletes a partner softly (redix-api #100): they leave Partners, Add entry, the item's tables and the capital lines, and their movements stay in the entries, the reports and the History
-    /// table, which keeps the delete too. Only at zero capital with nothing waiting or rejected naming them, and no one else's draft (findings row 199), otherwise
+    /// table, which keeps the delete too; their login is theirs no more, so it may be another partner's (findings row 214). Only at zero capital with nothing waiting or rejected naming
+    /// them, and no one else's draft (findings row 199), otherwise
     /// <c>partnerNotDeletable</c>; the caller's own drafts naming them are deleted with them, as a delete of each entry is, so only by whoever also holds
     /// <see cref="Permission.DeleteEntries"/> (findings row 202). One deleted already is not found.
     /// </summary>
@@ -67,7 +68,7 @@ public static class PartnersEndpoints
     /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Delete(Guid projectId, Guid partnerId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var partner = await db.Partners.Where(Partner.Kept).SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
+        var partner = await db.Partners.Include(row => row.Users).Where(Partner.Kept).SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
         if (partner is null)
         {
             return Results.NotFound();
@@ -85,6 +86,7 @@ public static class PartnersEndpoints
             await EntryChanges.DeleteAsync(await db.Entries.SingleAsync(entry => entry.Id == draftId), userId, at, db);
         }
         partner.IsDeleted = true;
+        partner.LinkTo(Guid.Empty);
         db.AddHistory(partner, HistoryAction.Delete, userId, at);
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
@@ -140,9 +142,10 @@ public static class PartnersEndpoints
             {
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
             }
-            var partner = new Partner { ProjectId = projectId, UserId = request.UserId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
+            var partner = new Partner { ProjectId = projectId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
+            partner.LinkTo(request.UserId);
             db.Partners.Add(partner);
-            db.AddHistory(partner, HistoryAction.Create, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+            db.AddHistoryOfChanges(HistoryAction.Create, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
             await db.SaveChangesAsync();
             return Results.Ok();
         });
@@ -157,7 +160,7 @@ public static class PartnersEndpoints
     public static Task<IResult> Edit(Guid projectId, Guid partnerId, PartnerRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            var partner = await db.Partners.Where(Partner.Kept).SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
+            var partner = await db.Partners.Include(row => row.Users).Where(Partner.Kept).SingleOrDefaultAsync(row => row.Id == partnerId && row.ProjectId == projectId);
             if (partner is null)
             {
                 return Results.NotFound();
@@ -168,11 +171,8 @@ public static class PartnersEndpoints
                 return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
             }
             partner.Name = name;
-            partner.UserId = request.UserId;
-            if (db.Entry(partner).State == EntityState.Modified)
-            {
-                db.AddHistory(partner, HistoryAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
-            }
+            partner.LinkTo(request.UserId);
+            db.AddHistoryOfChanges(HistoryAction.Update, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
             await db.SaveChangesAsync();
             return Results.Ok();
         });
@@ -201,7 +201,7 @@ public static class PartnersEndpoints
             return "UnknownUser";
         }
         var partnerId = partner.Id;
-        return await db.Partners.Where(Partner.Kept).AnyAsync(other => other.ProjectId == projectId && other.UserId == userId && other.Id != partnerId) ? "UserTaken" : "";
+        return await db.PartnerUsers.AnyAsync(login => login.ProjectId == projectId && login.UserId == userId && login.PartnerId != partnerId) ? "UserTaken" : "";
     }
 }
 

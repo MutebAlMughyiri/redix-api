@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-A partner belongs to one project (BR-33), so someone who is a partner in two projects has two rows. `Partners.UserId` is the login whose capital this is, and `Guid.Empty` means a partner with no login, as هيثم who withdrew. An empty value cannot point at a row, so this column has no foreign key: the route checks that the login is in the project, and logins are never deleted. A filtered unique index holds one login to one partner in a project.
+A partner belongs to one project (BR-33), so someone who is a partner in two projects has two rows. A row of `PartnerUsers` is the login whose capital this is, and no row means a partner with no login, as هيثم who withdrew; the answer's `userId` is empty then. The row points at the login, so the database refuses one that names nobody (findings row 214), and a unique index holds one login to one partner in a project. A deleted partner's row goes with the delete, so the login may be another partner's.
 
 Who sees a partner is not this link: it is `PartnerSight`, from the two capital ticks and the partners chosen under the second (redix-api #106), so an accountant who sees the figures is never taken for a partner. Partners are not copied from an earlier project, because only the structure is (AC-05.2).
 
@@ -30,14 +30,17 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 
 | Table | Holds |
 | --- | --- |
-| `Partners` | Each project's partners, the login of each, and `IsDeleted` once deleted softly (redix-api #100) |
+| `Partners` | Each project's partners, and `IsDeleted` once deleted softly (redix-api #100) |
+| `PartnerUsers` | Each kept partner's own login, for those who have one (findings row 214) |
 
 ## Rules and where they live
 
 | Rule | Code | Test |
 | --- | --- | --- |
 | A partner is added by name, with no login | `PartnersEndpoints.Add` | `PartnersTests.FinanceAddsAPartnerByNameWithNoLogin` |
-| A partner is linked to their login (BR-31) | `Partner.UserId` | `PartnersTests.APartnerIsLinkedToTheirLogin` |
+| A partner is linked to their login (BR-31) | `Partner.LinkTo`, `Partner.UserId` | `PartnersTests.APartnerIsLinkedToTheirLogin` |
+| A partner's login is a row of its own, which taking it away removes, and the database refuses one naming nobody (findings row 214) | `Partner.LinkTo`, `PartnerUsers` | `PartnersTests.R214_APartnersLoginIsARowOfItsOwnThatTakingTheLoginAwayRemoves`, `R214_TheDatabaseRefusesAPartnersLoginNamingNoUser`, `FinanceAddsAPartnerByNameWithNoLogin` |
+| A deleted partner's login may be another partner's in the project | `PartnersEndpoints.Delete` | `PartnersTests.R214_ADeletedPartnersLoginMayBeAnotherPartnersInTheProject` |
 | Partners show in the order added | `PartnersEndpoints.List` | `PartnersTests.PartnersShowInTheOrderTheyWereAdded` |
 | An edit renames a partner and sets or takes away their login | `PartnersEndpoints.Edit` | `PartnersTests.AnEditRenamesAPartnerAndSetsTheirLogin`, `AnEditCanTakeALoginAway` |
 | A partner needs a name of 1 to 100 characters | `ProjectChanges.WithNameAsync` | `PartnersTests.APartnerNeedsANameOfAtMost100Characters` |
@@ -51,6 +54,7 @@ Who sees a partner is not this link: it is `PartnerSight`, from the two capital 
 | redix-api #109: a partner is a table of the capital item, last among its tables, and the tables are put in order like any item's | `PartnersEndpoints.Add`, `ProjectStructure.NextTablePlaceAsync`, `CategoriesEndpoints.ReorderTables` | `CategoriesTests.UC_109_APartnerIsATableOfTheCapitalItemLastAmongItsTables` |
 | redix-api #100: a partner at zero capital that nothing unapproved names is deleted softly: they leave Partners, Add entry, the item's tables and the capital lines, their movements stay in the entries, reports and History, and their account is free; one with capital or something waiting is not, and the list says which | `PartnersEndpoints.Delete`, `DeletableAsync`, `Partner.Kept` | `PartnerDeleteTests.UC_100_APartnerAtZeroCapitalIsDeletedSoftlyLeavingTheListsWhileTheirMovementsAndHistoryStayAndTheirAccountIsFree`, `UC_100_APartnerWithCapitalOrAMovementWaitingIsNotDeletedAndOneNeverUsedIs`, `UC_100_ADeletedPartnerCannotBeChosenForSomeone` |
 | redix-app #101: the partners' history lists partner actions and approved capital movements, one partner's or what I did, only partners the caller sees; adding and changing a partner write History rows; paging is `HistoryPage`, shared with the accounts' history | `PartnerHistory`, `HistoryPage` | `PartnerHistoryTests.UC_101_EachPartnerActionAndApprovedCapitalMovementIsALineNewestFirst`, `UC_101_OnePartnersLinesAndWhatICanBeKeptAlone`, `UC_101_BR_31_SomeoneWithChosenPartnersSeesOnlyTheirLinesAndSomeoneWithNeitherSeesNone` |
+| Findings row 214: a login given, changed or taken in an edit is a line of its own, read from `PartnerUsers`; the login given when a partner is added is part of the partner's added line, which names no login, as `PartnerHistoryLine.Login` says; rows written before keep reading as they did | `PartnerHistory.Read`, `PartnersEndpoints.Add`, `Edit` | `PartnerHistoryTests.R214_APartnerAddedWithALoginIsOneLineAndTakingTheLoginAwayIsALineWithNone`, `UC_101_EachPartnerActionAndApprovedCapitalMovementIsALineNewestFirst` |
 | Only Finance changes partners | `Permission.ManageSettings` | `PartnersTests.OnlyFinanceChangesPartners` |
 | One project's partners are never another's (BR-33) | `Partner.ProjectId`, `PartnersEndpoints` | `PartnersTests.OneProjectsPartnersAreNeverAnothers` |
 | A project copied from an earlier one starts with no partners (AC-05.2) | `ProjectStructure.ApproveAsync` copies only structure | `PartnersTests.ACopiedProjectStartsWithNoPartners` |

@@ -9,6 +9,7 @@ namespace Redix.Api.Partners;
 /// <summary>
 /// The history of a project's partners (redix-app #101), the accounts' history for partners: partners added, changed and deleted, and capital movements once approved or reversed,
 /// read from the History table by its project alone, newest first and a page at a time (<see cref="HistoryPage"/>). Only the partners the caller sees show (BR-31, <see cref="PartnerSight"/>).
+/// A login given, changed or taken in an edit is a row of <c>PartnerUsers</c> (findings row 214); before it, a row of <c>Partners</c> held it, and those rows read as they always did.
 /// </summary>
 public static class PartnerHistory
 {
@@ -43,7 +44,7 @@ public static class PartnerHistory
         var movements = db.CapitalMovementDetails
             .Where(details => shown.Contains(details.PartnerId) && db.Entries.Any(entry => entry.Id == details.EntryId && entry.Status != EntryStatus.Removed)).Select(details => details.EntryId);
         var rows = db.History.Where(row => row.ProjectId == projectId
-            && ((row.TableName == "Partners" && shown.Contains(row.RecordId))
+            && (((row.TableName == "Partners" || (row.TableName == "PartnerUsers" && row.Action == HistoryAction.Update)) && shown.Contains(row.RecordId))
                 || (row.TableName == "Entries" && (row.Action == HistoryAction.Approve || row.Action == HistoryAction.Reverse) && movements.Contains(row.RecordId))));
         return Results.Ok(await HistoryPage.LinesAsync(rows, userId, mine, before, text, page => LinesAsync(projectId, page, db)));
     }
@@ -55,12 +56,12 @@ public static class PartnerHistory
         var partnerOf = await db.CapitalMovementDetails.Where(details => ids.Contains(details.EntryId)).ToDictionaryAsync(details => details.EntryId, details => details.PartnerId);
         var partners = await db.Partners.Where(row => row.ProjectId == projectId).ToDictionaryAsync(row => row.Id, row => row.Name);
         var accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToDictionaryAsync(account => account.Id, account => account.Name);
-        var people = page.Select(row => row.UserId).Concat(page.Where(row => row.TableName == "Partners").Select(row => HistoryPage.IdIn(row.After, "UserId"))).Distinct().ToList();
+        var people = page.Select(row => row.UserId).Concat(page.Where(row => row.TableName != "Entries").Select(row => HistoryPage.IdIn(row.After, "UserId"))).Distinct().ToList();
         var names = await db.Users.Where(user => people.Contains(user.Id)).ToDictionaryAsync(user => user.Id, user => user.DisplayName);
         return page.Select(row =>
         {
             var line = new PartnerHistoryLine(row.Id, row.At, names.GetValueOrDefault(row.UserId, ""), PartnerHistoryKind.PartnerCreated, "", "", 0, "", "");
-            if (row.TableName == "Partners")
+            if (row.TableName != "Entries")
             {
                 return line with { Kind = KindOf(row), Partner = partners.GetValueOrDefault(row.RecordId, ""), NameWas = HistoryPage.TextIn(row.Before, "Name"), Login = names.GetValueOrDefault(HistoryPage.IdIn(row.After, "UserId"), "") };
             }
@@ -75,7 +76,7 @@ public static class PartnerHistory
         }).ToList();
     }
 
-    /// <summary>What a row of the Partners table says was done: added, deleted, renamed, or given or losing an account.</summary>
+    /// <summary>What a row of the Partners or PartnerUsers table says was done: added, deleted, renamed, or given or losing an account, which is all a PartnerUsers row says.</summary>
     private static PartnerHistoryKind KindOf(HistoryRecord row) => row.Action switch
     {
         HistoryAction.Create => PartnerHistoryKind.PartnerCreated,

@@ -29,7 +29,8 @@ public static class NotificationsEndpoints
         return await db.Notifications
             .Where(row => row.UserId == userId && db.ProjectPermissions.Any(held => held.UserId == userId && held.ProjectId == row.ProjectId))
             .OrderByDescending(row => row.At).ThenByDescending(row => row.Id).Take(Latest)
-            .Join(db.Projects, row => row.ProjectId, project => project.Id, (row, project) => new NotificationView(row.Id, row.Kind, row.ProjectId, project.Name, row.EntryId, row.At, row.IsRead))
+            .Join(db.Projects, row => row.ProjectId, project => project.Id,
+                (row, project) => new NotificationView(row.Id, row.Kind, row.ProjectId, project.Name, row.Entries.Select(link => link.EntryId).FirstOrDefault(), row.At, row.IsRead))
             .ToListAsync();
     }
 
@@ -54,7 +55,7 @@ public static class NotificationsEndpoints
     public static async Task TellDecidersAsync(Entry entry, Guid actorId, DateTime at, RedixDbContext db)
     {
         var deciders = await HoldersOfAsync(Permission.ApproveEntries, entry.ProjectId, db);
-        db.Notifications.AddRange(deciders.Where(userId => userId != actorId).Select(userId => new Notification { UserId = userId, ProjectId = entry.ProjectId, EntryId = entry.Id, Kind = NotificationKind.EntrySubmitted, At = at }));
+        db.Notifications.AddRange(deciders.Where(userId => userId != actorId).Select(userId => About(entry, userId, NotificationKind.EntrySubmitted, at)));
     }
 
     /// <summary>Tells who entered <paramref name="entry"/> that it was decided, unless they decided it themselves; saved with the change.</summary>
@@ -62,8 +63,16 @@ public static class NotificationsEndpoints
     {
         if (entry.CreatedByUserId != actorId)
         {
-            db.Notifications.Add(new Notification { UserId = entry.CreatedByUserId, ProjectId = entry.ProjectId, EntryId = entry.Id, Kind = kind, At = at });
+            db.Notifications.Add(About(entry, entry.CreatedByUserId, kind, at));
         }
+    }
+
+    /// <summary>What <paramref name="userId"/> is told about <paramref name="entry"/>, which tapping it opens (findings row 214).</summary>
+    private static Notification About(Entry entry, Guid userId, NotificationKind kind, DateTime at)
+    {
+        var told = new Notification { UserId = userId, ProjectId = entry.ProjectId, Kind = kind, At = at };
+        told.Entries.Add(new NotificationEntry { NotificationId = told.Id, EntryId = entry.Id });
+        return told;
     }
 
     /// <summary>Tells the managers of <paramref name="projectId"/> what the admin decided; saved with the change.</summary>

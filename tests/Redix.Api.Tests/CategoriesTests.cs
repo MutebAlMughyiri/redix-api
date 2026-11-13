@@ -77,6 +77,38 @@ public class CategoriesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R214_ARegistrationThatChoseAnEarlierProjectKeepsItInARowWithItsHistoryAndOneThatChoseTheTemplateKeepsNone()
+    {
+        var (_, client, earlier) = await FinanceAsync();
+
+        var copied = await RegisterAsync(client, earlier.Id);
+        var templated = await RegisterAsync(client, Guid.Empty);
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            Assert.Equal(earlier.Id, (await db.ProjectStructureSources.SingleAsync(row => row.ProjectId == copied.Id)).StructureSourceId);
+            Assert.False(await db.ProjectStructureSources.AnyAsync(row => row.ProjectId == templated.Id));
+        });
+        Assert.Contains(await factory.HistoryOfAsync(copied.Id), row => row.TableName == "ProjectStructureSources" && row.Action == HistoryAction.RegisterProject);
+    }
+
+    [Fact]
+    public async Task R214_TheDatabaseRefusesAStructureSourceNamingNoProject()
+    {
+        var (_, client, _) = await FinanceAsync();
+        var registered = await RegisterAsync(client, Guid.Empty);
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            db.ProjectStructureSources.Add(new ProjectStructureSource { ProjectId = registered.Id, StructureSourceId = Guid.CreateVersion7() });
+
+            var refused = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+            Assert.Contains("FK_ProjectStructureSources_Projects_StructureSourceId", refused.InnerException!.Message);
+        });
+    }
+
+    [Fact]
     public async Task ASubgroupRevenueIsKeptOnIsNotRemoved()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

@@ -1520,9 +1520,6 @@ namespace Redix.Api.Migrations
                     b.Property<DateTime>("At")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("EntryId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
@@ -1550,6 +1547,27 @@ namespace Redix.Api.Migrations
                     b.HasIndex("UserId", "At");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("Redix.Api.Notifications.NotificationEntry", b =>
+                {
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("EntryId");
+
+                    b.ToTable("NotificationEntries");
                 });
 
             modelBuilder.Entity("Redix.Api.Partners.CapitalMovementDetails", b =>
@@ -1638,16 +1656,38 @@ namespace Redix.Api.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("Partners");
+                });
+
+            modelBuilder.Entity("Redix.Api.Partners.PartnerUser", b =>
+                {
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("Id");
+                    b.HasKey("PartnerId");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("ProjectId", "UserId")
-                        .IsUnique()
-                        .HasFilter("[UserId] <> '00000000-0000-0000-0000-000000000000' AND [IsDeleted] = 0");
+                        .IsUnique();
 
-                    b.ToTable("Partners");
+                    b.ToTable("PartnerUsers");
                 });
 
             modelBuilder.Entity("Redix.Api.Projects.InactiveMember", b =>
@@ -1712,9 +1752,6 @@ namespace Redix.Api.Migrations
                     b.Property<byte>("Status")
                         .HasColumnType("tinyint");
 
-                    b.Property<Guid>("StructureSourceId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Status");
@@ -1730,8 +1767,7 @@ namespace Redix.Api.Migrations
                             Name = "القالب الافتراضي",
                             RejectionReason = "",
                             StartDate = new DateOnly(1900, 1, 1),
-                            Status = (byte)0,
-                            StructureSourceId = new Guid("00000000-0000-0000-0000-000000000000")
+                            Status = (byte)0
                         });
                 });
 
@@ -3056,6 +3092,27 @@ namespace Redix.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("ItemColumns");
+                });
+
+            modelBuilder.Entity("Redix.Api.Structure.ProjectStructureSource", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("StructureSourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ProjectId");
+
+                    b.HasIndex("StructureSourceId");
+
+                    b.ToTable("ProjectStructureSources");
                 });
 
             modelBuilder.Entity("Redix.Api.Structure.Subgroup", b =>
@@ -19868,6 +19925,21 @@ namespace Redix.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Redix.Api.Notifications.NotificationEntry", b =>
+                {
+                    b.HasOne("Redix.Api.Entries.Entry", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Notifications.Notification", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Redix.Api.Partners.CapitalMovementDetails", b =>
                 {
                     b.HasOne("Redix.Api.Entries.Entry", null)
@@ -19915,6 +19987,27 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Partners.PartnerUser", b =>
+                {
+                    b.HasOne("Redix.Api.Partners.Partner", null)
+                        .WithMany("Users")
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -20102,6 +20195,21 @@ namespace Redix.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Redix.Api.Structure.ProjectStructureSource", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("StructureSourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Redix.Api.Structure.Subgroup", b =>
                 {
                     b.HasOne("Redix.Api.Structure.Item", null)
@@ -20164,6 +20272,16 @@ namespace Redix.Api.Migrations
             modelBuilder.Entity("Redix.Api.Accounts.Reconciliation", b =>
                 {
                     b.Navigation("Balances");
+                });
+
+            modelBuilder.Entity("Redix.Api.Notifications.Notification", b =>
+                {
+                    b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
+                {
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("Redix.Api.Projects.Project", b =>

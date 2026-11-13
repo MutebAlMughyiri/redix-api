@@ -1,5 +1,3 @@
-using Redix.Api.Structure;
-
 namespace Redix.Api.Projects;
 
 /// <summary>
@@ -37,12 +35,6 @@ public class Project
 
     /// <summary>True for the default template: a project nobody is a member of, whose structure a new project copies (FR-05).</summary>
     public bool IsTemplate { get; init; }
-
-    /// <summary>The earlier project its registration chose to copy the structure from when it is approved; <see cref="Guid.Empty"/> for the default template.</summary>
-    public Guid StructureSourceId { get; set; }
-
-    /// <summary>The project its structure is copied from when it is approved.</summary>
-    public Guid StructureSource => StructureSourceId == Guid.Empty ? StructureSeed.TemplateId : StructureSourceId;
 
     /// <summary>The project's units, in the order they were added.</summary>
     public List<Unit> Units { get; } = [];

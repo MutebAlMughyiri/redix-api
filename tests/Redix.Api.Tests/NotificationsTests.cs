@@ -210,4 +210,41 @@ public class NotificationsTests(MigratedApiFactory factory)
             Assert.Contains("FK_Notifications_Projects_ProjectId", refused.InnerException!.Message);
         });
     }
+
+    [Fact]
+    public async Task R214_ANotificationAboutAnEntryNamesItInARowOfItsOwnAndOneAboutTheProjectHasNone()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (_, request) = await FieldSendsAsync(ledger);
+        var admin = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(ManagerPassword, isAdmin: true), ManagerPassword);
+        var registered = await RegisteredAsync();
+        (await admin.PostAsync($"/projects/{registered.ProjectId}/approve", null)).EnsureSuccessStatusCode();
+
+        var aboutEntry = Assert.Single((await MineAsync(ledger.Client))!);
+        var aboutProject = Assert.Single((await MineAsync(registered.Client))!);
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            Assert.Equal(request.Id, (await db.NotificationEntries.SingleAsync(row => row.NotificationId == aboutEntry.Id)).EntryId);
+            Assert.False(await db.NotificationEntries.AnyAsync(row => row.NotificationId == aboutProject.Id));
+        });
+    }
+
+    [Fact]
+    public async Task R214_TheDatabaseRefusesANotificationNamingAnEntryThatIsNot()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var user = await factory.AddUserAsync(ManagerPassword);
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            var told = new Notification { UserId = user.Id, ProjectId = ledger.ProjectId, Kind = NotificationKind.EntryApproved };
+            told.Entries.Add(new NotificationEntry { NotificationId = told.Id, EntryId = Guid.CreateVersion7() });
+            db.Notifications.Add(told);
+
+            var refused = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+            Assert.Contains("FK_NotificationEntries_Entries_EntryId", refused.InnerException!.Message);
+        });
+    }
 }

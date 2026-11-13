@@ -52,6 +52,19 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R214_APartnerAddedWithALoginIsOneLineAndTakingTheLoginAwayIsALineWithNone()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (_, memberId) = await ledger.MemberAsync("Reader");
+        var khaled = await PartnerAsync(ledger, "خالد", memberId);
+
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/partners/{khaled}", new PartnerRequest("خالد"), Json)).EnsureSuccessStatusCode();
+
+        var lines = await HistoryAsync(ledger.Client, ledger);
+        Assert.Equal([(PartnerHistoryKind.PartnerAccount, ""), (PartnerHistoryKind.PartnerCreated, "")], lines.Select(line => (line.Kind, line.Login)));
+    }
+
+    [Fact]
     public async Task R104_WhatWasTypedKeepsTheLinesWhosePartnerOrAmountHoldItWhicheverWayArabicIsSpelled()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

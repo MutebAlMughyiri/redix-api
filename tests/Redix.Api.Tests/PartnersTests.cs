@@ -95,7 +95,50 @@ public class PartnersTests(MigratedApiFactory factory)
 
         Assert.Equal("", partner.UserId);
         Assert.Equal("", partner.UserName);
-        await factory.WithDatabaseAsync(async db => Assert.Equal(Guid.Empty, (await db.Partners.SingleAsync(row => row.Id == partner.Id)).UserId));
+        await factory.WithDatabaseAsync(async db => Assert.False(await db.PartnerUsers.AnyAsync(row => row.PartnerId == partner.Id)));
+    }
+
+    [Fact]
+    public async Task R214_APartnersLoginIsARowOfItsOwnThatTakingTheLoginAwayRemoves()
+    {
+        var (client, project) = await FinanceAsync();
+        var (nawaf, _) = await MemberAsync(project, Field);
+        var partner = await AddAsync(client, project.Id, "نواف", nawaf.Id);
+        await factory.WithDatabaseAsync(async db => Assert.Equal(nawaf.Id, (await db.PartnerUsers.SingleAsync(row => row.PartnerId == partner.Id)).UserId));
+
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{partner.Id}", new PartnerRequest("نواف"), Json)).EnsureSuccessStatusCode();
+
+        await factory.WithDatabaseAsync(async db => Assert.False(await db.PartnerUsers.AnyAsync(row => row.PartnerId == partner.Id)));
+    }
+
+    [Fact]
+    public async Task R214_TheDatabaseRefusesAPartnersLoginNamingNoUser()
+    {
+        var (client, project) = await FinanceAsync();
+        var partner = await AddAsync(client, project.Id, "هيثم");
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            db.PartnerUsers.Add(new PartnerUser { PartnerId = partner.Id, ProjectId = project.Id, UserId = Guid.CreateVersion7() });
+
+            var refused = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+            Assert.Contains("FK_PartnerUsers_Users_UserId", refused.InnerException!.Message);
+        });
+    }
+
+    [Fact]
+    public async Task R214_ADeletedPartnersLoginMayBeAnotherPartnersInTheProject()
+    {
+        var (client, project) = await FinanceAsync();
+        var (nawaf, _) = await MemberAsync(project, Field);
+        var deleted = await AddAsync(client, project.Id, "نواف", nawaf.Id);
+        (await client.DeleteAsync($"/projects/{project.Id}/partners/{deleted.Id}")).EnsureSuccessStatusCode();
+
+        var again = await AddAsync(client, project.Id, "نواف بن محمد", nawaf.Id);
+
+        Assert.Equal(nawaf.Id.ToString(), again.UserId);
+        await factory.WithDatabaseAsync(async db => Assert.False(await db.PartnerUsers.AnyAsync(row => row.PartnerId == deleted.Id)));
     }
 
     [Fact]
@@ -209,12 +252,12 @@ public class PartnersTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var (nawaf, _) = await MemberAsync(project, Field);
         await AddAsync(client, project.Id, "نواف", nawaf.Id);
-        await AddAsync(client, project.Id, "هيثم");
+        var haitham = await AddAsync(client, project.Id, "هيثم");
         await AddAsync(client, project.Id, "محمد");
 
         await factory.WithDatabaseAsync(async db =>
         {
-            db.Partners.Add(new Partner { ProjectId = project.Id, UserId = nawaf.Id, Name = "نواف الثاني" });
+            db.PartnerUsers.Add(new PartnerUser { PartnerId = haitham.Id, ProjectId = project.Id, UserId = nawaf.Id });
             await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         });
     }

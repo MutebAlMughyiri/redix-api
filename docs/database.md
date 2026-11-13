@@ -2,21 +2,21 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `NotificationProjectKey` (13 Nov 2026, findings row 213). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `LinkTablesForOptionalIds` (13 Nov 2026, findings row 214). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
 | Rule | In the database |
 | --- | --- |
 | Every table has a required `RowVersion` | `rowversion not null`, for sync and concurrency; it is left out of the tables below |
-| No column is NULL | An optional value is an empty value of its own type: `''`, `0`, `00000000-0000-0000-0000-000000000000` (none), or `1900-01-01` for a moment that has not happened |
+| No column is NULL | An optional value is an empty value of its own type: `''`, `0`, `00000000-0000-0000-0000-000000000000` (none), or `1900-01-01` for a moment that has not happened; an optional id that names a row is a row in a link table, so it has its foreign key: `PartnerUsers`, `NotificationEntries`, `ProjectStructureSources` (findings row 214) |
 | Ids are GUIDs made in code | `uniqueidentifier`, time-ordered (`Guid.CreateVersion7`), never made by the database; `History.Id` and `EntryDecisions.Id` are `bigint identity`, numbered in the order rows are written, and a lookup table's `Id` is its enum's number |
 | Money | `decimal(19,4)`, rounded only in totals (BR-13) |
 | Free JSON | `json`: a column's options, an entry's custom values, a report's snapshot, a History row's before and after |
 | An enum column points at its lookup table | It stores the member's number, `tinyint`, with a foreign key to `LK_{enum}.Id`; `History.Action` stores the name, `varchar(30)`, with its foreign key to `LK_HistoryAction.Name`, so no History row changed; the two permission columns store names held by a check constraint until redix-api #120 |
-| A foreign key never deletes for you | `NO ACTION` (EF Core's `Restrict`), except where a row only exists inside its owner: an account's custodian, a phone, a reconciliation's balances, a supplier's default item, a word's translations and a project's units cascade |
+| A foreign key never deletes for you | `NO ACTION` (EF Core's `Restrict`), except where a row only exists inside its owner: an account's custodian, a partner's login, a notification's entry, a phone, a reconciliation's balances, a supplier's default item, a word's translations and a project's units cascade |
 
-43 tables hold the business, 12 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
+46 tables hold the business, 12 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
 
 ## Lookup tables
 
@@ -228,6 +228,8 @@ erDiagram
     Users ||--o{ UserDefaultProjects : "UserId"
     Projects ||--o{ InactiveMembers : "ProjectId"
     Users ||--o{ InactiveMembers : "UserId"
+    Projects ||--o| ProjectStructureSources : "ProjectId"
+    Projects ||--o{ ProjectStructureSources : "StructureSourceId"
 ```
 
 ### Users
@@ -292,7 +294,6 @@ The real-estate development projects; one row, `IsTemplate`, is the default temp
 | Status | tinyint | not null | FK | `LK_ProjectStatus.Id`: 0 Active, 1 Finished, 2 PendingApproval, 3 Rejected |
 | RejectionReason | nvarchar(500) | not null |  |  |
 | IsTemplate | bit | not null |  |  |
-| StructureSourceId | uniqueidentifier | not null |  | no foreign key: the earlier project whose structure an approval copies; empty for the default template |
 | Description | nvarchar(2000) | not null |  |  |
 
 Unique: the key only.
@@ -373,6 +374,19 @@ Who is inactive in which project (redix-api #126): a row means the person keeps 
 Unique: `ProjectId, UserId`.
 
 Other indexes: `UserId`.
+
+### ProjectStructureSources
+
+The earlier project each registration chose to copy the structure from when it is approved (UC-012, findings row 214); no row copies the default template.
+
+| Column | SQL type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| ProjectId | uniqueidentifier | not null | PK FK | `Projects.Id` |
+| StructureSourceId | uniqueidentifier | not null | FK | `Projects.Id` |
+
+Unique: the key only.
+
+Other indexes: `StructureSourceId`.
 
 ## Structure and settings
 
@@ -813,6 +827,9 @@ erDiagram
     Accounts ||--o{ ReconciliationBalance : "AccountId"
     Reconciliations ||--o{ ReconciliationBalance : "ReconciliationId"
     Projects ||--o{ Partners : "ProjectId"
+    Partners ||--o| PartnerUsers : "PartnerId"
+    Projects ||--o{ PartnerUsers : "ProjectId"
+    Users ||--o{ PartnerUsers : "UserId"
     Partners ||--o{ ChosenPartners : "PartnerId"
     Projects ||--o{ ChosenPartners : "ProjectId"
     Users ||--o{ ChosenPartners : "UserId"
@@ -908,13 +925,26 @@ The partners of each project (UC-016); each is a table of the project's capital 
 | --- | --- | --- | --- | --- |
 | Id | uniqueidentifier | not null | PK |  |
 | ProjectId | uniqueidentifier | not null | FK | `Projects.Id` |
-| UserId | uniqueidentifier | not null |  | no foreign key: the partner's own login (`Users.Id`); empty for a partner with no login |
 | Name | nvarchar(100) | not null |  |  |
 | ItemId | uniqueidentifier | not null |  | no foreign key: the project's capital item (`Items.Id`), whose table the partner is; empty for a partner declared with a project until it is approved and has a structure (redix-api #109), so findings row 213's key cannot hold it yet |
 | SortOrder | int | not null |  |  |
 | IsDeleted | bit | not null |  |  |
 
-Unique: `ProjectId, UserId where ([UserId]<>'00000000-0000-0000-0000-000000000000' AND [IsDeleted]=(0))`.
+Unique: the key only.
+
+### PartnerUsers
+
+Each partner's own login, for those who have one (findings row 214): whose account the partner is. A deleted partner keeps none, so a login is one kept partner's in a project.
+
+| Column | SQL type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| PartnerId | uniqueidentifier | not null | PK FK | `Partners.Id` (cascade delete) |
+| ProjectId | uniqueidentifier | not null | FK | `Projects.Id` |
+| UserId | uniqueidentifier | not null | FK | `Users.Id` |
+
+Unique: `ProjectId, UserId`.
+
+Other indexes: `UserId`.
 
 ### ChosenPartners
 
@@ -942,6 +972,8 @@ erDiagram
     Users ||--o{ History : "UserId"
     Users ||--o{ Notifications : "UserId"
     Projects ||--o{ Notifications : "ProjectId"
+    Notifications ||--o| NotificationEntries : "NotificationId"
+    Entries ||--o{ NotificationEntries : "EntryId"
 ```
 
 ### PeriodicReports
@@ -993,7 +1025,6 @@ What each person was told about an entry or a project (UC-036).
 | Id | uniqueidentifier | not null | PK |  |
 | UserId | uniqueidentifier | not null | FK | `Users.Id` |
 | ProjectId | uniqueidentifier | not null | FK | `Projects.Id`: the project it is about (findings row 213) |
-| EntryId | uniqueidentifier | not null |  | no foreign key: the entry tapping it opens; empty when it is about the project itself |
 | Kind | tinyint | not null | FK | `LK_NotificationKind.Id`: 0 EntrySubmitted, 1 EntryApproved, 2 EntryRejected, 3 ProjectApproved, 4 ProjectRejected |
 | At | datetime2(7) | not null |  |  |
 | IsRead | bit | not null |  |  |
@@ -1001,6 +1032,19 @@ What each person was told about an entry or a project (UC-036).
 Unique: the key only.
 
 Other indexes: `Kind`; `ProjectId`; `UserId, At`.
+
+### NotificationEntries
+
+The entry each notification about one opens (findings row 214); a notification about the project itself has no row.
+
+| Column | SQL type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| NotificationId | uniqueidentifier | not null | PK FK | `Notifications.Id` (cascade delete) |
+| EntryId | uniqueidentifier | not null | FK | `Entries.Id` |
+
+Unique: the key only.
+
+Other indexes: `EntryId`.
 
 ## Words and configuration
 

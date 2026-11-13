@@ -67,7 +67,7 @@ public static class EntryChanges
     {
         await RemoveDetailsAsync(entry.Id, userId, at, db);
         db.EntryDecisions.RemoveRange(await db.EntryDecisions.Where(row => row.EntryId == entry.Id).ToListAsync());
-        db.Notifications.RemoveRange(await db.Notifications.Where(row => row.EntryId == entry.Id).ToListAsync());
+        db.Notifications.RemoveRange(await db.Notifications.Include(row => row.Entries).Where(row => row.Entries.Any(link => link.EntryId == entry.Id)).ToListAsync());
         db.AddHistory(entry, HistoryAction.Delete, userId, at);
         db.Entries.Remove(entry);
         await db.SaveChangesAsync();

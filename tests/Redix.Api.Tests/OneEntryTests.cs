@@ -34,7 +34,7 @@ public class OneEntryTests(MigratedApiFactory factory)
 
         Assert.Equal((EntryStatus.Draft, EntryStatus.Draft), ((await EntryAsync(ledger, contribution.Id)).Status, (await EntryAsync(ledger, revenue.Id)).Status));
         Assert.Empty(await ledger.ReadAsync(db => db.EntryDecisions.Where(row => row.EntryId == contribution.Id || row.EntryId == revenue.Id).ToListAsync()));
-        Assert.Empty(await ledger.ReadAsync(db => db.Notifications.Where(row => row.EntryId == contribution.Id || row.EntryId == revenue.Id).ToListAsync()));
+        Assert.Empty(await ledger.ReadAsync(db => db.NotificationEntries.Where(row => row.EntryId == contribution.Id || row.EntryId == revenue.Id).ToListAsync()));
     }
 
     [Fact]

@@ -50,6 +50,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The project each user chose to land on (FR-37).</summary>
     public DbSet<UserDefaultProject> UserDefaultProjects => Set<UserDefaultProject>();
 
+    /// <summary>The earlier project each registration chose to copy the structure from, for those that chose one (UC-012, findings row 214).</summary>
+    public DbSet<ProjectStructureSource> ProjectStructureSources => Set<ProjectStructureSource>();
+
     /// <summary>What each person is called in each project (Muteb, 9 Nov 2026).</summary>
     public DbSet<ProjectRoleName> ProjectRoleNames => Set<ProjectRoleName>();
 
@@ -85,6 +88,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>The partners of each project (UC-016).</summary>
     public DbSet<Partner> Partners => Set<Partner>();
+
+    /// <summary>Each partner's own login, for those who have one (findings row 214).</summary>
+    public DbSet<PartnerUser> PartnerUsers => Set<PartnerUser>();
 
     /// <summary>Which partners each person sees in each project, beside seeing them all (BR-31, redix-api #106).</summary>
     public DbSet<ChosenPartner> ChosenPartners => Set<ChosenPartner>();
@@ -130,6 +136,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
 
     /// <summary>What each person was told about an entry.</summary>
     public DbSet<Notification> Notifications => Set<Notification>();
+
+    /// <summary>The entry each notification about one opens (findings row 214).</summary>
+    public DbSet<NotificationEntry> NotificationEntries => Set<NotificationEntry>();
 
     /// <summary>Each entry's steps through approval.</summary>
     public DbSet<EntryDecision> EntryDecisions => Set<EntryDecision>();
@@ -207,6 +216,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             project.HasMany(p => p.Units).WithOne().HasForeignKey(u => u.ProjectId);
             project.HasData(StructureSeed.Template);
         });
+        modelBuilder.Entity<ProjectStructureSource>(source =>
+        {
+            source.HasKey(s => s.ProjectId);
+            source.HasOne<Project>().WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            source.HasOne<Project>().WithMany().HasForeignKey(s => s.StructureSourceId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<Unit>(unit =>
         {
             unit.ToTable("Units");
@@ -280,8 +295,15 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<Partner>(partner =>
         {
             partner.Property(p => p.Name).HasMaxLength(Project.NameMaxLength);
-            partner.HasIndex(p => new { p.ProjectId, p.UserId }).IsUnique().HasFilter($"[UserId] <> '{Guid.Empty}' AND [IsDeleted] = 0");
             partner.HasOne<Project>().WithMany().HasForeignKey(p => p.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            partner.HasMany(p => p.Users).WithOne().HasForeignKey(login => login.PartnerId);
+        });
+        modelBuilder.Entity<PartnerUser>(login =>
+        {
+            login.HasKey(l => l.PartnerId);
+            login.HasIndex(l => new { l.ProjectId, l.UserId }).IsUnique();
+            login.HasOne<Project>().WithMany().HasForeignKey(l => l.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            login.HasOne<User>().WithMany().HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ChosenPartner>(chosen =>
         {
@@ -417,6 +439,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             notification.HasIndex(n => new { n.UserId, n.At });
             notification.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);
             notification.HasOne<Project>().WithMany().HasForeignKey(n => n.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            notification.HasMany(n => n.Entries).WithOne().HasForeignKey(link => link.NotificationId);
+        });
+        modelBuilder.Entity<NotificationEntry>(link =>
+        {
+            link.HasKey(l => l.NotificationId);
+            link.HasOne<Entry>().WithMany().HasForeignKey(l => l.EntryId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<EntryDecision>(decision =>
         {

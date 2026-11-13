@@ -75,8 +75,14 @@ public static class ProjectsEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownSource");
         }
 
-        project.StructureSourceId = request.StructureSourceId;
-        AddWithManager(project, userId, db, time.GetUtcNow().UtcDateTime);
+        var now = time.GetUtcNow().UtcDateTime;
+        AddWithManager(project, userId, db, now);
+        if (request.StructureSourceId != Guid.Empty)
+        {
+            var source = new ProjectStructureSource { ProjectId = project.Id, StructureSourceId = request.StructureSourceId };
+            db.ProjectStructureSources.Add(source);
+            db.AddHistory(source, HistoryAction.RegisterProject, userId, now);
+        }
         db.Partners.AddRange(partners);
         await db.SaveChangesAsync();
         return Results.Created($"/projects/{project.Id}", await ViewOfAsync(project, userId, db));

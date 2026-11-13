@@ -10,7 +10,7 @@
 
 The default template is a project (`Projects.IsTemplate`) that nobody is a member of, seeded from BRS section 3. Copying from it and copying from an earlier project are therefore one copy.
 
-A project's structure is copied **when the admin approves it** (`ProjectStructure.ApproveAsync`), never before. Registering from the sign-in page always takes the template; someone signed in may name an earlier project they can read (`CreateProjectRequest.StructureSourceId`, kept in `Projects.StructureSourceId`). Only active categories and active items are copied, with their subgroups; never entries, contracts or balances (AC-05.2).
+A project's structure is copied **when the admin approves it** (`ProjectStructure.ApproveAsync`), never before. Registering from the sign-in page always takes the template; someone signed in may name an earlier project they can read (`CreateProjectRequest.StructureSourceId`, kept as a row of `ProjectStructureSources`, findings row 214). Only active categories and active items are copied, with their subgroups; never entries, contracts or balances (AC-05.2).
 
 ## Endpoints
 
@@ -46,7 +46,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | `Subgroups` | An item's groups, a general one named `''` in each, so an entry always has a subgroup and reports never special-case it; its place among the item's tables |
 | `Contracts.SortOrder` | A contract's place among its item's tables, in the same order as the item's subgroups (migration `ContractTableOrder`: after the subgroups, in the order the contracts were added) |
 | `Projects.IsTemplate` | The default template |
-| `Projects.StructureSourceId` | The earlier project to copy from on approval; `Guid.Empty` for the template |
+| `ProjectStructureSources` | The earlier project to copy from on approval; no row for the template (findings row 214) |
 
 ## Rules and where they live
 
@@ -59,6 +59,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | BR-31, redix-api #109: رأس المال's tables show every partner to whoever sees all capital, their own to a partner, none to anyone else | `CategoriesEndpoints.Tables`, `PartnerSight` | `CategoriesTests.BR_31_UC_109_RasAlMalsTablesShowEveryPartnerToWhoeverSeesAllCapitalTheirOwnToAPartnerAndNoneToAnyoneElse` |
 | redix-api #109: revenue goes into every revenue item but رأس المال, and a capital item is offered only for a partner | `Item.IsOfferedFor` | `CategoriesTests.UC_109_RevenueGoesIntoEveryRevenueItemButRasAlMalAndAPartnerIntoNothingElse` |
 | The template holds the categories and items of BRS section 3 | `StructureSeed` | `CategoriesTests.TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
+| An earlier project chosen at registration is a row of its own, with its History line; choosing the template keeps none, and the database refuses a source naming no project (findings row 214) | `ProjectsEndpoints.Create`, `ProjectStructureSource.OfAsync` | `CategoriesTests.R214_ARegistrationThatChoseAnEarlierProjectKeepsItInARowWithItsHistoryAndOneThatChoseTheTemplateKeepsNone`, `R214_TheDatabaseRefusesAStructureSourceNamingNoProject` |
 | The category تكلفة الأراضي holds one item, تكلفة الأرض, of both types, because an entry needs an item (BRS section 3 lists it empty) | `StructureSeed` | `CategoriesTests.LandCostCanBeRecordedBecauseItsCategoryHoldsOneItemOfBothTypes` |
 | A subgroup no entry uses is removed, and one added later still goes last; the general one is never removed | `CategoriesEndpoints.DeleteSubgroup`, `AddSubgroup` | `CategoriesTests.ASubgroupNoEntryUsesIsRemoved`, `ASubgroupAddedAfterARemovalStillGoesLast`, `ASubgroupAnEntryUsesIsNotRemoved`, `TheGeneralSubgroupIsNeverRemoved` |
 | An item's tables, its general one, its subgroups and its contracts, reorder as one list, which is the order of its sheet; a new subgroup or contract goes last (AC-46.8) | `CategoriesEndpoints.ReorderTables`, `Tables`, `ProjectStructure.NextTablePlaceAsync` | `CategoriesTests.AC_46_8_AnItemsTablesAreReorderedAsOneListTheGeneralOneToo`, `AC_46_8_AnItemListsItsGeneralTableEachSubgroupAndEachContractWithTheirEntriesAndANewTableGoesLast`, `AnOrderOfTablesNamesEveryTableExactlyOnce`, `OneProjectsRoutesNeverReachAnothersSubgroups` |
