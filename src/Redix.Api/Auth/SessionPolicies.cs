@@ -17,8 +17,8 @@ public static class SessionPolicies
         .Build();
 
     /// <summary>
-    /// Fails the request's sign-in unless the access token's device is still open and its user still active, so a revoked device or a
-    /// disabled user (AC-01.3) is refused at the next request instead of when the 15-minute token expires.
+    /// Fails the request's sign-in unless the access token's device is still open, so a revoked device is refused at the next request instead of when the 15-minute token expires.
+    /// Someone inactive in a project keeps his session: that project's routes refuse him through <see cref="UserAccess"/> (redix-api #126).
     /// </summary>
     public static async Task CheckSessionIsOpen(TokenValidatedContext context)
     {
@@ -26,8 +26,7 @@ public static class SessionPolicies
         var userId = AccessTokens.UserIdOf(principal);
         var deviceId = AccessTokens.DeviceIdOf(principal);
         var db = context.HttpContext.RequestServices.GetRequiredService<RedixDbContext>();
-        var isOpen = await db.Devices.AnyAsync(device => device.Id == deviceId && device.UserId == userId && !device.IsRevoked
-            && db.Users.Any(user => user.Id == userId && user.IsActive));
+        var isOpen = await db.Devices.AnyAsync(device => device.Id == deviceId && device.UserId == userId && !device.IsRevoked);
         if (!isOpen)
         {
             context.Fail("The session has ended.");

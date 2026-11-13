@@ -12,15 +12,15 @@ All need `ManageUsers` in the project, and answer `403` to anyone else.
 
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
-| `GET /projects/{projectId}/users` | This project's people, active users first, by name, with only what they hold in this project | `200` the users |
+| `GET /projects/{projectId}/users` | This project's people, those active there first (redix-api #126), by name, with only what they hold in this project | `200` the users |
 | `POST /projects/{projectId}/users` | Creates a login in this project holding `ReadProject` and the `permissions` ticked | `201` the user; `400` `invalidName`, `invalidUsername`, `invalidMobile`, `weakPassword` or `invalidPermission`; `409` `usernameTaken` |
 | `POST /projects/{projectId}/users/existing` with `{ username }` | Adds someone who already has a login, holding `ReadProject` | `200` the user; `404` `unknownUser` |
 | `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | Ticks one permission | `200` the user; `400` `invalidPermission`; `404` |
 | `DELETE /projects/{projectId}/users/{userId}/permissions/{permission}` | Unticks one; `readProject` takes them out of the project | `200` the user; `409` `lastManager`; `404` |
 | `PUT /projects/{projectId}/users/{userId}/role-name` with `{ roleName }` | Names what the person is called in this project, free text shown under the project's name on their home; empty clears it, and taking them out of the project clears it too (Muteb, 9 Nov 2026) | `200` the user; `400` `invalidRoleName` past 50 characters; `404` someone not in the project |
-| `GET /projects` | Open to every session: the projects they hold `ReadProject` in, each with `permissions` | `200` the projects |
+| `GET /projects` | Open to every session: the projects they hold `ReadProject` in, each with `permissions`, and those they are inactive in with `isInactive` true and no permissions (redix-api #126) | `200` the projects |
 
-A user's answer has `projects: [{ projectId, name, permissions }]`, one line per project.
+A user's answer has `projects: [{ projectId, permissions, roleName, partnerIds, isInactive }]`, one line per project. Making a person inactive in the project and active again is UC-007.
 
 ## Rules and where they live
 
@@ -34,7 +34,8 @@ A user's answer has `projects: [{ projectId, name, permissions }]`, one line per
 | A tick gives one permission, once; unticking takes it | The unique index, `ProjectUsersEndpoints.Give`, `Take` | `ProjectUsersTests.TickingGivesOnePermissionAndUntickingTakesOne` |
 | Unticking `ReadProject` takes them out of the project | `ProjectUsersEndpoints.Take` | `ProjectUsersTests.UntickingSeeTheProjectTakesThemOutOfTheProject` |
 | The admin's permission, or an unknown name, is refused | `ProjectPermission.TryOf` | `ProjectUsersTests.TheAdminsPermissionOrAnUnknownNameIsRefused` |
-| A project keeps at least one active person managing its users (BR-29) | `ProjectManagers` | `ProjectUsersTests.TheLastWhoManagesUsersCannotLoseIt`, `WithASecondManagerTheFirstCanLeave`, `ADisabledManagerDoesNotCountAsTheOneWhoStays` |
+| A project keeps at least one active person managing its users (BR-29); someone inactive there does not count (redix-api #126) | `ProjectManagers` | `ProjectUsersTests.TheLastWhoManagesUsersCannotLoseIt`, `WithASecondManagerTheFirstCanLeave`, `BR_29_AManagerInactiveInTheProjectDoesNotCountAsTheOneWhoStays` |
+| The people of a project are listed those active there first, by name | `ProjectUsersEndpoints.List` | `ProjectUsersTests.R126_ThePeopleOfAProjectAreListedThoseActiveThereFirstByName` |
 | Every permission ticked or unticked is in the History table | `db.AddHistory` | `ProjectUsersTests.EveryPermissionChangeIsInTheHistory` |
 
 ## Left to later use cases

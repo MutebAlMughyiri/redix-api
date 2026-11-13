@@ -9,7 +9,7 @@ public enum HistoryAction
     /// <summary>A user signed out of a device (UC-062).</summary>
     SignOut,
 
-    /// <summary>A wrong password was typed for a user, or any password while they are locked or disabled; what was typed never enters the History table (UC-005).</summary>
+    /// <summary>A wrong password was typed for a user, or any password while they are locked; what was typed never enters the History table (UC-005).</summary>
     SignInFailed,
 
     /// <summary>A wrong password locked a user's account (AC-01.2, UC-005).</summary>
@@ -27,16 +27,16 @@ public enum HistoryAction
     /// <summary>A user was given a new temporary password (UC-007).</summary>
     ResetPassword,
 
-    /// <summary>A user, a contract or an account was disabled (UC-007, UC-020, redix-app #89).</summary>
+    /// <summary>A person was made inactive in a project (redix-api #126; a whole login before it, UC-007), or a contract or an account was disabled (UC-020, redix-app #89).</summary>
     Disable,
 
-    /// <summary>A disabled user, contract or account was enabled (UC-007, UC-020, redix-app #89).</summary>
+    /// <summary>A person inactive in a project was made active there (redix-api #126; a whole login before it, UC-007), or a disabled contract or account was enabled (UC-020, redix-app #89).</summary>
     Enable,
 
     /// <summary>A user was given a permission in a project (UC-008, UC-009).</summary>
     AssignProject,
 
-    /// <summary>A user's permission in a project was taken away (UC-008, UC-009).</summary>
+    /// <summary>A user's permission in a project was taken away (UC-008, UC-009), and with the last of them his being inactive there (redix-api #126).</summary>
     RemoveProject,
 
     /// <summary>A project was registered, and waits for the admin (UC-066).</summary>

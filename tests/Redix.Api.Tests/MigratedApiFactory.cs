@@ -78,13 +78,13 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await database.MigrateAsync();
     }
 
-    public async Task<User> AddUserAsync(string password, bool isActive = true, bool mustChangePassword = false, bool isAdmin = false)
+    public async Task<User> AddUserAsync(string password, bool mustChangePassword = false, bool isAdmin = false)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
         var user = new User
         {
-            Username = $"user-{Guid.NewGuid():N}", IsActive = isActive, MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime,
+            Username = $"user-{Guid.NewGuid():N}", MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime,
         };
         user.SetPassword(password, scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>());
         db.Users.Add(user);
@@ -105,13 +105,13 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return client;
     }
 
-    public async Task DisableAsync(User user)
-    {
-        using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
-        (await db.Users.SingleAsync(stored => stored.Id == user.Id)).IsActive = false;
-        await db.SaveChangesAsync();
-    }
+    /// <summary>Makes <paramref name="userId"/> inactive in <paramref name="projectId"/> straight in the database (redix-api #126), for a test whose subject is something else.</summary>
+    public Task MakeInactiveAsync(Guid userId, Guid projectId) =>
+        WithDatabaseAsync(async db =>
+        {
+            db.InactiveMembers.Add(new InactiveMember { UserId = userId, ProjectId = projectId });
+            await db.SaveChangesAsync();
+        });
 
     public async Task<List<HistoryRecord>> HistoryOfAsync(Guid recordId)
     {

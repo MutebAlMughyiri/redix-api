@@ -26,11 +26,12 @@ Each use case adds its own actions; entries, users and attachments join the Hist
 | Action | When | Record | Values |
 | --- | --- | --- | --- |
 | `SignIn` | A user signs in (UC-002) | The user | What the sign-in changed, such as the count of wrong passwords cleared |
-| `SignInFailed` | A wrong password is typed for a user, at sign-in or at a password change, or any password while they are locked or disabled (AC-01.2) | The user whose name was typed; an unknown username records nothing | The count of wrong passwords; never what was typed |
+| `SignInFailed` | A wrong password is typed for a user, at sign-in or at a password change, or any password while they are locked (AC-01.2) | The user whose name was typed; an unknown username records nothing | The count of wrong passwords; never what was typed |
 | `AccountLocked` | A wrong password locks the account | The same | The count, and `LockedUntil`, old and new |
 | `ChangePassword` | A user changes their password (UC-003) | The user | `MustChangePassword`, when a temporary password ends; never the password's hash |
 | `SignOut` | A user signs out of a device (UC-062) | The user | None: the record itself says it happened |
-| `Create`, `Update`, `ResetPassword`, `Disable`, `Enable` | A user is managed (UC-007, UC-008) | The user | What the action changed; never the password's hash |
+| `Create`, `Update`, `ResetPassword` | A user is managed (UC-007, UC-008); `Disable` and `Enable` on a user are the login-wide switch before redix-api #126 | The user |
+| `Disable`, `Enable` | A person is made inactive in a project, or active again (redix-api #126); `RemoveProject` when taking him out of it ends it | His row of `InactiveMembers`, with the project | What the action changed; never the password's hash |
 | `AssignProject`, `RemoveProject` | A permission in a project is ticked or unticked (UC-008, UC-009) | The `ProjectPermissions` row | The permission; every value of a removed row in `Before` |
 | `RegisterProject` | A project is registered (UC-006, UC-066) | The project | Every value of the new record |
 | `Create` | A unit is added (UC-006) | The unit | Every value of the new record |
@@ -47,7 +48,7 @@ After making its change and before `SaveChanges`, the endpoint calls `db.AddHist
 | Rule | Code | Test |
 | --- | --- | --- |
 | A sign-in is recorded with the user and the time | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheHistoryWithTheUserAndTheTime` |
-| A refused sign-in is recorded against the user whose name was typed, and never what was typed | `AuthEndpoints.CheckPassword` | `AuthTests.AWrongPasswordIsInTheHistoryAgainstTheUserAndNeverSaysWhatWasTyped`, `AuthTests.TryingWhileLockedIsAFailedSignIn`, `AuthTests.ASignInToADisabledUserIsAFailedSignIn` |
+| A refused sign-in is recorded against the user whose name was typed, and never what was typed | `AuthEndpoints.CheckPassword` | `AuthTests.AWrongPasswordIsInTheHistoryAgainstTheUserAndNeverSaysWhatWasTyped`, `AuthTests.TryingWhileLockedIsAFailedSignIn`, `AuthTests.R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs` |
 | The wrong password that locks the account is recorded as a lockout, at sign-in or at a password change | `AuthEndpoints.CheckPassword` | `AuthTests.TheWrongPasswordThatLocksTheAccountIsRecordedAsALockout`, `ChangePasswordTests.AWrongCurrentPasswordIsRefusedAndCountsTowardTheLockout` |
 | An unknown username records nothing, because there is nobody to record it against | `AuthEndpoints.SignIn` | `AuthTests.AnUnknownUsernameRecordsNothing` |
 | A password change is recorded with the values before and after, never the password's hash | `AuthEndpoints.ChangePassword`, `User.PasswordHash` (`[NotInHistory]`) | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |

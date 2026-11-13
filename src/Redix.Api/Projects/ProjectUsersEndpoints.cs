@@ -10,7 +10,10 @@ namespace Redix.Api.Projects;
 /// <summary>A project's people and what each may do in it (UC-009, FR-02, FR-36), for whoever manages its users. Every project keeps its own list (BR-33), and every change is saved with its history row.</summary>
 public static class ProjectUsersEndpoints
 {
-    /// <summary>Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for whoever manages its users <c>GET /users</c>, <c>POST /users</c>, <c>POST /users/existing</c>, giving and taking a permission, and a person's role name.</summary>
+    /// <summary>
+    /// Maps, under <c>/projects/{projectId}</c>, <c>GET /members</c> for anyone who reads the project; and for whoever manages its users <c>GET /users</c>, <c>POST /users</c>,
+    /// <c>POST /users/existing</c>, giving and taking a permission, a person's role name, and making a person inactive there and active again.
+    /// </summary>
     public static void MapProjectUsers(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/members", Members).RequireAuthorization(nameof(Permission.ReadProject));
@@ -23,25 +26,29 @@ public static class ProjectUsersEndpoints
         project.MapPost("/users/{userId:guid}/partners/{partnerId:guid}", Choose);
         project.MapDelete("/users/{userId:guid}/partners/{partnerId:guid}", Unchoose);
         project.MapPut("/users/{userId:guid}/role-name", SetRoleName);
+        project.MapPost("/users/{userId:guid}/disable", Disable);
+        project.MapPost("/users/{userId:guid}/enable", Enable);
     }
 
-    /// <summary>The active people of this project by name, once each, for choosing who holds something in it. Only their names show (BR-33).</summary>
+    /// <summary>The people of this project active there, by name, once each, for choosing who holds something in it (redix-api #126). Only their names show (BR-33).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database they live in.</param>
     public static Task<List<MemberView>> Members(Guid projectId, RedixDbContext db) =>
-        db.Users.Where(user => user.IsActive && db.ProjectPermissions.Any(held => held.ProjectId == projectId && held.UserId == user.Id))
+        db.Users.Where(user => db.ProjectPermissions.Any(held => held.ProjectId == projectId && held.UserId == user.Id)
+                && !db.InactiveMembers.Any(inactive => inactive.ProjectId == projectId && inactive.UserId == user.Id))
             .OrderBy(user => user.DisplayName).Select(user => new MemberView(user.Id, user.DisplayName)).ToListAsync();
 
     /// <summary>Whether <paramref name="userId"/> is in <paramref name="projectId"/>: holds anything there.</summary>
     public static Task<bool> IsMemberAsync(Guid projectId, Guid userId, RedixDbContext db) => db.ProjectPermissions.AnyAsync(held => held.ProjectId == projectId && held.UserId == userId);
 
-    /// <summary>The people of this project and what each may do in it, active users first, by name. Their other projects never show (BR-33).</summary>
+    /// <summary>The people of this project and what each may do in it, those active there first (redix-api #126), by name. Their other projects never show (BR-33).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="db">The database they live in.</param>
     public static async Task<List<UserView>> List(Guid projectId, RedixDbContext db)
     {
         var held = db.ProjectPermissions.Where(row => row.ProjectId == projectId);
-        var users = await db.Users.Where(user => held.Any(row => row.UserId == user.Id)).OrderByDescending(user => user.IsActive).ThenBy(user => user.DisplayName).ToListAsync();
+        var users = await db.Users.Where(user => held.Any(row => row.UserId == user.Id))
+            .OrderBy(user => db.InactiveMembers.Any(inactive => inactive.ProjectId == projectId && inactive.UserId == user.Id)).ThenBy(user => user.DisplayName).ToListAsync();
         var projects = await UsersEndpoints.ProjectsByUserAsync(held, db);
         return users.Select(user => UserView.Of(user, projects[user.Id].ToList())).ToList();
     }
@@ -146,8 +153,9 @@ public static class ProjectUsersEndpoints
     }
 
     /// <summary>
-    /// Takes one permission from someone in this project; taking <see cref="Permission.ReadProject"/> takes every one of theirs, which takes them out of it. What would leave the project
-    /// with nobody active managing its users answers <c>lastManager</c> (BR-29); a name that is not a permission of a project, <c>invalidPermission</c>.
+    /// Takes one permission from someone in this project; taking <see cref="Permission.ReadProject"/> takes every one of theirs, which takes them out of it, and ends their being inactive
+    /// there, so someone added again arrives active (redix-api #126). What would leave the project with nobody active managing its users answers <c>lastManager</c> (BR-29); a name that is
+    /// not a permission of a project, <c>invalidPermission</c>.
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="userId">The person, who must be in this project.</param>
@@ -185,6 +193,7 @@ public static class ProjectUsersEndpoints
         if (taking == Permission.ReadProject)
         {
             await ProjectRoleName.NameAsync(projectId, userId, "", AccessTokens.UserIdOf(principal), now, db);
+            await InactiveMember.EndAsync(projectId, userId, HistoryAction.RemoveProject, AccessTokens.UserIdOf(principal), now, db);
         }
         await db.SaveChangesAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
@@ -260,6 +269,60 @@ public static class ProjectUsersEndpoints
         }
 
         await CapitalSight.ClearAsync(projectId, userId, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db, partnerId);
+        await db.SaveChangesAsync();
+        return Results.Ok(await ViewInProjectAsync(user, projectId, db));
+    }
+
+    /// <summary>
+    /// Makes someone in this project inactive there (redix-api #126, D1), with its History line: he keeps his permissions and entries, and every route of the project refuses him as for a
+    /// project he is not in (<see cref="UserAccess"/>), while his project list shows it gray. His default project is skipped, not cleared (AC-37.2). Inactive already changes nothing. What
+    /// would leave the project with nobody active managing its users answers <c>lastManager</c> (BR-29); a person not of this project is not found.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="userId">The person, who must be in this project.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
+    /// <param name="db">The database they live in.</param>
+    /// <param name="time">The current time, for the history row.</param>
+    public static async Task<IResult> Disable(Guid projectId, Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var user = await InProjectAsync(projectId, userId, db);
+        if (user == User.None)
+        {
+            return Results.NotFound();
+        }
+        if (await ProjectManagers.IsTheLastAsync(projectId, userId, db))
+        {
+            return Refusal.Of(StatusCodes.Status409Conflict, "LastManager");
+        }
+
+        if (!await db.InactiveMembers.AnyAsync(row => row.ProjectId == projectId && row.UserId == userId))
+        {
+            var inactive = new InactiveMember { ProjectId = projectId, UserId = userId };
+            db.InactiveMembers.Add(inactive);
+            db.AddHistory(inactive, HistoryAction.Disable, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
+            await db.SaveOnceAsync();
+        }
+        return Results.Ok(await ViewInProjectAsync(user, projectId, db));
+    }
+
+    /// <summary>
+    /// Makes someone inactive in this project active there again (redix-api #126), with its History line: he holds what he held before. Active already changes nothing; a person not of
+    /// this project is not found.
+    /// </summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="userId">The person, who must be in this project.</param>
+    /// <param name="principal">The session of whoever manages the project's users.</param>
+    /// <param name="db">The database they live in.</param>
+    /// <param name="time">The current time, for the history row.</param>
+    public static async Task<IResult> Enable(Guid projectId, Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    {
+        var user = await InProjectAsync(projectId, userId, db);
+        if (user == User.None)
+        {
+            return Results.NotFound();
+        }
+
+        await InactiveMember.EndAsync(projectId, userId, HistoryAction.Enable, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
         await db.SaveChangesAsync();
         return Results.Ok(await ViewInProjectAsync(user, projectId, db));
     }

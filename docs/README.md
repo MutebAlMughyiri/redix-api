@@ -24,7 +24,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | UC-004 | Switching the app language is the app's use case; the API's part is the words of My account, added with the `LanguageSwitch` migration | Every signed-in user |
 | [UC-005](use-cases/UC-005-history.md) | The History table: who did what to which record, when, with the values before and after; never changed or deleted | The API, on its own |
 | [UC-006](use-cases/UC-006-projects.md) | A project and its units: rename them, delete a unit, and close the project when finished | Whoever does the project's finance |
-| [UC-007](use-cases/UC-007-users.md) | Correct, disable and reset logins | A project manager, for someone only in projects they manage |
+| [UC-007](use-cases/UC-007-users.md) | Correct and reset logins, and make a person inactive in one project | A project manager, for someone only in projects they manage |
 | [UC-008](use-cases/UC-008-project-people.md) | Add people to a project and tick their permissions, and show each person only their projects | Whoever manages its users adds and ticks; everyone reads |
 | [UC-009](use-cases/UC-009-permissions.md) | Keep what each person may do in the database, keep projects separate, and enforce both on the server | Every request |
 | [UC-010](use-cases/UC-010-default-project.md) | Keep each person's default project, and open it at sign-in | Everyone, for themselves |

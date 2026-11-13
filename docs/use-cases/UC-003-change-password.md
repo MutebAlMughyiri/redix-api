@@ -17,7 +17,7 @@
 | Step | Code |
 | --- | --- |
 | The access token is checked by ASP.NET Core's JWT bearer authentication, with the same key, issuer and audience it was signed with | `AccessTokens.ValidationParameters` |
-| The token's device must still be open and its user still active, so a revoked device or a disabled user is refused at the next request (AC-01.3) | `SessionPolicies.CheckSessionIsOpen` |
+| The token's device must still be open, so a revoked device is refused at the next request; someone inactive in a project keeps his session, and that project's routes refuse him (redix-api #126) | `SessionPolicies.CheckSessionIsOpen` |
 | Every endpoint not marked open falls under the `Working` policy: signed in, with no temporary password left to change | `SessionPolicies.Working`, the fallback policy |
 | Changing the password is the one endpoint a temporary-password session may reach | `SessionPolicies.MayChangePassword` |
 
@@ -31,5 +31,4 @@
 | The other devices are signed out; this one stays signed in | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.ChangingThePasswordSignsOutTheOtherDevicesAndKeepsThisOne` |
 | A password change is in the History table, never the password's hash (UC-005) | `AuthEndpoints.ChangePassword` | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
 | Changing the password needs a session | `SessionPolicies.MayChangePassword` | `ChangePasswordTests.ChangingThePasswordNeedsASession` |
-| A disabled user's access token is refused at the next request (AC-01.3) | `SessionPolicies.CheckSessionIsOpen` | `ChangePasswordTests.ADisabledUsersAccessTokenIsRefusedAtTheNextRequest` |
 | A temporary-password session reaches nothing but the password change | `SessionPolicies.Working` | `ChangePasswordTests.EveryEndpointNotOpenToAllRefusesASessionWithATemporaryPassword` |

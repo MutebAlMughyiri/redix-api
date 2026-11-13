@@ -53,6 +53,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>What each person is called in each project (Muteb, 9 Nov 2026).</summary>
     public DbSet<ProjectRoleName> ProjectRoleNames => Set<ProjectRoleName>();
 
+    /// <summary>Who is inactive in which project (redix-api #126): one row per person per project.</summary>
+    public DbSet<InactiveMember> InactiveMembers => Set<InactiveMember>();
+
     /// <summary>Each project's categories of expenses, in the default template too (FR-39).</summary>
     public DbSet<Category> Categories => Set<Category>();
 
@@ -441,6 +444,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             named.HasIndex(row => new { row.ProjectId, row.UserId }).IsUnique();
             named.HasOne<Project>().WithMany().HasForeignKey(row => row.ProjectId).OnDelete(DeleteBehavior.Restrict);
             named.HasOne<User>().WithMany().HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<InactiveMember>(inactive =>
+        {
+            inactive.HasIndex(row => new { row.ProjectId, row.UserId }).IsUnique();
+            inactive.HasOne<Project>().WithMany().HasForeignKey(row => row.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            inactive.HasOne<User>().WithMany().HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<UserDefaultProject>(chosen =>
         {

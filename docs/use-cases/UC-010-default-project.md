@@ -13,7 +13,7 @@
 | `POST /projects/{projectId}/default` | `ReadProject` in it | `200` `{ defaultProjectId }`; `403` without access |
 | `DELETE /projects/default` | Any session | `200` `{ defaultProjectId: "" }` |
 
-A session answers `defaultProjectId`, the project sign-in opens; empty when there is none or when access to it is gone.
+A session answers `defaultProjectId`, the project sign-in opens; empty when there is none or when access to it is gone, being made inactive in it included: the default is skipped, not cleared, and comes back when he is made active again (redix-api #126).
 
 ## Tables
 
@@ -27,6 +27,7 @@ A session answers `defaultProjectId`, the project sign-in opens; empty when ther
 | --- | --- | --- |
 | A default project is kept for the next session, which opens it (AC-37.1) | `ProjectsEndpoints.SetDefault`, `Session.OfAsync` | `ProjectsTests.AC_37_1_ADefaultProjectIsKeptForTheNextSessionWhichOpensIt` |
 | A default without access is not offered (AC-37.2) | `Session.OfAsync` | `ProjectsTests.ADefaultWithoutAccessIsNotOffered` |
+| A default he is inactive in is skipped, not cleared, and comes back when he is active again (AC-37.2, redix-api #126) | `Session.OfAsync`, `UserAccess.OfAsync` | `InactiveMembersTests.AC_37_2_ADefaultProjectHeIsInactiveInIsSkippedNotClearedAndComesBackWhenHeIsActiveAgain` |
 | A project without access cannot be the default (BR-33) | `Permission.ReadProject` | `ProjectsTests.AProjectWithoutAccessCannotBeTheDefault` |
 | A project waiting for approval cannot be the default | `Permission.ReadProject` | `ProjectsTests.AWaitingProjectCannotBeTheDefault` |
 | A finished project can be the default | `Permission.ReadProject` | `ProjectsTests.AFinishedProjectCanBeTheDefault` |

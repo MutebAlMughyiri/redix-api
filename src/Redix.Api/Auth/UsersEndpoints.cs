@@ -7,23 +7,24 @@ using Redix.Api.Projects;
 namespace Redix.Api.Auth;
 
 /// <summary>
-/// The logins (UC-007, FR-02): corrects, disables and resets them. A login is shared across projects, so one project's manager may change it only if they manage every
-/// project it is in, and never one holding a system permission; otherwise a reset could let them sign in to another project or as the admin (BR-33). Every change is saved
-/// with its history row.
+/// The logins (UC-007, FR-02): corrects and resets them; making someone inactive is per project (<see cref="ProjectUsersEndpoints.Disable"/>, redix-api #126). A login is shared
+/// across projects, so one project's manager may change it only if they manage every project it is in, and never one holding a system permission; otherwise a reset could let
+/// them sign in to another project or as the admin (BR-33). Every change is saved with its history row.
 /// </summary>
 public static class UsersEndpoints
 {
-    /// <summary>Maps, under <c>/users/{userId}</c>, the edit, <c>reset-password</c>, <c>disable</c> and <c>enable</c>.</summary>
+    /// <summary>Maps, under <c>/users/{userId}</c>, the edit and <c>reset-password</c>.</summary>
     public static void MapUsers(this WebApplication app)
     {
         var users = app.MapGroup("/users/{userId:guid}").RequireAuthorization(SessionPolicies.Working);
         users.MapPut("", Edit);
         users.MapPost("/reset-password", ResetPassword);
-        users.MapPost("/disable", Disable);
-        users.MapPost("/enable", Enable);
     }
 
-    /// <summary>The projects and permissions in <paramref name="held"/>, by user: one line per project, by its name, with what the user holds there in the permissions' order and what they are called there.</summary>
+    /// <summary>
+    /// The projects and permissions in <paramref name="held"/>, by user: one line per project, by its name, with what the user holds there in the permissions' order, what they are called
+    /// there, and whether they are inactive there (redix-api #126).
+    /// </summary>
     public static async Task<ILookup<Guid, UserProjectView>> ProjectsByUserAsync(IQueryable<ProjectPermission> held, RedixDbContext db)
     {
         var rows = await held
@@ -33,9 +34,11 @@ public static class UsersEndpoints
             .ToDictionaryAsync(named => (named.UserId, named.ProjectId), named => named.RoleName);
         var chosen = (await db.ChosenPartners.Where(row => held.Any(heldRow => heldRow.UserId == row.UserId && heldRow.ProjectId == row.ProjectId)).ToListAsync())
             .ToLookup(row => (row.UserId, row.ProjectId), row => row.PartnerId);
+        var inactive = (await db.InactiveMembers.Where(row => held.Any(heldRow => heldRow.UserId == row.UserId && heldRow.ProjectId == row.ProjectId)).ToListAsync())
+            .Select(row => (row.UserId, row.ProjectId)).ToHashSet();
         return rows.GroupBy(row => (row.UserId, row.ProjectId, row.Name)).OrderBy(line => line.Key.Name)
             .ToLookup(line => line.Key.UserId, line => new UserProjectView(line.Key.ProjectId, line.Select(row => row.Permission).Order().ToList(),
-                roleNames.GetValueOrDefault((line.Key.UserId, line.Key.ProjectId), ""), [.. chosen[(line.Key.UserId, line.Key.ProjectId)]]));
+                roleNames.GetValueOrDefault((line.Key.UserId, line.Key.ProjectId), ""), [.. chosen[(line.Key.UserId, line.Key.ProjectId)]], inactive.Contains((line.Key.UserId, line.Key.ProjectId))));
     }
 
     /// <summary>Changes a user's name and mobile. A name outside its limit answers <c>invalidName</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>.</summary>
@@ -57,7 +60,7 @@ public static class UsersEndpoints
         {
             user.DisplayName = displayName;
             user.Mobile = mobile;
-            return Task.FromResult("");
+            return Task.CompletedTask;
         });
     }
 
@@ -82,37 +85,8 @@ public static class UsersEndpoints
         {
             await db.Devices.Where(device => device.UserId == userId).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
             user.ResetPassword(request.TemporaryPassword, hasher);
-            return "";
         });
     }
-
-    /// <summary>Disables a user, who is signed out at the next request and cannot sign in (AC-01.3). A project's last active manager answers <c>lastManager</c> (BR-29).</summary>
-    /// <param name="userId">The user to disable.</param>
-    /// <param name="principal">The caller's session.</param>
-    /// <param name="db">The database the user lives in.</param>
-    /// <param name="time">The current time, for the history row.</param>
-    public static Task<IResult> Disable(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(userId, principal, db, time, HistoryAction.Disable, async user =>
-        {
-            if (await ProjectManagers.IsTheLastOfAProjectAsync(userId, db))
-            {
-                return "LastManager";
-            }
-            user.IsActive = false;
-            return "";
-        });
-
-    /// <summary>Lets a disabled user sign in again.</summary>
-    /// <param name="userId">The user to enable.</param>
-    /// <param name="principal">The caller's session.</param>
-    /// <param name="db">The database the user lives in.</param>
-    /// <param name="time">The current time, for the history row.</param>
-    public static Task<IResult> Enable(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
-        ChangeAsync(userId, principal, db, time, HistoryAction.Enable, user =>
-        {
-            user.IsActive = true;
-            return Task.FromResult("");
-        });
 
     private static async Task<bool> MayChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db)
     {
@@ -125,7 +99,7 @@ public static class UsersEndpoints
         return theirProjects.Count > 0 && theirProjects.All(project => access.In(project).Contains(Permission.ManageUsers));
     }
 
-    private static async Task<IResult> ChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, Func<User, Task<string>> change)
+    private static async Task<IResult> ChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, Func<User, Task> change)
     {
         var user = await db.Users.SingleOrDefaultAsync(user => user.Id == userId);
         if (user is null)
@@ -137,11 +111,7 @@ public static class UsersEndpoints
             return Refusal.Of(StatusCodes.Status403Forbidden, "OtherProject");
         }
 
-        var refusal = await change(user);
-        if (refusal.Length > 0)
-        {
-            return Refusal.Of(StatusCodes.Status409Conflict, refusal);
-        }
+        await change(user);
         db.AddHistory(user, action, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         var projects = await ProjectsByUserAsync(db.ProjectPermissions.Where(held => held.UserId == userId), db);
@@ -163,19 +133,19 @@ public record ResetPasswordRequest(string TemporaryPassword);
 /// <param name="Permissions">What the user may do there.</param>
 /// <param name="RoleName">What they are called there; empty when nothing was typed.</param>
 /// <param name="PartnerIds">The partners chosen for them there, seen with <see cref="Permission.SeeChosenCapital"/> (redix-api #106).</param>
-public record UserProjectView(Guid ProjectId, List<Permission> Permissions, string RoleName, List<Guid> PartnerIds);
+/// <param name="IsInactive">True while they are inactive there, made so by whoever manages its users (redix-api #126).</param>
+public record UserProjectView(Guid ProjectId, List<Permission> Permissions, string RoleName, List<Guid> PartnerIds, bool IsInactive);
 
 /// <summary>A user as the app shows them. It names its fields, so the password's hash and any new column stay out.</summary>
 /// <param name="Id">The user's id.</param>
 /// <param name="Username">The name the user signs in with.</param>
 /// <param name="DisplayName">The name as it shows on entries.</param>
 /// <param name="Mobile">The user's mobile; empty when none.</param>
-/// <param name="IsActive">False once disabled.</param>
 /// <param name="MustChangePassword">True while the password is temporary.</param>
 /// <param name="Projects">What they hold, one line per project the caller may see.</param>
-public record UserView(Guid Id, string Username, string DisplayName, string Mobile, bool IsActive, bool MustChangePassword, List<UserProjectView> Projects)
+public record UserView(Guid Id, string Username, string DisplayName, string Mobile, bool MustChangePassword, List<UserProjectView> Projects)
 {
     /// <summary>The view of <paramref name="user"/>, with these <paramref name="projects"/>.</summary>
     public static UserView Of(User user, List<UserProjectView> projects) =>
-        new(user.Id, user.Username, user.DisplayName, user.Mobile, user.IsActive, user.MustChangePassword, projects);
+        new(user.Id, user.Username, user.DisplayName, user.Mobile, user.MustChangePassword, projects);
 }

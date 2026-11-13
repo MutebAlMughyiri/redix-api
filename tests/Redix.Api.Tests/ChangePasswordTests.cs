@@ -123,17 +123,6 @@ public class ChangePasswordTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ADisabledUsersAccessTokenIsRefusedAtTheNextRequest()
-    {
-        var user = await factory.AddUserAsync(Password);
-        var session = await SignInAsync(user.Username, Password);
-
-        await factory.DisableAsync(user);
-
-        Assert.Equal(HttpStatusCode.Unauthorized, (await ChangePasswordAsync(session.AccessToken, Password, NewPassword)).StatusCode);
-    }
-
-    [Fact]
     public async Task EveryEndpointNotOpenToAllRefusesASessionWithATemporaryPassword()
     {
         var fallback = (await factory.Services.GetRequiredService<IAuthorizationPolicyProvider>().GetFallbackPolicyAsync())!;

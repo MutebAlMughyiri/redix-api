@@ -366,7 +366,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var (nawaf, _) = await MemberAsync(project, Field);
         await factory.GiveAsync(nawaf.Id, project.Id, Holds.Of(Reader));
         var (gone, _) = await MemberAsync(project, Field);
-        await factory.DisableAsync(gone);
+        await factory.MakeInactiveAsync(gone.Id, project.Id);
         var stranger = await factory.AddUserAsync(Password);
 
         var members = await client.GetFromJsonAsync<List<JsonElement>>($"/projects/{project.Id}/members", Json);

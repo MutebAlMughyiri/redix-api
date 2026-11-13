@@ -24,19 +24,20 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
     private readonly SigningCredentials signingCredentials = new(KeyOf(options.Value), SecurityAlgorithms.HmacSha256);
 
     /// <summary>
-    /// A signed access token for <paramref name="user"/> on the device <paramref name="deviceId"/>, carrying whether the password must be changed first.
-    /// Nothing about permissions is in it: they are read on each request, so a change counts at once.
+    /// A signed access token for <paramref name="user"/> on the device <paramref name="deviceId"/>, carrying whether the password must be changed first, and the moment it expires,
+    /// <see cref="Lifetime"/> from now, which the app renews before (redix-api #126, R6). Nothing about permissions is in it: they are read on each request, so a change counts at once.
     /// </summary>
-    public string Create(User user, Guid deviceId)
+    public (string Token, DateTime ExpiresAt) Create(User user, Guid deviceId)
     {
         var now = time.GetUtcNow().UtcDateTime;
-        return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        var expiresAt = now + Lifetime;
+        return (new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = Issuer,
             Audience = Issuer,
             IssuedAt = now,
             NotBefore = now,
-            Expires = now + Lifetime,
+            Expires = expiresAt,
             Claims = new Dictionary<string, object>
             {
                 [JwtRegisteredClaimNames.Sub] = user.Id.ToString(),
@@ -45,7 +46,7 @@ public class AccessTokens(IOptions<JwtOptions> options, TimeProvider time)
                 [MustChangePasswordClaim] = user.MustChangePassword,
             },
             SigningCredentials = signingCredentials,
-        });
+        }), expiresAt);
     }
 
     /// <summary>How the API checks an access token: the same key, issuer and audience it was signed with, and the same clock.</summary>

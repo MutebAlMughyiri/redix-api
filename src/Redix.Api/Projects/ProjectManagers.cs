@@ -3,29 +3,24 @@ using Redix.Api.Auth;
 
 namespace Redix.Api.Projects;
 
-/// <summary>The rule that every project keeps an active person who manages its users (BR-29): whoever holds <see cref="Permission.ManageUsers"/> there.</summary>
+/// <summary>
+/// The rule that every project keeps an active person who manages its users (BR-29): whoever holds <see cref="Permission.ManageUsers"/> there and is not inactive there
+/// (redix-api #126).
+/// </summary>
 public static class ProjectManagers
 {
-    private static IQueryable<ProjectPermission> Active(RedixDbContext db) =>
-        db.ProjectPermissions.Where(held => held.Permission == Permission.ManageUsers && db.Users.Any(user => user.Id == held.UserId && user.IsActive));
+    /// <summary>Whether <paramref name="userId"/> is the last active person managing the users of <paramref name="projectId"/>, whom neither taking a permission nor being made inactive may take away.</summary>
+    public static async Task<bool> IsTheLastAsync(Guid projectId, Guid userId, RedixDbContext db)
+    {
+        var managers = db.ProjectPermissions.Where(held => held.ProjectId == projectId && held.Permission == Permission.ManageUsers
+            && !db.InactiveMembers.Any(inactive => inactive.ProjectId == projectId && inactive.UserId == held.UserId));
+        return await managers.AnyAsync(held => held.UserId == userId) && !await managers.AnyAsync(held => held.UserId != userId);
+    }
 
     /// <summary>Whether taking <paramref name="taken"/>, rows of one person in one project, would leave that project with no active person managing its users.</summary>
     public static async Task<bool> WouldLoseTheLastAsync(List<ProjectPermission> taken, RedixDbContext db)
     {
         var managing = taken.Where(held => held.Permission == Permission.ManageUsers).ToList();
-        if (managing.Count == 0)
-        {
-            return false;
-        }
-        var (projectId, userId) = (managing[0].ProjectId, managing[0].UserId);
-        var managers = Active(db).Where(held => held.ProjectId == projectId);
-        return await managers.AnyAsync(held => held.UserId == userId) && !await managers.AnyAsync(held => held.UserId != userId);
-    }
-
-    /// <summary>Whether disabling <paramref name="userId"/> would leave any project with no active person managing its users.</summary>
-    public static Task<bool> IsTheLastOfAProjectAsync(Guid userId, RedixDbContext db)
-    {
-        var managers = Active(db);
-        return managers.Where(manager => manager.UserId == userId).AnyAsync(theirs => !managers.Any(other => other.ProjectId == theirs.ProjectId && other.UserId != userId));
+        return managing.Count > 0 && await IsTheLastAsync(managing[0].ProjectId, managing[0].UserId, db);
     }
 }

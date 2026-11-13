@@ -206,13 +206,56 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ASignInToADisabledUserIsAFailedSignIn()
+    public async Task R126_D3_SomeoneInactiveInEveryProjectSignsInAndRenewsAsAnyoneDoes()
     {
-        var user = await factory.AddUserAsync(Password, isActive: false);
+        var user = await factory.AddUserAsync(Password);
+        var project = await factory.ApprovedProjectAsync(await factory.ClientSignedInAsAsync(user, Password), $"project-{Guid.CreateVersion7()}");
+        await factory.MakeInactiveAsync(user.Id, project.Id);
 
-        await SignInAsync(user.Username, Password);
+        var session = await SessionOf(await SignInAsync(user.Username, Password));
 
-        Assert.Equal(HistoryAction.SignInFailed, Assert.Single(await factory.HistoryOfAsync(user.Id)).Action);
+        Assert.Equal(HistoryAction.SignIn, (await factory.HistoryOfAsync(user.Id))[^1].Action);
+        await SessionOf(await RefreshAsync(session.RefreshToken));
+    }
+
+    [Fact]
+    public async Task R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var project = await factory.ApprovedProjectAsync(await factory.ClientSignedInAsAsync(user, Password), $"project-{Guid.CreateVersion7()}");
+        await factory.MakeInactiveAsync(user.Id, project.Id);
+
+        Assert.Equal("invalidCredentials", await RefusalCodeOf(await SignInAsync(user.Username, "Wrong-password-1")));
+        Assert.Equal(HistoryAction.SignInFailed, (await factory.HistoryOfAsync(user.Id))[^1].Action);
+    }
+
+    [Fact]
+    public async Task R126_R6_ASessionSaysWhenItsAccessTokenExpiresAtSignInAndAtEachRenewal()
+    {
+        var user = await factory.AddUserAsync(Password);
+
+        var session = await SessionOf(await SignInAsync(user.Username, Password));
+        var signedInAt = factory.Time.GetUtcNow().UtcDateTime;
+        factory.Time.Advance(TimeSpan.FromMinutes(5));
+        var renewed = await SessionOf(await RefreshAsync(session.RefreshToken));
+
+        Assert.Equal(signedInAt + AccessTokens.Lifetime, session.AccessTokenExpiresAt);
+        Assert.Equal(signedInAt + TimeSpan.FromMinutes(5) + AccessTokens.Lifetime, renewed.AccessTokenExpiresAt);
+        Assert.Equal(DateTimeKind.Utc, renewed.AccessTokenExpiresAt.Kind);
+    }
+
+    [Fact]
+    public async Task R126_R6_AnAccessTokenIsRefusedOnceTheMomentItsSessionNamedHasPassed()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var session = await SessionOf(await SignInAsync(user.Username, Password));
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+
+        factory.Time.Advance(session.AccessTokenExpiresAt - factory.Time.GetUtcNow().UtcDateTime - TimeSpan.FromSeconds(1));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/projects")).StatusCode);
+        factory.Time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/projects")).StatusCode);
     }
 
     [Fact]
@@ -269,25 +312,6 @@ public class AuthTests(MigratedApiFactory factory)
         }
 
         await SessionOf(await SignInAsync(user.Username, Password));
-    }
-
-    [Fact]
-    public async Task ADisabledUserCannotSignIn()
-    {
-        var user = await factory.AddUserAsync(Password, isActive: false);
-
-        Assert.Equal("invalidCredentials", await RefusalCodeOf(await SignInAsync(user.Username, Password)));
-    }
-
-    [Fact]
-    public async Task ADisabledUsersOpenSessionEndsAtItsNextRequest()
-    {
-        var user = await factory.AddUserAsync(Password);
-        var session = await SessionOf(await SignInAsync(user.Username, Password));
-
-        await factory.DisableAsync(user);
-
-        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(session.RefreshToken)));
     }
 
     [Fact]
@@ -360,7 +384,7 @@ public class AuthTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task BiometricsDoNotOutliveARevokedPhoneOrADisabledUser()
+    public async Task BiometricsDoNotOutliveARevokedPhone()
     {
         var user = await factory.AddUserAsync(Password);
         var signedOut = await SetBiometricsAsync(await SessionOf(await SignInAsync(user.Username, Password)), true);
@@ -371,16 +395,8 @@ public class AuthTests(MigratedApiFactory factory)
         var thisPhone = await SessionOf(await SignInAsync(user.Username, Password));
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", thisPhone.AccessToken);
-        var changed = await SessionOf(await client.PostAsJsonAsync("/auth/change-password", new ChangePasswordRequest(Password, Password + "-new")));
+        await SessionOf(await client.PostAsJsonAsync("/auth/change-password", new ChangePasswordRequest(Password, Password + "-new")));
         Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(otherPhone.RefreshToken)));
-
-        var disabledPhone = await SetBiometricsAsync(changed, true);
-        await factory.WithDatabaseAsync(async db =>
-        {
-            (await db.Users.FindAsync(user.Id))!.IsActive = false;
-            await db.SaveChangesAsync();
-        });
-        Assert.Equal("sessionExpired", await RefusalCodeOf(await RefreshAsync(disabledPhone.RefreshToken)));
     }
 
     [Fact]

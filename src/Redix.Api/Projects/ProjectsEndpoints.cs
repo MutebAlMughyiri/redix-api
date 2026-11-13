@@ -28,7 +28,8 @@ public static class ProjectsEndpoints
 
     /// <summary>
     /// The projects the caller may read, and those they registered that are not approved, active ones first and then the newest (AC-36.1), each with what they may do
-    /// in it (AC-36.2). A finished project stays listed, with its reports (AC-04.1).
+    /// in it (AC-36.2). A finished project stays listed, with its reports (AC-04.1). A project they are inactive in stays listed too, saying so and holding nothing, which the app shows
+    /// gray (redix-api #126, D2).
     /// </summary>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the projects live in.</param>
@@ -38,11 +39,12 @@ public static class ProjectsEndpoints
         var access = await UserAccess.OfAsync(userId, db);
         var theirs = (await db.ProjectPermissions.Where(held => held.UserId == userId).Select(held => held.ProjectId).Distinct().ToListAsync()).ToHashSet();
         var roleNames = await ProjectRoleName.OfUserAsync(userId, db);
+        var inactive = await InactiveMember.ProjectsOfAsync(userId, db);
         var projects = await db.Projects.Include(project => project.Units.OrderBy(unit => unit.SortOrder))
             .OrderBy(project => project.Status).ThenByDescending(project => project.StartDate)
             .ToListAsync();
-        return projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (!project.IsApproved && theirs.Contains(project.Id)))
-            .Select(project => ProjectView.Of(project, access.In(project.Id), roleNames)).ToList();
+        return projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (theirs.Contains(project.Id) && (!project.IsApproved || inactive.Contains(project.Id))))
+            .Select(project => ProjectView.Of(project, access.In(project.Id), roleNames, inactive)).ToList();
     }
 
     /// <summary>
@@ -218,7 +220,7 @@ public static class ProjectsEndpoints
     {
         var access = await UserAccess.OfAsync(userId, db);
         var roleNames = await ProjectRoleName.OfUserAsync(userId, db);
-        return ProjectView.Of(project, access.In(project.Id), roleNames);
+        return ProjectView.Of(project, access.In(project.Id), roleNames, await InactiveMember.ProjectsOfAsync(userId, db));
     }
 }
 
@@ -260,11 +262,19 @@ public record AddUnitRequest(string Name);
 /// <param name="Units">The project's units, in order.</param>
 /// <param name="Permissions">What the caller may do in this project; the app shows what they allow.</param>
 /// <param name="RoleName">What the caller is called in this project, shown under its name (Muteb, 9 Nov 2026); empty when nothing was typed.</param>
-public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, string Description, List<UnitView> Units, List<Permission> Permissions, string RoleName)
+/// <param name="IsInactive">True when the caller is inactive in this project: it shows gray with «حسابك غير مفعّل في هذا المشروع.» and does not open (redix-api #126, D2).</param>
+public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, string Description, List<UnitView> Units, List<Permission> Permissions, string RoleName, bool IsInactive)
 {
-    /// <summary>The view of <paramref name="project"/>, with its units in order, and the caller's <paramref name="permissions"/> in it and role name among their <paramref name="roleNames"/>.</summary>
-    public static ProjectView Of(Project project, List<Permission> permissions, Dictionary<Guid, string> roleNames) =>
-        new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(), permissions, roleNames.GetValueOrDefault(project.Id, ""));
+    /// <summary>
+    /// The view of <paramref name="project"/>, with its units in order, the caller's <paramref name="permissions"/> in it, none when it is among the projects they are
+    /// <paramref name="inactive"/> in, and their role name among their <paramref name="roleNames"/>.
+    /// </summary>
+    public static ProjectView Of(Project project, List<Permission> permissions, Dictionary<Guid, string> roleNames, HashSet<Guid> inactive)
+    {
+        var isInactive = inactive.Contains(project.Id);
+        return new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(),
+            isInactive ? [] : permissions, roleNames.GetValueOrDefault(project.Id, ""), isInactive);
+    }
 }
 
 /// <summary>A unit as the app shows it.</summary>

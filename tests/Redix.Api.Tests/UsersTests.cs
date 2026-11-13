@@ -86,30 +86,13 @@ public class UsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task DisablingAUserEndsTheOpenSessionAtTheNextRequest()
+    public async Task R126_D3_ALoginIsNoLongerDisabledOrEnabledAsAWhole()
     {
         var user = await factory.AddUserAsync(Password);
         var manager = await ManagerOfAsync(user);
-        var client = await factory.ClientSignedInAsAsync(user, Password);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/projects")).StatusCode);
 
-        var disabled = await ViewOf(await manager.PostAsync($"/users/{user.Id}/disable", null));
-
-        Assert.False(disabled.IsActive);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/projects")).StatusCode);
-        Assert.Equal("invalidCredentials", await CodeOf(await SignInAsync(user.Username, Password)));
-    }
-
-    [Fact]
-    public async Task AnEnabledUserCanSignInAgain()
-    {
-        var user = await factory.AddUserAsync(Password);
-        var manager = await ManagerOfAsync(user);
-        await manager.PostAsync($"/users/{user.Id}/disable", null);
-
-        var enabled = await ViewOf(await manager.PostAsync($"/users/{user.Id}/enable", null));
-
-        Assert.True(enabled.IsActive);
+        Assert.Equal(HttpStatusCode.NotFound, (await manager.PostAsync($"/users/{user.Id}/disable", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await manager.PostAsync($"/users/{user.Id}/enable", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(user.Username, Password)).StatusCode);
     }
 
@@ -118,7 +101,7 @@ public class UsersTests(MigratedApiFactory factory)
     {
         var user = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
 
-        Assert.Equal(HttpStatusCode.NotFound, (await user.PostAsync($"/users/{Guid.CreateVersion7()}/enable", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await user.PutAsJsonAsync($"/users/{Guid.CreateVersion7()}", new EditUserRequest("نواف", ""))).StatusCode);
     }
 
     [Fact]
@@ -145,11 +128,9 @@ public class UsersTests(MigratedApiFactory factory)
 
         await client.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0500000000"));
         await ResetAsync(client, user.Id);
-        await client.PostAsync($"/users/{user.Id}/disable", null);
-        await client.PostAsync($"/users/{user.Id}/enable", null);
 
         var trail = await factory.HistoryOfAsync(user.Id);
-        Assert.Equal([HistoryAction.Update, HistoryAction.ResetPassword, HistoryAction.Disable, HistoryAction.Enable], trail.Select(record => record.Action));
+        Assert.Equal([HistoryAction.Update, HistoryAction.ResetPassword], trail.Select(record => record.Action));
         Assert.All(trail, record => Assert.Equal(managerUser.Id, record.UserId));
         Assert.Equal("نواف الأول", JsonNode.Parse(trail[0].After)!["DisplayName"]!.GetValue<string>());
         Assert.All(trail, record => Assert.DoesNotContain("PasswordHash", record.Before + record.After));

@@ -73,9 +73,6 @@ public class User
     /// <summary>True while the password is a temporary one the user must change before anything else.</summary>
     public bool MustChangePassword { get; set; }
 
-    /// <summary>False once the user is disabled, and can no longer sign in (AC-01.3).</summary>
-    public bool IsActive { get; set; } = true;
-
     /// <summary>Wrong passwords in a row since the last correct one or the last lock.</summary>
     public int FailedSignIns { get; private set; }
 
@@ -121,15 +118,11 @@ public class User
     }
 
     /// <summary>
-    /// Checks <paramref name="password"/> at <paramref name="now"/>. A disabled user is refused like a wrong password, so the answer never tells which.
-    /// The fifth wrong password in a row locks the account for <see cref="LockDuration"/>; a correct one clears the count.
+    /// Checks <paramref name="password"/> at <paramref name="now"/>. The fifth wrong password in a row locks the account for <see cref="LockDuration"/>; a correct one clears the count
+    /// (AC-01.2). Someone inactive in his projects signs in as anyone does, to his project list (redix-api #126, D3).
     /// </summary>
     public SignInOutcome SignIn(string password, IPasswordHasher<User> hasher, DateTime now)
     {
-        if (!IsActive)
-        {
-            return SignInOutcome.InvalidCredentials;
-        }
         if (LockedUntil > now)
         {
             return SignInOutcome.AccountLocked;

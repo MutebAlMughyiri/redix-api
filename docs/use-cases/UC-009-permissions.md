@@ -45,7 +45,7 @@ A new permission is code: a route has to name it, and a migration adds it. The d
 
 | Route | Needs | Answers |
 | --- | --- | --- |
-| `GET /projects` | Any session | The projects they hold `ReadProject` in, and those they registered that wait, each with `permissions` |
+| `GET /projects` | Any session | The projects they hold `ReadProject` in, and those they registered that wait, each with `permissions`; those they are inactive in with `isInactive` true and no permissions (redix-api #126) |
 | `GET /projects/{projectId}/users` | `ManageUsers` | `200` this project's people, each with what they hold in it |
 | `POST /projects/{projectId}/users` | `ManageUsers` | `201` a new login holding `ReadProject`, the `permissions` ticked and, with `SeeChosenCapital`, the `partnerIds` chosen; `400` `invalidPermission` (also both capital ticks) or `unknownPartner` |
 | `POST /projects/{projectId}/users/existing` | `ManageUsers` | `200` adds `{ username }` holding `ReadProject`; `404` `unknownUser` |
@@ -53,7 +53,8 @@ A new permission is code: a route has to name it, and a migration adds it. The d
 | `DELETE /projects/{projectId}/users/{userId}/permissions/{permission}` | `ManageUsers` | `200`; `ReadProject` takes every one of theirs; taking `SeeChosenCapital` forgets the chosen partners; `409` `lastManager` |
 | `POST /projects/{projectId}/users/{userId}/partners/{partnerId}`, and `DELETE` on the same path | `ManageUsers` | `200` chooses a partner whose capital they see, giving `SeeChosenCapital`, or takes it (redix-api #106); `404` a person or a partner not of the project |
 | `PUT /projects/{projectId}/users/{userId}/role-name` | `ManageUsers` | `200` names `{ roleName }`, a label only that decides nothing; `400` `invalidRoleName` |
-| `PUT /users/{userId}`; `POST` to its `/reset-password`, `/disable` and `/enable` | See below | `200`; `403` `otherProject`; `409` `lastManager` on disable |
+| `POST /projects/{projectId}/users/{userId}/disable` and `/enable` | `ManageUsers` | `200` makes the person inactive in this project or active again (redix-api #126, UC-007); `409` `lastManager` on disable; `404` someone not in the project |
+| `PUT /users/{userId}`; `POST` to its `/reset-password` | See below | `200`; `403` `otherProject` |
 
 A permission is named in the route as the app names it, `approveEntries`, whatever its case.
 
@@ -71,6 +72,7 @@ The migration `PermissionsPerPerson` gave each person every permission their rol
 | --- | --- | --- |
 | The admin holds approving projects from the first start | `AdminSeed` | `PermissionsTests.TheAdminHoldsApprovingProjectsFromTheFirstStart` |
 | A change in the database counts at the next request | `UserAccess` | `PermissionsTests.ANewRowGivesAPermissionAtTheNextRequest` |
+| A project someone is inactive in gives him nothing, so every route of it refuses him (redix-api #126) | `UserAccess.OfAsync` | `InactiveMembersTests.R5_EveryRouteOfAProjectHeIsInactiveInRefusesHimAsForAProjectHeIsNotIn` |
 | A permission held everywhere reaches every project | `UserAccess.In` | `PermissionsTests.APermissionHeldEverywhereReachesEveryProjectAndAnUnknownOneIsNotFound` |
 | The database refuses an unknown permission, and the admin's in a project (BR-32) | `RedixDbContext` | `PermissionsTests.TheDatabaseRefusesAPermissionTheCodeDoesNotKnowAndTheAdminsInAProject` |
 | redix-api #106: the two capital ticks exclude each other, choosing a partner gives `SeeChosenCapital`, taking it forgets the partners, and whoever registers a project sees all | `ProjectUsersEndpoints.Give`, `Choose`, `CapitalSight` | `PartnersTests.UC_106_SeeAllAndChosenCapitalExcludeEachOtherAndARegistrantSeesAll`, `UC_106_ChoosingAPartnerGivesChosenCapitalAndTakesSeeAllAndTakingChosenCapitalForgetsThePartners`, `UC_106_APersonIsCreatedWithChosenPartnersButNotWithBothCapitalTicksNorAnotherProjectsPartner`, `UC_106_ChoosingAPartnerOfAnotherProjectOrForSomeoneOutsideIsNotFound`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInItSeeingAllCapitalRatherThanChosenPartners` |

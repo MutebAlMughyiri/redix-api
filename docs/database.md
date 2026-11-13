@@ -2,7 +2,7 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `EnumLookupTables` (12 Nov 2026, redix-api #87). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `InactivePerProject` (13 Nov 2026, redix-api #126). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
@@ -16,7 +16,7 @@ Every table, column, key and relation of the REDIX database as it stands after t
 | An enum column points at its lookup table | It stores the member's number, `tinyint`, with a foreign key to `LK_{enum}.Id`; `History.Action` stores the name, `varchar(30)`, with its foreign key to `LK_HistoryAction.Name`, so no History row changed; the two permission columns store names held by a check constraint until redix-api #120 |
 | A foreign key never deletes for you | `NO ACTION` (EF Core's `Restrict`), except where a row only exists inside its owner: an account's custodian, a phone, a reconciliation's balances, a supplier's default item, a word's translations and a project's units cascade |
 
-42 tables hold the business, 12 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
+43 tables hold the business, 12 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
 
 ## Lookup tables
 
@@ -226,6 +226,8 @@ erDiagram
     Users ||--o{ ProjectRoleNames : "UserId"
     Projects ||--o{ UserDefaultProjects : "ProjectId"
     Users ||--o{ UserDefaultProjects : "UserId"
+    Projects ||--o{ InactiveMembers : "ProjectId"
+    Users ||--o{ InactiveMembers : "UserId"
 ```
 
 ### Users
@@ -238,7 +240,6 @@ Everyone who signs in to REDIX.
 | Username | nvarchar(50) | not null |  |  |
 | PasswordHash | varchar(200) | not null |  |  |
 | MustChangePassword | bit | not null |  |  |
-| IsActive | bit | not null |  |  |
 | FailedSignIns | int | not null |  |  |
 | LockedUntil | datetime2(7) | not null |  |  |
 | CreatedAt | datetime2(7) | not null |  |  |
@@ -358,6 +359,20 @@ The project each user chose to land on (FR-37).
 Unique: `UserId`.
 
 Other indexes: `ProjectId`.
+
+### InactiveMembers
+
+Who is inactive in which project (redix-api #126): a row means the person keeps his permissions and entries there and holds none of them until made active again; no row is active.
+
+| Column | SQL type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| Id | uniqueidentifier | not null | PK |  |
+| ProjectId | uniqueidentifier | not null | FK | `Projects.Id` |
+| UserId | uniqueidentifier | not null | FK | `Users.Id` |
+
+Unique: `ProjectId, UserId`.
+
+Other indexes: `UserId`.
 
 ## Structure and settings
 

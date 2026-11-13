@@ -41,7 +41,7 @@ docs/                   these pages
 ## A request
 
 1. Kestrel receives it; errors anywhere become RFC 7807 problem details with a `code` the app translates.
-2. ASP.NET Core's JWT bearer authentication checks the access token, and `SessionPolicies.CheckSessionIsOpen` checks that its device is still open and its user still active.
+2. ASP.NET Core's JWT bearer authentication checks the access token, and `SessionPolicies.CheckSessionIsOpen` checks that its device is still open. What the user holds is read for the request by `UserAccess`, which gives nothing in a project he is inactive in (redix-api #126).
 3. Every endpoint falls under the `Working` policy (signed in, no temporary password to change) unless it is marked open (`AllowAnonymous`) or names another policy.
 4. The endpoint, a documented static method in its feature folder, reads or writes through `RedixDbContext`.
 5. The rule a request depends on lives on the class that owns the data, not in the endpoint, so the endpoint only coordinates.

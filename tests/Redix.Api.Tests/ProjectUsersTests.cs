@@ -73,7 +73,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
         var created = await ViewOf(await CreateAsync(client, projectId, $"  {username}  ", "  نواف  ", " 0500000000 ", ticked: [Permission.RecordEntries, Permission.AttachFiles]));
 
-        Assert.Equal((username, "نواف", "0500000000", true, true), (created.Username, created.DisplayName, created.Mobile, created.IsActive, created.MustChangePassword));
+        Assert.Equal((username, "نواف", "0500000000", false, true), (created.Username, created.DisplayName, created.Mobile, Assert.Single(created.Projects).IsInactive, created.MustChangePassword));
         Assert.Equal([Permission.ReadProject, Permission.RecordEntries, Permission.AttachFiles], HeldIn(created));
         var session = (await (await SignInAsync(username, Temporary)).Content.ReadFromJsonAsync<Session>(Json))!;
         Assert.True(session.MustChangePassword);
@@ -379,39 +379,26 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task ADisabledManagerDoesNotCountAsTheOneWhoStays()
+    public async Task BR_29_AManagerInactiveInTheProjectDoesNotCountAsTheOneWhoStays()
     {
         var (manager, client, projectId) = await ManagerAsync();
-        var second = await factory.AddUserAsync(Password, isActive: false);
+        var second = await factory.AddUserAsync(Password);
         await factory.GiveAsync(second.Id, projectId, Holds.Manager);
+        await factory.MakeInactiveAsync(second.Id, projectId);
 
         Assert.Equal("lastManager", await CodeOf(await TakeAsync(client, projectId, manager.Id, Permission.ManageUsers)));
     }
 
     [Fact]
-    public async Task TheLastManagerCannotBeDisabled()
-    {
-        var (manager, client, projectId) = await ManagerAsync();
-
-        var refused = await client.PostAsync($"/users/{manager.Id}/disable", null);
-
-        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("lastManager", await CodeOf(refused));
-        Assert.True((await ListAsync(client, projectId))!.Single(user => user.Id == manager.Id).IsActive);
-    }
-
-    [Fact]
-    public async Task AManagerResetsAndDisablesSomeoneOnlyInTheirProject()
+    public async Task AManagerResetsSomeoneOnlyInTheirProject()
     {
         var (_, client, projectId) = await ManagerAsync();
         var user = await factory.AddUserAsync(Password);
         await factory.GiveAsync(user.Id, projectId, Holds.Field);
 
         var reset = await ViewOf(await ResetAsync(client, user.Id));
-        var disabled = await ViewOf(await client.PostAsync($"/users/{user.Id}/disable", null));
 
         Assert.True(reset.MustChangePassword);
-        Assert.False(disabled.IsActive);
     }
 
     [Fact]
@@ -428,7 +415,6 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
         Assert.Equal("otherProject", await CodeOf(refused));
-        Assert.Equal("otherProject", await CodeOf(await client.PostAsync($"/users/{shared.Id}/disable", null)));
         Assert.Equal("otherProject", await CodeOf(await client.PutAsJsonAsync($"/users/{shared.Id}", new EditUserRequest("x", ""))));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(shared.Username, Password)).StatusCode);
         var renewal = await factory.CreateClient().PostAsJsonAsync("/auth/refresh", new RefreshRequest(theirSession.RefreshToken));
@@ -449,23 +435,33 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var reset = await ResetAsync(client, admin.Id);
         Assert.Equal(HttpStatusCode.Forbidden, reset.StatusCode);
         Assert.Equal("otherProject", await CodeOf(reset));
-        Assert.Equal("otherProject", await CodeOf(await client.PostAsync($"/users/{admin.Id}/disable", null)));
         Assert.Equal("otherProject", await CodeOf(await client.PutAsJsonAsync($"/users/{admin.Id}", new EditUserRequest("x", ""))));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(admin.Username, Password)).StatusCode);
     }
 
     [Fact]
-    public async Task ThePeopleOfAProjectAreListedActiveFirstByName()
+    public async Task R126_ThePeopleOfAProjectAreListedThoseActiveThereFirstByName()
     {
         var (_, client, projectId) = await ManagerAsync();
-        var disabled = await factory.AddUserAsync(Password, isActive: false);
+        var (_, otherClient, otherProjectId) = await ManagerAsync();
+        var inactive = await factory.AddUserAsync(Password);
         var active = await factory.AddUserAsync(Password);
-        await factory.GiveAsync(disabled.Id, projectId, Holds.Reader);
-        await factory.GiveAsync(active.Id, projectId, Holds.Reader);
+        var inactiveElsewhere = await factory.AddUserAsync(Password);
+        await factory.WithDatabaseAsync(db => db.Users.Where(user => user.Id == inactive.Id || user.Id == active.Id || user.Id == inactiveElsewhere.Id)
+            .ExecuteUpdateAsync(user => user.SetProperty(row => row.DisplayName, row => row.Id == inactive.Id ? "أ" : row.Id == active.Id ? "ب" : "ت")));
+        foreach (var user in new[] { inactive, active, inactiveElsewhere })
+        {
+            await factory.GiveAsync(user.Id, projectId, Holds.Reader);
+        }
+        await factory.GiveAsync(inactiveElsewhere.Id, otherProjectId, Holds.Reader);
+        await factory.MakeInactiveAsync(inactive.Id, projectId);
+        await factory.MakeInactiveAsync(inactiveElsewhere.Id, otherProjectId);
 
         var listed = (await ListAsync(client, projectId))!;
 
-        Assert.True(listed.FindIndex(user => user.Id == active.Id) < listed.FindIndex(user => user.Id == disabled.Id));
+        var order = listed.Where(user => user.Id == inactive.Id || user.Id == active.Id || user.Id == inactiveElsewhere.Id).Select(user => (user.Id, Assert.Single(user.Projects).IsInactive));
+        Assert.Equal([(active.Id, false), (inactiveElsewhere.Id, false), (inactive.Id, true)], order);
+        Assert.True(Assert.Single((await ListAsync(otherClient, otherProjectId))!, user => user.Id == inactiveElsewhere.Id).Projects.Single().IsInactive);
     }
 
     [Fact]

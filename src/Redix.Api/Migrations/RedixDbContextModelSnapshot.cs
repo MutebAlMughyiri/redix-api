@@ -333,9 +333,6 @@ namespace Redix.Api.Migrations
                     b.Property<int>("FailedSignIns")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime>("LockedUntil")
                         .HasColumnType("datetime2");
 
@@ -1649,6 +1646,33 @@ namespace Redix.Api.Migrations
                         .HasFilter("[UserId] <> '00000000-0000-0000-0000-000000000000' AND [IsDeleted] = 0");
 
                     b.ToTable("Partners");
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.InactiveMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("InactiveMembers");
                 });
 
             modelBuilder.Entity("Redix.Api.Projects.Project", b =>
@@ -19883,6 +19907,21 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Projects.InactiveMember", b =>
+                {
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -28,7 +28,7 @@ Sign-in, renewal and a password change answer `usesBiometrics` too. A new sign-i
 | --- | --- | --- |
 | A phone with it on never times out | `Device.CanRefresh` | `AuthTests.AnUnusedPhoneWithBiometricsNeverTimesOut` |
 | Turning it off brings back the 12 hours, from that moment | `AuthEndpoints.SetBiometrics` | `AuthTests.TurningBiometricsOffBringsBackThe12Hours` |
-| Sign-out, a changed password or a disabled user still end the session | `Device.CanRefresh`, `AuthEndpoints.Refresh` | `AuthTests.BiometricsDoNotOutliveARevokedPhoneOrADisabledUser` |
+| Sign-out and a changed password still end the session | `Device.CanRefresh`, `AuthEndpoints.Refresh` | `AuthTests.BiometricsDoNotOutliveARevokedPhone` |
 | It belongs to one phone | `Device.UsesBiometrics` | `AuthTests.BiometricsBelongToOnePhone` |
 | A new sign-in starts with it off | `Device` | `AuthTests.ANewSignInStartsWithBiometricsOff` |
 | Every session answer says whether it is on | `Session.OfAsync` | `AuthTests.TurningBiometricsOnIsAnswered` |
