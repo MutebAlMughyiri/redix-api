@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
@@ -89,15 +90,14 @@ public static class ItemReportEndpoints
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
-        var purchases = await db.PurchaseDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
         var payments = await db.ContractorPaymentDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
         var columns = item.Columns.Where(column => column.IsCustom && column.ShowInReports && !column.IsHidden).OrderBy(column => column.SortOrder).ToList();
 
         ItemEntryRow RowOf(Entry entry, ExpenseDetails expense)
         {
-            var purchase = purchases.GetValueOrDefault(entry.Id) ?? new PurchaseDetails();
-            var values = expense.CustomValuesByKey();
-            return new ItemEntryRow(entry.Id, entry.EntryDate, purchase.Product.Length > 0 ? purchase.Product : entry.Notes, facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, purchase.UnitPrice, purchase.Quantity, entry.Amount, (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract, columns.Select(column => values.GetValueOrDefault(column.Key, "")).ToList(), entry.ApprovedAt > newSince);
+            var values = entry.ColumnValuesByKey();
+            var product = facts.ProductOf(entry);
+            return new ItemEntryRow(entry.Id, entry.EntryDate, product.Length > 0 ? product : entry.Notes, facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, NumberOf(values.GetValueOrDefault("unitPrice", "")), NumberOf(values.GetValueOrDefault("quantity", "")), entry.Amount, (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract, columns.Select(column => values.GetValueOrDefault(column.Key, "")).ToList(), entry.ApprovedAt > newSince);
         }
 
         ItemEntryRow RevenueRowOf(Entry entry) => new(entry.Id, entry.EntryDate, entry.Notes, "", "", 0, 0, entry.Amount, false, [], entry.ApprovedAt > newSince);
@@ -141,6 +141,8 @@ public static class ItemReportEndpoints
             Type = item.Type,
         };
     }
+
+    private static decimal NumberOf(string value) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : 0;
 }
 
 /// <summary>Everything spent on one item.</summary>

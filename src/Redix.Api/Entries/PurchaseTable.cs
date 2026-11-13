@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Structure;
@@ -6,8 +7,8 @@ using Redix.Api.Suppliers;
 namespace Redix.Api.Entries;
 
 /// <summary>
-/// A purchase table (UC-022, FR-08): a group of an item that takes purchases, its general one going by the item's name. Its entry names a supplier the caller may use (BR-19), may
-/// say what was bought, its unit price and its quantity, and as a credit note is kept negative, naming no bill (redix-api #119, D4); its file is the invoice.
+/// A purchase table (UC-022, FR-08): a group of an item that takes purchases, its general one going by the item's name. Its entry may name a supplier, one the caller may use (BR-19),
+/// and as a credit note is kept negative, naming no bill (redix-api #119, D4); its file is the invoice. What was bought, its unit price and its quantity are its item's columns.
 /// </summary>
 /// <param name="Category">The category its item is in.</param>
 /// <param name="Item">The item.</param>
@@ -20,43 +21,35 @@ public sealed record PurchaseTable(Category Category, Item Item, Subgroup Subgro
     /// <inheritdoc />
     public override EntryAttachmentRole FileRole => EntryAttachmentRole.Invoice;
 
-    /// <summary>The amount typed; left out, the unit price times the quantity.</summary>
-    public override decimal TotalOf(EntryRequest request) => request.Amount != 0 ? request.Amount : HasPriceAndQuantityWithinLimit(request) ? request.UnitPrice * request.Quantity : 0;
+    /// <summary>The amount typed; left out, the unit price times the quantity, when the entry gives both (BR-01).</summary>
+    public override decimal TotalOf(EntryRequest request)
+    {
+        if (request.Amount != 0)
+        {
+            return request.Amount;
+        }
+        var values = request.ColumnValuesKept();
+        var unitPrice = NumberOf(values.GetValueOrDefault("unitPrice", ""));
+        var quantity = NumberOf(values.GetValueOrDefault("quantity", ""));
+        return unitPrice > 0 && quantity > 0 && unitPrice <= Money.Largest / quantity ? unitPrice * quantity : 0;
+    }
 
     /// <summary>The total, kept negative for a credit note, so that wherever totals are added up it takes away what its bill counted.</summary>
     public override decimal AmountOf(EntryRequest request) => request.IsCreditNote ? -TotalOf(request) : TotalOf(request);
 
-    /// <summary>
-    /// The product fits, <c>invalidProduct</c>; the unit price
-    /// and the quantity are not negative and have at most two decimals, <c>invalidUnitPrice</c> or <c>invalidQuantity</c>; and a credit note is no deduction, <c>invalidAmount</c>.
-    /// </summary>
-    public override string RefusalOfTyped(EntryRequest request)
-    {
-        if (request.Product.Trim().Length > PurchaseDetails.ProductMaxLength)
-        {
-            return "InvalidProduct";
-        }
-        if (request.UnitPrice < 0 || !Money.IsAcceptable(request.UnitPrice))
-        {
-            return "InvalidUnitPrice";
-        }
-        if (request.Quantity < 0 || !Money.IsAcceptable(request.Quantity))
-        {
-            return "InvalidQuantity";
-        }
-        return request.IsCreditNote && TotalOf(request) < 0 ? "InvalidAmount" : "";
-    }
+    /// <summary>A credit note is no deduction, <c>invalidAmount</c>.</summary>
+    public override string RefusalOfTyped(EntryRequest request) => request.IsCreditNote && TotalOf(request) < 0 ? "InvalidAmount" : "";
 
-    /// <summary>A supplier the caller may not use answers <c>unknownSupplier</c> (BR-19).</summary>
+    /// <summary>A supplier named that the caller may not use answers <c>unknownSupplier</c> (BR-19); none named is no refusal (redix-api #129).</summary>
     public override async Task<string> RefusalOfAsync(Guid projectId, EntryRequest request, Guid userId, List<Permission> held, Guid editing, RedixDbContext db) =>
-        await db.Suppliers.Where(Supplier.OfferedTo(userId, held.Contains(Permission.ManageSettings))).AnyAsync(row => row.Id == request.SupplierId && row.ProjectId == projectId) ? "" : "UnknownSupplier";
+        request.SupplierId == Guid.Empty || await db.Suppliers.Where(Supplier.OfferedTo(userId, held.Contains(Permission.ManageSettings))).AnyAsync(row => row.Id == request.SupplierId && row.ProjectId == projectId) ? "" : "UnknownSupplier";
 
-    /// <inheritdoc />
+    /// <summary>What every expense holds, and its supplier's row when it names one.</summary>
     public override List<object> DetailsOf(EntryRequest request) =>
     [
         ExpenseDetailsOf(request, Subgroup.Id),
-        new PurchaseDetails { EntryId = request.Id, SupplierId = request.SupplierId, Product = request.Product.Trim(), UnitPrice = request.UnitPrice, Quantity = request.Quantity },
+        .. request.SupplierId == Guid.Empty ? [] : new List<object> { new PurchaseDetails { EntryId = request.Id, SupplierId = request.SupplierId } },
     ];
 
-    private static bool HasPriceAndQuantityWithinLimit(EntryRequest request) => request.UnitPrice > 0 && request.Quantity > 0 && request.UnitPrice <= Money.Largest / request.Quantity;
+    private static decimal NumberOf(string value) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : 0;
 }

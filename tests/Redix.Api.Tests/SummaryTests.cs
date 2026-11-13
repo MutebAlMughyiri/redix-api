@@ -84,7 +84,7 @@ public class SummaryTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var item = await ledger.ReadAsync(db => db.Items.Include(row => row.Subgroups).SingleAsync(row => row.Id == ledger.ItemId));
         await factory.WithDatabaseAsync(db => db.Items.Where(row => row.Id == ledger.ItemId).ExecuteUpdateAsync(row => row.SetProperty(entry => entry.Type, ItemType.Both)));
-        await ApprovedAsync(ledger, ledger.Purchase(115) with { Product = "بلاط" });
+        await ApprovedAsync(ledger, ledger.Purchase(115) with { ColumnValues = new Dictionary<string, string> { ["product"] = "بلاط" } });
         await ApprovedAsync(ledger, ledger.Purchase(50));
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000, false), Json)).EnsureSuccessStatusCode();
         var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Json))!.Single();
@@ -122,7 +122,7 @@ public class SummaryTests(MigratedApiFactory factory)
             db.Add(column);
             await db.SaveChangesAsync();
         });
-        await ApprovedAsync(ledger, ledger.Purchase(50) with { CustomValues = new Dictionary<string, string> { [column.Key] = "أبيض" } });
+        await ApprovedAsync(ledger, ledger.Purchase(50) with { ColumnValues = new Dictionary<string, string> { [column.Key] = "أبيض" } });
 
         var report = (await ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}", Json))!;
 

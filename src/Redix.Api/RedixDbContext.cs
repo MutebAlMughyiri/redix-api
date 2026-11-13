@@ -369,6 +369,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<Entry>(entry =>
         {
             entry.Property(e => e.Notes).HasMaxLength(global::Redix.Api.Entries.Entry.NotesMaxLength);
+            entry.Property(e => e.ColumnValues).HasColumnType("json");
             // Measured on RedixReal, 8 Nov 2026: the summary, the figures and what waits all filter by project and status and sum amounts by kind and account (redix-api #87).
             entry.HasIndex(e => new { e.ProjectId, e.Status }).IncludeProperties(e => new { e.Kind, e.Amount, e.AccountId });
             entry.HasOne<Project>().WithMany().HasForeignKey(e => e.ProjectId).OnDelete(DeleteBehavior.Restrict);
@@ -378,7 +379,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<ExpenseDetails>(details =>
         {
             details.HasKey(d => d.EntryId);
-            details.Property(d => d.CustomValues).HasColumnType("json");
             details.HasOne<Entry>().WithOne().HasForeignKey<ExpenseDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Item>().WithMany().HasForeignKey(d => d.ItemId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Subgroup>().WithMany().HasForeignKey(d => d.SubgroupId).OnDelete(DeleteBehavior.Restrict);
@@ -387,7 +387,6 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         modelBuilder.Entity<PurchaseDetails>(details =>
         {
             details.HasKey(d => d.EntryId);
-            details.Property(d => d.Product).HasMaxLength(global::Redix.Api.Entries.PurchaseDetails.ProductMaxLength);
             details.HasOne<Entry>().WithOne().HasForeignKey<PurchaseDetails>(d => d.EntryId).OnDelete(DeleteBehavior.Restrict);
             details.HasOne<Supplier>().WithMany().HasForeignKey(d => d.SupplierId).OnDelete(DeleteBehavior.Restrict);
         });

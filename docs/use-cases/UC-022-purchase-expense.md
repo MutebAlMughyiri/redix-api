@@ -2,7 +2,7 @@
 
 # UC-022: Record a purchase expense
 
-**What it is for:** saving a purchase as what was paid: its item, supplier, date, total, account and method, with its file when there is one. This is the first time money enters the ledger.
+**What it is for:** saving a purchase as what was paid: its item, date, total, account and method, its supplier when it names one, with its file when there is one. This is the first time money enters the ledger.
 **Who uses it:** whoever holds `RecordEntries` in the project, which is Finance and Field.
 **Issue:** redix-api #40; the app side is redix-app #41. Simplified by redix-api #96 "Simple expense".
 
@@ -10,7 +10,7 @@
 
 Every movement of money is one row in `Entries`, with a `Kind`; what only one kind has lives in a detail table keyed by the entry (the database design's decision 1). A purchase is a row in `Entries`, one each in `ExpenseDetails` and `PurchaseDetails`, and one in `EntryAttachments` for its file when it has one. The later entries build on these tables.
 
-An expense is its total on its one date (redix-api #96, D10, D11). `Entries.Amount` is the total, `Entries.EntryDate` its date, and both are what every report goes by. The total is the amount typed, or price × quantity when no amount is typed (BR-01). Nothing else is computed or stored: no VAT, no discount, no amount before VAT, and no bill number (D2, D4, D12). The VAT statement works the VAT out of each total in its workbook (UC-056).
+An expense is its total on its one date (redix-api #96, D10, D11). `Entries.Amount` is the total, `Entries.EntryDate` its date, and both are what every report goes by. The total is the amount typed, or price × quantity when no amount is typed and the entry gives both (BR-01). The unit price, the quantity and the product are the item's columns like any other: a table may have none of them, and their values are kept in `Entries.ColumnValues` under their keys with every other column's (redix-api #129, R2, R5). The supplier is optional (Muteb, 13 Nov 2026): a purchase that names one has a `PurchaseDetails` row, and one that names none has no row. Nothing else is computed or stored: no VAT, no discount, no amount before VAT, and no bill number (D2, D4, D12). The VAT statement works the VAT out of each total in its workbook (UC-056).
 
 A new expense writes no `Invoices` row (D11). That table keeps only the number of a bill entered before 7 November 2026, which the credit note's list of bills still shows (UC-026).
 
@@ -22,7 +22,7 @@ The id is made on the phone (the database design's principle 4, AC-16.3), so an 
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/entries` | `RecordEntries`, through the table on offer (redix-api #110) | Records a draft, or with `submit` one pending approval, from `{ id, itemId, tableId, supplierId, date, amount, product, unitPrice, quantity, accountId, paymentMethodId, notes, customValues, attachmentId, isCreditNote, submit }` |
+| `POST /projects/{id}/entries` | `RecordEntries`, through the table on offer (redix-api #110) | Records a draft, or with `submit` one pending approval, from `{ id, itemId, tableId, supplierId, date, amount, accountId, paymentMethodId, notes, columnValues, attachmentId, isCreditNote, submit }`; `supplierId` left out names none, and `columnValues` holds the unit price, the quantity and the product under `unitPrice`, `quantity` and `product` |
 | `GET /projects/{id}/suppliers/search` | `ReadProject` | Puts what the caller used most first, and answers `timesUsed` |
 
 Its refusals are in the endpoint's Swagger summary. Each names a word the app shows.
@@ -42,13 +42,15 @@ Tests are in `ExpensesTests` and `SimpleExpenseTests`.
 | D11: a new expense writes no invoice row, and a draft with no file is sent later with none | `ExpensesEndpoints.SaveAsync` | `SimpleExpenseTests.D11_ANewExpenseWritesNoInvoiceRow`, `D11_ADraftWithNoFileIsSentLaterWithNoFile` |
 | D14: a deduction says why in its notes | `EntryRequest.RefusalOfCommon` | `SimpleExpenseTests.D14_ADeductionSaysWhyInItsNotes` |
 | BR-01: left without an amount, the total is price × quantity; a typed amount wins | `PurchaseTable.TotalOf` | `ExpensesTests.BR_01_LeftWithoutAnAmountTheTotalIsThePriceTimesTheQuantity`, `AnAmountTypedWinsOverThePriceAndQuantityWhichStayAsTyped` |
+| The unit price, the quantity and the product are kept with the entry as every other column is, and a table without one is refused its value (redix-api #129, R2, R5) | `Entry.ColumnValues`, `EntryRecording.RefusalOfColumns` | `ExpensesTests.R129_R5_TheUnitPriceTheQuantityAndTheProductAreKeptWithTheEntryAsEveryOtherColumnIs`, `R129_R2_ATableWithoutTheUnitPriceIsRefusedOneAndTakesItsAmountTyped`, `WhatWasTypedIsRefusedWhenItCannotBeKept` |
+| The supplier is optional: a purchase with none is sent and holds no supplier row; one that names a supplier keeps it (Muteb, 13 Nov 2026, redix-api #129) | `PurchaseTable.RefusalOfAsync`, `PurchaseTable.DetailsOf` | `ExpensesTests.R129_ThePurchasesSupplierIsOptionalSoOneWithNoneIsSentAndHoldsNoSupplierRow`, `R129_APurchaseThatNamesASupplierKeepsItsRow`, `ReportFilesTests.R129_APurchaseWithNoSupplierIsOnTheVatStatementWithNoPartyAndNoVatNumber` |
 | BR-12: a date inside the project's period, not in the future, in Saudi time | `Entry.IsAcceptableDate`, `Entry.Today` | `ExpensesTests.BR_12_ADateOutsideTheProjectsPeriodOrInTheFutureIsRefused`, `BR_12_TheProjectsFirstDayAndTodayAreAccepted`, `BR_12_TodayIsTheDateInSaudiArabiaNotOnTheServer` |
-| BR-19: a supplier from the register, never free text | `Supplier.OfferedTo` | `ExpensesTests.BR_19_ASupplierNotInTheRegisterIsRefused`, `ADisabledSupplierIsRefused`, `FR_44_FieldUsesTheirOwnPendingSupplierAndNotAnothers` |
+| BR-19: a supplier named is from the register, never free text | `Supplier.OfferedTo` | `ExpensesTests.BR_19_ASupplierNotInTheRegisterIsRefused`, `ADisabledSupplierIsRefused`, `FR_44_FieldUsesTheirOwnPendingSupplierAndNotAnothers` |
 | Open question 4: Field charges only what they hold; `ChargeAnyAccount` lets Finance charge any active account | `Account.IsOfferedTo` | `ExpensesTests.OpenQuestion4_FieldChargesAnAccountTheyAreACustodianOf`, `OpenQuestion4_FieldCannotChargeAnAccountTheyAreNotACustodianOf`, `ChargeAnyAccountLetsFinanceChargeAnyActiveAccountAndNotADisabledOne` |
 | AC-38.1: only an item that takes purchases | `ProjectStructure.OfferedItemAsync` | `ExpensesTests.AC_38_1_AnItemThatTakesNoPurchasesOrIsDisabledOrOfAnotherProjectIsRefused` |
 | AC-40.1: a disabled payment method is refused | `ExpensesEndpoints` | `ExpensesTests.AC_40_1_ADisabledPaymentMethodIsRefused` |
-| FR-41, AC-41.1: a required column is asked when sending, of its own item only | `EntryRequest.AnswersAs` | `ExpensesTests.AC_41_1_ARequiredCustomColumnIsAskedOnlyOfItsItemWhenSending`, `ADraftCanWaitForARequiredColumn`, `FR_41_ABuiltInColumnMadeRequiredIsAskedWhenSending` |
-| FR-41: values are stored with the entry, and must fit their column | `ExpenseDetails.CustomValues`, `Column.Accepts` | `ExpensesTests.FR_41_CustomValuesAreStoredWithTheEntryAndAnEmptyOneIsNoValue`, `FR_41_AValueThatDoesNotFitItsColumnIsRefusedNamingIt`, `FR_41_AValueThatFitsItsColumnIsKept`, `AValueForAColumnTheItemDoesNotAskIsRefused` |
+| FR-41, AC-41.1: a required column is asked when sending, of its own item only, and only what its kind of entry is asked | `EntryRequest.Answers`, `Column.IsAskedOf` | `ExpensesTests.AC_41_1_ARequiredCustomColumnIsAskedOnlyOfItsItemWhenSending`, `ADraftCanWaitForARequiredColumn`, `FR_41_ABuiltInColumnMadeRequiredIsAskedWhenSending` |
+| FR-41: values are stored with the entry, and must fit their column | `Entry.ColumnValues`, `Column.Accepts` | `ExpensesTests.FR_41_CustomValuesAreStoredWithTheEntryAndAnEmptyOneIsNoValue`, `FR_41_AValueThatDoesNotFitItsColumnIsRefusedNamingIt`, `FR_41_AValueThatFitsItsColumnIsKept`, `AValueForAColumnTheItemDoesNotAskIsRefused` |
 | BR-21: a deleted column is no longer asked | `ExpensesEndpoints` | `ExpensesTests.BR_21_ADeletedColumnIsNoLongerAsked` |
 | A file, when there is one, is linked to its entry as its invoice | `ExpensesEndpoints.SaveAsync` | `ExpensesTests.TheFileOfAnInvoiceIsLinkedToItsEntryAsItsInvoice` |
 | BR-22: one file is on one expense | `EntryAttachments` | `SimpleExpenseTests.BR_22_TheSameFileOnASecondExpenseIsRefused`, `BR_22_TheSameFileSentAgainIsTheSameFileAndIsRefused`, `AFileKeptAndOnNoEntryIsFreeToUse` |

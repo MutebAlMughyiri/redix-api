@@ -10,7 +10,7 @@
 
 The seeded template project holds the default columns of each item type. When a project is approved it takes its own copy, so each project has its own default template and changing it touches no other (BR-33).
 
-A new item starts from its project's default columns of its type (FR-38), and from then on holds its own rows in `ItemColumns`. A column keeps its `Key` from the template to every item, which is how "apply to all items" finds it. A column a person adds has a key starting `custom.`, under which its values will sit in an entry's `CustomValues`.
+A new item starts from its project's default columns of its type (FR-38), and from then on holds its own rows in `ItemColumns`. A column keeps its `Key` from the template to every item, which is how "apply to all items" finds it. A column a person adds has a key starting `custom.`. Every column an entry answers in no field of its own, a person's own, the unit price, the quantity and the product alike, has its value kept in the entry's `ColumnValues` under its key (redix-api #129, R5); the date, the supplier, the amount, the account, the payment method, the file, the contract, the place in it and the notes are the entry's own fields (`Column.IsEntryField`). An item of both types asks a purchase nothing only a contractor payment's template has, and a payment nothing only a purchase's has (`Column.IsAskedOf`).
 
 A list's choices live in its definition, `Choices` (redix-api #129): each has an id, a name and a sign, `none`, `plus` or `minus`. An entry keeps the id of the choice chosen, never its name, so a choice keeps its entries whatever it is called. A sign decides the direction of the amount of the entry that chooses it, so an item holds at most one list whose choices carry a sign.
 
@@ -78,5 +78,5 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | What | Use case |
 | --- | --- |
 | Entry asking for the columns, and refusing a required one left empty (AC-41.1) | The purchase and contractor payment entry use cases, reading `GET .../items/{itemId}/columns` |
-| Custom values stored with each entry (step 4), in `ExpenseDetails.CustomValues` under the column's `Key` | The same |
+| Column values stored with each entry, in `Entries.ColumnValues` under the column's `Key` (redix-api #129) | UC-022 "Record a purchase" |
 | The item's table in the report following `ShowInReports` and `SortOrder` | The periodic report |

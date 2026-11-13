@@ -24,7 +24,7 @@ Both kinds of expense share `EntryRequest` and `EntryRecording`: the payment met
 
 | Route | Who | Does |
 | --- | --- | --- |
-| `POST /projects/{id}/entries` | `RecordEntries`, through the contract's table on offer (redix-api #110) | Records a payment as a draft, or sent, from `{ id, itemId, tableId, isOutsideContract, amount, date, accountId, paymentMethodId, notes, customValues, attachmentId, submit }`, the table being the contract. Answers what the contract stands at with it |
+| `POST /projects/{id}/entries` | `RecordEntries`, through the contract's table on offer (redix-api #110) | Records a payment as a draft, or sent, from `{ id, itemId, tableId, isOutsideContract, amount, date, accountId, paymentMethodId, notes, columnValues, attachmentId, submit }`, the table being the contract. Answers what the contract stands at with it |
 | `GET /projects/{id}/contracts` | `ReadProject` | Answers real `paid`, `pending`, `remaining` and `isOverrun`, and `itemId` for the entry form |
 
 ## Tables

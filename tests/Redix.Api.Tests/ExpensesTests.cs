@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -113,9 +114,38 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 0m) with { UnitPrice = 230m, Quantity = 5m });
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 0m) with { ColumnValues = PriceAndQuantity("230", "5") });
 
         Assert.Equal(1150m, view.Amount);
+    }
+
+    private static Dictionary<string, string> PriceAndQuantity(string unitPrice, string quantity) => new() { ["unitPrice"] = unitPrice, ["quantity"] = quantity };
+
+    [Fact]
+    public async Task R129_R5_TheUnitPriceTheQuantityAndTheProductAreKeptWithTheEntryAsEveryOtherColumnIs()
+    {
+        var setup = await FinanceAsync();
+
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "230", ["quantity"] = "5", ["product"] = "أسمنت" } });
+
+        var values = JsonSerializer.Deserialize<Dictionary<string, string>>(await ReadAsync(db => db.Entries.Where(row => row.Id == view.Id).Select(row => row.ColumnValues).SingleAsync()))!;
+        Assert.Equal(new Dictionary<string, string> { ["unitPrice"] = "230", ["quantity"] = "5", ["product"] = "أسمنت" }, values);
+    }
+
+    [Fact]
+    public async Task R129_R2_ATableWithoutTheUnitPriceIsRefusedOneAndTakesItsAmountTyped()
+    {
+        var setup = await FinanceAsync();
+        await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == setup.ItemId && column.Key == "unitPrice").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsHidden, true)));
+
+        var refused = await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = PriceAndQuantity("230", "5") });
+        var kept = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 900m) with { ColumnValues = new Dictionary<string, string> { ["quantity"] = "5" } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        var answer = await refused.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("unknownColumn", answer.GetProperty("code").GetString());
+        Assert.Equal("unitPrice", answer.GetProperty("columnKey").GetString());
+        Assert.Equal(900m, kept.Amount);
     }
 
     [Fact]
@@ -123,13 +153,13 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { UnitPrice = 999m, Quantity = 2m, Product = " مواد لياسة " });
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "999", ["quantity"] = "2", ["product"] = " مواد لياسة " } });
 
         Assert.Equal(1150m, view.Amount);
-        var purchase = await ReadAsync(db => db.PurchaseDetails.SingleAsync(row => row.EntryId == view.Id));
-        Assert.Equal(999m, purchase.UnitPrice);
-        Assert.Equal(2m, purchase.Quantity);
-        Assert.Equal("مواد لياسة", purchase.Product);
+        var values = JsonSerializer.Deserialize<Dictionary<string, string>>(await ReadAsync(db => db.Entries.Where(row => row.Id == view.Id).Select(row => row.ColumnValues).SingleAsync()))!;
+        Assert.Equal("999", values["unitPrice"]);
+        Assert.Equal("2", values["quantity"]);
+        Assert.Equal("مواد لياسة", values["product"]);
     }
 
     [Fact]
@@ -225,8 +255,30 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var other = await FinanceAsync("غصون 7");
 
-        await AssertRefusedAsync(setup, Expense(setup) with { SupplierId = Guid.Empty }, "unknownSupplier");
+        await AssertRefusedAsync(setup, Expense(setup) with { SupplierId = Guid.CreateVersion7() }, "unknownSupplier");
         await AssertRefusedAsync(setup, Expense(setup) with { SupplierId = other.SupplierId }, "unknownSupplier");
+    }
+
+    [Fact]
+    public async Task R129_ThePurchasesSupplierIsOptionalSoOneWithNoneIsSentAndHoldsNoSupplierRow()
+    {
+        var setup = await FinanceAsync();
+
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { SupplierId = Guid.Empty, Submit = true, AttachmentId = await ImageAsync(setup.Client, setup.Project.Id) });
+
+        Assert.Equal(EntryStatus.PendingApproval, view.Status);
+        Assert.Empty(await ReadAsync(db => db.PurchaseDetails.Where(row => row.EntryId == view.Id).ToListAsync()));
+        Assert.False((await setup.Client.GetFromJsonAsync<List<ColumnView>>($"/projects/{setup.Project.Id}/items/{setup.ItemId}/columns", Json))!.Single(column => column.Key == "supplier").IsRequired);
+    }
+
+    [Fact]
+    public async Task R129_APurchaseThatNamesASupplierKeepsItsRow()
+    {
+        var setup = await FinanceAsync();
+
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup));
+
+        Assert.Equal(setup.SupplierId, await ReadAsync(db => db.PurchaseDetails.Where(row => row.EntryId == view.Id).Select(row => row.SupplierId).SingleAsync()));
     }
 
     [Fact]
@@ -362,14 +414,14 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        await AssertRefusedAsync(setup, Expense(setup) with { Product = new string('م', PurchaseDetails.ProductMaxLength + 1) }, "invalidProduct");
+        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["product"] = new string('م', Column.ValueMaxLength + 1) } }, "invalidColumnValue");
         await AssertRefusedAsync(setup, Expense(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");
-        await AssertRefusedAsync(setup, Expense(setup) with { UnitPrice = -1m }, "invalidUnitPrice");
-        await AssertRefusedAsync(setup, Expense(setup) with { Quantity = 1.234m }, "invalidQuantity");
+        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "1.234" } }, "invalidColumnValue");
+        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["quantity"] = "كثير" } }, "invalidColumnValue");
         await AssertRefusedAsync(setup, Expense(setup, 0m), "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, -5m), "deductionNeedsNotes");
         await AssertRefusedAsync(setup, Expense(setup, 1.234m), "invalidAmount");
-        await AssertRefusedAsync(setup, Expense(setup, 0m) with { UnitPrice = Money.Largest, Quantity = Money.Largest }, "invalidAmount");
+        await AssertRefusedAsync(setup, Expense(setup, 0m) with { ColumnValues = PriceAndQuantity(Money.Largest.ToString(CultureInfo.InvariantCulture), Money.Largest.ToString(CultureInfo.InvariantCulture)) }, "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, Money.Largest + 1m), "invalidAmount");
     }
 
@@ -406,10 +458,10 @@ public class ExpensesTests(MigratedApiFactory factory)
         var key = await CustomColumnAsync(setup.Client, setup.Project.Id, setup.ItemId, ColumnDataType.Number, isRequired: true);
         var attachmentId = await ImageAsync(setup.Client, setup.Project.Id);
 
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = attachmentId, CustomValues = new Dictionary<string, string> { [key] = " 125.5 " } });
-        await AssertRefusedAsync(setup, Expense(setup) with { Submit = true, AttachmentId = attachmentId, CustomValues = new Dictionary<string, string> { [key] = "  " } }, "requiredColumnMissing");
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = attachmentId, ColumnValues = new Dictionary<string, string> { [key] = " 125.5 " } });
+        await AssertRefusedAsync(setup, Expense(setup) with { Submit = true, AttachmentId = attachmentId, ColumnValues = new Dictionary<string, string> { [key] = "  " } }, "requiredColumnMissing");
 
-        var stored = JsonSerializer.Deserialize<Dictionary<string, string>>((await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == view.Id))).CustomValues)!;
+        var stored = JsonSerializer.Deserialize<Dictionary<string, string>>((await ReadAsync(db => db.Entries.SingleAsync(row => row.Id == view.Id))).ColumnValues)!;
         Assert.Equal("125.5", stored[key]);
     }
 
@@ -423,7 +475,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var setup = await FinanceAsync();
         var key = await CustomColumnAsync(setup.Client, setup.Project.Id, setup.ItemId, dataType, false, "أحمر");
 
-        var response = await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { CustomValues = new Dictionary<string, string> { [key] = value } });
+        var response = await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = new Dictionary<string, string> { [key] = value } });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var answer = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -444,7 +496,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var columns = (await setup.Client.GetFromJsonAsync<List<ColumnView>>($"/projects/{setup.Project.Id}/items/{setup.ItemId}/columns", Json))!;
         var typed = dataType == ColumnDataType.List ? columns.Single(column => column.Key == key).Choices.Single(choice => choice.Name == value).Id.ToString() : value;
 
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { CustomValues = new Dictionary<string, string> { [key] = typed } })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = new Dictionary<string, string> { [key] = typed } })).StatusCode);
     }
 
     [Fact]
@@ -452,7 +504,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        var response = await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { CustomValues = new Dictionary<string, string> { ["custom.nothing"] = "1" } });
+        var response = await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["custom.nothing"] = "1" } });
 
         Assert.Equal("unknownColumn", await CodeOf(response));
     }
@@ -468,7 +520,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = await ImageAsync(setup.Client, setup.Project.Id) });
 
         Assert.Equal(EntryStatus.PendingApproval, view.Status);
-        Assert.Equal("unknownColumn", await CodeOf(await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { CustomValues = new Dictionary<string, string> { [key] = "1" } })));
+        Assert.Equal("unknownColumn", await CodeOf(await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = new Dictionary<string, string> { [key] = "1" } })));
     }
 
     [Theory]

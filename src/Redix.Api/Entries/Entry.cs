@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
 namespace Redix.Api.Entries;
@@ -44,6 +45,15 @@ public class Entry
 
     /// <summary>Notes on it; empty when none.</summary>
     public string Notes { get; set; } = "";
+
+    /// <summary>
+    /// The values of its item's columns that it holds in no field of its own, a JSON object of each column's key and its value (FR-41): the same store whatever the column, a
+    /// person's own, the unit price, the quantity or the product alike, so a table without one needs no code (redix-api #129, R5).
+    /// </summary>
+    public string ColumnValues { get; set; } = "{}";
+
+    /// <summary>Its column values, by each column's key.</summary>
+    public Dictionary<string, string> ColumnValuesByKey() => JsonSerializer.Deserialize<Dictionary<string, string>>(ColumnValues)!;
 
     /// <summary>The user who entered it.</summary>
     public Guid CreatedByUserId { get; init; }

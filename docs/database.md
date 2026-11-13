@@ -682,6 +682,7 @@ The ledger: every movement of money, of any kind; each kind's own fields are in 
 | Amount | decimal(19,4) | not null |  |  |
 | AccountId | uniqueidentifier | not null | FK | `Accounts.Id` |
 | Notes | nvarchar(1000) | not null |  |  |
+| ColumnValues | json | not null |  |  |
 | CreatedByUserId | uniqueidentifier | not null | FK | `Users.Id` |
 | CreatedAt | datetime2(7) | not null |  |  |
 | ApprovedAt | datetime2(7) | not null |  |  |
@@ -700,7 +701,6 @@ What every expense (a purchase or a contractor payment) has.
 | ItemId | uniqueidentifier | not null | FK | `Items.Id` |
 | SubgroupId | uniqueidentifier | not null | FK | `Subgroups.Id` |
 | PaymentMethodId | uniqueidentifier | not null | FK | `PaymentMethods.Id` |
-| CustomValues | json | not null |  |  |
 
 Unique: the key only.
 
@@ -708,15 +708,12 @@ Other indexes: `ItemId`; `PaymentMethodId`; `SubgroupId`.
 
 ### PurchaseDetails
 
-What only a purchase has.
+A purchase's supplier, a row only when it names one: the supplier is optional (redix-api #129).
 
 | Column | SQL type | Null | Key | Points at |
 | --- | --- | --- | --- | --- |
 | EntryId | uniqueidentifier | not null | PK FK | `Entries.Id` |
 | SupplierId | uniqueidentifier | not null | FK | `Suppliers.Id` |
-| Product | nvarchar(200) | not null |  |  |
-| UnitPrice | decimal(19,4) | not null |  |  |
-| Quantity | decimal(19,4) | not null |  |  |
 
 Unique: the key only.
 

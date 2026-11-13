@@ -1,3 +1,4 @@
+using Redix.Api.Entries;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
@@ -34,7 +35,7 @@ public static class StructureSeed
     private static readonly (string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsRequired, bool ShowInReports)[] PurchaseColumns =
     [
         ("date", "التاريخ", ColumnDataType.Date, true, true, true),
-        ("supplier", "المورد", ColumnDataType.List, true, true, false),
+        ("supplier", "المورد", ColumnDataType.List, true, false, false),
         ("product", "الصنف", ColumnDataType.Text, false, false, true),
         ("unitPrice", "سعر الوحدة", ColumnDataType.Amount, false, false, true),
         ("quantity", "العدد", ColumnDataType.Number, false, false, true),
@@ -57,6 +58,20 @@ public static class StructureSeed
         ("attachment", "المرفق", ColumnDataType.File, true, false, false),
         ("supplier", "المورد", ColumnDataType.List, true, false, false),
     ];
+
+    /// <summary>
+    /// Whether an entry of <paramref name="kind"/> is asked the column <paramref name="key"/> (FR-38): an item of both types holds both templates' columns, and a purchase is never asked
+    /// what only a contractor payment's template has, nor a payment what only a purchase's has. Every other column, a person's own too, is asked of both.
+    /// </summary>
+    public static bool IsAsked(string key, EntryKind kind) => kind switch
+    {
+        EntryKind.Purchase => !IsOnlyIn(ContractorPaymentColumns, PurchaseColumns, key),
+        EntryKind.ContractorPayment => !IsOnlyIn(PurchaseColumns, ContractorPaymentColumns, key),
+        _ => true,
+    };
+
+    private static bool IsOnlyIn((string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsRequired, bool ShowInReports)[] columns, (string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsRequired, bool ShowInReports)[] others, string key) =>
+        columns.Any(column => column.Key == key) && others.All(column => column.Key != key);
 
     /// <summary>The id of the default template, the same in every database.</summary>
     public static Guid TemplateId { get; } = StableIds.Of("project:template");

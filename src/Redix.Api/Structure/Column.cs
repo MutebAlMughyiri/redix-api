@@ -1,4 +1,5 @@
 using System.Globalization;
+using Redix.Api.Entries;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
@@ -13,6 +14,8 @@ public abstract class Column : IOrdered
     public const int ValueMaxLength = 1000;
 
     private const string CustomKeyPrefix = "custom.";
+
+    private static readonly HashSet<string> EntryFieldKeys = ["date", "supplier", "total", "amount", "account", "paymentMethod", "attachment", "contract", "outsideContract", "notes"];
 
     /// <summary>The column's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
@@ -46,6 +49,15 @@ public abstract class Column : IOrdered
 
     /// <summary>True for a column a person added, rather than one the template starts with.</summary>
     public bool IsCustom => Key.StartsWith(CustomKeyPrefix);
+
+    /// <summary>
+    /// True for a column the entry answers in a field of its own, its date, supplier, amount, account, payment method, file, contract, place in it, or notes; false for every other,
+    /// whose value the entry keeps under the column's key in <see cref="Entry.ColumnValues"/>, whatever column it is (redix-api #129, R5).
+    /// </summary>
+    public bool IsEntryField => EntryFieldKeys.Contains(Key);
+
+    /// <summary>Whether an entry of <paramref name="kind"/> is asked this column: a purchase nothing only a contractor payment has, and a payment nothing only a purchase has (FR-38).</summary>
+    public bool IsAskedOf(EntryKind kind) => StructureSeed.IsAsked(Key, kind);
 
     /// <summary>A key for a column a person adds.</summary>
     public static string NewCustomKey() => CustomKeyPrefix + Guid.CreateVersion7().ToString("N");

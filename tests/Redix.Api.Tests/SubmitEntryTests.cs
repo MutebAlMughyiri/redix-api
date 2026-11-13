@@ -85,7 +85,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         var ledger = await LedgerAsync();
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("المرحلة", ColumnDataType.Text, false, false, []), Ledger.Json)).EnsureSuccessStatusCode();
         var custom = (await ledger.Client.GetFromJsonAsync<List<ColumnView>>($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", Ledger.Json))!.Single(column => column.Name == "المرحلة").Key;
-        var entryId = await DraftAsync(ledger, ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Product = "أسمنت", Notes = "دفعة أولى", CustomValues = new Dictionary<string, string> { [custom] = "الأرضي" } });
+        var entryId = await DraftAsync(ledger, ledger.Purchase() with { AttachmentId = await ledger.FileAsync(), Notes = "دفعة أولى", ColumnValues = new Dictionary<string, string> { ["product"] = "أسمنت", [custom] = "الأرضي" } });
         await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == ledger.ItemId && (column.Key == "product" || column.Key == "notes" || column.Key == custom)).ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
 
         (await SubmitAsync(ledger, entryId)).EnsureSuccessStatusCode();
@@ -217,7 +217,7 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         var ledger = await LedgerAsync();
         await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == ledger.ItemId && column.Key == "product").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
         var refused = await DraftAsync(ledger, ledger.Purchase());
-        var entryId = await DraftAsync(ledger, ledger.Purchase(200m) with { Product = "أسمنت" });
+        var entryId = await DraftAsync(ledger, ledger.Purchase(200m) with { ColumnValues = new Dictionary<string, string> { ["product"] = "أسمنت" } });
 
         await SubmitAsync(ledger, refused);
         await SubmitAsync(ledger, entryId);
@@ -231,13 +231,13 @@ public class SubmitEntryTests(MigratedApiFactory factory)
     public async Task ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest()
     {
         var ledger = await LedgerAsync();
-        var entryId = await DraftAsync(ledger, ledger.Purchase() with { Product = "أسمنت", AttachmentId = await ledger.FileAsync() });
+        var entryId = await DraftAsync(ledger, ledger.Purchase() with { ColumnValues = new Dictionary<string, string> { ["product"] = "أسمنت" }, AttachmentId = await ledger.FileAsync() });
 
         var entry = await ReadAsync(ledger, entryId);
 
         Assert.Equal("draft", entry.GetProperty("entry").GetProperty("status").GetString());
         Assert.Equal(1150m, entry.GetProperty("entry").GetProperty("amount").GetDecimal());
-        Assert.Equal("أسمنت", entry.GetProperty("purchase").GetProperty("product").GetString());
+        Assert.Equal("أسمنت", JsonSerializer.Deserialize<Dictionary<string, string>>(entry.GetProperty("entry").GetProperty("columnValues").GetString()!)!["product"]);
         Assert.Equal(Guid.Empty, entry.GetProperty("invoice").GetProperty("entryId").GetGuid());
         Assert.Equal(Guid.Empty, entry.GetProperty("contractorPayment").GetProperty("entryId").GetGuid());
         Assert.Equal("invoice", Assert.Single(entry.GetProperty("attachments").EnumerateArray()).GetProperty("role").GetString());

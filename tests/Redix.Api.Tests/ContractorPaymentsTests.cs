@@ -398,7 +398,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         Assert.Equal("requiredColumnMissing", answer.GetProperty("code").GetString());
         Assert.Equal(key, answer.GetProperty("columnKey").GetString());
 
-        await RecordAsync(setup, request with { CustomValues = new Dictionary<string, string> { [key] = "الدور الأرضي" } });
+        await RecordAsync(setup, request with { ColumnValues = new Dictionary<string, string> { [key] = "الدور الأرضي" } });
     }
 
     [Fact]

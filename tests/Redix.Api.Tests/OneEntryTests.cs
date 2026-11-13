@@ -86,7 +86,7 @@ public class OneEntryTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
-        var purchase = ledger.Purchase(200) with { Product = "بلاط" };
+        var purchase = ledger.Purchase(200) with { ColumnValues = new Dictionary<string, string> { ["product"] = "بلاط" } };
         await ledger.RecordAsync(purchase);
 
         var moved = await ledger.ChangeAsync(await ledger.PartnerEntryAsync(partner, 200, isWithdrawal: true) with { Id = purchase.Id, Submit = false });

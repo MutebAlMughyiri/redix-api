@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Structure;
-using System.Text.Json;
 
 namespace Redix.Api.Entries;
 
@@ -83,14 +82,13 @@ public abstract record EntryTable(Category Category, Item Item, Guid Id, string 
     /// <summary>What <paramref name="subgroup"/> is in its item's sheet.</summary>
     protected static ItemTableKind KindOf(Subgroup subgroup) => subgroup.IsGeneral ? ItemTableKind.General : ItemTableKind.Subgroup;
 
-    /// <summary>What every expense of <paramref name="request"/> holds, in its item's group <paramref name="subgroupId"/>: how it was paid and its custom values.</summary>
+    /// <summary>What every expense of <paramref name="request"/> holds, in its item's group <paramref name="subgroupId"/>: how it was paid.</summary>
     protected ExpenseDetails ExpenseDetailsOf(EntryRequest request, Guid subgroupId) => new()
     {
         EntryId = request.Id,
         ItemId = Item.Id,
         SubgroupId = subgroupId,
         PaymentMethodId = request.PaymentMethodId,
-        CustomValues = JsonSerializer.Serialize(request.CustomValuesKept()),
     };
 }
 

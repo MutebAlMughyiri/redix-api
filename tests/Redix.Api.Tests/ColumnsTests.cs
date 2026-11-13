@@ -623,12 +623,12 @@ public class ColumnsTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, [new("شرق")]), Json)).EnsureSuccessStatusCode();
         var column = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last();
-        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = Guid.CreateVersion7().ToString() } }, "invalidColumnValue");
+        await ledger.AssertRefusedAsync(ledger.Purchase() with { ColumnValues = new Dictionary<string, string> { [column.Key] = Guid.CreateVersion7().ToString() } }, "invalidColumnValue");
 
         (await EditItemColumnAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, column, "شمال")).EnsureSuccessStatusCode();
         var gained = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last().Choices.Single(choice => choice.Name == "شمال");
 
-        await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = gained.Id.ToString() } });
+        await ledger.RecordAsync(ledger.Purchase() with { ColumnValues = new Dictionary<string, string> { [column.Key] = gained.Id.ToString() } });
     }
 
     [Fact]
@@ -639,10 +639,10 @@ public class ColumnsTests(MigratedApiFactory factory)
         var column = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last();
         var west = column.Choices.Single(choice => choice.Name == "غرب");
 
-        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = "غرب" } }, "invalidColumnValue");
-        var kept = await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = west.Id.ToString() } });
+        await ledger.AssertRefusedAsync(ledger.Purchase() with { ColumnValues = new Dictionary<string, string> { [column.Key] = "غرب" } }, "invalidColumnValue");
+        var kept = await ledger.RecordAsync(ledger.Purchase() with { ColumnValues = new Dictionary<string, string> { [column.Key] = west.Id.ToString() } });
 
-        var values = await ledger.ReadAsync(db => db.ExpenseDetails.Where(row => row.EntryId == kept.Id).Select(row => row.CustomValues).SingleAsync());
+        var values = await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == kept.Id).Select(row => row.ColumnValues).SingleAsync());
         Assert.Equal(west.Id.ToString(), JsonSerializer.Deserialize<Dictionary<string, string>>(values)![column.Key]);
     }
 

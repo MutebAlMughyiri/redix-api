@@ -109,7 +109,7 @@ public sealed class EntryFacts
     public string SupplierVatNumberOf(Entry entry) => SupplierOf(entry).VatNumber;
 
     /// <summary>What was bought; empty when not said.</summary>
-    public string ProductOf(Entry entry) => _purchases.TryGetValue(entry.Id, out var purchase) ? purchase.Product : "";
+    public string ProductOf(Entry entry) => entry.ColumnValuesByKey().GetValueOrDefault("product", "");
 
     /// <summary>The id of its file; empty when it has none.</summary>
     public string AttachmentIdOf(Entry entry) => _files[entry.Id].Select(file => file.AttachmentId.ToString()).FirstOrDefault("");

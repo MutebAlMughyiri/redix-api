@@ -582,6 +582,10 @@ namespace Redix.Api.Migrations
                     b.Property<DateTime>("ApprovedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("ColumnValues")
+                        .IsRequired()
+                        .HasColumnType("json");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -701,10 +705,6 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("EntryId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CustomValues")
-                        .IsRequired()
-                        .HasColumnType("json");
-
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uniqueidentifier");
 
@@ -759,15 +759,6 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("EntryId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Product")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("decimal(19,4)");
-
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -776,10 +767,6 @@ namespace Redix.Api.Migrations
 
                     b.Property<Guid>("SupplierId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("decimal(19,4)");
 
                     b.HasKey("EntryId");
 
@@ -2199,7 +2186,7 @@ namespace Redix.Api.Migrations
                             Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
-                            IsRequired = true,
+                            IsRequired = false,
                             ItemType = (byte)0,
                             Key = "supplier",
                             Name = "المورد",
@@ -2465,7 +2452,7 @@ namespace Redix.Api.Migrations
                             Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
-                            IsRequired = true,
+                            IsRequired = false,
                             ItemType = (byte)2,
                             Key = "supplier",
                             Name = "المورد",

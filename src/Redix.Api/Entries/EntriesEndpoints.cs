@@ -283,10 +283,8 @@ public static class EntriesEndpoints
     private static async Task<List<string>> MissingOfAsync(Entry entry, RedixDbContext db)
     {
         var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ExpenseDetails();
-        var purchase = await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new PurchaseDetails();
-        var columns = await db.Set<ItemColumn>().Where(column => column.ItemId == expense.ItemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync();
-        var answers = new EntryAnswers(entry.Kind, purchase.Product, purchase.UnitPrice, purchase.Quantity, entry.Notes, expense.CustomValuesByKey());
-        return answers.MissingOf(columns);
+        var columns = (await db.Set<ItemColumn>().Where(column => column.ItemId == expense.ItemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync()).Where(column => column.IsAskedOf(entry.Kind));
+        return new EntryAnswers(entry.Notes, entry.ColumnValuesByKey()).MissingOf(columns);
     }
 
     private static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db)
@@ -333,7 +331,7 @@ public record ChangeNotesRequest(string Notes);
 /// <param name="Entry">The entry.</param>
 /// <param name="TableId">The table it is in: its contract, its partner, or its item's group (redix-api #110).</param>
 /// <param name="Expense">What every expense has.</param>
-/// <param name="Purchase">What only a purchase has.</param>
+/// <param name="Purchase">A purchase's supplier; empty, with an empty id, when it names none.</param>
 /// <param name="ContractorPayment">What only a contractor payment has.</param>
 /// <param name="Invoice">The bill number it was entered with before REDIX stopped asking for one; empty on a newer entry (redix-api #96, D2).</param>
 /// <param name="Attachments">The files it carries.</param>

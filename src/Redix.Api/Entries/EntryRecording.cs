@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.History;
 using Redix.Api.Auth;
@@ -74,7 +75,7 @@ public static class EntryRecording
     /// payment method, <c>unknownPaymentMethod</c>; the account is one the caller may use, <c>accountNotOffered</c> (BRS open question 4); a file of no such attachment answers
     /// <c>unknownAttachment</c>. Notes too long answer <c>invalidNotes</c>; a negative total is a deduction, only on an expense, which says why in its notes, <c>deductionNeedsNotes</c>
     /// (FR-14, D14); then the table's own typing; an amount of zero, with more than two decimals, beyond <see cref="Money.Largest"/> or below zero on the revenue side answers
-    /// <c>invalidAmount</c>, and a date outside the project's period or in the future <c>invalidDate</c> (BR-12). Then the table's own checks; a custom value answers
+    /// <c>invalidAmount</c>, and a date outside the project's period or in the future <c>invalidDate</c> (BR-12). Then the table's own checks; a column's value answers
     /// <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>, and sending needs the required columns, <c>requiredColumnMissing</c> (FR-41); a file
     /// already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). A new entry answers 201 with what was kept, a changed one 200.
     /// </summary>
@@ -109,7 +110,8 @@ public static class EntryRecording
         {
             return (StatusCodes.Status400BadRequest, refusal, "");
         }
-        var (reason, columnKey) = RefusalOfColumns(request, table.EntryKindOf(request), table.Item.Columns.Where(column => !column.IsHidden).ToList());
+        var kind = table.EntryKindOf(request);
+        var (reason, columnKey) = RefusalOfColumns(request, table.Item.Columns.Where(column => !column.IsHidden && column.IsAskedOf(kind)).OrderBy(column => column.SortOrder).ToList());
         if (reason.Length > 0)
         {
             return (StatusCodes.Status400BadRequest, reason, columnKey);
@@ -158,12 +160,15 @@ public static class EntryRecording
         return await db.EntryAttachments.AnyAsync(link => link.EntryId != editing && db.Attachments.Any(attachment => attachment.Id == link.AttachmentId && attachment.ProjectId == projectId && attachment.Sha256 == hash));
     }
 
-    /// <summary>Why the custom values of <paramref name="request"/>, an entry of <paramref name="kind"/>, do not fit <paramref name="columns"/> or, when sending, a required one is empty (FR-41), and the column's key. An empty reason when they fit.</summary>
-    private static (string Reason, string ColumnKey) RefusalOfColumns(EntryRequest request, EntryKind kind, List<ItemColumn> columns)
+    /// <summary>
+    /// Why the column values of <paramref name="request"/> do not fit <paramref name="columns"/>, those its table asks, or, when sending, a required one is empty (FR-41), and the column's
+    /// key. Every column whose value the entry keeps is checked the same way, whatever it is (redix-api #129, R5). An empty reason when they fit.
+    /// </summary>
+    private static (string Reason, string ColumnKey) RefusalOfColumns(EntryRequest request, List<ItemColumn> columns)
     {
-        foreach (var (key, value) in request.CustomValuesKept())
+        foreach (var (key, value) in request.ColumnValuesKept())
         {
-            var column = columns.SingleOrDefault(row => row.Key == key && row.IsCustom);
+            var column = columns.SingleOrDefault(row => row.Key == key && !row.IsEntryField);
             if (column is null)
             {
                 return ("UnknownColumn", key);
@@ -173,7 +178,7 @@ public static class EntryRecording
                 return ("InvalidColumnValue", key);
             }
         }
-        var missing = request.Submit ? request.AnswersAs(kind).MissingOf(columns) : [];
+        var missing = request.Submit ? request.Answers().MissingOf(columns) : [];
         return missing.Count == 0 ? ("", "") : ("RequiredColumnMissing", missing[0]);
     }
 
@@ -188,6 +193,7 @@ public static class EntryRecording
         Amount = table.AmountOf(request),
         AccountId = request.AccountId,
         Notes = request.Notes.Trim(),
+        ColumnValues = JsonSerializer.Serialize(request.ColumnValuesKept()),
         CreatedByUserId = userId,
         CreatedAt = at,
     };

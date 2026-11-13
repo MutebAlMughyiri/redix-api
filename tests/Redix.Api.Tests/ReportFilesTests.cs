@@ -191,7 +191,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
         await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 1000, notes: ""), Json));
-        await ApprovedAsync(ledger, ledger.Purchase(115) with { Product = "P1" });
+        await ApprovedAsync(ledger, ledger.Purchase(115) with { ColumnValues = new Dictionary<string, string> { ["product"] = "P1" } });
         await IssueAsync(ledger);
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
@@ -425,6 +425,22 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal("E3*15/(100+15)", sheet.Cell(3, 6).FormulaA1);
         Assert.Equal("E3-F3", sheet.Cell(3, 7).FormulaA1);
         Assert.Equal("SUM(F3:F3)", sheet.Cell(4, 6).FormulaA1);
+    }
+
+    [Fact]
+    public async Task R129_APurchaseWithNoSupplierIsOnTheVatStatementWithNoPartyAndNoVatNumber()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ApprovedAsync(ledger, ledger.Purchase(115) with { SupplierId = Guid.Empty });
+        var start = VatStatement.QuarterStartOf(ledger.Today);
+        var address = $"/projects/{ledger.ProjectId}/vat-statement/xlsx?from={start:yyyy-MM-dd}&to={VatStatement.NextQuarter(start).AddDays(-1):yyyy-MM-dd}";
+
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync(address)));
+
+        var sheet = workbook.Worksheet(1);
+        Assert.Equal(115, sheet.Cell(3, 5).GetValue<int>());
+        Assert.Equal("", sheet.Cell(3, 2).GetString());
+        Assert.Equal("", sheet.Cell(3, 4).GetString());
     }
 
     [Fact]
