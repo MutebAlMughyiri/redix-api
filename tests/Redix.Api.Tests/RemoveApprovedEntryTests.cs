@@ -125,7 +125,7 @@ public class RemoveApprovedEntryTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.NotFound, (await DeleteAsync(remover, ledger, id)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await ledger.ChangeAsync(request with { Amount = 9m })).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/notes", new ChangeNotesRequest("بعد الحذف"), Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{id}/description", new ChangeDescriptionRequest("بعد الحذف"), Json)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/entries/{id}/submit", null)).StatusCode);
         Assert.Equal(EntryStatus.Removed, await StatusOfAsync(ledger, id));
     }

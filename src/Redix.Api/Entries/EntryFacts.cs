@@ -108,9 +108,6 @@ public sealed class EntryFacts
     /// <summary>The VAT number of its supplier.</summary>
     public string SupplierVatNumberOf(Entry entry) => SupplierOf(entry).VatNumber;
 
-    /// <summary>What was bought; empty when not said.</summary>
-    public string ProductOf(Entry entry) => entry.ColumnValuesByKey().GetValueOrDefault("product", "");
-
     /// <summary>The id of its file; empty when it has none.</summary>
     public string AttachmentIdOf(Entry entry) => _files[entry.Id].Select(file => file.AttachmentId.ToString()).FirstOrDefault("");
 

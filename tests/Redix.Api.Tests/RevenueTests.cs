@@ -30,7 +30,7 @@ public class RevenueTests(MigratedApiFactory factory)
 
     private static Task<List<VatQuarterView>> StatementAsync(Ledger ledger) => StatementAsync(ledger, QuarterOf(ledger), VatStatement.NextQuarter(QuarterOf(ledger)).AddDays(-1));
 
-    private static Task ApprovedPurchaseAsync(Ledger ledger, decimal amount, string product = "") => ApprovedAsync(ledger, ledger.Purchase(amount) with { ColumnValues = new Dictionary<string, string> { ["product"] = product }, Submit = true });
+    private static Task ApprovedPurchaseAsync(Ledger ledger, decimal amount, string product = "") => ApprovedAsync(ledger, ledger.Purchase(amount) with { Description = product, Submit = true });
 
     private static async Task ApprovedAsync(Ledger ledger, EntryRequest purchase)
     {

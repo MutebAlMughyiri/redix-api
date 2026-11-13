@@ -15,7 +15,7 @@ public abstract class Column : IOrdered
 
     private const string CustomKeyPrefix = "custom.";
 
-    private static readonly HashSet<string> EntryFieldKeys = ["date", "supplier", "total", "amount", "account", "paymentMethod", "attachment", "contract", "outsideContract", "notes"];
+    private static readonly HashSet<string> EntryFieldKeys = ["description", "date", "supplier", "total", "amount", "account", "paymentMethod", "attachment", "contract", "outsideContract"];
 
     /// <summary>The column's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
@@ -51,8 +51,8 @@ public abstract class Column : IOrdered
     public bool IsCustom => Key.StartsWith(CustomKeyPrefix);
 
     /// <summary>
-    /// True for a column the entry answers in a field of its own, its date, supplier, amount, account, payment method, file, contract, place in it, or notes; false for every other,
-    /// whose value the entry keeps under the column's key in <see cref="Entry.ColumnValues"/>, whatever column it is (redix-api #129, R5).
+    /// True for a column the entry answers in a field of its own, its description, date, supplier, amount, account, payment method, file, contract or place in it; false for every other,
+    /// whose value the entry keeps under the column's key in <see cref="Entry.ColumnValues"/>, whatever column it is: a person's own, the unit price, the quantity (redix-api #129, R5).
     /// </summary>
     public bool IsEntryField => EntryFieldKeys.Contains(Key);
 

@@ -6,8 +6,8 @@ namespace Redix.Api.Entries;
 /// <summary>One movement of money in the ledger, of any kind. Approval, history, reversal, attachments and account balances are built once, on this. What only one kind has lives in a detail table keyed by the entry.</summary>
 public class Entry
 {
-    /// <summary>The longest notes an entry may have.</summary>
-    public const int NotesMaxLength = 1000;
+    /// <summary>The longest description an entry may have: room for what a purchase's product and notes held together before they became one (redix-api #129).</summary>
+    public const int DescriptionMaxLength = 2000;
 
     /// <summary>No entry: what a lookup answers when there is none, and what "keep this as a new entry" passes for the entry it replaces, so no caller holds a null.</summary>
     public static Entry None { get; } = new();
@@ -43,8 +43,8 @@ public class Entry
     /// <summary>The account it was paid from or into.</summary>
     public Guid AccountId { get; set; }
 
-    /// <summary>Notes on it; empty when none.</summary>
-    public string Notes { get; set; } = "";
+    /// <summary>«الوصف», its one description, the first column of every table but رأس المال's (redix-api #129, Muteb 13 Nov 2026); empty when none. A deduction says why here (D14).</summary>
+    public string Description { get; set; } = "";
 
     /// <summary>
     /// The values of its item's columns that it holds in no field of its own, a JSON object of each column's key and its value (FR-41): the same store whatever the column, a

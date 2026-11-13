@@ -62,7 +62,8 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         var payment = tables.Single(table => table.Id == setup.ContractId).ColumnKeys;
         Assert.Contains("outsideContract", payment);
         Assert.Contains("amount", payment);
-        Assert.DoesNotContain(payment, key => key is "supplier" or "product" or "unitPrice" or "quantity" or "entryType" or "total");
+        Assert.DoesNotContain(payment, key => key is "supplier" or "unitPrice" or "quantity" or "entryType" or "total");
+        Assert.Equal("description", payment[0]);
         Assert.All(tables.Where(table => table.Kind != ItemTableKind.Contract), table => Assert.DoesNotContain(table.ColumnKeys, key => key is "outsideContract" or "contract" or "amount"));
     }
 
@@ -76,10 +77,10 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
 
         var table = report.Contracts.Single(contract => contract.Id == setup.ContractId);
         var names = table.Columns.Select(column => column.Name).ToList();
-        Assert.Equal(("التاريخ", "المبلغ"), (names[0], table.AmountName));
-        Assert.DoesNotContain(names, name => name is "المورد" or "نوع القيد" or "سعر الوحدة" or "العدد");
-        Assert.Equal("خارج العقد", table.Payments.Single().Values[names.IndexOf("داخل أو خارج العقد")]);
-        Assert.Equal(["داخل العقد", "خارج العقد"], table.Columns.Single(column => column.Name == "داخل أو خارج العقد").Choices.Select(choice => choice.Name));
+        Assert.Equal(("الوصف", "التاريخ", "الدفعة"), (names[0], names[1], table.AmountName));
+        Assert.DoesNotContain(names, name => name is "المورد" or "نوع القيد" or "سعر الحبة" or "العدد");
+        Assert.Equal("خارج الاتفاق", table.Payments.Single().Values[names.IndexOf("الاتفاق")]);
+        Assert.Equal(["داخل الاتفاق", "خارج الاتفاق"], table.Columns.Single(column => column.Name == "الاتفاق").Choices.Select(choice => choice.Name));
     }
 
     [Fact]
@@ -271,7 +272,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     {
         var setup = await ContractAsync();
         await ApprovedAsync(setup, 1000m);
-        var deduction = Payment(setup, -136m) with { Notes = "خصم من المبلط", Submit = true };
+        var deduction = Payment(setup, -136m) with { Description = "خصم من المبلط", Submit = true };
 
         await RecordAsync(setup, deduction);
         await setup.Ledger.SetStatusAsync(deduction.Id, EntryStatus.Approved);
@@ -287,8 +288,8 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     {
         var setup = await ContractAsync();
 
-        await AssertRefusedAsync(setup, Payment(setup, -136m), "deductionNeedsNotes");
-        Assert.Equal(-136m, (await RecordAsync(setup, Payment(setup, -136m) with { Notes = "خصم" })).Amount);
+        await AssertRefusedAsync(setup, Payment(setup, -136m), "deductionNeedsDescription");
+        Assert.Equal(-136m, (await RecordAsync(setup, Payment(setup, -136m) with { Description = "خصم" })).Amount);
     }
 
     [Fact]
@@ -385,7 +386,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
 
         await AssertRefusedAsync(setup, Payment(setup, 0m), "invalidAmount");
         await AssertRefusedAsync(setup, Payment(setup, 1.234m), "invalidAmount");
-        await AssertRefusedAsync(setup, Payment(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");
+        await AssertRefusedAsync(setup, Payment(setup) with { Description = new string('م', Entry.DescriptionMaxLength + 1) }, "invalidDescription");
         await AssertRefusedAsync(setup, Payment(setup) with { Date = default }, "invalidDate");
         await AssertRefusedAsync(setup, Payment(setup) with { Date = today.AddDays(1) }, "invalidDate");
     }
@@ -447,7 +448,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     public async Task FR_41_WhatOnlyAPurchaseHoldsIsNeverAskedOfAPayment()
     {
         var setup = await ContractAsync();
-        await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == setup.ItemId && column.Key == "product").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
+        await factory.WithDatabaseAsync(db => db.Set<ItemColumn>().Where(column => column.ItemId == setup.ItemId && column.Key == "unitPrice").ExecuteUpdateAsync(column => column.SetProperty(row => row.IsRequired, true)));
 
         var view = await RecordAsync(setup, Payment(setup) with { AttachmentId = await setup.Ledger.FileAsync(), Submit = true });
 

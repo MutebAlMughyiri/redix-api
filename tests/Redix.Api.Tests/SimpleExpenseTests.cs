@@ -65,8 +65,8 @@ public class SimpleExpenseTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
 
-        await ledger.AssertRefusedAsync(ledger.Purchase(-136m), "deductionNeedsNotes");
-        await ledger.AssertRefusedAsync(ledger.Purchase(-136m) with { Notes = "   " }, "deductionNeedsNotes");
+        await ledger.AssertRefusedAsync(ledger.Purchase(-136m), "deductionNeedsDescription");
+        await ledger.AssertRefusedAsync(ledger.Purchase(-136m) with { Description = "   " }, "deductionNeedsDescription");
         Assert.Equal(-136m, (await ledger.RecordAsync(ledger.Deduction(-136m))).Amount);
     }
 

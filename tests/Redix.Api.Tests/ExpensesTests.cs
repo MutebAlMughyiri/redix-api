@@ -122,14 +122,14 @@ public class ExpensesTests(MigratedApiFactory factory)
     private static Dictionary<string, string> PriceAndQuantity(string unitPrice, string quantity) => new() { ["unitPrice"] = unitPrice, ["quantity"] = quantity };
 
     [Fact]
-    public async Task R129_R5_TheUnitPriceTheQuantityAndTheProductAreKeptWithTheEntryAsEveryOtherColumnIs()
+    public async Task R129_R5_TheUnitPriceAndTheQuantityAreKeptWithTheEntryAsEveryOtherColumnIs()
     {
         var setup = await FinanceAsync();
 
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "230", ["quantity"] = "5", ["product"] = "أسمنت" } });
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "230", ["quantity"] = "5" } });
 
         var values = JsonSerializer.Deserialize<Dictionary<string, string>>(await ReadAsync(db => db.Entries.Where(row => row.Id == view.Id).Select(row => row.ColumnValues).SingleAsync()))!;
-        Assert.Equal(new Dictionary<string, string> { ["unitPrice"] = "230", ["quantity"] = "5", ["product"] = "أسمنت" }, values);
+        Assert.Equal(new Dictionary<string, string> { ["unitPrice"] = "230", ["quantity"] = "5" }, values);
     }
 
     [Fact]
@@ -153,13 +153,14 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "999", ["quantity"] = "2", ["product"] = " مواد لياسة " } });
+        var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup, 1150m) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "999", ["quantity"] = "2" }, Description = " مواد لياسة " });
 
         Assert.Equal(1150m, view.Amount);
-        var values = JsonSerializer.Deserialize<Dictionary<string, string>>(await ReadAsync(db => db.Entries.Where(row => row.Id == view.Id).Select(row => row.ColumnValues).SingleAsync()))!;
+        var kept = await ReadAsync(db => db.Entries.SingleAsync(row => row.Id == view.Id));
+        var values = JsonSerializer.Deserialize<Dictionary<string, string>>(kept.ColumnValues)!;
         Assert.Equal("999", values["unitPrice"]);
         Assert.Equal("2", values["quantity"]);
-        Assert.Equal("مواد لياسة", values["product"]);
+        Assert.Equal("مواد لياسة", kept.Description);
     }
 
     [Fact]
@@ -178,7 +179,7 @@ public class ExpensesTests(MigratedApiFactory factory)
     public async Task AnExpenseIsARowInTheLedgerWithItsDetailsAndTheIdThePhoneMade()
     {
         var setup = await FinanceAsync();
-        var request = Expense(setup) with { Notes = " دفعة أولى " };
+        var request = Expense(setup) with { Description = " دفعة أولى " };
 
         await RecordAsync(setup.Client, setup.Project.Id, request);
 
@@ -186,7 +187,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         Assert.Equal(EntryKind.Purchase, entry.Kind);
         Assert.Equal(setup.Project.Id, entry.ProjectId);
         Assert.Equal(setup.AccountId, entry.AccountId);
-        Assert.Equal("دفعة أولى", entry.Notes);
+        Assert.Equal("دفعة أولى", entry.Description);
         Assert.Equal(Entry.NotApproved, entry.ApprovedAt);
         var expense = await ReadAsync(db => db.ExpenseDetails.SingleAsync(row => row.EntryId == request.Id));
         Assert.Equal(setup.ItemId, expense.ItemId);
@@ -414,12 +415,12 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
 
-        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["product"] = new string('م', Column.ValueMaxLength + 1) } }, "invalidColumnValue");
-        await AssertRefusedAsync(setup, Expense(setup) with { Notes = new string('م', Entry.NotesMaxLength + 1) }, "invalidNotes");
+        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["product"] = "أسمنت" } }, "unknownColumn");
+        await AssertRefusedAsync(setup, Expense(setup) with { Description = new string('م', Entry.DescriptionMaxLength + 1) }, "invalidDescription");
         await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "1.234" } }, "invalidColumnValue");
         await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["quantity"] = "كثير" } }, "invalidColumnValue");
         await AssertRefusedAsync(setup, Expense(setup, 0m), "invalidAmount");
-        await AssertRefusedAsync(setup, Expense(setup, -5m), "deductionNeedsNotes");
+        await AssertRefusedAsync(setup, Expense(setup, -5m), "deductionNeedsDescription");
         await AssertRefusedAsync(setup, Expense(setup, 1.234m), "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, 0m) with { ColumnValues = PriceAndQuantity(Money.Largest.ToString(CultureInfo.InvariantCulture), Money.Largest.ToString(CultureInfo.InvariantCulture)) }, "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, Money.Largest + 1m), "invalidAmount");
@@ -524,10 +525,9 @@ public class ExpensesTests(MigratedApiFactory factory)
     }
 
     [Theory]
-    [InlineData("product")]
+    [InlineData("description")]
     [InlineData("unitPrice")]
     [InlineData("quantity")]
-    [InlineData("notes")]
     public async Task FR_41_ABuiltInColumnMadeRequiredIsAskedWhenSending(string key)
     {
         var setup = await FinanceAsync();

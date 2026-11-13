@@ -73,7 +73,7 @@ public static class EntryRecording
     /// <summary>
     /// Keeps <paramref name="request"/>, as a new entry or in place of <paramref name="existing"/>. A table the caller is not offered answers <c>unknownTable</c>. An expense needs a
     /// payment method, <c>unknownPaymentMethod</c>; the account is one the caller may use, <c>accountNotOffered</c> (BRS open question 4); a file of no such attachment answers
-    /// <c>unknownAttachment</c>. Notes too long answer <c>invalidNotes</c>; a negative total is a deduction, only on an expense, which says why in its notes, <c>deductionNeedsNotes</c>
+    /// <c>unknownAttachment</c>. A description too long answers <c>invalidDescription</c>; a negative total is a deduction, only on an expense, which says why in its description, <c>deductionNeedsDescription</c>
     /// (FR-14, D14); then the table's own typing; an amount of zero, with more than two decimals, beyond <see cref="Money.Largest"/> or below zero on the revenue side answers
     /// <c>invalidAmount</c>, and a date outside the project's period or in the future <c>invalidDate</c> (BR-12). Then the table's own checks; a column's value answers
     /// <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>, and sending needs the required columns, <c>requiredColumnMissing</c> (FR-41); a file
@@ -134,15 +134,15 @@ public static class EntryRecording
 
     private static string RefusalOfTyped(EntryRequest request, EntryTable table)
     {
-        var notes = request.Notes.Trim();
-        if (notes.Length > Entry.NotesMaxLength)
+        var description = request.Description.Trim();
+        if (description.Length > Entry.DescriptionMaxLength)
         {
-            return "InvalidNotes";
+            return "InvalidDescription";
         }
         var total = table.TotalOf(request);
-        if (!table.IsRevenue && total < 0 && notes.Length == 0)
+        if (!table.IsRevenue && total < 0 && description.Length == 0)
         {
-            return "DeductionNeedsNotes";
+            return "DeductionNeedsDescription";
         }
         var typed = table.RefusalOfTyped(request);
         if (typed.Length > 0)
@@ -191,7 +191,7 @@ public static class EntryRecording
         EntryDate = request.Date,
         Amount = table.AmountOf(request),
         AccountId = request.AccountId,
-        Notes = request.Notes.Trim(),
+        Description = request.Description.Trim(),
         ColumnValues = JsonSerializer.Serialize(request.ColumnValuesKept()),
         CreatedByUserId = userId,
         CreatedAt = at,

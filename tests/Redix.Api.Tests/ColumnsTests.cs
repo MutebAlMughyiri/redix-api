@@ -16,7 +16,7 @@ public class ColumnsTests(MigratedApiFactory factory)
 
     private static readonly JsonSerializerOptions Json = MigratedApiFactory.Json;
 
-    private static readonly List<string> CoreColumns = ["date", "supplier", "total", "account", "attachment", "entryType"];
+    private static readonly List<string> CoreColumns = ["description", "date", "supplier", "total", "account", "attachment", "entryType"];
 
     private static AddColumnRequest AreaColumn => new("المساحة م²", ColumnDataType.Number, true, true, []);
 
@@ -65,7 +65,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var template = await TemplateOf(client, project.Id, "purchases");
 
         Assert.Equal(CoreColumns.Order(), template.Where(column => column.IsCore).Select(column => column.Key).Order());
-        Assert.Equal(["product", "unitPrice", "quantity", "paymentMethod", "notes"], template.Where(column => !column.IsCore).Select(column => column.Key));
+        Assert.Equal(["unitPrice", "quantity", "paymentMethod"], template.Where(column => !column.IsCore).Select(column => column.Key));
     }
 
     [Fact]
@@ -86,15 +86,15 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         List<string> paymentsOwn = ["outsideContract", "contract", "amount"];
         Assert.Equal(purchases.Select(column => column.Key), both.Where(column => !paymentsOwn.Contains(column.Key)).Select(column => column.Key));
-        Assert.Equal(["supplier", "date", "outsideContract", "product", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "contract", "notes", "amount", "total"], both.Select(column => column.Key));
+        Assert.Equal(["description", "supplier", "date", "outsideContract", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "contract", "amount", "total"], both.Select(column => column.Key));
         Assert.All(both.Where(column => paymentsOwn.Contains(column.Key)), column => Assert.False(column.IsRequired));
     }
 
     [Theory]
-    [InlineData("purchases", new[] { "supplier", "date", "product", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "notes", "total" })]
-    [InlineData("contractorPayments", new[] { "date", "outsideContract", "account", "paymentMethod", "attachment", "contract", "supplier", "notes", "amount" })]
-    [InlineData("capital", new[] { "movementType", "date", "account", "attachment", "amount" })]
-    [InlineData("vatRefund", new[] { "date", "account", "attachment", "amount" })]
+    [InlineData("purchases", new[] { "description", "supplier", "date", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "total" })]
+    [InlineData("contractorPayments", new[] { "description", "date", "outsideContract", "account", "paymentMethod", "supplier", "attachment", "contract", "amount" })]
+    [InlineData("capital", new[] { "movementType", "description", "date", "account", "attachment", "amount" })]
+    [InlineData("vatRefund", new[] { "description", "date", "account", "attachment", "amount" })]
     public async Task R129_EachTemplateHoldsItsColumnsInTheOrderOfTheApprovedWorkbook(string itemType, string[] keys)
     {
         var (_, client, project) = await FinanceAsync();
@@ -109,7 +109,35 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         var printed = (await TemplateOf(client, project.Id, "purchases")).Where(column => column.ShowInReports).Select(column => column.Key);
 
-        Assert.Equal(["supplier", "date", "product", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "total"], printed);
+        Assert.Equal(["description", "supplier", "date", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "total"], printed);
+    }
+
+    [Theory]
+    [InlineData("purchases", "unitPrice", "سعر الحبة")]
+    [InlineData("purchases", "total", "التكلفة")]
+    [InlineData("purchases", "description", "الوصف")]
+    [InlineData("contractorPayments", "amount", "الدفعة")]
+    [InlineData("contractorPayments", "outsideContract", "الاتفاق")]
+    [InlineData("capital", "amount", "المبلغ")]
+    public async Task R129_EachColumnIsNamedWithTheApprovedWorkbooksWord(string itemType, string key, string name)
+    {
+        var (_, client, project) = await FinanceAsync();
+
+        Assert.Equal(name, (await TemplateOf(client, project.Id, itemType)).Single(column => column.Key == key).Name);
+    }
+
+    [Fact]
+    public async Task R129_D1_NoTemplateHoldsTheNotesOrTheProductAndEveryOneHoldsTheDescription()
+    {
+        var (_, client, project) = await FinanceAsync();
+
+        foreach (var itemType in new[] { "purchases", "contractorPayments", "both", "capital", "sale", "vatRefund", "otherRevenue" })
+        {
+            var keys = (await TemplateOf(client, project.Id, itemType)).Select(column => column.Key).ToList();
+            Assert.Contains("description", keys);
+            Assert.DoesNotContain("notes", keys);
+            Assert.DoesNotContain("product", keys);
+        }
     }
 
     [Fact]
@@ -418,8 +446,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         var method = template.Single(column => column.Key == "paymentMethod");
         (await client.PutAsJsonAsync($"/projects/{project.Id}/default-columns/both/{method.Id}", Renamed(method, "وسيلة الدفع", false))).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/reorder", new ReorderDefaultColumnsRequest([.. template.Select(column => column.Id).Reverse()], false))).EnsureSuccessStatusCode();
-        var notes = template.Single(column => column.Key == "notes");
-        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}?applyToAllItems=false")).EnsureSuccessStatusCode();
+        var unitPrice = template.Single(column => column.Key == "unitPrice");
+        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{unitPrice.Id}?applyToAllItems=false")).EnsureSuccessStatusCode();
 
         Assert.Equal(before, (await ColumnsOf(client, project.Id, item.Id)).Select(column => (column.Key, column.Name)));
     }
@@ -429,8 +457,8 @@ public class ColumnsTests(MigratedApiFactory factory)
     {
         var (_, client, project) = await FinanceAsync();
         (await AddToTemplateAsync(client, project.Id, applyToAllItems: false)).EnsureSuccessStatusCode();
-        var notes = (await TemplateOf(client, project.Id)).Single(column => column.Key == "notes");
-        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}?applyToAllItems=false")).EnsureSuccessStatusCode();
+        var unitPrice = (await TemplateOf(client, project.Id)).Single(column => column.Key == "unitPrice");
+        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{unitPrice.Id}?applyToAllItems=false")).EnsureSuccessStatusCode();
         var category = (await CategoriesOf(client, project.Id))[3];
 
         var added = await client.PostAsJsonAsync($"/projects/{project.Id}/categories/{category.Id}/items", new AddItemRequest("بند الدرج", ItemType.Both));
@@ -438,7 +466,7 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         var columns = await ColumnsOf(client, project.Id, item.Id);
         Assert.Contains(columns, column => column.Name == "رقم أمر الشراء" && column.IsCustom);
-        Assert.DoesNotContain(columns, column => column.Key == "notes");
+        Assert.DoesNotContain(columns, column => column.Key == "unitPrice");
     }
 
     [Fact]
@@ -478,12 +506,12 @@ public class ColumnsTests(MigratedApiFactory factory)
     {
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
-        var notes = (await TemplateOf(client, project.Id)).Single(column => column.Key == "notes");
+        var unitPrice = (await TemplateOf(client, project.Id)).Single(column => column.Key == "unitPrice");
 
-        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{notes.Id}?applyToAllItems=true")).EnsureSuccessStatusCode();
+        (await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{unitPrice.Id}?applyToAllItems=true")).EnsureSuccessStatusCode();
 
-        Assert.DoesNotContain(await TemplateOf(client, project.Id), column => column.Key == "notes");
-        Assert.DoesNotContain(await ColumnsOf(client, project.Id, item.Id), column => column.Key == "notes");
+        Assert.DoesNotContain(await TemplateOf(client, project.Id), column => column.Key == "unitPrice");
+        Assert.DoesNotContain(await ColumnsOf(client, project.Id, item.Id), column => column.Key == "unitPrice");
     }
 
     [Fact]

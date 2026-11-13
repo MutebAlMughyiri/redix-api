@@ -16,8 +16,6 @@ public static class ItemReportFiles
         return Document.Create(document => PeriodicReportFiles.Page(document, page => StatementPdf.Draw(page, SheetOf(item)))).GeneratePdf();
     }
 
-    private static readonly StatementColumn Description = new("الوصف", CellKind.Text);
-
     /// <summary>One item's report as a workbook of the project <paramref name="projectName"/>, its sheet as the periodic report's, its lists on «القوائم» (redix-api #129).</summary>
     public static byte[] Excel(string projectName, ItemReportView item)
     {
@@ -31,8 +29,8 @@ public static class ItemReportFiles
     /// <summary>
     /// An item's sheet (FR-46): a table per subgroup that has entries, titled with its name or, for the general one, the item's; a table of payments per contract, its agreed amount
     /// under it (AC-46.2); and for رأس المال a table per partner; all in the order the item's tables were put in (AC-46.8). Every table prints its own columns (redix-api #129, R1):
-    /// «الوصف» first, then its item's columns that print, in their order, each headed by its own name, and its amount column last; nothing else is fixed. The item's choice says
-    /// whether each table's percentage is calculated (AC-46.9).
+    /// its item's columns that print, in their order, «الوصف» first but on رأس المال, each headed by its own name, and its amount column last; nothing is fixed. The item's choice
+    /// says whether each table's percentage is calculated (AC-46.9).
     /// </summary>
     public static StatementSheet SheetOf(ItemReportView item)
     {
@@ -48,16 +46,17 @@ public static class ItemReportFiles
 
     private static StatementTable TableOf(string title, List<ReportColumnView> columns, string amountName, List<ItemEntryRow> rows, decimal agreedAmount) => new(
         title,
-        [Description, .. columns.Select(ColumnOf)],
+        [.. columns.Select(ColumnOf)],
         new StatementColumn(amountName, CellKind.Text),
-        [.. rows.Select(row => new StatementRow([row.Description, .. columns.Zip(row.Values, CellOf)], row.Amount, row.IsNew, !row.IsOutsideContract))],
+        [.. rows.Select(row => new StatementRow([.. columns.Zip(row.Values, CellOf)], row.Amount, row.IsNew, !row.IsOutsideContract))],
         agreedAmount);
 
-    /// <summary>A column of an item as its table prints it: a date as a day, an amount as money, anything else centred; a list with the choices its cells take (redix-api #129).</summary>
+    /// <summary>A column of an item as its table prints it: a date as a day, an amount as money, a text as it is, anything else centred; a list with the choices its cells take (redix-api #129).</summary>
     private static StatementColumn ColumnOf(ReportColumnView column) => new(column.Name, column.DataType switch
     {
         ColumnDataType.Date => CellKind.Date,
         ColumnDataType.Amount => CellKind.Price,
+        ColumnDataType.Text => CellKind.Text,
         _ => CellKind.Centred,
     })
     {

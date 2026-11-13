@@ -44,7 +44,7 @@ public static class InvoiceAttachEndpoints
         {
             var supplierVatNumber = facts.SupplierVatNumberOf(entry);
             var isMatching = vatNumber.Length > 0 && supplierVatNumber == vatNumber && Math.Abs(entry.Amount - total) <= MatchingAmountDifference && Math.Abs(entry.EntryDate.DayNumber - date.DayNumber) <= MatchingDaysDifference;
-            return new AttachableEntryView(entry.Id, entry.Status, entry.EntryDate, entry.Amount, facts.ProductOf(entry), facts.SupplierNameOf(entry), supplierVatNumber, isMatching);
+            return new AttachableEntryView(entry.Id, entry.Status, entry.EntryDate, entry.Amount, entry.Description, facts.SupplierNameOf(entry), supplierVatNumber, isMatching);
         }).OrderByDescending(row => row.IsMatching).ToList();
     }
 
@@ -104,11 +104,11 @@ public static class InvoiceAttachEndpoints
 /// <param name="Status">Where it stands.</param>
 /// <param name="EntryDate">Its date.</param>
 /// <param name="Amount">Its total.</param>
-/// <param name="Product">What was bought; empty when not said.</param>
+/// <param name="Description">«الوصف», what it says; empty when nothing.</param>
 /// <param name="SupplierName">Its supplier, or the contract's contractor.</param>
 /// <param name="SupplierVatNumber">That supplier's VAT number; empty when none.</param>
 /// <param name="IsMatching">True when the file's QR code matches it (AC-49.2).</param>
-public record AttachableEntryView(Guid Id, EntryStatus Status, DateOnly EntryDate, decimal Amount, string Product, string SupplierName, string SupplierVatNumber, bool IsMatching);
+public record AttachableEntryView(Guid Id, EntryStatus Status, DateOnly EntryDate, decimal Amount, string Description, string SupplierName, string SupplierVatNumber, bool IsMatching);
 
 /// <summary>A file to put on an expense.</summary>
 /// <param name="AttachmentId">The file, already kept.</param>

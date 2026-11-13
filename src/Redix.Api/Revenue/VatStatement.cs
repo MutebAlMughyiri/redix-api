@@ -27,8 +27,7 @@ public static class VatStatement
         var facts = await EntryFacts.OfAsync(projectId, purchases, db);
         var purchaseRows = purchases.Select(entry =>
         {
-            var product = facts.ProductOf(entry);
-            return new VatRow(entry.EntryDate, facts.SupplierNameOf(entry), facts.SupplierVatNumberOf(entry), product.Length > 0 ? product : facts.ItemNameOf(entry), entry.Amount);
+            return new VatRow(entry.EntryDate, facts.SupplierNameOf(entry), facts.SupplierVatNumberOf(entry), entry.Description.Length > 0 ? entry.Description : facts.ItemNameOf(entry), entry.Amount);
         }).ToList();
 
         var quarters = new List<VatQuarterView>();
@@ -52,6 +51,6 @@ public record VatQuarterView(DateOnly Start, DateOnly End, List<VatRow> Purchase
 /// <param name="Date">Its date.</param>
 /// <param name="Party">The supplier.</param>
 /// <param name="VatNumber">The party's VAT number; empty when it has none, so no VAT is worked out of it.</param>
-/// <param name="Description">What was bought.</param>
+/// <param name="Description">The purchase's «الوصف», or its item's name when it has none.</param>
 /// <param name="Total">Its total: negative for a credit note.</param>
 public record VatRow(DateOnly Date, string Party, string VatNumber, string Description, decimal Total);

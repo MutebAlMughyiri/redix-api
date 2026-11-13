@@ -216,6 +216,36 @@ public class MigrationStepsTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public Task R129_D1_DescriptionForEveryEntry_AProductAndItsNotesBecomeOneDescriptionAndTheColumnsTakeTheWorkbooksWords()
+    {
+        var (user, project, account, item, subgroup, method) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var (both, productOnly, notesOnly) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var template = StructureSeed.TemplateId;
+        static string Purchase(Guid id, Guid projectId, Guid accountId, Guid userId, string notes, string values) =>
+            $"INSERT INTO Entries (Id, ProjectId, Kind, Status, EntryDate, Amount, AccountId, Notes, ColumnValues, CreatedByUserId, CreatedAt, ApprovedAt) VALUES ('{id}', '{projectId}', 0, 2, '2026-11-01', 100, '{accountId}', N'{notes}', N'{values}', '{userId}', '2026-11-01', '2026-11-02');";
+        var today = string.Concat(User(user), Project(project), Account(account, project), ItemWithGroup(project, item, subgroup, 0), PaymentMethod(method, project),
+            $"INSERT INTO DefaultColumns (Id, ProjectId, ItemType, [Key], Name, DataType, IsCore, IsRequired, ShowInReports, SortOrder, Choices) SELECT NEWID(), '{project}', ItemType, [Key], Name, DataType, IsCore, IsRequired, ShowInReports, SortOrder, Choices FROM DefaultColumns WHERE ProjectId = '{template}';",
+            $"INSERT INTO ItemColumns (Id, ItemId, IsHidden, [Key], Name, DataType, IsCore, IsRequired, ShowInReports, SortOrder, Choices) SELECT NEWID(), '{item}', 0, [Key], Name, DataType, IsCore, IsRequired, ShowInReports, SortOrder, Choices FROM DefaultColumns WHERE ProjectId = '{project}' AND ItemType = 0;",
+            $"UPDATE ItemColumns SET Name = N'سعر القطعة' WHERE ItemId = '{item}' AND [Key] = 'unitPrice';",
+            Purchase(both, project, account, user, "دفعة أولى", "{\"product\":\"أسمنت\",\"quantity\":\"5\"}"),
+            Purchase(productOnly, project, account, user, "", "{\"product\":\"حديد\"}"),
+            Purchase(notesOnly, project, account, user, "رسوم الموثق", "{}"));
+
+        return ThroughAsync("DescriptionForEveryEntry", today, async db =>
+        {
+            Assert.Equal(new[] { $"{both} أسمنت · دفعة أولى", $"{productOnly} حديد", $"{notesOnly} رسوم الموثق" }.Order(),
+                (await ValuesAsync(db, $"SELECT CONCAT(LOWER(CONVERT(nvarchar(36), Id)), ' ', Description) AS Value FROM Entries WHERE ProjectId = '{project}'")).Order());
+            Assert.Equal(["none 5"], await ValuesAsync(db, $"SELECT CONCAT(ISNULL(JSON_VALUE(CAST(ColumnValues AS nvarchar(max)), '$.product'), N'none'), ' ', JSON_VALUE(CAST(ColumnValues AS nvarchar(max)), '$.quantity')) AS Value FROM Entries WHERE Id = '{both}'"));
+            Assert.Equal(["description", "supplier", "date", "unitPrice", "quantity", "entryType", "account", "paymentMethod", "attachment", "total"],
+                await ValuesAsync(db, $"SELECT [Key] AS Value FROM ItemColumns WHERE ItemId = '{item}' ORDER BY SortOrder"));
+            Assert.Equal(["سعر القطعة", "التكلفة"], await ValuesAsync(db, $"SELECT Name AS Value FROM ItemColumns WHERE ItemId = '{item}' AND [Key] IN ('unitPrice', 'total') ORDER BY SortOrder"));
+            Assert.Equal(["الاتفاق"], await ValuesAsync(db, $"SELECT Name AS Value FROM DefaultColumns WHERE ProjectId = '{project}' AND ItemType = 1 AND [Key] = 'outsideContract'"));
+            Assert.Empty(await ValuesAsync(db, $"SELECT [Key] AS Value FROM DefaultColumns WHERE ProjectId = '{project}' AND [Key] IN ('product', 'notes')"));
+            Assert.Empty(await ValuesAsync(db, "SELECT name AS Value FROM sys.columns WHERE object_id = OBJECT_ID('Entries') AND name = 'Notes'"));
+        });
+    }
+
+    [Fact]
     public Task R216_UserDefaultProjectsKeyedByUser_EveryDefaultStaysKeyedByItsUserAndItsOwnIdGoes()
     {
         var (user, other, project) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());

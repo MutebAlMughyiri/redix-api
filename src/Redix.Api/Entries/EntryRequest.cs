@@ -1,7 +1,7 @@
 namespace Redix.Api.Entries;
 
 /// <summary>
-/// What the app sends for any entry, whatever its table (redix-api #110): the table it goes into, its date, its amount, its account, its notes, its file when there is one, the
+/// What the app sends for any entry, whatever its table (redix-api #110): the table it goes into, its date, its amount, its account, its description, its file when there is one, the
 /// values of its item's columns, and whether it is sent for approval or kept as a draft. What only one kind of table asks is here too, and every other kind leaves it out: a
 /// purchase's supplier, and a contractor payment's place inside or outside its contract (FR-13). Whether a purchase is a credit note and whether a partner's money is a withdrawal
 /// are the choices of their table's lists, «نوع القيد» and «نوع الحركة», among the column values (redix-api #129).
@@ -27,8 +27,8 @@ public record EntryRequest(Guid Id)
     /// <summary>How an expense was paid; revenue and a partner's money take none.</summary>
     public Guid PaymentMethodId { get; init; }
 
-    /// <summary>Notes on it; left out when none. A deduction says why here (D14).</summary>
-    public string Notes { get; init; } = "";
+    /// <summary>«الوصف», its description; left out when none. A deduction says why here (D14).</summary>
+    public string Description { get; init; } = "";
 
     /// <summary>The values of the item's columns the entry holds in no field of its own, by each column's key (FR-41): a person's own, the unit price, the quantity, the product (redix-api #129, R5).</summary>
     public IReadOnlyDictionary<string, string> ColumnValues { get; init; } = new Dictionary<string, string>();
@@ -49,5 +49,5 @@ public record EntryRequest(Guid Id)
     public Dictionary<string, string> ColumnValuesKept() => ColumnValues.Where(value => value.Value.Trim().Length > 0).ToDictionary(value => value.Key, value => value.Value.Trim());
 
     /// <summary>What it answers of an item's columns (FR-41).</summary>
-    public EntryAnswers Answers() => new(Notes.Trim(), ColumnValuesKept());
+    public EntryAnswers Answers() => new(Description.Trim(), ColumnValuesKept());
 }

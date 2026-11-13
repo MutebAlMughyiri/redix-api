@@ -672,7 +672,7 @@ The ledger: every movement of money, of any kind; each kind's own fields are in 
 | EntryDate | date | not null |  |  |
 | Amount | decimal(19,4) | not null |  |  |
 | AccountId | uniqueidentifier | not null | FK | `Accounts.Id` |
-| Notes | nvarchar(1000) | not null |  |  |
+| Description | nvarchar(2000) | not null |  |  |
 | ColumnValues | json | not null |  |  |
 | CreatedByUserId | uniqueidentifier | not null | FK | `Users.Id` |
 | CreatedAt | datetime2(7) | not null |  |  |

@@ -71,12 +71,12 @@ public class EntryChangesTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var entry = await ledger.RecordAsync(ledger.Purchase());
-        var path = $"/projects/{ledger.ProjectId}/entries/{entry.Id}/notes";
+        var path = $"/projects/{ledger.ProjectId}/entries/{entry.Id}/description";
 
-        var refused = await ledger.Client.PutAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength + 1)), Json);
-        var kept = await ledger.Client.PutAsJsonAsync(path, new ChangeNotesRequest(new string('ن', Entry.NotesMaxLength)), Json);
+        var refused = await ledger.Client.PutAsJsonAsync(path, new ChangeDescriptionRequest(new string('ن', Entry.DescriptionMaxLength + 1)), Json);
+        var kept = await ledger.Client.PutAsJsonAsync(path, new ChangeDescriptionRequest(new string('ن', Entry.DescriptionMaxLength)), Json);
 
-        await AssertRefused(refused, HttpStatusCode.BadRequest, "invalidNotes");
+        await AssertRefused(refused, HttpStatusCode.BadRequest, "invalidDescription");
         Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
     }
 
@@ -87,11 +87,11 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var request = ledger.Purchase();
         await ledger.RecordAsync(request);
 
-        (await EditAsync(ledger.Client, ledger, request with { Amount = 2300m, Notes = "بعد التصحيح" })).EnsureSuccessStatusCode();
+        (await EditAsync(ledger.Client, ledger, request with { Amount = 2300m, Description = "بعد التصحيح" })).EnsureSuccessStatusCode();
 
         var entry = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
         Assert.Equal(2300m, entry.Amount);
-        Assert.Equal("بعد التصحيح", entry.Notes);
+        Assert.Equal("بعد التصحيح", entry.Description);
         Assert.Equal(EntryStatus.Draft, entry.Status);
     }
 
@@ -104,7 +104,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var before = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
         factory.Time.Advance(TimeSpan.FromMinutes(1));
 
-        (await EditAsync(ledger.Client, ledger, request with { Notes = "من المالي", AccountId = ledger.AccountId })).EnsureSuccessStatusCode();
+        (await EditAsync(ledger.Client, ledger, request with { Description = "من المالي", AccountId = ledger.AccountId })).EnsureSuccessStatusCode();
 
         var after = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
         Assert.Equal((before.CreatedByUserId, before.CreatedAt), (after.CreatedByUserId, after.CreatedAt));
@@ -158,7 +158,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var request = ledger.Purchase() with { AttachmentId = await ledger.FileAsync() };
         await ledger.RecordAsync(request);
 
-        (await EditAsync(ledger.Client, ledger, request with { Notes = "ملاحظة" })).EnsureSuccessStatusCode();
+        (await EditAsync(ledger.Client, ledger, request with { Description = "ملاحظة" })).EnsureSuccessStatusCode();
     }
 
     [Theory]
@@ -188,7 +188,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var (field, request, fieldId) = await FieldDraftAsync(ledger);
         await factory.WithDatabaseAsync(db => db.ProjectPermissions.Where(row => row.UserId == fieldId && row.Permission == Permission.DeleteEntries).ExecuteDeleteAsync());
 
-        (await EditAsync(field, ledger, request with { Notes = "تصحيح" })).EnsureSuccessStatusCode();
+        (await EditAsync(field, ledger, request with { Description = "تصحيح" })).EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.Forbidden, (await DeleteAsync(field, ledger, request.Id)).StatusCode);
 
         await factory.GiveAsync(fieldId, ledger.ProjectId, [Permission.DeleteEntries]);
@@ -202,11 +202,11 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var (field, request, _) = await FieldDraftAsync(ledger);
         var theirs = ledger.Purchase();
         await ledger.RecordAsync(theirs);
-        await AssertRefused(await EditAsync(field, ledger, theirs with { Notes = "لي" }), HttpStatusCode.Forbidden, "notYourEntry");
+        await AssertRefused(await EditAsync(field, ledger, theirs with { Description = "لي" }), HttpStatusCode.Forbidden, "notYourEntry");
 
         (await field.PostAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/submit", null)).EnsureSuccessStatusCode();
 
-        await AssertRefused(await EditAsync(field, ledger, request with { Notes = "بعد الإرسال" }), HttpStatusCode.Conflict, "entryWaitingForDecision");
+        await AssertRefused(await EditAsync(field, ledger, request with { Description = "بعد الإرسال" }), HttpStatusCode.Conflict, "entryWaitingForDecision");
         await AssertRefused(await DeleteAsync(field, ledger, request.Id), HttpStatusCode.Conflict, "entryWaitingForDecision");
     }
 
@@ -217,10 +217,10 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var (field, request, _) = await FieldDraftAsync(ledger);
         (await field.PostAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/submit", null)).EnsureSuccessStatusCode();
 
-        (await EditAsync(ledger.Client, ledger, request with { Notes = "صححها المالي", AccountId = ledger.AccountId })).EnsureSuccessStatusCode();
+        (await EditAsync(ledger.Client, ledger, request with { Description = "صححها المالي", AccountId = ledger.AccountId })).EnsureSuccessStatusCode();
 
         var entry = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
-        Assert.Equal(("صححها المالي", EntryStatus.PendingApproval), (entry.Notes, entry.Status));
+        Assert.Equal(("صححها المالي", EntryStatus.PendingApproval), (entry.Description, entry.Status));
     }
 
     [Fact]
@@ -229,14 +229,14 @@ public class EntryChangesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (field, request, _) = await FieldDraftAsync(ledger);
         var path = $"/projects/{ledger.ProjectId}/entries/{request.Id}";
-        var corrected = request with { Notes = "صححها المالي", AccountId = ledger.AccountId };
+        var corrected = request with { Description = "صححها المالي", AccountId = ledger.AccountId };
 
         var listed = (await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!;
         Assert.DoesNotContain(listed, row => row.Id == request.Id);
         Assert.Equal(HttpStatusCode.NotFound, (await ledger.Client.GetAsync(path)).StatusCode);
         await AssertRefused(await ledger.Client.PostAsync($"{path}/submit", null), HttpStatusCode.Forbidden, "notYourEntry");
         await AssertRefused(await EditAsync(ledger.Client, ledger, corrected), HttpStatusCode.Forbidden, "notYourEntry");
-        await AssertRefused(await ledger.Client.PutAsJsonAsync($"{path}/notes", new ChangeNotesRequest("ملاحظة المالي"), Json), HttpStatusCode.Forbidden, "notYourEntry");
+        await AssertRefused(await ledger.Client.PutAsJsonAsync($"{path}/description", new ChangeDescriptionRequest("ملاحظة المالي"), Json), HttpStatusCode.Forbidden, "notYourEntry");
         await AssertRefused(await DeleteAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Forbidden, "notYourEntry");
         await AssertRefused(await ledger.Client.PostAsJsonAsync($"{path}/invoice", new AttachInvoiceRequest(await ledger.FileAsync()), Json), HttpStatusCode.Forbidden, "notYourEntry");
         (await field.GetAsync(path)).EnsureSuccessStatusCode();
@@ -288,9 +288,9 @@ public class EntryChangesTests(MigratedApiFactory factory)
         await ledger.RecordAsync(request);
         await ApproveAsync(ledger, request.Id);
 
-        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/notes", new ChangeNotesRequest("ملاحظة بعد الاعتماد"), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}/description", new ChangeDescriptionRequest("ملاحظة بعد الاعتماد"), Json)).EnsureSuccessStatusCode();
 
-        Assert.Equal("ملاحظة بعد الاعتماد", await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == request.Id).Select(row => row.Notes).SingleAsync()));
+        Assert.Equal("ملاحظة بعد الاعتماد", await ledger.ReadAsync(db => db.Entries.Where(row => row.Id == request.Id).Select(row => row.Description).SingleAsync()));
         Assert.Equal(HttpStatusCode.Forbidden, (await DeleteAsync(ledger.Client, ledger, request.Id)).StatusCode);
     }
 
@@ -312,13 +312,13 @@ public class EntryChangesTests(MigratedApiFactory factory)
     public async Task UC_083_AnEntryOnTheListCarriesItsNotesAccountAndPaymentMethodForItsSharedText()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        var sent = ledger.Purchase(300m) with { Submit = true, Notes = "دفعة أولى" };
+        var sent = ledger.Purchase(300m) with { Submit = true, Description = "دفعة أولى" };
         await ledger.RecordAsync(sent);
         var methods = (await ledger.Client.GetFromJsonAsync<List<Settings.PaymentMethodView>>($"/projects/{ledger.ProjectId}/payment-methods", Json))!;
 
         var row = Assert.Single((await ledger.Client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries", Json))!);
 
-        Assert.Equal(("دفعة أولى", "حساب المؤسسة", methods.Single(method => method.Id == ledger.MethodId).Name), (row.Notes, row.AccountName, row.PaymentMethodName));
+        Assert.Equal(("دفعة أولى", "حساب المؤسسة", methods.Single(method => method.Id == ledger.MethodId).Name), (row.Description, row.AccountName, row.PaymentMethodName));
     }
 
     [Fact]

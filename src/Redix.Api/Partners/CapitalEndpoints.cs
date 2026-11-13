@@ -67,7 +67,7 @@ public static class CapitalEndpoints
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var columns = await db.ItemColumns.Where(column => !column.IsHidden && db.Partners.Any(partner => partner.Id == partnerId && partner.ItemId == column.ItemId)).ToListAsync();
-        return rows.Select(row => new CapitalMovementView(row.entry.Id, Column.SignedChoiceOf(columns, row.entry.ColumnValuesByKey()).Name, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Notes, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry)) { FileName = facts.FileNameOf(row.entry) }).ToList();
+        return rows.Select(row => new CapitalMovementView(row.entry.Id, Column.SignedChoiceOf(columns, row.entry.ColumnValuesByKey()).Name, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Description, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 
     /// <summary>Each partner's capital in the project, from its approved movements: the one owner of a partner's balance (BR-05), which deleting a partner asks too (redix-api #100).</summary>

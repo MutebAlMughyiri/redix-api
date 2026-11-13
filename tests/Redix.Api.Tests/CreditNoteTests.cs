@@ -114,7 +114,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
     {
         var ledger = await LedgerAsync();
 
-        await ledger.AssertRefusedAsync(CreditNote(ledger, -10m) with { Notes = "مرتجع" }, "invalidAmount");
+        await ledger.AssertRefusedAsync(CreditNote(ledger, -10m) with { Description = "مرتجع" }, "invalidAmount");
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public class CreditNoteTests(MigratedApiFactory factory)
         await ledger.RecordAsync(deduction);
 
         Assert.Equal(864m, await ItemTotalAsync(ledger));
-        Assert.Equal("خصم تأخير التوريد", (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == deduction.Id))).Notes);
+        Assert.Equal("خصم تأخير التوريد", (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == deduction.Id))).Description);
     }
 
     [Fact]

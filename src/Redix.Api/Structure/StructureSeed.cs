@@ -45,56 +45,66 @@ public static class StructureSeed
     public static Guid WithdrawalChoiceId { get; } = StableIds.Of("choice:movementType:withdrawal");
 
     /// <summary>
-    /// A purchase's columns, in the order of the report workbook Muteb approved on 13 Nov 2026 (redix-api #129): المورد, التاريخ, the unit price and the quantity, نوع القيد, الحساب,
-    /// طريقة الدفع, المرفق, and the total, which prints last. «نوع القيد» is the list whose sign decides the total's direction: «مرتجع» takes it away.
+    /// «الوصف», every entry's one description (Muteb, 13 Nov 2026, redix-api #129): a purchase's product and notes became it. It is first in every table but رأس المال's, where
+    /// «نوع الحركة» comes before it, as the approved workbook shows.
+    /// </summary>
+    private static readonly TemplateColumn Description = new("description", "الوصف", ColumnDataType.Text, true, false, true);
+
+    /// <summary>
+    /// A purchase's columns, in the order and under the words of the report workbook Muteb approved on 13 Nov 2026 (redix-api #129): الوصف, المورد, التاريخ, سعر الحبة, العدد,
+    /// نوع القيد, الحساب, طريقة الدفع, المرفق, and التكلفة, which prints last. «نوع القيد» is the list whose sign decides the total's direction: «مرتجع» takes it away.
     /// </summary>
     private static readonly TemplateColumn[] PurchaseColumns =
     [
+        Description,
         new("supplier", "المورد", ColumnDataType.List, true, false, true),
         new("date", "التاريخ", ColumnDataType.Date, true, true, true),
-        new("product", "الصنف", ColumnDataType.Text, false, false, true),
-        new("unitPrice", "سعر الوحدة", ColumnDataType.Amount, false, false, true),
+        new("unitPrice", "سعر الحبة", ColumnDataType.Amount, false, false, true),
         new("quantity", "العدد", ColumnDataType.Number, false, false, true),
         new("entryType", "نوع القيد", ColumnDataType.List, true, false, true,
             [new ColumnChoice { Id = PurchaseChoiceId, Name = "شراء", Sign = ChoiceSign.Plus }, new ColumnChoice { Id = CreditNoteChoiceId, Name = "مرتجع", Sign = ChoiceSign.Minus }]),
         new("account", "الحساب", ColumnDataType.List, true, true, true),
         new("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, true),
         new("attachment", "المرفق", ColumnDataType.File, true, false, true),
-        new("notes", "ملاحظات", ColumnDataType.Text, false, false, false),
-        new("total", "الإجمالي", ColumnDataType.Amount, true, true, true),
-    ];
-
-    /// <summary>A contractor payment's columns, in the order of the approved workbook: التاريخ, whether it is inside the contract, الحساب, طريقة الدفع, المرفق, and the amount, last.</summary>
-    private static readonly TemplateColumn[] ContractorPaymentColumns =
-    [
-        new("date", "التاريخ", ColumnDataType.Date, true, true, true),
-        new("outsideContract", "داخل أو خارج العقد", ColumnDataType.List, true, false, true),
-        new("account", "الحساب", ColumnDataType.List, true, true, true),
-        new("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, true),
-        new("attachment", "المرفق", ColumnDataType.File, true, false, true),
-        new("contract", "العقد", ColumnDataType.List, true, true, false),
-        new("supplier", "المورد", ColumnDataType.List, true, false, false),
-        new("notes", "ملاحظات", ColumnDataType.Text, false, false, true),
-        new("amount", "المبلغ", ColumnDataType.Amount, true, true, true),
+        new("total", "التكلفة", ColumnDataType.Amount, true, true, true),
     ];
 
     /// <summary>
-    /// A partner's money in or out, the columns of رأس المال (redix-api #129): «نوع الحركة», the list whose sign decides whether it is put in or taken out, التاريخ, الحساب, المرفق, and
-    /// the amount, last.
+    /// A contractor payment's columns, in the order and under the words of the approved workbook: الوصف, التاريخ, الاتفاق, whether it is inside the contract, الحساب, طريقة الدفع,
+    /// المرفق, and الدفعة, last.
+    /// </summary>
+    private static readonly TemplateColumn[] ContractorPaymentColumns =
+    [
+        Description,
+        new("date", "التاريخ", ColumnDataType.Date, true, true, true),
+        new("outsideContract", "الاتفاق", ColumnDataType.List, true, false, true),
+        new("account", "الحساب", ColumnDataType.List, true, true, true),
+        new("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, true),
+        new("supplier", "المورد", ColumnDataType.List, true, false, false),
+        new("attachment", "المرفق", ColumnDataType.File, true, false, true),
+        new("contract", "العقد", ColumnDataType.List, true, true, false),
+        new("amount", "الدفعة", ColumnDataType.Amount, true, true, true),
+    ];
+
+    /// <summary>
+    /// A partner's money in or out, the columns of رأس المال as the approved workbook orders them (redix-api #129): «نوع الحركة», the list whose sign decides whether it is put in or
+    /// taken out, then الوصف, التاريخ, الحساب, المرفق, and المبلغ, last.
     /// </summary>
     private static readonly TemplateColumn[] CapitalColumns =
     [
         new("movementType", "نوع الحركة", ColumnDataType.List, true, false, true,
             [new ColumnChoice { Id = ContributionChoiceId, Name = "إضافة مبلغ", Sign = ChoiceSign.Plus }, new ColumnChoice { Id = WithdrawalChoiceId, Name = "سحب مبلغ", Sign = ChoiceSign.Minus }]),
+        Description,
         new("date", "التاريخ", ColumnDataType.Date, true, true, true),
         new("account", "الحساب", ColumnDataType.List, true, true, true),
         new("attachment", "المرفق", ColumnDataType.File, true, false, true),
         new("amount", "المبلغ", ColumnDataType.Amount, true, true, true),
     ];
 
-    /// <summary>Revenue's columns, the sale, the VAT refunded and anything else that comes in (redix-api #129): التاريخ and the amount print, the account and the file are asked.</summary>
+    /// <summary>Revenue's columns, the sale, the VAT refunded and anything else that comes in (redix-api #129): الوصف, التاريخ and المبلغ print, the account and the file are asked.</summary>
     private static readonly TemplateColumn[] RevenueColumns =
     [
+        Description,
         new("date", "التاريخ", ColumnDataType.Date, true, true, true),
         new("account", "الحساب", ColumnDataType.List, true, true, false),
         new("attachment", "المرفق", ColumnDataType.File, true, false, false),

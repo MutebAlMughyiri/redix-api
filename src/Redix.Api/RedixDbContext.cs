@@ -368,7 +368,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         });
         modelBuilder.Entity<Entry>(entry =>
         {
-            entry.Property(e => e.Notes).HasMaxLength(global::Redix.Api.Entries.Entry.NotesMaxLength);
+            entry.Property(e => e.Description).HasMaxLength(global::Redix.Api.Entries.Entry.DescriptionMaxLength);
             entry.Property(e => e.ColumnValues).HasColumnType("json");
             // Measured on RedixReal, 8 Nov 2026: the summary, the figures and what waits all filter by project and status and sum amounts by kind and account (redix-api #87).
             entry.HasIndex(e => new { e.ProjectId, e.Status }).IncludeProperties(e => new { e.Kind, e.Amount, e.AccountId });

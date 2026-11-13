@@ -31,7 +31,7 @@ public static class ApprovalsEndpoints
     {
         var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Notes, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.FileNameOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry), facts.AccountBalanceOf(entry), facts.AccountWaitingOf(entry), facts.AccountShortByOf(entry))).ToList();
+        return entries.Select(entry => new PendingEntryView(entry.Id, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Description, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.FileNameOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry), facts.AccountBalanceOf(entry), facts.AccountWaitingOf(entry), facts.AccountShortByOf(entry))).ToList();
     }
 
     /// <summary>
@@ -127,7 +127,7 @@ public static class ApprovalsEndpoints
 /// <param name="SupplierName">Its supplier, or the contract's contractor.</param>
 /// <param name="InvoiceNumber">The number of an older bill that had one; empty for the rest.</param>
 /// <param name="AccountName">What paid it.</param>
-/// <param name="Notes">What was noted.</param>
+/// <param name="Description">«الوصف», what it says.</param>
 /// <param name="AttachmentId">Its file; empty when it has none.</param>
 /// <param name="ContentType">What the file is; empty when it has none.</param>
 /// <param name="FileName">The file's name; empty when it has none.</param>
@@ -136,7 +136,7 @@ public static class ApprovalsEndpoints
 /// <param name="AccountBalance">What its account holds now (redix-app #89).</param>
 /// <param name="AccountWaiting">What waits to leave its account, this entry among it.</param>
 /// <param name="AccountShortBy">How much more what waits on its account takes than the account holds; zero when it covers all of it, so the inbox notes only a short one (R5, D4).</param>
-public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Notes, string AttachmentId, string ContentType, string FileName, string AuthorName, string PartnerName, decimal AccountBalance, decimal AccountWaiting, decimal AccountShortBy);
+public record PendingEntryView(Guid Id, EntryKind Kind, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AccountName, string Description, string AttachmentId, string ContentType, string FileName, string AuthorName, string PartnerName, decimal AccountBalance, decimal AccountWaiting, decimal AccountShortBy);
 
 /// <summary>The entries to approve.</summary>
 /// <param name="EntryIds">Their ids.</param>

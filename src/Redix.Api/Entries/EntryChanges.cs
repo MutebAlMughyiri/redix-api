@@ -45,7 +45,7 @@ public static class EntryChanges
         existing.EntryDate = edited.EntryDate;
         existing.Amount = edited.Amount;
         existing.AccountId = edited.AccountId;
-        existing.Notes = edited.Notes;
+        existing.Description = edited.Description;
         existing.ColumnValues = edited.ColumnValues;
         existing.Status = edited.Status == EntryStatus.PendingApproval ? EntryStatus.PendingApproval : existing.Status;
         db.AddHistory(existing, sending ? HistoryAction.Submit : HistoryAction.Update, userId, at);

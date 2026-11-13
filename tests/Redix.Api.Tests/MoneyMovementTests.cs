@@ -232,11 +232,12 @@ public class MoneyMovementTests(MigratedApiFactory factory)
         await ContributeAsync(ledger, partner, 100);
         var entryId = (await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!.Single().Id;
 
-        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/notes", new ChangeNotesRequest("تحويل من البنك"), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PutAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/description", new ChangeDescriptionRequest("تحويل من البنك"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("تحويل من البنك", (await ledger.Client.GetFromJsonAsync<List<CapitalMovementView>>($"/projects/{ledger.ProjectId}/partners/{partner}/movements", Json))!.Single().Description);
         var report = (await ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{capital}", Json))!;
-        Assert.EndsWith("تحويل من البنك", report.Subgroups.Single().Rows.Single().Description);
+        var table = report.Subgroups.Single();
+        Assert.Equal("تحويل من البنك", table.Rows.Single().Values[table.Columns.FindIndex(column => column.Key == "description")]);
     }
 
     [Fact]

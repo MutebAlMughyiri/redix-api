@@ -6,8 +6,8 @@ namespace Redix.Api.Accounts;
 /// </summary>
 public class Transfer
 {
-    /// <summary>The longest notes it keeps, as an entry's.</summary>
-    public const int NotesMaxLength = Entries.Entry.NotesMaxLength;
+    /// <summary>The longest notes it keeps: what an entry's notes took before they became its description (redix-api #129).</summary>
+    public const int NotesMaxLength = 1000;
 
     /// <summary>The transfer's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

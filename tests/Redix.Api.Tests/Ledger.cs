@@ -75,7 +75,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     public EntryRequest CreditNote(decimal amount) => Purchase(amount) with { ColumnValues = new Dictionary<string, string> { ["entryType"] = StructureSeed.CreditNoteChoiceId.ToString() } };
 
     /// <summary>A deduction of <paramref name="amount"/>, below zero, saying why in its notes (D14).</summary>
-    public EntryRequest Deduction(decimal amount, string notes = "خصم من المورد") => Purchase(amount) with { Notes = notes };
+    public EntryRequest Deduction(decimal amount, string notes = "خصم من المورد") => Purchase(amount) with { Description = notes };
 
     /// <summary>A revenue entry of <paramref name="amount"/> today, sent for approval, in the general table of the project's revenue item of <paramref name="type"/>.</summary>
     public async Task<EntryRequest> RevenueAsync(ItemType type, decimal amount, string notes = "") => await RevenueOnAsync(await RevenueItemAsync(type), amount, notes);
@@ -88,7 +88,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
         Date = Today,
         Amount = amount,
         AccountId = AccountId,
-        Notes = notes,
+        Description = notes,
         Submit = true,
     };
 
@@ -100,7 +100,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
         Date = Today,
         Amount = amount,
         AccountId = AccountId,
-        Notes = notes,
+        Description = notes,
         ColumnValues = new Dictionary<string, string> { ["movementType"] = (isWithdrawal ? StructureSeed.WithdrawalChoiceId : StructureSeed.ContributionChoiceId).ToString() },
         Submit = true,
     };

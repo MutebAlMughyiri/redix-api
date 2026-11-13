@@ -105,7 +105,7 @@ public static class ItemReportEndpoints
         ItemEntryRow RowOf(Entry entry, List<ItemColumn> columns, decimal amount)
         {
             var isOutside = (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract;
-            return new ItemEntryRow(entry.Id, entry.EntryDate, ReportColumns.DescriptionOf(entry), amount, isOutside, ReportColumns.ValuesOf(columns, entry, facts, isOutside), entry.ApprovedAt > newSince);
+            return new ItemEntryRow(entry.Id, entry.EntryDate, amount, isOutside, ReportColumns.ValuesOf(columns, entry, facts, isOutside), entry.ApprovedAt > newSince);
         }
 
         var subgroups = item.Subgroups.OrderBy(subgroup => subgroup.SortOrder).Select(subgroup =>
@@ -183,7 +183,7 @@ public record SubgroupReportView(Guid Id, string Name, decimal Total, List<ItemE
     /// <summary>Its place among the item's tables (AC-46.8); zero in a report issued before tables had one.</summary>
     public int SortOrder { get; init; }
 
-    /// <summary>The columns it prints between «الوصف» and its amount, its item's own, in their order (redix-api #129, R1); none in a report issued before.</summary>
+    /// <summary>The columns it prints before its amount, its item's own, «الوصف» among them, in their order (redix-api #129, R1); none in a report issued before.</summary>
     public List<ReportColumnView> Columns { get; init; } = [];
 
     /// <summary>Its amount column's own name, its header (redix-api #129); empty in a report issued before.</summary>
@@ -205,7 +205,7 @@ public record ContractReportView(Guid Id, string ContractorName, decimal Value, 
     /// <summary>Its place among the item's tables (AC-46.8); zero in a report issued before tables had one.</summary>
     public int SortOrder { get; init; }
 
-    /// <summary>The columns its table prints between «الوصف» and the payment, its item's own that a payment is asked, in their order (redix-api #129, R1); none in a report issued before.</summary>
+    /// <summary>The columns its table prints before the payment, its item's own that a payment is asked, «الوصف» among them, in their order (redix-api #129, R1); none in a report issued before.</summary>
     public List<ReportColumnView> Columns { get; init; } = [];
 
     /// <summary>Its amount column's own name, its header (redix-api #129); empty in a report issued before.</summary>
@@ -215,9 +215,8 @@ public record ContractReportView(Guid Id, string ContractorName, decimal Value, 
 /// <summary>One entry in an item's report, in its table's columns (redix-api #129, R1).</summary>
 /// <param name="EntryId">The entry.</param>
 /// <param name="Date">The day it was paid, which orders the rows.</param>
-/// <param name="Description">«الوصف»: what was bought, or what was said.</param>
 /// <param name="Amount">What was paid, or what it did to the capital.</param>
 /// <param name="IsOutsideContract">True for a payment outside its contract, which leaves what remains of it alone (BR-04).</param>
 /// <param name="Values">What it shows under each of its table's columns, in their order, as <see cref="ReportColumns.ValuesOf"/> writes them.</param>
 /// <param name="IsNew">True when it was approved after the latest periodic report, shaded green (BR-26).</param>
-public record ItemEntryRow(Guid EntryId, DateOnly Date, string Description, decimal Amount, bool IsOutsideContract, List<string> Values, bool IsNew);
+public record ItemEntryRow(Guid EntryId, DateOnly Date, decimal Amount, bool IsOutsideContract, List<string> Values, bool IsNew);

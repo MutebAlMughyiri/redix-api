@@ -15,7 +15,7 @@ namespace Redix.Api.Entries;
 public static class EntriesEndpoints
 {
     /// <summary>
-    /// Maps the routes that read an entry, the caller's own and the project's list, for anyone who reads the project; those that send it and change its notes, for whoever holds
+    /// Maps the routes that read an entry, the caller's own and the project's list, for anyone who reads the project; those that send it and change its description, for whoever holds
     /// <see cref="Permission.RecordEntries"/>; and deleting, for anyone who reads the project, since what it asks for follows the entry:
     /// <see cref="Permission.DeleteEntries"/> before approval, <see cref="Permission.RemoveApprovedEntries"/> after it (redix-api #119).
     /// </summary>
@@ -27,7 +27,7 @@ public static class EntriesEndpoints
         app.MapGet("/projects/{projectId:guid}/entries", List).RequireAuthorization(nameof(Permission.ReadProject));
         var changes = app.MapProjectChanges(Permission.RecordEntries);
         changes.MapPost("/entries/{entryId:guid}/submit", Submit);
-        changes.MapPut("/entries/{entryId:guid}/notes", ChangeNotes);
+        changes.MapPut("/entries/{entryId:guid}/description", ChangeDescription);
         app.MapProjectChanges(Permission.ReadProject).MapDelete("/entries/{entryId:guid}", Delete);
         app.MapProjectChanges(Permission.RemoveApprovedEntries).MapPost("/entries/{entryId:guid}/restore", Restore);
     }
@@ -118,7 +118,7 @@ public static class EntriesEndpoints
             facts.AuthorNameOf(entry),
             entry.CreatedByUserId == userId,
             facts.PartnerNameOf(entry),
-            entry.Notes,
+            entry.Description,
             facts.AccountNameOf(entry),
             facts.PaymentMethodNameOf(entry),
             facts.AccountShortByOf(entry))).ToList();
@@ -250,14 +250,14 @@ public static class EntriesEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Changes an entry's notes, which is allowed even once it is approved (AC-50.2, BR-11), for who entered it or whoever holds <see cref="Permission.ManageAnyEntry"/>; anyone else gets <c>notYourEntry</c>, and notes longer than <see cref="Entry.NotesMaxLength"/> <c>invalidNotes</c>.</summary>
+    /// <summary>Changes an entry's description, «الوصف», which is allowed even once it is approved (AC-50.2, BR-11), for who entered it or whoever holds <see cref="Permission.ManageAnyEntry"/>; anyone else gets <c>notYourEntry</c>, and a description longer than <see cref="Entry.DescriptionMaxLength"/> <c>invalidDescription</c>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>
-    /// <param name="request">The notes.</param>
+    /// <param name="request">The description.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     /// <param name="time">The current time.</param>
-    public static async Task<IResult> ChangeNotes(Guid projectId, Guid entryId, ChangeNotesRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    public static async Task<IResult> ChangeDescription(Guid projectId, Guid entryId, ChangeDescriptionRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var entry = await Entry.OfProjectAsync(projectId, entryId, db);
         if (entry == Entry.None)
@@ -269,12 +269,12 @@ public static class EntriesEndpoints
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
         }
-        var notes = request.Notes.Trim();
-        if (notes.Length > Entry.NotesMaxLength)
+        var description = request.Description.Trim();
+        if (description.Length > Entry.DescriptionMaxLength)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidNotes");
+            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidDescription");
         }
-        entry.Notes = notes;
+        entry.Description = description;
         db.AddHistory(entry, HistoryAction.Update, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok();
@@ -287,7 +287,7 @@ public static class EntriesEndpoints
             .Concat(from movement in db.CapitalMovementDetails join partner in db.Partners on movement.PartnerId equals partner.Id where movement.EntryId == entry.Id select partner.ItemId)
             .FirstOrDefaultAsync();
         var columns = (await db.Set<ItemColumn>().Where(column => column.ItemId == itemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync()).Where(column => column.IsAskedOf(entry.Kind));
-        return new EntryAnswers(entry.Notes, entry.ColumnValuesByKey()).MissingOf(columns);
+        return new EntryAnswers(entry.Description, entry.ColumnValuesByKey()).MissingOf(columns);
     }
 
     private static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db)
@@ -320,15 +320,15 @@ public static class EntriesEndpoints
 /// <param name="AuthorName">Who entered it.</param>
 /// <param name="IsMine">True when the caller entered it.</param>
 /// <param name="PartnerName">A capital movement's partner; empty for any other entry.</param>
-/// <param name="Notes">What was noted; empty for nothing.</param>
+/// <param name="Description">«الوصف», what it says; empty for nothing.</param>
 /// <param name="AccountName">The account it was paid from or reached.</param>
 /// <param name="PaymentMethodName">How an expense was paid; empty when nobody said, and for any other entry.</param>
 /// <param name="AccountShortBy">How much more what waits on its account takes than the account holds, which the shared entry notes without amounts (R6, R16); zero when it covers all of it.</param>
-public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, string PartnerName, string Notes, string AccountName, string PaymentMethodName, decimal AccountShortBy);
+public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, string PartnerName, string Description, string AccountName, string PaymentMethodName, decimal AccountShortBy);
 
-/// <summary>An entry's notes.</summary>
-/// <param name="Notes">The notes; may be empty.</param>
-public record ChangeNotesRequest(string Notes);
+/// <summary>An entry's description.</summary>
+/// <param name="Description">The description; may be empty.</param>
+public record ChangeDescriptionRequest(string Description);
 
 /// <summary>An entry and everything its kind has. What it does not have is empty, with an empty <c>entryId</c>, so a reader asks nothing but that.</summary>
 /// <param name="Entry">The entry.</param>

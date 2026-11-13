@@ -180,7 +180,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         var partner = await PartnerAsync(ledger, "شريك");
         await ledger.ApproveAsync(await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", await ledger.PartnerEntryAsync(partner, 1000, notes: ""), Json));
-        await ApprovedAsync(ledger, ledger.Purchase(115) with { ColumnValues = new Dictionary<string, string> { ["product"] = "P1" } });
+        await ApprovedAsync(ledger, ledger.Purchase(115) with { Description = "P1" });
         await IssueAsync(ledger);
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
@@ -197,7 +197,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal(["استرجاع ضرائب", "إيرادات أخرى", "فلوس البيع المودعة بالحساب"], new[] { 11, 12, 13 }.Select(line => summary.Cell(line, 1).GetString()));
         Assert.Contains(summary.CellsUsed(), cell => cell.HasFormula && cell.FormulaA1.Contains($"'{itemSheet.Name}'!"));
         var capital = workbook.Worksheet("رأس المال");
-        Assert.Equal(("شريك", "نوع الحركة", "إضافة مبلغ", 1000m), (capital.Cell("A1").GetString(), capital.Cell("C2").GetString(), capital.Cell("C3").GetString(), capital.Cell("G3").GetValue<decimal>()));
+        Assert.Equal(("شريك", "نوع الحركة", "إضافة مبلغ", "الوصف", 1000m), (capital.Cell("A1").GetString(), capital.Cell("B2").GetString(), capital.Cell("B3").GetString(), capital.Cell("C2").GetString(), capital.Cell("G3").GetValue<decimal>()));
         Assert.Equal(("الاجمالي", 1000m), (capital.Cell("A4").GetString(), capital.Cell("G4").GetValue<decimal>()));
         var row = itemSheet.CellsUsed().First(cell => cell.GetString() == "P1").Address.RowNumber;
         Assert.True(itemSheet.Cell(row, 5).IsEmpty() && itemSheet.Cell(row, 6).IsEmpty(), "a price and a quantity nobody entered stay blank, as in the PDF");
@@ -208,15 +208,15 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public async Task R129_R1_APurchaseTablePrintsItsItemsColumnsInTheirOrderEachUnderItsOwnNameAndNoInvoiceNumber()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        await ApprovedAsync(ledger, ledger.CreditNote(320) with { ColumnValues = new Dictionary<string, string> { ["entryType"] = StructureSeed.CreditNoteChoiceId.ToString(), ["unitPrice"] = "64", ["quantity"] = "5", ["product"] = "بلاط" } });
+        await ApprovedAsync(ledger, ledger.CreditNote(320) with { ColumnValues = new Dictionary<string, string> { ["entryType"] = StructureSeed.CreditNoteChoiceId.ToString(), ["unitPrice"] = "64", ["quantity"] = "5" }, Description = "بلاط" });
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}/xlsx")));
 
         var sheet = workbook.Worksheet(1);
-        Assert.Equal(["الوصف", "المورد", "التاريخ", "سعر الوحدة", "العدد", "نوع القيد", "الحساب", "طريقة الدفع", "المرفق", "الإجمالي"], Enumerable.Range(2, 10).Select(column => sheet.Cell(2, column).GetString()));
+        Assert.Equal(["الوصف", "المورد", "التاريخ", "سعر الحبة", "العدد", "نوع القيد", "الحساب", "طريقة الدفع", "المرفق", "التكلفة"], Enumerable.Range(2, 10).Select(column => sheet.Cell(2, column).GetString()));
         Assert.Equal(("بلاط", "شركة النخيل", 64m, 5m, "مرتجع", "حساب المؤسسة", ReportColumns.AttachmentWord, -320m),
             (sheet.Cell(3, 2).GetString(), sheet.Cell(3, 3).GetString(), sheet.Cell(3, 5).GetValue<decimal>(), sheet.Cell(3, 6).GetValue<decimal>(), sheet.Cell(3, 7).GetString(), sheet.Cell(3, 8).GetString(), sheet.Cell(3, 10).GetString(), sheet.Cell(3, 11).GetValue<decimal>()));
-        Assert.DoesNotContain(sheet.CellsUsed(), cell => cell.GetString() is "رقم الفاتورة" or "سعر الحبة" or "ملاحظات");
+        Assert.DoesNotContain(sheet.CellsUsed(), cell => cell.GetString() is "رقم الفاتورة" or "ملاحظات" or "الصنف");
     }
 
     [Fact]
@@ -229,14 +229,14 @@ public class ReportFilesTests(MigratedApiFactory factory)
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}/xlsx")));
 
         var sheet = workbook.Worksheet(1);
-        Assert.Equal(["الوصف", "المورد", "التاريخ", "نوع القيد", "الحساب", "طريقة الدفع", "المرفق", "الإجمالي"], Enumerable.Range(2, 8).Select(column => sheet.Cell(2, column).GetString()));
-        Assert.DoesNotContain(sheet.CellsUsed(), cell => cell.GetString() is "سعر الوحدة" or "العدد");
+        Assert.Equal(["الوصف", "المورد", "التاريخ", "نوع القيد", "الحساب", "طريقة الدفع", "المرفق", "التكلفة"], Enumerable.Range(2, 8).Select(column => sheet.Cell(2, column).GetString()));
+        Assert.DoesNotContain(sheet.CellsUsed(), cell => cell.GetString() is "سعر الحبة" or "العدد");
     }
 
     [Fact]
     public void R129_R4_ThePdfPrintsTheColumnsTheSheetPrints()
     {
-        var item = Item("البلاط", "التشطيب", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2026, 9, 1), "بلاط", 1150, false, ["2026-09-01", "شركة النخيل", "230", "5"], false)));
+        var item = Item("البلاط", "التشطيب", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2026, 9, 1), 1150, false, ["بلاط", "2026-09-01", "شركة النخيل", "230", "5"], false)));
 
         using var workbook = ItemWorkbook(item);
 
@@ -353,9 +353,9 @@ public class ReportFilesTests(MigratedApiFactory factory)
     [Fact]
     public void R129_EverySheetPrintsOnA4OneWideWithTheProjectAndReportNumberAtItsFootAndAcrossThePageFromEightColumns()
     {
-        List<ReportColumnView> wide = [.. PurchaseColumns, new("الحساب", ColumnDataType.List, true, [new("حساب المؤسسة", ChoiceSign.None)])];
+        List<ReportColumnView> wide = [.. PurchaseColumns, new("account", "الحساب", ColumnDataType.List, true, [new("حساب المؤسسة", ChoiceSign.None)])];
         var narrow = Item("الرسوم", "الرسوم والفواتير", Subgroup("", Row(100, "R1")));
-        var broad = Item("بلاط", "التشطيب", Subgroup("", Row(30, "B1") with { Values = ["2026-09-01", "", "", "", "حساب المؤسسة"] }) with { Columns = wide });
+        var broad = Item("بلاط", "التشطيب", Subgroup("", Row(30, "B1") with { Values = ["B1", "2026-09-01", "", "", "", "حساب المؤسسة"] }) with { Columns = wide });
 
         using var workbook = Workbook(Report([narrow, broad]));
 
@@ -482,11 +482,11 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public void AC_46_11_EveryColumnFitsItsContentAndTextPastFortyFiveCharactersWraps()
     {
         var longText = string.Join(" ", Enumerable.Repeat("دفعات المكتب الهندسي", 6));
-        using var workbook = ItemWorkbook(Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), longText, 590400, false, ["2025-07-05", "", "", ""], false))));
+        using var workbook = ItemWorkbook(Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), 590400, false, [longText, "2025-07-05", "", "", ""], false))));
 
         var sheet = workbook.Worksheet(1);
         Assert.Equal((45d, true), (sheet.Column(2).Width, sheet.Cell("B3").Style.Alignment.WrapText));
-        using var file = new ZipArchive(new MemoryStream(ItemReportFiles.Excel("غصون 6", Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), longText, 590400, false, ["2025-07-05", "", "", ""], false))))));
+        using var file = new ZipArchive(new MemoryStream(ItemReportFiles.Excel("غصون 6", Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), 590400, false, [longText, "2025-07-05", "", "", ""], false))))));
         using var sheetXml = new StreamReader(file.GetEntry("xl/worksheets/sheet1.xml")!.Open());
         Assert.DoesNotContain("customHeight", sheetXml.ReadToEnd());
         Assert.True(sheet.Column(3).Width >= 10 && sheet.Column(7).Width >= 10, "a date and an amount show whole");
@@ -511,12 +511,15 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
     private static ItemReportView Item(string name, string category, params SubgroupReportView[] subgroups) => new(Guid.NewGuid(), name, category, subgroups.Sum(subgroup => subgroup.Total), [.. subgroups], []);
 
-    /// <summary>Four columns of a purchase table, as an item's own: the date, the supplier, the unit price and the quantity (redix-api #129).</summary>
-    private static readonly List<ReportColumnView> PurchaseColumns =
-        [new("التاريخ", ColumnDataType.Date, true, []), new("المورد", ColumnDataType.List, false, [new("شركة النخيل", ChoiceSign.None)]), new("سعر الوحدة", ColumnDataType.Amount, false, []), new("العدد", ColumnDataType.Number, false, [])];
+    /// <summary>«الوصف», the first column of a table here, as of every table but رأس المال's (redix-api #129).</summary>
+    private static readonly ReportColumnView DescriptionColumn = new("description", "الوصف", ColumnDataType.Text, false, []);
 
-    /// <summary>The one column revenue, a payment or a partner's money prints here: its date.</summary>
-    private static readonly List<ReportColumnView> DateColumn = [new("التاريخ", ColumnDataType.Date, true, [])];
+    /// <summary>Five columns of a purchase table, as an item's own: the description, the date, the supplier, the unit price and the quantity (redix-api #129).</summary>
+    private static readonly List<ReportColumnView> PurchaseColumns =
+        [DescriptionColumn, new("date", "التاريخ", ColumnDataType.Date, true, []), new("supplier", "المورد", ColumnDataType.List, false, [new("شركة النخيل", ChoiceSign.None)]), new("unitPrice", "سعر الحبة", ColumnDataType.Amount, false, []), new("quantity", "العدد", ColumnDataType.Number, false, [])];
+
+    /// <summary>The two columns revenue, a payment or a partner's money prints here: its description and its date.</summary>
+    private static readonly List<ReportColumnView> DateColumn = [DescriptionColumn, new("date", "التاريخ", ColumnDataType.Date, true, [])];
 
     private static SubgroupReportView Subgroup(string name, params ItemEntryRow[] rows) =>
         new(Guid.NewGuid(), name, rows.Sum(row => row.Amount), [.. rows]) { Columns = PurchaseColumns, AmountName = "التكلفة" };
@@ -533,9 +536,9 @@ public class ReportFilesTests(MigratedApiFactory factory)
     private static ItemReportView Capital(params (string Name, decimal Amount)[] partners) =>
         Item("رأس المال", "رأس المال", [.. partners.Select(partner => RevenueGroup(partner.Name, Row(partner.Amount, "")))]) with { Type = ItemType.Capital, ShowsTablePercentages = true };
 
-    /// <summary>A row of <paramref name="amount"/> described as <paramref name="description"/>, dated in its first column, nothing in the others.</summary>
+    /// <summary>A row of <paramref name="amount"/> described as <paramref name="description"/> in its first column, dated in its second, nothing in the others.</summary>
     private static ItemEntryRow Row(decimal amount, string description, bool isNew = false, bool isOutside = false) =>
-        new(Guid.NewGuid(), new DateOnly(2026, 9, 1), description, amount, isOutside, ["2026-09-01", "", "", ""], isNew);
+        new(Guid.NewGuid(), new DateOnly(2026, 9, 1), amount, isOutside, [description, "2026-09-01", "", "", ""], isNew);
 
     [Fact]
     public async Task AC_47_1_D19_TheVatWorkbookWorksVatOutOfEachTotalAtTheConfiguredRate()
