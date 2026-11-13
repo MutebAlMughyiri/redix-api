@@ -2,7 +2,7 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `InactivePerProject` (13 Nov 2026, redix-api #126). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `NotificationProjectKey` (13 Nov 2026, findings row 213). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
@@ -910,7 +910,7 @@ The partners of each project (UC-016); each is a table of the project's capital 
 | ProjectId | uniqueidentifier | not null | FK | `Projects.Id` |
 | UserId | uniqueidentifier | not null |  | no foreign key: the partner's own login (`Users.Id`); empty for a partner with no login |
 | Name | nvarchar(100) | not null |  |  |
-| ItemId | uniqueidentifier | not null |  | no foreign key: the project's capital item (`Items.Id`), whose table the partner is |
+| ItemId | uniqueidentifier | not null |  | no foreign key: the project's capital item (`Items.Id`), whose table the partner is; empty for a partner declared with a project until it is approved and has a structure (redix-api #109), so findings row 213's key cannot hold it yet |
 | SortOrder | int | not null |  |  |
 | IsDeleted | bit | not null |  |  |
 
@@ -941,6 +941,7 @@ erDiagram
     Users ||--o{ PeriodicReports : "IssuedByUserId"
     Users ||--o{ History : "UserId"
     Users ||--o{ Notifications : "UserId"
+    Projects ||--o{ Notifications : "ProjectId"
 ```
 
 ### PeriodicReports
@@ -991,7 +992,7 @@ What each person was told about an entry or a project (UC-036).
 | --- | --- | --- | --- | --- |
 | Id | uniqueidentifier | not null | PK |  |
 | UserId | uniqueidentifier | not null | FK | `Users.Id` |
-| ProjectId | uniqueidentifier | not null |  | no foreign key: the project it is about |
+| ProjectId | uniqueidentifier | not null | FK | `Projects.Id`: the project it is about (findings row 213) |
 | EntryId | uniqueidentifier | not null |  | no foreign key: the entry tapping it opens; empty when it is about the project itself |
 | Kind | tinyint | not null | FK | `LK_NotificationKind.Id`: 0 EntrySubmitted, 1 EntryApproved, 2 EntryRejected, 3 ProjectApproved, 4 ProjectRejected |
 | At | datetime2(7) | not null |  |  |
@@ -999,7 +1000,7 @@ What each person was told about an entry or a project (UC-036).
 
 Unique: the key only.
 
-Other indexes: `Kind`; `UserId, At`.
+Other indexes: `Kind`; `ProjectId`; `UserId, At`.
 
 ## Words and configuration
 

@@ -179,4 +179,35 @@ public class NotificationsTests(MigratedApiFactory factory)
         await factory.WithDatabaseAsync(db => db.ProjectPermissions.Where(row => row.UserId == otherId).ExecuteDeleteAsync());
 
         Assert.Empty((await MineAsync(other))!);
-    }}
+    }
+
+    [Fact]
+    public async Task R213_TheDatabaseKeepsANotificationNamingItsProject()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var user = await factory.AddUserAsync(ManagerPassword);
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            db.Notifications.Add(new Notification { UserId = user.Id, ProjectId = ledger.ProjectId, Kind = NotificationKind.ProjectApproved });
+            await db.SaveChangesAsync();
+
+            Assert.True(await db.Notifications.AnyAsync(row => row.UserId == user.Id && row.ProjectId == ledger.ProjectId));
+        });
+    }
+
+    [Fact]
+    public async Task R213_TheDatabaseRefusesANotificationNamingNoProject()
+    {
+        var user = await factory.AddUserAsync(ManagerPassword);
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            db.Notifications.Add(new Notification { UserId = user.Id, ProjectId = Guid.CreateVersion7(), Kind = NotificationKind.ProjectApproved });
+
+            var refused = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+            Assert.Contains("FK_Notifications_Projects_ProjectId", refused.InnerException!.Message);
+        });
+    }
+}

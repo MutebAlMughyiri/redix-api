@@ -1545,6 +1545,8 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("Kind");
 
+                    b.HasIndex("ProjectId");
+
                     b.HasIndex("UserId", "At");
 
                     b.ToTable("Notifications");
@@ -19850,6 +19852,12 @@ namespace Redix.Api.Migrations
                     b.HasOne("Redix.Api.Lookup<Redix.Api.Notifications.NotificationKind>", null)
                         .WithMany()
                         .HasForeignKey("Kind")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Redix.Api.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

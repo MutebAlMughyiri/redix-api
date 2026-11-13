@@ -26,3 +26,4 @@ A notification holds a kind, not text, so its words come from the app in the rea
 | Deleting an entry takes what was told about it | `EntryChanges.DeleteAsync` | `NotificationsTests.DeletingADraftTakesWhatWasToldAboutIt` |
 | Someone who left a project no longer sees it (BR-33) | `NotificationsEndpoints.List` | `NotificationsTests.SomeoneWhoLeftAProjectIsNoLongerToldOfIt` |
 | Nobody reads them without signing in | The fallback policy | `NotificationsTests.NobodyReadsThemWithoutSigningIn` |
+| A notification names a project the database knows (findings row 213) | `RedixDbContext`, `FK_Notifications_Projects_ProjectId` | `NotificationsTests.R213_TheDatabaseKeepsANotificationNamingItsProject`, `R213_TheDatabaseRefusesANotificationNamingNoProject`, `MigrationStepsTests.R213_NotificationProjectKey_EveryNotificationKeepsItsProjectWhichTheDatabaseNowNames` |

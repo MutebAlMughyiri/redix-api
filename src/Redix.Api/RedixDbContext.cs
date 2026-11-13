@@ -416,6 +416,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             notification.HasIndex(n => new { n.UserId, n.At });
             notification.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);
+            notification.HasOne<Project>().WithMany().HasForeignKey(n => n.ProjectId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<EntryDecision>(decision =>
         {
