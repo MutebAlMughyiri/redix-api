@@ -186,8 +186,8 @@ public class ReportFilesTests(MigratedApiFactory factory)
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
         workbook.RecalculateAllFormulas();
 
-        var itemSheet = workbook.Worksheet(2);
-        Assert.Equal(["الخلاصة", itemSheet.Name, "رأس المال"], workbook.Worksheets.Select(sheet => sheet.Name));
+        var itemSheet = workbook.Worksheets.Single(sheet => sheet.Name is not ("الخلاصة" or "رأس المال" or "القوائم"));
+        Assert.Equal(["الخلاصة", "رأس المال", itemSheet.Name, "القوائم"], workbook.Worksheets.Select(sheet => sheet.Name));
         Assert.All(workbook.Worksheets, sheet => Assert.True(sheet.RightToLeft && sheet.PageSetup.PagesWide == 1 && sheet.PageSetup.PaperSize == XLPaperSize.A4Paper));
         var summary = workbook.Worksheet("الخلاصة");
         Assert.Equal(("رقم التقرير:", "1", "غصون 6"), (summary.Cell("A2").GetString(), summary.Cell("B2").GetString(), summary.Cell("A1").GetString()));
@@ -285,7 +285,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
         using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report)));
 
-        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Skip(1).Select(sheet => sheet.Name));
+        Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Where(sheet => sheet.Visibility == XLWorksheetVisibility.Visible).Skip(1).Select(sheet => sheet.Name));
     }
 
     [Fact]
@@ -309,6 +309,91 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal(("استرجاع ضرائب", "'استرجاع الضرائب'!D5", 300m), (summary.Cell("A11").GetString(), summary.Cell("B11").FormulaA1, summary.Cell("B11").GetValue<decimal>()));
         Assert.Equal(("فلوس البيع المودعة بالحساب", StatementStyle.Muted), (summary.Cell("A12").GetString(), summary.Cell("A12").Style.Font.FontColor));
         Assert.Equal(("مجموع الايرادات", 1800m, 800m), (summary.Cell("A13").GetString(), summary.Cell("B13").GetValue<decimal>(), summary.Cell("B15").GetValue<decimal>()));
+    }
+
+    [Fact]
+    public void R129_TheSheetsFollowTheSummarysReadingOrderAndTheHiddenListsSheetIsLast()
+    {
+        var capital = Capital(("سالم", 500));
+        var fees = Item("الرسوم", "الرسوم والفواتير", Subgroup("", Row(100, "R1")));
+        var tiles = Item("بلاط", "تكلفة التشطيب", Subgroup("", Row(30, "B1")));
+        var paint = Item("بوية", "تكلفة التشطيب", Subgroup("", Row(20, "P1")));
+        var report = Report([paint, fees, capital, tiles]) with
+        {
+            RevenueCategories = [Category("رأس المال", ItemType.Capital, capital)],
+            Categories = [Category("الرسوم والفواتير", ItemType.Both, fees), Category("تكلفة التشطيب", ItemType.Both, tiles, paint)],
+        };
+
+        using var workbook = Workbook(report);
+
+        Assert.Equal(["الخلاصة", "رأس المال", "الرسوم", "بلاط", "بوية", "القوائم"], workbook.Worksheets.Select(sheet => sheet.Name));
+        Assert.Equal(XLWorksheetVisibility.Hidden, workbook.Worksheet("القوائم").Visibility);
+        Assert.All(workbook.Worksheets.Where(sheet => sheet.Name != "القوائم"), sheet => Assert.Equal(XLWorksheetVisibility.Visible, sheet.Visibility));
+    }
+
+    [Fact]
+    public void R129_EachSummaryLinesNameOpensItsSheetAndEachSheetLinksBackOutsideWhatPrints()
+    {
+        var fees = Item("الرسوم", "الرسوم والفواتير", Subgroup("", Row(100, "R1")));
+        var tiles = Item("بلاط", "تكلفة التشطيب", Subgroup("", Row(30, "B1")));
+        var paint = Item("بوية", "تكلفة التشطيب", Subgroup("", Row(20, "P1")));
+
+        using var workbook = Workbook(Report([fees, tiles, paint]) with { Categories = [Category("الرسوم والفواتير", ItemType.Both, fees), Category("تكلفة التشطيب", ItemType.Both, tiles, paint)] });
+
+        var summary = workbook.Worksheet("الخلاصة");
+        Assert.Equal(("الرسوم والفواتير", "'الرسوم'!A1"), (summary.Cell("D10").GetString(), summary.Cell("D10").GetHyperlink().InternalAddress));
+        Assert.False(summary.Cell("D11").HasHyperlink, "a category of more items is no sheet's line");
+        var line = summary.CellsUsed().Single(cell => cell.GetString() == "بوية");
+        Assert.Equal("'بوية'!A1", line.GetHyperlink().InternalAddress);
+        var sheet = workbook.Worksheet("الرسوم");
+        Assert.Equal(("← الخلاصة", "'الخلاصة'!A1"), (sheet.Cell(1, 9).GetString(), sheet.Cell(1, 9).GetHyperlink().InternalAddress));
+        Assert.Equal(7, sheet.PageSetup.PrintAreas.Single().LastColumn().ColumnNumber());
+    }
+
+    [Fact]
+    public void R129_EverySheetPrintsOnA4OneWideWithTheProjectAndReportNumberAtItsFootAndAcrossThePageFromEightColumns()
+    {
+        List<ReportColumnView> wide = [.. PurchaseColumns, new("الحساب", ColumnDataType.List, true, [new("حساب المؤسسة", ChoiceSign.None)])];
+        var narrow = Item("الرسوم", "الرسوم والفواتير", Subgroup("", Row(100, "R1")));
+        var broad = Item("بلاط", "التشطيب", Subgroup("", Row(30, "B1") with { Values = ["2026-09-01", "", "", "", "حساب المؤسسة"] }) with { Columns = wide });
+
+        using var workbook = Workbook(Report([narrow, broad]));
+
+        Assert.All(workbook.Worksheets, sheet =>
+        {
+            Assert.Equal((XLPaperSize.A4Paper, 1, 0), (sheet.PageSetup.PaperSize, sheet.PageSetup.PagesWide, sheet.PageSetup.PagesTall));
+            Assert.Equal("غصون 6 · التقرير 1", sheet.PageSetup.Footer.Right.GetText(XLHFOccurrence.AllPages));
+            Assert.Equal("&A", sheet.PageSetup.Footer.Left.GetText(XLHFOccurrence.AllPages));
+            Assert.Equal("&P / &N", sheet.PageSetup.Footer.Center.GetText(XLHFOccurrence.AllPages));
+        });
+        Assert.Equal(XLPageOrientation.Portrait, workbook.Worksheet("الرسوم").PageSetup.PageOrientation);
+        Assert.Equal(XLPageOrientation.Landscape, workbook.Worksheet("بلاط").PageSetup.PageOrientation);
+        Assert.Equal("A1:G4", workbook.Worksheet("الرسوم").PageSetup.PrintAreas.Single().RangeAddress.ToString());
+    }
+
+    [Fact]
+    public async Task R129_EveryListCellReadsItsBlockOnTheHiddenListsSheetTheSupplierLeftEmptyIfNone()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ApprovedAsync(ledger, ledger.CreditNote(320));
+        await IssueAsync(ledger);
+
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
+
+        var lists = workbook.Worksheets.Last();
+        Assert.Equal(("القوائم", XLWorksheetVisibility.Hidden), (lists.Name, lists.Visibility));
+        var sheet = workbook.Worksheets.Single(row => row.Name is not ("الخلاصة" or "القوائم"));
+        IXLDataValidation ValidationOf(int column) => sheet.DataValidations.Single(validation => validation.Ranges.Any(range => range.Contains(sheet.Cell(3, column))));
+        IXLRange BlockOf(IXLDataValidation validation) => workbook.Range(validation.Value.TrimStart('='));
+        List<string> ChoicesOf(IXLDataValidation validation) => [.. BlockOf(validation).Cells().Select(cell => cell.GetString())];
+        var supplier = ValidationOf(3);
+        var entryType = ValidationOf(7);
+        Assert.Equal((XLAllowedValues.List, true), (supplier.AllowedValues, supplier.IgnoreBlanks));
+        Assert.Contains("شركة النخيل", ChoicesOf(supplier));
+        Assert.Equal(["شراء", "مرتجع"], ChoicesOf(entryType));
+        Assert.Equal(["+", "−"], BlockOf(entryType).Cells().Select(cell => cell.CellRight().GetString()));
+        Assert.False(ValidationOf(8).IgnoreBlanks, "an account is required, so its cell is not left empty");
+        Assert.DoesNotContain(sheet.DataValidations, validation => validation.Ranges.Any(range => range.Contains(sheet.Cell(3, 4))));
     }
 
     [Fact]
@@ -401,7 +486,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
         var sheet = workbook.Worksheet(1);
         Assert.Equal((45d, true), (sheet.Column(2).Width, sheet.Cell("B3").Style.Alignment.WrapText));
-        using var file = new ZipArchive(new MemoryStream(ItemReportFiles.Excel(Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), longText, 590400, false, ["2025-07-05", "", "", ""], false))))));
+        using var file = new ZipArchive(new MemoryStream(ItemReportFiles.Excel("غصون 6", Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), longText, 590400, false, ["2025-07-05", "", "", ""], false))))));
         using var sheetXml = new StreamReader(file.GetEntry("xl/worksheets/sheet1.xml")!.Open());
         Assert.DoesNotContain("customHeight", sheetXml.ReadToEnd());
         Assert.True(sheet.Column(3).Width >= 10 && sheet.Column(7).Width >= 10, "a date and an amount show whole");
@@ -416,7 +501,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
     private static XLWorkbook ItemWorkbook(ItemReportView item)
     {
-        var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel(item)));
+        var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel("غصون 6", item)));
         workbook.RecalculateAllFormulas();
         return workbook;
     }
@@ -525,7 +610,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var item = Tiles();
 
-        using var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel(item)));
+        using var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel("غصون 6", item)));
         workbook.RecalculateAllFormulas();
 
         var figures = FiguresOf(workbook);
@@ -541,9 +626,9 @@ public class ReportFilesTests(MigratedApiFactory factory)
         return item with { Contracts = [contract], Total = item.Total + 30500, ShowsTablePercentages = true };
     }
 
-    /// <summary>Every figure in the amount column of every sheet but الخلاصة, as the statement writes it: money as 1,234.56, a share as 12.34%.</summary>
+    /// <summary>Every figure in the amount column, the last that prints, of every sheet but الخلاصة and the hidden «القوائم», as the statement writes it: money as 1,234.56, a share as 12.34%.</summary>
     private static List<string> FiguresOf(XLWorkbook workbook) =>
-        [.. workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة").SelectMany(sheet => sheet.Column(sheet.LastColumnUsed()!.ColumnNumber()).CellsUsed())
+        [.. workbook.Worksheets.Where(sheet => sheet.Name != "الخلاصة" && sheet.Visibility == XLWorksheetVisibility.Visible).SelectMany(sheet => sheet.Column(sheet.PageSetup.PrintAreas.Single().LastColumn().ColumnNumber()).CellsUsed())
             .Where(cell => cell.Value.IsNumber)
             .Select(cell => cell.Style.NumberFormat.Format.Contains('%')
                 ? ((decimal)cell.Value.GetNumber() * 100).ToString("0.00", CultureInfo.InvariantCulture) + "%"

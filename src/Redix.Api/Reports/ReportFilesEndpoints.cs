@@ -39,15 +39,12 @@ public static class ReportFilesEndpoints
     }
 
     /// <summary>The contracts report as a PDF.</summary>
-    public static async Task<IResult> ContractsPdf(Guid projectId, RedixDbContext db)
-    {
-        var name = await db.Projects.Where(project => project.Id == projectId).Select(project => project.Name).SingleAsync();
-        return Results.File(ItemReportFiles.ContractsPdf(name, await ContractsEndpoints.List(projectId, db)), "application/pdf", "contracts.pdf");
-    }
+    public static async Task<IResult> ContractsPdf(Guid projectId, RedixDbContext db) =>
+        Results.File(ItemReportFiles.ContractsPdf(await NameOfAsync(projectId, db), await ContractsEndpoints.List(projectId, db)), "application/pdf", "contracts.pdf");
 
     /// <summary>The contracts report as a workbook.</summary>
     public static async Task<IResult> ContractsExcel(Guid projectId, RedixDbContext db) =>
-        Results.File(ItemReportFiles.ContractsExcel(await ContractsEndpoints.List(projectId, db)), ExcelType, "contracts.xlsx");
+        Results.File(ItemReportFiles.ContractsExcel(await NameOfAsync(projectId, db), await ContractsEndpoints.List(projectId, db)), ExcelType, "contracts.xlsx");
 
     /// <summary>One contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); a contract of another project is not found.</summary>
     private static async Task<IResult> ContractFileAsync(Guid projectId, Guid contractId, RedixDbContext db, bool isPdf)
@@ -57,7 +54,7 @@ public static class ReportFilesEndpoints
         {
             return Results.NotFound();
         }
-        return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "contract.pdf") : Results.File(ItemReportFiles.Excel(report), ExcelType, "contract.xlsx");
+        return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "contract.pdf") : Results.File(ItemReportFiles.Excel(await NameOfAsync(projectId, db), report), ExcelType, "contract.xlsx");
     }
 
     private static async Task<IResult> ItemFileAsync(Guid projectId, Guid itemId, RedixDbContext db, bool isPdf)
@@ -68,6 +65,9 @@ public static class ReportFilesEndpoints
             return Results.NotFound();
         }
         var report = await ItemReportEndpoints.OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, _ => true);
-        return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "item.pdf") : Results.File(ItemReportFiles.Excel(report), ExcelType, "item.xlsx");
+        return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "item.pdf") : Results.File(ItemReportFiles.Excel(await NameOfAsync(projectId, db), report), ExcelType, "item.xlsx");
     }
+
+    /// <summary>The project's name, which its files print.</summary>
+    private static Task<string> NameOfAsync(Guid projectId, RedixDbContext db) => db.Projects.Where(project => project.Id == projectId).Select(project => project.Name).SingleAsync();
 }

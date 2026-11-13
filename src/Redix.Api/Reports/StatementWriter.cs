@@ -11,14 +11,21 @@ public static class StatementWriter
 {
     private const double NumberWidth = 4.25;
 
+    /// <summary>A table this many columns wide, its number and its amount counted, prints across the page (redix-api #129).</summary>
+    private const int LandscapeWidth = 8;
+
+    /// <summary>What a sheet says to go back to the summary, as the approved workbook writes it.</summary>
+    private const string BackToSummary = "← الخلاصة";
+
     /// <summary>
-    /// Adds <paramref name="content"/> to <paramref name="workbook"/> as a sheet, its name unique among <paramref name="taken"/>, and answers the address of its last total as another sheet's
-    /// formula names it: اجمالي الكل, or its one table's الاجمالي.
+    /// Adds <paramref name="content"/> to the workbook of <paramref name="book"/> as a sheet, its name unique among the book's, and answers its name and the address of its last total
+    /// as another sheet's formula names it: اجمالي الكل, or its one table's الاجمالي. Each list column's cells read their choices from the book's «القوائم», and the sheet prints its
+    /// tables alone: across the page when they are eight columns wide or more, «← الخلاصة» two columns after them and outside what prints (redix-api #129).
     /// </summary>
-    public static string Add(XLWorkbook workbook, StatementSheet content, HashSet<string> taken)
+    public static PlacedSheet Add(XLWorkbook workbook, StatementSheet content, StatementBook book)
     {
         var widest = content.Tables.MaxBy(table => table.Columns.Count)!;
-        var sheet = StatementStyle.AddSheet(workbook, content.Name, taken, NumberWidth);
+        var sheet = StatementStyle.AddSheet(workbook, content.Name, book.Taken, NumberWidth);
         var last = widest.Columns.Count + 2;
         var hasWhole = content.Tables.Count > 1;
         var totals = new List<string>();
@@ -26,7 +33,7 @@ public static class StatementWriter
         var row = 1;
         foreach (var table in content.Tables)
         {
-            var (total, first) = Table(sheet, ref row, last, table);
+            var (total, first) = Table(sheet, ref row, last, table, book.Lists);
             if (table.AgreedAmount != 0)
             {
                 var agreed = Line(sheet, row + 1, last, "مبلغ الاتفاق").SetMoney(table.AgreedAmount).Address.ToStringRelative();
@@ -40,26 +47,39 @@ public static class StatementWriter
             totals.Add(total);
             row++;
         }
-        if (!hasWhole)
+        var lastTotal = totals[0];
+        if (hasWhole)
         {
-            StatementStyle.Fit(sheet);
-            return StatementStyle.Reference(sheet, totals[0]);
+            lastTotal = Line(sheet, row, last, "اجمالي الكل").SetMoneyFormula(string.Join("+", totals)).Address.ToStringRelative();
+            for (var index = 0; index < percents.Count; index++)
+            {
+                percents[index].SetPercentFormula($"IF({lastTotal}=0,0,{totals[index]}/{lastTotal})");
+            }
+            if (percents.Count > 0)
+            {
+                Line(sheet, ++row, last, "نسبة الكل").SetPercentFormula(string.Join("+", percents.Select(cell => cell.Address.ToStringRelative())));
+            }
         }
-        var whole = Line(sheet, row, last, "اجمالي الكل").SetMoneyFormula(string.Join("+", totals)).Address.ToStringRelative();
-        for (var index = 0; index < percents.Count; index++)
+        else
         {
-            percents[index].SetPercentFormula($"IF({whole}=0,0,{totals[index]}/{whole})");
+            row -= 2;
         }
-        if (percents.Count > 0)
+        if (book.SummaryName.Length > 0)
         {
-            Line(sheet, row + 1, last, "نسبة الكل").SetPercentFormula(string.Join("+", percents.Select(cell => cell.Address.ToStringRelative())));
+            sheet.Cell(1, last + 2).LinkTo(book.SummaryName).Value = BackToSummary;
         }
         StatementStyle.Fit(sheet);
-        return StatementStyle.Reference(sheet, whole);
+        StatementStyle.Print(sheet, book.Footer);
+        sheet.PageSetup.PageOrientation = last >= LandscapeWidth ? XLPageOrientation.Landscape : XLPageOrientation.Portrait;
+        sheet.PageSetup.PrintAreas.Add(1, 1, row, last);
+        return new PlacedSheet(sheet.Name, StatementStyle.Reference(sheet.Name, lastTotal));
     }
 
-    /// <summary>Writes <paramref name="table"/>'s title, header, rows and الاجمالي from <paramref name="row"/>, leaving it on the row after; answers the address of الاجمالي and the row of the first line.</summary>
-    private static (string Total, int First) Table(IXLWorksheet sheet, ref int row, int last, StatementTable table)
+    /// <summary>
+    /// Writes <paramref name="table"/>'s title, header, rows and الاجمالي from <paramref name="row"/>, leaving it on the row after; answers the address of الاجمالي and the row of the first
+    /// line. A list column's cells take a validation reading its block of <paramref name="lists"/>, an empty cell allowed where entry allows one (redix-api #129).
+    /// </summary>
+    private static (string Total, int First) Table(IXLWorksheet sheet, ref int row, int last, StatementTable table, ChoiceLists lists)
     {
         sheet.Range(row, 1, row, last).Merge().AsTitle().FirstCell().Value = table.Title;
         row++;
@@ -86,6 +106,17 @@ public static class StatementWriter
                 body.AsNew();
             }
             row++;
+        }
+        for (var column = 1; column < table.Columns.Count && row > first; column++)
+        {
+            var listed = table.Columns[column];
+            if (listed.Choices.Count > 0)
+            {
+                var place = Span(sheet, first, column, stretch).Address.ColumnNumber;
+                var validation = sheet.Range(first, place, row - 1, place).CreateDataValidation();
+                validation.List(lists.RangeOf(listed.Header, listed.Choices), true);
+                validation.IgnoreBlanks = listed.AllowsBlank;
+            }
         }
         var letter = XLHelper.GetColumnLetterFromNumber(last);
         var total = Line(sheet, row, last, "الاجمالي").SetMoneyFormula(row > first ? $"SUM({letter}{first}:{letter}{row - 1})" : "0").Address.ToStringRelative();
@@ -138,4 +169,13 @@ public static class StatementWriter
         sheet.Range(row, 1, row, last).AsTotal();
         return sheet.Cell(row, last);
     }
+}
+
+/// <summary>A sheet as its workbook placed it: its name, which a link opens, and the address of its last total, which the summary's line reads.</summary>
+/// <param name="Name">The sheet's name in its workbook.</param>
+/// <param name="Total">Its last total, as another sheet's formula names it.</param>
+public record PlacedSheet(string Name, string Total)
+{
+    /// <summary>No sheet: what an item without one reads, its total nothing, so no reader holds a null.</summary>
+    public static readonly PlacedSheet None = new("", "0");
 }

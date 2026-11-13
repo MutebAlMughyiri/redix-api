@@ -8,8 +8,9 @@ namespace Redix.Api.Reports;
 
 /// <summary>
 /// The periodic report as a workbook laid out as the project's own statement (UC-055, FR-46): الخلاصة with the revenue on one side and the expenses on the other, then a sheet per item,
-/// expense, revenue or capital, each written by <see cref="StatementWriter"/>; رأس المال is an item like any other, its tables its partners (redix-api #109). Every line of the summary points
-/// at its own sheets, and no sheet serves two lines (AC-46.10). Every total is a live formula, and new rows are green (BR-26).
+/// expense, revenue or capital, each written by <see cref="StatementWriter"/>, in the order the summary reads them, and the hidden «القوائم» last (redix-api #129); رأس المال is an item
+/// like any other, its tables its partners (redix-api #109). Every line of the summary points at its own sheets, and no sheet serves two lines (AC-46.10); each line's name opens its
+/// sheet, and each sheet has «← الخلاصة» back. Every total is a live formula, and new rows are green (BR-26). Every sheet prints with the project and the report's number at its foot.
 /// </summary>
 public static class PeriodicReportWorkbook
 {
@@ -20,13 +21,24 @@ public static class PeriodicReportWorkbook
     public static byte[] Of(PeriodicReportSnapshot report)
     {
         using var workbook = StatementStyle.NewWorkbook();
-        var names = new HashSet<string>();
-        var summary = StatementStyle.AddSheet(workbook, "الخلاصة", names, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
+        var book = new StatementBook($"{report.ProjectName} · التقرير {report.Number.ToString(CultureInfo.InvariantCulture)}", Summary);
+        var summary = StatementStyle.AddSheet(workbook, Summary, book.Taken, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
         var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
-        var itemTotals = report.Items.ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, names));
-        FillSummary(summary, report, itemTotals);
+        var sheets = InReadingOrder(report).ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, book));
+        book.Lists.AddTo(workbook, book.Footer);
+        FillSummary(summary, report, sheets);
         StatementStyle.Fit(summary);
+        StatementStyle.Print(summary, book.Footer);
         return StatementStyle.Bytes(workbook);
+    }
+
+    private const string Summary = "الخلاصة";
+
+    /// <summary>The report's items in the order الخلاصة reads them (redix-api #129): the revenue side's categories, then the expense side's, each category's items in order; any other last.</summary>
+    private static IEnumerable<ItemReportView> InReadingOrder(PeriodicReportSnapshot report)
+    {
+        var listed = report.RevenueCategories.Concat(report.Categories).SelectMany(category => category.Items).Select(item => item.Id).ToList();
+        return report.Items.OrderBy(item => listed.IndexOf(item.ItemId) is var place and >= 0 ? place : listed.Count);
     }
 
     /// <summary>
@@ -34,8 +46,9 @@ public static class PeriodicReportWorkbook
     /// it; the expense side every category of expense items. A category of one item points at that item's sheet, one of more at its detail block (AC-46.10). A line holding only sale items is muted and left
     /// out of مجموع الايرادات بدون البيع.
     /// </summary>
-    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, Dictionary<Guid, string> itemTotals)
+    private static void FillSummary(IXLWorksheet sheet, PeriodicReportSnapshot report, Dictionary<Guid, PlacedSheet> sheets)
     {
+        string TotalOf(Guid itemId) => sheets.GetValueOrDefault(itemId, PlacedSheet.None).Total;
         var title = sheet.Range(1, 1, 1, 5).Merge();
         title.FirstCell().Value = report.ProjectName;
         title.Style.Font.SetBold().Font.SetFontSize(15).Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
@@ -71,13 +84,22 @@ public static class PeriodicReportWorkbook
         var revenue = top + 1 + report.RevenueCategories.Count;
         var withoutSales = revenue + 2;
         var surplus = withoutSales + 2;
-        var details = Details(sheet, [.. report.Categories, .. report.RevenueCategories], itemTotals, [surplus, expensesTotal]);
-        string ValueOf(CategoryTotalView category) => category.Items.Count > 1 ? details[category.Id] : category.Items.Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).FirstOrDefault("0");
+        var details = Details(sheet, [.. report.Categories, .. report.RevenueCategories], sheets, [surplus, expensesTotal]);
+        string ValueOf(CategoryTotalView category) => category.Items.Count > 1 ? details[category.Id] : category.Items.Select(item => TotalOf(item.Id)).FirstOrDefault("0");
+        IXLRange CategoryLine(int row, int column, CategoryTotalView category)
+        {
+            var line = Line(sheet, row, column, category.Name, ValueOf(category));
+            if (category.Items.Count == 1)
+            {
+                LinkToSheetOf(line, category.Items[0].Id, sheets);
+            }
+            return line;
+        }
 
         var row = top + 1;
         foreach (var category in report.RevenueCategories)
         {
-            var line = Line(sheet, row++, Revenue, category.Name, ValueOf(category));
+            var line = CategoryLine(row++, Revenue, category);
             if (category.Items.All(item => item.Type == ItemType.Sale))
             {
                 line.AsMutedTotal();
@@ -88,7 +110,7 @@ public static class PeriodicReportWorkbook
             }
         }
         Line(sheet, revenue, Revenue, "مجموع الايرادات", revenue > top + 1 ? $"SUM(B{top + 1}:B{revenue - 1})" : "0").AsTotal();
-        var sales = report.RevenueCategories.SelectMany(category => category.Items).Where(item => item.Type == ItemType.Sale).Select(item => itemTotals.GetValueOrDefault(item.Id, "0")).ToList();
+        var sales = report.RevenueCategories.SelectMany(category => category.Items).Where(item => item.Type == ItemType.Sale).Select(item => TotalOf(item.Id)).ToList();
         Line(sheet, withoutSales, Revenue, "مجموع الايرادات بدون البيع", sales.Count > 0 ? $"B{revenue}-({string.Join("+", sales)})" : $"B{revenue}").AsMutedTotal();
         Line(sheet, withoutSales + 1, Revenue, "الفائض بدون البيع", $"B{withoutSales}-E{expensesTotal}").AsMutedTotal();
         Line(sheet, surplus, Revenue, "الفائض\n( المبلغ المفروض بالحساب)", $"B{revenue}-E{expensesTotal}").AsTotal().Style.Alignment.WrapText = true;
@@ -96,7 +118,7 @@ public static class PeriodicReportWorkbook
         row = top + 1;
         foreach (var category in report.Categories)
         {
-            Line(sheet, row++, Expenses, category.Name, ValueOf(category)).AsBody();
+            CategoryLine(row++, Expenses, category).AsBody();
         }
         Line(sheet, expensesTotal, Expenses, "مجموع المصروفات", expensesTotal > top + 1 ? $"SUM(E{top + 1}:E{expensesTotal - 1})" : "0").AsTotal();
 
@@ -116,10 +138,10 @@ public static class PeriodicReportWorkbook
     }
 
     /// <summary>
-    /// Writes a block per category of more than one item among <paramref name="categories"/>, each item pointing at its sheet, under whichever side of the summary ends higher, starting from
-    /// <paramref name="bottoms"/>: the last row of the revenue side, then of the expenses side. Answers the address of each block's total.
+    /// Writes a block per category of more than one item among <paramref name="categories"/>, each item pointing at its sheet's total and its name opening the sheet, under whichever side
+    /// of the summary ends higher, starting from <paramref name="bottoms"/>: the last row of the revenue side, then of the expenses side. Answers the address of each block's total.
     /// </summary>
-    private static Dictionary<Guid, string> Details(IXLWorksheet sheet, List<CategoryTotalView> categories, Dictionary<Guid, string> itemTotals, int[] bottoms)
+    private static Dictionary<Guid, string> Details(IXLWorksheet sheet, List<CategoryTotalView> categories, Dictionary<Guid, PlacedSheet> sheets, int[] bottoms)
     {
         var totals = new Dictionary<Guid, string>();
         foreach (var category in categories.Where(category => category.Items.Count > 1))
@@ -133,7 +155,7 @@ public static class PeriodicReportWorkbook
             var row = start + 1;
             foreach (var item in category.Items)
             {
-                Line(sheet, row++, column, item.Name, itemTotals.GetValueOrDefault(item.Id, "0")).AsBody();
+                LinkToSheetOf(Line(sheet, row++, column, item.Name, sheets.GetValueOrDefault(item.Id, PlacedSheet.None).Total).AsBody(), item.Id, sheets);
             }
             var letter = sheet.Cell(row, column + 1).Address.ColumnLetter;
             Line(sheet, row, column, "الاجمالي", row > start + 1 ? $"SUM({letter}{start + 1}:{letter}{row - 1})" : "0").AsTotal();
@@ -141,6 +163,16 @@ public static class PeriodicReportWorkbook
             bottoms[side] = row;
         }
         return totals;
+    }
+
+    /// <summary>Makes the label of <paramref name="line"/> open the sheet of the item <paramref name="itemId"/>, when it has one (redix-api #129).</summary>
+    private static void LinkToSheetOf(IXLRange line, Guid itemId, Dictionary<Guid, PlacedSheet> sheets)
+    {
+        var placed = sheets.GetValueOrDefault(itemId, PlacedSheet.None);
+        if (placed != PlacedSheet.None)
+        {
+            line.FirstCell().LinkTo(placed.Name);
+        }
     }
 
     /// <summary>A label in <paramref name="column"/> and an amount beside it; answers the two cells.</summary>

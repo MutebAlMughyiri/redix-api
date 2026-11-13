@@ -63,8 +63,30 @@ public static class StatementStyle
         }
     }
 
-    /// <summary>The address of <paramref name="cell"/> on <paramref name="sheet"/>, as another sheet's formula names it.</summary>
-    public static string Reference(IXLWorksheet sheet, string cell) => $"'{sheet.Name.Replace("'", "''")}'!{cell}";
+    /// <summary>The address of <paramref name="cell"/> on the sheet <paramref name="sheetName"/>, as another sheet's formula, a validation or a link names it.</summary>
+    public static string Reference(string sheetName, string cell) => $"'{sheetName.Replace("'", "''")}'!{cell}";
+
+    /// <summary>Makes <paramref name="cell"/> open the sheet <paramref name="sheetName"/>: a link to a place in the workbook, never an address (redix-api #129).</summary>
+    public static IXLCell LinkTo(this IXLCell cell, string sheetName)
+    {
+        cell.SetHyperlink(new XLHyperlink(Reference(sheetName, "A1")));
+        return cell;
+    }
+
+    /// <summary>
+    /// How <paramref name="sheet"/> prints (redix-api #129): A4, one page wide and as many tall as it needs, and at its foot the sheet's name on the left, the page of the pages in the
+    /// centre, and <paramref name="footer"/>, the project and the report's number, on the right.
+    /// </summary>
+    public static void Print(IXLWorksheet sheet, string footer)
+    {
+        sheet.PageSetup.PaperSize = XLPaperSize.A4Paper;
+        sheet.PageSetup.FitToPages(1, 0);
+        sheet.PageSetup.Footer.Left.AddText(XLHFPredefinedText.SheetName);
+        sheet.PageSetup.Footer.Center.AddText(XLHFPredefinedText.PageNumber);
+        sheet.PageSetup.Footer.Center.AddText(" / ");
+        sheet.PageSetup.Footer.Center.AddText(XLHFPredefinedText.NumberOfPages);
+        sheet.PageSetup.Footer.Right.AddText(footer);
+    }
 
     /// <summary>The workbook as a file.</summary>
     public static byte[] Bytes(XLWorkbook workbook)

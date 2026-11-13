@@ -18,11 +18,13 @@ public static class ItemReportFiles
 
     private static readonly StatementColumn Description = new("الوصف", CellKind.Text);
 
-    /// <summary>One item's report as a workbook, its sheet as the periodic report's.</summary>
-    public static byte[] Excel(ItemReportView item)
+    /// <summary>One item's report as a workbook of the project <paramref name="projectName"/>, its sheet as the periodic report's, its lists on «القوائم» (redix-api #129).</summary>
+    public static byte[] Excel(string projectName, ItemReportView item)
     {
         using var workbook = StatementStyle.NewWorkbook();
-        StatementWriter.Add(workbook, SheetOf(item), []);
+        var book = new StatementBook(projectName);
+        StatementWriter.Add(workbook, SheetOf(item), book);
+        book.Lists.AddTo(workbook, book.Footer);
         return StatementStyle.Bytes(workbook);
     }
 
@@ -108,9 +110,9 @@ public static class ItemReportFiles
         })).GeneratePdf();
     }
 
-    /// <summary>The contracts report as a workbook: one statement table (UC-067, findings row 131) of each contract's contractor, item, value and what was paid, its amount what is
-    /// left of it, an overrun negative and an open value nothing.</summary>
-    public static byte[] ContractsExcel(List<ContractView> contracts)
+    /// <summary>The contracts report as a workbook of the project <paramref name="projectName"/>: one statement table (UC-067, findings row 131) of each contract's contractor, item, value
+    /// and what was paid, its amount what is left of it, an overrun negative and an open value nothing.</summary>
+    public static byte[] ContractsExcel(string projectName, List<ContractView> contracts)
     {
         using var workbook = new XLWorkbook();
         var table = new StatementTable(
@@ -119,7 +121,7 @@ public static class ItemReportFiles
             new StatementColumn("المتبقي", CellKind.Price),
             contracts.Select(contract => new StatementRow([contract.SupplierName, contract.ItemName, contract.IsOpenValue ? "مفتوحة" : contract.Value, contract.Paid], contract.IsOpenValue ? 0 : contract.Remaining, false, true)).ToList(),
             0);
-        StatementWriter.Add(workbook, new StatementSheet("العقود", [table], ""), []);
+        StatementWriter.Add(workbook, new StatementSheet("العقود", [table], ""), new StatementBook(projectName));
         return StatementStyle.Bytes(workbook);
     }
 }
