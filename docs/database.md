@@ -2,7 +2,7 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `LinkTablesForOptionalIds` (13 Nov 2026, findings row 214). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `ReconciliationBalancesPlural` (13 Nov 2026, findings row 215). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
@@ -824,8 +824,8 @@ erDiagram
     Users ||--o{ Transfers : "CreatedByUserId"
     Projects ||--o{ Reconciliations : "ProjectId"
     Users ||--o{ Reconciliations : "UserId"
-    Accounts ||--o{ ReconciliationBalance : "AccountId"
-    Reconciliations ||--o{ ReconciliationBalance : "ReconciliationId"
+    Accounts ||--o{ ReconciliationBalances : "AccountId"
+    Reconciliations ||--o{ ReconciliationBalances : "ReconciliationId"
     Projects ||--o{ Partners : "ProjectId"
     Partners ||--o| PartnerUsers : "PartnerId"
     Projects ||--o{ PartnerUsers : "ProjectId"
@@ -903,9 +903,9 @@ Unique: the key only.
 
 Other indexes: `ProjectId, At`; `UserId`.
 
-### ReconciliationBalance
+### ReconciliationBalances
 
-What one account really held at a reconciliation.
+What one account really held at a reconciliation; named in the plural as every other table is since findings row 215.
 
 | Column | SQL type | Null | Key | Points at |
 | --- | --- | --- | --- | --- |

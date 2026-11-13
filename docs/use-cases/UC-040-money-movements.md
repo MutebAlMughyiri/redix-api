@@ -26,6 +26,7 @@
 | --- | --- | --- |
 | AC-24.1: the difference is the actual balances less the surplus | `ReconciliationsEndpoints`, `ProjectFigures` | `MoneyMovementTests.AC_24_1_TheDifferenceIsTheActualBalancesLessTheSurplus` |
 | A reconciliation needs every active account, and none of another project | `ReconciliationsEndpoints.Enter` | `MoneyMovementTests.AReconciliationNeedsEveryActiveAccountAndNoOtherProjects` |
+| What each account really held is a row of `ReconciliationBalances`, named in the plural (findings row 215) | `RedixDbContext` | `MoneyMovementTests.R215_EachAccountsActualBalanceIsARowOfReconciliationBalances`, `R215_NoTableIsNamedReconciliationBalanceInTheSingular`, `MigrationStepsTests.R215_ReconciliationBalancesPlural_EveryBalanceStaysInTheTableNamedInThePlural` |
 | A movement takes its receipt when there is one and needs none, like every entry; "paid in cash" and its reason are gone, and a reason already typed joined the entry's notes (Muteb, 8 Nov 2026; AC-25.1 retired) | `EntryRecording`, migration `CapitalReceiptIsOptional` | `MoneyMovementTests.Simple_Entry_AMovementTakesItsReceiptWhenThereIsOneAndNeedsNone` |
 | AC-25.2, AC-27.1: balances are movements, and the shares add up to 100 | `CapitalEndpoints.Capital` | `MoneyMovementTests.AC_25_2_AC_27_1_EachBalanceIsTheirMovementsAndTheSharesAddUpTo100` |
 | BR-31: a partner sees the total and their own line, nobody else's | `CapitalEndpoints` | `MoneyMovementTests.BR_31_APartnerSeesTheTotalAndTheirOwnLineAndNoOneElses` |

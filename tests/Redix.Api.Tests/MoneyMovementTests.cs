@@ -62,6 +62,24 @@ public class MoneyMovementTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R215_EachAccountsActualBalanceIsARowOfReconciliationBalances()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 700.25m)]), Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal([700.25m], await ledger.ReadAsync(db => db.Database.SqlQuery<decimal>($"SELECT ActualBalance AS Value FROM ReconciliationBalances WHERE AccountId = {ledger.AccountId}").ToListAsync()));
+    }
+
+    [Fact]
+    public async Task R215_NoTableIsNamedReconciliationBalanceInTheSingular()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+
+        Assert.Empty(await ledger.ReadAsync(db => db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM sys.tables WHERE name = 'ReconciliationBalance'").ToListAsync()));
+    }
+
+    [Fact]
     public async Task BeforeAnyReconciliationTheAccountsShowWithNothingEntered()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

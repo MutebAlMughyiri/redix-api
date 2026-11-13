@@ -431,6 +431,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         });
         modelBuilder.Entity<ReconciliationBalance>(balance =>
         {
+            balance.ToTable("ReconciliationBalances");
             balance.HasKey(b => new { b.ReconciliationId, b.AccountId });
             balance.HasOne<Account>().WithMany().HasForeignKey(b => b.AccountId).OnDelete(DeleteBehavior.Restrict);
         });

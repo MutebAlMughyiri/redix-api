@@ -128,7 +128,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("ReconciliationBalance");
+                    b.ToTable("ReconciliationBalances", (string)null);
                 });
 
             modelBuilder.Entity("Redix.Api.Accounts.Transfer", b =>

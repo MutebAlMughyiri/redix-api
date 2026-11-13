@@ -33,8 +33,12 @@ public class MigrationStepsTests(MigratedApiFactory factory)
     private static string User(Guid id) =>
         $"INSERT INTO Users (Id, Username, DisplayName, Mobile, PasswordHash, MustChangePassword, FailedSignIns, LockedUntil, CreatedAt) VALUES ('{id}', '{id:N}', N'', '', '', 0, 0, '1900-01-01', '2026-11-01');";
 
-    private static string Project(Guid id, Guid structureSourceId = default) =>
+    /// <summary>A project as it was stored before findings row 214, naming the project its structure was copied from in a column of its own.</summary>
+    private static string ProjectWithStructureSourceId(Guid id, Guid structureSourceId = default) =>
         $"INSERT INTO Projects (Id, Name, StartDate, Status, RejectionReason, Description, IsTemplate, StructureSourceId) VALUES ('{id}', N'غصون', '2026-11-01', 0, N'', N'', 0, '{structureSourceId}');";
+
+    private static string Project(Guid id) =>
+        $"INSERT INTO Projects (Id, Name, StartDate, Status, RejectionReason, Description, IsTemplate) VALUES ('{id}', N'غصون', '2026-11-01', 0, N'', N'', 0);";
 
     private static string Notification(Guid id, Guid userId, Guid projectId, Guid entryId = default) =>
         $"INSERT INTO Notifications (Id, UserId, ProjectId, EntryId, Kind, At, IsRead) VALUES ('{id}', '{userId}', '{projectId}', '{entryId}', 0, '2026-11-01', 0);";
@@ -48,6 +52,9 @@ public class MigrationStepsTests(MigratedApiFactory factory)
     private static string Partner(Guid id, Guid projectId, Guid userId, bool isDeleted = false) =>
         $"INSERT INTO Partners (Id, ProjectId, UserId, Name, ItemId, SortOrder, IsDeleted) VALUES ('{id}', '{projectId}', '{userId}', N'شريك', '{Guid.Empty}', 1, {(isDeleted ? 1 : 0)});";
 
+    private static string Reconciliation(Guid id, Guid projectId, Guid userId) =>
+        $"INSERT INTO Reconciliations (Id, ProjectId, At, UserId) VALUES ('{id}', '{projectId}', '2026-11-01', '{userId}');";
+
     private static string Held(Guid projectId, Guid userId, string permission = "ReadProject") =>
         $"INSERT INTO ProjectPermissions (Id, ProjectId, UserId, Permission) VALUES (NEWID(), '{projectId}', '{userId}', '{permission}');";
 
@@ -55,7 +62,7 @@ public class MigrationStepsTests(MigratedApiFactory factory)
     public Task R126_InactivePerProject_ADisabledLoginBecomesInactiveInEveryProjectHeHoldsAPermissionInAndTheLoginWideSwitchGoes()
     {
         var (disabled, active, first, second) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
-        var today = string.Concat(LoginWithIsActive(disabled, isActive: false), LoginWithIsActive(active, isActive: true), Project(first), Project(second),
+        var today = string.Concat(LoginWithIsActive(disabled, isActive: false), LoginWithIsActive(active, isActive: true), ProjectWithStructureSourceId(first), ProjectWithStructureSourceId(second),
             Held(first, disabled), Held(first, disabled, "RecordEntries"), Held(second, disabled), Held(first, active));
 
         return ThroughAsync("InactivePerProject", today, async db =>
@@ -70,7 +77,7 @@ public class MigrationStepsTests(MigratedApiFactory factory)
     {
         var (user, project, notification) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
 
-        return ThroughAsync("NotificationProjectKey", string.Concat(User(user), Project(project), Notification(notification, user, project)), async db =>
+        return ThroughAsync("NotificationProjectKey", string.Concat(User(user), ProjectWithStructureSourceId(project), Notification(notification, user, project)), async db =>
         {
             Assert.Equal([$"{notification} {project}"], await ValuesAsync(db, "SELECT LOWER(CONCAT(Id, ' ', ProjectId)) AS Value FROM Notifications"));
             Assert.Equal(["FK_Notifications_Projects_ProjectId"], await ValuesAsync(db, "SELECT name AS Value FROM sys.foreign_keys WHERE name = 'FK_Notifications_Projects_ProjectId'"));
@@ -83,7 +90,7 @@ public class MigrationStepsTests(MigratedApiFactory factory)
         var (user, project, copied, copiedFromNothing, account, entry) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
         var (withLogin, withoutLogin, deletedWithLogin) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
         var (aboutEntry, aboutProject, aboutNoEntry) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
-        var today = string.Concat(User(user), Project(project), Project(copied, project), Project(copiedFromNothing, Guid.CreateVersion7()), Account(account, project), Entry(entry, project, account, user),
+        var today = string.Concat(User(user), ProjectWithStructureSourceId(project), ProjectWithStructureSourceId(copied, project), ProjectWithStructureSourceId(copiedFromNothing, Guid.CreateVersion7()), Account(account, project), Entry(entry, project, account, user),
             Partner(withLogin, project, user), Partner(withoutLogin, project, Guid.Empty), Partner(deletedWithLogin, project, user, isDeleted: true),
             Notification(aboutEntry, user, project, entry), Notification(aboutProject, user, project), Notification(aboutNoEntry, user, project, Guid.CreateVersion7()));
 
@@ -98,6 +105,20 @@ public class MigrationStepsTests(MigratedApiFactory factory)
                 SELECT CONCAT(OBJECT_NAME(object_id), '.', name) AS Value FROM sys.columns
                 WHERE (object_id = OBJECT_ID('Partners') AND name = 'UserId') OR (object_id = OBJECT_ID('Notifications') AND name = 'EntryId') OR (object_id = OBJECT_ID('Projects') AND name = 'StructureSourceId')
                 """));
+        });
+    }
+
+    [Fact]
+    public Task R215_ReconciliationBalancesPlural_EveryBalanceStaysInTheTableNamedInThePlural()
+    {
+        var (user, project, account, reconciliation) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var today = string.Concat(User(user), Project(project), Account(account, project), Reconciliation(reconciliation, project, user),
+            $"INSERT INTO ReconciliationBalance (ReconciliationId, AccountId, ActualBalance) VALUES ('{reconciliation}', '{account}', 700.25);");
+
+        return ThroughAsync("ReconciliationBalancesPlural", today, async db =>
+        {
+            Assert.Equal([$"{reconciliation} {account} 700.2500"], await ValuesAsync(db, "SELECT LOWER(CONCAT(ReconciliationId, ' ', AccountId, ' ', ActualBalance)) AS Value FROM ReconciliationBalances"));
+            Assert.Empty(await ValuesAsync(db, "SELECT name AS Value FROM sys.tables WHERE name = 'ReconciliationBalance'"));
         });
     }
 }
