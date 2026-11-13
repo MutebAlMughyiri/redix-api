@@ -10337,6 +10337,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("10be42a1-8a46-056e-ea33-79958d378069"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e56fee5b-cff2-ce1d-9364-2dfba2e9ff97"),
+                            Value = "Your account is inactive in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("b4cbadfc-4ed8-38e7-8e3e-d47c5393f107"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e56fee5b-cff2-ce1d-9364-2dfba2e9ff97"),
+                            Value = "حسابك غير مفعّل في هذا المشروع."
+                        },
+                        new
+                        {
                             Id = new Guid("3be681f9-b871-25f4-e0d4-f47a864b86e0"),
                             Language = "en",
                             TranslationKeyId = new Guid("96118bfd-4008-580d-d590-9a2bf23e8ea6"),
@@ -17622,6 +17636,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("b2c007d5-af70-bb8e-ea39-a7599e19bb85"),
                             Description = "",
                             Key = "projects.exportSettings"
+                        },
+                        new
+                        {
+                            Id = new Guid("e56fee5b-cff2-ce1d-9364-2dfba2e9ff97"),
+                            Description = "",
+                            Key = "projects.inactive"
                         },
                         new
                         {
