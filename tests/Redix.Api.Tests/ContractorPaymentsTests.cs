@@ -7,6 +7,7 @@ using Redix.Api.Accounts;
 using Redix.Api.History;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
+using Redix.Api.Reports;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
@@ -63,6 +64,22 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         Assert.Contains("amount", payment);
         Assert.DoesNotContain(payment, key => key is "supplier" or "product" or "unitPrice" or "quantity" or "entryType" or "total");
         Assert.All(tables.Where(table => table.Kind != ItemTableKind.Contract), table => Assert.DoesNotContain(table.ColumnKeys, key => key is "outsideContract" or "contract" or "amount"));
+    }
+
+    [Fact]
+    public async Task R129_R1_APaymentsTablePrintsItsPlaceInTheContractAndNothingOnlyAPurchaseHas()
+    {
+        var setup = await ContractAsync();
+        await ApprovedAsync(setup, 500m, isOutsideContract: true);
+
+        var report = (await setup.Ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{setup.Ledger.ProjectId}/reports/items/{setup.ItemId}", Ledger.Json))!;
+
+        var table = report.Contracts.Single(contract => contract.Id == setup.ContractId);
+        var names = table.Columns.Select(column => column.Name).ToList();
+        Assert.Equal(("التاريخ", "المبلغ"), (names[0], table.AmountName));
+        Assert.DoesNotContain(names, name => name is "المورد" or "نوع القيد" or "سعر الوحدة" or "العدد");
+        Assert.Equal("خارج العقد", table.Payments.Single().Values[names.IndexOf("داخل أو خارج العقد")]);
+        Assert.Equal(["داخل العقد", "خارج العقد"], table.Columns.Single(column => column.Name == "داخل أو خارج العقد").Choices.Select(choice => choice.Name));
     }
 
     [Fact]

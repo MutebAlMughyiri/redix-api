@@ -56,6 +56,9 @@ public abstract class Column : IOrdered
     /// </summary>
     public bool IsEntryField => EntryFieldKeys.Contains(Key);
 
+    /// <summary>True for the column that holds the entry's amount, a purchase's total or any other entry's amount, which every table prints last (redix-api #129).</summary>
+    public bool IsAmount => Key is "total" or "amount";
+
     /// <summary>Whether an entry of <paramref name="kind"/> is asked this column: a purchase nothing only a contractor payment has, and a payment nothing only a purchase has (FR-38).</summary>
     public bool IsAskedOf(EntryKind kind) => StructureSeed.IsAsked(Key, kind);
 

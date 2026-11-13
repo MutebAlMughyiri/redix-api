@@ -1,3 +1,4 @@
+using System.Globalization;
 using ClosedXML.Excel;
 using QuestPDF.Fluent;
 using Redix.Api.Contracts;
@@ -15,15 +16,7 @@ public static class ItemReportFiles
         return Document.Create(document => PeriodicReportFiles.Page(document, page => StatementPdf.Draw(page, SheetOf(item)))).GeneratePdf();
     }
 
-    private static readonly StatementColumn Cost = new("التكلفة", CellKind.Text);
-
-    private static readonly StatementColumn Payment = new("الدفعة", CellKind.Text);
-
-    private static readonly List<StatementColumn> PaymentColumns = [new("الوصف", CellKind.Text), new("التاريخ", CellKind.Date)];
-
-    private static readonly StatementColumn Received = new("المبلغ", CellKind.Text);
-
-    private static readonly List<StatementColumn> RevenueColumns = [new("الوصف", CellKind.Text), new("التاريخ", CellKind.Date)];
+    private static readonly StatementColumn Description = new("الوصف", CellKind.Text);
 
     /// <summary>One item's report as a workbook, its sheet as the periodic report's.</summary>
     public static byte[] Excel(ItemReportView item)
@@ -34,57 +27,55 @@ public static class ItemReportFiles
     }
 
     /// <summary>
-    /// An item's sheet (FR-46): a table of purchases per subgroup that has any, titled with its name or, for the general one, the item's, the item's own report columns before the cost (AC-46.8);
-    /// and a table of payments per contract, its agreed amount under it (AC-46.2); all in the order the item's tables were put in. A revenue item's tables list what came in: the description, the day and the
-    /// amount. The item's choice says whether each table's percentage is calculated (AC-46.9).
+    /// An item's sheet (FR-46): a table per subgroup that has entries, titled with its name or, for the general one, the item's; a table of payments per contract, its agreed amount
+    /// under it (AC-46.2); and for رأس المال a table per partner; all in the order the item's tables were put in (AC-46.8). Every table prints its own columns (redix-api #129, R1):
+    /// «الوصف» first, then its item's columns that print, in their order, each headed by its own name, and its amount column last; nothing else is fixed. The item's choice says
+    /// whether each table's percentage is calculated (AC-46.9).
     /// </summary>
     public static StatementSheet SheetOf(ItemReportView item)
     {
-        if (item.Type.IsRevenue())
-        {
-            List<StatementTable> received = [.. item.Subgroups.Select(subgroup => new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, RevenueColumns, Received, subgroup.Rows.Select(RevenueRow).ToList(), 0))];
-            return new StatementSheet(item.ItemName, received.Count > 0 ? received : [new StatementTable(item.ItemName, RevenueColumns, Received, [], 0)], item.ShowsTablePercentages ? "النسبة" : "");
-        }
-        List<StatementColumn> purchaseColumns =
-        [
-            new("الوصف", CellKind.Text),
-            new("رقم الفاتورة", CellKind.Centred),
-            new("التاريخ", CellKind.Date),
-            new("سعر الحبة", CellKind.Price),
-            new("العدد", CellKind.Centred),
-            .. item.Columns.Select(name => new StatementColumn(name, CellKind.Centred)),
-        ];
         List<StatementTable> tables =
         [
-            .. item.Subgroups.Select(subgroup => (subgroup.SortOrder, Table: new StatementTable(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, purchaseColumns, Cost, subgroup.Rows.Select(PurchaseRow).ToList(), 0)))
-                .Concat(item.Contracts.Select(contract => (contract.SortOrder, Table: new StatementTable($"دفعات {contract.ContractorName}", PaymentColumns, Payment, contract.Payments.Select(PaymentRow).ToList(), contract.IsOpenValue ? 0 : contract.Value))))
+            .. item.Subgroups.Select(subgroup => (subgroup.SortOrder, Table: TableOf(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, subgroup.Columns, subgroup.AmountName, subgroup.Rows, 0)))
+                .Concat(item.Contracts.Select(contract => (contract.SortOrder, Table: TableOf($"دفعات {contract.ContractorName}", contract.Columns, contract.AmountName, contract.Payments, contract.IsOpenValue ? 0 : contract.Value))))
                 .OrderBy(table => table.SortOrder)
                 .Select(table => table.Table),
         ];
-        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [new StatementTable(item.ItemName, purchaseColumns, Cost, [], 0)], item.ShowsTablePercentages ? "النسبة" : "");
+        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [TableOf(item.ItemName, [], "", [], 0)], item.ShowsTablePercentages ? "النسبة" : "");
     }
 
-    private static StatementRow PurchaseRow(ItemEntryRow line) => new(
-        [
-            string.Join(" · ", new[] { line.Description, line.SupplierName }.Where(text => text.Length > 0)),
-            line.InvoiceNumber,
-            line.Date.ToDateTime(TimeOnly.MinValue),
-            line.Quantity == 0 ? Blank.Value : line.UnitPrice,
-            line.Quantity == 0 ? Blank.Value : line.Quantity,
-            .. line.Values.Select(value => (XLCellValue)value),
-        ],
-        line.Amount, line.IsNew, true);
+    private static StatementTable TableOf(string title, List<ReportColumnView> columns, string amountName, List<ItemEntryRow> rows, decimal agreedAmount) => new(
+        title,
+        [Description, .. columns.Select(ColumnOf)],
+        new StatementColumn(amountName, CellKind.Text),
+        [.. rows.Select(row => new StatementRow([row.Description, .. columns.Zip(row.Values, CellOf)], row.Amount, row.IsNew, !row.IsOutsideContract))],
+        agreedAmount);
 
-    private static StatementRow RevenueRow(ItemEntryRow line) => new(
-        [line.Description, line.Date.ToDateTime(TimeOnly.MinValue)],
-        line.Amount, line.IsNew, true);
+    /// <summary>A column of an item as its table prints it: a date as a day, an amount as money, anything else centred; a list with the choices its cells take (redix-api #129).</summary>
+    private static StatementColumn ColumnOf(ReportColumnView column) => new(column.Name, column.DataType switch
+    {
+        ColumnDataType.Date => CellKind.Date,
+        ColumnDataType.Amount => CellKind.Price,
+        _ => CellKind.Centred,
+    })
+    {
+        Choices = column.Choices,
+        AllowsBlank = !column.IsRequired,
+    };
 
-    private static StatementRow PaymentRow(ItemEntryRow payment) => new(
-        [
-            string.Join(" · ", new[] { payment.Description, payment.IsOutsideContract ? "خارج العقد" : "" }.Concat(payment.Values).Where(text => text.Length > 0)),
-            payment.Date.ToDateTime(TimeOnly.MinValue),
-        ],
-        payment.Amount, payment.IsNew, !payment.IsOutsideContract);
+    /// <summary>A value as its cell holds it: a day, a number, or the text kept; nothing when none was given.</summary>
+    private static XLCellValue CellOf(ReportColumnView column, string value)
+    {
+        if (value.Length == 0)
+        {
+            return Blank.Value;
+        }
+        if (column.DataType == ColumnDataType.Date && DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        {
+            return date.ToDateTime(TimeOnly.MinValue);
+        }
+        return column.DataType is ColumnDataType.Number or ColumnDataType.Amount && decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : value;
+    }
 
     /// <summary>The contracts report as a PDF: each contract's value, paid, remaining, and an alert where more was paid (FR-31, FR-33).</summary>
     public static byte[] ContractsPdf(string projectName, List<ContractView> contracts)

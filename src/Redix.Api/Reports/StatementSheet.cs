@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
@@ -19,7 +20,14 @@ public record StatementTable(string Title, List<StatementColumn> Columns, Statem
 /// <summary>A column of a table.</summary>
 /// <param name="Header">Its header.</param>
 /// <param name="Kind">How its cells are written.</param>
-public record StatementColumn(string Header, CellKind Kind);
+public record StatementColumn(string Header, CellKind Kind)
+{
+    /// <summary>The choices its cells take, with their signs, when it is a list (redix-api #129); empty for any other column.</summary>
+    public List<ReportChoiceView> Choices { get; init; } = [];
+
+    /// <summary>Whether a cell may be left empty: true unless entry requires the column, so an optional supplier may be none (Muteb, 13 Nov 2026).</summary>
+    public bool AllowsBlank { get; init; } = true;
+}
 
 /// <summary>A row of a table.</summary>
 /// <param name="Cells">Its cells, one for each column before the amount.</param>

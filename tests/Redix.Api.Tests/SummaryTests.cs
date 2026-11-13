@@ -96,8 +96,9 @@ public class SummaryTests(MigratedApiFactory factory)
 
         Assert.Equal(465m, report.Total);
         Assert.Equal(report.Total, report.Subgroups.Sum(row => row.Total) + report.Contracts.Sum(row => row.PaymentsTotal));
-        var purchase = report.Subgroups.SelectMany(row => row.Rows).Single(row => row.Description == "بلاط");
-        Assert.Equal(("بلاط", "شركة النخيل", 115m), (purchase.Description, purchase.SupplierName, purchase.Amount));
+        var table = report.Subgroups.Single(row => row.Rows.Any(line => line.Description == "بلاط"));
+        var purchase = table.Rows.Single(row => row.Description == "بلاط");
+        Assert.Equal(("بلاط", "شركة النخيل", 115m), (purchase.Description, purchase.Values[table.Columns.FindIndex(column => column.Name == "المورد")], purchase.Amount));
         var contractRow = Assert.Single(report.Contracts);
         Assert.Equal((1000m, 300m, 700m, false), (contractRow.Value, contractRow.Paid, contractRow.Remaining, contractRow.IsOverrun));
         Assert.Equal(item.Name, report.ItemName);
@@ -126,7 +127,7 @@ public class SummaryTests(MigratedApiFactory factory)
 
         var report = (await ledger.Client.GetFromJsonAsync<ItemReportView>($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}", Json))!;
 
-        Assert.Contains("اللون", report.Columns);
+        Assert.Contains("اللون", report.Subgroups.Single().Columns.Select(printed => printed.Name));
         Assert.Contains("أبيض", report.Subgroups.Single().Rows.Single().Values);
     }
 }

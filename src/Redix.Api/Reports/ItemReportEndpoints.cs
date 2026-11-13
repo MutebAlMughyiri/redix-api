@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
@@ -87,36 +86,6 @@ public static class ItemReportEndpoints
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && details.ItemId == item.Id
             orderby entry.EntryDate, entry.Id
             select new { entry, details }).ToListAsync();
-        var entries = rows.Select(row => row.entry).ToList();
-        var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        var ids = entries.Select(entry => entry.Id).ToList();
-        var payments = await db.ContractorPaymentDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
-        var columns = item.Columns.Where(column => column.IsCustom && column.ShowInReports && !column.IsHidden).OrderBy(column => column.SortOrder).ToList();
-
-        ItemEntryRow RowOf(Entry entry, ExpenseDetails expense)
-        {
-            var values = entry.ColumnValuesByKey();
-            var product = facts.ProductOf(entry);
-            return new ItemEntryRow(entry.Id, entry.EntryDate, product.Length > 0 ? product : entry.Notes, facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, NumberOf(values.GetValueOrDefault("unitPrice", "")), NumberOf(values.GetValueOrDefault("quantity", "")), entry.Amount, (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract, columns.Select(column => values.GetValueOrDefault(column.Key, "")).ToList(), entry.ApprovedAt > newSince);
-        }
-
-        ItemEntryRow RevenueRowOf(Entry entry) => new(entry.Id, entry.EntryDate, entry.Notes, "", "", 0, 0, entry.Amount, false, [], entry.ApprovedAt > newSince);
-
-        var subgroups = item.Subgroups.OrderBy(subgroup => subgroup.SortOrder).Select(subgroup =>
-        {
-            var lines = rows.Where(row => row.entry.Kind == EntryKind.Purchase && row.expense.SubgroupId == subgroup.Id).Select(row => RowOf(row.entry, row.expense))
-                .Concat(revenue.Where(row => row.details.SubgroupId == subgroup.Id).Select(row => RevenueRowOf(row.entry))).ToList();
-            return new SubgroupReportView(subgroup.Id, subgroup.Name, lines.Sum(line => line.Amount), lines) { SortOrder = subgroup.SortOrder };
-        }).Where(subgroup => subgroup.Rows.Count > 0).ToList();
-        var money = await ContractMoney.OfProjectAsync(projectId, db);
-        var contracts = await (from contract in db.Contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id where contract.ProjectId == projectId && contract.ItemId == item.Id orderby contract.SortOrder, contract.Id select new { contract, supplier.Name }).ToListAsync();
-        var paymentRows = rows.Where(row => row.entry.Kind == EntryKind.ContractorPayment).ToList();
-        var contractViews = contracts.Select(row =>
-        {
-            var lines = paymentRows.Where(payment => (payments.GetValueOrDefault(payment.entry.Id) ?? new ContractorPaymentDetails()).ContractId == row.contract.Id).Select(payment => RowOf(payment.entry, payment.expense)).ToList();
-            var paid = money.GetValueOrDefault(row.contract.Id).Paid;
-            return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.RemainingAfter(paid), row.contract.IsOverrunBy(paid), lines.Sum(line => line.Amount), lines) { SortOrder = row.contract.SortOrder };
-        }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
         var movements = await (
             from movement in db.CapitalMovementDetails
             join entry in db.Entries on movement.EntryId equals entry.Id
@@ -124,25 +93,65 @@ public static class ItemReportEndpoints
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && partner.ItemId == item.Id
             orderby entry.EntryDate, entry.Id
             select new { entry, movement }).ToListAsync();
-        ItemEntryRow MovementRowOf(Entry entry, CapitalMovementDetails movement) => new(
-            entry.Id, entry.EntryDate, entry.Notes, "", "", 0, 0,
-            entry.Kind.Signed(entry.Amount), false, [], entry.ApprovedAt > newSince);
+        var facts = await EntryFacts.OfAsync(projectId, [.. rows.Select(row => row.entry), .. revenue.Select(row => row.entry), .. movements.Select(row => row.entry)], db);
+        var ids = rows.Select(row => row.entry.Id).ToList();
+        var payments = await db.ContractorPaymentDetails.Where(row => ids.Contains(row.EntryId)).ToDictionaryAsync(row => row.EntryId);
+        var registers = await ReportColumns.OfProjectAsync(projectId, db);
+        var groupKind = item.Type.IsRevenue() ? EntryKind.Revenue : EntryKind.Purchase;
+        var groupColumns = ReportColumns.PrintedOf(item, groupKind);
+        var paymentColumns = ReportColumns.PrintedOf(item, EntryKind.ContractorPayment);
+        var capitalColumns = ReportColumns.PrintedOf(item, EntryKind.CapitalIn);
+
+        ItemEntryRow RowOf(Entry entry, List<ItemColumn> columns, decimal amount)
+        {
+            var isOutside = (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract;
+            return new ItemEntryRow(entry.Id, entry.EntryDate, ReportColumns.DescriptionOf(entry), amount, isOutside, ReportColumns.ValuesOf(columns, entry, facts, isOutside), entry.ApprovedAt > newSince);
+        }
+
+        var subgroups = item.Subgroups.OrderBy(subgroup => subgroup.SortOrder).Select(subgroup =>
+        {
+            var lines = rows.Where(row => row.entry.Kind == EntryKind.Purchase && row.expense.SubgroupId == subgroup.Id).Select(row => row.entry)
+                .Concat(revenue.Where(row => row.details.SubgroupId == subgroup.Id).Select(row => row.entry)).Select(entry => RowOf(entry, groupColumns, entry.Amount)).ToList();
+            return new SubgroupReportView(subgroup.Id, subgroup.Name, lines.Sum(line => line.Amount), lines)
+            {
+                SortOrder = subgroup.SortOrder,
+                Columns = registers.ViewsOf(groupColumns),
+                AmountName = ReportColumns.AmountNameOf(item, groupKind),
+            };
+        }).Where(subgroup => subgroup.Rows.Count > 0).ToList();
+        var money = await ContractMoney.OfProjectAsync(projectId, db);
+        var contracts = await (from contract in db.Contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id where contract.ProjectId == projectId && contract.ItemId == item.Id orderby contract.SortOrder, contract.Id select new { contract, supplier.Name }).ToListAsync();
+        var paymentRows = rows.Where(row => row.entry.Kind == EntryKind.ContractorPayment).ToList();
+        var contractViews = contracts.Select(row =>
+        {
+            var lines = paymentRows.Where(payment => (payments.GetValueOrDefault(payment.entry.Id) ?? new ContractorPaymentDetails()).ContractId == row.contract.Id).Select(payment => RowOf(payment.entry, paymentColumns, payment.entry.Amount)).ToList();
+            var paid = money.GetValueOrDefault(row.contract.Id).Paid;
+            return new ContractReportView(row.contract.Id, row.Name, row.contract.Value, row.contract.IsOpenValue, paid, row.contract.RemainingAfter(paid), row.contract.IsOverrunBy(paid), lines.Sum(line => line.Amount), lines)
+            {
+                SortOrder = row.contract.SortOrder,
+                Columns = registers.ViewsOf(paymentColumns),
+                AmountName = ReportColumns.AmountNameOf(item, EntryKind.ContractorPayment),
+            };
+        }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
         var partners = (await db.Partners.Where(partner => partner.ItemId == item.Id).ToListAsync()).Where(shows).OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id);
         var partnerTables = partners.Select(partner =>
         {
-            var lines = movements.Where(row => row.movement.PartnerId == partner.Id).Select(row => MovementRowOf(row.entry, row.movement)).ToList();
-            return new SubgroupReportView(partner.Id, partner.Name, lines.Sum(line => line.Amount), lines) { SortOrder = partner.SortOrder };
+            var lines = movements.Where(row => row.movement.PartnerId == partner.Id).Select(row => RowOf(row.entry, capitalColumns, row.entry.Kind.Signed(row.entry.Amount))).ToList();
+            return new SubgroupReportView(partner.Id, partner.Name, lines.Sum(line => line.Amount), lines)
+            {
+                SortOrder = partner.SortOrder,
+                Columns = registers.ViewsOf(capitalColumns),
+                AmountName = ReportColumns.AmountNameOf(item, EntryKind.CapitalIn),
+            };
         }).Where(table => table.Rows.Count > 0);
         var categoryName = await db.Categories.Where(category => category.Id == item.CategoryId).Select(category => category.Name).SingleAsync();
-        var total = rows.Sum(row => row.entry.Amount) + revenue.Sum(row => row.entry.Amount) + movements.Sum(row => MovementRowOf(row.entry, row.movement).Amount);
-        return new ItemReportView(item.Id, item.Name, categoryName, total, columns.Select(column => column.Name).ToList(), [.. subgroups, .. partnerTables], contractViews)
+        var total = rows.Sum(row => row.entry.Amount) + revenue.Sum(row => row.entry.Amount) + movements.Sum(row => row.entry.Kind.Signed(row.entry.Amount));
+        return new ItemReportView(item.Id, item.Name, categoryName, total, [.. subgroups, .. partnerTables], contractViews)
         {
             ShowsTablePercentages = item.ShowsTablePercentages,
             Type = item.Type,
         };
     }
-
-    private static decimal NumberOf(string value) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : 0;
 }
 
 /// <summary>Everything spent on one item.</summary>
@@ -150,13 +159,12 @@ public static class ItemReportEndpoints
 /// <param name="ItemName">Its name.</param>
 /// <param name="CategoryName">Its category.</param>
 /// <param name="Total">Its purchases and contractor payments (BR-02), its revenue, or for a capital item the whole capital.</param>
-/// <param name="Columns">The names of its own columns that print in its report (FR-41), in the order of each row's values.</param>
 /// <param name="Subgroups">Its purchases, a table per subgroup.</param>
 /// <param name="Contracts">Its contracts, each with its payments.</param>
-public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, decimal Total, List<string> Columns, List<SubgroupReportView> Subgroups, List<ContractReportView> Contracts)
+public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, decimal Total, List<SubgroupReportView> Subgroups, List<ContractReportView> Contracts)
 {
     /// <summary>No report: what a contract of another project answers.</summary>
-    public static readonly ItemReportView None = new(Guid.Empty, "", "", 0, [], [], []);
+    public static readonly ItemReportView None = new(Guid.Empty, "", "", 0, [], []);
 
     /// <summary>True when its sheet calculates each table's percentage (AC-46.9); false in a report issued before the choice existed.</summary>
     public bool ShowsTablePercentages { get; init; }
@@ -174,6 +182,12 @@ public record SubgroupReportView(Guid Id, string Name, decimal Total, List<ItemE
 {
     /// <summary>Its place among the item's tables (AC-46.8); zero in a report issued before tables had one.</summary>
     public int SortOrder { get; init; }
+
+    /// <summary>The columns it prints between «الوصف» and its amount, its item's own, in their order (redix-api #129, R1); none in a report issued before.</summary>
+    public List<ReportColumnView> Columns { get; init; } = [];
+
+    /// <summary>Its amount column's own name, its header (redix-api #129); empty in a report issued before.</summary>
+    public string AmountName { get; init; } = "";
 }
 
 /// <summary>One contract with its payments.</summary>
@@ -190,18 +204,20 @@ public record ContractReportView(Guid Id, string ContractorName, decimal Value, 
 {
     /// <summary>Its place among the item's tables (AC-46.8); zero in a report issued before tables had one.</summary>
     public int SortOrder { get; init; }
+
+    /// <summary>The columns its table prints between «الوصف» and the payment, its item's own that a payment is asked, in their order (redix-api #129, R1); none in a report issued before.</summary>
+    public List<ReportColumnView> Columns { get; init; } = [];
+
+    /// <summary>Its amount column's own name, its header (redix-api #129); empty in a report issued before.</summary>
+    public string AmountName { get; init; } = "";
 }
 
-/// <summary>One purchase or payment in an item's report, in the columns of the current statement.</summary>
+/// <summary>One entry in an item's report, in its table's columns (redix-api #129, R1).</summary>
 /// <param name="EntryId">The entry.</param>
-/// <param name="Date">The day it was paid.</param>
-/// <param name="Description">What was bought, or what was said.</param>
-/// <param name="SupplierName">The supplier, or the contractor.</param>
-/// <param name="InvoiceNumber">The invoice's number; empty when none.</param>
-/// <param name="UnitPrice">The price of one; zero when not used.</param>
-/// <param name="Quantity">How many; zero when not used.</param>
-/// <param name="Amount">What was paid.</param>
-/// <param name="IsOutsideContract">True for a payment outside its contract.</param>
-/// <param name="Values">The values of the item's own columns, in the report's order.</param>
+/// <param name="Date">The day it was paid, which orders the rows.</param>
+/// <param name="Description">«الوصف»: what was bought, or what was said.</param>
+/// <param name="Amount">What was paid, or what it did to the capital.</param>
+/// <param name="IsOutsideContract">True for a payment outside its contract, which leaves what remains of it alone (BR-04).</param>
+/// <param name="Values">What it shows under each of its table's columns, in their order, as <see cref="ReportColumns.ValuesOf"/> writes them.</param>
 /// <param name="IsNew">True when it was approved after the latest periodic report, shaded green (BR-26).</param>
-public record ItemEntryRow(Guid EntryId, DateOnly Date, string Description, string SupplierName, string InvoiceNumber, decimal UnitPrice, decimal Quantity, decimal Amount, bool IsOutsideContract, List<string> Values, bool IsNew);
+public record ItemEntryRow(Guid EntryId, DateOnly Date, string Description, decimal Amount, bool IsOutsideContract, List<string> Values, bool IsNew);
