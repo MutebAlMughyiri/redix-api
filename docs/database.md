@@ -466,7 +466,7 @@ What a new item of each type starts with, per project (FR-38, FR-41).
 | IsRequired | bit | not null |  |  |
 | ShowInReports | bit | not null |  |  |
 | SortOrder | int | not null |  |  |
-| Options | json | not null |  |  |
+| Choices | json | not null |  |  |
 
 Unique: `ProjectId, ItemType, Key`.
 
@@ -488,7 +488,7 @@ What each item asks for at entry (FR-41).
 | IsRequired | bit | not null |  |  |
 | ShowInReports | bit | not null |  |  |
 | SortOrder | int | not null |  |  |
-| Options | json | not null |  |  |
+| Choices | json | not null |  |  |
 
 Unique: `ItemId, Key`.
 

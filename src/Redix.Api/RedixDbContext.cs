@@ -1,6 +1,9 @@
 using System.Linq.Expressions;
+using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Redix.Api.Accounts;
 using Redix.Api.Attachments;
 using Redix.Api.History;
@@ -246,11 +249,12 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             subgroup.Property(s => s.Name).HasMaxLength(Project.NameMaxLength);
             subgroup.HasData(StructureSeed.Subgroups);
         });
+        modelBuilder.Ignore<ColumnChoice>();
         modelBuilder.Entity<DefaultColumn>(column =>
         {
             column.Property(c => c.Key).HasMaxLength(Column.KeyMaxLength).IsUnicode(false);
             column.Property(c => c.Name).HasMaxLength(Project.NameMaxLength);
-            column.Property(c => c.Options).HasColumnType("json");
+            KeepsChoicesAsJson(column.Property(c => c.Choices));
             column.HasIndex(c => new { c.ProjectId, c.ItemType, c.Key }).IsUnique();
             column.HasOne<Project>().WithMany().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Restrict);
             column.HasData(StructureSeed.DefaultColumns);
@@ -259,7 +263,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         {
             column.Property(c => c.Key).HasMaxLength(Column.KeyMaxLength).IsUnicode(false);
             column.Property(c => c.Name).HasMaxLength(Project.NameMaxLength);
-            column.Property(c => c.Options).HasColumnType("json");
+            KeepsChoicesAsJson(column.Property(c => c.Choices));
             column.HasIndex(c => new { c.ItemId, c.Key }).IsUnique();
         });
         modelBuilder.Entity<PaymentMethod>(method =>
@@ -554,6 +558,20 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             ChangeTracker.Clear();
         }
     }
+
+    /// <summary>
+    /// Keeps a list's choices, each with its id, name and sign, as one JSON column (redix-api #129), the way EF Core's documentation converts a collection of value objects: serialized with
+    /// System.Text.Json, and compared by what it holds.
+    /// </summary>
+    private static void KeepsChoicesAsJson(PropertyBuilder<List<ColumnChoice>> choices) => choices
+        .HasConversion(
+            choice => JsonSerializer.Serialize(choice, (JsonSerializerOptions?)null),
+            json => JsonSerializer.Deserialize<List<ColumnChoice>>(json, (JsonSerializerOptions?)null)!,
+            new ValueComparer<List<ColumnChoice>>(
+                (first, second) => JsonSerializer.Serialize(first, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(second, (JsonSerializerOptions?)null),
+                choice => JsonSerializer.Serialize(choice, (JsonSerializerOptions?)null).GetHashCode(),
+                choice => JsonSerializer.Deserialize<List<ColumnChoice>>(JsonSerializer.Serialize(choice, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!))
+        .HasColumnType("json");
 
     private static string NamesOf<TEnum>() where TEnum : struct, Enum => string.Join(", ", Enum.GetNames<TEnum>().Select(name => $"'{name}'"));
 

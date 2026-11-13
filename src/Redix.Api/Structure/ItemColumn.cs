@@ -20,7 +20,7 @@ public class ItemColumn : Column
         IsRequired = source.IsRequired,
         ShowInReports = source.ShowInReports,
         SortOrder = sortOrder,
-        Options = [.. source.Options],
+        Choices = [.. source.Choices.Select(choice => choice.Copy())],
     };
 
     /// <summary>Deletes the column by hiding it, whether or not it holds values yet, so no value can be lost (BR-21). A core column is never deleted (BR-20).</summary>

@@ -61,7 +61,8 @@ public static class ColumnsEndpoints
     }
 
     /// <summary>
-    /// Adds a column to one item, at the end (AC-41.1). A name out of its limits answers <c>invalidName</c>; a type a person cannot choose, <c>invalidDataType</c>; a list with no choice, <c>invalidOptions</c>.
+    /// Adds a column to one item, at the end (AC-41.1). A name out of its limits answers <c>invalidName</c>; a type a person cannot choose, <c>invalidDataType</c>; a list with no choice, <c>invalidOptions</c>;
+    /// a list whose choices give a sign, on an item that has one already, <c>signedListExists</c> (redix-api #129).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
@@ -69,7 +70,7 @@ public static class ColumnsEndpoints
     /// <param name="db">The database the structure lives in.</param>
     public static async Task<IResult> AddToItem(Guid projectId, Guid itemId, AddColumnRequest request, RedixDbContext db)
     {
-        var outcome = Column.CheckNew(request.Name, request.DataType, request.Options);
+        var outcome = Column.CheckNew(request.Name, request.DataType, request.Choices);
         if (outcome != StructureChangeOutcome.Done)
         {
             return ProjectStructure.Refused(outcome);
@@ -85,7 +86,12 @@ public static class ColumnsEndpoints
         }
 
         var sortOrder = await db.ItemColumns.CountAsync(column => column.ItemId == itemId);
-        db.ItemColumns.Add(ItemColumn.Of(DefaultColumn.New(projectId, item.Type, request, sortOrder), itemId, sortOrder));
+        var added = ItemColumn.Of(DefaultColumn.New(projectId, item.Type, request, sortOrder), itemId, sortOrder);
+        if (HasTwoSignedLists([.. await VisibleColumnsOf(itemId, db).ToListAsync(), added]))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.SignedListExists);
+        }
+        db.ItemColumns.Add(added);
         await db.SaveChangesAsync();
         return Results.Ok();
     }
@@ -110,14 +116,14 @@ public static class ColumnsEndpoints
         return Results.Ok();
     }
 
-    /// <summary>Changes a column of one item. A name out of its limits answers <c>invalidName</c>; more than the name of a core column, <c>coreColumn</c>; a new choice too long, or for anything but a list a person added, <c>invalidOptions</c>. Its type is not among what can change, and a list's choices are only added to (BR-21).</summary>
+    /// <summary>Changes a column of one item. A name out of its limits answers <c>invalidName</c>; more than the name of a core column, <c>coreColumn</c>; a new choice too long, or for anything but a list a person added, <c>invalidOptions</c>; a sign on a second list of the item, <c>signedListExists</c> (redix-api #129). Its type is not among what can change, and a list's choices are only added to (BR-21).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="itemId">The item.</param>
     /// <param name="columnId">The column.</param>
     /// <param name="request">What it becomes.</param>
     /// <param name="db">The database the structure lives in.</param>
     public static Task<IResult> EditOfItem(Guid projectId, Guid itemId, Guid columnId, EditColumnRequest request, RedixDbContext db) =>
-        ChangeOfItemAsync(projectId, itemId, columnId, db, column => column.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewOptions));
+        ChangeOfItemAsync(projectId, itemId, columnId, db, column => column.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewChoices));
 
     /// <summary>Deletes a column of one item: it leaves entry, and its values stay on their entries and in the History table (AC-41.2). A core column answers <c>coreColumn</c>.</summary>
     /// <param name="projectId">The project.</param>
@@ -134,18 +140,29 @@ public static class ColumnsEndpoints
     /// <param name="db">The database the structure lives in.</param>
     public static async Task<IResult> AddToTemplate(Guid projectId, ItemTypeInUrl itemType, AddDefaultColumnRequest request, RedixDbContext db)
     {
-        var outcome = itemType.Value.IsRevenue() ? StructureChangeOutcome.RevenueTakesNoColumns : Column.CheckNew(request.Name, request.DataType, request.Options);
+        var outcome = itemType.Value.IsRevenue() ? StructureChangeOutcome.RevenueTakesNoColumns : Column.CheckNew(request.Name, request.DataType, request.Choices);
         if (outcome != StructureChangeOutcome.Done)
         {
             return ProjectStructure.Refused(outcome);
         }
 
-        var column = DefaultColumn.New(projectId, itemType.Value, request, await TemplateOf(projectId, itemType, db).CountAsync());
+        var template = await TemplateOf(projectId, itemType, db).ToListAsync();
+        var column = DefaultColumn.New(projectId, itemType.Value, request, template.Count);
+        if (HasTwoSignedLists([.. template, column]))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.SignedListExists);
+        }
         db.DefaultColumns.Add(column);
         if (request.ApplyToAllItems)
         {
             var items = await ItemsOf(projectId, itemType, db).Select(item => new { item.Id, Count = db.ItemColumns.Count(row => row.ItemId == item.Id) }).ToListAsync();
-            db.ItemColumns.AddRange(items.Select(item => ItemColumn.Of(column, item.Id, item.Count)));
+            List<ItemColumn> added = [.. items.Select(item => ItemColumn.Of(column, item.Id, item.Count))];
+            var columns = await ColumnsOfItemsOf(projectId, itemType, db).ToListAsync();
+            if (added.Any(addedColumn => HasTwoSignedLists([.. columns.Where(row => row.ItemId == addedColumn.ItemId), addedColumn])))
+            {
+                return ProjectStructure.Refused(StructureChangeOutcome.SignedListExists);
+            }
+            db.ItemColumns.AddRange(added);
         }
         await db.SaveChangesAsync();
         return Results.Ok();
@@ -197,17 +214,26 @@ public static class ColumnsEndpoints
         {
             return Results.NotFound();
         }
-        var outcome = column.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewOptions);
+        var outcome = column.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewChoices);
         if (outcome != StructureChangeOutcome.Done)
         {
             return ProjectStructure.Refused(outcome);
         }
+        if (HasTwoSignedLists(await TemplateOf(projectId, itemType, db).ToListAsync()))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.SignedListExists);
+        }
 
         if (request.ApplyToAllItems)
         {
-            foreach (var ofItem in await ColumnsOfItemsOf(projectId, itemType, db).Where(row => row.Key == column.Key).ToListAsync())
+            var columns = await ColumnsOfItemsOf(projectId, itemType, db).ToListAsync();
+            foreach (var ofItem in columns.Where(row => row.Key == column.Key))
             {
-                ofItem.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewOptions);
+                ofItem.Edit(request.Name, request.IsRequired, request.ShowInReports, request.NewChoices);
+            }
+            if (columns.GroupBy(row => row.ItemId).Any(HasTwoSignedLists))
+            {
+                return ProjectStructure.Refused(StructureChangeOutcome.SignedListExists);
             }
         }
         await db.SaveChangesAsync();
@@ -268,9 +294,18 @@ public static class ColumnsEndpoints
         {
             return ProjectStructure.Refused(outcome);
         }
+        if (HasTwoSignedLists(await VisibleColumnsOf(itemId, db).ToListAsync()))
+        {
+            return ProjectStructure.Refused(StructureChangeOutcome.SignedListExists);
+        }
         await db.SaveChangesAsync();
         return Results.Ok();
     }
+
+    private static IQueryable<ItemColumn> VisibleColumnsOf(Guid itemId, RedixDbContext db) => db.ItemColumns.Where(column => column.ItemId == itemId && !column.IsHidden);
+
+    /// <summary>True when <paramref name="columns"/>, one table's, hold more than one list whose choices give a sign (redix-api #129).</summary>
+    private static bool HasTwoSignedLists(IEnumerable<Column> columns) => columns.Count(column => column.IsSigned) > 1;
 }
 
 /// <summary>What the app sends to add a column to an item.</summary>
@@ -278,18 +313,18 @@ public static class ColumnsEndpoints
 /// <param name="DataType">What it holds: <c>text</c>, <c>number</c>, <c>amount</c>, <c>date</c> or <c>list</c>.</param>
 /// <param name="IsRequired">Whether entry asks for it.</param>
 /// <param name="ShowInReports">Whether it prints in the reports.</param>
-/// <param name="Options">The choices of a list; ignored for another type.</param>
-public record AddColumnRequest(string Name, ColumnDataType DataType, bool IsRequired, bool ShowInReports, List<string> Options);
+/// <param name="Choices">The choices of a list, each with its sign (redix-api #129); ignored for another type.</param>
+public record AddColumnRequest(string Name, ColumnDataType DataType, bool IsRequired, bool ShowInReports, List<ChoiceRequest> Choices);
 
 /// <summary>What the app sends to add a column to the default template.</summary>
 /// <param name="Name">The column's name.</param>
 /// <param name="DataType">What it holds: <c>text</c>, <c>number</c>, <c>amount</c>, <c>date</c> or <c>list</c>.</param>
 /// <param name="IsRequired">Whether entry asks for it.</param>
 /// <param name="ShowInReports">Whether it prints in the reports.</param>
-/// <param name="Options">The choices of a list; ignored for another type.</param>
+/// <param name="Choices">The choices of a list, each with its sign (redix-api #129); ignored for another type.</param>
 /// <param name="ApplyToAllItems">Whether every existing item of this type takes it too.</param>
-public record AddDefaultColumnRequest(string Name, ColumnDataType DataType, bool IsRequired, bool ShowInReports, List<string> Options, bool ApplyToAllItems)
-    : AddColumnRequest(Name, DataType, IsRequired, ShowInReports, Options);
+public record AddDefaultColumnRequest(string Name, ColumnDataType DataType, bool IsRequired, bool ShowInReports, List<ChoiceRequest> Choices, bool ApplyToAllItems)
+    : AddColumnRequest(Name, DataType, IsRequired, ShowInReports, Choices);
 
 /// <summary>What the app sends to change a column of an item. The type is not here, because it never changes (BR-21).</summary>
 /// <param name="Name">Its name.</param>
@@ -297,8 +332,8 @@ public record AddDefaultColumnRequest(string Name, ColumnDataType DataType, bool
 /// <param name="ShowInReports">Whether it prints in the reports.</param>
 public record EditColumnRequest(string Name, bool IsRequired, bool ShowInReports)
 {
-    /// <summary>Choices a list a person added gains; left out when none.</summary>
-    public List<string> NewOptions { get; init; } = [];
+    /// <summary>Choices a list a person added gains, each with its sign (redix-api #129); left out when none.</summary>
+    public List<ChoiceRequest> NewChoices { get; init; } = [];
 }
 
 /// <summary>What the app sends to change a column of the default template.</summary>
@@ -308,8 +343,8 @@ public record EditColumnRequest(string Name, bool IsRequired, bool ShowInReports
 /// <param name="ApplyToAllItems">Whether every existing item of this type follows.</param>
 public record EditDefaultColumnRequest(string Name, bool IsRequired, bool ShowInReports, bool ApplyToAllItems)
 {
-    /// <summary>Choices a list a person added gains; left out when none.</summary>
-    public List<string> NewOptions { get; init; } = [];
+    /// <summary>Choices a list a person added gains, each with its sign (redix-api #129); left out when none.</summary>
+    public List<ChoiceRequest> NewChoices { get; init; } = [];
 }
 
 /// <summary>What the app sends to put the default template in a new order.</summary>
@@ -326,10 +361,10 @@ public record ReorderDefaultColumnsRequest(List<Guid> Ids, bool ApplyToAllItems)
 /// <param name="IsCustom">True when a person added it.</param>
 /// <param name="IsRequired">Whether entry asks for it.</param>
 /// <param name="ShowInReports">Whether it prints in the reports.</param>
-/// <param name="Options">The choices of a list a person made.</param>
-public record ColumnView(Guid Id, string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsCustom, bool IsRequired, bool ShowInReports, List<string> Options)
+/// <param name="Choices">The choices of a list kept in its definition, each with its id and its sign (redix-api #129); empty for any other column, a register's list included.</param>
+public record ColumnView(Guid Id, string Key, string Name, ColumnDataType DataType, bool IsCore, bool IsCustom, bool IsRequired, bool ShowInReports, List<ColumnChoice> Choices)
 {
     /// <summary>The view of <paramref name="column"/>.</summary>
     public static ColumnView Of(Column column) =>
-        new(column.Id, column.Key, column.Name, column.DataType, column.IsCore, column.IsCustom, column.IsRequired, column.ShowInReports, column.Options);
+        new(column.Id, column.Key, column.Name, column.DataType, column.IsCore, column.IsCustom, column.IsRequired, column.ShowInReports, column.Choices);
 }

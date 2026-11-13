@@ -162,9 +162,9 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
 
-        foreach (var options in new List<string>[] { [], ["  "], [new string('x', Project.NameMaxLength + 1)] })
+        foreach (var choices in new List<ChoiceRequest>[] { [], [new("  ")], [new(new string('x', Project.NameMaxLength + 1))] })
         {
-            var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { DataType = ColumnDataType.List, Options = options });
+            var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { DataType = ColumnDataType.List, Choices = choices });
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
             Assert.Equal("invalidOptions", await CodeOf(refused));
         }
@@ -176,13 +176,48 @@ public class ColumnsTests(MigratedApiFactory factory)
         var (_, client, project) = await FinanceAsync();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
 
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { Name = "اللون", DataType = ColumnDataType.List, Options = [" أبيض ", "", "رمادي", "أبيض"] })).EnsureSuccessStatusCode();
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { Options = ["لا يخصه"] })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { Name = "اللون", DataType = ColumnDataType.List, Choices = [new(" أبيض "), new(""), new("رمادي"), new("أبيض")] })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { Choices = [new("لا يخصه")] })).EnsureSuccessStatusCode();
 
         var columns = await ColumnsOf(client, project.Id, item.Id);
-        Assert.Equal(["أبيض", "رمادي"], columns.Single(column => column.Name == "اللون").Options);
-        Assert.Empty(columns.Single(column => column.Name == "المساحة م²").Options);
+        Assert.Equal(["أبيض", "رمادي"], NamesOf(columns.Single(column => column.Name == "اللون")));
+        Assert.Empty(columns.Single(column => column.Name == "المساحة م²").Choices);
     }
+
+    [Fact]
+    public async Task R129_AListsChoicesEachHaveAnIdAndASignOfTheirOwn()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = await ItemOfType(client, project.Id, ItemType.ContractorPayments);
+
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", new AddColumnRequest("نوع الدفعة", ColumnDataType.List, false, true, [new("دفعة", ChoiceSign.Plus), new("خصم", ChoiceSign.Minus), new("ملاحظة")]), Json)).EnsureSuccessStatusCode();
+
+        var choices = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Name == "نوع الدفعة").Choices;
+        Assert.Equal([ChoiceSign.Plus, ChoiceSign.Minus, ChoiceSign.None], choices.Select(choice => choice.Sign));
+        Assert.Equal(3, choices.Select(choice => choice.Id).Distinct().Count());
+        Assert.DoesNotContain(Guid.Empty, choices.Select(choice => choice.Id));
+    }
+
+    [Fact]
+    public async Task R129_AnItemTakesOneListWhoseChoicesGiveASignSoTheAmountsDirectionHasOneAnswer()
+    {
+        var (_, client, project) = await FinanceAsync();
+        var item = await ItemOfType(client, project.Id, ItemType.ContractorPayments);
+        var signed = new AddColumnRequest("نوع الدفعة", ColumnDataType.List, false, true, [new("دفعة", ChoiceSign.Plus), new("خصم", ChoiceSign.Minus)]);
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", signed, Json)).EnsureSuccessStatusCode();
+
+        var second = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", signed with { Name = "نوع آخر" }, Json);
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", signed with { Name = "الجهة", Choices = [new("شرق"), new("غرب")] }, Json)).EnsureSuccessStatusCode();
+        var unsigned = (await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Name == "الجهة");
+        var gainingASign = await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{unsigned.Id}", new EditColumnRequest(unsigned.Name, false, true) { NewChoices = [new("شمال", ChoiceSign.Minus)] }, Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
+        Assert.Equal("signedListExists", await CodeOf(second));
+        Assert.Equal("signedListExists", await CodeOf(gainingASign));
+        Assert.DoesNotContain("شمال", NamesOf((await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Name == "الجهة")));
+    }
+
+    private static List<string> NamesOf(ColumnView column) => [.. column.Choices.Select(choice => choice.Name)];
 
     [Fact]
     public async Task APersonCannotAddAFileColumn()
@@ -528,12 +563,12 @@ public class ColumnsTests(MigratedApiFactory factory)
     private static async Task<(HttpClient Client, Guid ProjectId, Guid ItemId, ColumnView Column)> PickListAsync(HttpClient client, Guid projectId)
     {
         var item = await ItemOfType(client, projectId, ItemType.Both);
-        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{item.Id}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, ["شرق", "غرب"]), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{item.Id}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, [new("شرق"), new("غرب")]), Json)).EnsureSuccessStatusCode();
         return (client, projectId, item.Id, (await ColumnsOf(client, projectId, item.Id)).Last());
     }
 
-    private static Task<HttpResponseMessage> EditItemColumnAsync(HttpClient client, Guid projectId, Guid itemId, ColumnView column, params List<string> newOptions) =>
-        client.PutAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new { name = column.Name, isRequired = column.IsRequired, showInReports = column.ShowInReports, newOptions }, Json);
+    private static Task<HttpResponseMessage> EditItemColumnAsync(HttpClient client, Guid projectId, Guid itemId, ColumnView column, params List<string> newChoices) =>
+        client.PutAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new EditColumnRequest(column.Name, column.IsRequired, column.ShowInReports) { NewChoices = [.. newChoices.Select(name => new ChoiceRequest(name))] }, Json);
 
     [Fact]
     public async Task APickListGainsChoicesAndKeepsItsOwnInTheirOrder()
@@ -543,7 +578,7 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         (await EditItemColumnAsync(client, projectId, itemId, column, " شمال ", "", "شرق", "جنوب", "شمال")).EnsureSuccessStatusCode();
 
-        Assert.Equal(["شرق", "غرب", "شمال", "جنوب"], (await ColumnsOf(client, projectId, itemId)).Last().Options);
+        Assert.Equal(["شرق", "غرب", "شمال", "جنوب"], NamesOf((await ColumnsOf(client, projectId, itemId)).Last()));
     }
 
     [Fact]
@@ -554,7 +589,7 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         (await client.PutAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns/{column.Id}", new EditColumnRequest("الجهة الأصلية", false, false), Json)).EnsureSuccessStatusCode();
 
-        Assert.Equal(["شرق", "غرب"], (await ColumnsOf(client, projectId, itemId)).Last().Options);
+        Assert.Equal(["شرق", "غرب"], NamesOf((await ColumnsOf(client, projectId, itemId)).Last()));
     }
 
     [Fact]
@@ -586,13 +621,29 @@ public class ColumnsTests(MigratedApiFactory factory)
     public async Task AnEntryCanHoldTheChoiceAListGained()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, ["شرق"]), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, [new("شرق")]), Json)).EnsureSuccessStatusCode();
         var column = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last();
-        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = "شمال" } }, "invalidColumnValue");
+        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = Guid.CreateVersion7().ToString() } }, "invalidColumnValue");
 
         (await EditItemColumnAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, column, "شمال")).EnsureSuccessStatusCode();
+        var gained = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last().Choices.Single(choice => choice.Name == "شمال");
 
-        await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = "شمال" } });
+        await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = gained.Id.ToString() } });
+    }
+
+    [Fact]
+    public async Task R129_R5_AnEntryKeepsTheIdOfTheChoiceChosenAndIsRefusedItsName()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/items/{ledger.ItemId}/columns", new AddColumnRequest("الجهة", ColumnDataType.List, false, false, [new("شرق"), new("غرب")]), Json)).EnsureSuccessStatusCode();
+        var column = (await ColumnsOf(ledger.Client, ledger.ProjectId, ledger.ItemId)).Last();
+        var west = column.Choices.Single(choice => choice.Name == "غرب");
+
+        await ledger.AssertRefusedAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = "غرب" } }, "invalidColumnValue");
+        var kept = await ledger.RecordAsync(ledger.Purchase() with { CustomValues = new Dictionary<string, string> { [column.Key] = west.Id.ToString() } });
+
+        var values = await ledger.ReadAsync(db => db.ExpenseDetails.Where(row => row.EntryId == kept.Id).Select(row => row.CustomValues).SingleAsync());
+        Assert.Equal(west.Id.ToString(), JsonSerializer.Deserialize<Dictionary<string, string>>(values)![column.Key]);
     }
 
     [Theory]
@@ -601,13 +652,15 @@ public class ColumnsTests(MigratedApiFactory factory)
     public async Task AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied(bool applyToAllItems)
     {
         var (_, client, project) = await FinanceAsync();
-        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both", new AddDefaultColumnRequest("الجهة", ColumnDataType.List, false, false, ["شرق"], true), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both", new AddDefaultColumnRequest("الجهة", ColumnDataType.List, false, false, [new("شرق")], true), Json)).EnsureSuccessStatusCode();
         var column = (await TemplateOf(client, project.Id)).Last();
         var item = await ItemOfType(client, project.Id, ItemType.Both);
 
-        (await client.PutAsJsonAsync($"/projects/{project.Id}/default-columns/both/{column.Id}", new { name = column.Name, isRequired = false, showInReports = false, applyToAllItems, newOptions = new[] { "شمال" } }, Json)).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"/projects/{project.Id}/default-columns/both/{column.Id}", new EditDefaultColumnRequest(column.Name, false, false, applyToAllItems) { NewChoices = [new("شمال")] }, Json)).EnsureSuccessStatusCode();
 
-        Assert.Equal(["شرق", "شمال"], (await TemplateOf(client, project.Id)).Last().Options);
-        Assert.Equal(applyToAllItems ? ["شرق", "شمال"] : ["شرق"], (await ColumnsOf(client, project.Id, item.Id)).Single(row => row.Key == column.Key).Options);
+        List<string> gained = ["شرق", "شمال"];
+        List<string> kept = ["شرق"];
+        Assert.Equal(gained, NamesOf((await TemplateOf(client, project.Id)).Last()));
+        Assert.Equal(applyToAllItems ? gained : kept, NamesOf((await ColumnsOf(client, project.Id, item.Id)).Single(row => row.Key == column.Key)));
     }
 }

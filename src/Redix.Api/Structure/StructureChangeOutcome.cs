@@ -42,7 +42,10 @@ public enum StructureChangeOutcome
     /// <summary>A core column is renamed and reordered, and nothing else (BR-20).</summary>
     CoreColumn,
 
-    /// <summary>A revenue item asks no columns (FR-38).</summary>
+    /// <summary>A table has at most one list whose choices give the amount a sign, so the amount's direction has one answer (redix-api #129).</summary>
+    SignedListExists,
+
+    /// <summary>A person adds no column to a revenue item: it asks only what its template gives it (FR-38, redix-api #129).</summary>
     RevenueTakesNoColumns,
 
     /// <summary>A sub-table holds purchases, so an item that takes none has no sub-table (Muteb, 7 Nov 2026).</summary>

@@ -12,6 +12,8 @@ The seeded template project holds the default columns of each item type. When a 
 
 A new item starts from its project's default columns of its type (FR-38), and from then on holds its own rows in `ItemColumns`. A column keeps its `Key` from the template to every item, which is how "apply to all items" finds it. A column a person adds has a key starting `custom.`, under which its values will sit in an entry's `CustomValues`.
 
+A list's choices live in its definition, `Choices` (redix-api #129): each has an id, a name and a sign, `none`, `plus` or `minus`. An entry keeps the id of the choice chosen, never its name, so a choice keeps its entries whatever it is called. A sign decides the direction of the amount of the entry that chooses it, so an item holds at most one list whose choices carry a sign.
+
 An item of the template holds no column rows of its own: its columns are its type's defaults, and its copy takes them. That keeps about 550 rows out of the migrations.
 
 ## Endpoints
@@ -20,16 +22,16 @@ An item of the template holds no column rows of its own: its columns are its typ
 | --- | --- | --- |
 | `GET /projects/{projectId}/items/{itemId}/columns` | `ReadProject` | `200` what the item asks for, in order, without deleted ones; `404` |
 | `GET /projects/{projectId}/default-columns/{itemType}` | `ReadProject` | `200` the template for `purchases`, `contractorPayments` or `both`; `400` for another word |
-| `POST /projects/{projectId}/items/{itemId}/columns` with `{ name, dataType, isRequired, showInReports, options }` | `ManageStructure` | `200`; `400` `invalidName`, `invalidDataType` or `invalidOptions`; `404` |
+| `POST /projects/{projectId}/items/{itemId}/columns` with `{ name, dataType, isRequired, showInReports, choices: [{ name, sign }] }` | `ManageStructure` | `200`; `400` `invalidName`, `invalidDataType`, `invalidOptions` or `signedListExists`; `404` |
 | `POST /projects/{projectId}/items/{itemId}/columns/reorder` with `{ ids }` | `ManageStructure` | `200`; `400` `invalidOrder`; `404` |
-| `PUT /projects/{projectId}/items/{itemId}/columns/{columnId}` with `{ name, isRequired, showInReports, newOptions }` | `ManageStructure` | `200`; `400` `invalidName`; `404`; `409` `coreColumn` |
+| `PUT /projects/{projectId}/items/{itemId}/columns/{columnId}` with `{ name, isRequired, showInReports, newChoices: [{ name, sign }] }` | `ManageStructure` | `200`; `400` `invalidName`, `invalidOptions` or `signedListExists`; `404`; `409` `coreColumn` |
 | `DELETE /projects/{projectId}/items/{itemId}/columns/{columnId}` | `ManageStructure` | `200`; `404`; `409` `coreColumn` |
 | `POST /projects/{projectId}/default-columns/{itemType}` with the same, and `applyToAllItems` | `ManageStructure` | As on an item |
 | `POST /projects/{projectId}/default-columns/{itemType}/reorder` with `{ ids, applyToAllItems }` | `ManageStructure` | As on an item |
 | `PUT /projects/{projectId}/default-columns/{itemType}/{columnId}` with the same, and `applyToAllItems` | `ManageStructure` | As on an item |
 | `DELETE /projects/{projectId}/default-columns/{itemType}/{columnId}?applyToAllItems=true` or `=false`, in the query since a delete has no body | `ManageStructure` | As on an item |
 
-Every change also answers `409` `projectFinished` in a finished project. A column answers as `{ id, key, name, dataType, isCore, isCustom, isRequired, showInReports, options }`.
+Every change also answers `409` `projectFinished` in a finished project. A column answers as `{ id, key, name, dataType, isCore, isCustom, isRequired, showInReports, choices: [{ id, name, sign }] }`.
 
 ## Tables
 
@@ -50,6 +52,9 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | A column needs a name of 1 to 100 characters | `Column.CheckNew`, `Column.Edit` | `ColumnsTests.AColumnNeedsANameOfAtMost100Characters` |
 | A list a person added gains choices; those it has stay, in their order, because entries hold them; a new choice has the limit of a name; the template's reach items only when applied (BR-21) | `Column.Edit`, `ColumnsEndpoints.EditOfItem`, `EditOfTemplate` | `ColumnsTests.APickListGainsChoicesAndKeepsItsOwnInTheirOrder`, `AnEditThatGivesNoNewChoiceChangesNoChoice`, `ANewChoiceIsWithinTheLimitOfAName`, `OnlyAPickListAPersonAddedGainsChoices`, `AnEntryCanHoldTheChoiceAListGained`, `AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied` |
 | A pick list needs a choice; another type keeps none | `Column.CheckNew`, `DefaultColumn.New` | `ColumnsTests.APickListNeedsAChoice`, `APickListKeepsItsChoicesAndAnotherTypeNone` |
+| A list's choices live in its definition, each with its own id and an optional sign, + or − (redix-api #129) | `ColumnChoice`, `Column.ChoicesOf` | `ColumnsTests.R129_AListsChoicesEachHaveAnIdAndASignOfTheirOwn` |
+| An item holds at most one list whose choices give a sign, so the amount's direction has one answer (redix-api #129) | `ColumnsEndpoints.HasTwoSignedLists` | `ColumnsTests.R129_AnItemTakesOneListWhoseChoicesGiveASignSoTheAmountsDirectionHasOneAnswer` |
+| An entry keeps the id of the choice chosen, and a choice's name is refused (redix-api #129, R5) | `Column.Accepts`, `Column.ChoiceOf` | `ColumnsTests.R129_R5_AnEntryKeepsTheIdOfTheChoiceChosenAndIsRefusedItsName`, `ExpensesTests.FR_41_AValueThatFitsItsColumnIsKept` |
 | A person chooses among five types | `Column.CheckNew` | `ColumnsTests.APersonCannotAddAFileColumn` |
 | A core column is renamed and reordered (BR-20) | `Column.Edit`, `ProjectStructure.PutInOrder` | `ColumnsTests.ACoreColumnIsRenamedAndReordered` |
 | A core column changes nothing but its name (BR-20) | `Column.Edit` | `ColumnsTests.ACoreColumnChangesNothingButItsName` |

@@ -2125,6 +2125,10 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Choices")
+                        .IsRequired()
+                        .HasColumnType("json");
+
                     b.Property<byte>("DataType")
                         .HasColumnType("tinyint");
 
@@ -2147,10 +2151,6 @@ namespace Redix.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.PrimitiveCollection<string>("Options")
-                        .IsRequired()
-                        .HasColumnType("json");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
@@ -2182,13 +2182,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("014f3b89-4ee5-664d-a59d-57f5b98c0c44"),
+                            Choices = "[]",
                             DataType = (byte)3,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)0,
                             Key = "date",
                             Name = "التاريخ",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 0
@@ -2196,13 +2196,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("fe89eb78-ba76-bb13-6610-da78585c3f72"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)0,
                             Key = "supplier",
                             Name = "المورد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 1
@@ -2210,13 +2210,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("3a69be0b-a697-4a48-2dc0-c70a043a7389"),
+                            Choices = "[]",
                             DataType = (byte)0,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)0,
                             Key = "product",
                             Name = "الصنف",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 2
@@ -2224,13 +2224,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("faf254c8-b5ff-65a6-3b15-631369bb7c8a"),
+                            Choices = "[]",
                             DataType = (byte)2,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)0,
                             Key = "unitPrice",
                             Name = "سعر الوحدة",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 3
@@ -2238,13 +2238,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("0a297057-af7f-843e-b01a-4ed653b4ad06"),
+                            Choices = "[]",
                             DataType = (byte)1,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)0,
                             Key = "quantity",
                             Name = "العدد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 4
@@ -2252,13 +2252,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("15c86a05-a062-0cea-7b42-d0634822d6a8"),
+                            Choices = "[]",
                             DataType = (byte)2,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)0,
                             Key = "total",
                             Name = "الإجمالي",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 5
@@ -2266,13 +2266,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("0c55e229-1af8-f7ce-cbcc-f4802fa64c24"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)0,
                             Key = "paymentMethod",
                             Name = "طريقة الدفع",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 6
@@ -2280,13 +2280,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("5c13ae77-437a-7db1-6d68-cce6207da136"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)0,
                             Key = "account",
                             Name = "الحساب",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 7
@@ -2294,13 +2294,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("6745ee14-a1b1-7ed0-65f8-52d895ed5246"),
+                            Choices = "[]",
                             DataType = (byte)5,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)0,
                             Key = "attachment",
                             Name = "المرفق",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 8
@@ -2308,13 +2308,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("f01dd745-c15b-5292-bc4b-fa3500db903c"),
+                            Choices = "[]",
                             DataType = (byte)0,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)0,
                             Key = "notes",
                             Name = "ملاحظات",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 9
@@ -2322,13 +2322,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("f8e8fd13-8804-05b5-08ce-8e6e114e7fcf"),
+                            Choices = "[]",
                             DataType = (byte)3,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)1,
                             Key = "date",
                             Name = "التاريخ",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 0
@@ -2336,13 +2336,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("6b16b02b-d1e5-2bc0-3ea7-fc18fa2125d4"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)1,
                             Key = "contract",
                             Name = "العقد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 1
@@ -2350,13 +2350,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("a6b762c9-8621-22ef-b836-7070fccc1896"),
+                            Choices = "[]",
                             DataType = (byte)2,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)1,
                             Key = "amount",
                             Name = "المبلغ",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 2
@@ -2364,13 +2364,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("dbe3eb09-3c58-cd1d-77ac-2f781d7e20d2"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)1,
                             Key = "paymentMethod",
                             Name = "طريقة الدفع",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 3
@@ -2378,13 +2378,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("5df1c111-116a-349c-277d-1a5adab41cc2"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)1,
                             Key = "account",
                             Name = "الحساب",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 4
@@ -2392,13 +2392,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("36f2f763-7e4b-fb79-7667-75297e859eed"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)1,
                             Key = "outsideContract",
                             Name = "داخل أو خارج العقد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 5
@@ -2406,13 +2406,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("47874291-b290-c9e7-623d-b0d47f539b63"),
+                            Choices = "[]",
                             DataType = (byte)0,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)1,
                             Key = "notes",
                             Name = "ملاحظات",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 6
@@ -2420,13 +2420,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("8ce8e464-22b7-f5e1-bbe3-1758e4d3fffb"),
+                            Choices = "[]",
                             DataType = (byte)5,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)1,
                             Key = "attachment",
                             Name = "المرفق",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 7
@@ -2434,13 +2434,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("10ce12a7-5e1a-20d4-27ba-5240c2058d59"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)1,
                             Key = "supplier",
                             Name = "المورد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 8
@@ -2448,13 +2448,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("8480dce1-394d-8cd2-8263-851dd298f4cc"),
+                            Choices = "[]",
                             DataType = (byte)3,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)2,
                             Key = "date",
                             Name = "التاريخ",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 0
@@ -2462,13 +2462,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("843d08f0-0f41-4c0b-4c93-179c0bfae455"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)2,
                             Key = "supplier",
                             Name = "المورد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 1
@@ -2476,13 +2476,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("4c9d7893-60b7-58aa-d675-486e13466312"),
+                            Choices = "[]",
                             DataType = (byte)0,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "product",
                             Name = "الصنف",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 2
@@ -2490,13 +2490,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("2ca7654d-4371-6db6-14ff-a95d9b0aa972"),
+                            Choices = "[]",
                             DataType = (byte)2,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "unitPrice",
                             Name = "سعر الوحدة",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 3
@@ -2504,13 +2504,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("45cb94d7-73dd-02ac-f457-b5cedc3a5767"),
+                            Choices = "[]",
                             DataType = (byte)1,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "quantity",
                             Name = "العدد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 4
@@ -2518,13 +2518,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("eb622f9e-4def-d5db-934f-3150a3949aab"),
+                            Choices = "[]",
                             DataType = (byte)2,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)2,
                             Key = "total",
                             Name = "الإجمالي",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 5
@@ -2532,13 +2532,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("01785f24-f721-2d01-7d39-2ffaf783f7d6"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "paymentMethod",
                             Name = "طريقة الدفع",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 6
@@ -2546,13 +2546,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("9ff01dd6-d582-ca82-a2fa-72d632064391"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = true,
                             ItemType = (byte)2,
                             Key = "account",
                             Name = "الحساب",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 7
@@ -2560,13 +2560,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("b07fdd34-db99-3860-7f42-6a006a167443"),
+                            Choices = "[]",
                             DataType = (byte)5,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "attachment",
                             Name = "المرفق",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 8
@@ -2574,13 +2574,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("888dd438-d07c-b425-2ff4-f9cbaa0087f1"),
+                            Choices = "[]",
                             DataType = (byte)0,
                             IsCore = false,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "notes",
                             Name = "ملاحظات",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 9
@@ -2588,13 +2588,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("f9801152-23d0-a6f6-5569-b0fc4529dbc3"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "contract",
                             Name = "العقد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 10
@@ -2602,13 +2602,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("36ccb44c-d5fd-8b0a-7579-d111f91f3d58"),
+                            Choices = "[]",
                             DataType = (byte)2,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "amount",
                             Name = "المبلغ",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = true,
                             SortOrder = 11
@@ -2616,13 +2616,13 @@ namespace Redix.Api.Migrations
                         new
                         {
                             Id = new Guid("53a2404d-b058-aba6-c6a2-0a33b171f266"),
+                            Choices = "[]",
                             DataType = (byte)4,
                             IsCore = true,
                             IsRequired = false,
                             ItemType = (byte)2,
                             Key = "outsideContract",
                             Name = "داخل أو خارج العقد",
-                            Options = "[]",
                             ProjectId = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             ShowInReports = false,
                             SortOrder = 12
@@ -3036,6 +3036,10 @@ namespace Redix.Api.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Choices")
+                        .IsRequired()
+                        .HasColumnType("json");
+
                     b.Property<byte>("DataType")
                         .HasColumnType("tinyint");
 
@@ -3061,10 +3065,6 @@ namespace Redix.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.PrimitiveCollection<string>("Options")
-                        .IsRequired()
-                        .HasColumnType("json");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -10610,6 +10610,76 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("a3947043-8ca0-a723-76a0-7da2ffe83434"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("33186c1e-53a3-b835-22ff-2c88c41232a8"),
+                            Value = "This table already has a list whose choices give the amount a sign, and a table takes one."
+                        },
+                        new
+                        {
+                            Id = new Guid("be04e3ed-916f-aa61-1261-71f6e3439534"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("33186c1e-53a3-b835-22ff-2c88c41232a8"),
+                            Value = "لهذا الجدول قائمة تعطي خياراتها المبلغ إشارة، والجدول يأخذ قائمة واحدة."
+                        },
+                        new
+                        {
+                            Id = new Guid("7f2a7431-ac6e-5028-0440-f83d99c91a4d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("171eeff3-87f8-03aa-838a-91d8808e4b96"),
+                            Value = "Sign"
+                        },
+                        new
+                        {
+                            Id = new Guid("9590ea1f-33cd-eaa2-cd37-20193c7736ad"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("171eeff3-87f8-03aa-838a-91d8808e4b96"),
+                            Value = "الإشارة"
+                        },
+                        new
+                        {
+                            Id = new Guid("c9811628-c8e3-98a6-5149-acfdaeb675e9"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("fbb8026f-ca96-eba5-9437-ac9447250276"),
+                            Value = "No sign"
+                        },
+                        new
+                        {
+                            Id = new Guid("5eb00446-ae21-97ad-602e-4d28f14c2325"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("fbb8026f-ca96-eba5-9437-ac9447250276"),
+                            Value = "بلا إشارة"
+                        },
+                        new
+                        {
+                            Id = new Guid("cdcc5583-2907-1f30-a0a3-925ad2a620e5"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("7c8ac24d-4e48-51ce-c825-a5bcdb589d75"),
+                            Value = "Plus (+)"
+                        },
+                        new
+                        {
+                            Id = new Guid("ca9fc061-2d94-c0f3-ce16-9205350ee5a5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("7c8ac24d-4e48-51ce-c825-a5bcdb589d75"),
+                            Value = "موجب (+)"
+                        },
+                        new
+                        {
+                            Id = new Guid("3204939f-84d8-2bd6-1921-c19947528631"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ef27daa6-a8f0-1419-97e1-8d945a94deff"),
+                            Value = "Minus (−)"
+                        },
+                        new
+                        {
+                            Id = new Guid("a64ea42c-986d-6a28-4ef2-eaaa71902aee"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ef27daa6-a8f0-1419-97e1-8d945a94deff"),
+                            Value = "سالب (−)"
+                        },
+                        new
+                        {
                             Id = new Guid("cea63ab5-8b1b-16d1-b785-82bb19ffa618"),
                             Language = "en",
                             TranslationKeyId = new Guid("a2a7be53-b697-e4cf-4ba3-1201ad92bd81"),
@@ -17797,6 +17867,36 @@ namespace Redix.Api.Migrations
                             Id = new Guid("762e094c-1186-fe92-0635-7c8febfdaa03"),
                             Description = "",
                             Key = "columns.invalidOptions"
+                        },
+                        new
+                        {
+                            Id = new Guid("33186c1e-53a3-b835-22ff-2c88c41232a8"),
+                            Description = "",
+                            Key = "columns.signedListExists"
+                        },
+                        new
+                        {
+                            Id = new Guid("171eeff3-87f8-03aa-838a-91d8808e4b96"),
+                            Description = "",
+                            Key = "columns.sign"
+                        },
+                        new
+                        {
+                            Id = new Guid("fbb8026f-ca96-eba5-9437-ac9447250276"),
+                            Description = "",
+                            Key = "columns.signNone"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c8ac24d-4e48-51ce-c825-a5bcdb589d75"),
+                            Description = "",
+                            Key = "columns.signPlus"
+                        },
+                        new
+                        {
+                            Id = new Guid("ef27daa6-a8f0-1419-97e1-8d945a94deff"),
+                            Description = "",
+                            Key = "columns.signMinus"
                         },
                         new
                         {

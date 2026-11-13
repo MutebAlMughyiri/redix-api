@@ -20,7 +20,7 @@ public class DefaultColumn : Column
         IsRequired = request.IsRequired,
         ShowInReports = request.ShowInReports,
         SortOrder = sortOrder,
-        Options = request.DataType == ColumnDataType.List ? ChoicesOf(request.Options) : [],
+        Choices = request.DataType == ColumnDataType.List ? ChoicesOf(request.Choices) : [],
     };
 
     /// <summary>The same column on the template of another project.</summary>
@@ -35,6 +35,6 @@ public class DefaultColumn : Column
         IsRequired = IsRequired,
         ShowInReports = ShowInReports,
         SortOrder = SortOrder,
-        Options = [.. Options],
+        Choices = [.. Choices.Select(choice => choice.Copy())],
     };
 }

@@ -102,9 +102,9 @@ public class ExpensesTests(MigratedApiFactory factory)
         return (await response.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<AttachmentView>(Json))!.Id;
     }
 
-    private static async Task<string> CustomColumnAsync(HttpClient client, Guid projectId, Guid itemId, ColumnDataType dataType, bool isRequired, params List<string> options)
+    private static async Task<string> CustomColumnAsync(HttpClient client, Guid projectId, Guid itemId, ColumnDataType dataType, bool isRequired, params List<string> choices)
     {
-        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns", new AddColumnRequest("المساحة م²", dataType, isRequired, false, options), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/projects/{projectId}/items/{itemId}/columns", new AddColumnRequest("المساحة م²", dataType, isRequired, false, [.. choices.Select(name => new ChoiceRequest(name))]), Json)).EnsureSuccessStatusCode();
         return (await client.GetFromJsonAsync<List<ColumnView>>($"/projects/{projectId}/items/{itemId}/columns", Json))!.Last().Key;
     }
 
@@ -441,8 +441,10 @@ public class ExpensesTests(MigratedApiFactory factory)
     {
         var setup = await FinanceAsync();
         var key = await CustomColumnAsync(setup.Client, setup.Project.Id, setup.ItemId, dataType, false, "أحمر");
+        var columns = (await setup.Client.GetFromJsonAsync<List<ColumnView>>($"/projects/{setup.Project.Id}/items/{setup.ItemId}/columns", Json))!;
+        var typed = dataType == ColumnDataType.List ? columns.Single(column => column.Key == key).Choices.Single(choice => choice.Name == value).Id.ToString() : value;
 
-        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { CustomValues = new Dictionary<string, string> { [key] = value } })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { CustomValues = new Dictionary<string, string> { [key] = typed } })).StatusCode);
     }
 
     [Fact]
