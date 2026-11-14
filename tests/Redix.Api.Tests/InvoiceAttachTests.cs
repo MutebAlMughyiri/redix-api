@@ -3,23 +3,31 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
+using Redix.Api.Contracts;
 using Redix.Api.History;
 using Redix.Api.Entries;
 using Redix.Api.Notifications;
+using Redix.Api.Partners;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
 
-/// <summary>UC-039: a file that arrived after the expense was entered goes on it, and nothing else changes (redix-api #96, D15).</summary>
+/// <summary>
+/// UC-039, redix-app #115: a file shared to REDIX goes on any entry its person may handle, of any kind, an approved one too, beside the files it has, and nothing else about the entry
+/// changes (redix-api #96, D15).
+/// </summary>
 [Collection(DatabaseCollection.Name)]
 public class InvoiceAttachTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
-    private static string Address(Ledger ledger, string vatNumber = "", decimal total = 0, string date = "") =>
-        $"/projects/{ledger.ProjectId}/entries/attachable?itemId={ledger.ItemId}&vatNumber={vatNumber}&total={total}&date={(date.Length == 0 ? "0001-01-01" : date)}";
+    /// <summary>What the share screen lists: the entries <paramref name="client"/> may put a file on (D6).</summary>
+    private static async Task<List<Guid>> AttachableAsync(HttpClient client, Ledger ledger) =>
+        [.. (await client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries?attachable=true", Json))!.Select(row => row.Id)];
 
-    private static async Task<List<AttachableEntryView>> AttachableAsync(HttpClient client, Ledger ledger, string vatNumber = "", decimal total = 0, string date = "") =>
-        (await client.GetFromJsonAsync<List<AttachableEntryView>>(Address(ledger, vatNumber, total, date), Json))!;
+    /// <summary>What the share screen pins over the list: the entries a QR code matches (AC-49.2).</summary>
+    private static async Task<List<EntryRowView>> MatchesAsync(HttpClient client, Ledger ledger, string vatNumber, decimal total, DateOnly date) =>
+        (await client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries/attachable?vatNumber={vatNumber}&total={total}&date={date:yyyy-MM-dd}", Json))!;
 
     private static AttachInvoiceRequest Invoice(Guid attachmentId) => new(attachmentId);
 
@@ -28,6 +36,8 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
 
     private static Task<HttpResponseMessage> AttachAsync(HttpClient client, Ledger ledger, Guid entryId, AttachInvoiceRequest request) =>
         client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/invoice", request, Json);
+
+    private static Task<List<EntryAttachment>> FilesOfAsync(Ledger ledger, Guid entryId) => ledger.ReadAsync(db => db.EntryAttachments.Where(row => row.EntryId == entryId).ToListAsync());
 
     private static async Task<(HttpClient Client, EntryRequest Request)> FieldRecordsAsync(Ledger ledger)
     {
@@ -39,21 +49,83 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         return (field, request);
     }
 
-    [Fact]
-    public async Task OnlyAnExpenseWithNoFileInThatItemIsOffered()
+    private static async Task<Guid> PartnerAsync(Ledger ledger, string name)
     {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var without = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(without);
-        await ledger.RecordAsync(ledger.Purchase() with { AttachmentId = await ledger.FileAsync() });
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/partners", new PartnerRequest(name), Json)).EnsureSuccessStatusCode();
+        return (await ledger.Client.GetFromJsonAsync<List<PartnerView>>($"/projects/{ledger.ProjectId}/partners", Json))!.Single(row => row.Name == name).Id;
+    }
 
-        var offered = await AttachableAsync(ledger.Client, ledger);
-
-        Assert.Equal(without.Id, Assert.Single(offered).Id);
+    /// <summary>A payment of 3,000 on a new contract of the ledger's supplier, in the first item that takes contractor payments.</summary>
+    private static async Task<EntryRequest> ContractorPaymentAsync(Ledger ledger)
+    {
+        var item = (await ledger.Client.GetFromJsonAsync<List<CategoryView>>($"/projects/{ledger.ProjectId}/categories/offered?itemType={ItemType.ContractorPayments}", Json))!.SelectMany(category => category.Items).First();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, item.Id, 34000m, false), Json)).EnsureSuccessStatusCode();
+        var contract = (await ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{ledger.ProjectId}/contracts", Json))!.Last();
+        return new EntryRequest(Guid.CreateVersion7()) { ItemId = item.Id, TableId = contract.Id, Date = ledger.Today, Amount = 3000m, PaymentMethodId = ledger.MethodId, AccountId = ledger.AccountId, Submit = true };
     }
 
     [Fact]
-    public async Task AC_49_2_TheOneMatchingTheQrCodeIsMarkedAndComesFirst()
+    public async Task AC_46_10c_D5_EveryKindThatPaysSomethingIsListedWithOrWithoutAFile()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (purchase, withFile, payment) = (ledger.Purchase(200m) with { Submit = true }, ledger.Purchase() with { AttachmentId = await ledger.FileAsync() }, await ContractorPaymentAsync(ledger));
+        var (revenue, money) = (await ledger.RevenueAsync(ItemType.OtherRevenue, 70), await ledger.PartnerEntryAsync(await PartnerAsync(ledger, "هيثم"), 500));
+        foreach (var request in new[] { purchase, withFile, payment, revenue, money })
+        {
+            await ledger.RecordAsync(request);
+        }
+
+        Assert.Equal(new[] { purchase.Id, withFile.Id, payment.Id, revenue.Id, money.Id }.Order(), (await AttachableAsync(ledger.Client, ledger)).Order());
+    }
+
+    [Fact]
+    public async Task AC_46_10c_ADeductionACreditNoteAndARemovedEntryAreNotListedAndCannotTakeOne()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (deduction, creditNote, removed) = (ledger.Deduction(-50m), ledger.CreditNote(30m), ledger.Purchase(200m) with { Submit = true });
+        foreach (var request in new[] { deduction, creditNote, removed })
+        {
+            await ledger.RecordAsync(request);
+        }
+        await ledger.SetStatusAsync(removed.Id, EntryStatus.Removed);
+
+        Assert.Empty(await AttachableAsync(ledger.Client, ledger));
+        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, deduction.Id, Invoice(await ledger.FileAsync()))));
+        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, creditNote.Id, Invoice(await ledger.FileAsync()))));
+        Assert.Equal(HttpStatusCode.NotFound, (await AttachAsync(ledger.Client, ledger, removed.Id, Invoice(await ledger.FileAsync()))).StatusCode);
+    }
+
+    [Fact]
+    public async Task AC_46_10f_FieldListsAndAttachesToTheirOwnAlone()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var finances = ledger.Purchase(200m) with { Submit = true };
+        await ledger.RecordAsync(finances);
+        var (field, own) = await FieldRecordsAsync(ledger);
+
+        Assert.Equal([own.Id], await AttachableAsync(field, ledger));
+        Assert.Equal(HttpStatusCode.OK, (await AttachAsync(field, ledger, own.Id, Invoice(await ledger.FileAsync()))).StatusCode);
+        var refused = await AttachAsync(field, ledger, finances.Id, Invoice(await ledger.FileAsync()));
+        Assert.Equal((HttpStatusCode.Forbidden, "notYourEntry"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+    }
+
+    [Fact]
+    public async Task AC_46_10f_WhoeverManagesAnyEntryListsAndAttachesToOthersButNeverToTheirDrafts()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (field, sent) = await FieldRecordsAsync(ledger);
+        var draft = sent with { Id = Guid.CreateVersion7(), Submit = false };
+        (await field.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries", draft, Json)).EnsureSuccessStatusCode();
+
+        Assert.Equal([sent.Id], await AttachableAsync(ledger.Client, ledger));
+        Assert.Contains(draft.Id, await AttachableAsync(field, ledger));
+        Assert.Equal(HttpStatusCode.OK, (await AttachAsync(ledger.Client, ledger, sent.Id, Invoice(await ledger.FileAsync()))).StatusCode);
+        var refused = await AttachAsync(ledger.Client, ledger, draft.Id, Invoice(await ledger.FileAsync()));
+        Assert.Equal((HttpStatusCode.Forbidden, "notYourEntry"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+    }
+
+    [Fact]
+    public async Task AC_49_2_D6_TheQrCodesMatchAloneIsAnsweredForThePinOverTheList()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         await factory.WithDatabaseAsync(db => db.Projects.Where(row => row.Id == ledger.ProjectId).ExecuteUpdateAsync(row => row.SetProperty(project => project.StartDate, ledger.Today.AddMonths(-1))));
@@ -61,46 +133,69 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var matching = ledger.Purchase(200m) with { Submit = true, Amount = 6000, Date = ledger.Today.AddDays(-3) };
         var far = ledger.Purchase(200m) with { Submit = true, Amount = 6002, Date = ledger.Today };
         var late = ledger.Purchase(200m) with { Submit = true, Amount = 6000, Date = ledger.Today.AddDays(-4) };
-        await ledger.RecordAsync(matching);
-        await ledger.RecordAsync(far);
-        await ledger.RecordAsync(late);
+        foreach (var request in new[] { matching, far, late })
+        {
+            await ledger.RecordAsync(request);
+        }
 
-        var offered = await AttachableAsync(ledger.Client, ledger, vatNumber, 6000.5m, $"{ledger.Today:yyyy-MM-dd}");
+        var matches = await MatchesAsync(ledger.Client, ledger, vatNumber, 6000.5m, ledger.Today);
 
-        Assert.Equal(matching.Id, offered[0].Id);
-        Assert.True(offered[0].IsMatching);
-        Assert.False(offered[1].IsMatching);
-        Assert.False(offered[2].IsMatching);
+        Assert.Equal((matching.Id, vatNumber), (Assert.Single(matches).Id, matches[0].SupplierVatNumber));
+        Assert.Equal(1, matches[0].Number);
+        Assert.Empty(await MatchesAsync(ledger.Client, ledger, "", 6000.5m, ledger.Today));
+        Assert.Empty(await MatchesAsync(ledger.Client, ledger, MigratedApiFactory.NewVatNumber(), 6000.5m, ledger.Today));
     }
 
     [Fact]
-    public async Task AC_49_4_FieldSeesOnlyTheirOwn()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        await ledger.RecordAsync(ledger.Purchase(200m) with { Submit = true });
-        var (field, own) = await FieldRecordsAsync(ledger);
-
-        Assert.Equal(own.Id, Assert.Single(await AttachableAsync(field, ledger)).Id);
-        Assert.Equal(2, (await AttachableAsync(ledger.Client, ledger)).Count);
-    }
-
-    [Fact]
-    public async Task D15_AttachingPutsOnlyTheFileOnTheEntryAndWritesItInTheTrail()
+    public async Task AC_46_10a_R10_AFileGoesOnAnApprovedEntryItsFiguresStayAndAHistoryLineIsWritten()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var request = ledger.Purchase(115m) with { Submit = true };
         await ledger.RecordAsync(request);
+        await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
         var file = await ledger.FileAsync();
         var trailBefore = (await factory.HistoryOfAsync(request.Id)).Count;
 
         var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(file));
 
-        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
-        var link = await ledger.ReadAsync(db => db.EntryAttachments.SingleAsync(row => row.EntryId == request.Id));
+        Assert.Equal(EntryStatus.Approved, (await answer.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Status);
+        var link = Assert.Single(await FilesOfAsync(ledger, request.Id));
         Assert.Equal((file, EntryAttachmentRole.Invoice), (link.AttachmentId, link.Role));
         Assert.False(await ledger.ReadAsync(db => db.Invoices.AnyAsync(row => row.EntryId == request.Id)));
-        Assert.Equal(115m, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id))).Amount);
+        var kept = await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id));
+        Assert.Equal((115m, EntryStatus.Approved), (kept.Amount, kept.Status));
         Assert.Equal(HistoryAction.Create, Assert.Single((await factory.HistoryOfAsync(request.Id)).Skip(trailBefore)).Action);
+    }
+
+    [Fact]
+    public async Task AC_46_10e_R5_AnEntryWithAFileIsListedAndKeepsBothFilesAfterTheAttach()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var first = await ledger.FileAsync();
+        var request = ledger.Purchase() with { AttachmentId = first, Submit = true };
+        await ledger.RecordAsync(request);
+        var second = await ledger.FileAsync();
+
+        Assert.Contains(request.Id, await AttachableAsync(ledger.Client, ledger));
+        (await AttachAsync(ledger.Client, ledger, request.Id, Invoice(second))).EnsureSuccessStatusCode();
+
+        Assert.Equal(new[] { first, second }.Order(), (await FilesOfAsync(ledger, request.Id)).Select(link => link.AttachmentId).Order());
+    }
+
+    [Fact]
+    public async Task D5_EachFileTakesItsTablesRole()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (payment, revenue, money) = (await ContractorPaymentAsync(ledger), await ledger.RevenueAsync(ItemType.OtherRevenue, 70), await ledger.PartnerEntryAsync(await PartnerAsync(ledger, "هيثم"), 500));
+        foreach (var request in new[] { payment, revenue, money })
+        {
+            await ledger.RecordAsync(request);
+            (await AttachAsync(ledger.Client, ledger, request.Id, Invoice(await ledger.FileAsync()))).EnsureSuccessStatusCode();
+        }
+
+        var roles = await Task.WhenAll(new[] { payment, revenue, money }.Select(async request => Assert.Single(await FilesOfAsync(ledger, request.Id)).Role));
+
+        Assert.Equal([EntryAttachmentRole.Receipt, EntryAttachmentRole.Other, EntryAttachmentRole.BankReceipt], roles);
     }
 
     [Fact]
@@ -133,12 +228,11 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var answer = await AttachAsync(ledger.Client, ledger, request.Id, Invoice(await ledger.FileAsync()));
 
         Assert.Equal(EntryStatus.Approved, (await answer.Content.ReadFromJsonAsync<EntryStatusView>(Json))!.Status);
-        Assert.Equal(EntryStatus.Approved, (await ledger.ReadAsync(db => db.Entries.SingleAsync(row => row.Id == request.Id))).Status);
         Assert.Equal(toldBefore, (await other.GetFromJsonAsync<List<NotificationView>>("/notifications", Json))!.Count);
     }
 
     [Fact]
-    public async Task AFileAlreadyOnAnEntryIsRefused()
+    public async Task G1_BR_22_AFileAlreadyOnAnEntryIsRefused()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var first = ledger.Purchase(200m) with { Submit = true };
@@ -148,49 +242,8 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         var file = await ledger.FileAsync();
         await AttachAsync(ledger.Client, ledger, first.Id, Invoice(file));
 
-        var repeated = await AttachAsync(ledger.Client, ledger, second.Id, Invoice(file));
-
-        Assert.Equal("invoiceAlreadyAttached", await Ledger.CodeOf(repeated));
-    }
-
-    [Fact]
-    public async Task SomeoneElsesEntryIsRefusedToField()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(request);
-        var (field, _) = await ledger.MemberAsync("Field");
-
-        var refused = await AttachAsync(field, ledger, request.Id, Invoice(await ledger.FileAsync()));
-
-        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
-        Assert.Equal("notYourEntry", await Ledger.CodeOf(refused));
-    }
-
-    [Fact]
-    public async Task WhatCannotTakeAFileIsRefused()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var hasOne = ledger.Purchase() with { AttachmentId = await ledger.FileAsync() };
-        await ledger.RecordAsync(hasOne);
-        var deduction = ledger.Deduction(-50m);
-        await ledger.RecordAsync(deduction);
-
-        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, hasOne.Id, Invoice(await ledger.FileAsync()))));
-        Assert.Equal("entryNotAttachable", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, deduction.Id, Invoice(await ledger.FileAsync()))));
-        Assert.DoesNotContain(await AttachableAsync(ledger.Client, ledger), row => row.Id == deduction.Id);
-    }
-
-    [Fact]
-    public async Task App_119_ARemovedEntryIsNotOffered()
-    {
-        var ledger = await Ledger.WithFinanceAsync(factory);
-        var request = ledger.Purchase(200m) with { Submit = true };
-        await ledger.RecordAsync(request);
-        await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
-        await ledger.SetStatusAsync(request.Id, EntryStatus.Removed);
-
-        Assert.Empty(await AttachableAsync(ledger.Client, ledger));
+        Assert.Equal("invoiceAlreadyAttached", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, second.Id, Invoice(file))));
+        Assert.Equal("invoiceAlreadyAttached", await Ledger.CodeOf(await AttachAsync(ledger.Client, ledger, first.Id, Invoice(file))));
     }
 
     [Fact]

@@ -9320,59 +9320,31 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("68d3dfdf-8118-7a8c-49b9-fcb433f4533a"),
+                            Id = new Guid("fba69549-0814-07d4-75e1-68ca613816a7"),
                             Language = "en",
-                            TranslationKeyId = new Guid("a3b243e1-d152-3d66-0d16-029a53f33aae"),
-                            Value = "Choose the item to see its expenses."
+                            TranslationKeyId = new Guid("ed149f97-58a9-24a9-6074-3b093362b6a3"),
+                            Value = "Search the entries"
                         },
                         new
                         {
-                            Id = new Guid("40a32818-66b6-8438-813f-65754333fd20"),
+                            Id = new Guid("29168218-1be6-b6f3-1ad2-30cd165a1c69"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("a3b243e1-d152-3d66-0d16-029a53f33aae"),
-                            Value = "اختر البند لتظهر مصروفاته."
+                            TranslationKeyId = new Guid("ed149f97-58a9-24a9-6074-3b093362b6a3"),
+                            Value = "ابحث في القيود"
                         },
                         new
                         {
-                            Id = new Guid("a313c2bf-1e85-873a-4b19-41aad6bbb75f"),
+                            Id = new Guid("b9507cf0-bc84-7764-20dc-edc07fd79dac"),
                             Language = "en",
-                            TranslationKeyId = new Guid("e058cc8c-8a0f-8dd3-9667-cd4d56902b4a"),
-                            Value = "No expense without an invoice under this item."
+                            TranslationKeyId = new Guid("c024bb98-9f03-273d-c391-aeaf45b8c8c6"),
+                            Value = "Matches the bill"
                         },
                         new
                         {
-                            Id = new Guid("3f56e07d-596d-ef3f-827a-f27a040975cf"),
+                            Id = new Guid("619ed52f-6950-7133-4095-504203bfee1b"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("e058cc8c-8a0f-8dd3-9667-cd4d56902b4a"),
-                            Value = "لا مصروف بلا فاتورة تحت هذا البند."
-                        },
-                        new
-                        {
-                            Id = new Guid("b784bf3d-ca05-0a9f-f3d4-d5ed4dd8023b"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("9a204ace-ddf2-e175-0369-fc78227a5d0c"),
-                            Value = "Expense"
-                        },
-                        new
-                        {
-                            Id = new Guid("804a5fd6-855f-8499-9de1-3c6790f551c8"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("9a204ace-ddf2-e175-0369-fc78227a5d0c"),
-                            Value = "المصروف"
-                        },
-                        new
-                        {
-                            Id = new Guid("6bacabe1-5d51-8314-c738-7229c9956a02"),
-                            Language = "en",
-                            TranslationKeyId = new Guid("e7265e1b-72cf-1669-57a7-ee469f63cc8a"),
-                            Value = "Matching"
-                        },
-                        new
-                        {
-                            Id = new Guid("73774f15-36cb-daba-df7e-e30ff27ce97c"),
-                            Language = "ar",
-                            TranslationKeyId = new Guid("e7265e1b-72cf-1669-57a7-ee469f63cc8a"),
-                            Value = "مطابق"
+                            TranslationKeyId = new Guid("c024bb98-9f03-273d-c391-aeaf45b8c8c6"),
+                            Value = "يطابق الفاتورة"
                         },
                         new
                         {
@@ -9407,14 +9379,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("24787303-6dcc-7ffa-2fab-61938696a525"),
                             Language = "en",
                             TranslationKeyId = new Guid("9e3c91a6-2783-fa52-203e-fbcd93848e1d"),
-                            Value = "The invoice was attached."
+                            Value = "The file was attached to “{0}”."
                         },
                         new
                         {
                             Id = new Guid("b62d510d-1bc8-8dc8-8ca5-d19c3296fd86"),
                             Language = "ar",
                             TranslationKeyId = new Guid("9e3c91a6-2783-fa52-203e-fbcd93848e1d"),
-                            Value = "أُرفقت الفاتورة."
+                            Value = "أُرفق الملف بـ«{0}»."
                         },
                         new
                         {
@@ -17558,27 +17530,15 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a3b243e1-d152-3d66-0d16-029a53f33aae"),
+                            Id = new Guid("ed149f97-58a9-24a9-6074-3b093362b6a3"),
                             Description = "",
-                            Key = "share.chooseItem"
+                            Key = "share.searchEntries"
                         },
                         new
                         {
-                            Id = new Guid("e058cc8c-8a0f-8dd3-9667-cd4d56902b4a"),
+                            Id = new Guid("c024bb98-9f03-273d-c391-aeaf45b8c8c6"),
                             Description = "",
-                            Key = "share.empty"
-                        },
-                        new
-                        {
-                            Id = new Guid("9a204ace-ddf2-e175-0369-fc78227a5d0c"),
-                            Description = "",
-                            Key = "share.expense"
-                        },
-                        new
-                        {
-                            Id = new Guid("e7265e1b-72cf-1669-57a7-ee469f63cc8a"),
-                            Description = "",
-                            Key = "share.matching"
+                            Key = "share.matches"
                         },
                         new
                         {

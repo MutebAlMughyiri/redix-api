@@ -6,7 +6,10 @@ using Redix.Api.Projects;
 
 namespace Redix.Api.Entries;
 
-/// <summary>Putting a file that arrived later on an expense that has none (UC-039, BR-22): only the file goes on, nothing else about the expense changes, and it is not sent back for approval (redix-api #96, D15).</summary>
+/// <summary>
+/// Putting a file shared to REDIX on an entry (UC-039, BR-22, redix-app #115): any entry its person may handle, of any kind, an approved one too, beside the files it has; only the
+/// file goes on, nothing else about the entry changes, and it is not sent back for approval (redix-api #96, D15).
+/// </summary>
 public static class InvoiceAttachEndpoints
 {
     private const decimal MatchingAmountDifference = 1;
@@ -22,35 +25,32 @@ public static class InvoiceAttachEndpoints
     }
 
     /// <summary>
-    /// The expenses of <paramref name="itemId"/> the caller may put a file on, newest first: their own, and with <see cref="Permission.ManageAnyEntry"/> anyone's sent or approved. Those whose supplier, total and date match what a QR code on the file says come first (AC-49.2).
+    /// The entries a QR code on a shared file matches (AC-49.2), as the lists show them, which the share screen pins over the list (redix-app #115 D4, D6): those the caller may put
+    /// a file on whose supplier's VAT number is the code's, whose total is within one riyal of its total and whose date within three days of its date; none for a file with no code.
     /// </summary>
     /// <param name="projectId">The project.</param>
-    /// <param name="itemId">The item.</param>
     /// <param name="vatNumber">The seller's VAT number on the file's QR code; empty when there is none.</param>
     /// <param name="total">The total on the QR code.</param>
     /// <param name="date">The date on the QR code.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
-    public static async Task<List<AttachableEntryView>> Attachable(Guid projectId, Guid itemId, string vatNumber, decimal total, DateOnly date, ClaimsPrincipal principal, RedixDbContext db)
+    public static async Task<List<EntryRowView>> Attachable(Guid projectId, string vatNumber, decimal total, DateOnly date, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        var seesAll = (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.ManageAnyEntry);
-        var entries = await AttachableIn(projectId, db)
-            .Where(entry => db.ExpenseDetails.Any(row => row.EntryId == entry.Id && row.ItemId == itemId))
-            .Where(entry => entry.CreatedByUserId == userId || (seesAll && entry.Status != EntryStatus.Draft))
-            .OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id).ToListAsync();
-        var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        return entries.Select(entry =>
-        {
-            var supplierVatNumber = facts.SupplierVatNumberOf(entry);
-            var isMatching = vatNumber.Length > 0 && supplierVatNumber == vatNumber && Math.Abs(entry.Amount - total) <= MatchingAmountDifference && Math.Abs(entry.EntryDate.DayNumber - date.DayNumber) <= MatchingDaysDifference;
-            return new AttachableEntryView(entry.Id, entry.Status, entry.EntryDate, entry.Amount, entry.Description, facts.SupplierNameOf(entry), supplierVatNumber, isMatching);
-        }).OrderByDescending(row => row.IsMatching).ToList();
+        var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
+        var near = await AttachableBy(db.Entries.Where(entry => entry.ProjectId == projectId), userId, held)
+            .Where(entry => entry.Amount >= total - MatchingAmountDifference && entry.Amount <= total + MatchingAmountDifference)
+            .Where(entry => entry.EntryDate >= date.AddDays(-MatchingDaysDifference) && entry.EntryDate <= date.AddDays(MatchingDaysDifference))
+            .ToListAsync();
+        var facts = await EntryFacts.OfAsync(projectId, near, db);
+        var matching = near.Where(entry => vatNumber.Length > 0 && facts.SupplierVatNumberOf(entry) == vatNumber).Select(entry => entry.Id).ToList();
+        return await EntriesEndpoints.RowsAsync(projectId, userId, db, entries => entries.Where(entry => matching.Contains(entry.Id)), 0);
     }
 
     /// <summary>
-    /// Puts the file on the expense, in the History table, and changes nothing else (D15). Someone else's draft, or someone else's sent entry to whoever may not manage any entry, answers <c>notYourEntry</c> (BR-42); one that has a file already, is a deduction or credit note, or was reversed answers <c>entryNotAttachable</c>; a file of no such attachment <c>unknownAttachment</c>,
-    /// and one already on an entry <c>invoiceAlreadyAttached</c> (BR-22).
+    /// Puts the file on the entry beside any it has, as its table's file (D5), in the History table, and changes nothing else (D15). Someone else's draft, or someone else's sent entry
+    /// to whoever may not manage any entry, answers <c>notYourEntry</c> (BR-42); a deduction, a credit note or a removed entry answers <c>entryNotAttachable</c>; a file of no such
+    /// attachment <c>unknownAttachment</c>, and one already on an entry <c>invoiceAlreadyAttached</c> (BR-22).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="entryId">The entry.</param>
@@ -66,11 +66,12 @@ public static class InvoiceAttachEndpoints
             return Results.NotFound();
         }
         var userId = AccessTokens.UserIdOf(principal);
-        if (!await EntryChanges.MayHandleAsync(entry, userId, db))
+        var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
+        if (!EntryChanges.MayHandle(entry, userId, held))
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "NotYourEntry");
         }
-        if (!await AttachableIn(projectId, db).AnyAsync(row => row.Id == entryId))
+        if (!await AttachableBy(db.Entries, userId, held).AnyAsync(row => row.Id == entryId))
         {
             return Refusal.Of(StatusCodes.Status409Conflict, "EntryNotAttachable");
         }
@@ -83,33 +84,33 @@ public static class InvoiceAttachEndpoints
             return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
         }
 
-        var role = entry.Kind == EntryKind.ContractorPayment ? EntryAttachmentRole.Receipt : EntryAttachmentRole.Invoice;
-        var file = new EntryAttachment { EntryId = entryId, AttachmentId = request.AttachmentId, Role = role };
+        var file = new EntryAttachment { EntryId = entryId, AttachmentId = request.AttachmentId, Role = await FileRoleOfAsync(entry, db) };
         db.Add(file);
         db.AddHistory(file, HistoryAction.Create, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
         return Results.Ok(new EntryStatusView(entryId, entry.Number, entry.Status, ""));
     }
 
-    /// <summary>The one answer to what can take a file later: an expense with none yet, not a deduction or credit note, which pay nothing, and not removed (redix-api #119).</summary>
-    private static IQueryable<Entry> AttachableIn(Guid projectId, RedixDbContext db) =>
-        db.Entries.Where(entry => entry.ProjectId == projectId && entry.Amount > 0
-            && db.ExpenseDetails.Any(row => row.EntryId == entry.Id)
-            && !db.EntryAttachments.Any(file => file.EntryId == entry.Id)
-            && entry.Status != EntryStatus.Removed);
+    /// <summary>
+    /// The one answer to which of <paramref name="entries"/> <paramref name="userId"/>, holding <paramref name="held"/>, may put a file on (redix-app #115 D2, D5): any kind, with or
+    /// without files, paying something, so no deduction or credit note, not removed (redix-api #119), and theirs to handle (<see cref="EntryChanges.MayHandle(Guid, List{Permission})"/>).
+    /// The share screen's list and the attach ask it alike.
+    /// </summary>
+    /// <param name="entries">The entries asked about.</param>
+    /// <param name="userId">Who would put the file on.</param>
+    /// <param name="held">What they hold in the project.</param>
+    public static IQueryable<Entry> AttachableBy(IQueryable<Entry> entries, Guid userId, List<Permission> held) =>
+        entries.Where(entry => entry.Amount > 0 && entry.Status != EntryStatus.Removed).Where(EntryChanges.MayHandle(userId, held));
+
+    /// <summary>What a file is to <paramref name="entry"/>: what its table's own file is (D5), the owner Add entry asks; anything else for a table the project no longer offers.</summary>
+    private static async Task<EntryAttachmentRole> FileRoleOfAsync(Entry entry, RedixDbContext db)
+    {
+        var tableId = (await EntriesEndpoints.ViewOfAsync(entry, db)).TableId;
+        var tables = await EntryTable.OfferedAsync(entry.ProjectId, [Permission.RecordEntries, Permission.MoveMoney], db);
+        return tables.FirstOrDefault(table => table.Id == tableId)?.FileRole ?? EntryAttachmentRole.Other;
+    }
 }
 
-/// <summary>An expense that can take a file.</summary>
-/// <param name="Id">The entry's id.</param>
-/// <param name="Status">Where it stands.</param>
-/// <param name="EntryDate">Its date.</param>
-/// <param name="Amount">Its total.</param>
-/// <param name="Description">«الوصف», what it says; empty when nothing.</param>
-/// <param name="SupplierName">Its supplier, or the contract's contractor.</param>
-/// <param name="SupplierVatNumber">That supplier's VAT number; empty when none.</param>
-/// <param name="IsMatching">True when the file's QR code matches it (AC-49.2).</param>
-public record AttachableEntryView(Guid Id, EntryStatus Status, DateOnly EntryDate, decimal Amount, string Description, string SupplierName, string SupplierVatNumber, bool IsMatching);
-
-/// <summary>A file to put on an expense.</summary>
+/// <summary>A file to put on an entry.</summary>
 /// <param name="AttachmentId">The file, already kept.</param>
 public record AttachInvoiceRequest(Guid AttachmentId);

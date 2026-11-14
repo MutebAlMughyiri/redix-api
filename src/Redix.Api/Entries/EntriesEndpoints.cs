@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -39,13 +38,14 @@ public static class EntriesEndpoints
     public static Task<List<EntryRowView>> Mine(Guid projectId, ClaimsPrincipal principal, RedixDbContext db)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        return RowsAsync(projectId, userId, db, entry => entry.CreatedByUserId == userId, 0);
+        return RowsAsync(projectId, userId, db, entries => entries.Where(entry => entry.CreatedByUserId == userId), 0);
     }
 
     /// <summary>
     /// The entries of the project <paramref name="principal"/> may see, newest first: everyone who reads a project sees all its expenses and revenue (Muteb, 8 Nov 2026), as <see cref="SeenByAsync"/> decides.
     /// Only those an <see cref="EntrySearch"/> keeps when anything narrows them (redix-app #104), and only the newest <paramref name="take"/> of them when it is above 0, as the
-    /// app's home and Entries screen read them a page at a time (redix-app #105); every one otherwise.
+    /// app's home and Entries screen read them a page at a time (redix-app #105); every one otherwise. With <paramref name="attachable"/>, only those a shared file can go on, which
+    /// the share screen lists (redix-app #115 D6, <see cref="InvoiceAttachEndpoints.AttachableBy"/>).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
@@ -58,6 +58,7 @@ public static class EntriesEndpoints
     /// <param name="from">The first day kept, as an ISO date; empty for no first day.</param>
     /// <param name="to">The last day kept, as an ISO date; empty for no last day.</param>
     /// <param name="number">The «رقم القيد» kept (FR-54); 0 for any.</param>
+    /// <param name="attachable">True to keep only the entries the caller may put a file on.</param>
     public static async Task<List<EntryRowView>> List(
         Guid projectId,
         ClaimsPrincipal principal,
@@ -69,15 +70,22 @@ public static class EntriesEndpoints
         bool mine = false,
         string from = "",
         string to = "",
-        int number = 0)
+        int number = 0,
+        bool attachable = false)
     {
         var userId = AccessTokens.UserIdOf(principal);
         var search = EntrySearch.Of(text, mine, kinds, statuses, from, to, number);
+        Func<IQueryable<Entry>, IQueryable<Entry>> shown = entries => entries;
+        if (attachable)
+        {
+            var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
+            shown = entries => InvoiceAttachEndpoints.AttachableBy(entries, userId, held);
+        }
         if (!search.Narrows)
         {
-            return await RowsAsync(projectId, userId, db, entry => true, take);
+            return await RowsAsync(projectId, userId, db, shown, take);
         }
-        var kept = (await RowsAsync(projectId, userId, db, entry => true, 0)).Where(search.Keeps);
+        var kept = (await RowsAsync(projectId, userId, db, shown, 0)).Where(search.Keeps);
         return [.. take > 0 ? kept.Take(take) : kept];
     }
 
@@ -99,10 +107,15 @@ public static class EntriesEndpoints
             && (seesAll || !db.CapitalMovementDetails.Any(details => details.EntryId == entry.Id && !chosen.Contains(details.PartnerId))));
     }
 
-    /// <summary>The entries <paramref name="shown"/> keeps of those the caller may see, newest first: only the newest <paramref name="take"/> when it is above 0.</summary>
-    private static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, Expression<Func<Entry, bool>> shown, int take)
+    /// <summary>The entries <paramref name="shown"/> keeps of those <paramref name="userId"/> may see, newest first, as the lists show them: only the newest <paramref name="take"/> when it is above 0.</summary>
+    /// <param name="projectId">The project.</param>
+    /// <param name="userId">Who is looking.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    /// <param name="shown">What narrows the entries seen, in the same query.</param>
+    /// <param name="take">How many of the newest to give; 0 for every one.</param>
+    public static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, Func<IQueryable<Entry>, IQueryable<Entry>> shown, int take)
     {
-        var newestFirst = (await SeenByAsync(projectId, userId, db)).Where(shown).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id);
+        var newestFirst = shown(await SeenByAsync(projectId, userId, db)).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id);
         var entries = await (take > 0 ? newestFirst.Take(take) : newestFirst).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
@@ -117,6 +130,7 @@ public static class EntriesEndpoints
             entry.Amount,
             facts.ItemNameOf(entry),
             facts.SupplierNameOf(entry),
+            facts.SupplierVatNumberOf(entry),
             facts.InvoiceOf(entry).Number,
             facts.AuthorNameOf(entry),
             entry.CreatedByUserId == userId,
@@ -137,7 +151,7 @@ public static class EntriesEndpoints
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<IResult> Row(Guid projectId, Guid entryId, ClaimsPrincipal principal, RedixDbContext db)
     {
-        var rows = await RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entry => entry.Id == entryId, 0);
+        var rows = await RowsAsync(projectId, AccessTokens.UserIdOf(principal), db, entries => entries.Where(entry => entry.Id == entryId), 0);
         return rows.Count == 1 ? Results.Ok(rows[0]) : Results.NotFound();
     }
 
@@ -293,7 +307,10 @@ public static class EntriesEndpoints
         return new EntryAnswers(entry.Description, entry.ColumnValuesByKey()).MissingOf(columns);
     }
 
-    private static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db)
+    /// <summary><paramref name="entry"/> with what its kind has, the table it is in among it (redix-api #110).</summary>
+    /// <param name="entry">The entry.</param>
+    /// <param name="db">The database the ledger lives in.</param>
+    public static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db)
     {
         var expense = await db.ExpenseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ExpenseDetails();
         var payment = await db.ContractorPaymentDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new ContractorPaymentDetails();
@@ -320,6 +337,7 @@ public static class EntriesEndpoints
 /// <param name="Amount">What was paid.</param>
 /// <param name="ItemName">Its item.</param>
 /// <param name="SupplierName">Its supplier, or its contract's contractor.</param>
+/// <param name="SupplierVatNumber">That supplier's VAT number, which a shared bill's QR code is compared with (AC-49.3); empty when none.</param>
 /// <param name="InvoiceNumber">Its invoice's number; empty when it has none.</param>
 /// <param name="AuthorName">Who entered it.</param>
 /// <param name="IsMine">True when the caller entered it.</param>
@@ -328,7 +346,7 @@ public static class EntriesEndpoints
 /// <param name="AccountName">The account it was paid from or reached.</param>
 /// <param name="PaymentMethodName">How an expense was paid; empty when nobody said, and for any other entry.</param>
 /// <param name="AccountShortBy">How much more what waits on its account takes than the account holds, which the shared entry notes without amounts (R6, R16); zero when it covers all of it.</param>
-public record EntryRowView(Guid Id, int Number, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, string PartnerName, string Description, string AccountName, string PaymentMethodName, decimal AccountShortBy);
+public record EntryRowView(Guid Id, int Number, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string SupplierVatNumber, string InvoiceNumber, string AuthorName, bool IsMine, string PartnerName, string Description, string AccountName, string PaymentMethodName, decimal AccountShortBy);
 
 /// <summary>An entry's description.</summary>
 /// <param name="Description">The description; may be empty.</param>

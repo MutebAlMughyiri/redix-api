@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.History;
 using Redix.Api.Auth;
@@ -26,9 +27,18 @@ public static class EntryChanges
         return entry.Status == EntryStatus.PendingApproval && !held.Contains(Permission.ManageAnyEntry) ? (StatusCodes.Status409Conflict, "EntryWaitingForDecision") : (0, "");
     }
 
-    /// <summary>Whether <paramref name="userId"/>, holding <paramref name="held"/>, may act on <paramref name="entry"/> at all: they entered it, or it was sent and they hold <see cref="Permission.ManageAnyEntry"/>. A draft is its author's alone until it is sent (BR-42).</summary>
-    public static bool MayHandle(Entry entry, Guid userId, List<Permission> held) =>
-        entry.CreatedByUserId == userId || (entry.Status != EntryStatus.Draft && held.Contains(Permission.ManageAnyEntry));
+    /// <summary>Whether <paramref name="userId"/>, holding <paramref name="held"/>, may act on <paramref name="entry"/> at all, as <see cref="MayHandle(Guid, List{Permission})"/> says.</summary>
+    public static bool MayHandle(Entry entry, Guid userId, List<Permission> held) => MayHandle(userId, held).Compile()(entry);
+
+    /// <summary>
+    /// The entries <paramref name="userId"/>, holding <paramref name="held"/>, may act on at all: they entered it, or it was sent and they hold <see cref="Permission.ManageAnyEntry"/>. A
+    /// draft is its author's alone until it is sent (BR-42). An expression, so a list's query asks the same question one entry does (findings row 198, redix-app #115 D2).
+    /// </summary>
+    public static Expression<Func<Entry, bool>> MayHandle(Guid userId, List<Permission> held)
+    {
+        var managesAny = held.Contains(Permission.ManageAnyEntry);
+        return entry => entry.CreatedByUserId == userId || (entry.Status != EntryStatus.Draft && managesAny);
+    }
 
     /// <summary>The same question, reading what <paramref name="userId"/> holds in the entry's project.</summary>
     public static async Task<bool> MayHandleAsync(Entry entry, Guid userId, RedixDbContext db) => MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(entry.ProjectId));
