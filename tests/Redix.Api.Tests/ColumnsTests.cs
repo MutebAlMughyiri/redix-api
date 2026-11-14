@@ -319,7 +319,7 @@ public class ColumnsTests(MigratedApiFactory factory)
 
         var after = await ColumnsOf(client, project.Id, item.Id);
         Assert.Equal(reversed, after.Select(column => column.Id));
-        Assert.Equal("تاريخ الفاتورة", after.Last().Name);
+        Assert.Equal("تاريخ الفاتورة", after.Single(column => column.Id == date.Id).Name);
     }
 
     [Fact]

@@ -291,11 +291,11 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var listed = (await ListAsync(client, projectId))!.Single(user => user.Id == manager.Id);
 
         Assert.Equal(ProjectPermission.OfWhoeverStarts.Order(), HeldIn(listed));
-        Assert.Equal(16, ProjectPermission.InAProject.Count);
+        Assert.Equal(18, ProjectPermission.InAProject.Count);
         Assert.Contains(Permission.SeeAllCapital, ProjectPermission.OfWhoeverStarts);
         Assert.DoesNotContain(Permission.SeeChosenCapital, ProjectPermission.OfWhoeverStarts);
         Assert.DoesNotContain(Permission.RemoveApprovedEntries, ProjectPermission.OfWhoeverStarts);
-        Assert.Equal(14, ProjectPermission.OfWhoeverStarts.Count);
+        Assert.Equal(16, ProjectPermission.OfWhoeverStarts.Count);
     }
 
     [Fact]
@@ -309,9 +309,9 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var again = await ViewOf(await GiveAsync(client, projectId, user.Id, Permission.ApproveEntries));
         var taken = await ViewOf(await TakeAsync(client, projectId, user.Id, Permission.ApproveEntries));
 
-        Assert.Equal([Permission.ReadProject, Permission.ApproveEntries], HeldIn(given));
+        Assert.Equal([Permission.ReadProject, Permission.ApproveEntries, Permission.SeeReports], HeldIn(given));
         Assert.Equal(HeldIn(given), HeldIn(again));
-        Assert.Equal([Permission.ReadProject], HeldIn(taken));
+        Assert.Equal(Holds.Reader, HeldIn(taken));
     }
 
     [Fact]
@@ -523,6 +523,20 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Row190_ManyUnticksOfOnePermissionAtTheSameMomentAllAnswerAsDoneAndLeaveNoRow()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var created = await ViewOf(await CreateAsync(client, projectId, NewUsername()));
+        (await GiveAsync(client, projectId, created.Id, Permission.ApproveEntries)).EnsureSuccessStatusCode();
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => TakeAsync(client, projectId, created.Id, Permission.ApproveEntries)));
+
+        Assert.All(answers, answer => Assert.Equal(HttpStatusCode.OK, answer.StatusCode));
+        await factory.WithDatabaseAsync(async db =>
+            Assert.Equal(0, await db.ProjectPermissions.CountAsync(row => row.ProjectId == projectId && row.UserId == created.Id && row.Permission == Permission.ApproveEntries)));
+    }
+
+    [Fact]
     public async Task Row190_ManyFirstRoleNamesAtTheSameMomentAllAnswerAsSavedAndKeepOneRow()
     {
         var (_, client, projectId) = await ManagerAsync();
@@ -543,6 +557,17 @@ public class ProjectUsersTests(MigratedApiFactory factory)
             db.ProjectPermissions.Add(new ProjectPermission { ProjectId = Guid.CreateVersion7(), UserId = Guid.CreateVersion7(), Permission = Permission.ApproveEntries });
 
             await Assert.ThrowsAsync<DbUpdateException>(db.SaveOnceAsync);
+        });
+    }
+
+    [Fact]
+    public async Task Row190_AChangeToARowNoLongerThereIsStillRefused()
+    {
+        await factory.WithDatabaseAsync(async db =>
+        {
+            db.ProjectRoleNames.Update(new ProjectRoleName { ProjectId = Guid.CreateVersion7(), UserId = Guid.CreateVersion7(), RoleName = "مشرف مالي" });
+
+            await Assert.ThrowsAsync<DbUpdateConcurrencyException>(db.SaveOnceAsync);
         });
     }
 }

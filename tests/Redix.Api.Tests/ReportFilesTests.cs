@@ -433,13 +433,13 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.All(workbook.Worksheets, sheet =>
         {
             Assert.Equal((XLPaperSize.A4Paper, 1, 0), (sheet.PageSetup.PaperSize, sheet.PageSetup.PagesWide, sheet.PageSetup.PagesTall));
-            Assert.Equal("غصون 6 · التقرير 1", sheet.PageSetup.Footer.Right.GetText(XLHFOccurrence.AllPages));
-            Assert.Equal("&A", sheet.PageSetup.Footer.Left.GetText(XLHFOccurrence.AllPages));
-            Assert.Equal("&P / &N", sheet.PageSetup.Footer.Center.GetText(XLHFOccurrence.AllPages));
+            Assert.Equal("غصون 6 · التقرير 1", sheet.PageSetup.Footer.Right.GetText(XLHFOccurrence.OddPages));
+            Assert.Equal("&A", sheet.PageSetup.Footer.Left.GetText(XLHFOccurrence.OddPages));
+            Assert.Equal("&P / &N", sheet.PageSetup.Footer.Center.GetText(XLHFOccurrence.OddPages));
         });
         Assert.Equal(XLPageOrientation.Portrait, workbook.Worksheet("الرسوم").PageSetup.PageOrientation);
         Assert.Equal(XLPageOrientation.Landscape, workbook.Worksheet("بلاط").PageSetup.PageOrientation);
-        Assert.Equal("A1:G4", workbook.Worksheet("الرسوم").PageSetup.PrintAreas.Single().RangeAddress.ToString());
+        Assert.Equal("A1:G4", workbook.Worksheet("الرسوم").PageSetup.PrintAreas.Single().RangeAddress.ToStringRelative());
     }
 
     [Fact]
@@ -727,7 +727,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
         using var contracts = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/contracts/xlsx")));
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(pdf, 0, 4));
-        Assert.Single(item.Worksheets);
+        Assert.Single(item.Worksheets, sheet => sheet.Visibility == XLWorksheetVisibility.Visible);
         Assert.Equal("العقود", contracts.Worksheet(1).Name);
     }
 

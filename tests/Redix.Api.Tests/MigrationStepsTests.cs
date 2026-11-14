@@ -13,7 +13,10 @@ namespace Redix.Api.Tests;
 [Collection(FourthDatabaseCollection.Name)]
 public class MigrationStepsTests(MigratedApiFactory factory)
 {
-    /// <summary>Writes <paramref name="today"/> on a database migrated to the step before <paramref name="step"/>, migrates through <paramref name="step"/>, and lets <paramref name="read"/> read it.</summary>
+    /// <summary>
+    /// Writes <paramref name="today"/> on a database migrated to the step before <paramref name="step"/>, migrates through <paramref name="step"/>, and lets <paramref name="read"/> read it.
+    /// The SQL runs as it is written, a JSON value's braces included: ExecuteSqlRaw reads a brace as a parameter's place, so each is doubled.
+    /// </summary>
     private Task ThroughAsync(string step, string today, Func<RedixDbContext, Task> read) =>
         factory.OnScratchDatabaseAsync("RedixMigrationStepTests", async db =>
         {
@@ -21,7 +24,7 @@ public class MigrationStepsTests(MigratedApiFactory factory)
             var steps = db.Database.GetMigrations().ToList();
             var index = steps.FindIndex(name => name.EndsWith($"_{step}"));
             await migrator.MigrateAsync(steps[index - 1]);
-            await db.Database.ExecuteSqlRawAsync(today);
+            await db.Database.ExecuteSqlRawAsync(today.Replace("{", "{{").Replace("}", "}}"));
             await migrator.MigrateAsync(steps[index]);
             await read(db);
         });
