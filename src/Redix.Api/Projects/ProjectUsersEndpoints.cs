@@ -83,18 +83,17 @@ public static class ProjectUsersEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownPartner");
         }
 
-        var email = request.Email.Trim();
-        var (emailStatus, emailRefusal) = await User.RefusalOfEmailAsync(email, Guid.Empty, db);
-        if (emailRefusal.Length > 0)
-        {
-            return Refusal.Of(emailStatus, emailRefusal);
-        }
-
         var now = time.GetUtcNow().UtcDateTime;
         var (user, status, refusal) = await User.AddNewAsync(request.DisplayName, request.Username, request.Mobile, request.TemporaryPassword, mustChangePassword: true, db, hasher, now);
         if (refusal.Length > 0)
         {
             return Refusal.Of(status, refusal);
+        }
+        var email = request.Email.Trim();
+        var (emailStatus, emailRefusal) = await User.RefusalOfEmailAsync(email, Guid.Empty, db);
+        if (emailRefusal.Length > 0)
+        {
+            return Refusal.Of(emailStatus, emailRefusal);
         }
         user.Email = email;
         db.AddHistory(user, HistoryAction.Create, AccessTokens.UserIdOf(principal), now);

@@ -113,6 +113,15 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AC_07_8_AnEmptyFormNamesTheUsernameFirstAndTheEmailOnlyAfterTheOtherFields_AsTheFormOrdersThem()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+
+        Assert.Equal("invalidUsername", await CodeOf(await CreateAsync(client, projectId, "", "", "", "", email: "")));
+        Assert.Equal("emailInvalid", await CodeOf(await CreateAsync(client, projectId, NewUsername(), email: "")));
+    }
+
+    [Fact]
     public async Task AC_07_8_R9_AnEmailAnotherAccountHoldsIsRefusedWhateverItsCase()
     {
         var (_, client, projectId) = await ManagerAsync();

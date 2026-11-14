@@ -28,6 +28,7 @@ A user's answer has `projects: [{ projectId, permissions, roleName, partnerIds, 
 | --- | --- | --- |
 | A user sees only their projects (AC-36.1) | `ProjectsEndpoints.List` | `ProjectsTests.AUserSeesOnlyTheirProjects` |
 | Adding a person needs a well-formed email no other account holds, whatever its case, and a refusal creates nothing (AC-07.8, D1, R9) | `User.RefusalOfEmailAsync`, `ProjectUsersEndpoints.Create`, the unique index on `Users.Email` | `ProjectUsersTests.AC_07_8_AddingAPersonKeepsTheEmailTheManagerTyped`, `AC_07_8_D1_AddingAPersonNeedsAWellFormedEmailAndCreatesNothingWithout`, `AC_07_8_R9_AnEmailAnotherAccountHoldsIsRefusedWhateverItsCase` |
+| The email is checked after the other fields, in the order the form shows them, so an empty form names the username first | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AC_07_8_AnEmptyFormNamesTheUsernameFirstAndTheEmailOnlyAfterTheOtherFields_AsTheFormOrdersThem` |
 | Each project carries what the user holds in it (AC-36.2) | `ProjectsEndpoints.List` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
 | A manager sees only their project's people, and none of those people's other projects (BR-33) | `ProjectUsersEndpoints.List` | `ProjectUsersTests.AManagerSeesOnlyTheirProjectsPeopleAndNoneOfTheirOtherProjects` |
 | A new login holds what was ticked and `ReadProject`, never the admin's permission | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AManagerCreatesALoginHoldingWhatWasTickedAndSeeingTheProjectWhoMustChangeThePassword`, `ANewLoginCannotBeGivenTheAdminsPermission` |
