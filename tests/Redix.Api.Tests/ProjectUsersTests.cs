@@ -291,11 +291,11 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var listed = (await ListAsync(client, projectId))!.Single(user => user.Id == manager.Id);
 
         Assert.Equal(ProjectPermission.OfWhoeverStarts.Order(), HeldIn(listed));
-        Assert.Equal(16, ProjectPermission.InAProject.Count);
+        Assert.Equal(18, ProjectPermission.InAProject.Count);
         Assert.Contains(Permission.SeeAllCapital, ProjectPermission.OfWhoeverStarts);
         Assert.DoesNotContain(Permission.SeeChosenCapital, ProjectPermission.OfWhoeverStarts);
         Assert.DoesNotContain(Permission.RemoveApprovedEntries, ProjectPermission.OfWhoeverStarts);
-        Assert.Equal(14, ProjectPermission.OfWhoeverStarts.Count);
+        Assert.Equal(16, ProjectPermission.OfWhoeverStarts.Count);
     }
 
     [Fact]
@@ -309,9 +309,9 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var again = await ViewOf(await GiveAsync(client, projectId, user.Id, Permission.ApproveEntries));
         var taken = await ViewOf(await TakeAsync(client, projectId, user.Id, Permission.ApproveEntries));
 
-        Assert.Equal([Permission.ReadProject, Permission.ApproveEntries], HeldIn(given));
+        Assert.Equal([Permission.ReadProject, Permission.ApproveEntries, Permission.SeeReports], HeldIn(given));
         Assert.Equal(HeldIn(given), HeldIn(again));
-        Assert.Equal([Permission.ReadProject], HeldIn(taken));
+        Assert.Equal(Holds.Reader, HeldIn(taken));
     }
 
     [Fact]
