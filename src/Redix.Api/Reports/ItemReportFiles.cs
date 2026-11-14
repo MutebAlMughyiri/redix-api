@@ -52,8 +52,11 @@ public static class ItemReportFiles
         title,
         [.. columns.Select(ColumnOf)],
         new StatementColumn(amountName, CellKind.Text),
-        [.. rows.Select(row => new StatementRow([.. columns.Zip(row.Values, CellOf)], row.Amount, row.IsNew, !row.IsOutsideContract))],
-        agreedAmount);
+        [.. rows.Select(row => new StatementRow(row.Number > 0 ? row.Number : Blank.Value, [.. columns.Zip(row.Values, CellOf)], row.Amount, row.IsNew, !row.IsOutsideContract))],
+        agreedAmount)
+    {
+        NumberHeader = "رقم القيد",
+    };
 
     /// <summary>A column of an item as its table prints it: a date as a day, an amount as money, a text as it is, anything else centred; a list with the choices its cells take (redix-api #129).</summary>
     private static StatementColumn ColumnOf(ReportColumnView column) => new(column.Name, column.DataType switch
@@ -122,7 +125,7 @@ public static class ItemReportFiles
             "العقود",
             [new StatementColumn("المقاول", CellKind.Text), new StatementColumn("البند", CellKind.Text), new StatementColumn("قيمة العقد", CellKind.Price), new StatementColumn("المدفوع", CellKind.Price)],
             new StatementColumn("المتبقي", CellKind.Price),
-            contracts.Select(contract => new StatementRow([contract.SupplierName, contract.ItemName, contract.IsOpenValue ? "مفتوحة" : contract.Value, contract.Paid], contract.IsOpenValue ? 0 : contract.Remaining, false, true)).ToList(),
+            contracts.Select((contract, index) => new StatementRow(index + 1, [contract.SupplierName, contract.ItemName, contract.IsOpenValue ? "مفتوحة" : contract.Value, contract.Paid], contract.IsOpenValue ? 0 : contract.Remaining, false, true)).ToList(),
             0);
         StatementWriter.Add(workbook, new StatementSheet("العقود", [table], ""), new StatementBook(projectName));
         return StatementStyle.Bytes(workbook);

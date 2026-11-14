@@ -105,7 +105,7 @@ public static class ItemReportEndpoints
         ItemEntryRow RowOf(Entry entry, List<ItemColumn> columns, decimal amount)
         {
             var isOutside = (payments.GetValueOrDefault(entry.Id) ?? new ContractorPaymentDetails()).IsOutsideContract;
-            return new ItemEntryRow(entry.Id, entry.EntryDate, amount, isOutside, ReportColumns.ValuesOf(columns, entry, facts, isOutside), entry.ApprovedAt > newSince);
+            return new ItemEntryRow(entry.Id, entry.EntryDate, amount, isOutside, ReportColumns.ValuesOf(columns, entry, facts, isOutside), entry.ApprovedAt > newSince) { Number = entry.Number };
         }
 
         var subgroups = item.Subgroups.OrderBy(subgroup => subgroup.SortOrder).Select(subgroup =>
@@ -228,4 +228,8 @@ public record ContractReportView(Guid Id, string ContractorName, decimal Value, 
 /// <param name="IsOutsideContract">True for a payment outside its contract, which leaves what remains of it alone (BR-04).</param>
 /// <param name="Values">What it shows under each of its table's columns, in their order, as <see cref="ReportColumns.ValuesOf"/> writes them.</param>
 /// <param name="IsNew">True when it was approved after the latest periodic report, shaded green (BR-26).</param>
-public record ItemEntryRow(Guid EntryId, DateOnly Date, decimal Amount, bool IsOutsideContract, List<string> Values, bool IsNew);
+public record ItemEntryRow(Guid EntryId, DateOnly Date, decimal Amount, bool IsOutsideContract, List<string> Values, bool IsNew)
+{
+    /// <summary>«رقم القيد», its entry's number, which the table's first column shows (FR-54, AC-54.6); 0 in a report issued before entries had one, whose column stays empty (G6).</summary>
+    public int Number { get; init; }
+}

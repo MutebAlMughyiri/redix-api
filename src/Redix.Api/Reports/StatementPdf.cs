@@ -10,6 +10,9 @@ namespace Redix.Api.Reports;
 /// </summary>
 public static class StatementPdf
 {
+    /// <summary>How wide the first column is, in points: room for «رقم القيد» and an entry's number of five digits (AC-54.6).</summary>
+    private const float NumberWidth = 40;
+
     /// <summary>
     /// Draws <paramref name="sheet"/> on <paramref name="page"/>: its name, then each table with its title, rows and الاجمالي, المتبقي and مبلغ الاتفاق when an amount was agreed, and its
     /// percentage when the sheet calculates one; with more than one table, اجمالي الكل and نسبة الكل.
@@ -48,7 +51,7 @@ public static class StatementPdf
         }
     }
 
-    /// <summary>A table's title, then its header and its numbered rows, the first column the widest and the amount the last; new rows shaded green (BR-26).</summary>
+    /// <summary>A table's title, then its header and its rows, each under its number (AC-54.6), the first column the widest and the amount the last; new rows shaded green (BR-26).</summary>
     private static void Table(ColumnDescriptor page, StatementTable table)
     {
         page.Item().PaddingTop(4).Text(table.Title).Bold();
@@ -56,18 +59,17 @@ public static class StatementPdf
         {
             grid.ColumnsDefinition(columns =>
             {
-                columns.ConstantColumn(22);
+                columns.ConstantColumn(NumberWidth);
                 columns.RelativeColumn(4);
                 for (var column = 1; column <= table.Columns.Count; column++)
                 {
                     columns.RelativeColumn(2);
                 }
             });
-            PeriodicReportFiles.Header(grid, ["", .. table.Columns.Select(column => column.Header), table.Amount.Header]);
-            var number = 1;
+            PeriodicReportFiles.Header(grid, [table.NumberHeader, .. table.Columns.Select(column => column.Header), table.Amount.Header]);
             foreach (var row in table.Rows)
             {
-                PeriodicReportFiles.Cell(grid, $"{number++}", isNew: row.IsNew);
+                PeriodicReportFiles.Cell(grid, Text(CellKind.Centred, row.Number), isNew: row.IsNew);
                 for (var column = 0; column < table.Columns.Count; column++)
                 {
                     PeriodicReportFiles.Cell(grid, Text(table.Columns[column].Kind, row.Cells[column]), isNew: row.IsNew);

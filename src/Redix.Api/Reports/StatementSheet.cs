@@ -22,7 +22,11 @@ public record StatementSheet(string Name, List<StatementTable> Tables, string Pe
 /// <param name="Amount">Its amount column, always the sheet's last.</param>
 /// <param name="Rows">Its rows, in order.</param>
 /// <param name="AgreedAmount">What a contract agreed, which puts المتبقي and مبلغ الاتفاق under it (AC-46.2); zero when nothing was agreed, which shows neither.</param>
-public record StatementTable(string Title, List<StatementColumn> Columns, StatementColumn Amount, List<StatementRow> Rows, decimal AgreedAmount);
+public record StatementTable(string Title, List<StatementColumn> Columns, StatementColumn Amount, List<StatementRow> Rows, decimal AgreedAmount)
+{
+    /// <summary>The header of its first column, which holds each row's <see cref="StatementRow.Number"/>: «رقم القيد» on a table of entries (AC-54.6); empty on one of anything else.</summary>
+    public string NumberHeader { get; init; } = "";
+}
 
 /// <summary>A column of a table.</summary>
 /// <param name="Header">Its header.</param>
@@ -37,11 +41,12 @@ public record StatementColumn(string Header, CellKind Kind)
 }
 
 /// <summary>A row of a table.</summary>
+/// <param name="Number">What its first column holds: an entry's «رقم القيد» (AC-54.6), blank for one issued before entries had one; a row's place on a table of anything else.</param>
 /// <param name="Cells">Its cells, one for each column before the amount.</param>
 /// <param name="Amount">Its amount.</param>
 /// <param name="IsNew">True when it was approved after the previous report, shaded green (BR-26).</param>
 /// <param name="CountsAgainstAgreement">False for a payment outside its contract, which leaves المتبقي as it was (BR-04).</param>
-public record StatementRow(List<XLCellValue> Cells, decimal Amount, bool IsNew, bool CountsAgainstAgreement);
+public record StatementRow(XLCellValue Number, List<XLCellValue> Cells, decimal Amount, bool IsNew, bool CountsAgainstAgreement);
 
 /// <summary>How a cell is written.</summary>
 public enum CellKind : byte

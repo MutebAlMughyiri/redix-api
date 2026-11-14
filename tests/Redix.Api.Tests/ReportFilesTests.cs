@@ -744,6 +744,35 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal(["المقاول", "البند", "قيمة العقد", "المدفوع", "المتبقي"], Enumerable.Range(2, 5).Select(column => sheet.Cell(2, column).GetString()));
         Assert.Equal((1000m, 0m, 1000m), (sheet.Cell(3, 4).GetValue<decimal>(), sheet.Cell(3, 5).GetValue<decimal>(), sheet.Cell(3, 6).GetValue<decimal>()));
         Assert.Equal(("الاجمالي", "SUM(F3:F3)"), (sheet.Cell(4, 1).GetString(), sheet.Cell(4, 6).FormulaA1));
+        Assert.Equal(("", 1), (sheet.Cell(2, 1).GetString(), sheet.Cell(3, 1).GetValue<int>()));
+    }
+
+    [Fact]
+    public async Task AC_54_6_EveryRowOfAnItemsTableShowsItsEntrysNumberUnderRaqmAlQaydAndADraftIsNotThere()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ApprovedAsync(ledger, ledger.Purchase(50) with { Date = ledger.Today.AddDays(-1) });
+        await ledger.RecordAsync(ledger.Purchase(70));
+        await ApprovedAsync(ledger, ledger.Purchase(100));
+
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}/xlsx")));
+
+        var sheet = workbook.Worksheet(1);
+        Assert.Equal(("رقم القيد", 1, 3), (sheet.Cell(2, 1).GetString(), sheet.Cell(3, 1).GetValue<int>(), sheet.Cell(4, 1).GetValue<int>()));
+        Assert.Equal("الاجمالي", sheet.Cell(5, 1).GetString());
+    }
+
+    [Fact]
+    public void AC_54_6_G6_TheWorkbookAndThePdfShowTheNumberAndAReportIssuedBeforeEntriesHadOneLeavesItEmpty()
+    {
+        var item = Item("البلاط", "التشطيب", Subgroup("", Row(100, "بلاط") with { Number = 312 }, Row(50, "حديد")));
+
+        using var workbook = ItemWorkbook(item);
+
+        var sheet = workbook.Worksheet(1);
+        Assert.Equal(("رقم القيد", 312), (sheet.Cell(2, 1).GetString(), sheet.Cell(3, 1).GetValue<int>()));
+        Assert.True(sheet.Cell(4, 1).IsEmpty(), "a row of a report issued before entries had a number shows none");
+        AssertOnThePdf(["312"], ItemReportFiles.Pdf(item));
     }
 
     /// <summary>Adds the partner <paramref name="name"/>, chosen for <paramref name="seenBy"/> when given (redix-api #106).</summary>

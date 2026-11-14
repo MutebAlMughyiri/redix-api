@@ -86,6 +86,7 @@ public static class StatementWriter
         row++;
         var stretch = last - 2 - table.Columns.Count;
         sheet.Range(row, 1, row, last).AsHeader();
+        sheet.Cell(row, 1).Value = table.NumberHeader;
         for (var column = 0; column < table.Columns.Count; column++)
         {
             Span(sheet, row, column, stretch).Value = table.Columns[column].Header;
@@ -95,7 +96,7 @@ public static class StatementWriter
         var first = row;
         foreach (var line in table.Rows)
         {
-            sheet.Cell(row, 1).SetCentred(row - first + 1);
+            sheet.Cell(row, 1).SetCentred(line.Number);
             for (var column = 0; column < table.Columns.Count; column++)
             {
                 Write(Span(sheet, row, column, stretch), table.Columns[column].Kind, line.Cells[column]);
