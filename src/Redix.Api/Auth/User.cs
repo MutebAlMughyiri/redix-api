@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,9 @@ public class User
     /// <summary>The longest mobile a user may have.</summary>
     public const int MobileMaxLength = 20;
 
+    /// <summary>The longest email a user may have, the longest an address may be.</summary>
+    public const int EmailMaxLength = 254;
+
     /// <summary>The <see cref="LockedUntil"/> of an account that is not locked.</summary>
     public static readonly DateTime NeverLocked = new(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -65,6 +69,12 @@ public class User
 
     /// <summary>The user's mobile; empty when none.</summary>
     public string Mobile { get; set; } = "";
+
+    /// <summary>
+    /// Where a code reaches the user (redix-api #127, R3, D1): their manager types it when adding them, and they change it in Settings once a code to the new address is entered;
+    /// unique where set (R9). Empty while nobody has typed one, as for the accounts made before it, the admin and whoever registered a project, until they set it (D6).
+    /// </summary>
+    public string Email { get; set; } = "";
 
     /// <summary>The password, hashed by ASP.NET Core's <see cref="PasswordHasher{TUser}"/>; never the password itself.</summary>
     [NotInHistory]
@@ -96,6 +106,20 @@ public class User
             return "InvalidName";
         }
         return IsAcceptableMobile(mobile) ? "" : "InvalidMobile";
+    }
+
+    /// <summary>
+    /// The refusal of <paramref name="email"/>, already trimmed, as the email of <paramref name="userId"/> (redix-api #127, AC-07.8, R9): <c>emailInvalid</c> with 400 unless it is one
+    /// well-formed address of at most <see cref="EmailMaxLength"/> characters, as .NET's <see cref="MailAddress"/> reads one, and <c>emailTaken</c> with 409 when another account holds it,
+    /// whatever its case; empty when it may be kept.
+    /// </summary>
+    public static async Task<(int Status, string Refusal)> RefusalOfEmailAsync(string email, Guid userId, RedixDbContext db)
+    {
+        if (email.Length > EmailMaxLength || !MailAddress.TryCreate(email, out var address) || address.Address != email)
+        {
+            return (StatusCodes.Status400BadRequest, "EmailInvalid");
+        }
+        return await db.Users.AnyAsync(user => user.Email == email && user.Id != userId) ? (StatusCodes.Status409Conflict, "EmailTaken") : (0, "");
     }
 
     /// <summary>The refusal of a new user's fields, already trimmed, as its code; empty when all are acceptable.</summary>

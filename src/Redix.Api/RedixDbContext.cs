@@ -41,6 +41,9 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
     /// <summary>The phones signed in, one per sign-in, each with its refresh token's hash.</summary>
     public DbSet<Device> Devices => Set<Device>();
 
+    /// <summary>The codes sent by email, each kept as its hash: one per person and purpose, the last sent (redix-api #127).</summary>
+    public DbSet<EmailCode> EmailCodes => Set<EmailCode>();
+
     /// <summary>Who did what to which record, when, and in which project (FR-21, redix-app #89); append-only, guarded by the database's <c>HistoryIsAppendOnly</c> trigger (AC-21.1).</summary>
     public DbSet<HistoryRecord> History => Set<HistoryRecord>();
 
@@ -203,7 +206,16 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
             user.Property(u => u.DisplayName).HasMaxLength(User.NameMaxLength);
             user.Property(u => u.Mobile).HasMaxLength(User.MobileMaxLength).IsUnicode(false);
             user.HasIndex(u => u.Username).IsUnique();
+            user.Property(u => u.Email).HasMaxLength(User.EmailMaxLength);
+            user.HasIndex(u => u.Email).IsUnique().HasFilter("[Email] <> ''");
             user.Property(u => u.PasswordHash).HasMaxLength(200).IsUnicode(false);
+        });
+        modelBuilder.Entity<EmailCode>(code =>
+        {
+            code.Property(c => c.Email).HasMaxLength(User.EmailMaxLength);
+            code.Property(c => c.CodeHash).HasMaxLength(200).IsUnicode(false);
+            code.HasIndex(c => new { c.UserId, c.Purpose });
+            code.HasOne<User>().WithMany().HasForeignKey(c => c.UserId);
         });
         modelBuilder.Entity<Device>(device =>
         {
@@ -521,6 +533,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         HasLookup(modelBuilder, (Entry entry) => entry.Status);
         HasLookup(modelBuilder, (EntryAttachment entryAttachment) => entryAttachment.Role);
         HasLookup(modelBuilder, (EntryDecision decision) => decision.Action);
+        HasLookup(modelBuilder, (EmailCode code) => code.Purpose);
         HasLookup(modelBuilder, (Notification notification) => notification.Kind);
         HasLookup(modelBuilder, (Project project) => project.Status);
         HasLookup(modelBuilder, (Item item) => item.Type);

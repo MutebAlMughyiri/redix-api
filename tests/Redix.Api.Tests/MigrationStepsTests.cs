@@ -280,4 +280,16 @@ public class MigrationStepsTests(MigratedApiFactory factory)
             Assert.Empty(await ValuesAsync(db, "SELECT name AS Value FROM sys.columns WHERE object_id = OBJECT_ID('UserDefaultProjects') AND name = 'Id'"));
         });
     }
+
+    [Fact]
+    public Task R127_EmailAndCodes_EveryAccountKeepsItsRowWithAnEmptyEmailWhichTheUniqueIndexLetsManyHold()
+    {
+        var (user, other) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        return ThroughAsync("EmailAndCodes", string.Concat(User(user), User(other)), async db =>
+        {
+            Assert.Equal(new[] { $"{user} ", $"{other} " }.Order(), (await ValuesAsync(db, $"SELECT LOWER(CONCAT(Id, ' ', Email)) AS Value FROM Users WHERE Id IN ('{user}', '{other}')")).Order());
+            Assert.Empty(await ValuesAsync(db, "SELECT [Key] AS Value FROM TranslationKeys WHERE [Key] = 'signIn.forgotPassword'"));
+        });
+    }
 }
