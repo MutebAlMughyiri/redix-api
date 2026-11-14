@@ -455,6 +455,31 @@ public class ProjectFileTests(MigratedApiFactory factory)
         Assert.False(await AnythingSavedAsync(ledger));
     }
 
+    [Fact]
+    public async Task AC_29_3_AFileWhoseReportTheProjectAlreadyIssuedIsRefusedBeforeAnythingIsSaved()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/periodic-reports", null)).EnsureSuccessStatusCode();
+
+        var refused = await RefusedAsync(await LoadAsync(ledger.Client, ledger.ProjectId, LoadedFile(Parts with { Report = new { number = 1, date = "2026-11-10", time = "09:30" } })));
+
+        Assert.Equal((ProjectFileOwner.File, "reportAlreadyIssued", "1", 0), (refused.Single().Owner, refused.Single().Code, refused.Single().Value, refused.Single().Row));
+        Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(entry => entry.ProjectId == ledger.ProjectId)));
+        Assert.Equal(1, await ledger.ReadAsync(db => db.PeriodicReports.CountAsync(report => report.ProjectId == ledger.ProjectId)));
+    }
+
+    [Fact]
+    public async Task AC_29_3_AFileWhoseReportNumberTheProjectHasNotIssuedLoadsBesideTheReportsBeforeIt()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/periodic-reports", null)).EnsureSuccessStatusCode();
+
+        (await LoadAsync(ledger.Client, ledger.ProjectId, LoadedFile())).EnsureSuccessStatusCode();
+
+        var issued = (await ledger.Client.GetFromJsonAsync<List<PeriodicReportRowView>>($"/projects/{ledger.ProjectId}/periodic-reports", Ledger.Json))!;
+        Assert.Equal([7, 1], issued.Select(report => report.Number));
+    }
+
     [Theory]
     [InlineData("""{ "format": "another.app", "version": 1 }""", "notAProjectFile")]
     [InlineData("""{ "format": "redix.project", "version": 2 }""", "newerVersion")]

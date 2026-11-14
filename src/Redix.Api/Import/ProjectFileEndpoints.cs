@@ -33,7 +33,8 @@ public static class ProjectFileEndpoints
     /// <c>newerVersion</c> (AC-53.9), and a project holding an entry <c>projectHasEntries</c> (AC-53.3), each before anything changes. Then its missing categories, items, tables,
     /// contracts, partners, suppliers and payment methods are added (D5, D6, D13), every row is recorded through Add entry's own checks and approved in the caller's name (D7,
     /// AC-53.4), counting from the file's report time (D12), what each account really held becomes one reconciliation (D8, AC-53.8), and the file's report is issued with its number
-    /// and time (D9, AC-53.7). Any refusal, a row's or a part's, answers <c>rowsRefused</c> with every one of them under <c>rows</c>, and nothing is saved (D3, D14, AC-53.5).
+    /// and time (D9, AC-53.7); a number the project already issued is <c>reportAlreadyIssued</c>, found before anything is saved. Any refusal, a row's or a part's, answers
+    /// <c>rowsRefused</c> with every one of them under <c>rows</c>, and nothing is saved (D3, D14, AC-53.5).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="file">The file, sent as every file the app sends, so its upload waits as long as a file may (UC-070).</param>
@@ -55,7 +56,7 @@ public static class ProjectFileEndpoints
 
         var userId = AccessTokens.UserIdOf(principal);
         var at = time.GetUtcNow().UtcDateTime;
-        var refused = new List<ProjectFileRefusal>();
+        var refused = await ReportRefusalsAsync(projectId, projectFile.Report, db);
         await using var transaction = await db.Database.BeginTransactionAsync();
         var registers = await RegistersOfAsync(projectId, projectFile, userId, db, refused);
         var tables = await TablesOfAsync(projectId, projectFile, userId, at, db, refused);
@@ -86,6 +87,12 @@ public static class ProjectFileEndpoints
     }
 
     private static IResult Refused(List<ProjectFileRefusal> refused) => Refusal.Of(StatusCodes.Status400BadRequest, "RowsRefused", "rows", refused);
+
+    /// <summary>The refusal of the file's <paramref name="report"/> when the project issued its number already, so numbers stay one report each (AC-29.3); none otherwise, and for a file with no report.</summary>
+    private static async Task<List<ProjectFileRefusal>> ReportRefusalsAsync(Guid projectId, ProjectFileReport report, RedixDbContext db) =>
+        report.Number > 0 && await db.PeriodicReports.AnyAsync(issued => issued.ProjectId == projectId && issued.Number == report.Number)
+            ? [ProjectFileRefusal.Of(ProjectFileOwner.File, "ReportAlreadyIssued") with { Value = report.Number.ToString(CultureInfo.InvariantCulture) }]
+            : [];
 
     /// <summary>
     /// The project's accounts, suppliers and payment methods by name, once the suppliers and payment methods of the file's lists it lacks are added through their owners (D6). An
@@ -391,7 +398,7 @@ public record ProjectFileLoadedView(int Entries, int Tables, int Report);
 /// <summary>Whose rule refused a part of a project file, which says whose words the app shows for its code (D14).</summary>
 public enum ProjectFileOwner
 {
-    /// <summary>The file itself, read as a project: <c>accountNotInProject</c>, <c>attachmentNotInFile</c>, <c>unknownChoice</c>.</summary>
+    /// <summary>The file itself, read as a project: <c>accountNotInProject</c>, <c>attachmentNotInFile</c>, <c>unknownChoice</c>, <c>reportAlreadyIssued</c>.</summary>
     File,
 
     /// <summary>Add entry, which every row goes through (AC-53.4).</summary>

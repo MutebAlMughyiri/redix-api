@@ -10668,6 +10668,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("6ac2f5ef-86ff-f206-61cf-dad21a590595"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("12a68918-2406-6e91-9142-a6672951b7a0"),
+                            Value = "File loaded: {0} entries in {1} tables, and the actual balances."
+                        },
+                        new
+                        {
+                            Id = new Guid("079f3d90-f5e8-3597-e353-4e18e31bdac9"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("12a68918-2406-6e91-9142-a6672951b7a0"),
+                            Value = "حُمّل الملف: {0} قيدًا في {1} جدولًا، والأرصدة الفعلية."
+                        },
+                        new
+                        {
                             Id = new Guid("fd6ab9e8-80c9-8441-d3fb-4cc8cf8b30c3"),
                             Language = "en",
                             TranslationKeyId = new Guid("68df6719-94a4-e395-1221-5e218553b1a0"),
@@ -10763,6 +10777,20 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("330f528c-a81f-ef85-6f8c-4bdada29dbda"),
                             Value = "«{0}» ليس من اختيارات «{1}»."
+                        },
+                        new
+                        {
+                            Id = new Guid("160ca3d8-f279-1fb7-6939-c72228b9d2dc"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("ce437593-153a-4b4d-3f66-33f9be258484"),
+                            Value = "Report {0} was already issued in this project."
+                        },
+                        new
+                        {
+                            Id = new Guid("3f596cb1-cf0b-6116-c0c5-079aa1214339"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("ce437593-153a-4b4d-3f66-33f9be258484"),
+                            Value = "التقرير {0} صدر في هذا المشروع من قبل."
                         },
                         new
                         {
@@ -18046,6 +18074,12 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("12a68918-2406-6e91-9142-a6672951b7a0"),
+                            Description = "",
+                            Key = "projects.loadFileDoneNoReport"
+                        },
+                        new
+                        {
                             Id = new Guid("68df6719-94a4-e395-1221-5e218553b1a0"),
                             Description = "",
                             Key = "projects.loadFile.rowsRefused"
@@ -18085,6 +18119,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("330f528c-a81f-ef85-6f8c-4bdada29dbda"),
                             Description = "",
                             Key = "projects.loadFile.unknownChoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce437593-153a-4b4d-3f66-33f9be258484"),
+                            Description = "",
+                            Key = "projects.loadFile.reportAlreadyIssued"
                         },
                         new
                         {

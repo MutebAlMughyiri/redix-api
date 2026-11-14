@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `POST /projects/{projectId}/project-file` with the file as a form's `file`, as every file the app sends, so its upload waits as long as a file may (UC-070) | `ManageProject` (D1) | `200` `{ entries, tables, report }`: how many entries were recorded and approved, in how many tables, and the report issued, 0 for none; `400` `notAProjectFile` or `newerVersion`, nothing read (AC-53.9); `409` `projectHasEntries` (AC-53.3); `400` `rowsRefused` with every refusal under `rows`, nothing saved (AC-53.5); `403` without `ManageProject` (AC-53.2); `409` `projectFinished` |
 
-A refusal under `rows` says where it is, by the file's names: `category`, `item`, `table`, and `row`, the row's place in its table counted from 1, as the sheet's «#» counts it, 0 for the part itself; then `owner`, whose rule refused it, which says whose words the app shows (D14): `entry` for Add entry's codes (`expenses.*`), `structure` for a category, an item or a subgroup (`categories.*`), `contract`, `partner`, `supplier`, `paymentMethod`, `reconciliation`, or `file` for the load's own, `accountNotInProject`, `attachmentNotInFile` and `unknownChoice` (`projects.loadFile.*`); then `code`, and the `columnKey`, `value` and `column` a code names. `GET /projects` says of each project `holdsEntries`, from the same query the route refuses with, so the app grays its button (D15).
+A refusal under `rows` says where it is, by the file's names: `category`, `item`, `table`, and `row`, the row's place in its table counted from 1, as the sheet's «#» counts it, 0 for the part itself; then `owner`, whose rule refused it, which says whose words the app shows (D14): `entry` for Add entry's codes (`expenses.*`), `structure` for a category, an item or a subgroup (`categories.*`), `contract`, `partner`, `supplier`, `paymentMethod`, `reconciliation`, or `file` for the load's own, `accountNotInProject`, `attachmentNotInFile`, `unknownChoice` and `reportAlreadyIssued` (`projects.loadFile.*`); then `code`, and the `columnKey`, `value` and `column` a code names. `GET /projects` says of each project `holdsEntries`, from the same query the route refuses with, so the app grays its button (D15).
 
 ## How it loads
 
@@ -28,7 +28,7 @@ One EF Core transaction holds everything; a refusal anywhere returns before it c
 | An account | Found by name; the file carries no type or custodian | Refused, `accountNotInProject` (D6) |
 | A row | `EntryRecording.RecordAsync`, telling no decider, then `ApprovalsEndpoints.ApproveAsync` in the caller's name; it counts as approved from the file's report time, while its History lines keep the moment of the load (D7, D12) | — |
 | The actual balances | `ReconciliationsEndpoints.EnterAsync`: one reconciliation, a difference staying visible (D8) | — |
-| The report | `PeriodicReportsEndpoints.IssueAsync` with the file's number and time; none for a file with none (D9) | — |
+| The report | `PeriodicReportsEndpoints.IssueAsync` with the file's number and time; none for a file with none (D9) | A number the project issued already is `reportAlreadyIssued`, found before anything is saved |
 
 Structure is added, never renamed or removed (D5). A table the caller is not offered is listed once, as `unknownTable`; its rows are not read.
 
@@ -75,3 +75,4 @@ REDIX's own model, as the generated workbook lays it out (redix-api #130), with 
 | D14: a part its owner refuses is listed with that owner's code, and nothing is saved | `ProjectFileEndpoints.Load`, `CategoriesEndpoints.AddItemAsync` | `ProjectFileTests.D14_APartItsOwnerRefusesIsListedWithItsOwnersCodeAndNothingIsSaved` |
 | AC-53.8, D6: an account of the actual balances the project lacks is `accountNotInProject`, and nothing is saved | `ProjectFileEndpoints.Load` | `ProjectFileTests.AC_53_8_D6_AnAccountOfTheActualBalancesTheProjectLacksIsRefusedAndNothingIsSaved` |
 | AC-53.9: the route refuses a file that is not a project file, or is newer, and nothing changes | `ProjectFile.Read`, `ProjectFileEndpoints.Load` | `ProjectFileTests.AC_53_9_TheRouteRefusesAFileThatIsNotAProjectFileOrIsNewerAndNothingChanges` |
+| AC-29.3: a file whose report the project already issued is `reportAlreadyIssued`, listed before anything is saved; one whose number it has not issued loads beside the reports before it | `ProjectFileEndpoints.Load` | `ProjectFileTests.AC_29_3_AFileWhoseReportTheProjectAlreadyIssuedIsRefusedBeforeAnythingIsSaved`, `AC_29_3_AFileWhoseReportNumberTheProjectHasNotIssuedLoadsBesideTheReportsBeforeIt` |
