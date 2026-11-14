@@ -12,12 +12,12 @@ A login is shared across projects, so changing one needs `ManageUsers` in every 
 
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
-| `PUT /users/{userId}` | Changes a user's name and mobile | `200` the user; `400` `invalidName` or `invalidMobile`; `404` |
+| `PUT /users/{userId}` | Changes a user's name, mobile and email (redix-api #127) | `200` the user; `400` `invalidName`, `invalidMobile` or `emailInvalid`; `409` `emailTaken`; `404` |
 | `POST /users/{userId}/reset-password` | Sets a new temporary password, ends the lock, and signs the user out everywhere | `200` the user; `400` `weakPassword`; `404` |
 | `POST /projects/{projectId}/users/{userId}/disable` | Disable: he can no longer open this project; it shows gray on his project list with «حسابك غير مفعّل في هذا المشروع.», and if he is inside it, the list replaces it at his next action, when the app opens or comes back, or within 15 minutes. His permissions and entries stay. Inactive already changes nothing | `200` the user; `409` `lastManager`; `404` someone not in the project; `403` without `ManageUsers` in it |
 | `POST /projects/{projectId}/users/{userId}/enable` | Enable: he opens it again, with everything as before. Active already changes nothing | `200` the user; `404` someone not in the project; `403` without `ManageUsers` in it |
 
-A user answers as `{ id, username, displayName, mobile, mustChangePassword, projects }`, never with the password's hash; each of `projects` says `isInactive` for that project. The login-wide `/users/{userId}/disable` and `/enable` and `Users.IsActive` went with redix-api #126 (D3): someone inactive in every project still signs in, to his project list.
+A user answers as `{ id, username, displayName, mobile, email, mustChangePassword, projects }`, never with the password's hash; each of `projects` says `isInactive` for that project. The login-wide `/users/{userId}/disable` and `/enable` and `Users.IsActive` went with redix-api #126 (D3): someone inactive in every project still signs in, to his project list.
 
 ## Tables
 
@@ -33,6 +33,7 @@ A user answers as `{ id, username, displayName, mobile, mustChangePassword, proj
 | A username is unique, whatever its case | The unique index, `ProjectUsersEndpoints.Create` | `ProjectUsersTests.ARepeatedUsernameIsRefusedWhateverItsCase` |
 | Each field has its limit | `User.RefusalOfNew`, `User.RefusalOfDetails` | `ProjectUsersTests.AFieldOutsideItsLimitIsRefused` |
 | Editing changes the name and mobile, and nothing else | `UsersEndpoints.Edit` | `UsersTests.EditingChangesTheNameAndMobile` |
+| The manager changes a person's email, or keeps it, to a well-formed one no other account holds (AC-07.8, R9) | `UsersEndpoints.Edit`, `User.RefusalOfEmailAsync` | `UsersTests.AC_07_8_TheManagerChangesAPersonsEmailOrKeepsIt`, `AC_07_8_R9_TheManagerCannotGiveAnEmailAnotherAccountHoldsNorOneNotWellFormed` |
 | A mobile is ASCII digits with a leading `+` at most, or empty, for a user or a supplier, so the browser front end cannot store `????`; one owner | `User.IsAcceptableMobile` | `ProjectUsersTests.AMobileIsAsciiDigitsWithALeadingPlusAtMost`, `ProjectUsersTests.AMobileMayStartWithAPlus`, `UsersTests.AnEditCannotGiveAMobileThatIsNotDigits`, `RegistrationTests.ABadFieldCreatesNothing`, `SuppliersTests.ASuppliersMobileIsDigitsOnAddAndOnEdit` |
 | A reset forces a change, ends the lock and signs out every device | `User.ResetPasswordAsync`, the one reset a code by email uses too, `UsersEndpoints.ResetPassword` | `UsersTests.AResetForcesAChangeEndsTheLockAndSignsOutEveryDevice` |
 | A manager makes someone inactive in his project and active again, and he keeps what he holds there (redix-api #126, D1, R7) | `ProjectUsersEndpoints.Disable`, `Enable` | `InactiveMembersTests.R1_D1_R7_AManagerMakesSomeoneInactiveInHisProjectAndActiveAgainAndHeKeepsWhatHeHolds` |

@@ -54,12 +54,13 @@ public static class ProjectUsersEndpoints
     }
 
     /// <summary>
-    /// Creates a login in this project holding what was ticked and <see cref="Permission.ReadProject"/>, who must change the temporary password at first sign-in (AC-02.1). A field outside
-    /// its limit answers its code: <c>invalidName</c>, <c>invalidUsername</c>, <c>invalidMobile</c> or <c>weakPassword</c>; the system's own permission <c>invalidPermission</c>; a username
-    /// already taken, whatever its case, <c>usernameTaken</c>.
+    /// Creates a login in this project holding what was ticked and <see cref="Permission.ReadProject"/>, who must change the temporary password at first sign-in (AC-02.1), with the email
+    /// the manager typed, which is required (redix-api #127, AC-07.8, D1). A field outside its limit answers its code: <c>invalidName</c>, <c>invalidUsername</c>, <c>invalidMobile</c> or
+    /// <c>weakPassword</c>; the system's own permission <c>invalidPermission</c>; a username already taken, whatever its case, <c>usernameTaken</c>; an email not well formed
+    /// <c>emailInvalid</c>, and one another account holds <c>emailTaken</c> (R9).
     /// </summary>
     /// <param name="projectId">The project.</param>
-    /// <param name="request">The user's name, username, mobile, temporary password and permissions.</param>
+    /// <param name="request">The user's name, username, mobile, email, temporary password and permissions.</param>
     /// <param name="principal">The session of whoever manages the project's users.</param>
     /// <param name="db">The database the user joins.</param>
     /// <param name="hasher">Hashes the temporary password.</param>
@@ -82,12 +83,20 @@ public static class ProjectUsersEndpoints
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownPartner");
         }
 
+        var email = request.Email.Trim();
+        var (emailStatus, emailRefusal) = await User.RefusalOfEmailAsync(email, Guid.Empty, db);
+        if (emailRefusal.Length > 0)
+        {
+            return Refusal.Of(emailStatus, emailRefusal);
+        }
+
         var now = time.GetUtcNow().UtcDateTime;
         var (user, status, refusal) = await User.AddNewAsync(request.DisplayName, request.Username, request.Mobile, request.TemporaryPassword, mustChangePassword: true, db, hasher, now);
         if (refusal.Length > 0)
         {
             return Refusal.Of(status, refusal);
         }
+        user.Email = email;
         db.AddHistory(user, HistoryAction.Create, AccessTokens.UserIdOf(principal), now);
         foreach (var permission in request.Permissions.Prepend(Permission.ReadProject).Distinct())
         {
@@ -384,8 +393,9 @@ public record MemberView(Guid Id, string DisplayName);
 /// <param name="DisplayName">The name as it shows on entries.</param>
 /// <param name="Username">The name the user signs in with.</param>
 /// <param name="Mobile">The user's mobile; may be empty.</param>
+/// <param name="Email">Where a code reaches the user, required (redix-api #127, D1).</param>
 /// <param name="TemporaryPassword">The password the user changes at first sign-in.</param>
-public record CreateUserRequest(string DisplayName, string Username, string Mobile, string TemporaryPassword)
+public record CreateUserRequest(string DisplayName, string Username, string Mobile, string Email, string TemporaryPassword)
 {
     /// <summary>What the user may do in the project, as ticked; <see cref="Permission.ReadProject"/> is held whatever is ticked.</summary>
     public List<Permission> Permissions { get; init; } = [];
