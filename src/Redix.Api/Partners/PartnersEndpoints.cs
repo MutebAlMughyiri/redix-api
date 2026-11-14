@@ -132,23 +132,34 @@ public static class PartnersEndpoints
     public static Task<IResult> Add(Guid projectId, PartnerRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            var itemId = await ProjectStructure.ItemsOf(projectId, db).Where(item => item.Type == ItemType.Capital).Select(item => item.Id).SingleOrDefaultAsync();
-            if (await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.Capital, db) == Item.None)
-            {
-                return Refusal.Of(StatusCodes.Status400BadRequest, "ItemNotOffered");
-            }
-            var refusal = await LoginRefusalAsync(projectId, Partner.None, request.UserId, db);
-            if (refusal.Length > 0)
-            {
-                return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
-            }
-            var partner = new Partner { ProjectId = projectId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
-            partner.LinkTo(request.UserId);
-            db.Partners.Add(partner);
-            db.AddHistoryOfChanges(HistoryAction.Create, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime);
-            await db.SaveChangesAsync();
-            return Results.Ok();
+            var refusal = await AddAsync(projectId, name, request.UserId, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
+            return refusal.Length > 0 ? Refusal.Of(StatusCodes.Status400BadRequest, refusal) : Results.Ok();
         });
+
+    /// <summary>
+    /// Adds the partner <paramref name="name"/>, a name already accepted, with their own login <paramref name="loginId"/> if they have one, as the last table of the project's capital
+    /// item, by <paramref name="userId"/> at <paramref name="at"/>, in the History table: the one way a partner is added, by hand and from a project file's load alike (redix-api #132
+    /// D6). It answers the refusals of <see cref="Add"/> but the name's; empty once added.
+    /// </summary>
+    public static async Task<string> AddAsync(Guid projectId, string name, Guid loginId, Guid userId, DateTime at, RedixDbContext db)
+    {
+        var itemId = await ProjectStructure.ItemsOf(projectId, db).Where(item => item.Type == ItemType.Capital).Select(item => item.Id).SingleOrDefaultAsync();
+        if (await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.Capital, db) == Item.None)
+        {
+            return "ItemNotOffered";
+        }
+        var refusal = await LoginRefusalAsync(projectId, Partner.None, loginId, db);
+        if (refusal.Length > 0)
+        {
+            return refusal;
+        }
+        var partner = new Partner { ProjectId = projectId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
+        partner.LinkTo(loginId);
+        db.Partners.Add(partner);
+        db.AddHistoryOfChanges(HistoryAction.Create, userId, at);
+        await db.SaveChangesAsync();
+        return "";
+    }
 
     /// <summary>Renames a partner and sets their own login, answering as <see cref="Add"/> does about the name and the login.</summary>
     /// <param name="projectId">The project.</param>

@@ -1,10 +1,17 @@
+using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
+using Redix.Api.Auth;
+using Redix.Api.Entries;
 using Redix.Api.Import;
+using Redix.Api.Notifications;
+using Redix.Api.Reports;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Tests;
 
-/// <summary>UC-071, FR-53: a project's file, read and loaded into REDIX (redix-api #132). Every file here is made up for the test.</summary>
-public class ProjectFileTests
+/// <summary>UC-071, FR-53: a project's file, read and loaded into REDIX (redix-api #132). Every file and figure here is made up for the test.</summary>
+[Collection(ThirdDatabaseCollection.Name)]
+public class ProjectFileTests(MigratedApiFactory factory)
 {
     /// <summary>A small project file in #130's shape with D11: one purchase table of two rows, one account and its actual balance, and report 7.</summary>
     private const string SmallFile = """
@@ -80,4 +87,63 @@ public class ProjectFileTests
         Assert.Empty(file.Accounts);
         Assert.Equal("بند", file.Categories.Single().Items.Single().Name);
     }
+
+    [Fact]
+    public async Task D7_AnEntryRecordedForAProjectFileTellsNoDeciderWhileAddEntryTellsThem()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (recorder, recorderId) = await ledger.MemberAsync("Finance");
+        var typed = ledger.Purchase(100) with { Submit = true };
+        var loaded = ledger.Purchase(200) with { Submit = true };
+
+        (await ledger.PostAsync(typed, recorder)).EnsureSuccessStatusCode();
+        await factory.WithDatabaseAsync(async db =>
+        {
+            var held = (await UserAccess.OfAsync(recorderId, db)).In(ledger.ProjectId);
+            var table = (await EntryTable.OfferedAsync(ledger.ProjectId, held, db)).Single(row => row.Id == loaded.TableId);
+            var (_, code, _, entry) = await EntryRecording.RecordAsync(ledger.ProjectId, loaded, table, recorderId, held, Entry.None, tellDeciders: false, db, factory.Time);
+            Assert.Equal(("", EntryStatus.PendingApproval), (code, entry.Status));
+        });
+
+        var told = await ledger.ReadAsync(db => db.Notifications.Where(row => row.ProjectId == ledger.ProjectId && row.Kind == NotificationKind.EntrySubmitted).SelectMany(row => row.Entries).Select(row => row.EntryId).ToListAsync());
+        Assert.Equal([typed.Id], told);
+        Assert.Equal(1, await ledger.ReadAsync(db => db.EntryDecisions.CountAsync(row => row.EntryId == loaded.Id && row.Action == EntryDecisionAction.Submit)));
+    }
+
+    [Fact]
+    public async Task D7_AnEntryRecordedForAProjectFilePassesTheChecksOfAddEntry()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var future = ledger.Purchase(200) with { Date = ledger.Today.AddDays(1), Submit = true };
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            var userId = await ManagerOfAsync(ledger.ProjectId, db);
+            var held = (await UserAccess.OfAsync(userId, db)).In(ledger.ProjectId);
+            var table = (await EntryTable.OfferedAsync(ledger.ProjectId, held, db)).Single(row => row.Id == future.TableId);
+            var (status, code, _, entry) = await EntryRecording.RecordAsync(ledger.ProjectId, future, table, userId, held, Entry.None, tellDeciders: false, db, factory.Time);
+            Assert.Equal((400, "InvalidDate", Entry.None), (status, code, entry));
+        });
+
+        Assert.False(await ledger.ReadAsync(db => db.Entries.AnyAsync(row => row.Id == future.Id)));
+    }
+
+    [Fact]
+    public async Task D9_AReportIsIssuedWithTheNumberAndTheTimeItIsGivenAndTheNextOneFollowsIt()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var fileTime = new DateTime(2026, 11, 2, 1, 40, 0, DateTimeKind.Utc);
+
+        await factory.WithDatabaseAsync(async db => await PeriodicReportsEndpoints.IssueAsync(ledger.ProjectId, 28, fileTime, await ManagerOfAsync(ledger.ProjectId, db), db));
+
+        var issued = (await ledger.Client.GetFromJsonAsync<List<PeriodicReportRowView>>($"/projects/{ledger.ProjectId}/periodic-reports", Ledger.Json))!;
+        Assert.Equal((28, fileTime), (issued.Single().Number, issued.Single().IssuedAt));
+        Assert.Equal(29, (await ledger.Client.GetFromJsonAsync<NextReportView>($"/projects/{ledger.ProjectId}/periodic-reports/next", Ledger.Json))!.Number);
+        var next = await (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/periodic-reports", null)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<PeriodicReportRowView>(Ledger.Json);
+        Assert.Equal((29, factory.Time.GetUtcNow().UtcDateTime), (next!.Number, next.IssuedAt));
+    }
+
+    /// <summary>The project's first manager, who registered it and holds <see cref="Permission.ManageProject"/> (D1).</summary>
+    private static Task<Guid> ManagerOfAsync(Guid projectId, RedixDbContext db) =>
+        db.ProjectPermissions.Where(row => row.ProjectId == projectId && row.Permission == Permission.ManageProject).OrderBy(row => row.Id).Select(row => row.UserId).FirstAsync();
 }

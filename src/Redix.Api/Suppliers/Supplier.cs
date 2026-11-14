@@ -19,6 +19,9 @@ public class Supplier
     /// <summary>The most suppliers one search answers.</summary>
     public const int SearchLimit = 20;
 
+    /// <summary>No supplier: what an add that was refused answers, so no caller holds a null. Its empty id matches nothing.</summary>
+    public static Supplier None { get; } = new() { Id = Guid.Empty, Name = "", IsActive = false };
+
     /// <summary>The supplier's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 

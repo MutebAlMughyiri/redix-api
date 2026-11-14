@@ -71,13 +71,8 @@ public static class EntryRecording
     }
 
     /// <summary>
-    /// Keeps <paramref name="request"/>, as a new entry or in place of <paramref name="existing"/>. A table the caller is not offered answers <c>unknownTable</c>. An expense needs a
-    /// payment method, <c>unknownPaymentMethod</c>; the account is one the caller may use, <c>accountNotOffered</c> (BRS open question 4); a file of no such attachment answers
-    /// <c>unknownAttachment</c>. A description too long answers <c>invalidDescription</c>; a negative total is a deduction, only on an expense, which says why in its description, <c>deductionNeedsDescription</c>
-    /// (FR-14, D14); then the table's own typing; an amount of zero, with more than two decimals, beyond <see cref="Money.Largest"/> or below zero on the revenue side answers
-    /// <c>invalidAmount</c>, and a date outside the project's period or in the future <c>invalidDate</c> (BR-12). Then the table's own checks; a column's value answers
-    /// <c>unknownColumn</c> or <c>invalidColumnValue</c>, naming the column as <c>columnKey</c>, and sending needs the required columns, <c>requiredColumnMissing</c> (FR-41); a file
-    /// already on another entry answers <c>invoiceAlreadyAttached</c> (BR-22). A new entry answers 201 with what was kept, a changed one 200.
+    /// Keeps <paramref name="request"/>, as a new entry or in place of <paramref name="existing"/>. A table the caller is not offered answers <c>unknownTable</c>; otherwise it answers
+    /// the refusals of <see cref="RecordAsync"/>, naming the column as <c>columnKey</c>. A new entry answers 201 with what was kept, a changed one 200.
     /// </summary>
     private static async Task<IResult> SaveAsync(Guid projectId, EntryRequest request, Guid userId, RedixDbContext db, TimeProvider time, Entry existing)
     {
@@ -87,16 +82,35 @@ public static class EntryRecording
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownTable");
         }
-        var editing = existing.Id;
-        var (status, code, columnKey) = await RefusalOfAsync(projectId, request, table, userId, held, editing, db, time);
+        var (status, code, columnKey, entry) = await RecordAsync(projectId, request, table, userId, held, existing, tellDeciders: true, db, time);
         if (code.Length > 0)
         {
             return Refusal.Of(status, code, "columnKey", columnKey);
         }
-        var at = time.GetUtcNow().UtcDateTime;
-        var entry = await KeepAsync(EntryOf(request, projectId, table, userId, at), [.. table.DetailsOf(request), .. FileOf(request, table.FileRole)], existing, userId, db);
         var answer = await table.AnswerOfAsync(entry, request, db);
         return existing == Entry.None ? Results.Created($"/projects/{projectId}/entries/{entry.Id}", answer) : Results.Ok(answer);
+    }
+
+    /// <summary>
+    /// Records <paramref name="request"/> into <paramref name="table"/>, one the caller holding <paramref name="held"/> is offered, as a new entry or in place of
+    /// <paramref name="existing"/>: the one way into the ledger, for Add entry and a project file's load alike (BR-43). An expense needs a payment method, <c>unknownPaymentMethod</c>;
+    /// the account is one the caller may use, <c>accountNotOffered</c> (BRS open question 4); a file of no such attachment answers <c>unknownAttachment</c>. A description too long
+    /// answers <c>invalidDescription</c>; a negative total is a deduction, only on an expense, which says why in its description, <c>deductionNeedsDescription</c> (FR-14, D14); then
+    /// the table's own typing; an amount of zero, with more than two decimals, beyond <see cref="Money.Largest"/> or below zero on the revenue side answers <c>invalidAmount</c>, and
+    /// a date outside the project's period or in the future <c>invalidDate</c> (BR-12). Then the table's own checks; a column's value answers <c>unknownColumn</c> or
+    /// <c>invalidColumnValue</c>, naming the column, and sending needs the required columns, <c>requiredColumnMissing</c> (FR-41); a file already on another entry answers
+    /// <c>invoiceAlreadyAttached</c> (BR-22). It answers the refusal's status, code and column, or the entry kept; a new one sent for approval tells the deciders when
+    /// <paramref name="tellDeciders"/>, which a project file's load does not (redix-api #132 D7).
+    /// </summary>
+    public static async Task<(int Status, string Code, string ColumnKey, Entry Entry)> RecordAsync(Guid projectId, EntryRequest request, EntryTable table, Guid userId, List<Permission> held, Entry existing, bool tellDeciders, RedixDbContext db, TimeProvider time)
+    {
+        var (status, code, columnKey) = await RefusalOfAsync(projectId, request, table, userId, held, existing.Id, db, time);
+        if (code.Length > 0)
+        {
+            return (status, code, columnKey, Entry.None);
+        }
+        var at = time.GetUtcNow().UtcDateTime;
+        return (0, "", "", await KeepAsync(EntryOf(request, projectId, table, userId, at), [.. table.DetailsOf(request), .. FileOf(request, table.FileRole)], existing, userId, tellDeciders, db));
     }
 
     private static async Task<(int Status, string Code, string ColumnKey)> RefusalOfAsync(Guid projectId, EntryRequest request, EntryTable table, Guid userId, List<Permission> held, Guid editing, RedixDbContext db, TimeProvider time)
@@ -202,11 +216,11 @@ public static class EntryRecording
         request.AttachmentId == Guid.Empty ? [] : [new EntryAttachment { EntryId = request.Id, AttachmentId = request.AttachmentId, Role = role }];
 
     /// <summary>Keeps <paramref name="entry"/> with its <paramref name="details"/>: as a new entry, or in place of <paramref name="existing"/> when one is being changed. Answers the entry kept.</summary>
-    private static async Task<Entry> KeepAsync(Entry entry, List<object> details, Entry existing, Guid userId, RedixDbContext db)
+    private static async Task<Entry> KeepAsync(Entry entry, List<object> details, Entry existing, Guid userId, bool tellDeciders, RedixDbContext db)
     {
         if (existing == Entry.None)
         {
-            await AddAsync(entry, details, userId, db);
+            await AddAsync(entry, details, userId, tellDeciders, db);
             await db.SaveChangesAsync();
             return entry;
         }
@@ -215,10 +229,10 @@ public static class EntryRecording
     }
 
     /// <summary>
-    /// Adds <paramref name="entry"/> with its <paramref name="details"/> and the history row of each (FR-21), saved with the change. One sent for approval is a decision and tells
-    /// the deciders; a draft is neither.
+    /// Adds <paramref name="entry"/> with its <paramref name="details"/> and the history row of each (FR-21), saved with the change. One sent for approval is a decision, and tells
+    /// the deciders when <paramref name="tellDeciders"/>; a draft is neither.
     /// </summary>
-    public static async Task AddAsync(Entry entry, List<object> details, Guid userId, RedixDbContext db)
+    public static async Task AddAsync(Entry entry, List<object> details, Guid userId, bool tellDeciders, RedixDbContext db)
     {
         db.Add(entry);
         var sent = entry.Status == EntryStatus.PendingApproval;
@@ -226,6 +240,9 @@ public static class EntryRecording
         if (sent)
         {
             db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Submit, UserId = userId, At = entry.CreatedAt });
+        }
+        if (sent && tellDeciders)
+        {
             await NotificationsEndpoints.TellDecidersAsync(entry, userId, entry.CreatedAt, db);
         }
         foreach (var detail in details)

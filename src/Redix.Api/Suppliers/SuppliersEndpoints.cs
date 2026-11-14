@@ -66,16 +66,28 @@ public static class SuppliersEndpoints
     /// <param name="db">The database they live in.</param>
     public static async Task<IResult> Add(Guid projectId, SupplierRequest request, ClaimsPrincipal principal, RedixDbContext db)
     {
-        var userId = AccessTokens.UserIdOf(principal);
-        var status = await KeepsSettingsAsync(projectId, userId, db) ? SupplierStatus.Approved : SupplierStatus.PendingApproval;
-        return await IfAcceptableAsync(projectId, Guid.Empty, request, db, async () =>
+        var (supplier, refusal, holder) = await AddAsync(projectId, request, AccessTokens.UserIdOf(principal), db);
+        return refusal.Length > 0 ? await RefusedAsync(refusal, holder, db) : Results.Created($"/projects/{projectId}/suppliers/{supplier.Id}", (await ViewsOfAsync([supplier], db)).Single());
+    }
+
+    /// <summary>
+    /// Adds the supplier <paramref name="request"/> by <paramref name="userId"/>: approved when they hold <see cref="Permission.ManageSettings"/>, otherwise waiting for approval
+    /// (FR-44). The one way a supplier is added, by hand and from a project file's load alike (redix-api #132 D6). Answers the supplier added, or <see cref="Supplier.None"/> with the
+    /// refusal of <see cref="Add"/> and, for <c>vatNumberTaken</c>, the supplier holding that number.
+    /// </summary>
+    public static async Task<(Supplier Supplier, string Refusal, Supplier Holder)> AddAsync(Guid projectId, SupplierRequest request, Guid userId, RedixDbContext db)
+    {
+        var (refusal, holder) = await RefusalOfAsync(projectId, Guid.Empty, request, db);
+        if (refusal.Length > 0)
         {
-            var supplier = new Supplier { ProjectId = projectId, Name = request.Name.Trim(), VatNumber = request.VatNumberKept(), Mobile = request.Mobile.Trim(), Status = status, CreatedByUserId = userId };
-            supplier.DefaultTo(request.DefaultItemId);
-            db.Suppliers.Add(supplier);
-            await db.SaveChangesAsync();
-            return Results.Created($"/projects/{projectId}/suppliers/{supplier.Id}", (await ViewsOfAsync([supplier], db)).Single());
-        });
+            return (Supplier.None, refusal, holder);
+        }
+        var status = await KeepsSettingsAsync(projectId, userId, db) ? SupplierStatus.Approved : SupplierStatus.PendingApproval;
+        var supplier = new Supplier { ProjectId = projectId, Name = request.Name.Trim(), VatNumber = request.VatNumberKept(), Mobile = request.Mobile.Trim(), Status = status, CreatedByUserId = userId };
+        supplier.DefaultTo(request.DefaultItemId);
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+        return (supplier, "", Supplier.None);
     }
 
     /// <summary>Changes a supplier's name, VAT number, mobile and default item. It answers as <see cref="Add"/> does, leaving a supplier its own number.</summary>
@@ -90,15 +102,17 @@ public static class SuppliersEndpoints
         {
             return Results.NotFound();
         }
-        return await IfAcceptableAsync(projectId, supplierId, request, db, async () =>
+        var (refusal, holder) = await RefusalOfAsync(projectId, supplierId, request, db);
+        if (refusal.Length > 0)
         {
-            supplier.Name = request.Name.Trim();
-            supplier.VatNumber = request.VatNumberKept();
-            supplier.Mobile = request.Mobile.Trim();
-            supplier.DefaultTo(request.DefaultItemId);
-            await db.SaveChangesAsync();
-            return Results.Ok();
-        });
+            return await RefusedAsync(refusal, holder, db);
+        }
+        supplier.Name = request.Name.Trim();
+        supplier.VatNumber = request.VatNumberKept();
+        supplier.Mobile = request.Mobile.Trim();
+        supplier.DefaultTo(request.DefaultItemId);
+        await db.SaveChangesAsync();
+        return Results.Ok();
     }
 
     /// <summary>Disables a supplier: it disappears from entry and stays in the reports (BR-15). The general cash supplier answers <c>generalCashSupplier</c>, because a disabled one would leave expenses with no supplier nothing to pick.</summary>
@@ -115,7 +129,8 @@ public static class SuppliersEndpoints
 
     private static async Task<bool> KeepsSettingsAsync(Guid projectId, Guid userId, RedixDbContext db) => (await UserAccess.OfAsync(userId, db)).In(projectId).Contains(Permission.ManageSettings);
 
-    private static async Task<IResult> IfAcceptableAsync(Guid projectId, Guid supplierId, SupplierRequest request, RedixDbContext db, Func<Task<IResult>> change)
+    /// <summary>Why <paramref name="request"/> cannot be the supplier <paramref name="supplierId"/> of the project, <see cref="Guid.Empty"/> for a new one, and the supplier holding its VAT number for <c>vatNumberTaken</c>; empty when it can.</summary>
+    private static async Task<(string Refusal, Supplier Holder)> RefusalOfAsync(Guid projectId, Guid supplierId, SupplierRequest request, RedixDbContext db)
     {
         var vatNumber = request.VatNumberKept();
         var refusal = Supplier.RefusalOf(request.Name.Trim(), vatNumber, request.Mobile.Trim());
@@ -125,11 +140,15 @@ public static class SuppliersEndpoints
         }
         if (refusal.Length > 0)
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
+            return (refusal, Supplier.None);
         }
         var holder = await db.Suppliers.Include(row => row.DefaultItems).SingleOrDefaultAsync(row => row.ProjectId == projectId && row.VatNumber != "" && row.VatNumber == vatNumber && row.Id != supplierId);
-        return holder is null ? await change() : Refusal.Of(StatusCodes.Status409Conflict, "VatNumberTaken", "existing", (await ViewsOfAsync([holder], db)).Single());
+        return holder is null ? ("", Supplier.None) : ("VatNumberTaken", holder);
     }
+
+    /// <summary>The answer to <paramref name="refusal"/>: a conflict naming <paramref name="holder"/> for a VAT number another supplier holds, a bad request otherwise.</summary>
+    private static async Task<IResult> RefusedAsync(string refusal, Supplier holder, RedixDbContext db) =>
+        refusal == "VatNumberTaken" ? Refusal.Of(StatusCodes.Status409Conflict, refusal, "existing", (await ViewsOfAsync([holder], db)).Single()) : Refusal.Of(StatusCodes.Status400BadRequest, refusal);
 
     private static async Task<List<SupplierView>> ViewsOfAsync(List<Supplier> suppliers, RedixDbContext db)
     {

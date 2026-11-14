@@ -17,7 +17,7 @@
 | An author changes their draft, and it holds the new values | `EntryRecording.Change`, `EntryChanges.ReplaceAsync` | `EntryChangesTests.AnAuthorChangesTheirDraftAndItHoldsTheNewValues` |
 | A change keeps who entered it and when | `EntryChanges.ReplaceAsync` | `EntryChangesTests.AChangeKeepsWhoEnteredItAndWhen` |
 | Every change is in the History table, before and after | `db.AddHistory` | `EntryChangesTests.EveryChangeIsInTheHistoryWithTheValuesBeforeAndAfter` |
-| An edit goes through the checks of a new entry | `EntryRecording.SaveAsync` | `EntryChangesTests.AnEditGoesThroughTheChecksOfANewEntry` |
+| An edit goes through the checks of a new entry | `EntryRecording.RecordAsync` | `EntryChangesTests.AnEditGoesThroughTheChecksOfANewEntry` |
 | A rejected entry is fixed and sent in one edit | `EntryChanges.ReplaceAsync` | `EntryChangesTests.ARejectedEntryIsFixedAndSentAgainInOneEdit` |
 | An edit does not call its own file or number a repeat | The `editing` id | `EntryChangesTests.AnEditKeepsItsOwnFileAndInvoiceNumberWithoutCallingThemRepeats` |
 | The field cannot change what waits, or someone else's | `EntryChanges.RefusalOf` | `EntryChangesTests.TheFieldCannotChangeWhatWaitsForADecisionOrSomeoneElsesEntry` |

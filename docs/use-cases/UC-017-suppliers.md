@@ -38,10 +38,10 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 
 | Rule | Code | Test in `SuppliersTests` |
 | --- | --- | --- |
-| Finance adds a supplier with its name, VAT number, mobile and default item (FR-06) | `SuppliersEndpoints.Add` | `FinanceAddsASupplierWithAllItsDetails` |
+| Finance adds a supplier with its name, VAT number, mobile and default item (FR-06) | `SuppliersEndpoints.AddAsync` | `FinanceAddsASupplierWithAllItsDetails` |
 | BR-16: a VAT number is empty or at most 20 digits; more, or anything but digits, is refused (Muteb, 7 Nov 2026) | `Supplier.IsValidVatNumber` | `SuppliersTests.BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused` |
-| A number another supplier holds is refused, naming that supplier (AC-06.1) | `SuppliersEndpoints.IfAcceptableAsync` | `AVatNumberAnotherSupplierHoldsIsRefusedNamingThatSupplier`, `AnEditToANumberAnotherSupplierHoldsIsRefused` |
-| A disabled supplier still holds its number | `SuppliersEndpoints.IfAcceptableAsync` | `ADisabledSupplierStillHoldsItsVatNumber` |
+| A number another supplier holds is refused, naming that supplier (AC-06.1) | `SuppliersEndpoints.RefusalOfAsync` | `AVatNumberAnotherSupplierHoldsIsRefusedNamingThatSupplier`, `AnEditToANumberAnotherSupplierHoldsIsRefused` |
+| A disabled supplier still holds its number | `SuppliersEndpoints.RefusalOfAsync` | `ADisabledSupplierStillHoldsItsVatNumber` |
 | The database holds a number to one supplier in a project | The index in `RedixDbContext` | `TheDatabaseHoldsAVatNumberToOneSupplierInAProject` |
 | One number may be in two projects (BR-33) | The index in `RedixDbContext` | `OneVatNumberMayBeInTwoProjects` |
 | BR-16: a VAT number is none, or any number of at most 20 digits; anything else is refused | `Supplier.IsValidVatNumber` | `BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused`, `BR_16_ASupplierWithNoVatNumberIsSavedWithNone` |

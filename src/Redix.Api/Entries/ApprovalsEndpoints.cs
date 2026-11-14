@@ -59,16 +59,26 @@ public static class ApprovalsEndpoints
                 failed.Add(new EntryFailureView(id, refusal));
                 continue;
             }
-            entry!.Status = EntryStatus.Approved;
-            entry.ApprovedAt = at;
-            db.EntryDecisions.Add(new EntryDecision { EntryId = id, Action = EntryDecisionAction.Approve, UserId = userId, At = at });
-            db.AddHistory(entry, HistoryAction.Approve, userId, at);
-            NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryApproved, userId, at, db);
-            await ApproveItsSupplierAsync(id, userId, at, db);
+            await ApproveAsync(entry!, userId, at, db);
             approved.Add(id);
         }
         await db.SaveChangesAsync();
         return Results.Ok(new ApprovalView(approved, failed));
+    }
+
+    /// <summary>
+    /// Approves <paramref name="entry"/>, one waiting, in the name of <paramref name="userId"/> at <paramref name="at"/> (FR-19): its decision, its History line, and who entered it told
+    /// unless they decided it themselves. The first expense on a supplier waiting for approval approves it too. The one way an entry is approved, for the inbox and a project file's load
+    /// alike (BR-43); the caller saves.
+    /// </summary>
+    public static async Task ApproveAsync(Entry entry, Guid userId, DateTime at, RedixDbContext db)
+    {
+        entry.Status = EntryStatus.Approved;
+        entry.ApprovedAt = at;
+        db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Approve, UserId = userId, At = at });
+        db.AddHistory(entry, HistoryAction.Approve, userId, at);
+        NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryApproved, userId, at, db);
+        await ApproveItsSupplierAsync(entry.Id, userId, at, db);
     }
 
     /// <summary>Rejects an entry, saying why (AC-19.1): it returns to who entered it, to fix and send again. No reason answers <c>reasonRequired</c>, and an entry nobody is waiting on <c>entryNotPending</c>.</summary>

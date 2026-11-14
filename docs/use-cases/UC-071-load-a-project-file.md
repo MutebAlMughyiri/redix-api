@@ -6,7 +6,7 @@
 **Who uses it:** the manager who created the project, who holds `ManageProject` (D1), into an approved project that holds no entry yet (D4).
 **Issue:** redix-api #132 "Load a project's JSON file into REDIX: its structure, entries, actual balances and last report"; the file's shape is redix-api #130's.
 
-**Built so far:** the file's reader (`Import/ProjectFile`). The route that loads it, `POST /projects/{id}/project-file`, is #132's plan step 3.
+**Built so far:** the file's reader (`Import/ProjectFile`), and the owners the load calls, each the one way its part is added by hand too: `EntryRecording.RecordAsync`, `ApprovalsEndpoints.ApproveAsync`, `ReconciliationsEndpoints.EnterAsync`, `PeriodicReportsEndpoints.IssueAsync`, `CategoriesEndpoints.AddItemAsync` and `AddSubgroupAsync`, `ContractsEndpoints.AddAsync`, `PartnersEndpoints.AddAsync`, `SuppliersEndpoints.AddAsync` and `PaymentMethodsEndpoints.AddAsync`. The route that loads it, `POST /projects/{id}/project-file`, is #132's plan step 3.
 
 ## The file
 
@@ -37,3 +37,5 @@ REDIX's own model, as the generated workbook lays it out (redix-api #130), with 
 | AC-53.9: a file of a newer version is refused with `newerVersion` before its shape is read | `ProjectFile.Read` | `ProjectFileTests.AC_53_9_AFileOfANewerVersionIsRefusedBeforeItsShapeIsRead` |
 | A project file is read with its report, its actual balances, its lists and its tables | `ProjectFile.Read` | `ProjectFileTests.AC_53_9_AProjectFileIsReadWithItsReportItsActualBalancesItsListsAndItsTables` |
 | D2, D9: a file with no report, no accounts and no rows is its structure alone | `ProjectFile.Read` | `ProjectFileTests.D9_D2_AFileWithNoReportNoAccountsAndNoRowsIsReadAsItsStructureAlone` |
+| D7, BR-43: an entry recorded for a project file passes every check of Add entry and keeps its decision, and tells no decider, while Add entry tells them | `EntryRecording.RecordAsync`, `AddAsync` | `ProjectFileTests.D7_AnEntryRecordedForAProjectFilePassesTheChecksOfAddEntry`, `D7_AnEntryRecordedForAProjectFileTellsNoDeciderWhileAddEntryTellsThem` |
+| D9, AC-53.7: a report is issued with the number and the time it is given, and the next one follows it | `PeriodicReportsEndpoints.IssueAsync` | `ProjectFileTests.D9_AReportIsIssuedWithTheNumberAndTheTimeItIsGivenAndTheNextOneFollowsIt` |

@@ -38,23 +38,30 @@ public static class PeriodicReportsEndpoints
     /// <param name="db">The database the reports live in.</param>
     public static async Task<NextReportView> Next(Guid projectId, RedixDbContext db) => new((await PeriodicReport.LatestOfAsync(projectId, db)).Number + 1, await WaitingFigures.OfAsync(projectId, db));
 
-    /// <summary>
-    /// Issues the next report from what is approved now: a numbered snapshot that never changes (BR-26). What was approved since the previous one is marked new, whatever its date, and the
-    /// expenses' difference starts from the previous report's (BR-09). Numbering has no gaps (AC-29.3).
-    /// </summary>
+    /// <summary>Issues the next report now, numbered after the latest so numbering has no gaps (AC-29.3), as <see cref="IssueAsync"/> issues one.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Issue(Guid projectId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
+        var report = await IssueAsync(projectId, (await PeriodicReport.LatestOfAsync(projectId, db)).Number + 1, time.GetUtcNow().UtcDateTime, AccessTokens.UserIdOf(principal), db);
+        return Results.Ok(new PeriodicReportRowView(report.Number, report.IssuedAt, report.ExpensesTotal));
+    }
+
+    /// <summary>
+    /// Issues the report <paramref name="number"/> at <paramref name="at"/> by <paramref name="userId"/>, from what is approved now: a numbered snapshot that never changes (BR-26). What
+    /// was approved since the previous one is marked new, whatever its date, and the expenses' difference starts from the previous report's (BR-09). The route issues the next number
+    /// now; a project file's load, the file's number at the file's time (redix-api #132 D9).
+    /// </summary>
+    public static async Task<PeriodicReport> IssueAsync(Guid projectId, int number, DateTime at, Guid userId, RedixDbContext db)
+    {
         var previous = await PeriodicReport.LatestOfAsync(projectId, db);
-        var at = time.GetUtcNow().UtcDateTime;
-        var snapshot = await SnapshotAsync(projectId, previous.Number + 1, previous, at, db);
-        var report = new PeriodicReport { ProjectId = projectId, Number = snapshot.Number, IssuedAt = at, IssuedByUserId = AccessTokens.UserIdOf(principal), ExpensesTotal = snapshot.Expenses, Snapshot = JsonSerializer.Serialize(snapshot, Json) };
+        var snapshot = await SnapshotAsync(projectId, number, previous, at, db);
+        var report = new PeriodicReport { ProjectId = projectId, Number = snapshot.Number, IssuedAt = at, IssuedByUserId = userId, ExpensesTotal = snapshot.Expenses, Snapshot = JsonSerializer.Serialize(snapshot, Json) };
         db.PeriodicReports.Add(report);
         await db.SaveChangesAsync();
-        return Results.Ok(new PeriodicReportRowView(report.Number, report.IssuedAt, report.ExpensesTotal));
+        return report;
     }
 
     /// <summary>A report as it was issued: every partner for whoever sees all capital, otherwise the total and only the lines of the partners the caller sees (BR-31). A number not issued is not found.</summary>

@@ -33,7 +33,7 @@ public static class ReconciliationsEndpoints
         return new ReconciliationView(latest.At, surplus, total, total - surplus, rows);
     }
 
-    /// <summary>Keeps what each bank account and custody really holds, and answers the difference. An account not in the project answers <c>unknownAccount</c>; an amount beyond the limit <c>invalidAmount</c>; an active account left out <c>accountMissing</c>.</summary>
+    /// <summary>Keeps what each bank account and custody really holds, and answers the difference, or the refusal of <see cref="EnterAsync"/>.</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="request">What each holds.</param>
     /// <param name="principal">The caller's session.</param>
@@ -41,28 +41,37 @@ public static class ReconciliationsEndpoints
     /// <param name="time">The current time.</param>
     public static async Task<IResult> Enter(Guid projectId, ReconcileRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
+        var refusal = await EnterAsync(projectId, request.Balances, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
+        return refusal.Length > 0 ? Refusal.Of(StatusCodes.Status400BadRequest, refusal) : Results.Ok(await Latest(projectId, db));
+    }
+
+    /// <summary>
+    /// Keeps <paramref name="balances"/>, what each account really holds, as one reconciliation by <paramref name="userId"/> at <paramref name="at"/>, in the History table (FR-24): the one
+    /// way one is entered, by hand and from a project file's load alike (redix-api #132 D8). An account not in the project answers <c>unknownAccount</c>; an amount beyond the limit
+    /// <c>invalidAmount</c>; an active account left out <c>accountMissing</c>. Empty once kept.
+    /// </summary>
+    public static async Task<string> EnterAsync(Guid projectId, List<ActualBalanceRequest> balances, Guid userId, DateTime at, RedixDbContext db)
+    {
         var accounts = await db.Accounts.Where(account => account.ProjectId == projectId).ToListAsync();
-        if (request.Balances.Any(row => accounts.All(account => account.Id != row.AccountId)))
+        if (balances.Any(row => accounts.All(account => account.Id != row.AccountId)))
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "UnknownAccount");
+            return "UnknownAccount";
         }
-        if (request.Balances.Any(row => !Money.IsAcceptable(row.ActualBalance)))
+        if (balances.Any(row => !Money.IsAcceptable(row.ActualBalance)))
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "InvalidAmount");
+            return "InvalidAmount";
         }
-        if (accounts.Any(account => account.IsActive && request.Balances.All(row => row.AccountId != account.Id)))
+        if (accounts.Any(account => account.IsActive && balances.All(row => row.AccountId != account.Id)))
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "AccountMissing");
+            return "AccountMissing";
         }
 
-        var userId = AccessTokens.UserIdOf(principal);
-        var at = time.GetUtcNow().UtcDateTime;
         var reconciliation = new Reconciliation { ProjectId = projectId, At = at, UserId = userId };
-        reconciliation.Balances.AddRange(request.Balances.Select(row => new ReconciliationBalance { ReconciliationId = reconciliation.Id, AccountId = row.AccountId, ActualBalance = row.ActualBalance }));
+        reconciliation.Balances.AddRange(balances.Select(row => new ReconciliationBalance { ReconciliationId = reconciliation.Id, AccountId = row.AccountId, ActualBalance = row.ActualBalance }));
         db.Reconciliations.Add(reconciliation);
         db.AddHistory(reconciliation, HistoryAction.Create, userId, at);
         await db.SaveChangesAsync();
-        return Results.Ok(await Latest(projectId, db));
+        return "";
     }
 }
 

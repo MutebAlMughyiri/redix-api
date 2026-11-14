@@ -27,10 +27,10 @@ No new table: it uses `Suppliers.Status` and `Suppliers.CreatedByUserId`. Field 
 
 | Rule | Code | Test in `SuppliersTests` |
 | --- | --- | --- |
-| What Field adds waits for approval, and shows so (AC-44.1) | `SuppliersEndpoints.Add` | `WhatFieldAddsWaitsForApproval` |
-| What Finance adds is approved at once | `SuppliersEndpoints.Add` | `FinanceAddsASupplierWithAllItsDetails` |
-| What Field adds is validated as any supplier (BR-16) | `SuppliersEndpoints.IfAcceptableAsync` | `WhatFieldAddsIsValidatedAsAnySupplier` |
-| A number already in the register is refused, naming its supplier (BR-19) | `SuppliersEndpoints.IfAcceptableAsync` | `AVatNumberAlreadyInTheRegisterIsRefusedToFieldNamingItsSupplier` |
+| What Field adds waits for approval, and shows so (AC-44.1) | `SuppliersEndpoints.AddAsync` | `WhatFieldAddsWaitsForApproval` |
+| What Finance adds is approved at once | `SuppliersEndpoints.AddAsync` | `FinanceAddsASupplierWithAllItsDetails` |
+| What Field adds is validated as any supplier (BR-16) | `SuppliersEndpoints.RefusalOfAsync` | `WhatFieldAddsIsValidatedAsAnySupplier` |
+| A number already in the register is refused, naming its supplier (BR-19) | `SuppliersEndpoints.RefusalOfAsync` | `AVatNumberAlreadyInTheRegisterIsRefusedToFieldNamingItsSupplier` |
 | A pending supplier already holds its number | The same | `APendingSupplierAlreadyHoldsItsVatNumber` |
 | A pending supplier is offered to who added it and to Finance only (step 3) | `Supplier.OfferedTo` | `APendingSupplierIsOfferedToWhoAddedItAndToFinanceOnly` |
 | Everyone with access sees it in the register, marked (BR-31) | `SuppliersEndpoints.List` | `EveryoneWithAccessSeesAPendingSupplierInTheRegister` |

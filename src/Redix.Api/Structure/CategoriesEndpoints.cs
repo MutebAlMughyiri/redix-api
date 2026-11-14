@@ -108,18 +108,28 @@ public static class CategoriesEndpoints
             {
                 return Results.NotFound();
             }
-            var refusal = await ProjectStructure.RefusalOfTypeAsync(projectId, request.Type, db);
-            if (refusal.Length > 0)
-            {
-                return Refusal.Of(StatusCodes.Status409Conflict, refusal);
-            }
-
-            var defaults = await db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == request.Type).ToListAsync();
-            var item = Item.New(categoryId, name, request.Type, await db.Items.CountAsync(row => row.CategoryId == categoryId), defaults);
-            db.Items.Add(item);
-            await db.SaveChangesAsync();
-            return Results.Created($"/projects/{projectId}/items/{item.Id}", ItemView.Of(item));
+            var (item, refusal) = await AddItemAsync(projectId, categoryId, name, request.Type, db);
+            return refusal.Length > 0 ? Refusal.Of(StatusCodes.Status409Conflict, refusal) : Results.Created($"/projects/{projectId}/items/{item.Id}", ItemView.Of(item));
         });
+
+    /// <summary>
+    /// Adds the item <paramref name="name"/>, a name already accepted, of <paramref name="type"/> at the end of the project's category <paramref name="categoryId"/>, with its general
+    /// group and the default columns of its type (FR-05, FR-38): the one way an item is added, by hand and from a project file's load alike (redix-api #132 D5). A second capital
+    /// item answers <c>capitalItemExists</c>. Answers the item added, or <see cref="Item.None"/> and the refusal.
+    /// </summary>
+    public static async Task<(Item Item, string Refusal)> AddItemAsync(Guid projectId, Guid categoryId, string name, ItemType type, RedixDbContext db)
+    {
+        var refusal = await ProjectStructure.RefusalOfTypeAsync(projectId, type, db);
+        if (refusal.Length > 0)
+        {
+            return (Item.None, refusal);
+        }
+        var defaults = await db.DefaultColumns.Where(column => column.ProjectId == projectId && column.ItemType == type).ToListAsync();
+        var item = Item.New(categoryId, name, type, await db.Items.CountAsync(row => row.CategoryId == categoryId), defaults);
+        db.Items.Add(item);
+        await db.SaveChangesAsync();
+        return (item, "");
+    }
 
     /// <summary>Puts a category's items in the order given, which is their order in the periodic report. A list that is not exactly the category's items answers <c>invalidOrder</c>.</summary>
     /// <param name="projectId">The project.</param>
@@ -243,14 +253,25 @@ public static class CategoriesEndpoints
             {
                 return Results.NotFound();
             }
-            if (item.Type is not (ItemType.Purchases or ItemType.Both))
-            {
-                return ProjectStructure.Refused(StructureChangeOutcome.ItemTakesNoPurchases);
-            }
-            db.Subgroups.Add(new Subgroup { ItemId = itemId, Name = name, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) });
-            await db.SaveChangesAsync();
-            return Results.Ok();
+            var outcome = await AddSubgroupAsync(item, name, db);
+            return outcome == StructureChangeOutcome.Done ? Results.Ok() : ProjectStructure.Refused(outcome);
         });
+
+    /// <summary>
+    /// Adds the subgroup <paramref name="name"/>, a name already accepted, last among <paramref name="item"/>'s tables: the one way a table of purchases is added, by hand and from a
+    /// project file's load alike (redix-api #132 D5). A sub-table holds purchases (Muteb, 7 Nov 2026), so an item that takes none answers
+    /// <see cref="StructureChangeOutcome.ItemTakesNoPurchases"/>.
+    /// </summary>
+    public static async Task<StructureChangeOutcome> AddSubgroupAsync(Item item, string name, RedixDbContext db)
+    {
+        if (item.Type is not (ItemType.Purchases or ItemType.Both))
+        {
+            return StructureChangeOutcome.ItemTakesNoPurchases;
+        }
+        db.Subgroups.Add(new Subgroup { ItemId = item.Id, Name = name, SortOrder = await ProjectStructure.NextTablePlaceAsync(item.Id, db) });
+        await db.SaveChangesAsync();
+        return StructureChangeOutcome.Done;
+    }
 
     /// <summary>
     /// An item's tables in the order its sheet prints them (AC-46.8): its general table, named after the item, each named subgroup, each contract's payments, named after its

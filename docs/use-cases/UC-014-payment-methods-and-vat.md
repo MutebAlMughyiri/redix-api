@@ -39,7 +39,7 @@ Every change also answers `409` `projectFinished` in a finished project.
 | An approved project starts with the three methods | `PaymentMethodSeed`, `ProjectStructure.ApproveAsync` | `PaymentMethodsTests.AnApprovedProjectStartsWithTheThreeMethods` |
 | They are rows of its own | `PaymentMethod.CopyFor` | `PaymentMethodsTests.ProjectsTakeTheirOwnRowsOfTheTemplatesMethods` |
 | A project copied from an earlier one still starts from the seed | `ProjectStructure.ApproveAsync` | `PaymentMethodsTests.AProjectCopiedFromAnEarlierOneStillStartsFromTheSeed` |
-| A method is added at the end, and renamed | `PaymentMethodsEndpoints.Add`, `Rename` | `PaymentMethodsTests.FinanceAddsAMethodAtTheEndOfTheList`, `FinanceRenamesAMethod` |
+| A method is added at the end, and renamed | `PaymentMethodsEndpoints.AddAsync`, `Rename` | `PaymentMethodsTests.FinanceAddsAMethodAtTheEndOfTheList`, `FinanceRenamesAMethod` |
 | A method needs a name of 1 to 100 characters | `ProjectChanges.WithNameAsync`, `Project.IsAcceptableName` | `PaymentMethodsTests.AMethodNeedsANameOfAtMost100Characters` |
 | A disabled method leaves entry and stays on the list (AC-40.1) | `PaymentMethodsEndpoints.Offered`, `List` | `PaymentMethodsTests.ADisabledMethodLeavesEntryAndStaysOnTheList` |
 | Enabling brings it back | `PaymentMethodsEndpoints.Enable` | `PaymentMethodsTests.EnablingBringsAMethodBackIntoEntry` |
@@ -48,7 +48,7 @@ Every change also answers `409` `projectFinished` in a finished project.
 | One project's route never reaches another's methods (BR-33) | `PaymentMethodsEndpoints.ChangeAsync`, `PermissionHandler` | `PaymentMethodsTests.ARouteOfOneProjectNeverReachesAnothersMethods` |
 | Everyone with access reads; only Finance changes | `Permission.ManageSettings` | `PaymentMethodsTests.EveryoneWithAccessReadsMethodsAndOnlyFinanceChangesThem` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `PaymentMethodsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
-| A method added after a delete goes last, and no two methods share a place | `PaymentMethodsEndpoints.Add` | `PaymentMethodsTests.AMethodAddedAfterADeleteGoesLastAndNoTwoMethodsShareAPlace` |
+| A method added after a delete goes last, and no two methods share a place | `PaymentMethodsEndpoints.AddAsync` | `PaymentMethodsTests.AMethodAddedAfterADeleteGoesLastAndNoTwoMethodsShareAPlace` |
 
 ## Left to later use cases
 

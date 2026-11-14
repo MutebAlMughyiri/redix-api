@@ -35,7 +35,7 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 
 | Rule | Code | Test in `ContractsTests` |
 | --- | --- | --- |
-| Finance adds a contract with its contractor, item and value (FR-07) | `ContractsEndpoints.Add` | `FinanceAddsAContractWithItsContractorItemAndValue` |
+| Finance adds a contract with its contractor, item and value (FR-07) | `ContractsEndpoints.AddAsync` | `FinanceAddsAContractWithItsContractorItemAndValue` |
 | A new contract has its whole value remaining | `ContractMoney` | `ANewContractHasItsWholeValueRemaining` |
 | The remaining is the value less what was paid inside (AC-07.1, BR-04) | `Contract.RemainingAfter` | `TheRemainingIsTheValueLessWhatWasPaidInsideTheContract` |
 | A payment beyond the value leaves a negative remaining, with an alert (AC-07.1) | `Contract.IsOverrunBy` | `APaymentBeyondTheValueLeavesANegativeRemainingWithAnAlert` |

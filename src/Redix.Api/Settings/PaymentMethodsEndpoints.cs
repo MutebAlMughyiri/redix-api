@@ -40,10 +40,16 @@ public static class PaymentMethodsEndpoints
     public static Task<IResult> Add(Guid projectId, NameRequest request, RedixDbContext db) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            db.PaymentMethods.Add(new PaymentMethod { ProjectId = projectId, Name = name, SortOrder = await db.PaymentMethods.Where(method => method.ProjectId == projectId).OrderByDescending(method => method.SortOrder).Select(method => method.SortOrder + 1).FirstOrDefaultAsync() });
-            await db.SaveChangesAsync();
+            await AddAsync(projectId, name, db);
             return Results.Ok();
         });
+
+    /// <summary>Adds the payment method <paramref name="name"/>, a name already accepted, at the end of the project's list: the one way one is added, by hand and from a project file's load alike (redix-api #132 D6).</summary>
+    public static async Task AddAsync(Guid projectId, string name, RedixDbContext db)
+    {
+        db.PaymentMethods.Add(new PaymentMethod { ProjectId = projectId, Name = name, SortOrder = await db.PaymentMethods.Where(method => method.ProjectId == projectId).OrderByDescending(method => method.SortOrder).Select(method => method.SortOrder + 1).FirstOrDefaultAsync() });
+        await db.SaveChangesAsync();
+    }
 
     /// <summary>Renames a payment method. An unacceptable name answers <c>invalidName</c>.</summary>
     /// <param name="projectId">The project.</param>
