@@ -314,6 +314,20 @@ public class PartnersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Row190_ManyUnchoosesOfOnePartnerAtTheSameMomentAllAnswerAsDoneAndLeaveItUnchosen()
+    {
+        var (client, project) = await FinanceAsync();
+        var (nawaf, _) = await MemberAsync(project, Manager);
+        var partner = await AddAsync(client, project.Id, "متعب");
+        (await client.PostAsync($"/projects/{project.Id}/users/{nawaf.Id}/partners/{partner.Id}", null)).EnsureSuccessStatusCode();
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => client.DeleteAsync($"/projects/{project.Id}/users/{nawaf.Id}/partners/{partner.Id}")));
+
+        Assert.All(answers, answer => Assert.Equal(HttpStatusCode.OK, answer.StatusCode));
+        Assert.Empty((await HeldAsync(client, project.Id, nawaf.Id)).PartnerIds);
+    }
+
+    [Fact]
     public async Task UC_106_SeeAllAndChosenCapitalExcludeEachOtherAndARegistrantSeesAll()
     {
         var (client, project) = await FinanceAsync();

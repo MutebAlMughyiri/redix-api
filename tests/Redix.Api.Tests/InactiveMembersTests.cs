@@ -248,6 +248,24 @@ public class InactiveMembersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Row190_ManyEnablesAtTheSameMomentAllAnswerAsSavedActiveAndWriteOneHistoryLine()
+    {
+        var (_, client, projectId) = await ManagerAsync();
+        var (member, _) = await MemberAsync(projectId);
+        await DisableAsync(client, projectId, member.Id);
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => EnableAsync(client, projectId, member.Id)));
+
+        Assert.All(answers, answer => Assert.Equal(HttpStatusCode.OK, answer.StatusCode));
+        foreach (var answer in answers)
+        {
+            Assert.False(Assert.Single((await ViewOf(answer)).Projects).IsInactive);
+        }
+        Assert.Equal(0, await InactiveRowsAsync(projectId, member.Id));
+        Assert.Equal([HistoryAction.Disable, HistoryAction.Enable], await InactiveHistoryAsync(projectId, member.Id));
+    }
+
+    [Fact]
     public async Task R126_SomeoneNotInTheProjectIsNotFound()
     {
         var (_, client, projectId) = await ManagerAsync();
