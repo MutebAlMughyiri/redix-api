@@ -132,11 +132,15 @@ public class User
         return PasswordPolicy.Holds(temporaryPassword, username) ? RefusalOfDetails(displayName, mobile) : "WeakPassword";
     }
 
-    /// <summary>Replaces the password with a temporary one: the user must change it, and a lock from wrong passwords ends.</summary>
-    public void ResetPassword(string temporaryPassword, IPasswordHasher<User> hasher)
+    /// <summary>
+    /// Replaces a forgotten password: a lock from wrong passwords ends and every device is signed out (UC-007, redix-api #127 R7, AC-02.9). A temporary one, which a manager types, must be
+    /// changed at the next sign-in (AC-02.1); one the person chose with a code by email need not (AC-02.6). The caller saves.
+    /// </summary>
+    public async Task ResetPasswordAsync(string password, bool mustChangePassword, IPasswordHasher<User> hasher, RedixDbContext db)
     {
-        SetPassword(temporaryPassword, hasher);
-        MustChangePassword = true;
+        await db.Devices.Where(device => device.UserId == Id).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
+        SetPassword(password, hasher);
+        MustChangePassword = mustChangePassword;
         FailedSignIns = 0;
         LockedUntil = NeverLocked;
     }

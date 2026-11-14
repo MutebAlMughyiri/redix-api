@@ -52,6 +52,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Admin:Username"] = AdminUsername,
             ["Admin:Password"] = AdminPassword,
             ["Registration:PermitsPerHour"] = "100000",
+            ["EmailCodes:PermitsPerHour"] = "100000",
             ["Attachments:Folder"] = Path.Combine(Path.GetTempPath(), "RedixTestsAttachments"),
         }));
         builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time).AddSingleton<EmailSender>(Emails));
@@ -85,13 +86,13 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await database.MigrateAsync();
     }
 
-    public async Task<User> AddUserAsync(string password, bool mustChangePassword = false, bool isAdmin = false)
+    public async Task<User> AddUserAsync(string password, bool mustChangePassword = false, bool isAdmin = false, string email = "")
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
         var user = new User
         {
-            Username = $"user-{Guid.NewGuid():N}", MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime,
+            Username = $"user-{Guid.NewGuid():N}", Email = email, MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime,
         };
         user.SetPassword(password, scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>());
         db.Users.Add(user);

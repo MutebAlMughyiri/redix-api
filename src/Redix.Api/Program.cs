@@ -59,6 +59,9 @@ builder.Services.AddRateLimiter(limiter =>
     limiter.AddPolicy(RegistrationEndpoints.RegistrationLimit, context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("Registration:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
+    limiter.AddPolicy(EmailCode.AskingLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailCodes:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
 });
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(DatabaseConnection.Of(services.GetRequiredService<IConfiguration>()), sql => sql.UseParameterizedCollectionMode(ParameterTranslationMode.Parameter))
@@ -110,6 +113,7 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.MapTranslations();
 app.MapConfig();
 app.MapAuth();
+app.MapPasswordReset();
 app.MapProjects();
 app.MapProjectUsers();
 app.MapRegistration();

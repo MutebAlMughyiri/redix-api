@@ -81,11 +81,7 @@ public static class UsersEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword");
         }
-        return await ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, async user =>
-        {
-            await db.Devices.Where(device => device.UserId == userId).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
-            user.ResetPassword(request.TemporaryPassword, hasher);
-        });
+        return await ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, user => user.ResetPasswordAsync(request.TemporaryPassword, mustChangePassword: true, hasher, db));
     }
 
     private static async Task<bool> MayChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db)

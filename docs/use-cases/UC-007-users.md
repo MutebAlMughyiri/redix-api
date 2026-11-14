@@ -2,7 +2,7 @@
 
 # UC-007: Manage users
 
-**What it is for:** correcting and resetting logins (FR-02), and making a person inactive in one project and active again (redix-api #126). A forgotten password with nobody to reset it, such as a project's only manager or the admin, takes a database fix for now.
+**What it is for:** correcting and resetting logins (FR-02), and making a person inactive in one project and active again (redix-api #126). Anyone with an email, a project's only manager and the admin included, also resets a forgotten password himself from the sign-in screen with a code by email (UC-002, redix-api #127).
 **Who uses it:** a project manager, for someone only in projects they manage (BR-29, BR-33); making someone inactive, whoever manages the users of that one project. A new login is created inside a project: see UC-008.
 **Issue:** redix-api #25; the app side is redix-app #27.
 
@@ -34,7 +34,7 @@ A user answers as `{ id, username, displayName, mobile, mustChangePassword, proj
 | Each field has its limit | `User.RefusalOfNew`, `User.RefusalOfDetails` | `ProjectUsersTests.AFieldOutsideItsLimitIsRefused` |
 | Editing changes the name and mobile, and nothing else | `UsersEndpoints.Edit` | `UsersTests.EditingChangesTheNameAndMobile` |
 | A mobile is ASCII digits with a leading `+` at most, or empty, for a user or a supplier, so the browser front end cannot store `????`; one owner | `User.IsAcceptableMobile` | `ProjectUsersTests.AMobileIsAsciiDigitsWithALeadingPlusAtMost`, `ProjectUsersTests.AMobileMayStartWithAPlus`, `UsersTests.AnEditCannotGiveAMobileThatIsNotDigits`, `RegistrationTests.ABadFieldCreatesNothing`, `SuppliersTests.ASuppliersMobileIsDigitsOnAddAndOnEdit` |
-| A reset forces a change, ends the lock and signs out every device | `User.ResetPassword`, `UsersEndpoints.ResetPassword` | `UsersTests.AResetForcesAChangeEndsTheLockAndSignsOutEveryDevice` |
+| A reset forces a change, ends the lock and signs out every device | `User.ResetPasswordAsync`, the one reset a code by email uses too, `UsersEndpoints.ResetPassword` | `UsersTests.AResetForcesAChangeEndsTheLockAndSignsOutEveryDevice` |
 | A manager makes someone inactive in his project and active again, and he keeps what he holds there (redix-api #126, D1, R7) | `ProjectUsersEndpoints.Disable`, `Enable` | `InactiveMembersTests.R1_D1_R7_AManagerMakesSomeoneInactiveInHisProjectAndActiveAgainAndHeKeepsWhatHeHolds` |
 | Every route of a project he is inactive in refuses him as for a project he is not in; his other projects work with the same session (R5) | `UserAccess.OfAsync` | `InactiveMembersTests.R5_EveryRouteOfAProjectHeIsInactiveInRefusesHimAsForAProjectHeIsNotIn`, `R5_InactiveInOneProjectHeWorksInAnotherWithTheSameSession` |
 | His project list keeps a project he is inactive in, saying so and holding nothing (R2, D2) | `ProjectsEndpoints.List`, `ProjectView.Of` | `InactiveMembersTests.R2_D2_HisProjectListShowsAProjectHeIsInactiveInSayingSoAndHoldingNothing`, `R2_SomeoneTakenOutOfAProjectHeWasInactiveInNoLongerSeesItOnHisList` |
