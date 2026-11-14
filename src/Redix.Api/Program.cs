@@ -14,6 +14,7 @@ using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Documents;
 using Redix.Api.Entries;
+using Redix.Api.Import;
 using Redix.Api.Partners;
 using Redix.Api.Reports;
 using Redix.Api.Projects;
@@ -118,6 +119,7 @@ app.MapSummary();
 app.MapItemReport();
 app.MapDocuments();
 app.MapPeriodicReports();
+app.MapProjectFile();
 app.MapReportFiles();
 app.MapSyncEndpoints();
 

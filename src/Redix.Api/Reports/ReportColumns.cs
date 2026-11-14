@@ -69,7 +69,8 @@ public sealed record ReportColumns(List<string> Suppliers, List<string> Accounts
 
     private static List<ReportChoiceView> NamesOnly(List<string> names) => [.. names.Select(name => new ReportChoiceView(name, ChoiceSign.None))];
 
-    private static string PlaceInContract(bool isOutside) => TranslationSeed.Arabic(isOutside ? "contractorPayments.outside" : "contractorPayments.inside");
+    /// <summary>A contractor payment's place in its contract as a report writes it, «خارج الاتفاق» or «داخل الاتفاق», and as a project file's load reads it back (redix-api #132).</summary>
+    public static string PlaceInContract(bool isOutside) => TranslationSeed.Arabic(isOutside ? "contractorPayments.outside" : "contractorPayments.inside");
 }
 
 /// <summary>A column of a table in a report, as the report keeps it (redix-api #129).</summary>

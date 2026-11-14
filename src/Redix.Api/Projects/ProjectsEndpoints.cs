@@ -43,8 +43,9 @@ public static class ProjectsEndpoints
         var projects = await db.Projects.Include(project => project.Units.OrderBy(unit => unit.SortOrder))
             .OrderBy(project => project.Status).ThenByDescending(project => project.StartDate)
             .ToListAsync();
-        return projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (theirs.Contains(project.Id) && (!project.IsApproved || inactive.Contains(project.Id))))
-            .Select(project => ProjectView.Of(project, access.In(project.Id), roleNames, inactive)).ToList();
+        var listed = projects.Where(project => access.In(project.Id).Contains(Permission.ReadProject) || (theirs.Contains(project.Id) && (!project.IsApproved || inactive.Contains(project.Id)))).ToList();
+        var holdingEntries = await Project.HoldingEntriesAsync([.. listed.Select(project => project.Id)], db);
+        return listed.Select(project => ProjectView.Of(project, access.In(project.Id), roleNames, inactive, holdingEntries)).ToList();
     }
 
     /// <summary>
@@ -226,7 +227,7 @@ public static class ProjectsEndpoints
     {
         var access = await UserAccess.OfAsync(userId, db);
         var roleNames = await ProjectRoleName.OfUserAsync(userId, db);
-        return ProjectView.Of(project, access.In(project.Id), roleNames, await InactiveMember.ProjectsOfAsync(userId, db));
+        return ProjectView.Of(project, access.In(project.Id), roleNames, await InactiveMember.ProjectsOfAsync(userId, db), await Project.HoldingEntriesAsync([project.Id], db));
     }
 }
 
@@ -271,15 +272,18 @@ public record AddUnitRequest(string Name);
 /// <param name="IsInactive">True when the caller is inactive in this project: it shows gray with «حسابك غير مفعّل في هذا المشروع.» and does not open (redix-api #126, D2).</param>
 public record ProjectView(Guid Id, string Name, DateOnly StartDate, ProjectStatus Status, string RejectionReason, string Description, List<UnitView> Units, List<Permission> Permissions, string RoleName, bool IsInactive)
 {
+    /// <summary>True once the project holds an entry, so no project file may be loaded into it: the app grays its button from this (redix-api #132 D4, D15).</summary>
+    public bool HoldsEntries { get; init; }
+
     /// <summary>
     /// The view of <paramref name="project"/>, with its units in order, the caller's <paramref name="permissions"/> in it, none when it is among the projects they are
-    /// <paramref name="inactive"/> in, and their role name among their <paramref name="roleNames"/>.
+    /// <paramref name="inactive"/> in, their role name among their <paramref name="roleNames"/>, and whether it is among those <paramref name="holdingEntries"/>.
     /// </summary>
-    public static ProjectView Of(Project project, List<Permission> permissions, Dictionary<Guid, string> roleNames, HashSet<Guid> inactive)
+    public static ProjectView Of(Project project, List<Permission> permissions, Dictionary<Guid, string> roleNames, HashSet<Guid> inactive, HashSet<Guid> holdingEntries)
     {
         var isInactive = inactive.Contains(project.Id);
         return new(project.Id, project.Name, project.StartDate, project.Status, project.RejectionReason, project.Description, project.Units.Select(UnitView.Of).ToList(),
-            isInactive ? [] : permissions, roleNames.GetValueOrDefault(project.Id, ""), isInactive);
+            isInactive ? [] : permissions, roleNames.GetValueOrDefault(project.Id, ""), isInactive) { HoldsEntries = holdingEntries.Contains(project.Id) };
     }
 }
 

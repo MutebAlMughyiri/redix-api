@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace Redix.Api.Projects;
 
 /// <summary>
@@ -47,6 +49,13 @@ public class Project
 
     /// <summary>True once the admin has let it in, so permissions count in it (BR-34).</summary>
     public bool IsApproved => ApprovedStatuses.Contains(Status);
+
+    /// <summary>
+    /// Those of <paramref name="projectIds"/> that hold an entry, whatever it is and wherever it stands: the one answer of whether a project file may still be loaded into a project,
+    /// which the load refuses with and the app grays its button by (redix-api #132 D4, D15).
+    /// </summary>
+    public static async Task<HashSet<Guid>> HoldingEntriesAsync(List<Guid> projectIds, RedixDbContext db) =>
+        [.. await db.Entries.Where(entry => projectIds.Contains(entry.ProjectId)).Select(entry => entry.ProjectId).Distinct().ToListAsync()];
 
     /// <summary>A new project waiting for approval, with its units in order and its <paramref name="description"/>; the outcome says whether its name, every unit's and the description are acceptable.</summary>
     public static (Project Project, ProjectChangeOutcome Outcome) New(string name, DateOnly startDate, IEnumerable<string> units, string description)

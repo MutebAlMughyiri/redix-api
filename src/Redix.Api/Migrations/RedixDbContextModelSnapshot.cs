@@ -10612,17 +10612,157 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("066e36b0-f0c2-e3ac-88ab-5c0fa06d8688"),
+                            Id = new Guid("90bf7771-9dee-9982-20b5-ab6ab6b713e7"),
                             Language = "en",
-                            TranslationKeyId = new Guid("f0e2c210-2c77-ee5d-54d1-611ab13f2097"),
-                            Value = "Import project settings"
+                            TranslationKeyId = new Guid("b4a6fbe0-87f2-acc4-009c-f82fea364c26"),
+                            Value = "Load the project file"
                         },
                         new
                         {
-                            Id = new Guid("9ea691bc-4176-625f-6d08-f3a9ad22a4f5"),
+                            Id = new Guid("20e2a8bb-134f-f968-8a03-224d0c5c447e"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("f0e2c210-2c77-ee5d-54d1-611ab13f2097"),
-                            Value = "استيراد إعدادات المشروع"
+                            TranslationKeyId = new Guid("b4a6fbe0-87f2-acc4-009c-f82fea364c26"),
+                            Value = "تحميل ملف المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("2b9bcea8-c3c7-3e6a-fed1-e7a431685418"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("a0202a65-d2f4-39ba-03e6-8dcdcd16142f"),
+                            Value = "Load “{0}” into “{1}”?"
+                        },
+                        new
+                        {
+                            Id = new Guid("49c44264-61b7-c9b2-301f-9f1e7bf68fab"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("a0202a65-d2f4-39ba-03e6-8dcdcd16142f"),
+                            Value = "تحميل «{0}» في «{1}»؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("73be7f52-d1fb-6edf-1a93-83147fc00ff6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("9677cc1f-81f0-8b20-61b2-7ae7493c4a07"),
+                            Value = "Missing tables are added, the entries are recorded and approved in your name, the actual balances entered and the file's report issued. Nothing is saved if one row is refused."
+                        },
+                        new
+                        {
+                            Id = new Guid("e61c43e4-8763-9ce4-688a-b7dea0e11097"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("9677cc1f-81f0-8b20-61b2-7ae7493c4a07"),
+                            Value = "تُضاف الجداول الناقصة، وتُسجَّل القيود وتُعتمد باسمك، وتُدخل الأرصدة الفعلية، ويصدر تقرير الملف. لا يُحفظ شيء إن رُفض سطر واحد."
+                        },
+                        new
+                        {
+                            Id = new Guid("869f7aac-ec3d-3ca4-95d2-5d9f3050f71e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f360b8e0-a251-dbc1-98c0-c913cbb85854"),
+                            Value = "File loaded: {0} entries in {1} tables, the actual balances, and report {2}."
+                        },
+                        new
+                        {
+                            Id = new Guid("ea4502a7-ce08-b6a6-166d-4f843ad688b5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f360b8e0-a251-dbc1-98c0-c913cbb85854"),
+                            Value = "حُمّل الملف: {0} قيدًا في {1} جدولًا، والأرصدة الفعلية، والتقرير {2}."
+                        },
+                        new
+                        {
+                            Id = new Guid("fd6ab9e8-80c9-8441-d3fb-4cc8cf8b30c3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("68df6719-94a4-e395-1221-5e218553b1a0"),
+                            Value = "Nothing was saved. Fix these rows in the file, then load it again:"
+                        },
+                        new
+                        {
+                            Id = new Guid("726fb0e2-153b-d980-1dd3-a6af4911c6c8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("68df6719-94a4-e395-1221-5e218553b1a0"),
+                            Value = "لم يُحفظ شيء. صحّح هذه الأسطر في الملف ثم حمّله مرة أخرى:"
+                        },
+                        new
+                        {
+                            Id = new Guid("f1287c7f-9ebb-365a-f403-9123ae3ef0ca"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("209e222a-49d8-9221-0063-0860a884c8f3"),
+                            Value = "This is not a REDIX project file."
+                        },
+                        new
+                        {
+                            Id = new Guid("4ab73b47-f1e4-7bdd-d1e1-2996994036cc"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("209e222a-49d8-9221-0063-0860a884c8f3"),
+                            Value = "هذا ليس ملف مشروع من REDIX."
+                        },
+                        new
+                        {
+                            Id = new Guid("2736b046-a056-5f0f-e023-efd0de2e3b69"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("1f276524-41cb-b102-59f0-cee30a6b7cdc"),
+                            Value = "The file is from a newer version of REDIX."
+                        },
+                        new
+                        {
+                            Id = new Guid("dbd7311a-7b25-d3c0-5eb5-e188a494e4a4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("1f276524-41cb-b102-59f0-cee30a6b7cdc"),
+                            Value = "الملف من إصدار أحدث من REDIX."
+                        },
+                        new
+                        {
+                            Id = new Guid("c389d28f-2714-6fb5-f536-8e9e64220894"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("79ed99ec-782f-d5f7-3378-9e1eee018c80"),
+                            Value = "The project already holds entries, so no file can be loaded into it."
+                        },
+                        new
+                        {
+                            Id = new Guid("802294dd-ef09-03ce-43bd-8f8ecd39b5f6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("79ed99ec-782f-d5f7-3378-9e1eee018c80"),
+                            Value = "في المشروع قيود، فلا يُحمّل فيه ملف."
+                        },
+                        new
+                        {
+                            Id = new Guid("520393fa-d197-5c87-2074-5348e6810c30"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("122146e1-dbae-9615-6c0f-a578c252a24f"),
+                            Value = "The account “{0}” is not in the project."
+                        },
+                        new
+                        {
+                            Id = new Guid("61590136-4dbc-48fa-3653-0de036d0341c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("122146e1-dbae-9615-6c0f-a578c252a24f"),
+                            Value = "الحساب «{0}» غير موجود في المشروع."
+                        },
+                        new
+                        {
+                            Id = new Guid("7c1d4aee-d66d-0e0b-b0e0-af43e0c4547e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("96cac967-ac07-9741-d90c-fe5c4282d798"),
+                            Value = "The file carries no attachments; leave «المرفق» empty."
+                        },
+                        new
+                        {
+                            Id = new Guid("71195d05-95f9-83d6-e3bc-da41d870cf5d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("96cac967-ac07-9741-d90c-fe5c4282d798"),
+                            Value = "الملف لا يحمل المرفقات؛ اترك «المرفق» فارغًا."
+                        },
+                        new
+                        {
+                            Id = new Guid("746f2ac7-d210-2b5d-ab76-eb6350b1d200"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("330f528c-a81f-ef85-6f8c-4bdada29dbda"),
+                            Value = "“{0}” is not one of the choices of “{1}”."
+                        },
+                        new
+                        {
+                            Id = new Guid("06936da7-828e-e93a-8934-adac3550f783"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("330f528c-a81f-ef85-6f8c-4bdada29dbda"),
+                            Value = "«{0}» ليس من اختيارات «{1}»."
                         },
                         new
                         {
@@ -17882,9 +18022,69 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("f0e2c210-2c77-ee5d-54d1-611ab13f2097"),
+                            Id = new Guid("b4a6fbe0-87f2-acc4-009c-f82fea364c26"),
                             Description = "",
-                            Key = "projects.importSettings"
+                            Key = "projects.loadFile"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0202a65-d2f4-39ba-03e6-8dcdcd16142f"),
+                            Description = "",
+                            Key = "projects.loadFileConfirm"
+                        },
+                        new
+                        {
+                            Id = new Guid("9677cc1f-81f0-8b20-61b2-7ae7493c4a07"),
+                            Description = "",
+                            Key = "projects.loadFileWhat"
+                        },
+                        new
+                        {
+                            Id = new Guid("f360b8e0-a251-dbc1-98c0-c913cbb85854"),
+                            Description = "",
+                            Key = "projects.loadFileDone"
+                        },
+                        new
+                        {
+                            Id = new Guid("68df6719-94a4-e395-1221-5e218553b1a0"),
+                            Description = "",
+                            Key = "projects.loadFile.rowsRefused"
+                        },
+                        new
+                        {
+                            Id = new Guid("209e222a-49d8-9221-0063-0860a884c8f3"),
+                            Description = "",
+                            Key = "projects.loadFile.notAProjectFile"
+                        },
+                        new
+                        {
+                            Id = new Guid("1f276524-41cb-b102-59f0-cee30a6b7cdc"),
+                            Description = "",
+                            Key = "projects.loadFile.newerVersion"
+                        },
+                        new
+                        {
+                            Id = new Guid("79ed99ec-782f-d5f7-3378-9e1eee018c80"),
+                            Description = "",
+                            Key = "projects.loadFile.projectHasEntries"
+                        },
+                        new
+                        {
+                            Id = new Guid("122146e1-dbae-9615-6c0f-a578c252a24f"),
+                            Description = "",
+                            Key = "projects.loadFile.accountNotInProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("96cac967-ac07-9741-d90c-fe5c4282d798"),
+                            Description = "",
+                            Key = "projects.loadFile.attachmentNotInFile"
+                        },
+                        new
+                        {
+                            Id = new Guid("330f528c-a81f-ef85-6f8c-4bdada29dbda"),
+                            Description = "",
+                            Key = "projects.loadFile.unknownChoice"
                         },
                         new
                         {

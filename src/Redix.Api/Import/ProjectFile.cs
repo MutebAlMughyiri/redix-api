@@ -172,6 +172,9 @@ public sealed record ProjectFileColumn
     /// <summary>Its key, the same as REDIX's column's.</summary>
     public string Key { get; init; } = "";
 
+    /// <summary>Its name, its header in the workbook.</summary>
+    public string Name { get; init; } = "";
+
     /// <summary>What it holds.</summary>
     public ColumnDataType Type { get; init; }
 

@@ -61,11 +61,21 @@ public static class CategoriesEndpoints
     public static Task<IResult> AddCategory(Guid projectId, NameRequest request, RedixDbContext db) =>
         ProjectChanges.WithNameAsync(request.Name, async name =>
         {
-            var category = new Category { ProjectId = projectId, Name = name, SortOrder = await db.Categories.CountAsync(row => row.ProjectId == projectId) };
-            db.Categories.Add(category);
-            await db.SaveChangesAsync();
+            var category = await AddCategoryAsync(projectId, name, db);
             return Results.Created($"/projects/{projectId}/categories/{category.Id}", CategoryView.Of(category, []));
         });
+
+    /// <summary>
+    /// Adds the category <paramref name="name"/>, a name already accepted, at the end of the project's list (FR-39): the one way a category is added, by hand and from a project file's
+    /// load alike (redix-api #132 D13). Answers the category added.
+    /// </summary>
+    public static async Task<Category> AddCategoryAsync(Guid projectId, string name, RedixDbContext db)
+    {
+        var category = new Category { ProjectId = projectId, Name = name, SortOrder = await db.Categories.CountAsync(row => row.ProjectId == projectId) };
+        db.Categories.Add(category);
+        await db.SaveChangesAsync();
+        return category;
+    }
 
     /// <summary>Puts the project's categories in the order given, which is their order in the periodic report (AC-39.1). A list that is not exactly the project's categories answers <c>invalidOrder</c>.</summary>
     /// <param name="projectId">The project.</param>

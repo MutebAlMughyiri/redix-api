@@ -59,7 +59,7 @@ public static class ApprovalsEndpoints
                 failed.Add(new EntryFailureView(id, refusal));
                 continue;
             }
-            await ApproveAsync(entry!, userId, at, db);
+            await ApproveAsync(entry!, userId, at, at, db);
             approved.Add(id);
         }
         await db.SaveChangesAsync();
@@ -68,13 +68,14 @@ public static class ApprovalsEndpoints
 
     /// <summary>
     /// Approves <paramref name="entry"/>, one waiting, in the name of <paramref name="userId"/> at <paramref name="at"/> (FR-19): its decision, its History line, and who entered it told
-    /// unless they decided it themselves. The first expense on a supplier waiting for approval approves it too. The one way an entry is approved, for the inbox and a project file's load
-    /// alike (BR-43); the caller saves.
+    /// unless they decided it themselves. It counts as approved from <paramref name="approvedAt"/>, which says whether it is new since a report (BR-26): the moment itself in the
+    /// inbox, the file's report time in a project file's load, so what the file's report holds is not new (redix-api #132 D12). The first expense on a supplier waiting for approval
+    /// approves it too. The one way an entry is approved, for the inbox and a project file's load alike (BR-43); the caller saves.
     /// </summary>
-    public static async Task ApproveAsync(Entry entry, Guid userId, DateTime at, RedixDbContext db)
+    public static async Task ApproveAsync(Entry entry, Guid userId, DateTime at, DateTime approvedAt, RedixDbContext db)
     {
         entry.Status = EntryStatus.Approved;
-        entry.ApprovedAt = at;
+        entry.ApprovedAt = approvedAt;
         db.EntryDecisions.Add(new EntryDecision { EntryId = entry.Id, Action = EntryDecisionAction.Approve, UserId = userId, At = at });
         db.AddHistory(entry, HistoryAction.Approve, userId, at);
         NotificationsEndpoints.TellAuthor(entry, NotificationKind.EntryApproved, userId, at, db);
