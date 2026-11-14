@@ -36,7 +36,7 @@ public static class EntryRecording
     {
         var userId = AccessTokens.UserIdOf(principal);
         var repeated = await db.Entries.Where(entry => entry.Id == request.Id && entry.ProjectId == projectId && entry.CreatedByUserId == userId)
-            .Select(entry => new EntryStatusView(entry.Id, entry.Status, "")).ToListAsync();
+            .Select(entry => new EntryStatusView(entry.Id, entry.Number, entry.Status, "")).ToListAsync();
         if (repeated.Count > 0)
         {
             return Results.Ok(repeated[0]);
@@ -229,11 +229,13 @@ public static class EntryRecording
     }
 
     /// <summary>
-    /// Adds <paramref name="entry"/> with its <paramref name="details"/> and the history row of each (FR-21), saved with the change. One sent for approval is a decision, and tells
-    /// the deciders when <paramref name="tellDeciders"/>; a draft is neither.
+    /// Adds <paramref name="entry"/> with its <paramref name="details"/> and the history row of each (FR-21), saved with the change, under its project's next «رقم القيد» (FR-54): the
+    /// one place an entry is created, so the route, a phone's upload and a project file's load all number. One sent for approval is a decision, and tells the deciders when
+    /// <paramref name="tellDeciders"/>; a draft is neither.
     /// </summary>
     public static async Task AddAsync(Entry entry, List<object> details, Guid userId, bool tellDeciders, RedixDbContext db)
     {
+        entry.Number = await NextNumberAsync(entry.ProjectId, db);
         db.Add(entry);
         var sent = entry.Status == EntryStatus.PendingApproval;
         db.AddHistory(entry, sent ? HistoryAction.Submit : HistoryAction.Create, userId, entry.CreatedAt);
@@ -251,4 +253,11 @@ public static class EntryRecording
             db.AddHistory(detail, HistoryAction.Create, userId, entry.CreatedAt);
         }
     }
+
+    /// <summary>
+    /// The next «رقم القيد» of <paramref name="projectId"/> (FR-54, D3): its counter moves and answers in one statement, which takes the project's row lock, so two entries never share
+    /// a number, and a number taken is never given again, even by an entry never kept (G2). It runs as written: composing it would wrap the <c>UPDATE</c> in a query.
+    /// </summary>
+    private static async Task<int> NextNumberAsync(Guid projectId, RedixDbContext db) =>
+        (await db.Database.SqlQuery<int>($"UPDATE Projects SET LastEntryNumber = LastEntryNumber + 1 OUTPUT inserted.LastEntryNumber AS Value WHERE Id = {projectId}").ToListAsync())[0];
 }

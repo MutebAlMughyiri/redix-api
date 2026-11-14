@@ -2,7 +2,7 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `ProjectSchema` (15 Nov 2026, redix-api #123). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `EntryNumbers` (15 Nov 2026, redix-api #128). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
@@ -300,6 +300,7 @@ The real-estate development projects; one row, `IsTemplate`, is the default temp
 | RejectionReason | nvarchar(500) | not null |  |  |
 | IsTemplate | bit | not null |  |  |
 | Description | nvarchar(2000) | not null |  |  |
+| LastEntryNumber | int | not null |  | The last «رقم القيد» the project gave, 0 before its first entry; moved up by one atomic `UPDATE … OUTPUT` as an entry is first kept (redix-api #128, D3) |
 
 Unique: the key only.
 
@@ -691,8 +692,9 @@ The ledger: every movement of money, of any kind; each kind's own fields are in 
 | CreatedByUserId | uniqueidentifier | not null | FK | `Users.Id` |
 | CreatedAt | datetime2(7) | not null |  |  |
 | ApprovedAt | datetime2(7) | not null |  |  |
+| Number | int | not null |  | «رقم القيد», its number in its project, never changed (redix-api #128); the entries before it were numbered by date, then creation |
 
-Unique: the key only.
+Unique: the key; `ProjectId, Number`.
 
 Other indexes: `AccountId`; `CreatedByUserId`; `Kind`; `ProjectId, Status including Kind, Amount, AccountId`; `Status`.
 

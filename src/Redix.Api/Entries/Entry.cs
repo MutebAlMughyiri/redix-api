@@ -28,6 +28,12 @@ public class Entry : IProjectRow
     /// <summary>The project it belongs to (BR-33).</summary>
     public Guid ProjectId { get; init; }
 
+    /// <summary>
+    /// «رقم القيد», its number in its project (FR-54): given once, by <see cref="EntryRecording.AddAsync"/>, when the server first keeps it, one more than the last its project gave; never
+    /// changed and never given again (redix-api #128, D3).
+    /// </summary>
+    public int Number { get; set; }
+
     /// <summary>What it is.</summary>
     public EntryKind Kind { get; set; }
 

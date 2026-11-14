@@ -156,9 +156,9 @@ public class SubmitEntryTests(MigratedApiFactory factory)
         {
             var source = await db.Entries.AsNoTracking().SingleAsync(row => row.Id == financeEntry);
             var details = await db.ExpenseDetails.AsNoTracking().SingleAsync(row => row.EntryId == financeEntry);
-            foreach (var entryId in fieldEntries)
+            foreach (var (entryId, place) in fieldEntries.Select((id, index) => (id, index + 1)))
             {
-                db.Add(new Entry { Id = entryId, ProjectId = source.ProjectId, Kind = source.Kind, Status = EntryStatus.Draft, EntryDate = source.EntryDate, Amount = source.Amount, AccountId = source.AccountId, CreatedByUserId = fieldId, CreatedAt = source.CreatedAt });
+                db.Add(new Entry { Id = entryId, ProjectId = source.ProjectId, Number = source.Number + place, Kind = source.Kind, Status = EntryStatus.Draft, EntryDate = source.EntryDate, Amount = source.Amount, AccountId = source.AccountId, CreatedByUserId = fieldId, CreatedAt = source.CreatedAt });
                 db.Add(new ExpenseDetails { EntryId = entryId, ItemId = details.ItemId, SubgroupId = details.SubgroupId, PaymentMethodId = details.PaymentMethodId });
             }
             await db.SaveChangesAsync();

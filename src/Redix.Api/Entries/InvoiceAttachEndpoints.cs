@@ -88,7 +88,7 @@ public static class InvoiceAttachEndpoints
         db.Add(file);
         db.AddHistory(file, HistoryAction.Create, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
-        return Results.Ok(new EntryStatusView(entryId, entry.Status, ""));
+        return Results.Ok(new EntryStatusView(entryId, entry.Number, entry.Status, ""));
     }
 
     /// <summary>The one answer to what can take a file later: an expense with none yet, not a deduction or credit note, which pay nothing, and not removed (redix-api #119).</summary>

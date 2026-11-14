@@ -57,6 +57,7 @@ public static class EntriesEndpoints
     /// <param name="mine">True to keep only the caller's own.</param>
     /// <param name="from">The first day kept, as an ISO date; empty for no first day.</param>
     /// <param name="to">The last day kept, as an ISO date; empty for no last day.</param>
+    /// <param name="number">The «رقم القيد» kept (FR-54); 0 for any.</param>
     public static async Task<List<EntryRowView>> List(
         Guid projectId,
         ClaimsPrincipal principal,
@@ -67,10 +68,11 @@ public static class EntriesEndpoints
         string text = "",
         bool mine = false,
         string from = "",
-        string to = "")
+        string to = "",
+        int number = 0)
     {
         var userId = AccessTokens.UserIdOf(principal);
-        var search = EntrySearch.Of(text, mine, kinds, statuses, from, to);
+        var search = EntrySearch.Of(text, mine, kinds, statuses, from, to, number);
         if (!search.Narrows)
         {
             return await RowsAsync(projectId, userId, db, entry => true, take);
@@ -107,6 +109,7 @@ public static class EntriesEndpoints
         var rejections = (await db.EntryDecisions.Where(row => ids.Contains(row.EntryId) && row.Action == EntryDecisionAction.Reject).OrderBy(row => row.Id).ToListAsync()).GroupBy(row => row.EntryId).ToDictionary(group => group.Key, group => group.Last().Reason);
         return entries.Select(entry => new EntryRowView(
             entry.Id,
+            entry.Number,
             entry.Kind,
             entry.Status,
             entry.Status == EntryStatus.Rejected ? rejections.GetValueOrDefault(entry.Id, "") : "",
@@ -309,6 +312,7 @@ public static class EntriesEndpoints
 
 /// <summary>An entry on a list.</summary>
 /// <param name="Id">The entry's id.</param>
+/// <param name="Number">«رقم القيد», its number in the project (FR-54).</param>
 /// <param name="Kind">What it is.</param>
 /// <param name="Status">Where it stands.</param>
 /// <param name="RejectionReason">Why it was rejected, while it stands rejected; empty otherwise.</param>
@@ -324,7 +328,7 @@ public static class EntriesEndpoints
 /// <param name="AccountName">The account it was paid from or reached.</param>
 /// <param name="PaymentMethodName">How an expense was paid; empty when nobody said, and for any other entry.</param>
 /// <param name="AccountShortBy">How much more what waits on its account takes than the account holds, which the shared entry notes without amounts (R6, R16); zero when it covers all of it.</param>
-public record EntryRowView(Guid Id, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, string PartnerName, string Description, string AccountName, string PaymentMethodName, decimal AccountShortBy);
+public record EntryRowView(Guid Id, int Number, EntryKind Kind, EntryStatus Status, string RejectionReason, DateOnly EntryDate, decimal Amount, string ItemName, string SupplierName, string InvoiceNumber, string AuthorName, bool IsMine, string PartnerName, string Description, string AccountName, string PaymentMethodName, decimal AccountShortBy);
 
 /// <summary>An entry's description.</summary>
 /// <param name="Description">The description; may be empty.</param>

@@ -11,10 +11,10 @@ public class EntrySearchTests(MigratedApiFactory factory)
 {
     private static readonly DateOnly Day = new(2026, 11, 10);
 
-    private static EntryRowView Row(string supplierName = "مؤسسة الأفق", EntryKind kind = EntryKind.Purchase, EntryStatus status = EntryStatus.Approved, bool isMine = true, decimal amount = 6000m) =>
-        new(Guid.CreateVersion7(), kind, status, "", Day, amount, "البلاط", supplierName, "", "نواف", isMine, "", "", "البنك", "", 0m);
+    private static EntryRowView Row(string supplierName = "مؤسسة الأفق", EntryKind kind = EntryKind.Purchase, EntryStatus status = EntryStatus.Approved, bool isMine = true, decimal amount = 6000m, int number = 312) =>
+        new(Guid.CreateVersion7(), number, kind, status, "", Day, amount, "البلاط", supplierName, "", "نواف", isMine, "", "", "البنك", "", 0m);
 
-    private static EntrySearch Search(string text = "", bool mine = false, DateOnly from = default, DateOnly to = default) => new(text, mine, [], [], from, to);
+    private static EntrySearch Search(string text = "", bool mine = false, DateOnly from = default, DateOnly to = default, int number = 0) => new(text, mine, [], [], from, to, number);
 
     [Fact]
     public void App_104_TextIsMatchedWhicheverWayAnArabicWordIsSpelledAndByTheAmountEitherWayItIsWritten()

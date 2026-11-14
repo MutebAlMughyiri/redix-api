@@ -603,6 +603,9 @@ namespace Redix.Api.Migrations
                     b.Property<byte>("Kind")
                         .HasColumnType("tinyint");
 
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
@@ -624,6 +627,9 @@ namespace Redix.Api.Migrations
                     b.HasIndex("Kind");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("ProjectId", "Number")
+                        .IsUnique();
 
                     b.HasIndex("ProjectId", "Status");
 
@@ -1676,6 +1682,9 @@ namespace Redix.Api.Migrations
                     b.Property<bool>("IsTemplate")
                         .HasColumnType("bit");
 
+                    b.Property<int>("LastEntryNumber")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1710,6 +1719,7 @@ namespace Redix.Api.Migrations
                             Id = new Guid("f11ea9ed-0623-ebf7-abff-3f4e8714248a"),
                             Description = "",
                             IsTemplate = true,
+                            LastEntryNumber = 0,
                             Name = "القالب الافتراضي",
                             RejectionReason = "",
                             StartDate = new DateOnly(1900, 1, 1),
@@ -6941,6 +6951,62 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("2a797bf4-71b0-94fd-cc76-459353a103d9"),
                             Value = "مسح التصفية"
+                        },
+                        new
+                        {
+                            Id = new Guid("2aa279f7-f3c5-fe2e-588e-68db175df53d"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e22205cc-cd6f-31da-75ed-c7229f25a888"),
+                            Value = "Entry number"
+                        },
+                        new
+                        {
+                            Id = new Guid("9d0d3943-4f5a-5a11-d4c6-fec5ee1ff965"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e22205cc-cd6f-31da-75ed-c7229f25a888"),
+                            Value = "رقم القيد"
+                        },
+                        new
+                        {
+                            Id = new Guid("0ee13ce5-6a02-1fe3-f30b-55c62aac9019"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("33999386-2336-9cd6-f2d8-e187dca5902e"),
+                            Value = "Entry {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("f9c42a30-85d1-4e36-d7ca-96094a01cb6c"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("33999386-2336-9cd6-f2d8-e187dca5902e"),
+                            Value = "قيد {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("91d55e9f-7de3-e291-4f6d-8cfd87b11ed4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f7d16307-c731-c06e-24fd-67db5b9847e1"),
+                            Value = "Entry number: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("79a97831-6558-e948-2ba7-9c3dfb5b3fbf"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f7d16307-c731-c06e-24fd-67db5b9847e1"),
+                            Value = "رقم القيد: {0}"
+                        },
+                        new
+                        {
+                            Id = new Guid("26c69020-9e93-f861-6d89-29699ede677c"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c0ace170-8a8a-86ac-d864-a0979bccde54"),
+                            Value = "Find by entry number"
+                        },
+                        new
+                        {
+                            Id = new Guid("c9e0455b-b86d-785e-ef75-9c5254632000"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c0ace170-8a8a-86ac-d864-a0979bccde54"),
+                            Value = "ابحث برقم القيد"
                         },
                         new
                         {
@@ -16475,6 +16541,30 @@ namespace Redix.Api.Migrations
                             Id = new Guid("2a797bf4-71b0-94fd-cc76-459353a103d9"),
                             Description = "",
                             Key = "entries.clearFilters"
+                        },
+                        new
+                        {
+                            Id = new Guid("e22205cc-cd6f-31da-75ed-c7229f25a888"),
+                            Description = "",
+                            Key = "entries.number"
+                        },
+                        new
+                        {
+                            Id = new Guid("33999386-2336-9cd6-f2d8-e187dca5902e"),
+                            Description = "",
+                            Key = "entries.numberOf"
+                        },
+                        new
+                        {
+                            Id = new Guid("f7d16307-c731-c06e-24fd-67db5b9847e1"),
+                            Description = "",
+                            Key = "entries.numberFilterSet"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0ace170-8a8a-86ac-d864-a0979bccde54"),
+                            Description = "",
+                            Key = "entries.numberAsk"
                         },
                         new
                         {

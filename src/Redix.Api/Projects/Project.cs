@@ -41,6 +41,9 @@ public class Project
     /// <summary>The project's units, in the order they were added.</summary>
     public List<Unit> Units { get; } = [];
 
+    /// <summary>The last «رقم القيد» the project gave, 0 before its first entry (FR-54): only ever moved up, by one atomic statement, as an entry is first kept (redix-api #128, D3).</summary>
+    public int LastEntryNumber { get; private set; }
+
     /// <summary>True once the project is finished: nothing in it changes any more (AC-04.1).</summary>
     public bool IsReadOnly => Status == ProjectStatus.Finished;
 

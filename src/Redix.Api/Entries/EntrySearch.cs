@@ -14,7 +14,8 @@ namespace Redix.Api.Entries;
 /// <param name="Statuses">Where the kept entries stand (<c>pendingApproval</c>, <c>approved</c>, <c>rejected</c>, <c>reversed</c>, <c>draft</c>); none for any. A reversed entry stands reversed.</param>
 /// <param name="From">The first day kept; <see cref="DateOnly.MinValue"/> for no first day.</param>
 /// <param name="To">The last day kept; <see cref="DateOnly.MinValue"/> for no last day.</param>
-public record EntrySearch(string Text, bool Mine, string[] Kinds, string[] Statuses, DateOnly From, DateOnly To)
+/// <param name="Number">The «رقم القيد» kept, the one entry with that number (FR-54, redix-api #128 D4); 0 for any.</param>
+public record EntrySearch(string Text, bool Mine, string[] Kinds, string[] Statuses, DateOnly From, DateOnly To, int Number)
 {
     /// <summary>The search a request asks for, its days written as ISO dates (<c>2026-11-01</c>); an empty or unreadable day sets no limit.</summary>
     /// <param name="text">What was typed.</param>
@@ -23,17 +24,19 @@ public record EntrySearch(string Text, bool Mine, string[] Kinds, string[] Statu
     /// <param name="statuses">Where the kept entries stand.</param>
     /// <param name="from">The first day kept.</param>
     /// <param name="to">The last day kept.</param>
-    public static EntrySearch Of(string text, bool mine, string[] kinds, string[] statuses, string from, string to) => new(text, mine, kinds, statuses, DayOf(from), DayOf(to));
+    /// <param name="number">The «رقم القيد» kept; 0 for any.</param>
+    public static EntrySearch Of(string text, bool mine, string[] kinds, string[] statuses, string from, string to, int number) => new(text, mine, kinds, statuses, DayOf(from), DayOf(to), number);
 
     private static DateOnly DayOf(string text) => DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? day : DateOnly.MinValue;
 
     /// <summary>True when any filter narrows the entries.</summary>
-    public bool Narrows => Text.Trim().Length > 0 || Mine || Kinds.Length > 0 || Statuses.Length > 0 || From != DateOnly.MinValue || To != DateOnly.MinValue;
+    public bool Narrows => Text.Trim().Length > 0 || Mine || Kinds.Length > 0 || Statuses.Length > 0 || From != DateOnly.MinValue || To != DateOnly.MinValue || Number != 0;
 
     /// <summary>Whether <paramref name="row"/> holds to every filter.</summary>
     /// <param name="row">An entry as its list shows it.</param>
     public bool Keeps(EntryRowView row) =>
         (!Mine || row.IsMine)
+        && (Number == 0 || row.Number == Number)
         && (Kinds.Length == 0 || Kinds.Contains(NameOf(row.Kind)))
         && (Statuses.Length == 0 || Statuses.Contains(NameOf(row.Status)))
         && row.EntryDate >= From

@@ -37,14 +37,14 @@ public class MigrationStepsTests(MigratedApiFactory factory)
 
     /// <summary>
     /// Every table of the database, whatever its schema, as "table rows amount…": its count of rows, then the sum of each of its money columns. The database builds the one statement
-    /// from its own list of tables, so a table's figures read the same wherever it sits.
+    /// from its own list of tables, so a table's figures read the same wherever it sits. EF Core's list of migrations and the words are left out, since a step adds to them.
     /// </summary>
     private const string EveryTablesFigures = """
         DECLARE @figures nvarchar(max) = (
             SELECT STRING_AGG(CAST(CONCAT('SELECT CONCAT(', QUOTENAME(t.name, ''''), ', '' '', COUNT(*)', amounts.Sums, ') AS Value FROM ', QUOTENAME(SCHEMA_NAME(t.schema_id)), '.', QUOTENAME(t.name)) AS nvarchar(max)), ' UNION ALL ')
             FROM sys.tables t
             OUTER APPLY (SELECT STRING_AGG(CAST(CONCAT(', '' '', SUM(', QUOTENAME(c.name), ')') AS nvarchar(max)), '') AS Sums FROM sys.columns c WHERE c.object_id = t.object_id AND TYPE_NAME(c.user_type_id) = 'decimal') amounts
-            WHERE t.name <> '__EFMigrationsHistory');
+            WHERE t.name NOT IN ('__EFMigrationsHistory', 'TranslationKeys', 'Translations'));
         EXEC sp_executesql @figures;
         """;
 
@@ -334,6 +334,33 @@ public class MigrationStepsTests(MigratedApiFactory factory)
             Assert.Contains("Transfers 1 2500.7500", before);
             Assert.Equal(31, projectTables.Count);
             Assert.Equal(projectTables.Order(), (await ValuesAsync(db, $"SELECT name AS Value FROM sys.tables WHERE SCHEMA_NAME(schema_id) = '{IProjectRow.Schema}'")).Order());
+        });
+    }
+
+    [Fact]
+    public Task R128_D6_EntryNumbers_EveryEntryIsNumberedInItsProjectByItsDateThenWhenItWasMadeAndEveryFigureStays()
+    {
+        var (user, ghosoun, other, empty, account, otherAccount) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var (lateDay, earlyDay, sameDayMadeLater, sameDayMadeFirst, draft, otherEntry) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        static string AccountOf(Guid id, Guid projectId) => $"INSERT INTO project.Accounts (Id, ProjectId, Type, Name, IsActive) VALUES ('{id}', '{projectId}', 0, N'حساب', 1);";
+        const string entries = "project.Entries";
+        var today = string.Concat(User(user), Project(ghosoun), Project(other), Project(empty), AccountOf(account, ghosoun), AccountOf(otherAccount, other),
+            EntryInto(entries, lateDay, ghosoun, account, user, 0, 33300m, entryDate: "2026-06-01", createdAt: "2026-11-01 09:00"),
+            EntryInto(entries, earlyDay, ghosoun, account, user, 0, 5000.25m, entryDate: "2026-04-28", createdAt: "2026-11-01 09:05"),
+            EntryInto(entries, sameDayMadeLater, ghosoun, account, user, 1, 1250m, entryDate: "2026-05-03", createdAt: "2026-11-01 09:10"),
+            EntryInto(entries, sameDayMadeFirst, ghosoun, account, user, 4, 850m, entryDate: "2026-05-03", createdAt: "2026-11-01 08:00"),
+            EntryInto(entries, draft, ghosoun, account, user, 0, 70m, status: 0, entryDate: "2026-07-01", createdAt: "2026-11-01 07:00"),
+            EntryInto(entries, otherEntry, other, otherAccount, user, 0, 10m, entryDate: "2026-01-01"));
+        var before = new List<string>();
+
+        return ThroughAsync("EntryNumbers", today, async db => before.AddRange(await ValuesAsync(db, EveryTablesFigures)), async db =>
+        {
+            Assert.Equal(before.Order(), (await ValuesAsync(db, EveryTablesFigures)).Order());
+            Assert.Equal(new[] { $"{earlyDay} 1", $"{sameDayMadeFirst} 2", $"{sameDayMadeLater} 3", $"{lateDay} 4", $"{draft} 5" },
+                await ValuesAsync(db, $"SELECT LOWER(CONCAT(Id, ' ', Number)) AS Value FROM project.Entries WHERE ProjectId = '{ghosoun}' ORDER BY Number"));
+            Assert.Equal([$"{otherEntry} 1"], await ValuesAsync(db, $"SELECT LOWER(CONCAT(Id, ' ', Number)) AS Value FROM project.Entries WHERE ProjectId = '{other}'"));
+            Assert.Equal(new[] { "5", "1", "0", "0" }, await ValuesAsync(db, $"SELECT CONVERT(nvarchar(10), LastEntryNumber) AS Value FROM Projects WHERE Id IN ('{ghosoun}', '{other}', '{empty}', '{StructureSeed.TemplateId}') ORDER BY LastEntryNumber DESC"));
+            Assert.Equal(["IX_Entries_ProjectId_Number"], await ValuesAsync(db, "SELECT name AS Value FROM sys.indexes WHERE object_id = OBJECT_ID('project.Entries') AND name = 'IX_Entries_ProjectId_Number' AND is_unique = 1"));
         });
     }
 }
