@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.StaticFiles;
 namespace Redix.Api.Attachments;
 
 /// <summary>A file kept for one project (FR-09): a picture or a PDF for an entry, a contract or a receipt, and any file for a document (UC-064). Its file lives outside the database, and it is never deleted (NFR-11). It owns which files can be kept.</summary>
-public class Attachment
+public class Attachment : IProjectRow
 {
     /// <summary>A picture must be smaller than this many bytes (NFR-06): 1 MB.</summary>
     public const int ImageLimitBytes = 1_000_000;

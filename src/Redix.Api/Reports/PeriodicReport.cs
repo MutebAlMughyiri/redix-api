@@ -4,7 +4,7 @@ using Redix.Api.Entries;
 namespace Redix.Api.Reports;
 
 /// <summary>A numbered periodic report as it was issued (FR-29, BR-26): every figure kept as it was, so nothing approved later changes it.</summary>
-public class PeriodicReport
+public class PeriodicReport : IProjectRow
 {
     /// <summary>Its id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

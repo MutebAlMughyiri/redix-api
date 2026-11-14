@@ -1,7 +1,7 @@
 namespace Redix.Api.Partners;
 
 /// <summary>One partner whose capital one person sees in one project, ticked on their permissions while they hold <see cref="Auth.Permission.SeeChosenCapital"/> (BR-31, redix-api #106).</summary>
-public class ChosenPartner
+public class ChosenPartner : IProjectRow
 {
     /// <summary>The row's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

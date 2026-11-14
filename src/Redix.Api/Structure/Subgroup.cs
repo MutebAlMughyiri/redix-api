@@ -1,7 +1,7 @@
 namespace Redix.Api.Structure;
 
 /// <summary>A group inside an item, such as مواد under البلاط, printed as its own table in the report (FR-05). Every item has a general one, so an entry always has a subgroup.</summary>
-public class Subgroup : IOrdered
+public class Subgroup : IOrdered, IProjectRow
 {
     /// <summary>The name of an item's general group.</summary>
     public const string GeneralName = "";

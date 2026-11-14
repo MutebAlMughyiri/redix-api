@@ -43,7 +43,7 @@ public class LookupTablesTests(MigratedApiFactory factory)
     {
         await factory.WithDatabaseAsync(async db =>
         {
-            const string sql = "INSERT INTO Accounts (Id, ProjectId, Type, Name, IsActive) VALUES (NEWID(), {0}, {1}, N'حساب', 1)";
+            const string sql = "INSERT INTO project.Accounts (Id, ProjectId, Type, Name, IsActive) VALUES (NEWID(), {0}, {1}, N'حساب', 1)";
 
             var refused = await Assert.ThrowsAsync<SqlException>(() => db.Database.ExecuteSqlRawAsync(sql, StructureSeed.TemplateId, (byte)99));
 

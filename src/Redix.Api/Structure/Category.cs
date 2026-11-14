@@ -1,7 +1,7 @@
 namespace Redix.Api.Structure;
 
 /// <summary>A category (التصنيف الرئيسي) of a project's expenses, such as العظم, holding its items (FR-39). Its place in the list is its place in the periodic report (AC-39.1).</summary>
-public class Category : IOrdered
+public class Category : IOrdered, IProjectRow
 {
     /// <summary>The category's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

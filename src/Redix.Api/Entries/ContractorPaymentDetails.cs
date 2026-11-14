@@ -1,7 +1,7 @@
 namespace Redix.Api.Entries;
 
 /// <summary>What only a contractor payment has: the contract it is against, and whether it counts on that contract's remaining (BR-04).</summary>
-public class ContractorPaymentDetails
+public class ContractorPaymentDetails : IProjectRow
 {
     /// <summary>The entry.</summary>
     public Guid EntryId { get; init; }

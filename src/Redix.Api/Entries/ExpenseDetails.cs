@@ -1,7 +1,7 @@
 namespace Redix.Api.Entries;
 
 /// <summary>What every expense has, a purchase or a contractor payment: what it was for and how it was paid.</summary>
-public class ExpenseDetails
+public class ExpenseDetails : IProjectRow
 {
     /// <summary>The entry.</summary>
     public Guid EntryId { get; init; }

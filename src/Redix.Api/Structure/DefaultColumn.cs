@@ -1,7 +1,7 @@
 namespace Redix.Api.Structure;
 
 /// <summary>A column of a project's default template (القالب الافتراضي): what a new item of one type starts with (FR-38, FR-41). Each project has its own, so changing it touches no other (BR-33).</summary>
-public class DefaultColumn : Column
+public class DefaultColumn : Column, IProjectRow
 {
     /// <summary>The project whose template this is.</summary>
     public Guid ProjectId { get; init; }

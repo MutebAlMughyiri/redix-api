@@ -1,7 +1,7 @@
 namespace Redix.Api.Accounts;
 
 /// <summary>One check of the accounts' real money against the books (FR-24).</summary>
-public class Reconciliation
+public class Reconciliation : IProjectRow
 {
     /// <summary>Its id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
@@ -20,7 +20,7 @@ public class Reconciliation
 }
 
 /// <summary>What one account really held at a reconciliation.</summary>
-public class ReconciliationBalance
+public class ReconciliationBalance : IProjectRow
 {
     /// <summary>The reconciliation.</summary>
     public Guid ReconciliationId { get; init; }

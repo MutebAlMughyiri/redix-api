@@ -2,12 +2,13 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `UserDefaultProjectsKeyedByUser` (13 Nov 2026, findings row 216). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `ProjectSchema` (15 Nov 2026, redix-api #123). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
 | Rule | In the database |
 | --- | --- |
+| Each table is in its side's schema | REDIX's core in `dbo`; every table whose rows belong to one project in `project` (redix-api #123): see [Schemas](#schemas) |
 | Every table has a required `RowVersion` | `rowversion not null`, for sync and concurrency; it is left out of the tables below |
 | No column is NULL | An optional value is an empty value of its own type: `''`, `0`, `00000000-0000-0000-0000-000000000000` (none), or `1900-01-01` for a moment that has not happened; an optional id that names a row is a row in a link table, so it has its foreign key: `PartnerUsers`, `NotificationEntries`, `ProjectStructureSources` (findings row 214) |
 | Ids are GUIDs made in code | `uniqueidentifier`, time-ordered (`Guid.CreateVersion7`), never made by the database; `History.Id` and `EntryDecisions.Id` are `bigint identity`, numbered in the order rows are written, and a lookup table's `Id` is its enum's number |
@@ -16,7 +17,18 @@ Every table, column, key and relation of the REDIX database as it stands after t
 | An enum column points at its lookup table | It stores the member's number, `tinyint`, with a foreign key to `LK_{enum}.Id`; `History.Action` stores the name, `varchar(30)`, with its foreign key to `LK_HistoryAction.Name`, so no History row changed; the two permission columns store names held by a check constraint until redix-api #120 |
 | A foreign key never deletes for you | `NO ACTION` (EF Core's `Restrict`), except where a row only exists inside its owner: an account's custodian, a partner's login, a notification's entry, a phone, a reconciliation's balances, a supplier's default item, a word's translations and a project's units cascade |
 
-46 tables hold the business, 12 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
+46 tables hold the business, 11 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
+
+## Schemas
+
+One database, two schemas (redix-api #123, step 1). A table whose rows belong to one project, by a `ProjectId` of its own or through the row it hangs from, is marked `IProjectRow` in its class, and `RedixDbContext` keeps it in `project`; every other table is REDIX's core, in `dbo`. The migration `ProjectSchema` moved the 31 with `ALTER SCHEMA … TRANSFER`, so no row moved and every key stayed. `SchemaTests` proves each table is in its side's schema, and fails when a table holding a `ProjectId`, or a key to a project's table, declares no side. In release 2 the `project` tables move to each project's own database.
+
+| Schema | Tables |
+| --- | --- |
+| `dbo` (26) | Users, Devices, SystemPermissions, Projects, ProjectPermissions, InactiveMembers, ProjectRoleNames, UserDefaultProjects, ProjectStructureSources, ConfigValues, TranslationKeys, Translations, History, Notifications, NotificationEntries, and the 11 lookup tables; with them `__EFMigrationsHistory` |
+| `project` (31) | Accounts, AccountCustodians, Transfers, Reconciliations, ReconciliationBalances, Categories, Items, Subgroups, ItemColumns, DefaultColumns, PaymentMethods, Suppliers, SupplierDefaultItems, Contracts, ContractAttachments, Entries, ExpenseDetails, PurchaseDetails, ContractorPaymentDetails, RevenueDetails, CapitalMovementDetails, EntryDecisions, EntryAttachments, Invoices, Attachments, Documents, Partners, ChosenPartners, PartnerUsers, PeriodicReports, Units |
+
+The core tables that name a project stay core: who may do what in which project is what lets a person sign in once and see the projects they belong to; History stays whole until release 2, and the notifications stay core, since the bell spans projects (D6).
 
 ## Lookup tables
 

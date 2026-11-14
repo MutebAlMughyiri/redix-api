@@ -1,7 +1,7 @@
 namespace Redix.Api.Revenue;
 
 /// <summary>What only revenue has: the revenue item it came in on, whose type says what it is (FR-28, FR-38).</summary>
-public class RevenueDetails
+public class RevenueDetails : IProjectRow
 {
     /// <summary>The entry.</summary>
     public Guid EntryId { get; init; }

@@ -4,7 +4,7 @@ namespace Redix.Api.Accounts;
 /// Money moved from one of a project's accounts to another (FR-23, redix-app #89): it counts at once in both balances and never in the surplus, the revenue or the expenses,
 /// because it only moves the project's own money. It is not an entry, so nothing approves it; a mistake is put right with a transfer back.
 /// </summary>
-public class Transfer
+public class Transfer : IProjectRow
 {
     /// <summary>The longest notes it keeps: what an entry's notes took before they became its description (redix-api #129).</summary>
     public const int NotesMaxLength = 1000;

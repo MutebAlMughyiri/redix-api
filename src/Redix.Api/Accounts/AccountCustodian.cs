@@ -1,7 +1,7 @@
 namespace Redix.Api.Accounts;
 
 /// <summary>Who holds an account (صاحب العهدة), and so may spend from it without being offered every account. An account has one at most, and having no row is having none.</summary>
-public class AccountCustodian
+public class AccountCustodian : IProjectRow
 {
     /// <summary>The account.</summary>
     public Guid AccountId { get; init; }

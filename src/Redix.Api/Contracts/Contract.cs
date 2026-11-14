@@ -3,7 +3,7 @@ using Redix.Api.Structure;
 namespace Redix.Api.Contracts;
 
 /// <summary>What a contractor was promised in one project, for an item (FR-07), to follow what is paid and what remains (BR-04). It is disabled rather than deleted, and owns the rule of its remaining.</summary>
-public class Contract : IOrdered
+public class Contract : IOrdered, IProjectRow
 {
     /// <summary>The longest notes a contract may have.</summary>
     public const int NotesMaxLength = 1000;

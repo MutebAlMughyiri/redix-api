@@ -53,7 +53,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("Type");
 
-                    b.ToTable("Accounts");
+                    b.ToTable("Accounts", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Accounts.AccountCustodian", b =>
@@ -74,7 +74,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AccountCustodians");
+                    b.ToTable("AccountCustodians", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Accounts.Reconciliation", b =>
@@ -103,7 +103,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId", "At");
 
-                    b.ToTable("Reconciliations");
+                    b.ToTable("Reconciliations", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Accounts.ReconciliationBalance", b =>
@@ -128,7 +128,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("ReconciliationBalances", (string)null);
+                    b.ToTable("ReconciliationBalances", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Accounts.Transfer", b =>
@@ -179,7 +179,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ToAccountId");
 
-                    b.ToTable("Transfers", t =>
+                    b.ToTable("Transfers", "project", t =>
                         {
                             t.HasCheckConstraint("CK_Transfers_Amount", "[Amount] > 0");
 
@@ -240,7 +240,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId", "Sha256");
 
-                    b.ToTable("Attachments");
+                    b.ToTable("Attachments", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Auth.Device", b =>
@@ -474,7 +474,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("SupplierId");
 
-                    b.ToTable("Contracts");
+                    b.ToTable("Contracts", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Contracts.ContractAttachment", b =>
@@ -495,7 +495,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("AttachmentId");
 
-                    b.ToTable("ContractAttachments", (string)null);
+                    b.ToTable("ContractAttachments", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Documents.Document", b =>
@@ -540,7 +540,7 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ProjectId", "AttachmentId")
                         .IsUnique();
 
-                    b.ToTable("Documents");
+                    b.ToTable("Documents", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.ContractorPaymentDetails", b =>
@@ -564,7 +564,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ContractId");
 
-                    b.ToTable("ContractorPaymentDetails");
+                    b.ToTable("ContractorPaymentDetails", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.Entry", b =>
@@ -629,7 +629,7 @@ namespace Redix.Api.Migrations
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ProjectId", "Status"), new[] { "Kind", "Amount", "AccountId" });
 
-                    b.ToTable("Entries");
+                    b.ToTable("Entries", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.EntryAttachment", b =>
@@ -655,7 +655,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("Role");
 
-                    b.ToTable("EntryAttachments");
+                    b.ToTable("EntryAttachments", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.EntryDecision", b =>
@@ -697,7 +697,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("EntryDecisions");
+                    b.ToTable("EntryDecisions", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.ExpenseDetails", b =>
@@ -728,7 +728,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("SubgroupId");
 
-                    b.ToTable("ExpenseDetails");
+                    b.ToTable("ExpenseDetails", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.Invoice", b =>
@@ -751,7 +751,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("Number");
 
-                    b.ToTable("Invoices");
+                    b.ToTable("Invoices", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Entries.PurchaseDetails", b =>
@@ -772,7 +772,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("SupplierId");
 
-                    b.ToTable("PurchaseDetails");
+                    b.ToTable("PurchaseDetails", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.History.HistoryRecord", b =>
@@ -1539,7 +1539,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("PartnerId");
 
-                    b.ToTable("CapitalMovementDetails");
+                    b.ToTable("CapitalMovementDetails", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Partners.ChosenPartner", b =>
@@ -1571,7 +1571,7 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ProjectId", "UserId", "PartnerId")
                         .IsUnique();
 
-                    b.ToTable("ChosenPartners");
+                    b.ToTable("ChosenPartners", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Partners.Partner", b =>
@@ -1606,7 +1606,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("Partners");
+                    b.ToTable("Partners", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Partners.PartnerUser", b =>
@@ -1633,7 +1633,7 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ProjectId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("PartnerUsers");
+                    b.ToTable("PartnerUsers", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Projects.InactiveMember", b =>
@@ -1811,7 +1811,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("Units", (string)null);
+                    b.ToTable("Units", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Projects.UserDefaultProject", b =>
@@ -1873,7 +1873,7 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ProjectId", "Number")
                         .IsUnique();
 
-                    b.ToTable("PeriodicReports");
+                    b.ToTable("PeriodicReports", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Revenue.RevenueDetails", b =>
@@ -1899,7 +1899,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("SubgroupId");
 
-                    b.ToTable("RevenueDetails");
+                    b.ToTable("RevenueDetails", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Settings.PaymentMethod", b =>
@@ -1931,7 +1931,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("PaymentMethods");
+                    b.ToTable("PaymentMethods", "project");
 
                     b.HasData(
                         new
@@ -1989,7 +1989,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", "project");
 
                     b.HasData(
                         new
@@ -2122,7 +2122,7 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ProjectId", "ItemType", "Key")
                         .IsUnique();
 
-                    b.ToTable("DefaultColumns");
+                    b.ToTable("DefaultColumns", "project");
 
                     b.HasData(
                         new
@@ -2906,7 +2906,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("Type");
 
-                    b.ToTable("Items");
+                    b.ToTable("Items", "project");
 
                     b.HasData(
                         new
@@ -3325,7 +3325,7 @@ namespace Redix.Api.Migrations
                     b.HasIndex("ItemId", "Key")
                         .IsUnique();
 
-                    b.ToTable("ItemColumns");
+                    b.ToTable("ItemColumns", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Structure.ProjectStructureSource", b =>
@@ -3375,7 +3375,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.ToTable("Subgroups");
+                    b.ToTable("Subgroups", "project");
 
                     b.HasData(
                         new
@@ -3692,7 +3692,7 @@ namespace Redix.Api.Migrations
                         .IsUnique()
                         .HasFilter("[VatNumber] <> ''");
 
-                    b.ToTable("Suppliers");
+                    b.ToTable("Suppliers", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Suppliers.SupplierDefaultItem", b =>
@@ -3713,7 +3713,7 @@ namespace Redix.Api.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.ToTable("SupplierDefaultItems");
+                    b.ToTable("SupplierDefaultItems", "project");
                 });
 
             modelBuilder.Entity("Redix.Api.Translations.Translation", b =>

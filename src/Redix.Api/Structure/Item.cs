@@ -1,7 +1,7 @@
 namespace Redix.Api.Structure;
 
 /// <summary>An item (البند) under a category, such as البلاط under التشطيب, that expenses are recorded against (FR-05, FR-38). It owns the rule of when it is offered at entry.</summary>
-public class Item : IOrdered
+public class Item : IOrdered, IProjectRow
 {
     /// <summary>No item: what a lookup that finds none answers, so no reader needs a null. Its empty id matches nothing.</summary>
     public static Item None { get; } = new() { Id = Guid.Empty, Name = "", IsActive = false };

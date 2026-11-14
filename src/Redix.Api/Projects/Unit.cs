@@ -1,7 +1,7 @@
 namespace Redix.Api.Projects;
 
 /// <summary>A unit of a project, such as الفلة الغربية (FR-04).</summary>
-public class Unit
+public class Unit : IProjectRow
 {
     /// <summary>The unit's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

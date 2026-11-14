@@ -1,7 +1,7 @@
 namespace Redix.Api.Structure;
 
 /// <summary>A column of one item (العمود): what entry asks for in this item, and what its table prints (FR-41).</summary>
-public class ItemColumn : Column
+public class ItemColumn : Column, IProjectRow
 {
     /// <summary>The item that asks for it.</summary>
     public Guid ItemId { get; init; }

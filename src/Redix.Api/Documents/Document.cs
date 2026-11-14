@@ -1,7 +1,7 @@
 namespace Redix.Api.Documents;
 
 /// <summary>A document kept for a project (UC-064): any file from the attachment store, under a name, and in a group when the manager gives one.</summary>
-public class Document
+public class Document : IProjectRow
 {
     /// <summary>The longest name.</summary>
     public const int NameMaxLength = 200;

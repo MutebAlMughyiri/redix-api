@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Redix.Api.Entries;
 
 /// <summary>One movement of money in the ledger, of any kind. Approval, history, reversal, attachments and account balances are built once, on this. What only one kind has lives in a detail table keyed by the entry.</summary>
-public class Entry
+public class Entry : IProjectRow
 {
     /// <summary>The longest description an entry may have: room for what a purchase's product and notes held together before they became one (redix-api #129).</summary>
     public const int DescriptionMaxLength = 2000;

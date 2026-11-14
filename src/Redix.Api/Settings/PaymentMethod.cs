@@ -1,7 +1,7 @@
 namespace Redix.Api.Settings;
 
 /// <summary>A way a project pays, such as شبكة (FR-40). Each project keeps its own (BR-33).</summary>
-public class PaymentMethod
+public class PaymentMethod : IProjectRow
 {
     /// <summary>The method's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

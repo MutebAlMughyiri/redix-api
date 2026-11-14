@@ -17,7 +17,10 @@ public class MigrationStepsTests(MigratedApiFactory factory)
     /// Writes <paramref name="today"/> on a database migrated to the step before <paramref name="step"/>, migrates through <paramref name="step"/>, and lets <paramref name="read"/> read it.
     /// The SQL runs as it is written, a JSON value's braces included: ExecuteSqlRaw reads a brace as a parameter's place, so each is doubled.
     /// </summary>
-    private Task ThroughAsync(string step, string today, Func<RedixDbContext, Task> read) =>
+    private Task ThroughAsync(string step, string today, Func<RedixDbContext, Task> read) => ThroughAsync(step, today, _ => Task.CompletedTask, read);
+
+    /// <summary>As the other, and lets <paramref name="readBefore"/> read the rows before the step.</summary>
+    private Task ThroughAsync(string step, string today, Func<RedixDbContext, Task> readBefore, Func<RedixDbContext, Task> read) =>
         factory.OnScratchDatabaseAsync("RedixMigrationStepTests", async db =>
         {
             var migrator = db.GetService<IMigrator>();
@@ -25,11 +28,25 @@ public class MigrationStepsTests(MigratedApiFactory factory)
             var index = steps.FindIndex(name => name.EndsWith($"_{step}"));
             await migrator.MigrateAsync(steps[index - 1]);
             await db.Database.ExecuteSqlRawAsync(today.Replace("{", "{{").Replace("}", "}}"));
+            await readBefore(db);
             await migrator.MigrateAsync(steps[index]);
             await read(db);
         });
 
     private static Task<List<string>> ValuesAsync(RedixDbContext db, string sql) => db.Database.SqlQueryRaw<string>(sql).ToListAsync();
+
+    /// <summary>
+    /// Every table of the database, whatever its schema, as "table rows amount…": its count of rows, then the sum of each of its money columns. The database builds the one statement
+    /// from its own list of tables, so a table's figures read the same wherever it sits.
+    /// </summary>
+    private const string EveryTablesFigures = """
+        DECLARE @figures nvarchar(max) = (
+            SELECT STRING_AGG(CAST(CONCAT('SELECT CONCAT(', QUOTENAME(t.name, ''''), ', '' '', COUNT(*)', amounts.Sums, ') AS Value FROM ', QUOTENAME(SCHEMA_NAME(t.schema_id)), '.', QUOTENAME(t.name)) AS nvarchar(max)), ' UNION ALL ')
+            FROM sys.tables t
+            OUTER APPLY (SELECT STRING_AGG(CAST(CONCAT(', '' '', SUM(', QUOTENAME(c.name), ')') AS nvarchar(max)), '') AS Sums FROM sys.columns c WHERE c.object_id = t.object_id AND TYPE_NAME(c.user_type_id) = 'decimal') amounts
+            WHERE t.name <> '__EFMigrationsHistory');
+        EXEC sp_executesql @figures;
+        """;
 
     /// <summary>A login as it was stored before redix-api #126, active or disabled as a whole.</summary>
     private static string LoginWithIsActive(Guid id, bool isActive) =>
@@ -74,6 +91,10 @@ public class MigrationStepsTests(MigratedApiFactory factory)
 
     private static string EntryOf(Guid id, Guid projectId, Guid accountId, Guid userId, int kind, decimal amount) =>
         $"INSERT INTO Entries (Id, ProjectId, Kind, Status, EntryDate, Amount, AccountId, Notes, CreatedByUserId, CreatedAt, ApprovedAt) VALUES ('{id}', '{projectId}', {kind}, 2, '2026-11-01', {amount.ToString(CultureInfo.InvariantCulture)}, '{accountId}', N'', '{userId}', '2026-11-01', '2026-11-02');";
+
+    /// <summary>An entry as it is stored since redix-api #129, written into <paramref name="table"/>: <c>Entries</c> until redix-api #123 moved it to <c>project.Entries</c>.</summary>
+    private static string EntryInto(string table, Guid id, Guid projectId, Guid accountId, Guid userId, int kind, decimal amount, int status = 2, string entryDate = "2026-11-01", string createdAt = "2026-11-01") =>
+        $"INSERT INTO {table} (Id, ProjectId, Kind, Status, EntryDate, Amount, AccountId, Description, ColumnValues, CreatedByUserId, CreatedAt, ApprovedAt) VALUES ('{id}', '{projectId}', {kind}, {status}, '{entryDate}', {amount.ToString(CultureInfo.InvariantCulture)}, '{accountId}', N'', N'{{}}', '{userId}', '{createdAt}', '1900-01-01');";
 
     private static Task<List<string>> ColumnValueAsync(RedixDbContext db, Guid entryId, string key) =>
         ValuesAsync(db, $"SELECT LOWER(JSON_VALUE(CAST(ColumnValues AS nvarchar(max)), '$.\"{key}\"')) AS Value FROM Entries WHERE Id = '{entryId}'");
@@ -278,6 +299,41 @@ public class MigrationStepsTests(MigratedApiFactory factory)
                 WHERE primary_key.is_primary_key = 1 AND part.object_id = OBJECT_ID('UserDefaultProjects')
                 """));
             Assert.Empty(await ValuesAsync(db, "SELECT name AS Value FROM sys.columns WHERE object_id = OBJECT_ID('UserDefaultProjects') AND name = 'Id'"));
+        });
+    }
+
+    [Fact]
+    public Task R123_D4_ProjectSchema_EveryTableOfAProjectMovesToTheSchemaProjectWithEveryRowAndEveryAmountAsItWas()
+    {
+        var (user, project, bank, cash, item, subgroup, method, supplier) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var (contract, reconciliation, partner, purchase, payment, revenue, capitalIn) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var today = string.Concat(User(user), Project(project), Account(bank, project), Account(cash, project), ItemWithGroup(project, item, subgroup, 2), PaymentMethod(method, project), Supplier(supplier, project, user),
+            $"INSERT INTO Units (Id, ProjectId, Name, SortOrder) VALUES (NEWID(), '{project}', N'الفلة الغربية', 0);",
+            $"INSERT INTO AccountCustodians (AccountId, UserId) VALUES ('{cash}', '{user}');",
+            $"INSERT INTO Transfers (Id, ProjectId, FromAccountId, ToAccountId, Amount, Date, Notes, CreatedByUserId, CreatedAt) VALUES (NEWID(), '{project}', '{bank}', '{cash}', 2500.75, '2026-11-02', N'', '{user}', '2026-11-02');",
+            Reconciliation(reconciliation, project, user),
+            $"INSERT INTO ReconciliationBalances (ReconciliationId, AccountId, ActualBalance) VALUES ('{reconciliation}', '{bank}', 700.25);",
+            $"INSERT INTO Contracts (Id, ProjectId, ItemId, SortOrder, SupplierId, Value, IsOpenValue, UnitPrice, Quantity, Notes, IsActive) VALUES ('{contract}', '{project}', '{item}', 0, '{supplier}', 50000, 0, 0, 0, N'', 1);",
+            EntryInto("Entries", purchase, project, bank, user, 0, 1150.50m), EntryInto("Entries", payment, project, bank, user, 1, 5000m),
+            EntryInto("Entries", revenue, project, bank, user, 4, 33300m), EntryInto("Entries", capitalIn, project, bank, user, 2, 100000m),
+            $"INSERT INTO ExpenseDetails (EntryId, ItemId, SubgroupId, PaymentMethodId) VALUES ('{purchase}', '{item}', '{subgroup}', '{method}'), ('{payment}', '{item}', '{subgroup}', '{method}');",
+            $"INSERT INTO PurchaseDetails (EntryId, SupplierId) VALUES ('{purchase}', '{supplier}');",
+            $"INSERT INTO ContractorPaymentDetails (EntryId, ContractId, IsOutsideContract) VALUES ('{payment}', '{contract}', 0);",
+            $"INSERT INTO RevenueDetails (EntryId, ItemId, SubgroupId) VALUES ('{revenue}', '{item}', '{subgroup}');",
+            $"INSERT INTO Partners (Id, ProjectId, Name, ItemId, SortOrder, IsDeleted) VALUES ('{partner}', '{project}', N'شريك', '{item}', 1, 0);",
+            $"INSERT INTO CapitalMovementDetails (EntryId, PartnerId) VALUES ('{capitalIn}', '{partner}');",
+            $"INSERT INTO PeriodicReports (Id, ProjectId, Number, IssuedAt, IssuedByUserId, ExpensesTotal, Snapshot) VALUES (NEWID(), '{project}', 1, '2026-11-03', '{user}', 6150.50, N'{{}}');");
+        var before = new List<string>();
+
+        return ThroughAsync("ProjectSchema", today, async db => before.AddRange(await ValuesAsync(db, EveryTablesFigures)), async db =>
+        {
+            var projectTables = db.Model.GetEntityTypes().Where(type => type.GetSchema() == IProjectRow.Schema).Select(type => type.GetTableName()!).ToList();
+
+            Assert.Equal(before.Order(), (await ValuesAsync(db, EveryTablesFigures)).Order());
+            Assert.Contains("Entries 4 139450.5000", before);
+            Assert.Contains("Transfers 1 2500.7500", before);
+            Assert.Equal(31, projectTables.Count);
+            Assert.Equal(projectTables.Order(), (await ValuesAsync(db, $"SELECT name AS Value FROM sys.tables WHERE SCHEMA_NAME(schema_id) = '{IProjectRow.Schema}'")).Order());
         });
     }
 }

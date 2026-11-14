@@ -33,6 +33,7 @@ src/Redix.Api/
   Ids.cs                how an id that may be absent travels: as text, empty when none
   StableIds.cs          ids derived from a name, so every database and migration agree on seeded rows
   Lookup.cs             a row of an enum's lookup table, LK_{enum}, which every column holding the enum points at
+  IProjectRow.cs        the mark of a table whose rows belong to one project, which RedixDbContext keeps in the schema project (redix-api #123)
   Money.cs              what every amount a person types shares: two decimals and a limit
   ArabicSpelling.cs     what a search treats alike in Arabic, and the one owner of that rule
 tests/Redix.Api.Tests/  one test class per feature, against a real SQL Server database, in four collections with a database each
@@ -57,6 +58,7 @@ Every entry, whatever its table, is recorded by `EntryRecording` through one rou
 | --- | --- |
 | Money is `decimal(19,4)`, rounding only in totals (BR-13); no VAT is stored, the VAT workbook works it out (redix-api #96, D4) | `RedixDbContext.ConfigureConventions`, `VatStatementFiles` |
 | Every table has a required `rowversion`, for sync and concurrency | `RedixDbContext.OnModelCreating` |
+| REDIX's core tables are in the schema `dbo`; every table whose rows belong to one project, by its own `ProjectId` or through its parent, is marked `IProjectRow` and kept in the schema `project`, so in release 2 the project's tables can move to its own database (redix-api #123, D4 to D6). History, the lookups and the notifications stay core | `IProjectRow`, `RedixDbContext.OnModelCreating`, `SchemaTests` |
 | Ids are time-ordered GUIDs (`Guid.CreateVersion7`) made in code, never by the database | Each entity's `Id`; `RedixDbContext.OnModelCreating` |
 | No NULL column: an optional value is an empty value of its own type or a row in a link table | Each entity |
 | Every column holding an enum has a foreign key to the enum's lookup table, `LK_{enum}`, seeded from the enum's members: to its `Id` for a column storing the number, to its `Name` for one storing the name (redix-api #87); the permission columns wait for redix-api #120 | `RedixDbContext.HasLookup`, `Lookup`, `LookupTablesTests` |

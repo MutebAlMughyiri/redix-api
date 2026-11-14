@@ -24,8 +24,9 @@ using Redix.Api.Translations;
 namespace Redix.Api;
 
 /// <summary>
-/// The REDIX database. It owns the rules every table shares: money as <c>decimal(19,4)</c> (BR-13), a required rowversion on every table, and
-/// GUID ids made in code (<c>Guid.CreateVersion7</c>), never by the database, so a new record added through a navigation is inserted.
+/// The REDIX database. It owns the rules every table shares: money as <c>decimal(19,4)</c> (BR-13), a required rowversion on every table,
+/// GUID ids made in code (<c>Guid.CreateVersion7</c>), never by the database, so a new record added through a navigation is inserted, and each table's schema: <c>project</c> for
+/// one marked <see cref="IProjectRow"/>, <c>dbo</c> for REDIX's core (redix-api #123, D5).
 /// </summary>
 public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContext(options)
 {
@@ -533,6 +534,10 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContex
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             var entity = modelBuilder.Entity(entityType.ClrType);
+            if (entityType.ClrType.IsAssignableTo(typeof(IProjectRow)))
+            {
+                entityType.SetSchema(IProjectRow.Schema);
+            }
             entity.Property<byte[]>("RowVersion").IsRowVersion().IsRequired();
             if (entityType.FindPrimaryKey()?.Properties is [{ ClrType: var keyType, Name: var keyName }] && keyType == typeof(Guid))
             {

@@ -1,7 +1,7 @@
 namespace Redix.Api.Entries;
 
 /// <summary>A file an entry carries, and what it is to that entry.</summary>
-public class EntryAttachment
+public class EntryAttachment : IProjectRow
 {
     /// <summary>The entry.</summary>
     public Guid EntryId { get; init; }

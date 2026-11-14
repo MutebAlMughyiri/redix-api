@@ -6,7 +6,7 @@ namespace Redix.Api.Accounts;
 /// Where a project's money sits: a bank account or a cash custody (FR-22). It belongs to one project (BR-33); once anything names it, it is disabled rather than deleted
 /// (BR-15). What it holds is what its approved entries and transfers moved (<see cref="AccountMoney"/>): it has no opening balance (redix-app #89). It owns the rules of who may spend from it.
 /// </summary>
-public class Account
+public class Account : IProjectRow
 {
     /// <summary>The account's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

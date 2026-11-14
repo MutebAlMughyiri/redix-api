@@ -1,7 +1,7 @@
 namespace Redix.Api.Entries;
 
 /// <summary>The number of a bill entered before REDIX stopped asking for one (redix-api #96, D2): the only part of it kept, since no VAT is stored (D4).</summary>
-public class Invoice
+public class Invoice : IProjectRow
 {
     /// <summary>The longest invoice number.</summary>
     public const int NumberMaxLength = 50;

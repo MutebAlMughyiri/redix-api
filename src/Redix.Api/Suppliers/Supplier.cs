@@ -5,7 +5,7 @@ using Redix.Api.Projects;
 namespace Redix.Api.Suppliers;
 
 /// <summary>A supplier in one project's register (FR-06, BR-33), which a purchase has to name (BR-19). It is disabled rather than deleted (BR-15), and it owns the rule of a VAT number (BR-16).</summary>
-public class Supplier
+public class Supplier : IProjectRow
 {
     /// <summary>The name of the supplier every approved project starts with, for expenses with no supplier (UC-017).</summary>
     public const string GeneralCashSupplierName = "مورد نقدي عام";

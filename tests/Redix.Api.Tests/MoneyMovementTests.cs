@@ -68,7 +68,7 @@ public class MoneyMovementTests(MigratedApiFactory factory)
 
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 700.25m)]), Json)).EnsureSuccessStatusCode();
 
-        Assert.Equal([700.25m], await ledger.ReadAsync(db => db.Database.SqlQuery<decimal>($"SELECT ActualBalance AS Value FROM ReconciliationBalances WHERE AccountId = {ledger.AccountId}").ToListAsync()));
+        Assert.Equal([700.25m], await ledger.ReadAsync(db => db.Database.SqlQuery<decimal>($"SELECT ActualBalance AS Value FROM project.ReconciliationBalances WHERE AccountId = {ledger.AccountId}").ToListAsync()));
     }
 
     [Fact]

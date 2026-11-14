@@ -1,7 +1,7 @@
 namespace Redix.Api.Entries;
 
 /// <summary>One step of an entry through approval: who sent or decided it, when, and why it was rejected (UC-032).</summary>
-public class EntryDecision
+public class EntryDecision : IProjectRow
 {
     /// <summary>The step's id, in the order they happened.</summary>
     public long Id { get; init; }
