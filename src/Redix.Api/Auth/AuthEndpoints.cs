@@ -196,7 +196,8 @@ public record SetBiometricsRequest(bool On);
 /// <param name="UserId">Who this is, so that a phone's unsent entries go only with the person who entered them (UC-029).</param>
 /// <param name="Username">The name they sign in with, which My account shows (Muteb, 9 Nov 2026).</param>
 /// <param name="DisplayName">Their name as it shows on entries, which My account shows above it.</param>
-public record Session(string AccessToken, DateTime AccessTokenExpiresAt, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool UsesBiometrics, Guid UserId, string Username, string DisplayName)
+/// <param name="Email">Their email, which Settings shows under «بريدي» (redix-api #127, AC-10.4); empty while none is set.</param>
+public record Session(string AccessToken, DateTime AccessTokenExpiresAt, string RefreshToken, bool MustChangePassword, List<Permission> Permissions, string DefaultProjectId, bool UsesBiometrics, Guid UserId, string Username, string DisplayName, string Email)
 {
     /// <summary>
     /// The session of <paramref name="user"/> on <paramref name="device"/> with this <paramref name="refreshToken"/> and a new access token. One check covers every way of losing access to the
@@ -208,6 +209,6 @@ public record Session(string AccessToken, DateTime AccessTokenExpiresAt, string 
         var chosen = await db.UserDefaultProjects.Where(row => row.UserId == user.Id).Select(row => row.ProjectId).SingleOrDefaultAsync();
         var defaultProjectId = access.In(chosen).Contains(Permission.ReadProject) ? chosen.ToString() : "";
         var (accessToken, accessTokenExpiresAt) = accessTokens.Create(user, device.Id);
-        return new(accessToken, accessTokenExpiresAt, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, device.UsesBiometrics, user.Id, user.Username, user.DisplayName);
+        return new(accessToken, accessTokenExpiresAt, refreshToken, user.MustChangePassword, access.Everywhere.ToList(), defaultProjectId, device.UsesBiometrics, user.Id, user.Username, user.DisplayName, user.Email);
     }
 }

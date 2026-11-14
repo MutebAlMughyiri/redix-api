@@ -114,6 +114,7 @@ app.MapTranslations();
 app.MapConfig();
 app.MapAuth();
 app.MapPasswordReset();
+app.MapMyEmail();
 app.MapProjects();
 app.MapProjectUsers();
 app.MapRegistration();
