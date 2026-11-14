@@ -60,4 +60,5 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-040 to UC-044](use-cases/UC-040-money-movements.md) | Reconciliation, capital movements, and shares | Whoever does the project's finance; everyone reads |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-070](use-cases/UC-070-config.md) | Keep configurable values in one table, starting with how long the app waits for an answer | The app, before sign-in |
+| [UC-071](use-cases/UC-071-load-a-project-file.md) | Load a project's JSON file: its structure, entries, actual balances and last report | The manager who created the project |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

@@ -28,6 +28,7 @@ src/Redix.Api/
   Notifications/        who was told what happened to an entry or a project (UC-036)
   Reports/              the summary, the item and contracts reports, the numbered periodic report, what waits, and their PDFs and workbooks
   Sync/                 what a phone keeps so it can work without a network (UC-030)
+  Import/               a project's file (UC-071): a project that lived in Excel, read once and loaded through the owners that take each part by hand
   Refusal.cs            the answer to a refused request: problem details with a code
   Ids.cs                how an id that may be absent travels: as text, empty when none
   StableIds.cs          ids derived from a name, so every database and migration agree on seeded rows
