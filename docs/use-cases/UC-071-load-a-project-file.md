@@ -26,7 +26,7 @@ One EF Core transaction holds everything; a refusal anywhere returns before it c
 | A contract's payments | `ContractsEndpoints.AddAsync`; its contractor is the table's name after «دفعات », a supplier added when missing, its value `contractAmount`, an open value when empty | Added (D6) |
 | A partner | `PartnersEndpoints.AddAsync`, with no login | Added (D6) |
 | An account | Found by name; the file carries no type or custodian | Refused, `accountNotInProject` (D6) |
-| A row | `EntryRecording.RecordAsync`, telling no decider, then `ApprovalsEndpoints.ApproveAsync` in the caller's name; it counts as approved from the file's report time, while its History lines keep the moment of the load (D7, D12) | — |
+| A row | `EntryRecording.RecordAsync`, telling no decider, then `ApprovalsEndpoints.ApproveAsync` in the caller's name; it counts as approved from the file's report time, while its History lines keep the moment of the load (D7, D12). The rows are recorded by their date, then in the file's order, so each takes its «رقم القيد» in the calendar's order (redix-api #128 D6) | — |
 | The actual balances | `ReconciliationsEndpoints.EnterAsync`: one reconciliation, a difference staying visible (D8) | — |
 | The report | `PeriodicReportsEndpoints.IssueAsync` with the file's number and time; none for a file with none (D9) | A number the project issued already is `reportAlreadyIssued`, found before anything is saved |
 
@@ -57,6 +57,7 @@ REDIX's own model, as the generated workbook lays it out (redix-api #130), with 
 
 | Rule | Code | Test |
 | --- | --- | --- |
+| redix-api #128 D6: a loaded file's rows are numbered by their date, then the file's order, not the order of its tables | `ProjectFileEndpoints.RecordAsync` | `ProjectFileTests.R128_D6_ALoadedFilesRowsAreNumberedByTheirDateThenTheFilesOrderNotTheOrderOfItsTables` |
 | AC-53.9: a file that is not a REDIX project file, or is not laid out as one, is refused with `notAProjectFile`, and nothing is read | `ProjectFile.Read` | `ProjectFileTests.AC_53_9_AFileThatIsNotARedixProjectFileIsRefusedAndNothingIsRead` |
 | AC-53.9: a file of a newer version is refused with `newerVersion` before its shape is read | `ProjectFile.Read` | `ProjectFileTests.AC_53_9_AFileOfANewerVersionIsRefusedBeforeItsShapeIsRead` |
 | A project file is read with its report, its actual balances, its lists and its tables | `ProjectFile.Read` | `ProjectFileTests.AC_53_9_AProjectFileIsReadWithItsReportItsActualBalancesItsListsAndItsTables` |

@@ -274,19 +274,22 @@ public static class ProjectFileEndpoints
 
     /// <summary>
     /// Records every row of every table through <see cref="EntryRecording.RecordAsync"/>, as Add entry does, telling no decider (D7): a table not offered to the caller is listed once,
-    /// and each row refused is listed with its table, its place counted from 1 as the sheet's «#» counts it, and its code. Answers the entries kept, each with its table.
+    /// and each row refused is listed with its table, its place counted from 1 as the sheet's «#» counts it, and its code, in the file's order. The rows are recorded by their date,
+    /// then in the file's order, so each «رقم القيد» follows the calendar (redix-api #128 D6). Answers the entries kept, each with its table.
     /// </summary>
     private static async Task<List<(Entry Entry, Guid TableId)>> RecordAsync(Guid projectId, List<ProjectFileTablePlace> places, ProjectFile file, ProjectFileRegisters registers, Guid userId, List<Permission> held, RedixDbContext db, TimeProvider time, List<ProjectFileRefusal> refused)
     {
         var offered = await EntryTable.OfferedAsync(projectId, held, db);
         var options = file.Lists.SelectMany(list => list.Options.Select(option => (list.Key, Option: option))).DistinctBy(row => row.Option.Id).ToDictionary(row => row.Option.Id, row => (List: row.Key, Label: row.Option.Label.Trim()));
-        var kept = new List<(Entry Entry, Guid TableId)>();
+        var asked = new List<(int InFile, ProjectFileTablePlace Place, EntryTable Table, int Number, EntryRequest Request)>();
+        var found = new List<(int InFile, ProjectFileRefusal Refusal)>();
+        var inFile = 0;
         foreach (var place in places)
         {
             var table = offered.SingleOrDefault(row => row.Item.Id == place.Item.Id && row.Id == place.TableId);
             if (table is null)
             {
-                refused.Add(place.Refusal(0, ProjectFileOwner.Entry, "UnknownTable"));
+                found.Add((inFile++, place.Refusal(0, ProjectFileOwner.Entry, "UnknownTable")));
                 continue;
             }
             foreach (var (row, number) in place.FileTable.Rows.Select((row, index) => (row, index + 1)))
@@ -294,20 +297,26 @@ public static class ProjectFileEndpoints
                 var read = RequestOf(row, place.FileTable, table, options, registers);
                 if (read.Code.Length > 0)
                 {
-                    refused.Add(place.Refusal(number, ProjectFileOwner.File, read.Code) with { ColumnKey = read.ColumnKey, Value = read.Value, Column = read.Column });
+                    found.Add((inFile++, place.Refusal(number, ProjectFileOwner.File, read.Code) with { ColumnKey = read.ColumnKey, Value = read.Value, Column = read.Column }));
                     continue;
                 }
-                var (_, code, columnKey, entry) = await EntryRecording.RecordAsync(projectId, read.Request, table, userId, held, Entry.None, tellDeciders: false, db, time);
-                if (code.Length > 0)
-                {
-                    refused.Add(place.Refusal(number, ProjectFileOwner.Entry, code) with { ColumnKey = columnKey });
-                }
-                else
-                {
-                    kept.Add((entry, table.Id));
-                }
+                asked.Add((inFile++, place, table, number, read.Request));
             }
         }
+        var kept = new List<(Entry Entry, Guid TableId)>();
+        foreach (var (at, place, table, number, request) in asked.OrderBy(row => row.Request.Date))
+        {
+            var (_, code, columnKey, entry) = await EntryRecording.RecordAsync(projectId, request, table, userId, held, Entry.None, tellDeciders: false, db, time);
+            if (code.Length > 0)
+            {
+                found.Add((at, place.Refusal(number, ProjectFileOwner.Entry, code) with { ColumnKey = columnKey }));
+            }
+            else
+            {
+                kept.Add((entry, table.Id));
+            }
+        }
+        refused.AddRange(found.OrderBy(row => row.InFile).Select(row => row.Refusal));
         return kept;
     }
 

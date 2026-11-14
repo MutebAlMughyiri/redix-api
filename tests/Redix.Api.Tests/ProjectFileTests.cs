@@ -307,6 +307,24 @@ public class ProjectFileTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R128_D6_ALoadedFilesRowsAreNumberedByTheirDateThenTheFilesOrderNotTheOrderOfItsTables()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var file = LoadedFile((table, place, row) => row["date"] = (table, place) switch
+        {
+            ("بلاط", 1) => "2026-11-05",
+            ("بلاط", 2) or ("شريك الاختبار", 1) => "2026-11-03",
+            _ => RowDate,
+        });
+
+        (await LoadAsync(ledger.Client, ledger.ProjectId, file)).EnsureSuccessStatusCode();
+
+        var numbered = await ledger.ReadAsync(db => db.Entries.Where(entry => entry.ProjectId == ledger.ProjectId).OrderBy(entry => entry.Number).Select(entry => new { entry.Number, entry.Description }).ToListAsync());
+        Assert.Equal(Enumerable.Range(1, 8), numbered.Select(entry => entry.Number));
+        Assert.Equal(["مواد", "دفعة أولى", "صنف", "سحب", "استرجاع", "بلاط مرتجع", "إيداع", "بلاط أرضي"], numbered.Select(entry => entry.Description));
+    }
+
+    [Fact]
     public async Task AC_53_6_AfterTheLoadTheSummaryItsRevenueItsExpensesAndItsSurplusEqualTheFiles()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
