@@ -168,7 +168,7 @@ One per enum the database stores, named `LK_{enum}`: `Id` is the member's number
 | ApproveProjects | Sees the registered projects, and approves or rejects them (BR-29, BR-34). |
 | ManageUsers | Adds people to one project and ticks their permissions in it (FR-02, BR-29). |
 | ReadProject | Sees one project and everything in it (BR-31). |
-| SeeAllCapital | Sees every partner in one project and their capital, and takes the report files (BR-31). Holding it takes `SeeChosenCapital` (redix-api #106). |
+| SeeAllCapital | Sees every partner in one project and their capital (BR-31). Holding it takes `SeeChosenCapital` (redix-api #106). |
 | SeeChosenCapital | Sees only the partners of one project chosen for them, and their capital (BR-31, redix-api #106). Holding it takes `SeeAllCapital`. |
 | ManageProject | Renames one project, adds, renames and deletes its units, and closes it (FR-04, BR-38). |
 | ManageStructure | Shapes one project's expense structure: its categories, items, subgroups and columns (FR-05, FR-38, FR-39, FR-41). |
@@ -182,6 +182,8 @@ One per enum the database stores, named `LK_{enum}`: `Id` is the member's number
 | AttachFiles | Keeps a picture or a PDF in one project, for an entry or a contract (FR-09). |
 | ApproveEntries | Sees the entries waiting in one project, and approves or rejects them (FR-18, FR-19). |
 | MoveMoney | Enters a project's capital movements and revenue from Add entry, which wait for approval like every entry, and reconciles its accounts (BR-30, FR-24, FR-25). |
+| SeeReports | «يرى التقارير»: opens one project's reports, the periodic report, an item's report, a contract's and the VAT statement (redix-api #131). |
+| GenerateReports | «يُصدر التقارير»: issues one project's next periodic report and takes every report's Excel and PDF, whose capital shows only the partners its holder may see (redix-api #131, BR-31). |
 
 ## The lookups and the columns that hold them
 
@@ -271,7 +273,7 @@ What a user may do across the system, such as the admin's approving projects.
 
 Unique: `UserId, Permission`.
 
-Check `CK_SystemPermissions_Permission`: `([Permission]='MoveMoney' OR [Permission]='ApproveEntries' OR [Permission]='AttachFiles' OR [Permission]='RemoveApprovedEntries' OR [Permission]='DeleteEntries' OR [Permission]='ManageAnyEntry' OR [Permission]='RecordEntries' OR [Permission]='ChargeAnyAccount' OR [Permission]='AddSupplier' OR [Permission]='ManageSettings' OR [Permission]='ManageStructure' OR [Permission]='ManageProject' OR [Permission]='SeeChosenCapital' OR [Permission]='SeeAllCapital' OR [Permission]='ReadProject' OR [Permission]='ManageUsers' OR [Permission]='ApproveProjects')`.
+Check `CK_SystemPermissions_Permission`: `([Permission]='GenerateReports' OR [Permission]='SeeReports' OR [Permission]='MoveMoney' OR [Permission]='ApproveEntries' OR [Permission]='AttachFiles' OR [Permission]='RemoveApprovedEntries' OR [Permission]='DeleteEntries' OR [Permission]='ManageAnyEntry' OR [Permission]='RecordEntries' OR [Permission]='ChargeAnyAccount' OR [Permission]='AddSupplier' OR [Permission]='ManageSettings' OR [Permission]='ManageStructure' OR [Permission]='ManageProject' OR [Permission]='SeeChosenCapital' OR [Permission]='SeeAllCapital' OR [Permission]='ReadProject' OR [Permission]='ManageUsers' OR [Permission]='ApproveProjects')`.
 
 ### Projects
 
@@ -321,7 +323,7 @@ Unique: `ProjectId, UserId, Permission`.
 
 Other indexes: `UserId`.
 
-Check `CK_ProjectPermissions_Permission`: `(([Permission]='MoveMoney' OR [Permission]='ApproveEntries' OR [Permission]='AttachFiles' OR [Permission]='RemoveApprovedEntries' OR [Permission]='DeleteEntries' OR [Permission]='ManageAnyEntry' OR [Permission]='RecordEntries' OR [Permission]='ChargeAnyAccount' OR [Permission]='AddSupplier' OR [Permission]='ManageSettings' OR [Permission]='ManageStructure' OR [Permission]='ManageProject' OR [Permission]='SeeChosenCapital' OR [Permission]='SeeAllCapital' OR [Permission]='ReadProject' OR [Permission]='ManageUsers' OR [Permission]='ApproveProjects') AND [Permission]<>'ApproveProjects')`.
+Check `CK_ProjectPermissions_Permission`: `(([Permission]='GenerateReports' OR [Permission]='SeeReports' OR [Permission]='MoveMoney' OR [Permission]='ApproveEntries' OR [Permission]='AttachFiles' OR [Permission]='RemoveApprovedEntries' OR [Permission]='DeleteEntries' OR [Permission]='ManageAnyEntry' OR [Permission]='RecordEntries' OR [Permission]='ChargeAnyAccount' OR [Permission]='AddSupplier' OR [Permission]='ManageSettings' OR [Permission]='ManageStructure' OR [Permission]='ManageProject' OR [Permission]='SeeChosenCapital' OR [Permission]='SeeAllCapital' OR [Permission]='ReadProject' OR [Permission]='ManageUsers' OR [Permission]='ApproveProjects') AND [Permission]<>'ApproveProjects')`.
 
 ### ProjectRoleNames
 

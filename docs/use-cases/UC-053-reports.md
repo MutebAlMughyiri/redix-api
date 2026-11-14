@@ -4,19 +4,19 @@
 
 **Purpose:** issue the numbered periodic report that replaces the manual statement, and give it and the other reports as files: the periodic report as a PDF laid out as report 23 and as a workbook with live totals; the VAT statement as the accountant's workbook; an item's report and the contracts report as a PDF and a workbook.
 
-**Who uses it:** whoever holds `MoveMoney` issues. Everyone who reads the project reads a report, seeing only their own partner line (BR-31). Only whoever holds `SeeAllCapital` gets the files: "exporting stays theirs alone".
+**Who uses it:** whoever holds `SeeReports` («يرى التقارير») reads a report, seeing only their own partner line (BR-31). Whoever holds `GenerateReports` («يُصدر التقارير») issues the next one and takes every report's Excel and PDF; a file's رأس المال holds only the partners its reader may see (`PartnerSight`), its اجمالي الكل still the whole capital, as the summary's line is (BR-31). `MoveMoney` no longer issues, and the files no longer need `SeeAllCapital` (redix-api #131).
 
-| Route | What it does |
-| --- | --- |
-| `GET /projects/{id}/periodic-reports` | The reports issued, newest first |
-| `GET /projects/{id}/periodic-reports/next` | The next number, and what waits for approval |
-| `POST /projects/{id}/periodic-reports` | Issues the next report as a snapshot that never changes |
-| `GET /projects/{id}/periodic-reports/{number}` | A report as issued |
-| `GET /projects/{id}/periodic-reports/{number}/pdf`, `/xlsx` | Its files |
-| `GET /projects/{id}/vat-statement/xlsx?from=&to=` | The VAT statement's workbook, its VAT a formula on each total at `vatRatePercent` (redix-api #96, D19, D20) |
-| `GET /projects/{id}/reports/items/{itemId}/pdf`, `/xlsx` | An item's report as files |
-| `GET /projects/{id}/reports/contracts/pdf`, `/xlsx` | The contracts report as files |
-| `GET /projects/{id}/reports/contracts/{contractId}/pdf`, `/xlsx` | One contract's report as files, from the item report's writers, for its ⋮ on Contracts (Muteb, 12 Nov 2026) |
+| Route | Needs | What it does |
+| --- | --- | --- |
+| `GET /projects/{id}/periodic-reports` | `SeeReports` | The reports issued, newest first |
+| `GET /projects/{id}/periodic-reports/next` | `SeeReports` | The next number, and what waits for approval |
+| `POST /projects/{id}/periodic-reports` | `GenerateReports` | Issues the next report as a snapshot that never changes |
+| `GET /projects/{id}/periodic-reports/{number}` | `SeeReports` | A report as issued |
+| `GET /projects/{id}/periodic-reports/{number}/pdf`, `/xlsx` | `GenerateReports` | Its files, رأس المال holding only the partners the caller may see |
+| `GET /projects/{id}/vat-statement/xlsx?from=&to=` | `GenerateReports` | The VAT statement's workbook, its VAT a formula on each total at `vatRatePercent` (redix-api #96, D19, D20) |
+| `GET /projects/{id}/reports/items/{itemId}/pdf`, `/xlsx` | `GenerateReports` | An item's report as files; رأس المال's holds only the partners the caller may see |
+| `GET /projects/{id}/reports/contracts/pdf`, `/xlsx` | `GenerateReports` | The contracts report as files |
+| `GET /projects/{id}/reports/contracts/{contractId}/pdf`, `/xlsx` | `GenerateReports` | One contract's report as files, from the item report's writers, for its ⋮ on Contracts (Muteb, 12 Nov 2026) |
 
 **One table design (UC-067, FR-46).** Every sheet but الخلاصة is a list of tables written by `StatementWriter`, the one layout; a builder (`ItemReportFiles.SheetOf`, `ContractsExcel`, `RevenueOf`) only says what each table holds; رأس المال is an item like any other, its sheet a table per partner (redix-api #109). Every table prints its own columns, nothing fixed (redix-api #129, R1, R4): the columns of its item that print in the reports, in their order, «الوصف» first but on رأس المال, where «نوع الحركة» comes before it, each headed by its own name, then its amount column, headed by that column's name; a purchase table is never given what only a payment has, nor a payment what only a purchase has (`ReportColumns`). «سعر الوحدة» and «العدد» appear only on a table whose item has them, and «رقم الفاتورة» on none: a bill number entered before redix-api #96 D2 stays in `Invoices.Number`, for the VAT statement and the lists. A list's cell holds its choice's name; a file's says «فتح المرفق». «الوصف» is the entry's one description. The PDF draws the same tables. A report issued before redix-api #129 kept no columns of its tables, so its files print the amount alone.
 
@@ -34,8 +34,8 @@ A report keeps every figure as issued, in `PeriodicReports.Snapshot`. What was a
 | The workbook shows waiting expenses beside their difference and waiting revenue under the surplus, leaving the statement's layout as it was | `PeriodicReportWorkbook.FillSummary` | `ReportFilesTests.Row_147_TheWorkbookShowsWaitingExpensesBesideTheirDifferenceAndWaitingRevenueUnderTheSurplus` |
 | AC-29.2: an entry approved later leaves the issued report, and is new in the next | `PeriodicReportsEndpoints.SnapshotAsync`, `ItemReportEndpoints.OfAsync` | `ReportFilesTests.AC_29_2_AnEntryApprovedLaterLeavesTheIssuedReportAndIsNewInTheNext` |
 | The summary adds up as the statement does | `PeriodicReportsEndpoints.SnapshotAsync` | `ReportFilesTests.TheSummaryAddsUpAsTheStatementDoes` |
-| BR-31: everyone reads; only their own partner line; no one else exports | `PeriodicReportSnapshot.ForPartnerOf` | `ReportFilesTests.BR_31_EveryoneReadsTheReportAndSeesOnlyTheirOwnPartnerLineButNoOneElseExports` |
-| BR-31, redix-api #109: a report read by someone who sees only their own capital holds no item report, since رأس المال's holds every partner's money; only the files, which they cannot take, use them | `PeriodicReportSnapshot.ForPartnerOf` | `ReportFilesTests.BR_31_UC_109_AReportForAPartnerHoldsTheirLineAndNoItemReportWhichOnlyTheFilesTake` |
+| BR-31: every reader sees only their own partner line; no one without `GenerateReports` exports | `PeriodicReportSnapshot.ForPartnerOf` | `ReportFilesTests.BR_31_EveryoneReadsTheReportAndSeesOnlyTheirOwnPartnerLineButNoOneElseExports` |
+| BR-31, redix-api #109: a report read by someone who sees only their own capital holds no item report, since رأس المال's holds every partner's money; only the files use them, each holding the partners its reader may see | `PeriodicReportSnapshot.ForPartnerOf` | `ReportFilesTests.BR_31_UC_109_AReportForAPartnerHoldsTheirLineAndNoItemReportWhichOnlyTheFilesTake` |
 | AC-45.1: a PDF, the summary then a page per item, رأس المال among them; the summary's revenue is its categories, as its expenses are | `PeriodicReportFiles.Pdf` | `ReportFilesTests.AC_45_1_ThePdfIsAPdfWithAPagePerItemAfterTheSummary` |
 | AC-46.1: the workbook is laid out as the statement, every total live | `PeriodicReportWorkbook.Of` | `ReportFilesTests.AC_46_1_TheWorkbookIsLaidOutAsTheStatementAndEveryTotalIsLive` |
 | AC-46.2: a contract's table has, under it, الاجمالي, then المتبقي (the agreed amount less the payments inside it), then مبلغ الاتفاق; with no agreed amount filled in, only الاجمالي | `StatementWriter.Add`, `ItemReportFiles.SheetOf` | `ReportFilesTests.AC_46_2_AContractsTotalWhatRemainsAndItsAgreedAmountAreLinesUnderItsTable`, `AC_46_2_AContractWithNoAgreedAmountShowsOnlyItsTotal` |
@@ -60,3 +60,6 @@ A report keeps every figure as issued, in `PeriodicReports.Snapshot`. What was a
 | Each summary line's name opens its sheet, and each sheet links back to الخلاصة outside what prints (redix-api #129, AC-46.10) | `PeriodicReportWorkbook.LinkToSheetOf`, `StatementWriter.Add`, `StatementStyle.LinkTo` | `ReportFilesTests.R129_EachSummaryLinesNameOpensItsSheetAndEachSheetLinksBackOutsideWhatPrints` |
 | Every sheet prints on A4 one page wide, landscape from eight columns, its tables alone, with the sheet, the page and the project and report at its foot (redix-api #129) | `StatementStyle.Print`, `StatementWriter.Add` | `ReportFilesTests.R129_EverySheetPrintsOnA4OneWideWithTheProjectAndReportNumberAtItsFootAndAcrossThePageFromEightColumns` |
 | A partner's movement shows its «نوع الحركة» in a column of its own (redix-api #129) | `ReportColumns.ValuesOf` | `ReportFilesTests.AC_46_1_TheWorkbookIsLaidOutAsTheStatementAndEveryTotalIsLive` |
+| redix-api #131 D2: the report screens' routes open for whoever holds `SeeReports` and for no one else | `PeriodicReportsEndpoints.MapPeriodicReports`, `ItemReportEndpoints.MapItemReport` | `ReportFilesTests.R131_D2_TheReportScreensOpenForWhoeverSeesReportsAndForNoOneElse` |
+| redix-api #131 D2: issuing and every file need `GenerateReports`; `MoveMoney` and `SeeAllCapital` no longer do | `PeriodicReportsEndpoints.MapPeriodicReports`, `ReportFilesEndpoints.MapReportFiles` | `ReportFilesTests.R131_D2_IssuingAndEveryFileNeedGenerateReportsAndMoveMoneyOrSeeAllCapitalNoLongerDo` |
+| redix-api #131 D1, BR-31: a file's رأس المال holds only the partners its reader may see, and its اجمالي الكل, which the summary's line reads, stays the whole capital | `PeriodicReportSnapshot.ForFilesOf`, `ItemReportView.WithTablesOf`, `StatementSheet.Whole` | `ReportFilesTests.R131_D1_AFilesCapitalHoldsOnlyThePartnersItsReaderSeesAndTheWholeCapitalStill` |

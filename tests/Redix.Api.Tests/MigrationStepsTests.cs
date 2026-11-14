@@ -246,6 +246,20 @@ public class MigrationStepsTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public Task R131_D3_ReportPermissions_WhoeverReadsAProjectSeesItsReportsAndWhoeverMovedMoneyOrSawAllCapitalGeneratesThem()
+    {
+        var (project, reader, mover, capitalSeer) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var today = string.Concat(User(reader), User(mover), User(capitalSeer), Project(project), Held(project, reader), Held(project, mover), Held(project, mover, "MoveMoney"),
+            Held(project, capitalSeer), Held(project, capitalSeer, "SeeAllCapital"));
+
+        return ThroughAsync("ReportPermissions", today, async db =>
+        {
+            Assert.Equal(new[] { $"{reader}", $"{mover}", $"{capitalSeer}" }.Order(), (await ValuesAsync(db, $"SELECT LOWER(CONVERT(nvarchar(36), UserId)) AS Value FROM ProjectPermissions WHERE ProjectId = '{project}' AND Permission = 'SeeReports'")).Order());
+            Assert.Equal(new[] { $"{mover}", $"{capitalSeer}" }.Order(), (await ValuesAsync(db, $"SELECT LOWER(CONVERT(nvarchar(36), UserId)) AS Value FROM ProjectPermissions WHERE ProjectId = '{project}' AND Permission = 'GenerateReports'")).Order());
+        });
+    }
+
+    [Fact]
     public Task R216_UserDefaultProjectsKeyedByUser_EveryDefaultStaysKeyedByItsUserAndItsOwnIdGoes()
     {
         var (user, other, project) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());

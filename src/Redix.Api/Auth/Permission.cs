@@ -15,7 +15,7 @@ public enum Permission
     /// <summary>Sees one project and everything in it (BR-31).</summary>
     ReadProject,
 
-    /// <summary>Sees every partner in one project and their capital, and takes the report files (BR-31). Holding it takes <see cref="SeeChosenCapital"/> (redix-api #106).</summary>
+    /// <summary>Sees every partner in one project and their capital (BR-31). Holding it takes <see cref="SeeChosenCapital"/> (redix-api #106).</summary>
     SeeAllCapital,
 
     /// <summary>Sees only the partners of one project chosen for them, and their capital (BR-31, redix-api #106). Holding it takes <see cref="SeeAllCapital"/>.</summary>
@@ -56,4 +56,13 @@ public enum Permission
 
     /// <summary>Enters a project's capital movements and revenue from Add entry, which wait for approval like every entry, and reconciles its accounts (BR-30, FR-24, FR-25).</summary>
     MoveMoney,
+
+    /// <summary>«يرى التقارير»: opens one project's reports, the periodic report, an item's report, a contract's and the VAT statement (redix-api #131 D2).</summary>
+    SeeReports,
+
+    /// <summary>
+    /// «يُصدر التقارير»: issues one project's next periodic report and takes every report's Excel and PDF, whose capital shows only the partners its holder may see (redix-api #131
+    /// D1, D2, BR-31).
+    /// </summary>
+    GenerateReports,
 }

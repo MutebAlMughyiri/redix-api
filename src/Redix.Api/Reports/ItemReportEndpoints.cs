@@ -15,12 +15,12 @@ namespace Redix.Api.Reports;
 /// </summary>
 public static class ItemReportEndpoints
 {
-    /// <summary>Maps the routes of an item's report and of a contract's, for anyone who reads the project.</summary>
+    /// <summary>Maps the routes of an item's report and of a contract's, for whoever holds <see cref="Permission.SeeReports"/> (redix-api #131 D2).</summary>
     /// <param name="app">The app.</param>
     public static void MapItemReport(this WebApplication app)
     {
-        app.MapGet("/projects/{projectId:guid}/reports/items/{itemId:guid}", Report).RequireAuthorization(nameof(Permission.ReadProject));
-        app.MapGet("/projects/{projectId:guid}/reports/contracts/{contractId:guid}", ContractReport).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/projects/{projectId:guid}/reports/items/{itemId:guid}", Report).RequireAuthorization(nameof(Permission.SeeReports));
+        app.MapGet("/projects/{projectId:guid}/reports/contracts/{contractId:guid}", ContractReport).RequireAuthorization(nameof(Permission.SeeReports));
     }
 
     /// <summary>
@@ -133,7 +133,8 @@ public static class ItemReportEndpoints
                 AmountName = ReportColumns.AmountNameOf(item, EntryKind.ContractorPayment),
             };
         }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
-        var partners = (await db.Partners.Where(partner => partner.ItemId == item.Id).ToListAsync()).Where(shows).OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id);
+        var everyPartner = await db.Partners.Where(partner => partner.ItemId == item.Id).ToListAsync();
+        var partners = everyPartner.Where(shows).OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id).ToList();
         var partnerTables = partners.Select(partner =>
         {
             var lines = movements.Where(row => row.movement.PartnerId == partner.Id).Select(row => RowOf(row.entry, capitalColumns, row.entry.Kind.Signed(row.entry.Amount))).ToList();
@@ -150,6 +151,7 @@ public static class ItemReportEndpoints
         {
             ShowsTablePercentages = item.ShowsTablePercentages,
             Type = item.Type,
+            ShowsEveryTable = partners.Count == everyPartner.Count,
         };
     }
 }
@@ -171,6 +173,13 @@ public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, 
 
     /// <summary>What the item is for, which says its side (FR-38).</summary>
     public ItemType Type { get; init; }
+
+    /// <summary>False for رأس المال shown to someone who does not see every partner: its tables are theirs alone, and its total stays the whole capital (BR-31, redix-api #131 D1).</summary>
+    public bool ShowsEveryTable { get; init; } = true;
+
+    /// <summary>The same report holding only the tables <paramref name="shows"/> keeps, the partners' of رأس المال a reader may see; its total stays the whole (BR-31).</summary>
+    public ItemReportView WithTablesOf(Func<Guid, bool> shows) =>
+        Subgroups.All(table => shows(table.Id)) ? this : this with { Subgroups = [.. Subgroups.Where(table => shows(table.Id))], ShowsEveryTable = false };
 }
 
 /// <summary>One table's rows: a subgroup's purchases or revenue, or a partner's money in and out.</summary>

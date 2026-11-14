@@ -25,7 +25,7 @@ Holding `ReadProject` is being in the project. Whoever registers a project holds
 | `ApproveProjects` | The system | Seeing the registered projects, and approving or rejecting them |
 | `ReadProject` | A project | Opening the project and reading everything in it |
 | `ManageUsers` | A project | Adding people to the project and ticking their permissions |
-| `SeeAllCapital` | A project | Seeing every partner's capital, and the report files |
+| `SeeAllCapital` | A project | Seeing every partner's capital |
 | `SeeChosenCapital` | A project | Seeing only the partners chosen for one, in `ChosenPartners` (redix-api #106); it and `SeeAllCapital` exclude each other |
 | `ManageProject` | A project | Its name, units and documents, and closing it |
 | `ManageStructure` | A project | Categories, items, subgroups and columns |
@@ -37,7 +37,9 @@ Holding `ReadProject` is being in the project. Whoever registers a project holds
 | `DeleteEntries` | A project | Deleting an entry not yet approved (UC-033) |
 | `AttachFiles` | A project | Keeping a picture or a file for an entry, a receipt or a contract |
 | `ApproveEntries` | A project | Approving or rejecting what waits, and reversing an approved entry |
-| `MoveMoney` | A project | Capital movements, revenue, reconciling and the periodic report |
+| `MoveMoney` | A project | Capital movements, revenue and reconciling |
+| `SeeReports` | A project | «يرى التقارير»: opening the reports, the periodic report, an item's report, a contract's and the VAT statement (redix-api #131) |
+| `GenerateReports` | A project | «يُصدر التقارير»: issuing the periodic report and taking every report's Excel and PDF, whose capital holds only the partners one may see (redix-api #131, BR-31) |
 
 A new permission is code: a route has to name it, and a migration adds it. The database refuses a permission the code does not know.
 
@@ -66,6 +68,8 @@ A session answers `permissions`, what the user holds everywhere.
 
 The migration `PermissionsPerPerson` gave each person every permission their roles held in each project, and `DeleteEntries` to whoever held `RecordEntries`; the admin's role became his permission. Then it dropped `Roles`, `RolePermissions`, `UserRoles` and `ProjectMembers`. Going back cannot rebuild the roles from ticked permissions: only a backup taken before it does.
 
+The migration `ReportPermissions` (redix-api #131 D3) gave `SeeReports` to everyone holding `ReadProject`, and `GenerateReports` to everyone holding `MoveMoney` or `SeeAllCapital`, so nobody lost a report or a file they had; the two are ticked like any other since, and someone added later holds them only once ticked. Going back takes both away.
+
 ## Rules and where they are proven
 
 | Rule | Code | Test |
@@ -83,8 +87,9 @@ The migration `PermissionsPerPerson` gave each person every permission their rol
 | What a user may do follows what is ticked in each project (AC-36.2) | `UserAccess.In` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
 | Field and Reader cannot change a project (AC-03.1) | `PermissionHandler` | `ProjectsTests.FieldAndReaderCannotChangeAProject` |
 | No session answers 401 (AC-N08) | `PermissionHandler` | `ProjectsTests.ASessionlessRequestIsUnauthorized` |
-| Whoever registers a project holds all 14 in it (BR-29) | `ProjectsEndpoints.AddWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInIt` |
+| Whoever registers a project holds all 16 in it (BR-29) | `ProjectsEndpoints.AddWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInIt` |
 | Deleting is its own permission | `EntriesEndpoints` | `EntryChangesTests.DeletingIsItsOwnPermission` |
+| redix-api #131 D3: the upgrade gives `SeeReports` to everyone in a project, and `GenerateReports` to whoever moved money or saw all capital | The migration `ReportPermissions` | `MigrationStepsTests.R131_D3_ReportPermissions_WhoeverReadsAProjectSeesItsReportsAndWhoeverMovedMoneyOrSawAllCapitalGeneratesThem` |
 
 ## Left to later use cases
 

@@ -7,7 +7,14 @@ namespace Redix.Api.Reports;
 /// <param name="Name">The sheet's name.</param>
 /// <param name="Tables">Its tables, at least one.</param>
 /// <param name="PercentLabel">The line under each table giving its share of اجمالي الكل; empty for none (AC-46.9).</param>
-public record StatementSheet(string Name, List<StatementTable> Tables, string PercentLabel);
+public record StatementSheet(string Name, List<StatementTable> Tables, string PercentLabel)
+{
+    /// <summary>False when its tables are only those its reader may see, رأس المال's partners (BR-31, redix-api #131 D1): its اجمالي الكل is then <see cref="Whole"/>, not their sum.</summary>
+    public bool ShowsEveryTable { get; init; } = true;
+
+    /// <summary>What every table, those not shown too, comes to: what اجمالي الكل says when the sheet does not show every table.</summary>
+    public decimal Whole { get; init; }
+}
 
 /// <summary>One table of a statement sheet: its title, its columns, its amount, its rows, and what was agreed for it.</summary>
 /// <param name="Title">The title row's only text.</param>

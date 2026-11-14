@@ -6,7 +6,7 @@
 
 **No Revenue screen and no sales invoice** (Muteb, 8 Nov 2026: "remove those completely"). Revenue is entered from Add entry, on a revenue item's table, waits for approval, and shows in القيود with every other entry, where an approved one is removed by whoever holds the removal (redix-api #119). The sales invoice, its route and its table went; RedixReal held none. The VAT statement keeps its purchases.
 
-**Who uses it:** whoever holds `MoveMoney` records; everyone who reads the project reads; whoever holds `SeeAllCapital` takes the statement's workbook.
+**Who uses it:** whoever holds `MoveMoney` records; everyone who reads the project reads; whoever holds `GenerateReports` takes the statement's workbook (redix-api #131).
 
 | Route | What it does |
 | --- | --- |

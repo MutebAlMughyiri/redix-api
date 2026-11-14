@@ -27,7 +27,7 @@ public static class StatementWriter
         var widest = content.Tables.MaxBy(table => table.Columns.Count)!;
         var sheet = StatementStyle.AddSheet(workbook, content.Name, book.Taken, NumberWidth);
         var last = widest.Columns.Count + 2;
-        var hasWhole = content.Tables.Count > 1;
+        var hasWhole = content.Tables.Count > 1 || !content.ShowsEveryTable;
         var totals = new List<string>();
         var percents = new List<IXLCell>();
         var row = 1;
@@ -50,7 +50,8 @@ public static class StatementWriter
         var lastTotal = totals[0];
         if (hasWhole)
         {
-            lastTotal = Line(sheet, row, last, "اجمالي الكل").SetMoneyFormula(string.Join("+", totals)).Address.ToStringRelative();
+            var whole = Line(sheet, row, last, "اجمالي الكل");
+            lastTotal = (content.ShowsEveryTable ? whole.SetMoneyFormula(string.Join("+", totals)) : whole.SetMoney(content.Whole)).Address.ToStringRelative();
             for (var index = 0; index < percents.Count; index++)
             {
                 percents[index].SetPercentFormula($"IF({lastTotal}=0,0,{totals[index]}/{lastTotal})");

@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Reports;
@@ -27,6 +28,76 @@ public class ReportFilesTests(MigratedApiFactory factory)
         await ledger.SetStatusAsync(request.Id, EntryStatus.Approved);
         await factory.WithDatabaseAsync(db => db.Entries.Where(entry => entry.Id == request.Id).ExecuteUpdateAsync(entry => entry.SetProperty(row => row.ApprovedAt, factory.Time.GetUtcNow().UtcDateTime)));
         return request.Id;
+    }
+
+    /// <summary>A member of the ledger's project holding <paramref name="held"/> alone, signed in.</summary>
+    private static async Task<(HttpClient Client, Guid UserId)> HoldingAsync(Ledger ledger, params Permission[] held)
+    {
+        var user = await ledger.Factory.AddUserAsync(Ledger.Password);
+        await ledger.Factory.GiveAsync(user.Id, ledger.ProjectId, held);
+        return (await ledger.Factory.ClientSignedInAsAsync(user, Ledger.Password), user.Id);
+    }
+
+    [Fact]
+    public async Task R131_D2_TheReportScreensOpenForWhoeverSeesReportsAndForNoOneElse()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await IssueAsync(ledger);
+        var (reader, _) = await HoldingAsync(ledger, Permission.ReadProject, Permission.SeeReports);
+        var (outsider, _) = await HoldingAsync(ledger, Permission.ReadProject, Permission.SeeAllCapital, Permission.MoveMoney);
+
+        foreach (var address in new[] { "periodic-reports", "periodic-reports/next", "periodic-reports/1", $"reports/items/{ledger.ItemId}" })
+        {
+            Assert.Equal(HttpStatusCode.OK, (await reader.GetAsync($"/projects/{ledger.ProjectId}/{address}")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await outsider.GetAsync($"/projects/{ledger.ProjectId}/{address}")).StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task R131_D2_IssuingAndEveryFileNeedGenerateReportsAndMoveMoneyOrSeeAllCapitalNoLongerDo()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await IssueAsync(ledger);
+        var (generator, _) = await HoldingAsync(ledger, Permission.ReadProject, Permission.GenerateReports);
+        var (former, _) = await HoldingAsync(ledger, Permission.ReadProject, Permission.SeeReports, Permission.SeeAllCapital, Permission.MoveMoney);
+        var start = VatStatement.QuarterStartOf(ledger.Today);
+        var files = new[]
+        {
+            "periodic-reports/1/xlsx", "periodic-reports/1/pdf", $"reports/items/{ledger.ItemId}/xlsx", $"reports/items/{ledger.ItemId}/pdf", "reports/contracts/xlsx", "reports/contracts/pdf",
+            $"vat-statement/xlsx?from={start:yyyy-MM-dd}&to={VatStatement.NextQuarter(start).AddDays(-1):yyyy-MM-dd}",
+        };
+
+        foreach (var address in files)
+        {
+            Assert.Equal(HttpStatusCode.OK, (await generator.GetAsync($"/projects/{ledger.ProjectId}/{address}")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await former.GetAsync($"/projects/{ledger.ProjectId}/{address}")).StatusCode);
+        }
+        Assert.Equal(HttpStatusCode.Forbidden, (await former.PostAsync($"/projects/{ledger.ProjectId}/periodic-reports", null)).StatusCode);
+        Assert.True((await generator.PostAsync($"/projects/{ledger.ProjectId}/periodic-reports", null)).IsSuccessStatusCode);
+    }
+
+    [Fact]
+    public async Task R131_D1_AFilesCapitalHoldsOnlyThePartnersItsReaderSeesAndTheWholeCapitalStill()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var seen = await PartnerAsync(ledger, "سالم");
+        var hidden = await PartnerAsync(ledger, "خالد");
+        await ledger.ApproveAsync(await ledger.PostAsync(await ledger.PartnerEntryAsync(seen, 300)));
+        await ledger.ApproveAsync(await ledger.PostAsync(await ledger.PartnerEntryAsync(hidden, 100)));
+        await IssueAsync(ledger);
+        var (chosen, chosenId) = await HoldingAsync(ledger, Permission.ReadProject, Permission.SeeChosenCapital, Permission.GenerateReports);
+        await ledger.ChooseAsync(chosenId, seen);
+
+        using var workbook = new XLWorkbook(new MemoryStream(await chosen.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
+        workbook.RecalculateAllFormulas();
+        using var whole = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/1/xlsx")));
+
+        var capital = workbook.Worksheet("رأس المال");
+        Assert.Contains(capital.CellsUsed(), cell => cell.GetString() == "سالم");
+        Assert.DoesNotContain(capital.CellsUsed(), cell => cell.GetString() == "خالد");
+        Assert.Contains(capital.CellsUsed(), cell => cell.GetString() == "اجمالي الكل" && cell.WorksheetRow().LastCellUsed()!.GetValue<decimal>() == 400m);
+        Assert.Equal(400m, workbook.Worksheet("الخلاصة").Cell("B10").GetValue<decimal>());
+        Assert.Contains(whole.Worksheet("رأس المال").CellsUsed(), cell => cell.GetString() == "خالد");
     }
 
     private static async Task<PeriodicReportRowView> IssueAsync(Ledger ledger) =>

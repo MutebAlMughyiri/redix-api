@@ -21,8 +21,8 @@ public static class StatementPdf
         page.Spacing(6);
         page.Item().Text(sheet.Name).FontSize(13).Bold();
         var totals = sheet.Tables.Select(table => table.Rows.Sum(row => row.Amount)).ToList();
-        var whole = totals.Sum();
-        var hasWhole = sheet.Tables.Count > 1;
+        var whole = sheet.ShowsEveryTable ? totals.Sum() : sheet.Whole;
+        var hasWhole = sheet.Tables.Count > 1 || !sheet.ShowsEveryTable;
         var percents = hasWhole && sheet.PercentLabel.Length > 0;
         foreach (var (table, total) in sheet.Tables.Zip(totals))
         {

@@ -4,7 +4,7 @@
 
 **Purpose:** give a project's figures at a glance, everything spent on one item, each contract's value, paid and remaining, and how far the work has come.
 
-**Who uses it:** everyone who reads the project.
+**Who uses it:** everyone who reads the project reads the summary and the contracts; an item's report and a contract's are for whoever holds `SeeReports` (redix-api #131).
 
 | Route | What it does |
 | --- | --- |

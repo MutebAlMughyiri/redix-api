@@ -313,7 +313,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("SystemPermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_SystemPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'RemoveApprovedEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney')");
+                            t.HasCheckConstraint("CK_SystemPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'RemoveApprovedEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney', 'SeeReports', 'GenerateReports')");
                         });
                 });
 
@@ -1749,7 +1749,7 @@ namespace Redix.Api.Migrations
 
                     b.ToTable("ProjectPermissions", t =>
                         {
-                            t.HasCheckConstraint("CK_ProjectPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'RemoveApprovedEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney') AND [Permission] <> 'ApproveProjects'");
+                            t.HasCheckConstraint("CK_ProjectPermissions_Permission", "[Permission] IN ('ApproveProjects', 'ManageUsers', 'ReadProject', 'SeeAllCapital', 'SeeChosenCapital', 'ManageProject', 'ManageStructure', 'ManageSettings', 'AddSupplier', 'ChargeAnyAccount', 'RecordEntries', 'ManageAnyEntry', 'DeleteEntries', 'RemoveApprovedEntries', 'AttachFiles', 'ApproveEntries', 'MoveMoney', 'SeeReports', 'GenerateReports') AND [Permission] <> 'ApproveProjects'");
                         });
                 });
 
@@ -5393,14 +5393,14 @@ namespace Redix.Api.Migrations
                             Id = new Guid("a947585d-dd93-22bb-e2d2-137655018a8e"),
                             Language = "en",
                             TranslationKeyId = new Guid("92c24db1-d4f0-7ab5-7a5c-cf5daa120472"),
-                            Value = "Sees every partner's capital, and takes the report files."
+                            Value = "Sees every partner's capital."
                         },
                         new
                         {
                             Id = new Guid("d0885057-f7c0-0d35-9645-8bcb5079de25"),
                             Language = "ar",
                             TranslationKeyId = new Guid("92c24db1-d4f0-7ab5-7a5c-cf5daa120472"),
-                            Value = "يرى رأس مال كل الشركاء، ويأخذ ملفات التقارير."
+                            Value = "يرى رأس مال كل الشركاء."
                         },
                         new
                         {
@@ -5771,14 +5771,70 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9bc1cbe4-3f74-a139-cbde-1ea35a8b1bbb"),
                             Language = "en",
                             TranslationKeyId = new Guid("950d578b-60be-173b-32f6-2f91ed0565c5"),
-                            Value = "Capital movements, revenue, reconciling and the periodic report."
+                            Value = "Capital movements, revenue and reconciling."
                         },
                         new
                         {
                             Id = new Guid("c4ba7de7-217d-f868-d3cc-259546894792"),
                             Language = "ar",
                             TranslationKeyId = new Guid("950d578b-60be-173b-32f6-2f91ed0565c5"),
-                            Value = "حركات رأس المال والإيرادات والمطابقة والتقرير الدوري."
+                            Value = "حركات رأس المال والإيرادات والمطابقة."
+                        },
+                        new
+                        {
+                            Id = new Guid("afe6bbd5-0769-c1d4-057d-52a2712e8f77"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("eb536699-1b9d-c16a-63f5-2eaf2400264f"),
+                            Value = "See reports"
+                        },
+                        new
+                        {
+                            Id = new Guid("f9f3d79d-0932-4065-1eae-4a2eb3471038"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("eb536699-1b9d-c16a-63f5-2eaf2400264f"),
+                            Value = "يرى التقارير"
+                        },
+                        new
+                        {
+                            Id = new Guid("af04aeeb-3030-3593-db5d-66f1be7eeaf6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8c48905e-7c40-7b33-0ed2-055ffa5f1a42"),
+                            Value = "Opens the periodic report, the item reports, the contracts' reports and the VAT statement."
+                        },
+                        new
+                        {
+                            Id = new Guid("2f558d32-6579-2df7-dcdf-5ab3698ccf48"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8c48905e-7c40-7b33-0ed2-055ffa5f1a42"),
+                            Value = "يفتح التقرير الدوري وتقارير البنود والعقود وكشف الضريبة."
+                        },
+                        new
+                        {
+                            Id = new Guid("ca238628-5f42-1312-35ee-a884f303d6f1"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("dceb659c-3204-4714-46bc-1cf025fdd6ba"),
+                            Value = "Generate reports"
+                        },
+                        new
+                        {
+                            Id = new Guid("4a7ef005-bb9a-d734-43f7-6928adca26e4"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("dceb659c-3204-4714-46bc-1cf025fdd6ba"),
+                            Value = "يُصدر التقارير"
+                        },
+                        new
+                        {
+                            Id = new Guid("037dd6ac-4432-0d3f-e036-dd962d201955"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c1b65c5d-e1b1-8c6c-93b9-1bc3611571c1"),
+                            Value = "Issues the periodic report and takes every report's Excel and PDF, its capital showing only the partners one sees."
+                        },
+                        new
+                        {
+                            Id = new Guid("e829d1d2-5e97-186b-2a5e-d3a2c41530a2"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c1b65c5d-e1b1-8c6c-93b9-1bc3611571c1"),
+                            Value = "يُصدر التقرير الدوري ويأخذ ملف Excel وPDF لكل تقرير، ولا يظهر فيه من رأس المال إلا الشركاء الذين يراهم."
                         },
                         new
                         {
@@ -7697,6 +7753,20 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("00c3c7b8-a2dc-1c17-99a1-42de7ca3b988"),
                             Value = "تعذر جلب الملف. تحقق من الاتصال وحاول مجدداً."
+                        },
+                        new
+                        {
+                            Id = new Guid("a62998e6-eecd-4f02-19c8-d1cab4b830db"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("5283a467-001e-3bea-c928-22ed0cc7cb93"),
+                            Value = "Needs Generate reports."
+                        },
+                        new
+                        {
+                            Id = new Guid("4b1062a6-a39c-aa01-9a65-0ab903289291"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("5283a467-001e-3bea-c928-22ed0cc7cb93"),
+                            Value = "يحتاج صلاحية «يُصدر التقارير»."
                         },
                         new
                         {
@@ -15742,6 +15812,30 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("eb536699-1b9d-c16a-63f5-2eaf2400264f"),
+                            Description = "",
+                            Key = "permissions.seeReports"
+                        },
+                        new
+                        {
+                            Id = new Guid("8c48905e-7c40-7b33-0ed2-055ffa5f1a42"),
+                            Description = "",
+                            Key = "permissions.seeReportsHint"
+                        },
+                        new
+                        {
+                            Id = new Guid("dceb659c-3204-4714-46bc-1cf025fdd6ba"),
+                            Description = "",
+                            Key = "permissions.generateReports"
+                        },
+                        new
+                        {
+                            Id = new Guid("c1b65c5d-e1b1-8c6c-93b9-1bc3611571c1"),
+                            Description = "",
+                            Key = "permissions.generateReportsHint"
+                        },
+                        new
+                        {
                             Id = new Guid("39457e5d-d993-e945-7e48-548736d938d2"),
                             Description = "",
                             Key = "users.otherProject"
@@ -16561,6 +16655,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("00c3c7b8-a2dc-1c17-99a1-42de7ca3b988"),
                             Description = "",
                             Key = "reports.fileFailed"
+                        },
+                        new
+                        {
+                            Id = new Guid("5283a467-001e-3bea-c928-22ed0cc7cb93"),
+                            Description = "",
+                            Key = "reports.needsGenerateReports"
                         },
                         new
                         {

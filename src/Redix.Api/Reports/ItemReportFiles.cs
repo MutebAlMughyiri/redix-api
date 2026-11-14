@@ -41,7 +41,11 @@ public static class ItemReportFiles
                 .OrderBy(table => table.SortOrder)
                 .Select(table => table.Table),
         ];
-        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [TableOf(item.ItemName, [], "", [], 0)], item.ShowsTablePercentages ? "النسبة" : "");
+        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [TableOf(item.ItemName, [], "", [], 0)], item.ShowsTablePercentages ? "النسبة" : "")
+        {
+            ShowsEveryTable = item.ShowsEveryTable,
+            Whole = item.Total,
+        };
     }
 
     private static StatementTable TableOf(string title, List<ReportColumnView> columns, string amountName, List<ItemEntryRow> rows, decimal agreedAmount) => new(

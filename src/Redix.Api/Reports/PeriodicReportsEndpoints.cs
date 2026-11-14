@@ -13,18 +13,18 @@ public static class PeriodicReportsEndpoints
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    /// <summary>Maps the routes that read, for anyone who reads the project, the one that issues, for whoever holds <see cref="Permission.MoveMoney"/>, and the files, for whoever sees every partner's capital, since only they export (BR-31).</summary>
+    /// <summary>Maps the routes that read, for whoever holds <see cref="Permission.SeeReports"/>, and the one that issues and the files, for whoever holds <see cref="Permission.GenerateReports"/> (redix-api #131 D2).</summary>
     /// <param name="app">The app.</param>
     public static void MapPeriodicReports(this WebApplication app)
     {
-        var reads = app.MapGroup("/projects/{projectId:guid}/periodic-reports").RequireAuthorization(nameof(Permission.ReadProject));
+        var reads = app.MapGroup("/projects/{projectId:guid}/periodic-reports").RequireAuthorization(nameof(Permission.SeeReports));
         reads.MapGet("/", List);
         reads.MapGet("/next", Next);
         reads.MapGet("/{number:int}", Read);
-        var files = app.MapGroup("/projects/{projectId:guid}/periodic-reports/{number:int}").RequireAuthorization(nameof(Permission.SeeAllCapital));
+        var files = app.MapGroup("/projects/{projectId:guid}/periodic-reports/{number:int}").RequireAuthorization(nameof(Permission.GenerateReports));
         files.MapGet("/pdf", Pdf);
         files.MapGet("/xlsx", Excel);
-        app.MapProjectChanges(Permission.MoveMoney).MapPost("/periodic-reports", Issue);
+        app.MapProjectChanges(Permission.GenerateReports).MapPost("/periodic-reports", Issue);
     }
 
     /// <summary>The reports issued, newest first.</summary>
@@ -73,24 +73,26 @@ public static class PeriodicReportsEndpoints
         return Results.Ok(sight.SeesAll ? snapshot : snapshot.SeenBy(sight));
     }
 
-    /// <summary>The report as a PDF laid out as report 23 (UC-054).</summary>
+    /// <summary>The report as a PDF laid out as report 23 (UC-054), its capital showing only the partners the caller may see (redix-api #131 D1, BR-31).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="number">The report's number.</param>
+    /// <param name="principal">The caller's session, which says whose capital they see.</param>
     /// <param name="db">The database the reports live in.</param>
-    public static async Task<IResult> Pdf(Guid projectId, int number, RedixDbContext db)
+    public static async Task<IResult> Pdf(Guid projectId, int number, ClaimsPrincipal principal, RedixDbContext db)
     {
         var snapshot = await SnapshotOfAsync(projectId, number, db);
-        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportFiles.Pdf(snapshot), "application/pdf", $"report-{number}.pdf");
+        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportFiles.Pdf(snapshot.ForFilesOf(await PartnerSight.OfAsync(principal, projectId, db))), "application/pdf", $"report-{number}.pdf");
     }
 
-    /// <summary>The report as a workbook with live totals (UC-055).</summary>
+    /// <summary>The report as a workbook with live totals (UC-055), its capital showing only the partners the caller may see (redix-api #131 D1, BR-31).</summary>
     /// <param name="projectId">The project.</param>
     /// <param name="number">The report's number.</param>
+    /// <param name="principal">The caller's session, which says whose capital they see.</param>
     /// <param name="db">The database the reports live in.</param>
-    public static async Task<IResult> Excel(Guid projectId, int number, RedixDbContext db)
+    public static async Task<IResult> Excel(Guid projectId, int number, ClaimsPrincipal principal, RedixDbContext db)
     {
         var snapshot = await SnapshotOfAsync(projectId, number, db);
-        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportWorkbook.Of(snapshot), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
+        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportWorkbook.Of(snapshot.ForFilesOf(await PartnerSight.OfAsync(principal, projectId, db))), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
     }
 
     private static async Task<PeriodicReportSnapshot?> SnapshotOfAsync(Guid projectId, int number, RedixDbContext db)

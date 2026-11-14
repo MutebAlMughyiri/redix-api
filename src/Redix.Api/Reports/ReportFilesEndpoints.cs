@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
+using Redix.Api.Partners;
 using Redix.Api.Config;
 using Redix.Api.Contracts;
 using Redix.Api.Revenue;
@@ -17,10 +19,10 @@ public static class ReportFilesEndpoints
     /// <param name="app">The app.</param>
     public static void MapReportFiles(this WebApplication app)
     {
-        var files = app.MapGroup("/projects/{projectId:guid}").RequireAuthorization(nameof(Permission.SeeAllCapital));
+        var files = app.MapGroup("/projects/{projectId:guid}").RequireAuthorization(nameof(Permission.GenerateReports));
         files.MapGet("/vat-statement/xlsx", VatExcel);
-        files.MapGet("/reports/items/{itemId:guid}/pdf", (Guid projectId, Guid itemId, RedixDbContext db) => ItemFileAsync(projectId, itemId, db, true));
-        files.MapGet("/reports/items/{itemId:guid}/xlsx", (Guid projectId, Guid itemId, RedixDbContext db) => ItemFileAsync(projectId, itemId, db, false));
+        files.MapGet("/reports/items/{itemId:guid}/pdf", (Guid projectId, Guid itemId, ClaimsPrincipal principal, RedixDbContext db) => ItemFileAsync(projectId, itemId, principal, db, true));
+        files.MapGet("/reports/items/{itemId:guid}/xlsx", (Guid projectId, Guid itemId, ClaimsPrincipal principal, RedixDbContext db) => ItemFileAsync(projectId, itemId, principal, db, false));
         files.MapGet("/reports/contracts/pdf", ContractsPdf);
         files.MapGet("/reports/contracts/xlsx", ContractsExcel);
         files.MapGet("/reports/contracts/{contractId:guid}/pdf", (Guid projectId, Guid contractId, RedixDbContext db) => ContractFileAsync(projectId, contractId, db, true));
@@ -57,14 +59,16 @@ public static class ReportFilesEndpoints
         return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "contract.pdf") : Results.File(ItemReportFiles.Excel(await NameOfAsync(projectId, db), report), ExcelType, "contract.xlsx");
     }
 
-    private static async Task<IResult> ItemFileAsync(Guid projectId, Guid itemId, RedixDbContext db, bool isPdf)
+    /// <summary>An item's report as a PDF or a workbook; رأس المال's holds only the partners the caller may see, its total the whole capital (redix-api #131 D1, BR-31).</summary>
+    private static async Task<IResult> ItemFileAsync(Guid projectId, Guid itemId, ClaimsPrincipal principal, RedixDbContext db, bool isPdf)
     {
         var item = await ProjectStructure.ItemWithTablesAsync(projectId, itemId, db);
         if (item == Item.None)
         {
             return Results.NotFound();
         }
-        var report = await ItemReportEndpoints.OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, _ => true);
+        var sight = await PartnerSight.OfAsync(principal, projectId, db);
+        var report = await ItemReportEndpoints.OfAsync(projectId, item, (await PeriodicReport.LatestOfAsync(projectId, db)).IssuedAt, db, sight.Sees);
         return isPdf ? Results.File(ItemReportFiles.Pdf(report), "application/pdf", "item.pdf") : Results.File(ItemReportFiles.Excel(await NameOfAsync(projectId, db), report), ExcelType, "item.xlsx");
     }
 

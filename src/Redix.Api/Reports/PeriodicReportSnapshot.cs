@@ -1,5 +1,6 @@
 using Redix.Api.Accounts;
 using Redix.Api.Partners;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
@@ -63,9 +64,19 @@ public record PeriodicReportSnapshot(
 
     /// <summary>
     /// The same report for someone who does not see all capital (BR-31): the total, and only the partners <paramref name="sight"/> sees. A report issued before redix-api #106 kept no partner's id,
-    /// so it shows them none. The item reports, رأس المال's holding every partner's money (redix-api #109), stay for the files, which only whoever sees all capital takes.
+    /// so it shows them none. The item reports, رأس المال's holding every partner's money (redix-api #109), stay for the files, which <see cref="ForFilesOf"/> narrows to the partners each reader sees.
     /// </summary>
     public PeriodicReportSnapshot SeenBy(PartnerSight sight) => this with { Partners = Partners.Where(partner => sight.Sees(partner.Id)).ToList(), Items = [] };
+
+    /// <summary>
+    /// The same report as the files of someone <paramref name="sight"/> describes give it (redix-api #131 D1, BR-31): رأس المال's tables and the partners' lines only of the partners
+    /// they see, as the capital screen shows them, its total still the whole capital, which everyone sees. Whoever sees all capital gets every partner.
+    /// </summary>
+    public PeriodicReportSnapshot ForFilesOf(PartnerSight sight) => sight.SeesAll ? this : this with
+    {
+        Partners = [.. Partners.Where(partner => sight.Sees(partner.Id))],
+        Items = [.. Items.Select(item => item.Type == ItemType.Capital ? item.WithTablesOf(sight.Sees) : item)],
+    };
 }
 
 /// <summary>An account's balance in a report.</summary>
