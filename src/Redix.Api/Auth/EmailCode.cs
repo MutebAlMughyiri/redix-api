@@ -11,8 +11,11 @@ namespace Redix.Api.Auth;
 /// </summary>
 public class EmailCode
 {
-    /// <summary>The name of the limit on asking for a code, per caller, as registration's (D4).</summary>
+    /// <summary>The name of the limit on asking for a code (D4): per caller, as registration's, and, for a forgotten password, per login typed.</summary>
     public const string AskingLimit = nameof(AskingLimit);
+
+    /// <summary>How often one login may be typed into «نسيت كلمة المرور؟» in an hour, whoever types it and whether or not it names an account (D4, AC-02.8).</summary>
+    public const int AsksPerLoginAnHour = 5;
 
     /// <summary>How long a code works after it is sent (D3).</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(15);

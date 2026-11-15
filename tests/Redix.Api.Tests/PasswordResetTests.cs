@@ -184,6 +184,33 @@ public class PasswordResetTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AC_02_8_D4_OneLoginTypedTooOftenIsRefusedWhateverItsCaseAndAnotherLoginIsNot()
+    {
+        var login = $"nobody-{Guid.CreateVersion7():N}";
+        for (var ask = 0; ask < EmailCode.AsksPerLoginAnHour; ask++)
+        {
+            Assert.Equal(HttpStatusCode.Accepted, (await AskAsync(ask % 2 == 0 ? login : $" {login.ToUpperInvariant()} ")).StatusCode);
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await AskAsync(login)).StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, (await AskAsync($"{login}-other")).StatusCode);
+    }
+
+    [Fact]
+    public async Task AC_02_8_D4_R5_AnAccountsLoginIsLimitedAsAnUnknownOneIsAndTheRefusedAskSendsNothing()
+    {
+        var email = MigratedApiFactory.NewEmail();
+        var user = await factory.AddUserAsync(Password, email: email);
+        for (var ask = 0; ask < EmailCode.AsksPerLoginAnHour; ask++)
+        {
+            await AskAsync(user.Username);
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await AskAsync(user.Username)).StatusCode);
+        Assert.Equal(EmailCode.AsksPerLoginAnHour, factory.Emails.To(email).Count);
+    }
+
+    [Fact]
     public async Task AC_02_9_R7_AResetEndsEverySessionUnlocksTheAccountAndAsksForNoOtherChange()
     {
         var email = MigratedApiFactory.NewEmail();

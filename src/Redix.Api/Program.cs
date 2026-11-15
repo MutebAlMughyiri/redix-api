@@ -63,6 +63,9 @@ builder.Services.AddRateLimiter(limiter =>
         context.Connection.RemoteIpAddress?.ToString() ?? "",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailCodes:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
 });
+builder.Services.AddKeyedSingleton(EmailCode.AskingLimit, (_, _) => PartitionedRateLimiter.Create<string, string>(login => RateLimitPartition.GetFixedWindowLimiter(
+    login,
+    _ => new FixedWindowRateLimiterOptions { PermitLimit = EmailCode.AsksPerLoginAnHour, Window = TimeSpan.FromHours(1) })));
 builder.Services.AddSingleton<AccessCache>();
 builder.Services.AddSingleton<AccessChanges>();
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options

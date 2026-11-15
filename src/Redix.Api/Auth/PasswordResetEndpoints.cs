@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Email;
@@ -7,7 +8,8 @@ namespace Redix.Api.Auth;
 
 /// <summary>
 /// A forgotten password, reset by the person himself from the sign-in screen (redix-api #127, AC-02.6): a code to the account's email, then the code and a new password; the admin's the
-/// same way (R10). Both routes are open without a session and limited per caller (D4), and neither answer says whether an account or its email exists (R5, AC-02.7).
+/// same way (R10). Both routes are open without a session and limited per caller, asking per login typed too (D4), and neither answer says whether an account or its email exists
+/// (R5, AC-02.7).
 /// </summary>
 public static class PasswordResetEndpoints
 {
@@ -20,15 +22,23 @@ public static class PasswordResetEndpoints
 
     /// <summary>
     /// Sends a six-digit code to the email of the account whose username or email was typed (D5, AC-02.6), ending its earlier one (D3), in the language the phone asked in (AC-02.10).
-    /// Answers <c>202</c> whatever happened: an unknown account, and one with no email yet, get the same answer and nothing is sent (R5, AC-02.7, G1).
+    /// Answers <c>202</c> whatever happened: an unknown account, and one with no email yet, get the same answer and nothing is sent (R5, AC-02.7, G1). One login typed more than
+    /// <see cref="EmailCode.AsksPerLoginAnHour"/> times in an hour, whatever its case and whether or not it names an account, answers <c>429</c>, as asking too often from one caller
+    /// does (D4, AC-02.8).
     /// </summary>
     /// <param name="request">The username or email typed.</param>
+    /// <param name="askingPerLogin">The limit on asking per login typed.</param>
     /// <param name="db">The database the account and its code live in.</param>
     /// <param name="hasher">Hashes the code, which is never kept.</param>
     /// <param name="sender">Sends the email.</param>
     /// <param name="time">The current time, for the code's fifteen minutes.</param>
-    public static async Task<IResult> ForgotPassword(ForgotPasswordRequest request, RedixDbContext db, IPasswordHasher<User> hasher, EmailSender sender, TimeProvider time)
+    public static async Task<IResult> ForgotPassword(ForgotPasswordRequest request, [FromKeyedServices(EmailCode.AskingLimit)] PartitionedRateLimiter<string> askingPerLogin, RedixDbContext db, IPasswordHasher<User> hasher, EmailSender sender, TimeProvider time)
     {
+        using var asking = askingPerLogin.AttemptAcquire(request.Login.Trim().ToUpperInvariant());
+        if (!asking.IsAcquired)
+        {
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
         var user = await AccountOfAsync(request.Login, db);
         if (user.Email.Length > 0)
         {
