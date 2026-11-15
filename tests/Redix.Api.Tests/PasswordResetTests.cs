@@ -42,7 +42,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
     {
         var user = await factory.AddUserAsync(Password, email: email);
         Assert.Equal(HttpStatusCode.Accepted, (await AskAsync(user.Username)).StatusCode);
-        return (user, factory.Emails.LastCodeTo(email));
+        return (user, await factory.Emails.LastCodeToAsync(email));
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
 
         await AskAsync(email.ToUpperInvariant());
 
-        Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(email, factory.Emails.LastCodeTo(email))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(email, await factory.Emails.LastCodeToAsync(email))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(user.Username, NewPassword)).StatusCode);
     }
 
@@ -87,7 +87,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
 
         await AskAsync(admin.Username);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(admin.Username, factory.Emails.LastCodeTo(email))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(admin.Username, await factory.Emails.LastCodeToAsync(email))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(admin.Username, NewPassword)).StatusCode);
     }
 
@@ -103,10 +103,27 @@ public class PasswordResetTests(MigratedApiFactory factory)
 
         Assert.All(answers, answer => Assert.Equal(HttpStatusCode.Accepted, answer.StatusCode));
         Assert.Single((await Task.WhenAll(answers.Select(answer => answer.Content.ReadAsStringAsync()))).Distinct());
-        Assert.Single(factory.Emails.To(email));
+        Assert.Single(await factory.Emails.ToAsync(email));
         Assert.Empty(factory.Emails.To(stranger));
         Assert.Equal("codeWrong", await CodeOf(await ResetAsync(withoutEmail.Username, "123456")));
         Assert.Equal("codeWrong", await CodeOf(await ResetAsync(stranger, "123456")));
+    }
+
+    [Fact]
+    public async Task AC_02_7_R5_TheAnswerLeavesBeforeTheCodeIsSentSoHowLongItTakesSaysNothing()
+    {
+        var email = MigratedApiFactory.NewEmail();
+        var user = await factory.AddUserAsync(Password, email: email);
+
+        using (factory.Emails.Hold())
+        {
+            var answer = await AskAsync(user.Username).WaitAsync(TimeSpan.FromSeconds(30));
+
+            Assert.Equal(HttpStatusCode.Accepted, answer.StatusCode);
+            Assert.Empty(factory.Emails.To(email));
+        }
+
+        Assert.Single(await factory.Emails.ToAsync(email));
     }
 
     [Fact]
@@ -156,7 +173,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
         var (user, earlier) = await AskedAsync(email);
 
         await AskAsync(user.Username);
-        var later = factory.Emails.LastCodeTo(email);
+        var later = await factory.Emails.LastCodeToAsync(email, 2);
 
         Assert.Equal(2, factory.Emails.To(email).Count);
         if (earlier != later)
@@ -207,7 +224,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
         }
 
         Assert.Equal(HttpStatusCode.TooManyRequests, (await AskAsync(user.Username)).StatusCode);
-        Assert.Equal(EmailCode.AsksPerLoginAnHour, factory.Emails.To(email).Count);
+        Assert.Equal(EmailCode.AsksPerLoginAnHour, (await factory.Emails.ToAsync(email, EmailCode.AsksPerLoginAnHour)).Count);
     }
 
     [Fact]
@@ -223,7 +240,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
         Assert.Equal("accountLocked", await CodeOf(await SignInAsync(user.Username, Password)));
         await AskAsync(user.Username);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(user.Username, factory.Emails.LastCodeTo(email))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(user.Username, await factory.Emails.LastCodeToAsync(email))).StatusCode);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await RenewAsync(session)).StatusCode);
         Assert.False((await SessionOfAsync(user.Username, NewPassword)).MustChangePassword);
@@ -264,7 +281,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
 
         await AskAsync(user.Username, client);
 
-        Assert.Equal(englishSubject.Length > 0 ? englishSubject : TranslationSeed.Arabic("email.resetSubject"), factory.Emails.To(email).Single().Subject);
+        Assert.Equal(englishSubject.Length > 0 ? englishSubject : TranslationSeed.Arabic("email.resetSubject"), (await factory.Emails.ToAsync(email)).Single().Subject);
     }
 
     [Fact]

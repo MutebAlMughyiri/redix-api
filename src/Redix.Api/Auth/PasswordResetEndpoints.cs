@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -21,32 +22,45 @@ public static class PasswordResetEndpoints
     }
 
     /// <summary>
-    /// Sends a six-digit code to the email of the account whose username or email was typed (D5, AC-02.6), ending its earlier one (D3), in the language the phone asked in (AC-02.10).
-    /// Answers <c>202</c> whatever happened: an unknown account, and one with no email yet, get the same answer and nothing is sent (R5, AC-02.7, G1). One login typed more than
-    /// <see cref="EmailCode.AsksPerLoginAnHour"/> times in an hour, whatever its case and whether or not it names an account, answers <c>429</c>, as asking too often from one caller
-    /// does (D4, AC-02.8).
+    /// Answers <c>202</c> at once whatever was typed, and sends the code only once the answer has left (<see cref="SendCodeAsync"/>), so neither the answer nor the time it takes says
+    /// whether an account or its email exists (R5, AC-02.7, G1). One login typed more than <see cref="EmailCode.AsksPerLoginAnHour"/> times in an hour, whatever its case and whether
+    /// or not it names an account, answers <c>429</c>, as asking too often from one caller does (D4, AC-02.8).
     /// </summary>
     /// <param name="request">The username or email typed.</param>
+    /// <param name="response">The answer, after which the code is sent.</param>
     /// <param name="askingPerLogin">The limit on asking per login typed.</param>
     /// <param name="db">The database the account and its code live in.</param>
     /// <param name="hasher">Hashes the code, which is never kept.</param>
     /// <param name="sender">Sends the email.</param>
     /// <param name="time">The current time, for the code's fifteen minutes.</param>
-    public static async Task<IResult> ForgotPassword(ForgotPasswordRequest request, [FromKeyedServices(EmailCode.AskingLimit)] PartitionedRateLimiter<string> askingPerLogin, RedixDbContext db, IPasswordHasher<User> hasher, EmailSender sender, TimeProvider time)
+    public static IResult ForgotPassword(ForgotPasswordRequest request, HttpResponse response, [FromKeyedServices(EmailCode.AskingLimit)] PartitionedRateLimiter<string> askingPerLogin, RedixDbContext db, IPasswordHasher<User> hasher, EmailSender sender, TimeProvider time)
     {
         using var asking = askingPerLogin.AttemptAcquire(request.Login.Trim().ToUpperInvariant());
         if (!asking.IsAcquired)
         {
             return Results.StatusCode(StatusCodes.Status429TooManyRequests);
         }
-        var user = await AccountOfAsync(request.Login, db);
-        if (user.Email.Length > 0)
-        {
-            var code = await EmailCode.MakeAsync(user, EmailCodePurpose.ResetPassword, user.Email, hasher, time.GetUtcNow().UtcDateTime, db);
-            await db.SaveChangesAsync();
-            await sender.SendAsync(user.Email, "email.resetSubject", "email.resetBody", code, db);
-        }
+        var language = CultureInfo.CurrentUICulture;
+        response.OnCompleted(() => SendCodeAsync(request.Login, language, db, hasher, sender, time));
         return Results.Accepted();
+    }
+
+    /// <summary>
+    /// Sends a six-digit code to the email of the account <paramref name="login"/> names by its username or its email (D5, AC-02.6), ending its earlier one (D3), in
+    /// <paramref name="language"/>, the one the phone asked in, which the request no longer sets once its answer has left (AC-02.10). An unknown account, and one with no email yet,
+    /// get nothing (G1).
+    /// </summary>
+    private static async Task SendCodeAsync(string login, CultureInfo language, RedixDbContext db, IPasswordHasher<User> hasher, EmailSender sender, TimeProvider time)
+    {
+        CultureInfo.CurrentUICulture = language;
+        var user = await AccountOfAsync(login, db);
+        if (user.Email.Length == 0)
+        {
+            return;
+        }
+        var code = await EmailCode.MakeAsync(user, EmailCodePurpose.ResetPassword, user.Email, hasher, time.GetUtcNow().UtcDateTime, db);
+        await db.SaveChangesAsync();
+        await sender.SendAsync(user.Email, "email.resetSubject", "email.resetBody", code, db);
     }
 
     /// <summary>

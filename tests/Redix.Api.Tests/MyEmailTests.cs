@@ -48,13 +48,15 @@ public class MyEmailTests(MigratedApiFactory factory)
         Assert.Equal(old, (await SessionOfAsync(user)).Email);
         await ForgotAsync(changed);
         await ForgotAsync(old);
+        Assert.Single(await factory.Emails.ToAsync(old));
         Assert.Single(factory.Emails.To(changed));
-        Assert.Single(factory.Emails.To(old));
 
-        Assert.Equal(HttpStatusCode.NoContent, (await ConfirmAsync(client, factory.Emails.LastCodeTo(changed))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(changed))).StatusCode);
 
         Assert.Equal(changed, (await SessionOfAsync(user)).Email);
         await ForgotAsync(old);
+        await ForgotAsync(changed);
+        Assert.Equal(2, (await factory.Emails.ToAsync(changed, 2)).Count);
         Assert.Single(factory.Emails.To(old));
     }
 
@@ -66,7 +68,7 @@ public class MyEmailTests(MigratedApiFactory factory)
         var (user, client) = await SignedInAsync(old);
         await AskAsync(client, changed);
 
-        Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, WrongCodeFor(factory.Emails.LastCodeTo(changed)))));
+        Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, WrongCodeFor(await factory.Emails.LastCodeToAsync(changed)))));
 
         Assert.Equal(old, (await SessionOfAsync(user)).Email);
     }
@@ -79,7 +81,7 @@ public class MyEmailTests(MigratedApiFactory factory)
         Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, "123456")));
         await ForgotAsync(user.Username);
 
-        Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, factory.Emails.LastCodeTo(old))));
+        Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(old))));
 
         Assert.Equal(old, (await SessionOfAsync(user)).Email);
     }
@@ -107,7 +109,7 @@ public class MyEmailTests(MigratedApiFactory factory)
         await AskAsync(client, wanted);
         await factory.AddUserAsync(Password, email: wanted);
 
-        var refused = await ConfirmAsync(client, factory.Emails.LastCodeTo(wanted));
+        var refused = await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(wanted));
 
         Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (refused.StatusCode, await CodeOf(refused)));
         Assert.Equal("", (await SessionOfAsync(user)).Email);
@@ -119,11 +121,11 @@ public class MyEmailTests(MigratedApiFactory factory)
         var email = MigratedApiFactory.NewEmail();
         var (admin, client) = await SignedInAsync(isAdmin: true);
         await AskAsync(client, email);
-        await ConfirmAsync(client, factory.Emails.LastCodeTo(email));
+        await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(email));
 
         await ForgotAsync(email);
 
-        var reset = await factory.CreateClient().PostAsJsonAsync("/auth/reset-with-code", new ResetWithCodeRequest(admin.Username, factory.Emails.LastCodeTo(email), "Admin-new-pass-2"));
+        var reset = await factory.CreateClient().PostAsJsonAsync("/auth/reset-with-code", new ResetWithCodeRequest(admin.Username, await factory.Emails.LastCodeToAsync(email, 2), "Admin-new-pass-2"));
         Assert.Equal(HttpStatusCode.NoContent, reset.StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(admin.Username, "Admin-new-pass-2")).StatusCode);
     }
@@ -147,7 +149,7 @@ public class MyEmailTests(MigratedApiFactory factory)
         var (user, client) = await SignedInAsync(old);
         await AskAsync(client, changed);
 
-        await ConfirmAsync(client, factory.Emails.LastCodeTo(changed));
+        await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(changed));
 
         var record = (await factory.HistoryOfAsync(user.Id)).Last();
         Assert.Equal((HistoryAction.Update, user.Id), (record.Action, record.UserId));
