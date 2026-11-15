@@ -304,12 +304,12 @@ public static class ProjectFileEndpoints
             }
         }
         var kept = new List<(Entry Entry, Guid TableId)>();
-        foreach (var (at, place, table, number, request) in asked.OrderBy(row => row.Request.Date))
+        foreach (var (fileOrder, place, table, number, request) in asked.OrderBy(row => row.Request.Date))
         {
             var (_, code, columnKey, entry) = await EntryRecording.RecordAsync(projectId, request, table, userId, held, Entry.None, tellDeciders: false, db, time);
             if (code.Length > 0)
             {
-                found.Add((at, place.Refusal(number, ProjectFileOwner.Entry, code) with { ColumnKey = columnKey }));
+                found.Add((fileOrder, place.Refusal(number, ProjectFileOwner.Entry, code) with { ColumnKey = columnKey }));
             }
             else
             {
