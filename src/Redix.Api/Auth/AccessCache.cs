@@ -15,7 +15,10 @@ public sealed class AccessCache : IDisposable
     private readonly MemoryCache _kept = new(new MemoryCacheOptions());
     private long _forgettings;
 
-    /// <summary>The access of <paramref name="userId"/>: the kept one, or what <paramref name="read"/> answers, kept unless something was forgotten while it read.</summary>
+    /// <summary>
+    /// The access of <paramref name="userId"/>: the kept one, or what <paramref name="read"/> answers, kept unless something was forgotten while it read. It is kept first and taken back
+    /// when a forgetting came meanwhile, so one landing between the two is never outlived.
+    /// </summary>
     /// <param name="userId">The person.</param>
     /// <param name="read">Reads the person's access from the database.</param>
     public async Task<UserAccess> OfAsync(Guid userId, Func<Task<UserAccess>> read)
@@ -26,9 +29,10 @@ public sealed class AccessCache : IDisposable
         }
         var forgettings = Interlocked.Read(ref _forgettings);
         var access = await read();
-        if (Interlocked.Read(ref _forgettings) == forgettings)
+        _kept.Set(userId, access, Lifetime);
+        if (Interlocked.Read(ref _forgettings) != forgettings)
         {
-            _kept.Set(userId, access, Lifetime);
+            _kept.Remove(userId);
         }
         return access;
     }
