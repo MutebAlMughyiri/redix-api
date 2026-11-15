@@ -233,7 +233,7 @@ public static class EntryRecording
     /// one place an entry is created, so the route, a phone's upload and a project file's load all number. One sent for approval is a decision, and tells the deciders when
     /// <paramref name="tellDeciders"/>; a draft is neither.
     /// </summary>
-    public static async Task AddAsync(Entry entry, List<object> details, Guid userId, bool tellDeciders, RedixDbContext db)
+    private static async Task AddAsync(Entry entry, List<object> details, Guid userId, bool tellDeciders, RedixDbContext db)
     {
         entry.Number = await NextNumberAsync(entry.ProjectId, db);
         db.Add(entry);
