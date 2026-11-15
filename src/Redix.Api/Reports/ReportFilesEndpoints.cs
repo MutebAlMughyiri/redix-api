@@ -10,7 +10,10 @@ using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
-/// <summary>The report files besides the periodic report's (FR-33, UC-057, UC-058): for whoever sees every partner's capital, since only they export (BR-31).</summary>
+/// <summary>
+/// The report files besides the periodic report's (FR-33, UC-057, UC-058): for whoever holds <see cref="Permission.GenerateReports"/>, and a file's رأس المال holds only the partners its
+/// reader may see (redix-api #131, D1, D2, BR-31).
+/// </summary>
 public static class ReportFilesEndpoints
 {
     private const string ExcelType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

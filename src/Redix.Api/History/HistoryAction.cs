@@ -21,10 +21,10 @@ public enum HistoryAction
     /// <summary>A project manager created a user (UC-007, UC-009), Finance added a unit (UC-006), a contract (UC-020) or an account, someone saved an entry as a draft, or the parts of a new entry (UC-022), or moved money between two accounts (redix-app #89).</summary>
     Create,
 
-    /// <summary>A user's name or mobile was changed (UC-007), an account (UC-015), or a contract amended (UC-020).</summary>
+    /// <summary>A user's name, mobile or email was changed, by their manager (UC-007) or their email by themselves (redix-api #127, AC-10.4), an account (UC-015), or a contract amended (UC-020).</summary>
     Update,
 
-    /// <summary>A user was given a new temporary password (UC-007).</summary>
+    /// <summary>A user's password was replaced: a temporary one their manager typed (UC-007), or one they chose with a code by email (redix-api #127, AC-02.6).</summary>
     ResetPassword,
 
     /// <summary>A person was made inactive in a project (redix-api #126; a whole login before it, UC-007), or a contract or an account was disabled (UC-020, redix-app #89).</summary>
