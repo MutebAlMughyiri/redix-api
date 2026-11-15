@@ -20,7 +20,7 @@ public class EmailCode
     /// <summary>How long a code works after it is sent (D3).</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(15);
 
-    /// <summary>The tries a code allows; a wrong one counts, and once they are spent even the right code is refused (D3).</summary>
+    /// <summary>The tries a code allows; every try counts, and once they are spent even the right code is refused (D3).</summary>
     public const int TriesAllowed = 5;
 
     /// <summary>The <see cref="UsedAt"/> of a code not spent yet.</summary>
@@ -67,7 +67,8 @@ public class EmailCode
 
     /// <summary>
     /// The code of <paramref name="purpose"/> <paramref name="user"/> was last sent, when <paramref name="typed"/> is it and it is unspent, unexpired and has tries left (D3, AC-02.8);
-    /// <see cref="None"/> otherwise. A wrong code counts a try, saved at once, so five wrong ones end it whatever the caller does next.
+    /// <see cref="None"/> otherwise. Every try counts, and is saved before the code is checked: the row's version lets one of two tries sent at once count and refuses the other,
+    /// so tries sent together cannot check more than <see cref="TriesAllowed"/> guesses.
     /// </summary>
     public static async Task<EmailCode> CheckAsync(User user, EmailCodePurpose purpose, string typed, IPasswordHasher<User> hasher, DateTime now, RedixDbContext db)
     {
@@ -76,13 +77,16 @@ public class EmailCode
         {
             return None;
         }
-        if (hasher.VerifyHashedPassword(user, last.CodeHash, typed) == PasswordVerificationResult.Failed)
+        last.Tries++;
+        try
         {
-            last.Tries++;
             await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
             return None;
         }
-        return last;
+        return hasher.VerifyHashedPassword(user, last.CodeHash, typed) == PasswordVerificationResult.Failed ? None : last;
     }
 
     /// <summary>Spends the code at <paramref name="now"/>, so it never works again (D3). The caller saves.</summary>

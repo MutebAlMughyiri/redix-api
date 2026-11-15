@@ -70,6 +70,17 @@ public class PasswordResetTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task D3_TriesSentAtOnceCheckNoMoreGuessesThanACodeAllows()
+    {
+        var (user, code) = await AskedAsync(MigratedApiFactory.NewEmail());
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, EmailCode.TriesAllowed * 2).Select(async _ => await CodeOf(await ResetAsync(user.Username, code, "weak"))));
+
+        Assert.InRange(answers.Count(answer => answer == "weakPassword"), 1, EmailCode.TriesAllowed);
+        Assert.All(answers, answer => Assert.Contains(answer, new[] { "weakPassword", "codeWrong" }));
+    }
+
+    [Fact]
     public async Task AC_02_6_AWrongCodeResetsNothing()
     {
         var (user, code) = await AskedAsync(MigratedApiFactory.NewEmail());
