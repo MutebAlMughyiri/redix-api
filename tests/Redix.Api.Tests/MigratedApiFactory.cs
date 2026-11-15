@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Redix.Api.History;
 using Redix.Api.Auth;
+using Redix.Api.Email;
 using Redix.Api.Projects;
 using Redix.Api.Structure;
 
@@ -33,8 +34,14 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
 
+    /// <summary>Every email the API sent, kept instead of sent (redix-api #127, D7).</summary>
+    public KeptEmails Emails { get; } = new();
+
     /// <summary>A VAT number no other test holds, because a duplicate invoice is looked for across every project (FR-17).</summary>
     public static string NewVatNumber() => $"3{Random.Shared.NextInt64(1_000_000_000_000, 9_999_999_999_999)}3";
+
+    /// <summary>An email no other test holds, because an email belongs to one account (redix-api #127, R9).</summary>
+    public static string NewEmail() => $"{Guid.CreateVersion7():N}@example.com";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -45,9 +52,10 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Admin:Username"] = AdminUsername,
             ["Admin:Password"] = AdminPassword,
             ["Registration:PermitsPerHour"] = "100000",
+            ["EmailCodes:PermitsPerHour"] = "100000",
             ["Attachments:Folder"] = Path.Combine(Path.GetTempPath(), "RedixTestsAttachments"),
         }));
-        builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time));
+        builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time).AddSingleton<EmailSender>(Emails));
     }
 
     private static string ConnectionTo(string database) =>
@@ -78,13 +86,13 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await database.MigrateAsync();
     }
 
-    public async Task<User> AddUserAsync(string password, bool mustChangePassword = false, bool isAdmin = false)
+    public async Task<User> AddUserAsync(string password, bool mustChangePassword = false, bool isAdmin = false, string email = "")
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RedixDbContext>();
         var user = new User
         {
-            Username = $"user-{Guid.NewGuid():N}", MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime,
+            Username = $"user-{Guid.NewGuid():N}", Email = email, MustChangePassword = mustChangePassword, CreatedAt = Time.GetUtcNow().UtcDateTime,
         };
         user.SetPassword(password, scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>());
         db.Users.Add(user);

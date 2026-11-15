@@ -42,6 +42,8 @@ public class SchemaTests(MigratedApiFactory factory)
         Assert.Contains("Notifications", stored);
         Assert.Contains("LK_EntryKind", stored);
         Assert.Contains("Projects", stored);
+        Assert.Contains("EmailCodes", stored);
+        Assert.Contains("LK_EmailCodePurpose", stored);
     }
 
     [Fact]

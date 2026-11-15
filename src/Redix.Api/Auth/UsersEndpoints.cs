@@ -41,25 +41,35 @@ public static class UsersEndpoints
                 roleNames.GetValueOrDefault((line.Key.UserId, line.Key.ProjectId), ""), [.. chosen[(line.Key.UserId, line.Key.ProjectId)]], inactive.Contains((line.Key.UserId, line.Key.ProjectId))));
     }
 
-    /// <summary>Changes a user's name and mobile. A name outside its limit answers <c>invalidName</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>.</summary>
+    /// <summary>
+    /// Changes a user's name, mobile and email, which the manager may change as he typed it when adding them (redix-api #127, AC-07.8). A name outside its limit answers <c>invalidName</c>; a
+    /// mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>; an email not well formed <c>emailInvalid</c>, and one another account holds <c>emailTaken</c> (R9).
+    /// </summary>
     /// <param name="userId">The user to change.</param>
-    /// <param name="request">The new name and mobile.</param>
+    /// <param name="request">The new name, mobile and email.</param>
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the user lives in.</param>
     /// <param name="time">The current time, for the history row.</param>
-    public static Task<IResult> Edit(Guid userId, EditUserRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    public static async Task<IResult> Edit(Guid userId, EditUserRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var displayName = request.DisplayName.Trim();
         var mobile = request.Mobile.Trim();
+        var email = request.Email.Trim();
         var refusal = User.RefusalOfDetails(displayName, mobile);
         if (refusal.Length > 0)
         {
-            return Task.FromResult(Refusal.Of(StatusCodes.Status400BadRequest, refusal));
+            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
         }
-        return ChangeAsync(userId, principal, db, time, HistoryAction.Update, user =>
+        var (emailStatus, emailRefusal) = await User.RefusalOfEmailAsync(email, userId, db);
+        if (emailRefusal.Length > 0)
+        {
+            return Refusal.Of(emailStatus, emailRefusal);
+        }
+        return await ChangeAsync(userId, principal, db, time, HistoryAction.Update, user =>
         {
             user.DisplayName = displayName;
             user.Mobile = mobile;
+            user.Email = email;
             return Task.CompletedTask;
         });
     }
@@ -81,11 +91,7 @@ public static class UsersEndpoints
         {
             return Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword");
         }
-        return await ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, async user =>
-        {
-            await db.Devices.Where(device => device.UserId == userId).ExecuteUpdateAsync(device => device.SetProperty(d => d.IsRevoked, true));
-            user.ResetPassword(request.TemporaryPassword, hasher);
-        });
+        return await ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, user => user.ResetPasswordAsync(request.TemporaryPassword, mustChangePassword: true, hasher, db));
     }
 
     private static async Task<bool> MayChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db)
@@ -122,7 +128,8 @@ public static class UsersEndpoints
 /// <summary>What the app sends to change a user.</summary>
 /// <param name="DisplayName">The name as it shows on entries.</param>
 /// <param name="Mobile">The user's mobile; may be empty.</param>
-public record EditUserRequest(string DisplayName, string Mobile);
+/// <param name="Email">Where a code reaches the user (redix-api #127).</param>
+public record EditUserRequest(string DisplayName, string Mobile, string Email);
 
 /// <summary>What the app sends to reset a password.</summary>
 /// <param name="TemporaryPassword">The password the user changes at the next sign-in.</param>
@@ -141,11 +148,12 @@ public record UserProjectView(Guid ProjectId, List<Permission> Permissions, stri
 /// <param name="Username">The name the user signs in with.</param>
 /// <param name="DisplayName">The name as it shows on entries.</param>
 /// <param name="Mobile">The user's mobile; empty when none.</param>
+/// <param name="Email">Where a code reaches the user, which their manager may change (redix-api #127); empty while none is set.</param>
 /// <param name="MustChangePassword">True while the password is temporary.</param>
 /// <param name="Projects">What they hold, one line per project the caller may see.</param>
-public record UserView(Guid Id, string Username, string DisplayName, string Mobile, bool MustChangePassword, List<UserProjectView> Projects)
+public record UserView(Guid Id, string Username, string DisplayName, string Mobile, string Email, bool MustChangePassword, List<UserProjectView> Projects)
 {
     /// <summary>The view of <paramref name="user"/>, with these <paramref name="projects"/>.</summary>
     public static UserView Of(User user, List<UserProjectView> projects) =>
-        new(user.Id, user.Username, user.DisplayName, user.Mobile, user.MustChangePassword, projects);
+        new(user.Id, user.Username, user.DisplayName, user.Mobile, user.Email, user.MustChangePassword, projects);
 }

@@ -354,7 +354,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var partner = await AddAsync(client, project.Id, "متعب");
         var theirs = await AddAsync(otherClient, other.Id, "شريكهم");
         CreateUserRequest Request(string username, List<Permission> permissions, List<Guid> partnerIds) =>
-            new("المحاسب", username, "", "Temporary-pass-1") { Permissions = permissions, PartnerIds = partnerIds };
+            new("المحاسب", username, "", MigratedApiFactory.NewEmail(), "Temporary-pass-1") { Permissions = permissions, PartnerIds = partnerIds };
 
         var made = await client.PostAsJsonAsync($"/projects/{project.Id}/users", Request($"accountant-{Guid.NewGuid():N}", [Permission.SeeChosenCapital], [partner.Id]), Json);
         var both = await client.PostAsJsonAsync($"/projects/{project.Id}/users", Request($"both-{Guid.NewGuid():N}", [Permission.SeeAllCapital, Permission.SeeChosenCapital], []), Json);

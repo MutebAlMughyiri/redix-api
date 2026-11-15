@@ -45,10 +45,38 @@ public class UsersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var manager = await ManagerOfAsync(user);
 
-        var edited = await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111")));
+        var edited = await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111", MigratedApiFactory.NewEmail())));
 
         Assert.Equal((user.Username, "نواف الأول", "0511111111"), (edited.Username, edited.DisplayName, edited.Mobile));
-        Assert.Equal("invalidName", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", ""))));
+        Assert.Equal("invalidName", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", "", MigratedApiFactory.NewEmail()))));
+    }
+
+    [Fact]
+    public async Task AC_07_8_TheManagerChangesAPersonsEmailOrKeepsIt()
+    {
+        var user = await factory.AddUserAsync(Password);
+        var manager = await ManagerOfAsync(user);
+        var email = MigratedApiFactory.NewEmail();
+
+        var changed = await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", $" {email} ")));
+        var kept = await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "", email)));
+
+        Assert.Equal((email, email), (changed.Email, kept.Email));
+    }
+
+    [Fact]
+    public async Task AC_07_8_R9_TheManagerCannotGiveAnEmailAnotherAccountHoldsNorOneNotWellFormed()
+    {
+        var other = MigratedApiFactory.NewEmail();
+        await factory.AddUserAsync(Password, email: other);
+        var user = await factory.AddUserAsync(Password, email: MigratedApiFactory.NewEmail());
+        var manager = await ManagerOfAsync(user);
+
+        var taken = await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", other.ToUpperInvariant()));
+
+        Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (taken.StatusCode, await CodeOf(taken)));
+        Assert.Equal("emailInvalid", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", ""))));
+        Assert.Equal("emailInvalid", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", "nawaf"))));
     }
 
     [Fact]
@@ -57,7 +85,7 @@ public class UsersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var manager = await ManagerOfAsync(user);
 
-        Assert.Equal("invalidMobile", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "٠٥١١١١١١١١"))));
+        Assert.Equal("invalidMobile", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "٠٥١١١١١١١١", MigratedApiFactory.NewEmail()))));
     }
 
     [Fact]
@@ -101,7 +129,7 @@ public class UsersTests(MigratedApiFactory factory)
     {
         var user = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
 
-        Assert.Equal(HttpStatusCode.NotFound, (await user.PutAsJsonAsync($"/users/{Guid.CreateVersion7()}", new EditUserRequest("نواف", ""))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await user.PutAsJsonAsync($"/users/{Guid.CreateVersion7()}", new EditUserRequest("نواف", "", MigratedApiFactory.NewEmail()))).StatusCode);
     }
 
     [Fact]
@@ -126,7 +154,7 @@ public class UsersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         await factory.GiveAsync(user.Id, project.Id, Holds.Of("Field"));
 
-        await client.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0500000000"));
+        await client.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0500000000", MigratedApiFactory.NewEmail()));
         await ResetAsync(client, user.Id);
 
         var trail = await factory.HistoryOfAsync(user.Id);

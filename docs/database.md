@@ -15,9 +15,9 @@ Every table, column, key and relation of the REDIX database as it stands after t
 | Money | `decimal(19,4)`, rounded only in totals (BR-13) |
 | Free JSON | `json`: a column's options, an entry's custom values, a report's snapshot, a History row's before and after |
 | An enum column points at its lookup table | It stores the member's number, `tinyint`, with a foreign key to `LK_{enum}.Id`; `History.Action` stores the name, `varchar(30)`, with its foreign key to `LK_HistoryAction.Name`, so no History row changed; the two permission columns store names held by a check constraint until redix-api #120 |
-| A foreign key never deletes for you | `NO ACTION` (EF Core's `Restrict`), except where a row only exists inside its owner: an account's custodian, a partner's login, a notification's entry, a phone, a reconciliation's balances, a supplier's default item, a word's translations and a project's units cascade |
+| A foreign key never deletes for you | `NO ACTION` (EF Core's `Restrict`), except where a row only exists inside its owner: an account's custodian, a partner's login, a notification's entry, a phone, a code sent by email, a reconciliation's balances, a supplier's default item, a word's translations and a project's units cascade |
 
-46 tables hold the business, 11 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
+47 tables hold the business, 12 are lookup tables, and `__EFMigrationsHistory` is EF Core's list of the migrations applied.
 
 ## Schemas
 
@@ -25,7 +25,7 @@ One database, two schemas (redix-api #123, step 1). A table whose rows belong to
 
 | Schema | Tables |
 | --- | --- |
-| `dbo` (26) | Users, Devices, SystemPermissions, Projects, ProjectPermissions, InactiveMembers, ProjectRoleNames, UserDefaultProjects, ProjectStructureSources, ConfigValues, TranslationKeys, Translations, History, Notifications, NotificationEntries, and the 11 lookup tables; with them `__EFMigrationsHistory` |
+| `dbo` (28) | Users, Devices, EmailCodes, SystemPermissions, Projects, ProjectPermissions, InactiveMembers, ProjectRoleNames, UserDefaultProjects, ProjectStructureSources, ConfigValues, TranslationKeys, Translations, History, Notifications, NotificationEntries, and the 12 lookup tables; with them `__EFMigrationsHistory` |
 | `project` (31) | Accounts, AccountCustodians, Transfers, Reconciliations, ReconciliationBalances, Categories, Items, Subgroups, ItemColumns, DefaultColumns, PaymentMethods, Suppliers, SupplierDefaultItems, Contracts, ContractAttachments, Entries, ExpenseDetails, PurchaseDetails, ContractorPaymentDetails, RevenueDetails, CapitalMovementDetails, EntryDecisions, EntryAttachments, Invoices, Attachments, Documents, Partners, ChosenPartners, PartnerUsers, PeriodicReports, Units |
 
 The core tables that name a project stay core: who may do what in which project is what lets a person sign in once and see the projects they belong to; History stays whole until release 2, and the notifications stay core, since the bell spans projects (D6).
@@ -39,6 +39,7 @@ One per enum the database stores, named `LK_{enum}`: `Id` is the member's number
 | [LK_AccountType](#lk_accounttype) | tinyint | `Accounts.Type` |
 | [LK_ColumnDataType](#lk_columndatatype) | tinyint | `DefaultColumns.DataType`, `ItemColumns.DataType` |
 | [LK_EntryAttachmentRole](#lk_entryattachmentrole) | tinyint | `EntryAttachments.Role` |
+| [LK_EmailCodePurpose](#lk_emailcodepurpose) | tinyint | `EmailCodes.Purpose` |
 | [LK_EntryDecisionAction](#lk_entrydecisionaction) | tinyint | `EntryDecisions.Action` |
 | [LK_EntryKind](#lk_entrykind) | tinyint | `Entries.Kind` |
 | [LK_EntryStatus](#lk_entrystatus) | tinyint | `Entries.Status` |
@@ -74,6 +75,13 @@ One per enum the database stores, named `LK_{enum}`: `Id` is the member's number
 | 1 | Receipt | A receipt voucher. |
 | 2 | BankReceipt | A bank transfer receipt. |
 | 3 | Other | Anything else. |
+
+### LK_EmailCodePurpose
+
+| Id | Name | Meaning |
+| --- | --- | --- |
+| 0 | ResetPassword | Reset a forgotten password from the sign-in screen: the code goes to the account's email (AC-02.6). |
+| 1 | ConfirmEmail | Make a new address the person's email, in Settings: the code goes to the new address (AC-10.4). |
 
 ### LK_EntryDecisionAction
 
@@ -214,6 +222,7 @@ erDiagram
     LK_AccountType ||--o{ Accounts : "Type"
     LK_HistoryAction ||--o{ History : "Action"
     LK_NotificationKind ||--o{ Notifications : "Kind"
+    LK_EmailCodePurpose ||--o{ EmailCodes : "Purpose"
 ```
 
 ## People and projects
@@ -223,6 +232,7 @@ Who signs in, the projects, and who may do what in each.
 ```mermaid
 erDiagram
     Users ||--o{ Devices : "UserId"
+    Users ||--o{ EmailCodes : "UserId"
     Users ||--o{ SystemPermissions : "UserId"
     Projects ||--o{ Units : "ProjectId"
     Projects ||--o{ ProjectPermissions : "ProjectId"
@@ -252,8 +262,9 @@ Everyone who signs in to REDIX.
 | CreatedAt | datetime2(7) | not null |  |  |
 | DisplayName | nvarchar(100) | not null |  |  |
 | Mobile | varchar(20) | not null |  |  |
+| Email | nvarchar(254) | not null |  |  |
 
-Unique: `Username`.
+Unique: `Username`; `Email` where it is not empty (redix-api #127, R9).
 
 ### Devices
 
@@ -272,6 +283,23 @@ The phones signed in, one per sign-in, each with its refresh token's hash.
 Unique: `RefreshTokenHash`.
 
 Other indexes: `UserId`.
+
+### EmailCodes
+
+The codes sent by email, each kept as its hash (redix-api #127): one per person and purpose, the last sent, which works once, for 15 minutes and 5 tries.
+
+| Column | SQL type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| Id | uniqueidentifier | not null | PK |  |
+| UserId | uniqueidentifier | not null | FK | `Users.Id` (cascade delete) |
+| Purpose | tinyint | not null | FK | `LK_EmailCodePurpose.Id` |
+| Email | nvarchar(254) | not null |  |  |
+| CodeHash | varchar(200) | not null |  |  |
+| ExpiresAt | datetime2(7) | not null |  |  |
+| Tries | int | not null |  |  |
+| UsedAt | datetime2(7) | not null |  |  |
+
+Other indexes: `UserId, Purpose`; `Purpose`.
 
 ### SystemPermissions
 

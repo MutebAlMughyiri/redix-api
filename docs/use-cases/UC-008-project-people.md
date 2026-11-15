@@ -13,7 +13,7 @@ All need `ManageUsers` in the project, and answer `403` to anyone else.
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
 | `GET /projects/{projectId}/users` | This project's people, those active there first (redix-api #126), by name, with only what they hold in this project | `200` the users |
-| `POST /projects/{projectId}/users` | Creates a login in this project holding `ReadProject` and the `permissions` ticked | `201` the user; `400` `invalidName`, `invalidUsername`, `invalidMobile`, `weakPassword` or `invalidPermission`; `409` `usernameTaken` |
+| `POST /projects/{projectId}/users` | Creates a login in this project holding `ReadProject` and the `permissions` ticked, with the `email` the manager typed, required (redix-api #127) | `201` the user; `400` `invalidName`, `invalidUsername`, `invalidMobile`, `emailInvalid`, `weakPassword` or `invalidPermission`; `409` `usernameTaken` or `emailTaken` |
 | `POST /projects/{projectId}/users/existing` with `{ username }` | Adds someone who already has a login, holding `ReadProject` | `200` the user; `404` `unknownUser` |
 | `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | Ticks one permission | `200` the user; `400` `invalidPermission`; `404` |
 | `DELETE /projects/{projectId}/users/{userId}/permissions/{permission}` | Unticks one; `readProject` takes them out of the project | `200` the user; `409` `lastManager`; `404` |
@@ -27,6 +27,8 @@ A user's answer has `projects: [{ projectId, permissions, roleName, partnerIds, 
 | Rule | Code | Test |
 | --- | --- | --- |
 | A user sees only their projects (AC-36.1) | `ProjectsEndpoints.List` | `ProjectsTests.AUserSeesOnlyTheirProjects` |
+| Adding a person needs a well-formed email no other account holds, whatever its case, and a refusal creates nothing (AC-07.8, D1, R9) | `User.RefusalOfEmailAsync`, `ProjectUsersEndpoints.Create`, the unique index on `Users.Email` | `ProjectUsersTests.AC_07_8_AddingAPersonKeepsTheEmailTheManagerTyped`, `AC_07_8_D1_AddingAPersonNeedsAWellFormedEmailAndCreatesNothingWithout`, `AC_07_8_R9_AnEmailAnotherAccountHoldsIsRefusedWhateverItsCase` |
+| The email is checked after the other fields, in the order the form shows them, so an empty form names the username first | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AC_07_8_AnEmptyFormNamesTheUsernameFirstAndTheEmailOnlyAfterTheOtherFields_AsTheFormOrdersThem` |
 | Each project carries what the user holds in it (AC-36.2) | `ProjectsEndpoints.List` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
 | A manager sees only their project's people, and none of those people's other projects (BR-33) | `ProjectUsersEndpoints.List` | `ProjectUsersTests.AManagerSeesOnlyTheirProjectsPeopleAndNoneOfTheirOtherProjects` |
 | A new login holds what was ticked and `ReadProject`, never the admin's permission | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AManagerCreatesALoginHoldingWhatWasTickedAndSeeingTheProjectWhoMustChangeThePassword`, `ANewLoginCannotBeGivenTheAdminsPermission` |

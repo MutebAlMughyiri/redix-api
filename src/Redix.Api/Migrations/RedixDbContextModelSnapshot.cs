@@ -286,6 +286,52 @@ namespace Redix.Api.Migrations
                     b.ToTable("Devices");
                 });
 
+            modelBuilder.Entity("Redix.Api.Auth.EmailCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte>("Purpose")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Tries")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Purpose");
+
+                    b.HasIndex("UserId", "Purpose");
+
+                    b.ToTable("EmailCodes");
+                });
+
             modelBuilder.Entity("Redix.Api.Auth.SystemPermission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -330,6 +376,11 @@ namespace Redix.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
                     b.Property<int>("FailedSignIns")
                         .HasColumnType("int");
 
@@ -363,6 +414,10 @@ namespace Redix.Api.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasFilter("[Email] <> ''");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -878,6 +933,42 @@ namespace Redix.Api.Migrations
                         {
                             Id = (byte)1,
                             Name = "CashCustody"
+                        });
+                });
+
+            modelBuilder.Entity("Redix.Api.Lookup<Redix.Api.Auth.EmailCodePurpose>", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Name");
+
+                    b.ToTable("LK_EmailCodePurpose", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)0,
+                            Name = "ResetPassword"
+                        },
+                        new
+                        {
+                            Id = (byte)1,
+                            Name = "ConfirmEmail"
                         });
                 });
 
@@ -3832,17 +3923,227 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("ba99d72f-8250-4216-d6f6-5f3fdc6b4e4b"),
+                            Id = new Guid("c5261c71-bd03-8fe2-ebd7-52662399054f"),
                             Language = "en",
-                            TranslationKeyId = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
-                            Value = "Forgot your password? Contact your project manager."
+                            TranslationKeyId = new Guid("425d9bf8-853a-5248-d188-a39b1b97ab99"),
+                            Value = "Forgot your password?"
                         },
                         new
                         {
-                            Id = new Guid("148f90b2-75cf-925a-961a-a2899215aded"),
+                            Id = new Guid("c1e2b98a-9efc-e432-3294-943a37a17f52"),
                             Language = "ar",
-                            TranslationKeyId = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
-                            Value = "نسيت كلمة المرور؟ تواصل مع مدير مشروعك."
+                            TranslationKeyId = new Guid("425d9bf8-853a-5248-d188-a39b1b97ab99"),
+                            Value = "نسيت كلمة المرور؟"
+                        },
+                        new
+                        {
+                            Id = new Guid("04bb39d4-a6d8-ce0c-b8c7-324d759a2e97"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aa92d498-c7fa-b241-be88-3e74b000c4f7"),
+                            Value = "Username or email"
+                        },
+                        new
+                        {
+                            Id = new Guid("fd5df400-dbce-8276-4cb0-d4c4a28c2753"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aa92d498-c7fa-b241-be88-3e74b000c4f7"),
+                            Value = "اسم المستخدم أو البريد"
+                        },
+                        new
+                        {
+                            Id = new Guid("d44c06e9-31bc-b39d-bff2-47b3bc9af26e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("b0f7932e-e269-c2de-e2b3-ab00e3913d37"),
+                            Value = "Send the code"
+                        },
+                        new
+                        {
+                            Id = new Guid("761b5acc-0567-38c6-062a-b06999fc0338"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("b0f7932e-e269-c2de-e2b3-ab00e3913d37"),
+                            Value = "أرسل الرمز"
+                        },
+                        new
+                        {
+                            Id = new Guid("56846382-06df-9b95-d2a8-3ba862a798e4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("395a3ec8-b7f4-8c32-9c97-9d81eae053c1"),
+                            Value = "If the account has an email, a code valid for 15 minutes was sent to it."
+                        },
+                        new
+                        {
+                            Id = new Guid("c00523c4-3975-cb52-9dbb-36802628b34d"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("395a3ec8-b7f4-8c32-9c97-9d81eae053c1"),
+                            Value = "إن كان للحساب بريد، أرسلنا إليه رمزًا صالحًا 15 دقيقة."
+                        },
+                        new
+                        {
+                            Id = new Guid("bfacfea8-119e-7b5e-8159-4b8cb68aec00"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e3d786ea-b1a9-dfb1-ddc6-66d90ee58b1d"),
+                            Value = "Code"
+                        },
+                        new
+                        {
+                            Id = new Guid("30cc6ec5-25ed-5d74-d829-10cb41600706"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e3d786ea-b1a9-dfb1-ddc6-66d90ee58b1d"),
+                            Value = "الرمز"
+                        },
+                        new
+                        {
+                            Id = new Guid("e497b79c-073e-c89e-8425-b2555955b393"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("2afc343e-ea58-f111-eb20-b8e92d2865f2"),
+                            Value = "Change the password"
+                        },
+                        new
+                        {
+                            Id = new Guid("048ade37-2b59-e8d9-e0c1-f47a3b93af95"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("2afc343e-ea58-f111-eb20-b8e92d2865f2"),
+                            Value = "تغيير كلمة المرور"
+                        },
+                        new
+                        {
+                            Id = new Guid("eedf895b-d4a6-0314-bed7-ee30ec33eb80"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("eafbb093-26f7-a4cd-40ec-e5ae600af9fa"),
+                            Value = "The password was changed. Sign in."
+                        },
+                        new
+                        {
+                            Id = new Guid("11ff82aa-8b73-4862-e485-e9b07a2dc02a"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("eafbb093-26f7-a4cd-40ec-e5ae600af9fa"),
+                            Value = "تغيّرت كلمة المرور. سجّل الدخول."
+                        },
+                        new
+                        {
+                            Id = new Guid("50755f85-5c37-4e47-eb76-1af73e9a829e"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("aa92f3cb-09b1-2692-071c-bb47bfcd05b0"),
+                            Value = "The code is wrong or has expired."
+                        },
+                        new
+                        {
+                            Id = new Guid("445b1a14-a4cf-f3df-fa1e-4776352df3c6"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("aa92f3cb-09b1-2692-071c-bb47bfcd05b0"),
+                            Value = "الرمز غير صحيح أو انتهت صلاحيته."
+                        },
+                        new
+                        {
+                            Id = new Guid("00b06e02-5c71-1d59-9561-20fc9d43b8fd"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("8202733f-efc7-45a8-74ec-cbf2f1fb819c"),
+                            Value = "Too many requests. Try again shortly."
+                        },
+                        new
+                        {
+                            Id = new Guid("77db85f5-7288-2b37-c075-b58669bc2edd"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("8202733f-efc7-45a8-74ec-cbf2f1fb819c"),
+                            Value = "طلبات كثيرة. حاول بعد قليل."
+                        },
+                        new
+                        {
+                            Id = new Guid("3194820d-6a10-2d7b-3e4a-389c57642c79"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("21ceede3-21ae-2854-40bf-95c045923481"),
+                            Value = "Use at least 8 characters with a letter and a digit, not the user name."
+                        },
+                        new
+                        {
+                            Id = new Guid("e306a9a9-8b9f-ad9e-4630-1d9e3678cfbb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("21ceede3-21ae-2854-40bf-95c045923481"),
+                            Value = "استخدم 8 أحرف على الأقل فيها حرف ورقم، وليست اسم المستخدم."
+                        },
+                        new
+                        {
+                            Id = new Guid("e9fa02e2-cf06-8410-b240-e97e0e103379"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("78ac9645-a011-3e87-805b-443d02a19fe5"),
+                            Value = "No connection to the server. Try again."
+                        },
+                        new
+                        {
+                            Id = new Guid("9e25d13d-0af5-9ae8-addb-6293411fce4b"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("78ac9645-a011-3e87-805b-443d02a19fe5"),
+                            Value = "لا يوجد اتصال بالخادم. حاول مرة أخرى."
+                        },
+                        new
+                        {
+                            Id = new Guid("eb26ca0a-7736-faf7-33f3-da22f2eec877"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0078755e-fe71-0cc1-fba0-e0fe08f1a9a4"),
+                            Value = "The server refused this change."
+                        },
+                        new
+                        {
+                            Id = new Guid("9dd34245-bfdc-8df7-fa0b-56c01abb9ec5"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0078755e-fe71-0cc1-fba0-e0fe08f1a9a4"),
+                            Value = "رفض الخادم هذا التغيير."
+                        },
+                        new
+                        {
+                            Id = new Guid("7333d02a-7218-38db-08ce-92fdde6b8f19"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("0f1273e8-0259-c356-6f3a-6b413f32d9cc"),
+                            Value = "Your password reset code"
+                        },
+                        new
+                        {
+                            Id = new Guid("df068e77-6ab8-61dc-5be6-c150f5470603"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("0f1273e8-0259-c356-6f3a-6b413f32d9cc"),
+                            Value = "رمز إعادة تعيين كلمة المرور"
+                        },
+                        new
+                        {
+                            Id = new Guid("b0f8d620-2910-fc1b-7645-ed4fc5a267f7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("c767f935-2770-6049-5b0d-7902749cebe1"),
+                            Value = "Your REDIX code: {0}. Valid for 15 minutes, once. If you did not ask for it, ignore this email."
+                        },
+                        new
+                        {
+                            Id = new Guid("841020b5-846b-97d0-4ecd-1a1db5737a64"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("c767f935-2770-6049-5b0d-7902749cebe1"),
+                            Value = "رمزك في REDIX: {0}. صالح 15 دقيقة، لمرة واحدة. إن لم تطلبه فتجاهل هذه الرسالة."
+                        },
+                        new
+                        {
+                            Id = new Guid("92c5e7a8-34de-9ec6-7ee5-b77a3d67c962"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("848b21cd-1175-4299-3a3f-d8b374502dda"),
+                            Value = "Confirm your REDIX email"
+                        },
+                        new
+                        {
+                            Id = new Guid("27f8ea12-d060-e555-be7c-038dd5585d46"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("848b21cd-1175-4299-3a3f-d8b374502dda"),
+                            Value = "تأكيد بريدك في REDIX"
+                        },
+                        new
+                        {
+                            Id = new Guid("e53ef0cb-75d4-3aae-7d24-25784aa18f97"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("3944a672-7bf7-9b01-e851-8ea46c4486e6"),
+                            Value = "Your email confirmation code: {0}. Valid for 15 minutes."
+                        },
+                        new
+                        {
+                            Id = new Guid("6891e2a1-e603-7737-b8da-0f3c7a3dc52f"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("3944a672-7bf7-9b01-e851-8ea46c4486e6"),
+                            Value = "رمز تأكيد بريدك: {0}. صالح 15 دقيقة."
                         },
                         new
                         {
@@ -4963,6 +5264,48 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("a60f5052-361e-e04f-d287-c7a05df71feb"),
                             Value = "الجوال"
+                        },
+                        new
+                        {
+                            Id = new Guid("2ff6931b-efef-53da-c33c-3bc54e2bb3a6"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("484320d9-3953-c816-e0af-e3b208e1f76e"),
+                            Value = "Email"
+                        },
+                        new
+                        {
+                            Id = new Guid("e6461fbe-c74d-cb25-a4b8-16bdf3c34941"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("484320d9-3953-c816-e0af-e3b208e1f76e"),
+                            Value = "البريد"
+                        },
+                        new
+                        {
+                            Id = new Guid("ba97eb9f-bf02-3d3b-4193-aef9129001a3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("177c1464-42ab-28f5-1eb4-3739c67b210a"),
+                            Value = "The email is not valid."
+                        },
+                        new
+                        {
+                            Id = new Guid("d84f7965-ee0b-b26f-6d80-ed0cebd738eb"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("177c1464-42ab-28f5-1eb4-3739c67b210a"),
+                            Value = "البريد غير صحيح."
+                        },
+                        new
+                        {
+                            Id = new Guid("bd3984a5-d275-b4d6-61f2-a982c210e029"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("35f920df-3d53-15e4-b3ed-b71a1b5a8a3d"),
+                            Value = "This email belongs to another account."
+                        },
+                        new
+                        {
+                            Id = new Guid("add30c97-8a23-8d69-d2da-28196e8e5074"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("35f920df-3d53-15e4-b3ed-b71a1b5a8a3d"),
+                            Value = "هذا البريد لحساب آخر."
                         },
                         new
                         {
@@ -6293,6 +6636,34 @@ namespace Redix.Api.Migrations
                             Language = "ar",
                             TranslationKeyId = new Guid("2c47eb7b-ab0d-272b-3b21-e0985b156e95"),
                             Value = "تبديل المشروع"
+                        },
+                        new
+                        {
+                            Id = new Guid("c698616f-077d-f7ed-7857-a9c13e9b523a"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("f7a2170a-dcb9-a05e-4eb7-3552a4b74a9a"),
+                            Value = "My email"
+                        },
+                        new
+                        {
+                            Id = new Guid("41e0bf6a-430c-b9f4-d872-5a81f2d6c0a8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("f7a2170a-dcb9-a05e-4eb7-3552a4b74a9a"),
+                            Value = "بريدي"
+                        },
+                        new
+                        {
+                            Id = new Guid("5bd6dd59-a029-880b-3093-0e0137c19315"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("88aa2bf0-44f2-a75d-905a-b1e7b345459a"),
+                            Value = "Enter the code sent to {0}."
+                        },
+                        new
+                        {
+                            Id = new Guid("9f28cbfa-e84d-a12d-2644-14de82e0a513"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("88aa2bf0-44f2-a75d-905a-b1e7b345459a"),
+                            Value = "أدخل الرمز المرسل إلى {0}."
                         },
                         new
                         {
@@ -15178,9 +15549,99 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("d7acf450-4902-a00a-a930-0e1512044dfa"),
+                            Id = new Guid("425d9bf8-853a-5248-d188-a39b1b97ab99"),
                             Description = "",
-                            Key = "signIn.forgotPassword"
+                            Key = "auth.forgotPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("aa92d498-c7fa-b241-be88-3e74b000c4f7"),
+                            Description = "",
+                            Key = "auth.loginOrEmail"
+                        },
+                        new
+                        {
+                            Id = new Guid("b0f7932e-e269-c2de-e2b3-ab00e3913d37"),
+                            Description = "",
+                            Key = "auth.sendCode"
+                        },
+                        new
+                        {
+                            Id = new Guid("395a3ec8-b7f4-8c32-9c97-9d81eae053c1"),
+                            Description = "",
+                            Key = "auth.codeSent"
+                        },
+                        new
+                        {
+                            Id = new Guid("e3d786ea-b1a9-dfb1-ddc6-66d90ee58b1d"),
+                            Description = "",
+                            Key = "auth.code"
+                        },
+                        new
+                        {
+                            Id = new Guid("2afc343e-ea58-f111-eb20-b8e92d2865f2"),
+                            Description = "",
+                            Key = "auth.resetWithCode"
+                        },
+                        new
+                        {
+                            Id = new Guid("eafbb093-26f7-a4cd-40ec-e5ae600af9fa"),
+                            Description = "",
+                            Key = "auth.passwordReset"
+                        },
+                        new
+                        {
+                            Id = new Guid("aa92f3cb-09b1-2692-071c-bb47bfcd05b0"),
+                            Description = "",
+                            Key = "auth.codeWrong"
+                        },
+                        new
+                        {
+                            Id = new Guid("8202733f-efc7-45a8-74ec-cbf2f1fb819c"),
+                            Description = "",
+                            Key = "auth.tooManyRequests"
+                        },
+                        new
+                        {
+                            Id = new Guid("21ceede3-21ae-2854-40bf-95c045923481"),
+                            Description = "",
+                            Key = "auth.weakPassword"
+                        },
+                        new
+                        {
+                            Id = new Guid("78ac9645-a011-3e87-805b-443d02a19fe5"),
+                            Description = "",
+                            Key = "auth.noConnection"
+                        },
+                        new
+                        {
+                            Id = new Guid("0078755e-fe71-0cc1-fba0-e0fe08f1a9a4"),
+                            Description = "",
+                            Key = "auth.refused"
+                        },
+                        new
+                        {
+                            Id = new Guid("0f1273e8-0259-c356-6f3a-6b413f32d9cc"),
+                            Description = "",
+                            Key = "email.resetSubject"
+                        },
+                        new
+                        {
+                            Id = new Guid("c767f935-2770-6049-5b0d-7902749cebe1"),
+                            Description = "",
+                            Key = "email.resetBody"
+                        },
+                        new
+                        {
+                            Id = new Guid("848b21cd-1175-4299-3a3f-d8b374502dda"),
+                            Description = "",
+                            Key = "email.confirmSubject"
+                        },
+                        new
+                        {
+                            Id = new Guid("3944a672-7bf7-9b01-e851-8ea46c4486e6"),
+                            Description = "",
+                            Key = "email.confirmBody"
                         },
                         new
                         {
@@ -15661,6 +16122,24 @@ namespace Redix.Api.Migrations
                             Id = new Guid("a60f5052-361e-e04f-d287-c7a05df71feb"),
                             Description = "",
                             Key = "users.mobile"
+                        },
+                        new
+                        {
+                            Id = new Guid("484320d9-3953-c816-e0af-e3b208e1f76e"),
+                            Description = "",
+                            Key = "users.email"
+                        },
+                        new
+                        {
+                            Id = new Guid("177c1464-42ab-28f5-1eb4-3739c67b210a"),
+                            Description = "",
+                            Key = "users.emailInvalid"
+                        },
+                        new
+                        {
+                            Id = new Guid("35f920df-3d53-15e4-b3ed-b71a1b5a8a3d"),
+                            Description = "",
+                            Key = "users.emailTaken"
                         },
                         new
                         {
@@ -16231,6 +16710,18 @@ namespace Redix.Api.Migrations
                             Id = new Guid("2c47eb7b-ab0d-272b-3b21-e0985b156e95"),
                             Description = "",
                             Key = "sharedSettings.switchProject"
+                        },
+                        new
+                        {
+                            Id = new Guid("f7a2170a-dcb9-a05e-4eb7-3552a4b74a9a"),
+                            Description = "",
+                            Key = "settings.myEmail"
+                        },
+                        new
+                        {
+                            Id = new Guid("88aa2bf0-44f2-a75d-905a-b1e7b345459a"),
+                            Description = "",
+                            Key = "settings.emailConfirm"
                         },
                         new
                         {
@@ -20118,6 +20609,21 @@ namespace Redix.Api.Migrations
 
             modelBuilder.Entity("Redix.Api.Auth.Device", b =>
                 {
+                    b.HasOne("Redix.Api.Auth.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Redix.Api.Auth.EmailCode", b =>
+                {
+                    b.HasOne("Redix.Api.Lookup<Redix.Api.Auth.EmailCodePurpose>", null)
+                        .WithMany()
+                        .HasForeignKey("Purpose")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Redix.Api.Auth.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")

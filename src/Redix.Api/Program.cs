@@ -1,9 +1,11 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api;
@@ -13,6 +15,7 @@ using Redix.Api.Config;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Documents;
+using Redix.Api.Email;
 using Redix.Api.Entries;
 using Redix.Api.Import;
 using Redix.Api.Partners;
@@ -56,12 +59,29 @@ builder.Services.AddRateLimiter(limiter =>
     limiter.AddPolicy(RegistrationEndpoints.RegistrationLimit, context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("Registration:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
+    limiter.AddPolicy(EmailCode.AskingLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailCodes:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
 });
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(DatabaseConnection.Of(services.GetRequiredService<IConfiguration>()), sql => sql.UseParameterizedCollectionMode(ParameterTranslationMode.Parameter))
     .UseSeeding((context, _) => AdminSeed.Seed(context, services))
     .UseAsyncSeeding((context, _, cancellation) => AdminSeed.SeedAsync(context, services, cancellation)));
 builder.Services.AddOptions<AttachmentOptions>().BindConfiguration("Attachments");
+builder.Services.AddOptions<EmailOptions>().BindConfiguration("Email");
+if (builder.Environment.IsEnvironment("Dev"))
+{
+    builder.Services.AddSingleton<EmailSender, FolderEmailSender>();
+}
+else
+{
+    builder.Services.AddSingleton<EmailSender, AzureEmailSender>();
+}
+builder.Services.AddRequestLocalization(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture(CultureInfo.CurrentCulture, CultureInfo.GetCultureInfo("ar"));
+    options.SupportedUICultures = [CultureInfo.GetCultureInfo("ar"), CultureInfo.GetCultureInfo("en")];
+});
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -85,6 +105,7 @@ if (!app.Environment.IsProduction())
 }
 
 app.UseHttpsRedirection();
+app.UseRequestLocalization();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -92,6 +113,8 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.MapTranslations();
 app.MapConfig();
 app.MapAuth();
+app.MapPasswordReset();
+app.MapMyEmail();
 app.MapProjects();
 app.MapProjectUsers();
 app.MapRegistration();
