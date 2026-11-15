@@ -19,6 +19,9 @@ public class EntryNumberTests(MigratedApiFactory factory)
     private static async Task<List<EntryRowView>> ListAsync(Ledger ledger, string query = "", HttpClient? client = null) =>
         (await (client ?? ledger.Client).GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries{query}", Json))!;
 
+    private static async Task<List<PendingEntryView>> InboxAsync(Ledger ledger) =>
+        (await ledger.Client.GetFromJsonAsync<List<PendingEntryView>>($"/projects/{ledger.ProjectId}/entries/pending", Json))!;
+
     private static Task<int> NumberOfAsync(Ledger ledger, Guid entryId) => ledger.ReadAsync(db => db.Entries.Where(entry => entry.Id == entryId).Select(entry => entry.Number).SingleAsync());
 
     [Fact]
@@ -32,6 +35,32 @@ public class EntryNumberTests(MigratedApiFactory factory)
 
         Assert.Equal((1, 2), (await NumberOfAsync(ledger, first.Id), await NumberOfAsync(ledger, second.Id)));
         Assert.Equal([1, 2], (await ListAsync(ledger)).Select(row => row.Number).Order());
+    }
+
+    [Fact]
+    public async Task AC_54_4_FinancesInboxLeadsEachWaitingEntryWithItsNumber()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (first, second) = (ledger.Purchase(100) with { Submit = true }, ledger.Purchase(200) with { Submit = true });
+        await ledger.RecordAsync(first);
+        await ledger.RecordAsync(second);
+
+        var inbox = await InboxAsync(ledger);
+
+        Assert.Equal([(first.Id, 1), (second.Id, 2)], inbox.Select(row => (row.Id, row.Number)));
+    }
+
+    [Fact]
+    public async Task AC_54_4_TheInboxShowsTheEntrysOwnNumberNotItsPlaceInTheInbox()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (draft, waiting) = (ledger.Purchase(100), ledger.Purchase(200) with { Submit = true });
+        await ledger.RecordAsync(draft);
+        await ledger.RecordAsync(waiting);
+
+        var inbox = await InboxAsync(ledger);
+
+        Assert.Equal(2, Assert.Single(inbox).Number);
     }
 
     [Fact]
