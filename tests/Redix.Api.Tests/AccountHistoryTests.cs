@@ -169,7 +169,7 @@ public class AccountHistoryTests(MigratedApiFactory factory)
         var (reader, userId) = await a.MemberAsync("Reader");
         Assert.NotEmpty(await HistoryAsync(a, reader));
 
-        await factory.WithDatabaseAsync(db => db.ProjectPermissions.Where(row => row.UserId == userId && row.ProjectId == a.ProjectId).ExecuteDeleteAsync());
+        await factory.TakeAsync(db => db.ProjectPermissions.Where(row => row.UserId == userId && row.ProjectId == a.ProjectId));
 
         Assert.Equal(HttpStatusCode.Forbidden, (await reader.GetAsync(PathOf(a))).StatusCode);
     }

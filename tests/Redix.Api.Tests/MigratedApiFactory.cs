@@ -157,6 +157,13 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await work(scope.ServiceProvider.GetRequiredService<RedixDbContext>());
     }
 
+    /// <summary>Removes the rows <paramref name="which"/> picks through a save, as REDIX itself takes a permission, so the person's kept access is forgotten (redix-api #120).</summary>
+    public Task TakeAsync<TRow>(Func<RedixDbContext, IQueryable<TRow>> which) where TRow : class => WithDatabaseAsync(async db =>
+    {
+        db.RemoveRange(await which(db).ToListAsync());
+        await db.SaveChangesAsync();
+    });
+
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
 

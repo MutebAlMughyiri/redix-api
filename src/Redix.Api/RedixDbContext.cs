@@ -28,8 +28,13 @@ namespace Redix.Api;
 /// GUID ids made in code (<c>Guid.CreateVersion7</c>), never by the database, so a new record added through a navigation is inserted, and each table's schema: <c>project</c> for
 /// one marked <see cref="IProjectRow"/>, <c>dbo</c> for REDIX's core (redix-api #123, D5).
 /// </summary>
-public class RedixDbContext(DbContextOptions<RedixDbContext> options) : DbContext(options)
+/// <param name="options">How it connects.</param>
+/// <param name="access">What each person may do, kept between requests (redix-api #120).</param>
+public class RedixDbContext(DbContextOptions<RedixDbContext> options, AccessCache access) : DbContext(options)
 {
+    /// <summary>What each person may do, kept between requests; <see cref="UserAccess.OfAsync"/> reads through it (redix-api #120 D2).</summary>
+    public AccessCache Access => access;
+
     /// <summary>How long an enum member's name may be where the database stores it: in a lookup table, and in a column that stores the enum by name.</summary>
     private const int EnumNameMaxLength = 30;
 

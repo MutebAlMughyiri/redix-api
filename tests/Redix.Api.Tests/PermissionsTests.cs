@@ -46,7 +46,7 @@ public class PermissionsTests(MigratedApiFactory factory)
         await factory.GiveAsync(user.Id, projectId, [Permission.ManageProject]);
         Assert.Equal(HttpStatusCode.OK, (await addUnit()).StatusCode);
 
-        await factory.WithDatabaseAsync(db => db.ProjectPermissions.Where(row => row.UserId == user.Id && row.Permission == Permission.ManageProject).ExecuteDeleteAsync());
+        await factory.TakeAsync(db => db.ProjectPermissions.Where(row => row.UserId == user.Id && row.Permission == Permission.ManageProject));
         Assert.Equal(HttpStatusCode.Forbidden, (await addUnit()).StatusCode);
     }
 
@@ -118,7 +118,7 @@ public class PermissionsTests(MigratedApiFactory factory)
 
         foreach (var permission in routes.SelectMany(route => route.Permissions).Distinct())
         {
-            await factory.WithDatabaseAsync(db => db.SystemPermissions.Where(row => row.UserId == user.Id && row.Permission == permission).ExecuteDeleteAsync());
+            await factory.TakeAsync(db => db.SystemPermissions.Where(row => row.UserId == user.Id && row.Permission == permission));
             foreach (var route in routes.Where(route => route.Permissions.Contains(permission)))
             {
                 var status = (await client.SendAsync(route.Request())).StatusCode;

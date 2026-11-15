@@ -63,8 +63,11 @@ builder.Services.AddRateLimiter(limiter =>
         context.Connection.RemoteIpAddress?.ToString() ?? "",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailCodes:PermitsPerHour", 5), Window = TimeSpan.FromHours(1) }));
 });
+builder.Services.AddSingleton<AccessCache>();
+builder.Services.AddSingleton<AccessChanges>();
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(DatabaseConnection.Of(services.GetRequiredService<IConfiguration>()), sql => sql.UseParameterizedCollectionMode(ParameterTranslationMode.Parameter))
+    .AddInterceptors(services.GetRequiredService<AccessChanges>())
     .UseSeeding((context, _) => AdminSeed.Seed(context, services))
     .UseAsyncSeeding((context, _, cancellation) => AdminSeed.SeedAsync(context, services, cancellation)));
 builder.Services.AddOptions<AttachmentOptions>().BindConfiguration("Attachments");
