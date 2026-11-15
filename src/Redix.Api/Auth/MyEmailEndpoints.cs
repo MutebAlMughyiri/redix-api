@@ -47,8 +47,8 @@ public static class MyEmailEndpoints
     }
 
     /// <summary>
-    /// Makes the address the last code went to the person's email once that code is entered (AC-10.4), spending it, with its History line. A code wrong, expired, spent, out of tries or never
-    /// asked for answers <c>codeWrong</c>; an address another account took meanwhile, <c>emailTaken</c> (R9).
+    /// Makes the address the last code went to the person's email once that code is entered (AC-10.4), spending it and ending the codes sent before, with its History line. A code
+    /// wrong, expired, spent, out of tries or never asked for answers <c>codeWrong</c>; an address another account took meanwhile, <c>emailTaken</c> (R9).
     /// </summary>
     /// <param name="request">The six digits the email carried.</param>
     /// <param name="principal">The signed-in session.</param>
@@ -71,7 +71,7 @@ public static class MyEmailEndpoints
         }
 
         code.Spend(now);
-        user.Email = code.Email;
+        await user.ChangeEmailAsync(code.Email, db);
         db.AddHistory(user, HistoryAction.Update, user.Id, now);
         await db.SaveChangesAsync();
         return Results.NoContent();

@@ -87,4 +87,7 @@ public class EmailCode
 
     /// <summary>Spends the code at <paramref name="now"/>, so it never works again (D3). The caller saves.</summary>
     public void Spend(DateTime now) => UsedAt = now;
+
+    /// <summary>Ends every code sent for <paramref name="user"/>, whatever its purpose, as when their email changes (redix-api #127). The caller saves.</summary>
+    public static async Task EndEveryOneOfAsync(User user, RedixDbContext db) => db.EmailCodes.RemoveRange(await db.EmailCodes.Where(code => code.UserId == user.Id).ToListAsync());
 }

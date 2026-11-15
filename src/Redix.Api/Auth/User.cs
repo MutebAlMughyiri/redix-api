@@ -122,6 +122,20 @@ public class User
         return await db.Users.AnyAsync(user => user.Email == email && user.Id != userId) ? (StatusCodes.Status409Conflict, "EmailTaken") : (0, "");
     }
 
+    /// <summary>
+    /// Makes <paramref name="email"/>, already checked, the person's email, by their manager (AC-07.8) or by themselves once its code is entered (AC-10.4). Another address ends every code
+    /// sent before it, so none sent to the old address, nor to one never confirmed, works any more (redix-api #127); the same address ends none. The caller saves.
+    /// </summary>
+    public async Task ChangeEmailAsync(string email, RedixDbContext db)
+    {
+        if (email == Email)
+        {
+            return;
+        }
+        Email = email;
+        await EmailCode.EndEveryOneOfAsync(this, db);
+    }
+
     /// <summary>The refusal of a new user's fields, already trimmed, as its code; empty when all are acceptable.</summary>
     public static string RefusalOfNew(string displayName, string username, string mobile, string temporaryPassword)
     {

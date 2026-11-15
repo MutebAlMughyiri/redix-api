@@ -42,8 +42,9 @@ public static class UsersEndpoints
     }
 
     /// <summary>
-    /// Changes a user's name, mobile and email, which the manager may change as he typed it when adding them (redix-api #127, AC-07.8). A name outside its limit answers <c>invalidName</c>; a
-    /// mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>; an email not well formed <c>emailInvalid</c>, and one another account holds <c>emailTaken</c> (R9).
+    /// Changes a user's name, mobile and email, which the manager may change as he typed it when adding them (redix-api #127, AC-07.8); another email ends the codes sent before it.
+    /// A name outside its limit answers <c>invalidName</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>; an email not well formed
+    /// <c>emailInvalid</c>, and one another account holds <c>emailTaken</c> (R9).
     /// </summary>
     /// <param name="userId">The user to change.</param>
     /// <param name="request">The new name, mobile and email.</param>
@@ -69,8 +70,7 @@ public static class UsersEndpoints
         {
             user.DisplayName = displayName;
             user.Mobile = mobile;
-            user.Email = email;
-            return Task.CompletedTask;
+            return user.ChangeEmailAsync(email, db);
         });
     }
 

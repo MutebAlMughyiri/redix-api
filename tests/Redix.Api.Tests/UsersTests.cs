@@ -39,6 +39,16 @@ public class UsersTests(MigratedApiFactory factory)
     private static Task<HttpResponseMessage> ResetAsync(HttpClient client, Guid userId, string password = Temporary) =>
         client.PostAsJsonAsync($"/users/{userId}/reset-password", new ResetPasswordRequest(password));
 
+    /// <summary>The code «نسيت كلمة المرور؟» sends to <paramref name="email"/>, the email of the account <paramref name="login"/> names (redix-api #127).</summary>
+    private async Task<string> ResetCodeAsync(string login, string email)
+    {
+        (await factory.CreateClient().PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(login))).EnsureSuccessStatusCode();
+        return await factory.Emails.LastCodeToAsync(email);
+    }
+
+    private Task<HttpResponseMessage> ResetWithCodeAsync(string login, string code) =>
+        factory.CreateClient().PostAsJsonAsync("/auth/reset-with-code", new ResetWithCodeRequest(login, code, "Remembered-2"));
+
     [Fact]
     public async Task EditingChangesTheNameAndMobile()
     {
@@ -62,6 +72,47 @@ public class UsersTests(MigratedApiFactory factory)
         var kept = await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "", email)));
 
         Assert.Equal((email, email), (changed.Email, kept.Email));
+    }
+
+    [Fact]
+    public async Task R127_TheManagerChangingAPersonsEmailEndsTheResetCodeSentToTheOldOne()
+    {
+        var old = MigratedApiFactory.NewEmail();
+        var user = await factory.AddUserAsync(Password, email: old);
+        var manager = await ManagerOfAsync(user);
+        var code = await ResetCodeAsync(user.Username, old);
+
+        await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", MigratedApiFactory.NewEmail())));
+
+        Assert.Equal("codeWrong", await CodeOf(await ResetWithCodeAsync(user.Username, code)));
+    }
+
+    [Fact]
+    public async Task R127_TheManagerChangingAPersonsEmailEndsTheirCodeToAnAddressNotYetConfirmed()
+    {
+        var user = await factory.AddUserAsync(Password, email: MigratedApiFactory.NewEmail());
+        var manager = await ManagerOfAsync(user);
+        var person = await factory.ClientSignedInAsAsync(user, Password);
+        var wanted = MigratedApiFactory.NewEmail();
+        (await person.PostAsJsonAsync("/me/email", new MyEmailRequest(wanted))).EnsureSuccessStatusCode();
+        var code = await factory.Emails.LastCodeToAsync(wanted);
+
+        await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", MigratedApiFactory.NewEmail())));
+
+        Assert.Equal("codeWrong", await CodeOf(await person.PostAsJsonAsync("/me/email/confirm", new ConfirmMyEmailRequest(code))));
+    }
+
+    [Fact]
+    public async Task R127_AnEditThatKeepsTheEmailLeavesItsResetCodeWorking()
+    {
+        var email = MigratedApiFactory.NewEmail();
+        var user = await factory.AddUserAsync(Password, email: email);
+        var manager = await ManagerOfAsync(user);
+        var code = await ResetCodeAsync(user.Username, email);
+
+        await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف الأول", "0511111111", email)));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await ResetWithCodeAsync(user.Username, code)).StatusCode);
     }
 
     [Fact]

@@ -42,13 +42,14 @@ Settings › «بريدي» changes the signed-in person's own email (redix-api 
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
 | `POST /me/email` with `{ email }` | Sends a six-digit code to the new address, in the language of `Accept-Language`; the email stays as it was | `202`; `400` `emailInvalid`; `409` `emailTaken`; `429` asked too often (`EmailCodes:PermitsPerHour`) |
-| `POST /me/email/confirm` with `{ code }` | Makes the address the last code went to the person's email | `204`; `400` `codeWrong`; `409` `emailTaken` |
+| `POST /me/email/confirm` with `{ code }` | Makes the address the last code went to the person's email, ending every code sent before it | `204`; `400` `codeWrong`; `409` `emailTaken` |
 
 A session answers `email`, which Settings shows; empty while none is set. The codes are kept in `EmailCodes` (UC-002).
 
 | Rule | Code | Test |
 | --- | --- | --- |
 | A new address holds only once its code is entered, and the old one until then (AC-10.4) | `MyEmailEndpoints.Ask`, `Confirm`, `EmailCode` | `MyEmailTests.AC_10_4_ANewAddressHoldsOnlyOnceItsCodeIsEnteredAndTheOldOneUntilThen`, `AC_10_4_AWrongCodeLeavesTheOldAddress` |
+| A new address holding ends the reset code sent to the old one; asking a code for a new address ends none while the old one holds (redix-api #127) | `MyEmailEndpoints.Confirm`, `User.ChangeEmailAsync`, `EmailCode.EndEveryOneOfAsync` | `MyEmailTests.R127_ANewAddressHoldingEndsTheResetCodeSentToTheOldOne`, `R127_ACodeAskedForANewAddressEndsNoResetCodeWhileTheOldAddressHolds` |
 | A code of another purpose, or none asked for, confirms nothing | `EmailCode.CheckAsync` | `MyEmailTests.AC_10_4_AResetCodeConfirmsNoAddressAndNoCodeConfirmsNothing` |
 | The new address is well formed and no other account holds it, when asked and when confirmed (R9) | `User.RefusalOfEmailAsync` | `MyEmailTests.R9_AnAddressAnotherAccountHoldsOrOneNotWellFormedIsRefusedAndNothingIsSent`, `R9_AnAddressAnotherAccountTookBeforeItsCodeWasEnteredIsRefused` |
 | The admin sets his email here and then resets his password with it (D6, R10) | `MyEmailEndpoints`, `PasswordResetEndpoints` | `MyEmailTests.D6_R10_TheAdminSetsHisEmailInSettingsAndThenResetsWithIt` |

@@ -29,6 +29,9 @@ public class MyEmailTests(MigratedApiFactory factory)
 
     private Task<HttpResponseMessage> ForgotAsync(string login) => factory.CreateClient().PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(login));
 
+    private Task<HttpResponseMessage> ResetWithCodeAsync(string login, string code) =>
+        factory.CreateClient().PostAsJsonAsync("/auth/reset-with-code", new ResetWithCodeRequest(login, code, "Remembered-2"));
+
     /// <summary>Someone signed in whose email is <paramref name="email"/>.</summary>
     private async Task<(User User, HttpClient Client)> SignedInAsync(string email = "", bool isAdmin = false)
     {
@@ -84,6 +87,33 @@ public class MyEmailTests(MigratedApiFactory factory)
         Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(old))));
 
         Assert.Equal(old, (await SessionOfAsync(user)).Email);
+    }
+
+    [Fact]
+    public async Task R127_ANewAddressHoldingEndsTheResetCodeSentToTheOldOne()
+    {
+        var (old, changed) = (MigratedApiFactory.NewEmail(), MigratedApiFactory.NewEmail());
+        var (user, client) = await SignedInAsync(old);
+        await ForgotAsync(user.Username);
+        var resetCode = await factory.Emails.LastCodeToAsync(old);
+        await AskAsync(client, changed);
+
+        await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(changed));
+
+        Assert.Equal("codeWrong", await CodeOf(await ResetWithCodeAsync(user.Username, resetCode)));
+    }
+
+    [Fact]
+    public async Task R127_ACodeAskedForANewAddressEndsNoResetCodeWhileTheOldAddressHolds()
+    {
+        var old = MigratedApiFactory.NewEmail();
+        var (user, client) = await SignedInAsync(old);
+        await ForgotAsync(user.Username);
+        var resetCode = await factory.Emails.LastCodeToAsync(old);
+
+        await AskAsync(client, MigratedApiFactory.NewEmail());
+
+        Assert.Equal(HttpStatusCode.NoContent, (await ResetWithCodeAsync(user.Username, resetCode)).StatusCode);
     }
 
     [Fact]
