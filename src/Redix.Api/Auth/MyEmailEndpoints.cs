@@ -15,8 +15,8 @@ public static class MyEmailEndpoints
     /// <summary>Maps <c>POST /me/email</c>, limited by <see cref="EmailCode.AskingLimit"/>, and <c>POST /me/email/confirm</c>, for any working session.</summary>
     public static void MapMyEmail(this WebApplication app)
     {
-        app.MapPost("/me/email", Ask).RequireRateLimiting(EmailCode.AskingLimit);
-        app.MapPost("/me/email/confirm", Confirm);
+        app.MapPost("/me/email", Ask).RequireAuthorization(SessionPolicies.Working).RequireRateLimiting(EmailCode.AskingLimit);
+        app.MapPost("/me/email/confirm", Confirm).RequireAuthorization(SessionPolicies.Working);
     }
 
     /// <summary>
