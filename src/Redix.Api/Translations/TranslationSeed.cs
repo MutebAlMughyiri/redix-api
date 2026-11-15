@@ -826,6 +826,7 @@ public static class TranslationSeed
         ("contracts.afterApproval", "after approval", "بعد الاعتماد"),
         ("home.hideDetails", "Hide details", "إخفاء التفاصيل"),
         ("home.showDetails", "Show details", "إظهار التفاصيل"),
+        ("home.widgetReadAt", "Updated {0}", "آخر تحديث {0}"),
         ("contractorPayments.remainingAfter", "Remaining after this payment", "المتبقي بعد الدفعة"),
         ("contractorPayments.overrun", "This payment goes beyond the contract's value. You can still save it.", "هذه الدفعة تتجاوز قيمة العقد. يمكنك الحفظ رغم ذلك."),
         ("contractorPayments.savedOverrun", "Saved, with the contract overrun.", "حُفظت، والعقد متجاوَز."),

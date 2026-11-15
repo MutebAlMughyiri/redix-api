@@ -17,6 +17,16 @@ public class TranslationsTests(MigratedApiFactory factory)
         Assert.Equal("REDIX", words["app.title"]);
     }
 
+    [Theory]
+    [InlineData("ar", "آخر تحديث {0}")]
+    [InlineData("en", "Updated {0}")]
+    public async Task AC_86_7_WhenTheWidgetsRowsWereReadIsAWordOfEachLanguageWithThePlaceOfTheTime(string language, string readAt)
+    {
+        var words = await factory.CreateClient().GetFromJsonAsync<Dictionary<string, string>>($"/translations/{language}");
+
+        Assert.Equal(readAt, words!["home.widgetReadAt"]);
+    }
+
     [Fact]
     public async Task UnchangedBundleAnswersNotModified()
     {
