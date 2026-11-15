@@ -226,6 +226,18 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AFilesMomentReadBackNamesItsZoneSoAPhoneShowsItInItsOwnTime()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var request = ledger.Purchase() with { AttachmentId = await ledger.FileAsync() };
+        await ledger.RecordAsync(request);
+
+        using var page = JsonDocument.Parse(await ledger.Client.GetStringAsync($"/projects/{ledger.ProjectId}/entries/{request.Id}"));
+
+        Assert.EndsWith("Z", page.RootElement.GetProperty("attachments")[0].GetProperty("uploadedAt").GetString());
+    }
+
+    [Fact]
     public async Task AC_46_10g_AnEntryWithNoFileCarriesNoneAndNoOtherEntrysFile()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

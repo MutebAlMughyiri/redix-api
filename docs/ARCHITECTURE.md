@@ -58,6 +58,7 @@ Every entry, whatever its table, is recorded by `EntryRecording` through one rou
 | Rule | Where it lives |
 | --- | --- |
 | Money is `decimal(19,4)`, rounding only in totals (BR-13); no VAT is stored, the VAT workbook works it out (redix-api #96, D4) | `RedixDbContext.ConfigureConventions`, `VatStatementFiles` |
+| Every moment is kept and read back as UTC, so its JSON names the zone and the phone shows it in its own time | `UtcMoment`, through `RedixDbContext.ConfigureConventions` |
 | Every table has a required `rowversion`, for sync and concurrency | `RedixDbContext.OnModelCreating` |
 | REDIX's core tables are in the schema `dbo`; every table whose rows belong to one project, by its own `ProjectId` or through its parent, is marked `IProjectRow` and kept in the schema `project`, so in release 2 the project's tables can move to its own database (redix-api #123, D4 to D6). History, the lookups and the notifications stay core, and so do the tables of who may do what in which project, ProjectPermissions, ProjectRoleNames, InactiveMembers, UserDefaultProjects and ProjectStructureSources, since they let a person sign in once and see every project they belong to (D6) | `IProjectRow`, `RedixDbContext.OnModelCreating`, `SchemaTests` |
 | Ids are time-ordered GUIDs (`Guid.CreateVersion7`) made in code, never by the database | Each entity's `Id`; `RedixDbContext.OnModelCreating` |

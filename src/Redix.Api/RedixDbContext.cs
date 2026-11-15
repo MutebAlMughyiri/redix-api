@@ -184,6 +184,7 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options, AccessCach
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder.Properties<decimal>().HavePrecision(19, 4);
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcMoment>();
     }
 
     /// <inheritdoc />
