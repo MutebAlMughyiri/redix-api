@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Projects;
 
 namespace Redix.Api.Auth;
 
@@ -33,7 +34,7 @@ public class UserAccess(List<Permission> everywhere, ILookup<Guid, Permission> b
         var everywhere = await db.SystemPermissions.Where(row => row.UserId == userId).Select(row => row.Permission).ToListAsync();
         var inProjects = await db.ProjectPermissions
             .Where(row => row.UserId == userId
-                && db.Projects.Any(project => project.Id == row.ProjectId && Projects.Project.ApprovedStatuses.Contains(project.Status))
+                && db.Projects.Any(project => project.Id == row.ProjectId && Project.ApprovedStatuses.Contains(project.Status))
                 && !db.InactiveMembers.Any(inactive => inactive.ProjectId == row.ProjectId && inactive.UserId == userId))
             .Select(row => new { row.ProjectId, row.Permission }).ToListAsync();
         var chosen = await db.ChosenPartners.Where(row => row.UserId == userId).Select(row => new { row.ProjectId, row.PartnerId }).ToListAsync();
