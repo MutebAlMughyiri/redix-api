@@ -13,6 +13,7 @@ using Redix.Api.Partners;
 using Redix.Api.Reports;
 using Redix.Api.Revenue;
 using Redix.Api.Structure;
+using UglyToad.PdfPig;
 
 namespace Redix.Api.Tests;
 
@@ -711,7 +712,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     /// <summary>Every one of <paramref name="figures"/> is a word of <paramref name="pdf"/>, as many times as the workbook shows it, so no figure can stand in for another.</summary>
     private static void AssertOnThePdf(List<string> figures, byte[] pdf)
     {
-        using var document = UglyToad.PdfPig.PdfDocument.Open(pdf);
+        using var document = PdfDocument.Open(pdf);
         var words = document.GetPages().SelectMany(page => page.GetWords()).GroupBy(word => word.Text).ToDictionary(group => group.Key, group => group.Count());
         Assert.All(figures.GroupBy(figure => figure), figure => Assert.True(words.GetValueOrDefault(figure.Key) >= figure.Count(), $"{figure.Key}: {figure.Count()} in the workbook, {words.GetValueOrDefault(figure.Key)} on the PDF"));
     }
