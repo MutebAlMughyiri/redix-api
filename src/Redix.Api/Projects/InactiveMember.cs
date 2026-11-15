@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Auth;
 using Redix.Api.History;
 
 namespace Redix.Api.Projects;
@@ -7,7 +8,7 @@ namespace Redix.Api.Projects;
 /// A person made inactive in one project by whoever manages its users (redix-api #126, D1): he keeps his permissions and entries there, and holds none of them until made active
 /// again. No row means active, and each person has at most one row in a project.
 /// </summary>
-public class InactiveMember
+public class InactiveMember : IAccessRow
 {
     /// <summary>The row's id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();

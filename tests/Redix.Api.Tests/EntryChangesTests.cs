@@ -186,7 +186,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
         var (field, request, fieldId) = await FieldDraftAsync(ledger);
-        await factory.WithDatabaseAsync(db => db.ProjectPermissions.Where(row => row.UserId == fieldId && row.Permission == Permission.DeleteEntries).ExecuteDeleteAsync());
+        await factory.TakeAsync(db => db.ProjectPermissions.Where(row => row.UserId == fieldId && row.Permission == Permission.DeleteEntries));
 
         (await EditAsync(field, ledger, request with { Description = "تصحيح" })).EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.Forbidden, (await DeleteAsync(field, ledger, request.Id)).StatusCode);

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
 
 namespace Redix.Api.Partners;
@@ -18,14 +17,12 @@ public readonly record struct PartnerSight(bool SeesAll, List<Guid> Chosen)
     /// <summary>What the caller of <paramref name="principal"/> sees of the partners of <paramref name="projectId"/>.</summary>
     public static Task<PartnerSight> OfAsync(ClaimsPrincipal principal, Guid projectId, RedixDbContext db) => OfUserAsync(AccessTokens.UserIdOf(principal), projectId, db);
 
-    /// <summary>What <paramref name="userId"/> sees of the partners of <paramref name="projectId"/>.</summary>
+    /// <summary>What <paramref name="userId"/> sees of the partners of <paramref name="projectId"/>, from their one access (redix-api #120 D5).</summary>
     public static async Task<PartnerSight> OfUserAsync(Guid userId, Guid projectId, RedixDbContext db)
     {
-        var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
-        var chosen = held.Contains(Permission.SeeChosenCapital)
-            ? await db.ChosenPartners.Where(row => row.ProjectId == projectId && row.UserId == userId).Select(row => row.PartnerId).ToListAsync()
-            : [];
-        return new(held.Contains(Permission.SeeAllCapital), chosen);
+        var access = await UserAccess.OfAsync(userId, db);
+        var held = access.In(projectId);
+        return new(held.Contains(Permission.SeeAllCapital), held.Contains(Permission.SeeChosenCapital) ? access.ChosenIn(projectId) : []);
     }
 
     /// <summary>True when the caller sees the partner <paramref name="partnerId"/>.</summary>

@@ -3,7 +3,7 @@ using Redix.Api.Auth;
 namespace Redix.Api.Projects;
 
 /// <summary>One permission one user holds in one project (FR-36), ticked by whoever manages its users. It counts only in its project (BR-33); holding <see cref="Permission.ReadProject"/> is being in the project, and no row is not being in it.</summary>
-public class ProjectPermission
+public class ProjectPermission : IAccessRow
 {
     /// <summary>What can be ticked in a project: every permission but the system's own.</summary>
     public static IReadOnlyList<Permission> InAProject { get; } = [.. Enum.GetValues<Permission>().Where(permission => permission != Permission.ApproveProjects)];
