@@ -205,6 +205,27 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R5_AnEditKeepsTheFileSharedOntoTheEntryAndAFileChosenInTheFormReplacesOnlyItsOwn()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var own = await ledger.FileAsync();
+        var request = ledger.Purchase() with { AttachmentId = own };
+        await ledger.RecordAsync(request);
+        factory.Time.Advance(TimeSpan.FromMinutes(1));
+        var shared = await ledger.FileAsync();
+        (await AttachAsync(ledger.Client, ledger, request.Id, Invoice(shared))).EnsureSuccessStatusCode();
+
+        (await ledger.ChangeAsync(request with { Description = "بعد المشاركة" })).EnsureSuccessStatusCode();
+        var afterEdit = (await FilesOfAsync(ledger, request.Id)).Select(link => link.AttachmentId).Order().ToList();
+        factory.Time.Advance(TimeSpan.FromMinutes(1));
+        var chosen = await ledger.FileAsync();
+        (await ledger.ChangeAsync(request with { AttachmentId = chosen })).EnsureSuccessStatusCode();
+
+        Assert.Equal(new[] { own, shared }.Order(), afterEdit);
+        Assert.Equal(new[] { shared, chosen }.Order(), (await FilesOfAsync(ledger, request.Id)).Select(link => link.AttachmentId).Order());
+    }
+
+    [Fact]
     public async Task AC_46_10g_AnEntryWithNoFileCarriesNoneAndNoOtherEntrysFile()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

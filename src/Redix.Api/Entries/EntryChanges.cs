@@ -43,11 +43,14 @@ public static class EntryChanges
     /// <summary>The same question, reading what <paramref name="userId"/> holds in the entry's project.</summary>
     public static async Task<bool> MayHandleAsync(Entry entry, Guid userId, RedixDbContext db) => MayHandle(entry, userId, (await UserAccess.OfAsync(userId, db)).In(entry.ProjectId));
 
-    /// <summary>Replaces what <paramref name="existing"/> holds with <paramref name="edited"/> and <paramref name="details"/>, keeping who entered it and when, and its status unless it is sent now. The History table holds the values before and after.</summary>
+    /// <summary>
+    /// Replaces what <paramref name="existing"/> holds with <paramref name="edited"/> and <paramref name="details"/>, keeping who entered it and when, and its status unless it is sent now. The History table holds the values before and after.
+    /// Of its files only the oldest is replaced, the one the edit form shows and sends back; a file shared onto it later stays (redix-app #115, R5).
+    /// </summary>
     public static async Task ReplaceAsync(Entry existing, Entry edited, List<object> details, Guid userId, DateTime at, RedixDbContext db)
     {
         await using var transaction = await db.Database.BeginTransactionAsync();
-        await RemoveDetailsAsync(existing.Id, userId, at, db);
+        await RemoveDetailsAsync(existing.Id, [.. (await FilesOfAsync(existing.Id, db)).Take(1)], userId, at, db);
         await db.SaveChangesAsync();
 
         var sending = edited.Status == EntryStatus.PendingApproval && existing.Status != EntryStatus.PendingApproval;
@@ -76,7 +79,7 @@ public static class EntryChanges
     /// <summary>Removes an entry that was never approved, with all it holds. The History table keeps what it held.</summary>
     public static async Task DeleteAsync(Entry entry, Guid userId, DateTime at, RedixDbContext db)
     {
-        await RemoveDetailsAsync(entry.Id, userId, at, db);
+        await RemoveDetailsAsync(entry.Id, await FilesOfAsync(entry.Id, db), userId, at, db);
         db.EntryDecisions.RemoveRange(await db.EntryDecisions.Where(row => row.EntryId == entry.Id).ToListAsync());
         db.Notifications.RemoveRange(await db.Notifications.Include(row => row.Entries).Where(row => row.Entries.Any(link => link.EntryId == entry.Id)).ToListAsync());
         db.AddHistory(entry, HistoryAction.Delete, userId, at);
@@ -104,7 +107,16 @@ public static class EntryChanges
         await db.SaveChangesAsync();
     }
 
-    private static async Task RemoveDetailsAsync(Guid entryId, Guid userId, DateTime at, RedixDbContext db)
+    /// <summary>The entry's files, the oldest first, as its page lists them.</summary>
+    private static Task<List<EntryAttachment>> FilesOfAsync(Guid entryId, RedixDbContext db) =>
+        (from file in db.EntryAttachments
+         join attachment in db.Attachments on file.AttachmentId equals attachment.Id
+         where file.EntryId == entryId
+         orderby attachment.UploadedAt
+         select file).ToListAsync();
+
+    /// <summary>Removes what the entry holds, of its files only <paramref name="files"/>, each with its History row.</summary>
+    private static async Task RemoveDetailsAsync(Guid entryId, List<EntryAttachment> files, Guid userId, DateTime at, RedixDbContext db)
     {
         List<object> details =
         [
@@ -112,7 +124,7 @@ public static class EntryChanges
             .. await db.PurchaseDetails.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.ContractorPaymentDetails.Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.Invoices.Where(row => row.EntryId == entryId).ToListAsync(),
-            .. await db.EntryAttachments.Where(row => row.EntryId == entryId).ToListAsync(),
+            .. files,
             .. await db.Set<RevenueDetails>().Where(row => row.EntryId == entryId).ToListAsync(),
             .. await db.CapitalMovementDetails.Where(row => row.EntryId == entryId).ToListAsync(),
         ];
