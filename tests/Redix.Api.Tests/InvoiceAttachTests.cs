@@ -226,6 +226,21 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Approvals_OpensTheEntrysOwnFileItsOldestAfterAnotherIsSharedOntoIt()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var own = await ledger.FileAsync();
+        var request = ledger.Purchase() with { AttachmentId = own, Submit = true };
+        await ledger.RecordAsync(request);
+        factory.Time.Advance(TimeSpan.FromMinutes(1));
+        (await AttachAsync(ledger.Client, ledger, request.Id, Invoice(await ledger.FileAsync()))).EnsureSuccessStatusCode();
+
+        var pending = (await ledger.Client.GetFromJsonAsync<List<PendingEntryView>>($"/projects/{ledger.ProjectId}/entries/pending", Json))!.Single(row => row.Id == request.Id);
+
+        Assert.Equal(own.ToString(), pending.AttachmentId);
+    }
+
+    [Fact]
     public async Task AFilesMomentReadBackNamesItsZoneSoAPhoneShowsItInItsOwnTime()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

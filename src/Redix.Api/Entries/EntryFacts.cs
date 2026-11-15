@@ -31,7 +31,7 @@ public sealed class EntryFacts
     public static async Task<EntryFacts> OfAsync(Guid projectId, List<Entry> entries, RedixDbContext db)
     {
         var ids = entries.Select(entry => entry.Id).ToList();
-        var files = await db.EntryAttachments.Where(row => ids.Contains(row.EntryId)).ToListAsync();
+        var files = await EntryAttachment.OldestFirst(db.EntryAttachments.Where(row => ids.Contains(row.EntryId)), db).ToListAsync();
         var fileIds = files.Select(row => row.AttachmentId).Distinct().ToList();
         var authorIds = entries.Select(entry => entry.CreatedByUserId).Distinct().ToList();
         return new EntryFacts
@@ -108,7 +108,7 @@ public sealed class EntryFacts
     /// <summary>The VAT number of its supplier.</summary>
     public string SupplierVatNumberOf(Entry entry) => SupplierOf(entry).VatNumber;
 
-    /// <summary>The id of its file; empty when it has none.</summary>
+    /// <summary>The id of its own file, its oldest; empty when it has none.</summary>
     public string AttachmentIdOf(Entry entry) => _files[entry.Id].Select(file => file.AttachmentId.ToString()).FirstOrDefault("");
 
     /// <summary>What its file is; empty when it has none.</summary>

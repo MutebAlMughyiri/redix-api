@@ -107,13 +107,8 @@ public static class EntryChanges
         await db.SaveChangesAsync();
     }
 
-    /// <summary>The entry's files, the oldest first, as its page lists them.</summary>
-    private static Task<List<EntryAttachment>> FilesOfAsync(Guid entryId, RedixDbContext db) =>
-        (from file in db.EntryAttachments
-         join attachment in db.Attachments on file.AttachmentId equals attachment.Id
-         where file.EntryId == entryId
-         orderby attachment.UploadedAt
-         select file).ToListAsync();
+    /// <summary>The entry's files, the oldest first.</summary>
+    private static Task<List<EntryAttachment>> FilesOfAsync(Guid entryId, RedixDbContext db) => EntryAttachment.OldestFirst(db.EntryAttachments.Where(row => row.EntryId == entryId), db).ToListAsync();
 
     /// <summary>Removes what the entry holds, of its files only <paramref name="files"/>, each with its History row.</summary>
     private static async Task RemoveDetailsAsync(Guid entryId, List<EntryAttachment> files, Guid userId, DateTime at, RedixDbContext db)
