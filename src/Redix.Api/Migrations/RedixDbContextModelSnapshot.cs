@@ -9761,6 +9761,62 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("65bdb956-ec05-7232-fd10-b65cc71b48a7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("4f9fa42f-814e-2bce-0215-75f4dfa42c18"),
+                            Value = "Invoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("f183a32b-362b-101d-2791-fcefe1050944"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("4f9fa42f-814e-2bce-0215-75f4dfa42c18"),
+                            Value = "فاتورة"
+                        },
+                        new
+                        {
+                            Id = new Guid("fbd734ac-3d7e-97db-2b5e-fe06e389a0d4"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("df1dc28e-effe-45b6-528b-226a34d4ec90"),
+                            Value = "Receipt voucher"
+                        },
+                        new
+                        {
+                            Id = new Guid("2a278a86-4ea0-0953-3c14-72f1855b17c8"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("df1dc28e-effe-45b6-528b-226a34d4ec90"),
+                            Value = "سند استلام"
+                        },
+                        new
+                        {
+                            Id = new Guid("503797d5-5dbc-026f-1a35-ac7e36bb69f3"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("e254479f-8933-1d9f-523f-4d98e6b45110"),
+                            Value = "Transfer receipt"
+                        },
+                        new
+                        {
+                            Id = new Guid("c47d4781-7deb-8cc5-264a-425e17571a71"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("e254479f-8933-1d9f-523f-4d98e6b45110"),
+                            Value = "إيصال تحويل"
+                        },
+                        new
+                        {
+                            Id = new Guid("514cdfb3-9c9a-38c2-29fe-b3bf2a1aa266"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("33d98d62-0eaa-dbe0-962e-0377226cef49"),
+                            Value = "File"
+                        },
+                        new
+                        {
+                            Id = new Guid("e3fba847-515e-d7e9-9d6c-99b12001fde0"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("33d98d62-0eaa-dbe0-962e-0377226cef49"),
+                            Value = "ملف"
+                        },
+                        new
+                        {
                             Id = new Guid("8ebf05b7-1607-da43-d933-797d6592d256"),
                             Language = "en",
                             TranslationKeyId = new Guid("f5d2b92f-25d4-26fb-aa40-308720f1635c"),
@@ -18062,6 +18118,30 @@ namespace Redix.Api.Migrations
                             Id = new Guid("9e3c91a6-2783-fa52-203e-fbcd93848e1d"),
                             Description = "",
                             Key = "share.attached"
+                        },
+                        new
+                        {
+                            Id = new Guid("4f9fa42f-814e-2bce-0215-75f4dfa42c18"),
+                            Description = "",
+                            Key = "entries.fileInvoice"
+                        },
+                        new
+                        {
+                            Id = new Guid("df1dc28e-effe-45b6-528b-226a34d4ec90"),
+                            Description = "",
+                            Key = "entries.fileReceipt"
+                        },
+                        new
+                        {
+                            Id = new Guid("e254479f-8933-1d9f-523f-4d98e6b45110"),
+                            Description = "",
+                            Key = "entries.fileBankReceipt"
+                        },
+                        new
+                        {
+                            Id = new Guid("33d98d62-0eaa-dbe0-962e-0377226cef49"),
+                            Description = "",
+                            Key = "entries.fileOther"
                         },
                         new
                         {

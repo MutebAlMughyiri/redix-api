@@ -39,6 +39,10 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
 
     private static Task<List<EntryAttachment>> FilesOfAsync(Ledger ledger, Guid entryId) => ledger.ReadAsync(db => db.EntryAttachments.Where(row => row.EntryId == entryId).ToListAsync());
 
+    /// <summary>The files the entry's page lists, as the entry's own route answers them (AC-46.10g).</summary>
+    private static async Task<List<EntryAttachmentView>> PageFilesAsync(Ledger ledger, Guid entryId) =>
+        (await ledger.Client.GetFromJsonAsync<EntryView>($"/projects/{ledger.ProjectId}/entries/{entryId}", Json))!.Attachments;
+
     private static async Task<(HttpClient Client, EntryRequest Request)> FieldRecordsAsync(Ledger ledger)
     {
         var (field, userId) = await ledger.MemberAsync("Field");
@@ -180,6 +184,37 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
         (await AttachAsync(ledger.Client, ledger, request.Id, Invoice(second))).EnsureSuccessStatusCode();
 
         Assert.Equal(new[] { first, second }.Order(), (await FilesOfAsync(ledger, request.Id)).Select(link => link.AttachmentId).Order());
+    }
+
+    [Fact]
+    public async Task AC_46_10g_R9_TheEntrysPageCarriesEveryFileItHoldsTheOldestFirstEachWithItsRoleNameTypeAndDate()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var first = await ledger.FileAsync();
+        var request = ledger.Purchase() with { AttachmentId = first, Submit = true };
+        await ledger.RecordAsync(request);
+        factory.Time.Advance(TimeSpan.FromMinutes(1));
+        var second = await ledger.FileAsync();
+        (await AttachAsync(ledger.Client, ledger, request.Id, Invoice(second))).EnsureSuccessStatusCode();
+
+        var files = await PageFilesAsync(ledger, request.Id);
+
+        Assert.Equal([first, second], files.Select(file => file.AttachmentId));
+        Assert.All(files, file => Assert.Equal((EntryAttachmentRole.Invoice, "invoice.jpg", "image/jpeg"), (file.Role, file.FileName, file.ContentType)));
+        Assert.Equal(TimeSpan.FromMinutes(1), files[1].UploadedAt - files[0].UploadedAt);
+    }
+
+    [Fact]
+    public async Task AC_46_10g_AnEntryWithNoFileCarriesNoneAndNoOtherEntrysFile()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var bare = ledger.Purchase(200m) with { Submit = true };
+        var other = ledger.Purchase(300m) with { AttachmentId = await ledger.FileAsync(), Submit = true };
+        await ledger.RecordAsync(bare);
+        await ledger.RecordAsync(other);
+
+        Assert.Empty(await PageFilesAsync(ledger, bare.Id));
+        Assert.Single(await PageFilesAsync(ledger, other.Id));
     }
 
     [Fact]

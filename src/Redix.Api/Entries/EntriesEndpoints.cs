@@ -307,7 +307,7 @@ public static class EntriesEndpoints
         return new EntryAnswers(entry.Description, entry.ColumnValuesByKey()).MissingOf(columns);
     }
 
-    /// <summary><paramref name="entry"/> with what its kind has, the table it is in among it (redix-api #110).</summary>
+    /// <summary><paramref name="entry"/> with what its kind has, the table it is in among it (redix-api #110), and every file it holds, the oldest first (redix-app #115, AC-46.10g).</summary>
     /// <param name="entry">The entry.</param>
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<EntryView> ViewOfAsync(Entry entry, RedixDbContext db)
@@ -323,7 +323,11 @@ public static class EntriesEndpoints
             await db.PurchaseDetails.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new PurchaseDetails(),
             payment,
             await db.Invoices.SingleOrDefaultAsync(row => row.EntryId == entry.Id) ?? new Invoice(),
-            await db.EntryAttachments.Where(row => row.EntryId == entry.Id).ToListAsync());
+            await (from file in db.EntryAttachments
+                   join attachment in db.Attachments on file.AttachmentId equals attachment.Id
+                   where file.EntryId == entry.Id
+                   orderby attachment.UploadedAt
+                   select new EntryAttachmentView(file.AttachmentId, file.Role, attachment.FileName, attachment.ContentType, attachment.UploadedAt)).ToListAsync());
     }
 }
 
@@ -359,5 +363,13 @@ public record ChangeDescriptionRequest(string Description);
 /// <param name="Purchase">A purchase's supplier; empty, with an empty id, when it names none.</param>
 /// <param name="ContractorPayment">What only a contractor payment has.</param>
 /// <param name="Invoice">The bill number it was entered with before REDIX stopped asking for one; empty on a newer entry (redix-api #96, D2).</param>
-/// <param name="Attachments">The files it carries.</param>
-public record EntryView(Entry Entry, Guid TableId, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachment> Attachments);
+/// <param name="Attachments">Every file it carries, the oldest first, which its page lists (redix-app #115, AC-46.10g).</param>
+public record EntryView(Entry Entry, Guid TableId, ExpenseDetails Expense, PurchaseDetails Purchase, ContractorPaymentDetails ContractorPayment, Invoice Invoice, List<EntryAttachmentView> Attachments);
+
+/// <summary>A file an entry carries, as its page lists it and opens it (redix-app #115, AC-46.10g).</summary>
+/// <param name="AttachmentId">The file.</param>
+/// <param name="Role">What it is to the entry: its table's role when it was kept (D5).</param>
+/// <param name="FileName">Its name, which the phone needs to open it.</param>
+/// <param name="ContentType">What it is, a picture or another file.</param>
+/// <param name="UploadedAt">When it was sent.</param>
+public record EntryAttachmentView(Guid AttachmentId, EntryAttachmentRole Role, string FileName, string ContentType, DateTime UploadedAt);
