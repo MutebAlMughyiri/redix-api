@@ -271,6 +271,9 @@ public class ReportFilesTests(MigratedApiFactory factory)
         var capital = workbook.Worksheet("رأس المال");
         Assert.Equal(("شريك", "نوع الحركة", "إضافة مبلغ", "الوصف", 1000m), (capital.Cell("A1").GetString(), capital.Cell("B2").GetString(), capital.Cell("B3").GetString(), capital.Cell("C2").GetString(), capital.Cell("G3").GetValue<decimal>()));
         Assert.Equal(("الاجمالي", 1000m), (capital.Cell("A4").GetString(), capital.Cell("G4").GetValue<decimal>()));
+        var movementType = capital.DataValidations.Single(validation => validation.Ranges.Any(range => range.Contains(capital.Cell("B3"))));
+        Assert.Equal(["إضافة مبلغ", "سحب مبلغ"], workbook.Range(movementType.Value.TrimStart('=')).Cells().Select(cell => cell.GetString()));
+        Assert.DoesNotContain(itemSheet.DataValidations, validation => validation.Ranges.Any(range => range.Contains(itemSheet.Cell(3, 2))));
         var row = itemSheet.CellsUsed().First(cell => cell.GetString() == "P1").Address.RowNumber;
         Assert.True(itemSheet.Cell(row, 5).IsEmpty() && itemSheet.Cell(row, 6).IsEmpty(), "a price and a quantity nobody entered stay blank, as in the PDF");
         Assert.Equal((itemSheet.Name, "الوصف", 115m), (itemSheet.Cell("A1").GetString(), itemSheet.Cell("B2").GetString(), itemSheet.Cell(row + 1, 11).GetValue<decimal>()));

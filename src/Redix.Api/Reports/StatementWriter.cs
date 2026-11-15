@@ -109,7 +109,7 @@ public static class StatementWriter
             }
             row++;
         }
-        for (var column = 1; column < table.Columns.Count && row > first; column++)
+        for (var column = 0; column < table.Columns.Count && row > first; column++)
         {
             var listed = table.Columns[column];
             if (listed.Choices.Count > 0)
