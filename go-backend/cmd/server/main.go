@@ -26,6 +26,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 )
 
 func main() {
@@ -71,6 +72,7 @@ func run(logger *slog.Logger) error {
 	config.Map(router, database)
 	auth.MapSessions(router, gate, database, tokens, book, now)
 	auth.MapCodes(router, gate, database, now, email.Folder{Path: settings.EmailFolder}, limits.PerHour(settings.EmailCodesPerHour, now), logger)
+	users.Map(router, gate, database, now)
 
 	address, err := listenAddress(settings.Urls)
 	if err != nil {
