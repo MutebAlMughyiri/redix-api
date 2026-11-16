@@ -13,6 +13,97 @@ import (
 	"github.com/google/uuid"
 )
 
+const activeCategoriesOf = `-- name: ActiveCategoriesOf :many
+SELECT id, project_id, name, sort_order, is_active FROM categories WHERE project_id = ? AND is_active = 1 ORDER BY sort_order, id
+`
+
+func (q *Queries) ActiveCategoriesOf(ctx context.Context, projectID uuid.UUID) ([]Category, error) {
+	rows, err := q.db.QueryContext(ctx, activeCategoriesOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Category
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.SortOrder,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const activeItemsOf = `-- name: ActiveItemsOf :many
+SELECT id, category_id, name, type, sort_order, is_active, shows_table_percentages FROM items WHERE is_active = 1 AND category_id IN (SELECT categories.id FROM categories WHERE categories.project_id = ?) ORDER BY sort_order, id
+`
+
+func (q *Queries) ActiveItemsOf(ctx context.Context, projectID uuid.UUID) ([]Item, error) {
+	rows, err := q.db.QueryContext(ctx, activeItemsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Item
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(
+			&i.ID,
+			&i.CategoryID,
+			&i.Name,
+			&i.Type,
+			&i.SortOrder,
+			&i.IsActive,
+			&i.ShowsTablePercentages,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const addCategory = `-- name: AddCategory :exec
+INSERT INTO categories (id, project_id, name, sort_order, is_active) VALUES (?, ?, ?, ?, ?)
+`
+
+type AddCategoryParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+	IsActive  bool
+}
+
+func (q *Queries) AddCategory(ctx context.Context, arg AddCategoryParams) error {
+	_, err := q.db.ExecContext(ctx, addCategory,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.SortOrder,
+		arg.IsActive,
+	)
+	return err
+}
+
 const addChosen = `-- name: AddChosen :exec
 INSERT INTO chosen_partners (id, project_id, user_id, partner_id) VALUES (?, ?, ?, ?)
 `
@@ -55,6 +146,42 @@ func (q *Queries) AddCode(ctx context.Context, arg AddCodeParams) error {
 		arg.Email,
 		arg.CodeHash,
 		arg.ExpiresAt,
+	)
+	return err
+}
+
+const addDefaultColumn = `-- name: AddDefaultColumn :exec
+INSERT INTO default_columns (id, project_id, item_type, key, name, data_type, is_core, is_required, show_in_reports, sort_order, choices)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddDefaultColumnParams struct {
+	ID            uuid.UUID
+	ProjectID     uuid.UUID
+	ItemType      int64
+	Key           string
+	Name          string
+	DataType      int64
+	IsCore        bool
+	IsRequired    bool
+	ShowInReports bool
+	SortOrder     int64
+	Choices       string
+}
+
+func (q *Queries) AddDefaultColumn(ctx context.Context, arg AddDefaultColumnParams) error {
+	_, err := q.db.ExecContext(ctx, addDefaultColumn,
+		arg.ID,
+		arg.ProjectID,
+		arg.ItemType,
+		arg.Key,
+		arg.Name,
+		arg.DataType,
+		arg.IsCore,
+		arg.IsRequired,
+		arg.ShowInReports,
+		arg.SortOrder,
+		arg.Choices,
 	)
 	return err
 }
@@ -126,6 +253,94 @@ func (q *Queries) AddInactive(ctx context.Context, arg AddInactiveParams) error 
 	return err
 }
 
+const addItem = `-- name: AddItem :exec
+INSERT INTO items (id, category_id, name, type, sort_order, is_active, shows_table_percentages) VALUES (?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddItemParams struct {
+	ID                    uuid.UUID
+	CategoryID            uuid.UUID
+	Name                  string
+	Type                  int64
+	SortOrder             int64
+	IsActive              bool
+	ShowsTablePercentages bool
+}
+
+func (q *Queries) AddItem(ctx context.Context, arg AddItemParams) error {
+	_, err := q.db.ExecContext(ctx, addItem,
+		arg.ID,
+		arg.CategoryID,
+		arg.Name,
+		arg.Type,
+		arg.SortOrder,
+		arg.IsActive,
+		arg.ShowsTablePercentages,
+	)
+	return err
+}
+
+const addItemColumn = `-- name: AddItemColumn :exec
+INSERT INTO item_columns (id, item_id, is_hidden, key, name, data_type, is_core, is_required, show_in_reports, sort_order, choices)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddItemColumnParams struct {
+	ID            uuid.UUID
+	ItemID        uuid.UUID
+	IsHidden      bool
+	Key           string
+	Name          string
+	DataType      int64
+	IsCore        bool
+	IsRequired    bool
+	ShowInReports bool
+	SortOrder     int64
+	Choices       string
+}
+
+func (q *Queries) AddItemColumn(ctx context.Context, arg AddItemColumnParams) error {
+	_, err := q.db.ExecContext(ctx, addItemColumn,
+		arg.ID,
+		arg.ItemID,
+		arg.IsHidden,
+		arg.Key,
+		arg.Name,
+		arg.DataType,
+		arg.IsCore,
+		arg.IsRequired,
+		arg.ShowInReports,
+		arg.SortOrder,
+		arg.Choices,
+	)
+	return err
+}
+
+const addNotification = `-- name: AddNotification :exec
+INSERT INTO notifications (id, user_id, project_id, kind, at, is_read) VALUES (?, ?, ?, ?, ?, ?)
+`
+
+type AddNotificationParams struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	ProjectID uuid.UUID
+	Kind      int64
+	At        moment.Moment
+	IsRead    bool
+}
+
+func (q *Queries) AddNotification(ctx context.Context, arg AddNotificationParams) error {
+	_, err := q.db.ExecContext(ctx, addNotification,
+		arg.ID,
+		arg.UserID,
+		arg.ProjectID,
+		arg.Kind,
+		arg.At,
+		arg.IsRead,
+	)
+	return err
+}
+
 const addPartner = `-- name: AddPartner :exec
 INSERT INTO partners (id, project_id, name, sort_order, is_deleted) VALUES (?, ?, ?, ?, 0)
 `
@@ -143,6 +358,29 @@ func (q *Queries) AddPartner(ctx context.Context, arg AddPartnerParams) error {
 		arg.ProjectID,
 		arg.Name,
 		arg.SortOrder,
+	)
+	return err
+}
+
+const addPaymentMethod = `-- name: AddPaymentMethod :exec
+INSERT INTO payment_methods (id, project_id, name, sort_order, is_active) VALUES (?, ?, ?, ?, ?)
+`
+
+type AddPaymentMethodParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+	IsActive  bool
+}
+
+func (q *Queries) AddPaymentMethod(ctx context.Context, arg AddPaymentMethodParams) error {
+	_, err := q.db.ExecContext(ctx, addPaymentMethod,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.SortOrder,
+		arg.IsActive,
 	)
 	return err
 }
@@ -226,6 +464,61 @@ func (q *Queries) AddStructureSource(ctx context.Context, arg AddStructureSource
 	return err
 }
 
+const addSubgroup = `-- name: AddSubgroup :exec
+INSERT INTO subgroups (id, item_id, name, sort_order) VALUES (?, ?, ?, ?)
+`
+
+type AddSubgroupParams struct {
+	ID        uuid.UUID
+	ItemID    uuid.UUID
+	Name      string
+	SortOrder int64
+}
+
+func (q *Queries) AddSubgroup(ctx context.Context, arg AddSubgroupParams) error {
+	_, err := q.db.ExecContext(ctx, addSubgroup,
+		arg.ID,
+		arg.ItemID,
+		arg.Name,
+		arg.SortOrder,
+	)
+	return err
+}
+
+const addSupplier = `-- name: AddSupplier :exec
+INSERT INTO suppliers (id, project_id, name, normalized_name, vat_number, mobile, status, is_active, is_general_cash, created_by_user_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddSupplierParams struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	Name            string
+	NormalizedName  string
+	VatNumber       string
+	Mobile          string
+	Status          int64
+	IsActive        bool
+	IsGeneralCash   bool
+	CreatedByUserID uuid.UUID
+}
+
+func (q *Queries) AddSupplier(ctx context.Context, arg AddSupplierParams) error {
+	_, err := q.db.ExecContext(ctx, addSupplier,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.NormalizedName,
+		arg.VatNumber,
+		arg.Mobile,
+		arg.Status,
+		arg.IsActive,
+		arg.IsGeneralCash,
+		arg.CreatedByUserID,
+	)
+	return err
+}
+
 const addSystemPermission = `-- name: AddSystemPermission :exec
 INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, ?)
 `
@@ -297,11 +590,11 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) error {
 }
 
 const allProjects = `-- name: AllProjects :many
-SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects ORDER BY status, start_date DESC, id DESC
+SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects ORDER BY status, start_date DESC, name COLLATE names, id
 `
 
-// Every project, the active first, then the finished, the pending and the rejected, the latest start first, and of one start the latest made, as
-// .NET answered (ProjectsEndpoints.List).
+// Every project, the active first, then the finished, the pending and the rejected, the latest start first (ProjectsEndpoints.List); projects of
+// one status and one start by name in Arabic dictionary order (D7), where .NET left them in the order SQL Server read them, which was chance.
 func (q *Queries) AllProjects(ctx context.Context) ([]Project, error) {
 	rows, err := q.db.QueryContext(ctx, allProjects)
 	if err != nil {
@@ -452,6 +745,46 @@ func (q *Queries) CountTry(ctx context.Context, arg CountTryParams) (int64, erro
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const defaultColumnsOf = `-- name: DefaultColumnsOf :many
+SELECT id, project_id, item_type, "key", name, data_type, is_core, is_required, show_in_reports, sort_order, choices FROM default_columns WHERE project_id = ? ORDER BY sort_order, id
+`
+
+// A project's default columns, the ones a new item of each type takes.
+func (q *Queries) DefaultColumnsOf(ctx context.Context, projectID uuid.UUID) ([]DefaultColumn, error) {
+	rows, err := q.db.QueryContext(ctx, defaultColumnsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DefaultColumn
+	for rows.Next() {
+		var i DefaultColumn
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ItemType,
+			&i.Key,
+			&i.Name,
+			&i.DataType,
+			&i.IsCore,
+			&i.IsRequired,
+			&i.ShowInReports,
+			&i.SortOrder,
+			&i.Choices,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const defaultProjectOf = `-- name: DefaultProjectOf :many
@@ -817,6 +1150,34 @@ func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode
 	return items, nil
 }
 
+const managersOf = `-- name: ManagersOf :many
+SELECT user_id FROM project_permissions WHERE project_id = ? AND permission = 'ManageUsers' ORDER BY id
+`
+
+// Who manages the users of a project.
+func (q *Queries) ManagersOf(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, managersOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const managersOfPending = `-- name: ManagersOfPending :many
 SELECT project_permissions.project_id, users.display_name, users.username, users.mobile
 FROM project_permissions JOIN users ON users.id = project_permissions.user_id JOIN projects ON projects.id = project_permissions.project_id
@@ -951,6 +1312,39 @@ func (q *Queries) OtherActiveManagers(ctx context.Context, arg OtherActiveManage
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const paymentMethodsOf = `-- name: PaymentMethodsOf :many
+SELECT id, project_id, name, sort_order, is_active FROM payment_methods WHERE project_id = ? ORDER BY sort_order, id
+`
+
+func (q *Queries) PaymentMethodsOf(ctx context.Context, projectID uuid.UUID) ([]PaymentMethod, error) {
+	rows, err := q.db.QueryContext(ctx, paymentMethodsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMethod
+	for rows.Next() {
+		var i PaymentMethod
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.SortOrder,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const pendingProjects = `-- name: PendingProjects :many
@@ -1553,6 +1947,48 @@ func (q *Queries) SetUnitName(ctx context.Context, arg SetUnitNameParams) error 
 	return err
 }
 
+const shownColumnsOf = `-- name: ShownColumnsOf :many
+SELECT id, item_id, is_hidden, "key", name, data_type, is_core, is_required, show_in_reports, sort_order, choices FROM item_columns
+WHERE is_hidden = 0 AND item_id IN (SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ?)
+ORDER BY sort_order, id
+`
+
+// The columns of every item of a project but those deleted, which are hidden (BR-21).
+func (q *Queries) ShownColumnsOf(ctx context.Context, projectID uuid.UUID) ([]ItemColumn, error) {
+	rows, err := q.db.QueryContext(ctx, shownColumnsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ItemColumn
+	for rows.Next() {
+		var i ItemColumn
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.IsHidden,
+			&i.Key,
+			&i.Name,
+			&i.DataType,
+			&i.IsCore,
+			&i.IsRequired,
+			&i.ShowInReports,
+			&i.SortOrder,
+			&i.Choices,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const spendCode = `-- name: SpendCode :exec
 UPDATE email_codes SET used_at = ?1 WHERE id = ?2
 `
@@ -1565,6 +2001,69 @@ type SpendCodeParams struct {
 func (q *Queries) SpendCode(ctx context.Context, arg SpendCodeParams) error {
 	_, err := q.db.ExecContext(ctx, spendCode, arg.UsedAt, arg.ID)
 	return err
+}
+
+const structureSourceOf = `-- name: StructureSourceOf :many
+SELECT structure_source_id FROM project_structure_sources WHERE project_id = ?
+`
+
+// The earlier project a registration chose to copy the structure from; none is copying the template (ProjectStructureSource.OfAsync).
+func (q *Queries) StructureSourceOf(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, structureSourceOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var structure_source_id uuid.UUID
+		if err := rows.Scan(&structure_source_id); err != nil {
+			return nil, err
+		}
+		items = append(items, structure_source_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const subgroupsOf = `-- name: SubgroupsOf :many
+SELECT id, item_id, name, sort_order FROM subgroups
+WHERE item_id IN (SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ?)
+ORDER BY sort_order, id
+`
+
+// The subgroups of every item of a project.
+func (q *Queries) SubgroupsOf(ctx context.Context, projectID uuid.UUID) ([]Subgroup, error) {
+	rows, err := q.db.QueryContext(ctx, subgroupsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Subgroup
+	for rows.Next() {
+		var i Subgroup
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.Name,
+			&i.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const unitsOf = `-- name: UnitsOf :many

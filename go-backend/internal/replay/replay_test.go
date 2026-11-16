@@ -31,12 +31,15 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/historytest"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/server"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
 	"github.com/google/uuid"
 )
 
@@ -121,7 +124,7 @@ func recorded(t *testing.T) (map[string][]step, []string, []host) {
 }
 
 // seeds is what a replay can put straight into the database, as the factory's helpers did.
-var seeds = []string{"user", "give", "inactive"}
+var seeds = []string{"user", "give", "inactive", "approve"}
 
 func TestReplayDotNetsAnswers(t *testing.T) {
 	tests, order, hosts := recorded(t)
@@ -320,6 +323,30 @@ func seed(t *testing.T, database db.DB, names mapping, s step) {
 		}
 		json.Unmarshal(s.Given, &given)
 		write(`INSERT INTO inactive_members (id, project_id, user_id) VALUES (?, ?, ?)`, uuid.NewString(), names.into(given.ProjectID), names.into(given.UserID))
+	case "approve":
+		// ApprovedProjectAsync: ProjectStructure.ApproveAsync straight in the database, in the name of the project's first permission holder - no
+		// History line and no notification, as the route would write.
+		var given struct {
+			ProjectID string `json:"projectId"`
+		}
+		json.Unmarshal(s.Given, &given)
+		projectID := uuid.MustParse(names.into(given.ProjectID))
+		err := database.InTx(context.Background(), func(tx *sql.Tx) error {
+			var manager uuid.UUID
+			if err := tx.QueryRow("SELECT user_id FROM project_permissions WHERE project_id = ? ORDER BY id LIMIT 1", projectID).Scan(&manager); err != nil {
+				return err
+			}
+			if _, err := tx.Exec("UPDATE projects SET status = 0 WHERE id = ?", projectID); err != nil {
+				return err
+			}
+			if err := structure.Copy(context.Background(), store.New(tx), projectID); err != nil {
+				return err
+			}
+			return suppliers.AddGeneralCash(context.Background(), store.New(tx), projectID, manager)
+		})
+		if err != nil {
+			t.Fatalf("seed approve: %v", err)
+		}
 	}
 }
 
@@ -391,8 +418,9 @@ func sameBody(names mapping, netType string, s step, got *httptest.ResponseRecor
 		return nil
 	}
 	netJSON, goJSON := decode(answer), decode(got.Body.String())
-	if everyones[s.Method+" "+pathPattern.ReplaceAllString(s.Path, "{id}")] {
-		return sameItems(names, netJSON, goJSON)
+	route := s.Method + " " + pathPattern.ReplaceAllString(s.Path, "{id}")
+	if everyones[route] || tiedByChance[route] {
+		return sameItems(names, netJSON, goJSON, tiedByChance[route])
 	}
 	return same(names, "$", "", netJSON, goJSON)
 }
@@ -401,15 +429,23 @@ func sameBody(names mapping, netType string, s step, got *httptest.ResponseRecor
 // since its tests share one database, while each replay starts fresh: Go's every item must be .NET's item of the same id, field by field.
 var everyones = map[string]bool{"GET /projects/registered": true}
 
+// tiedByChance are the routes whose list .NET ordered on fields two items may share, leaving such items in the order SQL Server read them - for
+// version 7 GUIDs, chance - where Go breaks the tie by name: Go's items must be .NET's items, every one, each compared with .NET's of its id.
+var tiedByChance = map[string]bool{"GET /projects": true}
+
 var pathPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 
-func sameItems(names mapping, net, got any) []string {
+// sameItems compares each of Go's items with .NET's item of the same id; every item says that .NET's answer holds no other.
+func sameItems(names mapping, net, got any, every bool) []string {
 	netItems, netOK := net.([]any)
 	goItems, goOK := got.([]any)
 	if !netOK || !goOK {
 		return same(names, "$", "", net, got)
 	}
 	var differences []string
+	if every && len(netItems) != len(goItems) {
+		differences = append(differences, fmt.Sprintf("$: %d items in .NET's answer, %d in Go's", len(netItems), len(goItems)))
+	}
 	for i, goItem := range goItems {
 		goID, _ := goItem.(map[string]any)["id"].(string)
 		var match any
@@ -435,6 +471,16 @@ func decode(text string) any {
 		return text
 	}
 	return value
+}
+
+// sets are the lists of names whose order says nothing: .NET wrote a person's permissions in the order SQL Server read their rows, which for
+// version 7 GUIDs - sorted on their last, random bytes - is chance, and the app reads them as a set. They are compared sorted.
+var sets = map[string]bool{"permissions": true}
+
+func sorted(items []any) []any {
+	kept := slices.Clone(items)
+	slices.SortFunc(kept, func(a, b any) int { return strings.Compare(fmt.Sprint(a), fmt.Sprint(b)) })
+	return kept
 }
 
 // same is every difference between .NET's value and Go's at path, learning a new id or token as it goes.
@@ -466,6 +512,9 @@ func same(names mapping, path, key string, net, got any) []string {
 		got, ok := got.([]any)
 		if !ok || len(got) != len(net) {
 			return []string{fmt.Sprintf("%s: %d items in .NET's answer, %v in Go's", path, len(net), got)}
+		}
+		if sets[key] {
+			net, got = sorted(net), sorted(got)
 		}
 		var differences []string
 		for i := range net {

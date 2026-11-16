@@ -9,11 +9,33 @@ import (
 	"github.com/google/uuid"
 )
 
+type Category struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+	IsActive  bool
+}
+
 type ChosenPartner struct {
 	ID        uuid.UUID
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
 	PartnerID uuid.UUID
+}
+
+type DefaultColumn struct {
+	ID            uuid.UUID
+	ProjectID     uuid.UUID
+	ItemType      int64
+	Key           string
+	Name          string
+	DataType      int64
+	IsCore        bool
+	IsRequired    bool
+	ShowInReports bool
+	SortOrder     int64
+	Choices       string
 }
 
 type Device struct {
@@ -43,6 +65,38 @@ type InactiveMember struct {
 	UserID    uuid.UUID
 }
 
+type Item struct {
+	ID                    uuid.UUID
+	CategoryID            uuid.UUID
+	Name                  string
+	Type                  int64
+	SortOrder             int64
+	IsActive              bool
+	ShowsTablePercentages bool
+}
+
+type ItemColumn struct {
+	ID            uuid.UUID
+	ItemID        uuid.UUID
+	IsHidden      bool
+	Key           string
+	Name          string
+	DataType      int64
+	IsCore        bool
+	IsRequired    bool
+	ShowInReports bool
+	SortOrder     int64
+	Choices       string
+}
+
+type PaymentMethod struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+	IsActive  bool
+}
+
 type Project struct {
 	ID              uuid.UUID
 	Name            string
@@ -66,6 +120,13 @@ type ProjectRoleName struct {
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
 	RoleName  string
+}
+
+type Subgroup struct {
+	ID        uuid.UUID
+	ItemID    uuid.UUID
+	Name      string
+	SortOrder int64
 }
 
 type Unit struct {

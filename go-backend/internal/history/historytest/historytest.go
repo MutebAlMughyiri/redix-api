@@ -17,6 +17,7 @@ var exempt = map[string]string{
 	"devices":               "a session's device: signing in, renewing and signing out are recorded against the user (AuthEndpoints)",
 	"email_codes":           "an emailed code is a means, not a record: the reset or the new email it leads to is recorded (EmailCode)",
 	"history":               "History itself",
+	"notifications":         "what someone is told is not a change to the books: what they are told of has its own line (NotificationsEndpoints)",
 	"goose_db_version":      "the schema's own version",
 	"sqlite_sequence":       "SQLite's own counter for History's ids",
 	"user_default_projects": "the project a person opens straight into is their own choice, never recorded (ProjectsEndpoints.SetDefault)",
@@ -25,6 +26,12 @@ var exempt = map[string]string{
 // createdWithTheirProject are the tables whose new rows .NET recorded only through their project's RegisterProject line: the units and partners a
 // project is started with (Project.New, PartnersEndpoints.DeclaredWith). A new row of one passes when the same write registered its project.
 var createdWithTheirProject = map[string]bool{"units": true, "partners": true}
+
+// copiedOnApproval are the tables whose new rows .NET recorded only through the ApproveProject line of the project they were copied into: its
+// structure, its payment methods and its general cash supplier (ProjectStructure.ApproveAsync). A new row of one passes when the same write
+// approved a project.
+var copiedOnApproval = map[string]bool{"default_columns": true, "categories": true, "items": true, "subgroups": true, "item_columns": true,
+	"payment_methods": true, "suppliers": true}
 
 // Check runs write, then fails t for each row of a table not exempt that write added, changed or removed with no new History line naming it.
 func Check(t testing.TB, database db.DB, write func()) {
@@ -39,7 +46,7 @@ func Check(t testing.TB, database db.DB, write func()) {
 
 	write()
 
-	lines, registered := map[string]bool{}, map[string]bool{}
+	lines, registered, approved := map[string]bool{}, map[string]bool{}, false
 	found, err := database.Read.Query("SELECT table_name, record_id, action FROM history WHERE id > ?", lastLine)
 	if err != nil {
 		t.Fatal(err)
@@ -51,6 +58,7 @@ func Check(t testing.TB, database db.DB, write func()) {
 		if table == "Projects" && action == "RegisterProject" {
 			registered[record] = true
 		}
+		approved = approved || (table == "Projects" && action == "ApproveProject")
 	}
 	found.Close()
 	for _, table := range tables {
@@ -58,7 +66,8 @@ func Check(t testing.TB, database db.DB, write func()) {
 		for _, id := range changed(before[table], after) {
 			_, existed := before[table][id]
 			withItsProject := createdWithTheirProject[table] && !existed && registered[after[id].project]
-			if !lines[historyName(table)+" "+id] && !withItsProject {
+			copied := copiedOnApproval[table] && !existed && approved
+			if !lines[historyName(table)+" "+id] && !withItsProject && !copied {
 				t.Errorf("History net: %s %s changed with no History line", table, id)
 			}
 		}

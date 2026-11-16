@@ -11,11 +11,14 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 	"github.com/google/uuid"
 )
@@ -28,13 +31,16 @@ type Routes struct {
 }
 
 // Map routes the projects: listing and starting them for a working session; registering one with no session, perAddress times an hour; their
-// name, description, units and closing for whoever manages the project; the default project; and the projects waiting for the admin.
+// name, description, units and closing for whoever manages the project; the default project; and for the admin, the projects waiting and the
+// decision on each.
 func Map(router *web.Router, gate *access.Gate, database db.DB, book *access.Book, clock clock.Clock, perAddress *limits.Window) {
 	p := Routes{database: database, book: book, clock: clock}
 	router.Handle("GET", "/projects", gate.Working(p.list))
 	router.Handle("POST", "/projects", gate.Working(p.create))
 	router.Handle("POST", "/projects/register", perAddress.PerAddress(p.register))
 	router.Handle("GET", "/projects/registered", gate.Needs(access.ApproveProjects, p.waiting))
+	router.Handle("POST", "/projects/{projectId:guid}/approve", gate.Needs(access.ApproveProjects, p.approve))
+	router.Handle("POST", "/projects/{projectId:guid}/reject", gate.Needs(access.ApproveProjects, p.reject))
 	manage := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.ManageProject, handler) }
 	router.Handle("PUT", "/projects/{projectId:guid}", manage(p.rename))
 	router.Handle("PUT", "/projects/{projectId:guid}/description", manage(p.describe))
@@ -319,6 +325,88 @@ func (p Routes) waiting(w http.ResponseWriter, r *http.Request, _ access.Caller)
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }
+
+// approve lets a registered project in, with its structure copied and its register started with the general cash supplier in the admin's name,
+// and tells its managers; its permissions count from the next request (BR-34, FR-05, UC-017): 404 for no such project, notPending (409) for one
+// decided already.
+func (p Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	before, waiting := p.waitingProject(w, r)
+	if !waiting {
+		return
+	}
+	after := before
+	after.Status = active
+	p.decide(w, r, caller, history.ApproveProject, notifications.ProjectApproved, before, after, func(ctx context.Context, q *store.Queries) error {
+		if err := structure.Copy(ctx, q, after.ID); err != nil {
+			return err
+		}
+		return suppliers.AddGeneralCash(ctx, q, after.ID, caller.UserID)
+	})
+}
+
+// reject refuses a registered project, saying why, which its manager sees (AC-52.2): 404 for no such project, notPending (409) for one decided
+// already, invalidReason (400) for a reason empty or over 500 characters.
+func (p Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	var request struct {
+		Reason string `json:"reason"`
+	}
+	if !web.Read(w, r, &request) {
+		return
+	}
+	before, waiting := p.waitingProject(w, r)
+	if !waiting {
+		return
+	}
+	reason := strings.TrimSpace(request.Reason)
+	if length := len([]rune(reason)); length == 0 || length > reasonMaxLength {
+		problem.Refuse(w, r, http.StatusBadRequest, invalidReason)
+		return
+	}
+	after := before
+	after.Status, after.RejectionReason = rejected, reason
+	p.decide(w, r, caller, history.RejectProject, notifications.ProjectRejected, before, after, nothingMore)
+}
+
+// waitingProject is the route's project while it waits for the admin: 404 for no such project, notPending (409) for one decided already.
+func (p Routes) waitingProject(w http.ResponseWriter, r *http.Request) (store.Project, bool) {
+	project, err := store.New(p.database.Read).ProjectWithID(r.Context(), web.ID(r, "projectId"))
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		problem.Status(w, r, http.StatusNotFound)
+	case err != nil:
+		problem.Status(w, r, http.StatusInternalServerError)
+	case project.Status != pendingApproval:
+		problem.Refuse(w, r, http.StatusConflict, notPending)
+	default:
+		return project, true
+	}
+	return project, false
+}
+
+// decide keeps the admin's decision on a project - its new status, with also's rows beside it - recorded as action, and tells its managers
+// (RegistrationEndpoints.DecideAsync): 200 with no body.
+func (p Routes) decide(w http.ResponseWriter, r *http.Request, caller access.Caller, action history.Action, told notifications.Kind, before, after store.Project,
+	also func(context.Context, *store.Queries) error) {
+	now := moment.Of(p.clock.Now())
+	err := p.database.InTx(r.Context(), func(tx *sql.Tx) error {
+		q := store.New(tx)
+		if err := keepChanges(r.Context(), q, tx, caller.UserID, action, now, before, after, nil, nil); err != nil {
+			return err
+		}
+		if err := also(r.Context(), q); err != nil {
+			return err
+		}
+		return notifications.TellManagers(r.Context(), q, after.ID, told, now)
+	})
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// nothingMore is a decision that keeps no rows beside the project's own.
+func nothingMore(context.Context, *store.Queries) error { return nil }
 
 // rename renames the project.
 func (p Routes) rename(w http.ResponseWriter, r *http.Request, caller access.Caller) {

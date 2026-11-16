@@ -2,9 +2,9 @@
 SELECT * FROM projects WHERE id = sqlc.arg(id);
 
 -- name: AllProjects :many
--- Every project, the active first, then the finished, the pending and the rejected, the latest start first, and of one start the latest made, as
--- .NET answered (ProjectsEndpoints.List).
-SELECT * FROM projects ORDER BY status, start_date DESC, id DESC;
+-- Every project, the active first, then the finished, the pending and the rejected, the latest start first (ProjectsEndpoints.List); projects of
+-- one status and one start by name in Arabic dictionary order (D7), where .NET left them in the order SQL Server read them, which was chance.
+SELECT * FROM projects ORDER BY status, start_date DESC, name COLLATE names, id;
 
 -- name: UnitsOf :many
 SELECT * FROM units WHERE project_id = sqlc.arg(project_id) ORDER BY sort_order;
