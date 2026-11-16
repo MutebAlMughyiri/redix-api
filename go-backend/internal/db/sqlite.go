@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"sync"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
@@ -24,8 +25,15 @@ const readers = 4
 
 // DB is the database's two pools: the one connection that writes, and several that only read (R13).
 type DB struct {
-	write *sql.DB
-	Read  *sql.DB
+	write     *sql.DB
+	Read      *sql.DB
+	committed *afterCommit
+}
+
+// afterCommit holds what runs after every committed write.
+type afterCommit struct {
+	mu    sync.Mutex
+	calls []func()
 }
 
 // Open opens the database file at path, brings its schema up to date and returns its pools.
@@ -45,7 +53,7 @@ func Open(ctx context.Context, path string) (DB, error) {
 		return DB{}, err
 	}
 	read.SetMaxOpenConns(readers)
-	return DB{write: write, Read: read}, nil
+	return DB{write: write, Read: read, committed: &afterCommit{}}, nil
 }
 
 func migrate(ctx context.Context, write *sql.DB) error {
@@ -71,7 +79,24 @@ func (db DB) InTx(ctx context.Context, change func(*sql.Tx) error) error {
 		tx.Rollback()
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	db.committed.mu.Lock()
+	calls := db.committed.calls
+	db.committed.mu.Unlock()
+	for _, call := range calls {
+		call()
+	}
+	return nil
+}
+
+// AfterEveryWrite runs call after each committed write, so whatever keeps a copy of the database - the access book - stays true without any
+// endpoint having to remember it (AccessChanges).
+func (db DB) AfterEveryWrite(call func()) {
+	db.committed.mu.Lock()
+	db.committed.calls = append(db.committed.calls, call)
+	db.committed.mu.Unlock()
 }
 
 // Close closes both pools.

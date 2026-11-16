@@ -93,16 +93,14 @@ func TestBR29_ASystemPermissionCountsEverywhere(t *testing.T) {
 	}
 }
 
-func TestBR32_AChangeCountsAtTheNextRequestOnceTheBookForgets(t *testing.T) {
+func TestBR32_AChangeCountsAtTheNextRequestWithNothingToRemember(t *testing.T) {
 	database, book := world(t)
 	ctx := context.Background()
-	book.Of(ctx, user)
-	exec(t, database, permission(active, "ApproveEntries"))
 	if kept, _ := book.Of(ctx, user); kept.Holds(active, ApproveEntries) {
-		t.Error("the book read again before it was told to forget")
+		t.Fatal("held before it was given")
 	}
-	book.Forget()
+	exec(t, database, permission(active, "ApproveEntries"))
 	if fresh, _ := book.Of(ctx, user); !fresh.Holds(active, ApproveEntries) {
-		t.Error("the change did not count after Forget")
+		t.Error("the change did not count at the next read")
 	}
 }
