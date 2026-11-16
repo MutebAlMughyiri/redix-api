@@ -17,6 +17,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
 )
 
 func main() {
@@ -51,6 +52,7 @@ func run(logger *slog.Logger) error {
 		}
 		w.Write([]byte("Healthy"))
 	})
+	translations.Map(router, database)
 
 	address, err := listenAddress(settings.Urls)
 	if err != nil {

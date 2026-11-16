@@ -1,0 +1,57 @@
+# sqlc: each domain's queries, generated into its own store package (redix-api #140, R9, R16). Every domain shares one schema and one set of types:
+# a GUID is uuid.UUID, a moment moment.Moment, a date moment.Date, a yes/no bool, four decimals fixed.Number (G9, G10, N6).
+version: "2"
+overrides:
+  go:
+    overrides:
+      - column: "history.id"
+        go_type: "int64"
+      - column: "entry_decisions.id"
+        go_type: "int64"
+      - column: "lk_*.id"
+        go_type: "int64"
+      - column: "*.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "*.*_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "*.*_at"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment.Moment"
+      - column: "*.at"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment.Moment"
+      - column: "users.locked_until"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment.Moment"
+      - column: "*.*_date"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment.Date"
+      - column: "transfers.date"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment.Date"
+      - column: "*.is_*"
+        go_type: "bool"
+      - column: "users.must_change_password"
+        go_type: "bool"
+      - column: "*.show_in_reports"
+        go_type: "bool"
+      - column: "devices.uses_biometrics"
+        go_type: "bool"
+      - column: "items.shows_table_percentages"
+        go_type: "bool"
+      - column: "*.amount"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed.Number"
+      - column: "contracts.quantity"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed.Number"
+      - column: "contracts.unit_price"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed.Number"
+      - column: "contracts.value"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed.Number"
+      - column: "periodic_reports.expenses_total"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed.Number"
+      - column: "reconciliation_balances.actual_balance"
+        go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed.Number"
+sql:
+  - engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/translations/queries.sql
+    gen:
+      go:
+        package: store
+        out: internal/translations/store
+        omit_unused_structs: true
