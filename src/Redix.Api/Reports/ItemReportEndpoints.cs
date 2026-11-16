@@ -78,20 +78,20 @@ public static class ItemReportEndpoints
             from expense in db.ExpenseDetails
             join entry in db.Entries on expense.EntryId equals entry.Id
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && expense.ItemId == item.Id
-            orderby entry.EntryDate, entry.Id
+            orderby entry.EntryDate, entry.Number
             select new { entry, expense }).ToListAsync();
         var revenue = await (
             from details in db.Set<RevenueDetails>()
             join entry in db.Entries on details.EntryId equals entry.Id
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && details.ItemId == item.Id
-            orderby entry.EntryDate, entry.Id
+            orderby entry.EntryDate, entry.Number
             select new { entry, details }).ToListAsync();
         var movements = await (
             from movement in db.CapitalMovementDetails
             join entry in db.Entries on movement.EntryId equals entry.Id
             join partner in db.Partners on movement.PartnerId equals partner.Id
             where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && partner.ItemId == item.Id
-            orderby entry.EntryDate, entry.Id
+            orderby entry.EntryDate, entry.Number
             select new { entry, movement }).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, [.. rows.Select(row => row.entry), .. revenue.Select(row => row.entry), .. movements.Select(row => row.entry)], db);
         var ids = rows.Select(row => row.entry.Id).ToList();

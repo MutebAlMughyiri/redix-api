@@ -23,7 +23,7 @@ public static class VatStatement
     {
         var purchases = await db.Entries
             .Where(entry => entry.ProjectId == projectId && entry.Kind == EntryKind.Purchase && entry.Status == EntryStatus.Approved && entry.EntryDate >= first && entry.EntryDate <= last)
-            .OrderBy(entry => entry.EntryDate).ThenBy(entry => entry.Id).ToListAsync();
+            .OrderBy(entry => entry.EntryDate).ThenBy(entry => entry.Number).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, purchases, db);
         var purchaseRows = purchases.Select(entry =>
         {

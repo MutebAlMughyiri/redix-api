@@ -62,7 +62,7 @@ public static class CapitalEndpoints
             from details in db.CapitalMovementDetails
             join entry in db.Entries on details.EntryId equals entry.Id
             where details.PartnerId == partnerId && entry.Status == EntryStatus.Approved
-            orderby entry.EntryDate descending, entry.Id descending
+            orderby entry.EntryDate descending, entry.Number descending
             select new { entry, details }).ToListAsync();
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);

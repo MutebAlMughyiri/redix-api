@@ -29,7 +29,7 @@ public static class ApprovalsEndpoints
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<List<PendingEntryView>> Pending(Guid projectId, RedixDbContext db)
     {
-        var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id).ToListAsync();
+        var entries = await db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.PendingApproval).OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Number).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         return entries.Select(entry => new PendingEntryView(entry.Id, entry.Number, entry.Kind, entry.EntryDate, entry.Amount, facts.ItemNameOf(entry), facts.SupplierNameOf(entry), facts.InvoiceOf(entry).Number, facts.AccountNameOf(entry), entry.Description, facts.AttachmentIdOf(entry), facts.ContentTypeOf(entry), facts.FileNameOf(entry), facts.AuthorNameOf(entry), facts.PartnerNameOf(entry), facts.AccountBalanceOf(entry), facts.AccountWaitingOf(entry), facts.AccountShortByOf(entry))).ToList();
     }

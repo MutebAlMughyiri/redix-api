@@ -116,7 +116,7 @@ public static class EntriesEndpoints
     /// <param name="take">How many of the newest to give; 0 for every one.</param>
     public static async Task<List<EntryRowView>> RowsAsync(Guid projectId, Guid userId, RedixDbContext db, Func<IQueryable<Entry>, IQueryable<Entry>> shown, int take)
     {
-        var newestFirst = shown(await SeenByAsync(projectId, userId, db)).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Id);
+        var newestFirst = shown(await SeenByAsync(projectId, userId, db)).OrderByDescending(entry => entry.CreatedAt).ThenByDescending(entry => entry.Number);
         var entries = await (take > 0 ? newestFirst.Take(take) : newestFirst).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
         var ids = entries.Select(entry => entry.Id).ToList();
