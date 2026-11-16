@@ -57,7 +57,7 @@ public class PartnersTests(MigratedApiFactory factory)
         Assert.Equal((HttpStatusCode.BadRequest, "invalidName"), (refused.StatusCode, await Ledger.CodeOf(refused)));
         var capital = await Ledger.CapitalItemOfAsync(client, project.Id);
         Assert.Equal(["نواف", "ريم"], (await PartnersOf(client, project.Id)).Select(partner => partner.Name));
-        await factory.WithDatabaseAsync(async db => Assert.All(await db.Partners.Where(row => row.ProjectId == project.Id).ToListAsync(), row => Assert.Equal(capital, row.ItemId)));
+        await factory.WithDatabaseAsync(async db => Assert.Equal(["نواف", "ريم"], await ProjectStructure.PartnersIn(capital, db).OrderBy(row => row.SortOrder).Select(row => row.Name).ToListAsync()));
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class PartnersTests(MigratedApiFactory factory)
         var capital = await Ledger.CapitalItemOfAsync(client, project.Id);
 
         var partner = await AddAsync(client, project.Id, "نواف");
-        await factory.WithDatabaseAsync(async db => Assert.Equal(capital, (await db.Partners.SingleAsync(row => row.Id == partner.Id)).ItemId));
+        await factory.WithDatabaseAsync(async db => Assert.Equal([partner.Id], await ProjectStructure.PartnersIn(capital, db).Select(row => row.Id).ToListAsync()));
         (await client.PostAsync($"/projects/{project.Id}/items/{capital}/disable", null)).EnsureSuccessStatusCode();
         var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("ريم"), Json);
 

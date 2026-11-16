@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Partners;
 using Redix.Api.Projects;
 using Redix.Api.Suppliers;
 
@@ -27,11 +28,6 @@ public static class ProjectStructure
             db.DefaultColumns.AddRange(defaults.Select(column => column.CopyFor(project.Id)));
             var copies = categories.Select(category => category.CopyFor(project.Id, defaults)).ToList();
             db.Categories.AddRange(copies);
-            var capital = copies.OrderBy(category => category.SortOrder).SelectMany(category => category.Items.OrderBy(item => item.SortOrder)).FirstOrDefault(item => item.Type == ItemType.Capital, Item.None);
-            foreach (var partner in await db.Partners.Where(partner => partner.ProjectId == project.Id && partner.ItemId == Guid.Empty).ToListAsync())
-            {
-                partner.ItemId = capital.Id;
-            }
             var paymentMethods = await db.PaymentMethods.AsNoTracking().Where(method => method.ProjectId == StructureSeed.TemplateId).ToListAsync();
             db.PaymentMethods.AddRange(paymentMethods.Select(method => method.CopyFor(project.Id)));
             db.Suppliers.Add(Supplier.GeneralCashSupplier(project.Id, approverId));
@@ -54,6 +50,16 @@ public static class ProjectStructure
     /// <summary>The items of <paramref name="projectId"/>: the one answer to whether an item belongs to a project, so one project's route never reaches another's rows (BR-33).</summary>
     public static IQueryable<Item> ItemsOf(Guid projectId, RedixDbContext db) =>
         db.Items.Where(item => db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == projectId));
+
+    /// <summary>
+    /// The id of the project's one capital item, «رأس المال», a second being refused (BR-31, redix-api #109): the item every partner of the project is a table of, which no partner
+    /// stores (Muteb, 16 Nov 2026). None before the project is approved and its structure copied.
+    /// </summary>
+    public static IQueryable<Guid> CapitalItemOf(Guid projectId, RedixDbContext db) => ItemsOf(projectId, db).Where(item => item.Type == ItemType.Capital).Select(item => item.Id);
+
+    /// <summary>The partners whose tables are in the item <paramref name="itemId"/>: every partner of its project when it is the project's capital item, none for any other item.</summary>
+    public static IQueryable<Partner> PartnersIn(Guid itemId, RedixDbContext db) =>
+        db.Partners.Where(partner => db.Items.Any(item => item.Id == itemId && item.Type == ItemType.Capital && db.Categories.Any(category => category.Id == item.CategoryId && category.ProjectId == partner.ProjectId)));
 
     /// <summary>The item <paramref name="itemId"/> if it belongs to <paramref name="projectId"/>; <see cref="Item.None"/> otherwise.</summary>
     public static async Task<Item> ItemOfAsync(Guid projectId, Guid itemId, RedixDbContext db) =>
@@ -89,7 +95,7 @@ public static class ProjectStructure
     {
         var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).Select(subgroup => subgroup.SortOrder).ToListAsync();
         var contracts = await db.Contracts.Where(contract => contract.ItemId == itemId).Select(contract => contract.SortOrder).ToListAsync();
-        var partners = await db.Partners.Where(partner => partner.ItemId == itemId).Select(partner => partner.SortOrder).ToListAsync();
+        var partners = await PartnersIn(itemId, db).Select(partner => partner.SortOrder).ToListAsync();
         return subgroups.Concat(contracts).Concat(partners).DefaultIfEmpty(-1).Max() + 1;
     }
 

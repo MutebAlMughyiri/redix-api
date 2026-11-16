@@ -302,7 +302,7 @@ public static class EntriesEndpoints
     {
         var itemId = await db.ExpenseDetails.Where(row => row.EntryId == entry.Id).Select(row => row.ItemId)
             .Concat(db.Set<RevenueDetails>().Where(row => row.EntryId == entry.Id).Select(row => row.ItemId))
-            .Concat(from movement in db.CapitalMovementDetails join partner in db.Partners on movement.PartnerId equals partner.Id where movement.EntryId == entry.Id select partner.ItemId)
+            .Concat(ProjectStructure.CapitalItemOf(entry.ProjectId, db).Where(_ => entry.Kind == EntryKind.CapitalIn || entry.Kind == EntryKind.CapitalOut))
             .FirstOrDefaultAsync();
         var columns = (await db.Set<ItemColumn>().Where(column => column.ItemId == itemId && !column.IsHidden).OrderBy(column => column.SortOrder).ToListAsync()).Where(column => column.IsAskedOf(entry.Kind));
         return new EntryAnswers(entry.Description, entry.ColumnValuesByKey()).MissingOf(columns);

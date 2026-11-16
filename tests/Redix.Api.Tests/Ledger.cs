@@ -95,7 +95,7 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
     /// <summary>What the partner <paramref name="partnerId"/> puts in today, or takes out as a withdrawal, sent for approval through the ledger's account (redix-api #109, #110).</summary>
     public async Task<EntryRequest> PartnerEntryAsync(Guid partnerId, decimal amount, bool isWithdrawal = false, string notes = "") => new(Guid.CreateVersion7())
     {
-        ItemId = await ReadAsync(db => db.Partners.Where(partner => partner.Id == partnerId).Select(partner => partner.ItemId).SingleAsync()),
+        ItemId = await CapitalItemOfAsync(Client, ProjectId),
         TableId = partnerId,
         Date = Today,
         Amount = amount,

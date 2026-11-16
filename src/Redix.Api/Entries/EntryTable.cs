@@ -79,7 +79,7 @@ public abstract record EntryTable(Category Category, Item Item, Guid Id, string 
                 .. recordsEntries && item.IsOfferedFor(ItemType.Purchases) ? item.Subgroups.Select(subgroup => new PurchaseTable(category, item, subgroup)) : [],
                 .. recordsEntries && item.IsOfferedFor(ItemType.ContractorPayments) ? contracts.Where(row => row.Contract.ItemId == item.Id).Select(row => new ContractTable(category, item, row.Contract, row.Contractor)) : [],
                 .. movesMoney && item.IsOfferedFor(ItemType.OtherRevenue) ? item.Subgroups.Select(subgroup => new RevenueTable(category, item, subgroup)) : [],
-                .. movesMoney && item.IsOfferedFor(ItemType.Capital) ? partners.Where(partner => partner.ItemId == item.Id).Select(partner => new PartnerTable(category, item, partner)) : [],
+                .. movesMoney && item.IsOfferedFor(ItemType.Capital) ? partners.Select(partner => new PartnerTable(category, item, partner)) : [],
             ];
             return tables.OrderBy(table => table.SortOrder);
         })).ToList();

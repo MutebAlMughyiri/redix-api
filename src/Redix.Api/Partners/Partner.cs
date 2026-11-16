@@ -30,9 +30,6 @@ public class Partner : IOrdered, IProjectRow
     /// <summary>The partner's name, as it was typed, which names their table.</summary>
     public required string Name { get; set; }
 
-    /// <summary>The project's capital item, whose table they are.</summary>
-    public Guid ItemId { get; set; }
-
     /// <summary>Their table's place among the item's tables (AC-46.8).</summary>
     public int SortOrder { get; set; }
 

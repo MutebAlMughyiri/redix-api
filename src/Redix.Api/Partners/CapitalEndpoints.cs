@@ -66,7 +66,8 @@ public static class CapitalEndpoints
             select new { entry, details }).ToListAsync();
         var entries = rows.Select(row => row.entry).ToList();
         var facts = await EntryFacts.OfAsync(projectId, entries, db);
-        var columns = await db.ItemColumns.Where(column => !column.IsHidden && db.Partners.Any(partner => partner.Id == partnerId && partner.ItemId == column.ItemId)).ToListAsync();
+        var capitalItem = ProjectStructure.CapitalItemOf(projectId, db);
+        var columns = await db.ItemColumns.Where(column => !column.IsHidden && capitalItem.Contains(column.ItemId)).ToListAsync();
         return rows.Select(row => new CapitalMovementView(row.entry.Id, Column.SignedChoiceOf(columns, row.entry.ColumnValuesByKey()).Name, row.entry.EntryDate, row.entry.Kind.Signed(row.entry.Amount), row.entry.Description, facts.AccountNameOf(row.entry), facts.AttachmentIdOf(row.entry), facts.ContentTypeOf(row.entry)) { FileName = facts.FileNameOf(row.entry) }).ToList();
     }
 

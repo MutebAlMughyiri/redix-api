@@ -144,7 +144,7 @@ public static class PartnersEndpoints
     /// </summary>
     public static async Task<(Guid PartnerId, string Refusal)> AddAsync(Guid projectId, string name, Guid loginId, Guid userId, DateTime at, RedixDbContext db)
     {
-        var itemId = await ProjectStructure.ItemsOf(projectId, db).Where(item => item.Type == ItemType.Capital).Select(item => item.Id).SingleOrDefaultAsync();
+        var itemId = await ProjectStructure.CapitalItemOf(projectId, db).SingleOrDefaultAsync();
         if (await ProjectStructure.OfferedItemAsync(projectId, itemId, ItemType.Capital, db) == Item.None)
         {
             return (Guid.Empty, "ItemNotOffered");
@@ -154,7 +154,7 @@ public static class PartnersEndpoints
         {
             return (Guid.Empty, refusal);
         }
-        var partner = new Partner { ProjectId = projectId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
+        var partner = new Partner { ProjectId = projectId, Name = name, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
         partner.LinkTo(loginId);
         db.Partners.Add(partner);
         db.AddHistory(partner, HistoryAction.Create, userId, at);

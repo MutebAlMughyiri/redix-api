@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Entries;
 using Redix.Api.Revenue;
+using Redix.Api.Structure;
 
 namespace Redix.Api.Reports;
 
@@ -16,10 +17,10 @@ public static class ItemTotals
         var approved = db.Entries.Where(entry => entry.ProjectId == projectId && entry.Status == EntryStatus.Approved);
         var expenses = from expense in db.ExpenseDetails join entry in approved on expense.EntryId equals entry.Id select new { expense.ItemId, entry.Amount };
         var revenue = from details in db.Set<RevenueDetails>() join entry in approved on details.EntryId equals entry.Id select new { details.ItemId, entry.Amount };
+        var capitalItemId = await ProjectStructure.CapitalItemOf(projectId, db).FirstOrDefaultAsync();
         var capital = from movement in db.CapitalMovementDetails
                       join entry in approved on movement.EntryId equals entry.Id
-                      join partner in db.Partners on movement.PartnerId equals partner.Id
-                      select new { partner.ItemId, Amount = entry.Kind == EntryKind.CapitalOut ? -entry.Amount : entry.Amount };
+                      select new { ItemId = capitalItemId, Amount = entry.Kind == EntryKind.CapitalOut ? -entry.Amount : entry.Amount };
         return await expenses.Concat(revenue).Concat(capital).GroupBy(row => row.ItemId).Select(group => new { ItemId = group.Key, Total = group.Sum(row => row.Amount) }).ToDictionaryAsync(row => row.ItemId, row => row.Total);
     }
 }

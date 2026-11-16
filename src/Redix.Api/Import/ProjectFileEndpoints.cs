@@ -245,7 +245,7 @@ public static class ProjectFileEndpoints
     /// <summary>The partner <paramref name="name"/> of the capital item <paramref name="item"/>, or one added with no login (D6).</summary>
     private static async Task<(ProjectFileOwner Owner, Guid TableId, string Refusal)> PartnerOfAsync(Guid projectId, Item item, string name, Guid userId, DateTime at, RedixDbContext db)
     {
-        var partners = db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId && partner.ItemId == item.Id && partner.Name == name).Select(partner => partner.Id);
+        var partners = db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId && partner.Name == name).Select(partner => partner.Id);
         var partnerId = await partners.FirstOrDefaultAsync();
         if (partnerId != Guid.Empty)
         {

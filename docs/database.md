@@ -2,7 +2,7 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database as it stands after the migration `EntryFileRoleWords` (15 Nov 2026), the last; the tables last changed in `EmailAndCodes` (redix-api #127), and the steps after it add words. It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database as it stands after the migration `PartnerItemFromProject` (16 Nov 2026), the last, in which the tables last changed: a partner no longer stores its item (redix-api #76 row 213). It was read from a database migrated from scratch, through SQL Server's own catalog, and matches the EF Core model in `RedixDbContext.OnModelCreating` and `Migrations/RedixDbContextModelSnapshot.cs`. When the model changes, this page changes in the same commit.
 
 ## What every table shares
 
@@ -949,14 +949,13 @@ Other indexes: `AccountId`.
 
 ### Partners
 
-The partners of each project (UC-016); each is a table of the project's capital item (redix-api #109).
+The partners of each project (UC-016); each is a table of the project's one capital item (redix-api #109), which no partner stores: it is read from the project (`ProjectStructure.CapitalItemOf`, Muteb, 16 Nov 2026).
 
 | Column | SQL type | Null | Key | Points at |
 | --- | --- | --- | --- | --- |
 | Id | uniqueidentifier | not null | PK |  |
 | ProjectId | uniqueidentifier | not null | FK | `Projects.Id` |
 | Name | nvarchar(100) | not null |  |  |
-| ItemId | uniqueidentifier | not null |  | no foreign key: the project's capital item (`Items.Id`), whose table the partner is; empty for a partner declared with a project until it is approved and has a structure (redix-api #109), so findings row 213's key cannot hold it yet |
 | SortOrder | int | not null |  |  |
 | IsDeleted | bit | not null |  |  |
 

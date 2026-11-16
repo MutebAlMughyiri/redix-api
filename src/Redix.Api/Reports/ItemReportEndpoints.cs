@@ -89,8 +89,8 @@ public static class ItemReportEndpoints
         var movements = await (
             from movement in db.CapitalMovementDetails
             join entry in db.Entries on movement.EntryId equals entry.Id
-            join partner in db.Partners on movement.PartnerId equals partner.Id
-            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved && partner.ItemId == item.Id
+            join partner in ProjectStructure.PartnersIn(item.Id, db) on movement.PartnerId equals partner.Id
+            where entry.ProjectId == projectId && entry.Status == EntryStatus.Approved
             orderby entry.EntryDate, entry.Number
             select new { entry, movement }).ToListAsync();
         var facts = await EntryFacts.OfAsync(projectId, [.. rows.Select(row => row.entry), .. revenue.Select(row => row.entry), .. movements.Select(row => row.entry)], db);
@@ -133,7 +133,7 @@ public static class ItemReportEndpoints
                 AmountName = ReportColumns.AmountNameOf(item, EntryKind.ContractorPayment),
             };
         }).Where(contract => contract.Payments.Count > 0 || contract.Value > 0).ToList();
-        var everyPartner = await db.Partners.Where(partner => partner.ItemId == item.Id).ToListAsync();
+        var everyPartner = await ProjectStructure.PartnersIn(item.Id, db).ToListAsync();
         var partners = everyPartner.Where(shows).OrderBy(partner => partner.SortOrder).ThenBy(partner => partner.Id).ToList();
         var partnerTables = partners.Select(partner =>
         {

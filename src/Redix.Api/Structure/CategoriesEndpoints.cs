@@ -203,7 +203,7 @@ public static class CategoriesEndpoints
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasContract);
         }
-        if (await db.Partners.AnyAsync(partner => partner.ItemId == itemId))
+        if (await ProjectStructure.PartnersIn(itemId, db).AnyAsync())
         {
             return ProjectStructure.Refused(StructureChangeOutcome.ItemHasPartners);
         }
@@ -311,7 +311,7 @@ public static class CategoriesEndpoints
         var counts = purchases.Concat(payments).Concat(movements).ToDictionary();
         var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
         var sight = await PartnerSight.OfAsync(principal, projectId, db);
-        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), (await db.Partners.Where(Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync()).Where(sight.Sees), db);
+        var own = await OwnTablesAsync(itemId, db.Contracts.Where(contract => contract.ItemId == itemId), (await ProjectStructure.PartnersIn(itemId, db).Where(Partner.Kept).ToListAsync()).Where(sight.Sees), db);
         return Results.Ok(TablesOf(item, subgroups, own).Select(table => new ItemTableView(table.Id, table.Kind, table.Name, counts.GetValueOrDefault(table.Id))).ToList());
     }
 
@@ -327,11 +327,11 @@ public static class CategoriesEndpoints
                 .ToList()))
             .ToList();
 
-    /// <summary>The tables each with a business of its own makes: <paramref name="contracts"/>, each named after its contractor, and <paramref name="partners"/> (redix-api #109).</summary>
-    private static async Task<List<OwnTable>> OwnTablesAsync(IQueryable<Contract> contracts, IEnumerable<Partners.Partner> partners, RedixDbContext db) =>
+    /// <summary>The tables of the item <paramref name="itemId"/> each with a business of its own makes: <paramref name="contracts"/>, each named after its contractor, and <paramref name="partners"/> (redix-api #109).</summary>
+    private static async Task<List<OwnTable>> OwnTablesAsync(Guid itemId, IQueryable<Contract> contracts, IEnumerable<Partner> partners, RedixDbContext db) =>
     [
         .. await (from contract in contracts join supplier in db.Suppliers on contract.SupplierId equals supplier.Id select new OwnTable(contract.Id, contract.ItemId, contract.SortOrder, supplier.Name, ItemTableKind.Contract)).ToListAsync(),
-        .. partners.Select(partner => new OwnTable(partner.Id, partner.ItemId, partner.SortOrder, partner.Name, ItemTableKind.Partner)),
+        .. partners.Select(partner => new OwnTable(partner.Id, itemId, partner.SortOrder, partner.Name, ItemTableKind.Partner)),
     ];
 
     /// <summary>
@@ -364,7 +364,7 @@ public static class CategoriesEndpoints
         [
             .. item.HasSubgroupTables ? await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync() : [],
             .. await db.Contracts.Where(contract => contract.ItemId == itemId).ToListAsync(),
-            .. await db.Partners.Where(Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync(),
+            .. await ProjectStructure.PartnersIn(itemId, db).Where(Partner.Kept).ToListAsync(),
         ];
         return await ReorderAsync(tables, request, db);
     }
