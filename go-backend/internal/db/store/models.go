@@ -43,6 +43,17 @@ type InactiveMember struct {
 	UserID    uuid.UUID
 }
 
+type Project struct {
+	ID              uuid.UUID
+	Name            string
+	StartDate       moment.Date
+	Status          int64
+	RejectionReason string
+	Description     string
+	IsTemplate      bool
+	LastEntryNumber int64
+}
+
 type ProjectPermission struct {
 	ID         uuid.UUID
 	ProjectID  uuid.UUID
@@ -55,6 +66,13 @@ type ProjectRoleName struct {
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
 	RoleName  string
+}
+
+type Unit struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
 }
 
 type User struct {

@@ -64,6 +64,7 @@ sql:
       - internal/history/queries.sql
       - internal/email/queries.sql
       - internal/users/queries.sql
+      - internal/projects/queries.sql
     gen:
       go:
         package: store

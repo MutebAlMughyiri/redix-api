@@ -1,42 +1,14 @@
-package translations
+package translations_test
 
 import (
-	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
 )
 
-func api(t *testing.T) http.Handler {
-	t.Helper()
-	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "redix.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { database.Close() })
-	router := web.NewRouter("")
-	Map(router, database)
-	return problem.Traced(router)
-}
-
-func get(handler http.Handler, path string, header ...string) *httptest.ResponseRecorder {
-	request := httptest.NewRequest(http.MethodGet, path, nil)
-	for i := 0; i+1 < len(header); i += 2 {
-		request.Header.Set(header[i], header[i+1])
-	}
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-	return recorder
-}
-
 func TestUC001_EveryWordOfALanguageComesAsOneBundleWithAnETag(t *testing.T) {
-	answer := get(api(t), "/translations/ar")
+	answer := testapi.New(t).Send("GET", "/translations/ar", "")
 	var words map[string]string
 	if answer.Code != 200 || answer.Header().Get("Content-Type") != "application/json" || json.Unmarshal(answer.Body.Bytes(), &words) != nil {
 		t.Fatalf("%d %s", answer.Code, answer.Header().Get("Content-Type"))
@@ -50,18 +22,18 @@ func TestUC001_EveryWordOfALanguageComesAsOneBundleWithAnETag(t *testing.T) {
 }
 
 func TestUC001_AnUnchangedBundleIsNotSentAgain(t *testing.T) {
-	handler := api(t)
-	etag := get(handler, "/translations/en").Header().Get("ETag")
-	if answer := get(handler, "/translations/en", "If-None-Match", etag); answer.Code != http.StatusNotModified || answer.Body.Len() != 0 {
+	api := testapi.New(t)
+	etag := api.Send("GET", "/translations/en", "").Header().Get("ETag")
+	if answer := api.Send("GET", "/translations/en", "", "If-None-Match", etag); answer.Code != 304 || answer.Body.Len() != 0 {
 		t.Errorf("%d %q", answer.Code, answer.Body)
 	}
-	if answer := get(handler, "/translations/en", "If-None-Match", `"OTHER"`); answer.Code != 200 {
+	if answer := api.Send("GET", "/translations/en", "", "If-None-Match", `"OTHER"`); answer.Code != 200 {
 		t.Errorf("another ETag: %d", answer.Code)
 	}
 }
 
 func TestUC001_ALanguageWithNoWordsIsNotFound(t *testing.T) {
-	if answer := get(api(t), "/api/v1/translations/fr"); answer.Code != 404 || answer.Header().Get("Content-Type") != "application/problem+json" {
+	if answer := testapi.New(t).Send("GET", "/api/v1/translations/fr", ""); answer.Code != 404 || answer.Header().Get("Content-Type") != "application/problem+json" {
 		t.Errorf("%d %s", answer.Code, answer.Header().Get("Content-Type"))
 	}
 }

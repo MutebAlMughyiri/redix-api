@@ -93,6 +93,18 @@ func (a Access) Holds(projectID uuid.UUID, permission Permission) bool {
 	return slices.Contains(a.everywhere, permission) || slices.Contains(a.byProject[projectID], permission)
 }
 
+// In is what the person holds in projectID: what they hold everywhere first, then the project's own, each once (UserAccess.In); empty, never
+// nil, when nothing.
+func (a Access) In(projectID uuid.UUID) []Permission {
+	held := a.Everywhere()
+	for _, permission := range a.byProject[projectID] {
+		if !slices.Contains(held, permission) {
+			held = append(held, permission)
+		}
+	}
+	return held
+}
+
 // Everywhere is what the person holds across the system, which the session tells the app; empty, never nil, when nothing.
 func (a Access) Everywhere() []Permission { return append([]Permission{}, a.everywhere...) }
 

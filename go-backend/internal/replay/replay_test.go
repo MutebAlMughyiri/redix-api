@@ -31,6 +31,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/historytest"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -239,7 +240,8 @@ func replay(t *testing.T, steps []step, hosts []host) {
 			resolve()
 		case "request":
 			fake.Set(s.At)
-			got := send(handlerOf(s), names, s)
+			var got *httptest.ResponseRecorder
+			historytest.Check(t, database, func() { got = send(handlerOf(s), names, s) })
 			resolve()
 			if differences := compare(names, s, got); len(differences) > 0 {
 				t.Errorf("step %d, %s %s%s:\n  %s", i, s.Method, s.Path, s.Query, strings.Join(differences, "\n  "))

@@ -5,6 +5,7 @@ package historytest
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -13,18 +14,23 @@ import (
 
 // exempt are the tables whose rows change with no History line, as in .NET, each with why.
 var exempt = map[string]string{
-	"devices":          "a session's device: signing in, renewing and signing out are recorded against the user (AuthEndpoints)",
-	"email_codes":      "an emailed code is a means, not a record: the reset or the new email it leads to is recorded (EmailCode)",
-	"history":          "History itself",
-	"goose_db_version": "the schema's own version",
-	"sqlite_sequence":  "SQLite's own counter for History's ids",
+	"devices":               "a session's device: signing in, renewing and signing out are recorded against the user (AuthEndpoints)",
+	"email_codes":           "an emailed code is a means, not a record: the reset or the new email it leads to is recorded (EmailCode)",
+	"history":               "History itself",
+	"goose_db_version":      "the schema's own version",
+	"sqlite_sequence":       "SQLite's own counter for History's ids",
+	"user_default_projects": "the project a person opens straight into is their own choice, never recorded (ProjectsEndpoints.SetDefault)",
 }
+
+// createdWithTheirProject are the tables whose new rows .NET recorded only through their project's RegisterProject line: the units and partners a
+// project is started with (Project.New, PartnersEndpoints.DeclaredWith). A new row of one passes when the same write registered its project.
+var createdWithTheirProject = map[string]bool{"units": true, "partners": true}
 
 // Check runs write, then fails t for each row of a table not exempt that write added, changed or removed with no new History line naming it.
 func Check(t testing.TB, database db.DB, write func()) {
 	t.Helper()
 	tables := keptTables(t, database)
-	before := map[string]map[string]string{}
+	before := map[string]map[string]row{}
 	for _, table := range tables {
 		before[table] = rowsOf(t, database, table)
 	}
@@ -33,25 +39,36 @@ func Check(t testing.TB, database db.DB, write func()) {
 
 	write()
 
-	lines := map[string]bool{}
-	found, err := database.Read.Query("SELECT table_name, record_id FROM history WHERE id > ?", lastLine)
+	lines, registered := map[string]bool{}, map[string]bool{}
+	found, err := database.Read.Query("SELECT table_name, record_id, action FROM history WHERE id > ?", lastLine)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for found.Next() {
-		var table, record string
-		found.Scan(&table, &record)
+		var table, record, action string
+		found.Scan(&table, &record, &action)
 		lines[table+" "+record] = true
+		if table == "Projects" && action == "RegisterProject" {
+			registered[record] = true
+		}
 	}
 	found.Close()
 	for _, table := range tables {
 		after := rowsOf(t, database, table)
 		for _, id := range changed(before[table], after) {
-			if !lines[historyName(table)+" "+id] {
+			_, existed := before[table][id]
+			withItsProject := createdWithTheirProject[table] && !existed && registered[after[id].project]
+			if !lines[historyName(table)+" "+id] && !withItsProject {
 				t.Errorf("History net: %s %s changed with no History line", table, id)
 			}
 		}
 	}
+}
+
+// row is one row as the net compares it: the text of all its values, and its project when it has a project_id.
+type row struct {
+	text    string
+	project string
 }
 
 func keptTables(t testing.TB, database db.DB) []string {
@@ -73,7 +90,7 @@ func keptTables(t testing.TB, database db.DB) []string {
 }
 
 // rowsOf is every row of table by its first column, its id, as the text of all its values.
-func rowsOf(t testing.TB, database db.DB, table string) map[string]string {
+func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 	t.Helper()
 	rows, err := database.Read.Query("SELECT * FROM " + table)
 	if err != nil {
@@ -81,7 +98,8 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]string {
 	}
 	defer rows.Close()
 	columns, _ := rows.Columns()
-	kept := map[string]string{}
+	project := slices.Index(columns, "project_id")
+	kept := map[string]row{}
 	for rows.Next() {
 		values := make([]any, len(columns))
 		pointers := make([]any, len(columns))
@@ -89,15 +107,19 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]string {
 			pointers[i] = &values[i]
 		}
 		rows.Scan(pointers...)
-		kept[fmt.Sprint(values[0])] = fmt.Sprint(values...)
+		read := row{text: fmt.Sprint(values...)}
+		if project >= 0 {
+			read.project = fmt.Sprint(values[project])
+		}
+		kept[fmt.Sprint(values[0])] = read
 	}
 	return kept
 }
 
-func changed(before, after map[string]string) []string {
+func changed(before, after map[string]row) []string {
 	var ids []string
-	for id, row := range after {
-		if before[id] != row {
+	for id, now := range after {
+		if before[id].text != now.text {
 			ids = append(ids, id)
 		}
 	}

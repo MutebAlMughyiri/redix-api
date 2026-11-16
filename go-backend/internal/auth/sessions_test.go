@@ -1,80 +1,38 @@
-package auth
+package auth_test
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
-	"io"
-	"log/slog"
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/historytest"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
 )
 
 const password = "Patrol-chosen-2"
 
+// api is the API through testapi, on a fresh database holding "Manager", whose password is password.
 type api struct {
-	t        *testing.T
-	handler  http.Handler
-	clock    *clock.Fake
-	database db.DB
-	emails   string
+	*testapi.API
+	t *testing.T
 }
 
-// newAPI is the auth routes on a fresh database holding "manager", whose password is password.
 func newAPI(t *testing.T, mustChange bool) api {
 	t.Helper()
-	database := emptyDatabase(t)
-	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
-	tokens := credentials.NewTokens([]byte("test-key-for-go-backend-only-32b"), fake)
-	book := access.NewBook(database)
-	router := web.NewRouter("")
-	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	gate := access.NewGate(tokens, database, book, quiet)
-	emails := filepath.Join(t.TempDir(), "Emails")
-	MapSessions(router, gate, database, tokens, book, fake)
-	MapCodes(router, gate, database, fake, email.Folder{Path: emails}, limits.PerHour(100000, fake), quiet)
-	change := 0
-	if mustChange {
-		change = 1
-	}
-	err := database.InTx(context.Background(), func(tx *sql.Tx) error {
-		_, err := tx.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
-			VALUES ('0193a1b2-0000-7000-8000-000000000001', 'Manager', 'مدير المشروع', '', ?, ?, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-01T10:00:00.0000000Z', '')`,
-			credentials.Hash(password), change)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return api{t: t, handler: problem.Traced(router), clock: fake, database: database, emails: emails}
+	a := api{API: testapi.New(t), t: t}
+	a.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
+		VALUES ('0193a1b2-0000-7000-8000-000000000001', 'Manager', 'مدير المشروع', '', ?, ?, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-01T10:00:00.0000000Z', '')`,
+		credentials.Hash(password), mustChange)
+	return a
 }
 
 func (a api) post(path, body, bearer string) (int, map[string]any) {
 	a.t.Helper()
-	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
-	request.Header.Set("Content-Type", "application/json")
-	if bearer != "" {
-		request.Header.Set("Authorization", "Bearer "+bearer)
+	code, answer := a.Ask("POST", path, body, bearer)
+	object, _ := answer.(map[string]any)
+	if object == nil {
+		object = map[string]any{}
 	}
-	recorder := httptest.NewRecorder()
-	historytest.Check(a.t, a.database, func() { a.handler.ServeHTTP(recorder, request) })
-	answer := map[string]any{}
-	json.Unmarshal(recorder.Body.Bytes(), &answer)
-	return recorder.Code, answer
+	return code, object
 }
 
 func (a api) signIn(username, typed string) (int, map[string]any) {
@@ -100,7 +58,7 @@ func TestAC01_1_SigningInOpensASessionAndRecordsIt(t *testing.T) {
 	if permissions, ok := answer["permissions"].([]any); !ok || len(permissions) != 0 {
 		t.Errorf("permissions %v", answer["permissions"])
 	}
-	if got := count(t, a.database, "SELECT count(*) FROM history WHERE action = 'SignIn'"); got != 1 {
+	if got := a.Count("SELECT count(*) FROM history WHERE action = 'SignIn'"); got != 1 {
 		t.Errorf("history lines: %d", got)
 	}
 }
@@ -124,11 +82,11 @@ func TestAC01_2_FiveWrongPasswordsLockTheAccountForFifteenMinutes(t *testing.T) 
 	if code, answer := a.signIn("manager", password); code != 401 || answer["code"] != "accountLocked" {
 		t.Errorf("locked: %d %v", code, answer)
 	}
-	a.clock.Advance(15 * time.Minute)
+	a.Clock.Advance(15 * time.Minute)
 	if code, _ := a.signIn("manager", password); code != 200 {
 		t.Errorf("after 15 minutes: %d", code)
 	}
-	if got := count(t, a.database, "SELECT count(*) FROM history WHERE action = 'AccountLocked'"); got != 1 {
+	if got := a.Count("SELECT count(*) FROM history WHERE action = 'AccountLocked'"); got != 1 {
 		t.Errorf("AccountLocked lines: %d", got)
 	}
 }
@@ -149,7 +107,7 @@ func TestNFR09_ARefreshTokenRenewsOnceAndLastsTwelveHoursUnused(t *testing.T) {
 	if code, answer := a.post("/auth/refresh", `{"refreshToken":"`+first+`"}`, ""); code != 401 || answer["code"] != "sessionExpired" {
 		t.Errorf("the replaced token: %d %v", code, answer)
 	}
-	a.clock.Advance(12 * time.Hour)
+	a.Clock.Advance(12 * time.Hour)
 	if code, answer := a.post("/auth/refresh", `{"refreshToken":"`+renewed["refreshToken"].(string)+`"}`, ""); code != 401 || answer["code"] != "sessionExpired" {
 		t.Errorf("after 12 hours: %d %v", code, answer)
 	}
@@ -161,7 +119,7 @@ func TestUC011_APhoneThatUsesBiometricsStaysSignedInPastTwelveHours(t *testing.T
 	if code != 200 || answer["usesBiometrics"] != true {
 		t.Fatalf("%d %v", code, answer)
 	}
-	a.clock.Advance(13 * time.Hour)
+	a.Clock.Advance(13 * time.Hour)
 	if code, _ := a.post("/auth/refresh", `{"refreshToken":"`+answer["refreshToken"].(string)+`"}`, ""); code != 200 {
 		t.Errorf("after 13 hours: %d", code)
 	}

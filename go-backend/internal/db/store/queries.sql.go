@@ -126,6 +126,27 @@ func (q *Queries) AddInactive(ctx context.Context, arg AddInactiveParams) error 
 	return err
 }
 
+const addPartner = `-- name: AddPartner :exec
+INSERT INTO partners (id, project_id, name, sort_order, is_deleted) VALUES (?, ?, ?, ?, 0)
+`
+
+type AddPartnerParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+}
+
+func (q *Queries) AddPartner(ctx context.Context, arg AddPartnerParams) error {
+	_, err := q.db.ExecContext(ctx, addPartner,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.SortOrder,
+	)
+	return err
+}
+
 const addPermission = `-- name: AddPermission :exec
 INSERT INTO project_permissions (id, project_id, user_id, permission) VALUES (?, ?, ?, ?)
 `
@@ -143,6 +164,29 @@ func (q *Queries) AddPermission(ctx context.Context, arg AddPermissionParams) er
 		arg.ProjectID,
 		arg.UserID,
 		arg.Permission,
+	)
+	return err
+}
+
+const addProject = `-- name: AddProject :exec
+INSERT INTO projects (id, name, start_date, status, rejection_reason, description, is_template, last_entry_number) VALUES (?, ?, ?, ?, '', ?, 0, 0)
+`
+
+type AddProjectParams struct {
+	ID          uuid.UUID
+	Name        string
+	StartDate   moment.Date
+	Status      int64
+	Description string
+}
+
+func (q *Queries) AddProject(ctx context.Context, arg AddProjectParams) error {
+	_, err := q.db.ExecContext(ctx, addProject,
+		arg.ID,
+		arg.Name,
+		arg.StartDate,
+		arg.Status,
+		arg.Description,
 	)
 	return err
 }
@@ -168,6 +212,20 @@ func (q *Queries) AddRoleName(ctx context.Context, arg AddRoleNameParams) error 
 	return err
 }
 
+const addStructureSource = `-- name: AddStructureSource :exec
+INSERT INTO project_structure_sources (project_id, structure_source_id) VALUES (?, ?)
+`
+
+type AddStructureSourceParams struct {
+	ProjectID         uuid.UUID
+	StructureSourceID uuid.UUID
+}
+
+func (q *Queries) AddStructureSource(ctx context.Context, arg AddStructureSourceParams) error {
+	_, err := q.db.ExecContext(ctx, addStructureSource, arg.ProjectID, arg.StructureSourceID)
+	return err
+}
+
 const addSystemPermission = `-- name: AddSystemPermission :exec
 INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, ?)
 `
@@ -180,6 +238,27 @@ type AddSystemPermissionParams struct {
 
 func (q *Queries) AddSystemPermission(ctx context.Context, arg AddSystemPermissionParams) error {
 	_, err := q.db.ExecContext(ctx, addSystemPermission, arg.ID, arg.UserID, arg.Permission)
+	return err
+}
+
+const addUnit = `-- name: AddUnit :exec
+INSERT INTO units (id, project_id, name, sort_order) VALUES (?, ?, ?, ?)
+`
+
+type AddUnitParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+}
+
+func (q *Queries) AddUnit(ctx context.Context, arg AddUnitParams) error {
+	_, err := q.db.ExecContext(ctx, addUnit,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.SortOrder,
+	)
 	return err
 }
 
@@ -215,6 +294,75 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) error {
 		arg.Email,
 	)
 	return err
+}
+
+const allProjects = `-- name: AllProjects :many
+SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects ORDER BY status, start_date DESC, id
+`
+
+// Every project, the active first, then the finished, the pending and the rejected, the latest start first (ProjectsEndpoints.List).
+func (q *Queries) AllProjects(ctx context.Context) ([]Project, error) {
+	rows, err := q.db.QueryContext(ctx, allProjects)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.StartDate,
+			&i.Status,
+			&i.RejectionReason,
+			&i.Description,
+			&i.IsTemplate,
+			&i.LastEntryNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const allUnits = `-- name: AllUnits :many
+SELECT id, project_id, name, sort_order FROM units ORDER BY project_id, sort_order
+`
+
+func (q *Queries) AllUnits(ctx context.Context) ([]Unit, error) {
+	rows, err := q.db.QueryContext(ctx, allUnits)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Unit
+	for rows.Next() {
+		var i Unit
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const chosenOf = `-- name: ChosenOf :many
@@ -426,6 +574,17 @@ func (q *Queries) EmailTaken(ctx context.Context, arg EmailTakenParams) (bool, e
 	return taken, err
 }
 
+const hasEntriesWaiting = `-- name: HasEntriesWaiting :one
+SELECT EXISTS (SELECT 1 FROM entries WHERE project_id = ?1 AND status = 1) AS waiting
+`
+
+func (q *Queries) HasEntriesWaiting(ctx context.Context, projectID uuid.UUID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, hasEntriesWaiting, projectID)
+	var waiting bool
+	err := row.Scan(&waiting)
+	return waiting, err
+}
+
 const hasUsers = `-- name: HasUsers :one
 SELECT EXISTS (SELECT 1 FROM users) AS has_users
 `
@@ -534,6 +693,33 @@ func (q *Queries) InactiveOf(ctx context.Context, arg InactiveOfParams) ([]Inact
 	return items, nil
 }
 
+const inactiveProjectsOf = `-- name: InactiveProjectsOf :many
+SELECT project_id FROM inactive_members WHERE user_id = ?1
+`
+
+func (q *Queries) InactiveProjectsOf(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, inactiveProjectsOf, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var project_id uuid.UUID
+		if err := rows.Scan(&project_id); err != nil {
+			return nil, err
+		}
+		items = append(items, project_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const isAdmin = `-- name: IsAdmin :one
 SELECT EXISTS (SELECT 1 FROM system_permissions WHERE user_id = ?1) AS is_admin
 `
@@ -616,6 +802,48 @@ func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode
 			&i.ExpiresAt,
 			&i.Tries,
 			&i.UsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const managersOfPending = `-- name: ManagersOfPending :many
+SELECT project_permissions.project_id, users.display_name, users.username, users.mobile
+FROM project_permissions JOIN users ON users.id = project_permissions.user_id JOIN projects ON projects.id = project_permissions.project_id
+WHERE project_permissions.permission = 'ManageUsers' AND projects.status = 2 ORDER BY project_permissions.id
+`
+
+type ManagersOfPendingRow struct {
+	ProjectID   uuid.UUID
+	DisplayName string
+	Username    string
+	Mobile      string
+}
+
+// Who manages the users of each project waiting for the admin.
+func (q *Queries) ManagersOfPending(ctx context.Context) ([]ManagersOfPendingRow, error) {
+	rows, err := q.db.QueryContext(ctx, managersOfPending)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ManagersOfPendingRow
+	for rows.Next() {
+		var i ManagersOfPendingRow
+		if err := rows.Scan(
+			&i.ProjectID,
+			&i.DisplayName,
+			&i.Username,
+			&i.Mobile,
 		); err != nil {
 			return nil, err
 		}
@@ -722,6 +950,43 @@ func (q *Queries) OtherActiveManagers(ctx context.Context, arg OtherActiveManage
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const pendingProjects = `-- name: PendingProjects :many
+SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects WHERE status = 2 ORDER BY start_date, name COLLATE names
+`
+
+// The projects waiting for the admin, the earliest start first, by name (D7).
+func (q *Queries) PendingProjects(ctx context.Context) ([]Project, error) {
+	rows, err := q.db.QueryContext(ctx, pendingProjects)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.StartDate,
+			&i.Status,
+			&i.RejectionReason,
+			&i.Description,
+			&i.IsTemplate,
+			&i.LastEntryNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const permissionsOf = `-- name: PermissionsOf :many
@@ -840,6 +1105,54 @@ func (q *Queries) ProjectOfUser(ctx context.Context, arg ProjectOfUserParams) ([
 	return items, nil
 }
 
+const projectWithID = `-- name: ProjectWithID :one
+SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects WHERE id = ?1
+`
+
+func (q *Queries) ProjectWithID(ctx context.Context, id uuid.UUID) (Project, error) {
+	row := q.db.QueryRowContext(ctx, projectWithID, id)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.StartDate,
+		&i.Status,
+		&i.RejectionReason,
+		&i.Description,
+		&i.IsTemplate,
+		&i.LastEntryNumber,
+	)
+	return i, err
+}
+
+const projectsHoldingEntries = `-- name: ProjectsHoldingEntries :many
+SELECT DISTINCT project_id FROM entries
+`
+
+// The projects that hold an entry, whatever it is and wherever it stands.
+func (q *Queries) ProjectsHoldingEntries(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, projectsHoldingEntries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var project_id uuid.UUID
+		if err := rows.Scan(&project_id); err != nil {
+			return nil, err
+		}
+		items = append(items, project_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const projectsOfUser = `-- name: ProjectsOfUser :many
 SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive FROM user_projects WHERE user_id = ?1 ORDER BY project_name COLLATE names
 `
@@ -876,12 +1189,49 @@ func (q *Queries) ProjectsOfUser(ctx context.Context, userID uuid.UUID) ([]UserP
 	return items, nil
 }
 
+const projectsOfUserWithRows = `-- name: ProjectsOfUserWithRows :many
+SELECT DISTINCT project_id FROM project_permissions WHERE user_id = ?1
+`
+
+// The projects a person holds a permission row in, approved or not.
+func (q *Queries) ProjectsOfUserWithRows(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, projectsOfUserWithRows, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var project_id uuid.UUID
+		if err := rows.Scan(&project_id); err != nil {
+			return nil, err
+		}
+		items = append(items, project_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeChosen = `-- name: RemoveChosen :exec
 DELETE FROM chosen_partners WHERE id = ?1
 `
 
 func (q *Queries) RemoveChosen(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, removeChosen, id)
+	return err
+}
+
+const removeDefaultProject = `-- name: RemoveDefaultProject :exec
+DELETE FROM user_default_projects WHERE user_id = ?1
+`
+
+func (q *Queries) RemoveDefaultProject(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, removeDefaultProject, userID)
 	return err
 }
 
@@ -909,6 +1259,15 @@ DELETE FROM project_role_names WHERE id = ?1
 
 func (q *Queries) RemoveRoleName(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, removeRoleName, id)
+	return err
+}
+
+const removeUnit = `-- name: RemoveUnit :exec
+DELETE FROM units WHERE id = ?1
+`
+
+func (q *Queries) RemoveUnit(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, removeUnit, id)
 	return err
 }
 
@@ -1005,6 +1364,38 @@ func (q *Queries) RoleNameOf(ctx context.Context, arg RoleNameOfParams) ([]Proje
 	return items, nil
 }
 
+const roleNamesOfUser = `-- name: RoleNamesOfUser :many
+SELECT project_id, role_name FROM project_role_names WHERE user_id = ?1
+`
+
+type RoleNamesOfUserRow struct {
+	ProjectID uuid.UUID
+	RoleName  string
+}
+
+func (q *Queries) RoleNamesOfUser(ctx context.Context, userID uuid.UUID) ([]RoleNamesOfUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, roleNamesOfUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RoleNamesOfUserRow
+	for rows.Next() {
+		var i RoleNamesOfUserRow
+		if err := rows.Scan(&i.ProjectID, &i.RoleName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveUser = `-- name: SaveUser :exec
 UPDATE users SET failed_sign_ins = ?1, locked_until = ?2, password_hash = ?3,
     must_change_password = ?4 WHERE id = ?5
@@ -1027,6 +1418,20 @@ func (q *Queries) SaveUser(ctx context.Context, arg SaveUserParams) error {
 		arg.MustChangePassword,
 		arg.ID,
 	)
+	return err
+}
+
+const setDefaultProject = `-- name: SetDefaultProject :exec
+INSERT INTO user_default_projects (user_id, project_id) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET project_id = excluded.project_id
+`
+
+type SetDefaultProjectParams struct {
+	UserID    uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) SetDefaultProject(ctx context.Context, arg SetDefaultProjectParams) error {
+	_, err := q.db.ExecContext(ctx, setDefaultProject, arg.UserID, arg.ProjectID)
 	return err
 }
 
@@ -1076,6 +1481,49 @@ func (q *Queries) SetPassword(ctx context.Context, arg SetPasswordParams) error 
 	return err
 }
 
+const setProjectDescription = `-- name: SetProjectDescription :exec
+UPDATE projects SET description = ?1 WHERE id = ?2
+`
+
+type SetProjectDescriptionParams struct {
+	Description string
+	ID          uuid.UUID
+}
+
+func (q *Queries) SetProjectDescription(ctx context.Context, arg SetProjectDescriptionParams) error {
+	_, err := q.db.ExecContext(ctx, setProjectDescription, arg.Description, arg.ID)
+	return err
+}
+
+const setProjectName = `-- name: SetProjectName :exec
+UPDATE projects SET name = ?1 WHERE id = ?2
+`
+
+type SetProjectNameParams struct {
+	Name string
+	ID   uuid.UUID
+}
+
+func (q *Queries) SetProjectName(ctx context.Context, arg SetProjectNameParams) error {
+	_, err := q.db.ExecContext(ctx, setProjectName, arg.Name, arg.ID)
+	return err
+}
+
+const setProjectStatus = `-- name: SetProjectStatus :exec
+UPDATE projects SET status = ?1, rejection_reason = ?2 WHERE id = ?3
+`
+
+type SetProjectStatusParams struct {
+	Status          int64
+	RejectionReason string
+	ID              uuid.UUID
+}
+
+func (q *Queries) SetProjectStatus(ctx context.Context, arg SetProjectStatusParams) error {
+	_, err := q.db.ExecContext(ctx, setProjectStatus, arg.Status, arg.RejectionReason, arg.ID)
+	return err
+}
+
 const setRoleName = `-- name: SetRoleName :exec
 UPDATE project_role_names SET role_name = ?1 WHERE id = ?2
 `
@@ -1087,6 +1535,20 @@ type SetRoleNameParams struct {
 
 func (q *Queries) SetRoleName(ctx context.Context, arg SetRoleNameParams) error {
 	_, err := q.db.ExecContext(ctx, setRoleName, arg.RoleName, arg.ID)
+	return err
+}
+
+const setUnitName = `-- name: SetUnitName :exec
+UPDATE units SET name = ?1 WHERE id = ?2
+`
+
+type SetUnitNameParams struct {
+	Name string
+	ID   uuid.UUID
+}
+
+func (q *Queries) SetUnitName(ctx context.Context, arg SetUnitNameParams) error {
+	_, err := q.db.ExecContext(ctx, setUnitName, arg.Name, arg.ID)
 	return err
 }
 
@@ -1102,6 +1564,38 @@ type SpendCodeParams struct {
 func (q *Queries) SpendCode(ctx context.Context, arg SpendCodeParams) error {
 	_, err := q.db.ExecContext(ctx, spendCode, arg.UsedAt, arg.ID)
 	return err
+}
+
+const unitsOf = `-- name: UnitsOf :many
+SELECT id, project_id, name, sort_order FROM units WHERE project_id = ?1 ORDER BY sort_order
+`
+
+func (q *Queries) UnitsOf(ctx context.Context, projectID uuid.UUID) ([]Unit, error) {
+	rows, err := q.db.QueryContext(ctx, unitsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Unit
+	for rows.Next() {
+		var i Unit
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const userNamed = `-- name: UserNamed :one

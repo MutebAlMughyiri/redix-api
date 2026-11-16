@@ -26,8 +26,10 @@ type Parts struct {
 	SigningKey        []byte
 	Sender            email.Sender
 	EmailCodesPerHour int
-	WebFolder         string
-	Log               *slog.Logger
+	// RegistrationsPerHour is how often one address may register a project an hour (REDIX_Registration__PermitsPerHour).
+	RegistrationsPerHour int
+	WebFolder            string
+	Log                  *slog.Logger
 }
 
 // Routes is every route of the API on parts.
