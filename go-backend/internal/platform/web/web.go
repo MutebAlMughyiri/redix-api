@@ -4,12 +4,16 @@ package web
 
 import (
 	"encoding/json"
+	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/google/uuid"
@@ -131,4 +135,39 @@ func JSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write(body)
+}
+
+// Read decodes the request's JSON body into request, a struct whose every field is required, as .NET bound a request record with
+// RespectRequiredConstructorParameters and RespectNullableAnnotations: a body that is not JSON answers 415, a missing or null field and a value of
+// the wrong type answer 400; names match whatever their case, and fields the struct does not have are ignored.
+func Read(w http.ResponseWriter, r *http.Request, request any) bool {
+	if mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mediaType != "application/json" {
+		problem.Status(w, r, http.StatusUnsupportedMediaType)
+		return false
+	}
+	body, err := io.ReadAll(r.Body)
+	var sent map[string]json.RawMessage
+	if err != nil || json.Unmarshal(body, &sent) != nil || !hasEvery(sent, request) || json.Unmarshal(body, request) != nil {
+		problem.Status(w, r, http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+// hasEvery says whether sent names every field of request, none of them null.
+func hasEvery(sent map[string]json.RawMessage, request any) bool {
+	fields := reflect.TypeOf(request).Elem()
+	for i := range fields.NumField() {
+		name, _, _ := strings.Cut(fields.Field(i).Tag.Get("json"), ",")
+		found := false
+		for key, value := range sent {
+			if strings.EqualFold(key, name) && string(value) != "null" {
+				found = true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }

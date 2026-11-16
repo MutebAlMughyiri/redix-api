@@ -71,3 +71,37 @@ func TestR18_AnyOtherPathIsTheFrontEndsFile(t *testing.T) {
 		t.Errorf("%d %s", got.Code, got.Body)
 	}
 }
+
+type signIn struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func readOf(contentType, body string) (int, signIn) {
+	request := httptest.NewRequest(http.MethodPost, "/auth/sign-in", strings.NewReader(body))
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+	recorder := httptest.NewRecorder()
+	var read signIn
+	if !Read(recorder, request, &read) {
+		return recorder.Code, read
+	}
+	return 200, read
+}
+
+func TestR4_ARequestIsReadAsDotNetBoundItsRecord(t *testing.T) {
+	for _, body := range []string{`{"username":"a","password":"b"}`, `{"Username":"a","PASSWORD":"b","extra":1}`} {
+		if code, read := readOf("application/json; charset=utf-8", body); code != 200 || read != (signIn{"a", "b"}) {
+			t.Errorf("%s: %d %+v", body, code, read)
+		}
+	}
+	for body, want := range map[string]int{`{"username":"a"}`: 400, `{"username":"a","password":null}`: 400, `{"username":1,"password":"b"}`: 400, `not json`: 400, ``: 400} {
+		if code, _ := readOf("application/json", body); code != want {
+			t.Errorf("%q: %d, want %d", body, code, want)
+		}
+	}
+	if code, _ := readOf("text/plain", `{"username":"a","password":"b"}`); code != 415 {
+		t.Errorf("text/plain: %d", code)
+	}
+}
