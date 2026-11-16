@@ -1,15 +1,18 @@
 using System.Data.Common;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -187,33 +190,175 @@ public sealed class Recorder
         }
     }
 
+    /// <summary>Records a save made outside a request and a seed once it is kept: the rows it added, changed or removed; nothing for one the database refused.</summary>
     private sealed class DirectWriteInterceptor(Recorder recorder) : SaveChangesInterceptor
     {
+        private readonly ConditionalWeakTable<DbContext, List<DirectRow>> saving = [];
+
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
-            if (!Inside.Value)
+            if (!Inside.Value && CurrentTest.Value is { Length: > 0 })
             {
-                var tables = eventData.Context!.ChangeTracker.Entries().Where(entry => entry.State is not EntityState.Unchanged)
-                    .Select(entry => entry.Metadata.GetTableName()).Distinct().Order().ToList();
-                recorder.Write(new { step = "direct", tables });
+                saving.AddOrUpdate(eventData.Context!, [.. eventData.Context!.ChangeTracker.Entries().Where(entry => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).Select(RowOf)]);
             }
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
+
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (saving.TryGetValue(eventData.Context!, out var rows))
+            {
+                saving.Remove(eventData.Context!);
+                recorder.Write(new { step = "direct", rows });
+            }
+            return base.SavedChangesAsync(eventData, result, cancellationToken);
+        }
+
+        public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+        {
+            saving.Remove(eventData.Context!);
+            return base.SaveChangesFailedAsync(eventData, cancellationToken);
+        }
+
+        /// <summary>An entity about to be saved, as the row the Go replay writes: its table, what happens to it, and each column's value as SQLite keeps it.</summary>
+        private static DirectRow RowOf(EntityEntry entry) => new(
+            $"{entry.Metadata.GetSchema() ?? "dbo"}.{entry.Metadata.GetTableName()}",
+            entry.State.ToString().ToLowerInvariant(),
+            entry.Properties.Where(property => property.Metadata.GetColumnName() is { Length: > 0 }).ToDictionary(
+                property => property.Metadata.GetColumnName(),
+                property => Stored(property.Metadata.GetTypeMapping().Converter is { } converter && property.CurrentValue is not null
+                    ? converter.ConvertToProvider(property.CurrentValue)
+                    : property.CurrentValue)));
     }
 
-    /// <summary>Records a bulk update, delete or insert made outside a request and a seed, as ExecuteUpdateAsync makes one without a save.</summary>
+    /// <summary>
+    /// Records a bulk update, delete or insert made outside a request and a seed, as ExecuteUpdateAsync makes one without a save: the rows of its table it added, changed or removed,
+    /// read before and after it runs; only the verb when its table cannot be read, as a migration's statement.
+    /// </summary>
     private sealed class BulkWriteInterceptor(Recorder recorder) : DbCommandInterceptor
     {
-        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        private static readonly Regex TableOf = new(@"(?:FROM|INTO|MERGE)\s+\[(\w+)\]\.\[(\w+)\]");
+        private readonly ConditionalWeakTable<DbCommand, Snapshot> before = [];
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
             var verb = command.CommandText.TrimStart().Split(' ', 2)[0].ToUpperInvariant();
-            if (!Inside.Value && verb is "UPDATE" or "DELETE" or "INSERT" or "MERGE")
+            if (!Inside.Value && CurrentTest.Value is { Length: > 0 } && verb is "UPDATE" or "DELETE" or "INSERT" or "MERGE")
             {
-                recorder.Write(new { step = "direct", tables = new[] { verb } });
+                var named = TableOf.Match(command.CommandText);
+                var key = named.Success ? await KeyOfAsync(command, named.Groups[1].Value, named.Groups[2].Value) : [];
+                if (key.Count == 0)
+                {
+                    recorder.Write(new { step = "direct", tables = new[] { verb } });
+                }
+                else
+                {
+                    var table = $"{named.Groups[1].Value}.{named.Groups[2].Value}";
+                    before.AddOrUpdate(command, new Snapshot(table, key, await RowsOfAsync(command, table, key)));
+                }
             }
-            return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+            return await base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        public override async ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (before.TryGetValue(command, out var snapshot))
+            {
+                before.Remove(command);
+                var (table, key, earlier) = snapshot;
+                var later = await RowsOfAsync(command, table, key);
+                List<DirectRow> rows =
+                [
+                    .. later.Where(row => !earlier.TryGetValue(row.Key, out var was) || !Same(was, row.Value)).Select(row => new DirectRow(table, earlier.ContainsKey(row.Key) ? "modified" : "added", row.Value)),
+                    .. earlier.Where(row => !later.ContainsKey(row.Key)).Select(row => new DirectRow(table, "deleted", row.Value)),
+                ];
+                recorder.Write(new { step = "direct", rows });
+            }
+            return await base.NonQueryExecutedAsync(command, eventData, result, cancellationToken);
+        }
+
+        public override Task CommandFailedAsync(DbCommand command, CommandErrorEventData eventData, CancellationToken cancellationToken = default)
+        {
+            before.Remove(command);
+            return base.CommandFailedAsync(command, eventData, cancellationToken);
+        }
+
+        /// <summary>A table's rows by key, read before a bulk write runs.</summary>
+        private sealed record Snapshot(string Table, List<string> Key, Dictionary<string, Dictionary<string, object?>> Rows);
+
+        private static bool Same(Dictionary<string, object?> one, Dictionary<string, object?> other) => one.All(pair => Equals(pair.Value, other.GetValueOrDefault(pair.Key)));
+
+        private static async Task<List<string>> KeyOfAsync(DbCommand command, string schema, string table)
+        {
+            await using var read = command.Connection!.CreateCommand();
+            read.Transaction = command.Transaction;
+            read.CommandText = @"SELECT column_usage.COLUMN_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS constraints
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS column_usage ON column_usage.CONSTRAINT_NAME = constraints.CONSTRAINT_NAME AND column_usage.TABLE_SCHEMA = constraints.TABLE_SCHEMA
+                WHERE constraints.CONSTRAINT_TYPE = 'PRIMARY KEY' AND constraints.TABLE_SCHEMA = @schema AND constraints.TABLE_NAME = @table ORDER BY column_usage.ORDINAL_POSITION";
+            AddParameter(read, "@schema", schema);
+            AddParameter(read, "@table", table);
+            var key = new List<string>();
+            await using var reader = await read.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                key.Add(reader.GetString(0));
+            }
+            return key;
+        }
+
+        private static async Task<Dictionary<string, Dictionary<string, object?>>> RowsOfAsync(DbCommand command, string table, List<string> key)
+        {
+            await using var read = command.Connection!.CreateCommand();
+            read.Transaction = command.Transaction;
+            var (schema, name) = (table.Split('.')[0], table.Split('.')[1]);
+            read.CommandText = $"SELECT * FROM [{schema}].[{name}]";
+            var rows = new Dictionary<string, Dictionary<string, object?>>();
+            await using var reader = await read.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var row = new Dictionary<string, object?>();
+                for (var column = 0; column < reader.FieldCount; column++)
+                {
+                    var type = reader.GetDataTypeName(column);
+                    if (type is not ("timestamp" or "rowversion"))
+                    {
+                        row[reader.GetName(column)] = Stored(reader.IsDBNull(column) ? null : type == "date" ? DateOnly.FromDateTime(reader.GetDateTime(column)) : reader.GetValue(column));
+                    }
+                }
+                rows[string.Join("|", key.Select(column => Convert.ToString(row[column], CultureInfo.InvariantCulture)))] = row;
+            }
+            return rows;
+        }
+
+        private static void AddParameter(DbCommand command, string name, object value)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value;
+            command.Parameters.Add(parameter);
         }
     }
+
+    /// <summary>
+    /// A value as the SQLite schema keeps it (redix-api #140 G10, N6): a GUID as lower-case text, money as ten-thousandths, a moment as UTC text with seven decimals, a day as
+    /// yyyy-MM-dd, a bit as 0 or 1, an enum as its number; anything else as it is.
+    /// </summary>
+    private static object? Stored(object? value) => value switch
+    {
+        null or DBNull => null,
+        Guid id => id.ToString(),
+        decimal amount => (long)(amount * 10000),
+        DateTime moment => moment.ToString("yyyy-MM-ddTHH:mm:ss.fffffff", CultureInfo.InvariantCulture) + "Z",
+        DateTimeOffset moment => moment.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff", CultureInfo.InvariantCulture) + "Z",
+        DateOnly day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        bool flag => flag ? 1 : 0,
+        Enum kind => Convert.ToInt64(kind, CultureInfo.InvariantCulture),
+        byte[] bytes => Convert.ToBase64String(bytes),
+        _ => value,
+    };
+
+    /// <summary>A row a direct write added, changed or removed: its table as schema.Name, what happened to it, and each column's value.</summary>
+    private sealed record DirectRow(string Table, string State, Dictionary<string, object?> Values);
 
     /// <summary>Names the test that runs, on a collection's definition, so each step the recorder writes says which test took it.</summary>
     [AttributeUsage(AttributeTargets.Class)]

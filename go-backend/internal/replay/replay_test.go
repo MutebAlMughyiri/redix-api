@@ -74,6 +74,7 @@ type step struct {
 	Host          int               `json:"host"`
 	EmailCodes    int               `json:"emailCodesPerHour"`
 	Registrations int               `json:"registrationsPerHour"`
+	Rows          []directRow       `json:"rows"`
 	file          string
 }
 
@@ -140,6 +141,13 @@ var readTheDatabase = []string{
 // database, which a replay one request at a time cannot repeat; each is ported by hand.
 var ranAtOnce = []string{
 	"EntryNumberTests.G1_EntriesArrivingAtTheSameMomentEachTakeANumberOfTheirOwn",
+	"PasswordResetTests.D3_TriesSentAtOnceCheckNoMoreGuessesThanACodeAllows",
+}
+
+// signedByDotNet are the tests that open a link .NET's Data Protection signed, read from a cell of its workbook, which Go's key cannot open by
+// design (redix-api #140 G6); Go's links have their own test, in attachments.
+var signedByDotNet = []string{
+	"ReportFilesTests.Muteb16Nov_AWorkbooksFileCellOpensItsFileWithNoSignInForSevenDaysAndAChangedLinkOpensNothing",
 }
 
 // isGone says whether s asked for a route .NET did not have - one removed, or a method a path does not take - which Go's router answers as
@@ -167,7 +175,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			// .NET crashed here; what the route should answer waits for Muteb's review once every route is on Go (redix-api #76 row 263).
 			underReview++
 			continue
-		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "direct" }), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name):
+		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name):
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {
@@ -182,7 +190,8 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			replay(t, steps, hosts)
 		})
 	}
-	t.Logf("%d tests replayed against .NET's answers; %d wait for routes not yet on Go; %d write the database directly and are ported by hand; "+
+	t.Logf("%d tests replayed against .NET's answers; %d wait for routes not yet on Go; %d are ported by hand - about SQL Server itself, reading its "+
+		"database or racing it; "+
 		"%d crashed on .NET and wait for review (#76 row 263)", replayed, waiting, byHand, underReview)
 }
 
@@ -269,6 +278,8 @@ func replay(t *testing.T, steps []step, hosts []host) {
 		switch s.Step {
 		case "seed":
 			seed(t, database, names, s)
+		case "direct":
+			applyDirect(t, database, names, s)
 		case "email":
 			var body string
 			json.Unmarshal(s.Body, &body)
@@ -475,7 +486,7 @@ var everyones = map[string]bool{"GET /projects/registered": true}
 
 // tiedByChance are the routes whose list .NET ordered on fields two items may share, leaving such items in the order SQL Server read them - for
 // version 7 GUIDs, chance - where Go breaks the tie by name: Go's items must be .NET's items, every one, each compared with .NET's of its id.
-var tiedByChance = map[string]bool{"GET /projects": true, "GET /projects/{id}/users": true, "GET /projects/{id}/members": true}
+var tiedByChance = map[string]bool{"GET /projects": true, "GET /projects/{id}/users": true, "GET /projects/{id}/members": true, "GET /projects/{id}/documents": true}
 
 var pathPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 

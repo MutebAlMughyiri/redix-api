@@ -39,52 +39,49 @@ func (o *Ordered) UnmarshalJSON(data []byte) error {
 	return err
 }
 
-// DotNetText is the object as System.Text.Json wrote it by default: its keys in order, no spaces, and every character but printable ASCII - and the
-// ones HTML treats as markup - escaped as \uXXXX with upper-case digits.
-func (o Ordered) DotNetText() string {
+// KeptText is the object as SQL Server's json column gives it back, the form .NET read and answered (Entries.ColumnValues is json): its keys in
+// order, no spaces, and every character as it is but a quote, a backslash and a control character - \b \f \n \r \t short, any other as
+// \u00XX in upper case.
+func (o Ordered) KeptText() string {
 	var text strings.Builder
 	text.WriteByte('{')
 	for i, key := range o.Keys {
 		if i > 0 {
 			text.WriteByte(',')
 		}
-		writeDotNetString(&text, key)
+		writeKeptString(&text, key)
 		text.WriteByte(':')
-		writeDotNetString(&text, o.Values[key])
+		writeKeptString(&text, o.Values[key])
 	}
 	text.WriteByte('}')
 	return text.String()
 }
 
-func writeDotNetString(text *strings.Builder, value string) {
+func writeKeptString(text *strings.Builder, value string) {
 	text.WriteByte('"')
 	for _, letter := range value {
-		switch {
-		case letter == '"':
-			text.WriteString(`"`)
-		case letter == '\\':
+		switch letter {
+		case '"':
+			text.WriteString(`\"`)
+		case '\\':
 			text.WriteString(`\\`)
-		case letter == '\n':
+		case '\b':
+			text.WriteString(`\b`)
+		case '\f':
+			text.WriteString(`\f`)
+		case '\n':
 			text.WriteString(`\n`)
-		case letter == '\r':
+		case '\r':
 			text.WriteString(`\r`)
-		case letter == '\t':
+		case '\t':
 			text.WriteString(`\t`)
-		case letter < 0x20 || letter > 0x7E || strings.ContainsRune("<>&'+`", letter):
-			for _, unit := range utf16Of(letter) {
-				fmt.Fprintf(text, `\u%04X`, unit)
-			}
 		default:
-			text.WriteRune(letter)
+			if letter < 0x20 {
+				fmt.Fprintf(text, `\u%04X`, letter)
+			} else {
+				text.WriteRune(letter)
+			}
 		}
 	}
 	text.WriteByte('"')
-}
-
-func utf16Of(letter rune) []rune {
-	if letter < 0x10000 {
-		return []rune{letter}
-	}
-	letter -= 0x10000
-	return []rune{0xD800 + letter>>10, 0xDC00 + letter&0x3FF}
 }

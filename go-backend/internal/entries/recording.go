@@ -172,7 +172,7 @@ func entryOf(c changes.Change, typed Request, t table, editing uuid.UUID) (store
 	sign := t.sign(typed)
 	amount := t.form.amount(typed, sign)
 	entry := store.Entry{ID: typed.ID, ProjectID: c.ProjectID, Kind: t.form.entryKind(sign), Status: draft, EntryDate: typed.Date, Amount: amount.Number(),
-		AccountID: typed.AccountID, Description: typed.description(), ColumnValues: typed.kept().DotNetText(), CreatedByUserID: c.Actor, CreatedAt: c.Now,
+		AccountID: typed.AccountID, Description: typed.description(), ColumnValues: typed.kept().KeptText(), CreatedByUserID: c.Actor, CreatedAt: c.Now,
 		ApprovedAt: notApproved}
 	if typed.Submit {
 		entry.Status = pendingApproval
