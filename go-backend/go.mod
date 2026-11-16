@@ -6,6 +6,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/pressly/goose/v3 v3.30.1
+	golang.org/x/text v0.44.0
 	modernc.org/sqlite v1.62.0
 )
 
