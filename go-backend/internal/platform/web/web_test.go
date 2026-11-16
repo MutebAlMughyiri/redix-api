@@ -115,3 +115,16 @@ func TestR4_TheLanguageIsArabicUnlessEnglishIsAskedFirst(t *testing.T) {
 		}
 	}
 }
+
+func TestR4_AFieldTaggedOmitzeroMayBeLeftOut(t *testing.T) {
+	var read struct {
+		Name     string   `json:"name"`
+		RoleName string   `json:"roleName,omitzero"`
+		Partners []string `json:"partnerIds,omitzero"`
+	}
+	request := httptest.NewRequest(http.MethodPost, "/projects/x/users", strings.NewReader(`{"name":"نواف"}`))
+	request.Header.Set("Content-Type", "application/json")
+	if !Read(httptest.NewRecorder(), request, &read) || read.Name != "نواف" || read.RoleName != "" || len(read.Partners) != 0 {
+		t.Errorf("%+v", read)
+	}
+}

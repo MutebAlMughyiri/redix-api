@@ -139,9 +139,10 @@ func JSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	w.Write(body)
 }
 
-// Read decodes the request's JSON body into request, a struct whose every field is required, as .NET bound a request record with
-// RespectRequiredConstructorParameters and RespectNullableAnnotations: a body that is not JSON answers 415, a missing or null field and a value of
-// the wrong type answer 400; names match whatever their case, and fields the struct does not have are ignored.
+// Read decodes the request's JSON body into request, a struct whose every field is required unless tagged omitzero, as .NET bound a request record
+// with RespectRequiredConstructorParameters and RespectNullableAnnotations, its init properties with defaults being the optional ones: a body that is
+// not JSON answers 415, a missing or null required field and a value of the wrong type answer 400; names match whatever their case, and fields the
+// struct does not have are ignored.
 func Read(w http.ResponseWriter, r *http.Request, request any) bool {
 	if mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mediaType != "application/json" {
 		problem.Status(w, r, http.StatusUnsupportedMediaType)
@@ -156,11 +157,14 @@ func Read(w http.ResponseWriter, r *http.Request, request any) bool {
 	return true
 }
 
-// hasEvery says whether sent names every field of request, none of them null.
+// hasEvery says whether sent names every required field of request, none of them null.
 func hasEvery(sent map[string]json.RawMessage, request any) bool {
 	fields := reflect.TypeOf(request).Elem()
 	for i := range fields.NumField() {
-		name, _, _ := strings.Cut(fields.Field(i).Tag.Get("json"), ",")
+		name, options, _ := strings.Cut(fields.Field(i).Tag.Get("json"), ",")
+		if options == "omitzero" {
+			continue
+		}
 		found := false
 		for key, value := range sent {
 			if strings.EqualFold(key, name) && string(value) != "null" {
