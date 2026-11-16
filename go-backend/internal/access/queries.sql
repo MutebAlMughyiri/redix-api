@@ -16,3 +16,7 @@ SELECT project_id, partner_id FROM chosen_partners WHERE user_id = sqlc.arg(user
 -- name: DeviceIsOpen :one
 -- Whether the session's device is still open, so a revoked device is refused at its next request, not when its token expires.
 SELECT EXISTS (SELECT 1 FROM devices WHERE id = sqlc.arg(device_id) AND user_id = sqlc.arg(user_id) AND is_revoked = 0) AS is_open;
+
+-- name: ProjectIsFinished :one
+-- Whether a project is finished, and so read-only (AC-04.1).
+SELECT EXISTS (SELECT 1 FROM projects WHERE id = sqlc.arg(project_id) AND status = 1) AS is_finished;

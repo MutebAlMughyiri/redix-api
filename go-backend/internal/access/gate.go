@@ -24,15 +24,15 @@ type Handler func(w http.ResponseWriter, r *http.Request, caller Caller)
 // Gate decides whether a request may reach its handler, as JwtBearer, SessionPolicies and PermissionHandler did: 401 when no open session sends it,
 // 403 when the session may not do this. A route open to anyone is mapped without it.
 type Gate struct {
-	tokens  credentials.Tokens
-	devices *store.Queries
-	book    *Book
-	log     *slog.Logger
+	tokens credentials.Tokens
+	read   *store.Queries
+	book   *Book
+	log    *slog.Logger
 }
 
 // NewGate checks tokens with tokens, devices and access in database through book, and writes each refusal of a permission to log (#120 D6).
 func NewGate(tokens credentials.Tokens, database db.DB, book *Book, log *slog.Logger) *Gate {
-	return &Gate{tokens: tokens, devices: store.New(database.Read), book: book, log: log}
+	return &Gate{tokens: tokens, read: store.New(database.Read), book: book, log: log}
 }
 
 // SignedIn lets through anyone signed in on an open device, a temporary password too: changing it is all such a session may do (MayChangePassword).
@@ -68,6 +68,24 @@ func (g *Gate) Needs(permission Permission, next Handler) http.HandlerFunc {
 	})
 }
 
+// Changes lets through a working caller who holds permission in the route's {projectId}, as Needs does, unless the project is finished: a finished
+// project is read-only, and every change to it answers projectFinished (409, AC-04.1, ProjectChanges).
+func (g *Gate) Changes(permission Permission, next Handler) http.HandlerFunc {
+	return g.Needs(permission, func(w http.ResponseWriter, r *http.Request, caller Caller) {
+		projectID, _ := uuid.Parse(r.PathValue("projectId"))
+		finished, err := g.read.ProjectIsFinished(r.Context(), projectID)
+		if err != nil {
+			problem.Status(w, r, http.StatusInternalServerError)
+			return
+		}
+		if finished {
+			problem.Refuse(w, r, http.StatusConflict, "projectFinished")
+			return
+		}
+		next(w, r, caller)
+	})
+}
+
 // caller is the session the request's bearer token speaks for, on a device still open, with its access; otherwise it answers 401 with a Bearer
 // challenge, naming an invalid token when one was sent.
 func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
@@ -79,7 +97,7 @@ func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 	session, err := g.tokens.Check(token)
 	if err == nil {
 		var open bool
-		open, err = g.devices.DeviceIsOpen(r.Context(), store.DeviceIsOpenParams{DeviceID: session.DeviceID, UserID: session.UserID})
+		open, err = g.read.DeviceIsOpen(r.Context(), store.DeviceIsOpenParams{DeviceID: session.DeviceID, UserID: session.UserID})
 		if err == nil && !open {
 			err = credentials.ErrNotValid
 		}

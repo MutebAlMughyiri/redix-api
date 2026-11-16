@@ -5,9 +5,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -21,8 +23,9 @@ var (
 )
 
 type gated struct {
-	handler http.Handler
-	tokens  credentials.Tokens
+	handler  http.Handler
+	tokens   credentials.Tokens
+	database db.DB
 }
 
 func gatedRoutes(t *testing.T) gated {
@@ -36,7 +39,8 @@ func gatedRoutes(t *testing.T) gated {
 	router.Handle("GET", "/me", gate.SignedIn(ok))
 	router.Handle("GET", "/work", gate.Working(ok))
 	router.Handle("GET", "/projects/{projectId:guid}/entries", gate.Needs(RecordEntries, ok))
-	return gated{handler: problem.Traced(router), tokens: tokens}
+	router.Handle("POST", "/projects/{projectId:guid}/entries", gate.Changes(RecordEntries, ok))
+	return gated{handler: problem.Traced(router), tokens: tokens, database: database}
 }
 
 func device(id uuid.UUID, revoked int) string {
@@ -107,5 +111,26 @@ func TestFR03_ARouteOfAProjectNeedsItsPermissionThere(t *testing.T) {
 func TestR4_ARouteValueThatDoesNotFitIsNotFoundBeforeAnyoneIsAsked(t *testing.T) {
 	if got := gatedRoutes(t).ask("/projects/12/entries", ""); got.Code != 404 {
 		t.Errorf("%d", got.Code)
+	}
+}
+
+func TestAC04_1_AFinishedProjectRefusesEveryChangeButStillReads(t *testing.T) {
+	routes := gatedRoutes(t)
+	working := routes.bearer(openDevice, false)
+	request := httptest.NewRequest(http.MethodPost, "/projects/"+active.String()+"/entries", nil)
+	request.Header.Set("Authorization", working)
+	before := httptest.NewRecorder()
+	routes.handler.ServeHTTP(before, request)
+	if before.Code != 200 {
+		t.Fatalf("an active project's change: %d", before.Code)
+	}
+	exec(t, routes.database, "UPDATE projects SET status = 1 WHERE id = '"+active.String()+"'")
+	after := httptest.NewRecorder()
+	routes.handler.ServeHTTP(after, request)
+	if after.Code != 409 || !strings.Contains(after.Body.String(), `"code":"projectFinished"`) {
+		t.Errorf("a finished project's change: %d %s", after.Code, after.Body)
+	}
+	if got := routes.ask("/projects/"+active.String()+"/entries", working); got.Code != 200 {
+		t.Errorf("reading a finished project: %d", got.Code)
 	}
 }

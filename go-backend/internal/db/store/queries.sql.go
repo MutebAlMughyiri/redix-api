@@ -788,6 +788,18 @@ func (q *Queries) ProjectIDsOfUser(ctx context.Context, userID uuid.UUID) ([]uui
 	return items, nil
 }
 
+const projectIsFinished = `-- name: ProjectIsFinished :one
+SELECT EXISTS (SELECT 1 FROM projects WHERE id = ?1 AND status = 1) AS is_finished
+`
+
+// Whether a project is finished, and so read-only (AC-04.1).
+func (q *Queries) ProjectIsFinished(ctx context.Context, projectID uuid.UUID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, projectIsFinished, projectID)
+	var is_finished bool
+	err := row.Scan(&is_finished)
+	return is_finished, err
+}
+
 const projectOfUser = `-- name: ProjectOfUser :many
 SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive FROM user_projects WHERE project_id = ?1 AND user_id = ?2
 `
