@@ -138,8 +138,8 @@ public static class PartnersEndpoints
 
     /// <summary>
     /// Adds the partner <paramref name="name"/>, a name already accepted, with their own login <paramref name="loginId"/> if they have one, as the last table of the project's capital
-    /// item, by <paramref name="userId"/> at <paramref name="at"/>, in the History table: the one way a partner is added, by hand and from a project file's load alike (redix-api #132
-    /// D6). It answers the refusals of <see cref="Add"/> but the name's; empty once added.
+    /// item, by <paramref name="userId"/> at <paramref name="at"/>, in the History table, the partner and their login alone, whatever else the save carries: the one way a
+    /// partner is added, by hand and from a project file's load alike (redix-api #132 D6). It answers the refusals of <see cref="Add"/> but the name's; empty once added.
     /// </summary>
     public static async Task<string> AddAsync(Guid projectId, string name, Guid loginId, Guid userId, DateTime at, RedixDbContext db)
     {
@@ -156,7 +156,11 @@ public static class PartnersEndpoints
         var partner = new Partner { ProjectId = projectId, Name = name, ItemId = itemId, SortOrder = await ProjectStructure.NextTablePlaceAsync(itemId, db) };
         partner.LinkTo(loginId);
         db.Partners.Add(partner);
-        db.AddHistoryOfChanges(HistoryAction.Create, userId, at);
+        db.AddHistory(partner, HistoryAction.Create, userId, at);
+        foreach (var login in partner.Users)
+        {
+            db.AddHistory(login, HistoryAction.Create, userId, at);
+        }
         await db.SaveChangesAsync();
         return "";
     }

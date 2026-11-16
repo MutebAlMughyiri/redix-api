@@ -52,6 +52,28 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AddingAPartnerRecordsThePartnerAndTheirLoginAloneWhateverElseTheSaveCarries()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var (_, memberId) = await ledger.MemberAsync("Reader");
+        var account = ledger.AccountId;
+        var accountLines = await ledger.ReadAsync(db => db.History.CountAsync(row => row.RecordId == account));
+        var partner = Guid.Empty;
+
+        await factory.WithDatabaseAsync(async db =>
+        {
+            (await db.Accounts.SingleAsync(row => row.Id == account)).Name = "حساب يُحفظ مع الشريك";
+            Assert.Equal("", await PartnersEndpoints.AddAsync(ledger.ProjectId, "خالد", memberId, memberId, factory.Time.GetUtcNow().UtcDateTime, db));
+            partner = await db.Partners.Where(row => row.ProjectId == ledger.ProjectId && row.Name == "خالد").Select(row => row.Id).SingleAsync();
+        });
+
+        var created = await ledger.ReadAsync(db => db.History.Where(row => row.RecordId == partner).Select(row => row.TableName).ToListAsync());
+        Assert.Equal(["PartnerUsers", "Partners"], created.Order(StringComparer.Ordinal));
+        Assert.Equal(accountLines, await ledger.ReadAsync(db => db.History.CountAsync(row => row.RecordId == account)));
+        Assert.Equal("حساب يُحفظ مع الشريك", await ledger.ReadAsync(db => db.Accounts.Where(row => row.Id == account).Select(row => row.Name).SingleAsync()));
+    }
+
+    [Fact]
     public async Task R214_APartnerAddedWithALoginIsOneLineAndTakingTheLoginAwayIsALineWithNone()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
