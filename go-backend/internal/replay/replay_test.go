@@ -128,6 +128,13 @@ var readTheDatabase = []string{
 	"SuppliersTests.FinanceAddsASupplierWithAllItsDetails",
 	"SuppliersTests.AnEditChangesASupplierAndLeavesItItsOwnNumber",
 	"SuppliersTests.AnEditCanTakeTheDefaultItemAndTheVatNumberAway",
+	"CategoriesTests.R10_AnItemOffersAnExpenseItsGeneralTableEachNamedOneAndEachActiveContractInItsSheetsOrder",
+}
+
+// ranAtOnce are the tests that send requests at the same moment, whose outcome - which entry took which number - is the order they reached .NET's
+// database, which a replay one request at a time cannot repeat; each is ported by hand.
+var ranAtOnce = []string{
+	"EntryNumberTests.G1_EntriesArrivingAtTheSameMomentEachTakeANumberOfTheirOwn",
 }
 
 // seeds is what a replay can put straight into the database, as the factory's helpers did.
@@ -149,7 +156,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			// .NET crashed here; what the route should answer waits for Muteb's review once every route is on Go (redix-api #76 row 263).
 			underReview++
 			continue
-		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "direct" }), slices.Contains(readTheDatabase, name):
+		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "direct" }), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name):
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {
@@ -159,7 +166,10 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			continue
 		}
 		replayed++
-		t.Run(name, func(t *testing.T) { replay(t, steps, hosts) })
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			replay(t, steps, hosts)
+		})
 	}
 	t.Logf("%d tests replayed against .NET's answers; %d wait for routes not yet on Go; %d write the database directly and are ported by hand; "+
 		"%d crashed on .NET and wait for review (#76 row 263)", replayed, waiting, byHand, underReview)
@@ -214,7 +224,7 @@ func replay(t *testing.T, steps []step, hosts []host) {
 	if err := auth.SeedAdmin(context.Background(), database, adminUsername, adminPassword, moment.Of(steps[0].At)); err != nil {
 		t.Fatal(err)
 	}
-	emails := &kept{}
+	emails, files := &kept{}, filepath.Join(t.TempDir(), "attachments")
 	handlers := map[int]http.Handler{}
 	handlerOf := func(s step) http.Handler {
 		if handler, built := handlers[s.Host]; built {
@@ -227,7 +237,7 @@ func replay(t *testing.T, steps []step, hosts []host) {
 			}
 		}
 		handlers[s.Host] = problem.Traced(server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: []byte("replay-key-for-go-backend-only-32"),
-			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, Log: quiet}))
+			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, AttachmentsFolder: files, Log: quiet}))
 		return handlers[s.Host]
 	}
 	names := mapping{}
@@ -442,7 +452,7 @@ var everyones = map[string]bool{"GET /projects/registered": true}
 
 // tiedByChance are the routes whose list .NET ordered on fields two items may share, leaving such items in the order SQL Server read them - for
 // version 7 GUIDs, chance - where Go breaks the tie by name: Go's items must be .NET's items, every one, each compared with .NET's of its id.
-var tiedByChance = map[string]bool{"GET /projects": true}
+var tiedByChance = map[string]bool{"GET /projects": true, "GET /projects/{id}/users": true}
 
 var pathPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 

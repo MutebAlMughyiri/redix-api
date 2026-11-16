@@ -171,6 +171,52 @@ func (q *Queries) ActiveSupplierExists(ctx context.Context, arg ActiveSupplierEx
 	return exists, err
 }
 
+const addAttachment = `-- name: AddAttachment :exec
+INSERT INTO attachments (id, project_id, storage_path, file_name, content_type, size_bytes, sha256, uploaded_by_user_id, uploaded_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddAttachmentParams struct {
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	StoragePath      string
+	FileName         string
+	ContentType      string
+	SizeBytes        int64
+	Sha256           string
+	UploadedByUserID uuid.UUID
+	UploadedAt       moment.Moment
+}
+
+func (q *Queries) AddAttachment(ctx context.Context, arg AddAttachmentParams) error {
+	_, err := q.exec(ctx, q.addAttachmentStmt, addAttachment,
+		arg.ID,
+		arg.ProjectID,
+		arg.StoragePath,
+		arg.FileName,
+		arg.ContentType,
+		arg.SizeBytes,
+		arg.Sha256,
+		arg.UploadedByUserID,
+		arg.UploadedAt,
+	)
+	return err
+}
+
+const addCapitalDetails = `-- name: AddCapitalDetails :exec
+INSERT INTO capital_movement_details (entry_id, partner_id) VALUES (?, ?)
+`
+
+type AddCapitalDetailsParams struct {
+	EntryID   uuid.UUID
+	PartnerID uuid.UUID
+}
+
+func (q *Queries) AddCapitalDetails(ctx context.Context, arg AddCapitalDetailsParams) error {
+	_, err := q.exec(ctx, q.addCapitalDetailsStmt, addCapitalDetails, arg.EntryID, arg.PartnerID)
+	return err
+}
+
 const addChosen = `-- name: AddChosen :exec
 INSERT INTO chosen_partners (id, project_id, user_id, partner_id) VALUES (?, ?, ?, ?)
 `
@@ -231,6 +277,29 @@ func (q *Queries) AddContractDocument(ctx context.Context, arg AddContractDocume
 	return err
 }
 
+const addDecision = `-- name: AddDecision :exec
+INSERT INTO entry_decisions (entry_id, action, user_id, at, reason) VALUES (?, ?, ?, ?, ?)
+`
+
+type AddDecisionParams struct {
+	EntryID uuid.UUID
+	Action  int64
+	UserID  uuid.UUID
+	At      moment.Moment
+	Reason  string
+}
+
+func (q *Queries) AddDecision(ctx context.Context, arg AddDecisionParams) error {
+	_, err := q.exec(ctx, q.addDecisionStmt, addDecision,
+		arg.EntryID,
+		arg.Action,
+		arg.UserID,
+		arg.At,
+		arg.Reason,
+	)
+	return err
+}
+
 const addDevice = `-- name: AddDevice :exec
 INSERT INTO devices (id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_biometrics, last_seen_at) VALUES (?, ?, ?, ?, 0, 0, ?)
 `
@@ -250,6 +319,69 @@ func (q *Queries) AddDevice(ctx context.Context, arg AddDeviceParams) error {
 		arg.RefreshTokenHash,
 		arg.RefreshExpiresAt,
 		arg.LastSeenAt,
+	)
+	return err
+}
+
+const addDocument = `-- name: AddDocument :exec
+INSERT INTO documents (id, project_id, attachment_id, name, group_name, uploaded_by_user_id, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddDocumentParams struct {
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	AttachmentID     uuid.UUID
+	Name             string
+	GroupName        string
+	UploadedByUserID uuid.UUID
+	UploadedAt       moment.Moment
+}
+
+func (q *Queries) AddDocument(ctx context.Context, arg AddDocumentParams) error {
+	_, err := q.exec(ctx, q.addDocumentStmt, addDocument,
+		arg.ID,
+		arg.ProjectID,
+		arg.AttachmentID,
+		arg.Name,
+		arg.GroupName,
+		arg.UploadedByUserID,
+		arg.UploadedAt,
+	)
+	return err
+}
+
+const addEntryFile = `-- name: AddEntryFile :exec
+INSERT INTO entry_attachments (entry_id, attachment_id, role) VALUES (?, ?, ?)
+`
+
+type AddEntryFileParams struct {
+	EntryID      uuid.UUID
+	AttachmentID uuid.UUID
+	Role         int64
+}
+
+func (q *Queries) AddEntryFile(ctx context.Context, arg AddEntryFileParams) error {
+	_, err := q.exec(ctx, q.addEntryFileStmt, addEntryFile, arg.EntryID, arg.AttachmentID, arg.Role)
+	return err
+}
+
+const addExpenseDetails = `-- name: AddExpenseDetails :exec
+INSERT INTO expense_details (entry_id, item_id, subgroup_id, payment_method_id) VALUES (?, ?, ?, ?)
+`
+
+type AddExpenseDetailsParams struct {
+	EntryID         uuid.UUID
+	ItemID          uuid.UUID
+	SubgroupID      uuid.UUID
+	PaymentMethodID uuid.UUID
+}
+
+func (q *Queries) AddExpenseDetails(ctx context.Context, arg AddExpenseDetailsParams) error {
+	_, err := q.exec(ctx, q.addExpenseDetailsStmt, addExpenseDetails,
+		arg.EntryID,
+		arg.ItemID,
+		arg.SubgroupID,
+		arg.PaymentMethodID,
 	)
 	return err
 }
@@ -323,6 +455,20 @@ func (q *Queries) AddNotification(ctx context.Context, arg AddNotificationParams
 	return err
 }
 
+const addNotificationEntry = `-- name: AddNotificationEntry :exec
+INSERT INTO notification_entries (notification_id, entry_id) VALUES (?, ?)
+`
+
+type AddNotificationEntryParams struct {
+	NotificationID uuid.UUID
+	EntryID        uuid.UUID
+}
+
+func (q *Queries) AddNotificationEntry(ctx context.Context, arg AddNotificationEntryParams) error {
+	_, err := q.exec(ctx, q.addNotificationEntryStmt, addNotificationEntry, arg.NotificationID, arg.EntryID)
+	return err
+}
+
 const addPartner = `-- name: AddPartner :exec
 INSERT INTO partners (id, project_id, name, sort_order, is_deleted) VALUES (?, ?, ?, ?, 0)
 `
@@ -341,6 +487,21 @@ func (q *Queries) AddPartner(ctx context.Context, arg AddPartnerParams) error {
 		arg.Name,
 		arg.SortOrder,
 	)
+	return err
+}
+
+const addPaymentDetails = `-- name: AddPaymentDetails :exec
+INSERT INTO contractor_payment_details (entry_id, contract_id, is_outside_contract) VALUES (?, ?, ?)
+`
+
+type AddPaymentDetailsParams struct {
+	EntryID           uuid.UUID
+	ContractID        uuid.UUID
+	IsOutsideContract bool
+}
+
+func (q *Queries) AddPaymentDetails(ctx context.Context, arg AddPaymentDetailsParams) error {
+	_, err := q.exec(ctx, q.addPaymentDetailsStmt, addPaymentDetails, arg.EntryID, arg.ContractID, arg.IsOutsideContract)
 	return err
 }
 
@@ -388,6 +549,20 @@ func (q *Queries) AddProject(ctx context.Context, arg AddProjectParams) error {
 	return err
 }
 
+const addPurchaseDetails = `-- name: AddPurchaseDetails :exec
+INSERT INTO purchase_details (entry_id, supplier_id) VALUES (?, ?)
+`
+
+type AddPurchaseDetailsParams struct {
+	EntryID    uuid.UUID
+	SupplierID uuid.UUID
+}
+
+func (q *Queries) AddPurchaseDetails(ctx context.Context, arg AddPurchaseDetailsParams) error {
+	_, err := q.exec(ctx, q.addPurchaseDetailsStmt, addPurchaseDetails, arg.EntryID, arg.SupplierID)
+	return err
+}
+
 const addReconciliation = `-- name: AddReconciliation :exec
 INSERT INTO reconciliations (id, project_id, at, user_id) VALUES (?, ?, ?, ?)
 `
@@ -421,6 +596,21 @@ type AddReconciliationBalanceParams struct {
 
 func (q *Queries) AddReconciliationBalance(ctx context.Context, arg AddReconciliationBalanceParams) error {
 	_, err := q.exec(ctx, q.addReconciliationBalanceStmt, addReconciliationBalance, arg.ReconciliationID, arg.AccountID, arg.ActualBalance)
+	return err
+}
+
+const addRevenueDetails = `-- name: AddRevenueDetails :exec
+INSERT INTO revenue_details (entry_id, item_id, subgroup_id) VALUES (?, ?, ?)
+`
+
+type AddRevenueDetailsParams struct {
+	EntryID    uuid.UUID
+	ItemID     uuid.UUID
+	SubgroupID uuid.UUID
+}
+
+func (q *Queries) AddRevenueDetails(ctx context.Context, arg AddRevenueDetailsParams) error {
+	_, err := q.exec(ctx, q.addRevenueDetailsStmt, addRevenueDetails, arg.EntryID, arg.ItemID, arg.SubgroupID)
 	return err
 }
 
@@ -714,6 +904,76 @@ func (q *Queries) AttachmentExists(ctx context.Context, arg AttachmentExistsPara
 	return exists, err
 }
 
+const attachmentOf = `-- name: AttachmentOf :one
+SELECT id, project_id, storage_path, file_name, content_type, size_bytes, sha256, uploaded_by_user_id, uploaded_at FROM attachments WHERE id = ?1 AND project_id = ?2
+`
+
+type AttachmentOfParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) AttachmentOf(ctx context.Context, arg AttachmentOfParams) (Attachment, error) {
+	row := q.queryRow(ctx, q.attachmentOfStmt, attachmentOf, arg.ID, arg.ProjectID)
+	var i Attachment
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.StoragePath,
+		&i.FileName,
+		&i.ContentType,
+		&i.SizeBytes,
+		&i.Sha256,
+		&i.UploadedByUserID,
+		&i.UploadedAt,
+	)
+	return i, err
+}
+
+const attachmentSent = `-- name: AttachmentSent :many
+SELECT id, project_id, storage_path, file_name, content_type, size_bytes, sha256, uploaded_by_user_id, uploaded_at FROM attachments WHERE project_id = ?1 AND uploaded_by_user_id = ?2 AND sha256 = ?3 LIMIT 1
+`
+
+type AttachmentSentParams struct {
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+	Sha256    string
+}
+
+// The file a person already sent to the project with these bytes, which a retried upload answers (UC-029).
+func (q *Queries) AttachmentSent(ctx context.Context, arg AttachmentSentParams) ([]Attachment, error) {
+	rows, err := q.query(ctx, q.attachmentSentStmt, attachmentSent, arg.ProjectID, arg.UserID, arg.Sha256)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Attachment
+	for rows.Next() {
+		var i Attachment
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.StoragePath,
+			&i.FileName,
+			&i.ContentType,
+			&i.SizeBytes,
+			&i.Sha256,
+			&i.UploadedByUserID,
+			&i.UploadedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const balancesOf = `-- name: BalancesOf :many
 SELECT reconciliation_id, account_id, actual_balance FROM reconciliation_balances WHERE reconciliation_id = ?
 `
@@ -741,6 +1001,34 @@ func (q *Queries) BalancesOf(ctx context.Context, reconciliationID uuid.UUID) ([
 	return items, nil
 }
 
+const capitalDetailsOf = `-- name: CapitalDetailsOf :many
+SELECT capital_movement_details.entry_id, capital_movement_details.partner_id FROM capital_movement_details JOIN entries ON entries.id = capital_movement_details.entry_id
+WHERE entries.project_id = ?
+`
+
+func (q *Queries) CapitalDetailsOf(ctx context.Context, projectID uuid.UUID) ([]CapitalMovementDetail, error) {
+	rows, err := q.query(ctx, q.capitalDetailsOfStmt, capitalDetailsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CapitalMovementDetail
+	for rows.Next() {
+		var i CapitalMovementDetail
+		if err := rows.Scan(&i.EntryID, &i.PartnerID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const capitalItemExists = `-- name: CapitalItemExists :one
 SELECT EXISTS (SELECT 1 FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 6)
 `
@@ -751,6 +1039,68 @@ func (q *Queries) CapitalItemExists(ctx context.Context, projectID uuid.UUID) (b
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const capitalMovements = `-- name: CapitalMovements :many
+SELECT capital_movement_details.partner_id, entries.id, entries.project_id, entries.kind, entries.status, entries.entry_date, entries.amount, entries.account_id, entries.description, entries.created_by_user_id, entries.created_at, entries.approved_at, entries.column_values, entries.number
+FROM capital_movement_details JOIN entries ON entries.id = capital_movement_details.entry_id
+WHERE entries.project_id = ? ORDER BY entries.entry_date DESC, entries.number DESC
+`
+
+type CapitalMovementsRow struct {
+	PartnerID       uuid.UUID
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	Kind            int64
+	Status          int64
+	EntryDate       moment.Date
+	Amount          fixed.Number
+	AccountID       uuid.UUID
+	Description     string
+	CreatedByUserID uuid.UUID
+	CreatedAt       moment.Moment
+	ApprovedAt      moment.Moment
+	ColumnValues    string
+	Number          int64
+}
+
+// Every capital movement of the project, by its entry's status, with its partner.
+func (q *Queries) CapitalMovements(ctx context.Context, projectID uuid.UUID) ([]CapitalMovementsRow, error) {
+	rows, err := q.query(ctx, q.capitalMovementsStmt, capitalMovements, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CapitalMovementsRow
+	for rows.Next() {
+		var i CapitalMovementsRow
+		if err := rows.Scan(
+			&i.PartnerID,
+			&i.ID,
+			&i.ProjectID,
+			&i.Kind,
+			&i.Status,
+			&i.EntryDate,
+			&i.Amount,
+			&i.AccountID,
+			&i.Description,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.ApprovedAt,
+			&i.ColumnValues,
+			&i.Number,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const categoriesOf = `-- name: CategoriesOf :many
@@ -1466,6 +1816,94 @@ func (q *Queries) DeviceWithRefreshToken(ctx context.Context, refreshTokenHash s
 	return i, err
 }
 
+const documentKept = `-- name: DocumentKept :one
+SELECT EXISTS (SELECT 1 FROM documents WHERE project_id = ?1 AND attachment_id = ?2)
+`
+
+type DocumentKeptParams struct {
+	ProjectID    uuid.UUID
+	AttachmentID uuid.UUID
+}
+
+func (q *Queries) DocumentKept(ctx context.Context, arg DocumentKeptParams) (bool, error) {
+	row := q.queryRow(ctx, q.documentKeptStmt, documentKept, arg.ProjectID, arg.AttachmentID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const documentOf = `-- name: DocumentOf :one
+SELECT id, project_id, attachment_id, name, group_name, uploaded_by_user_id, uploaded_at FROM documents WHERE id = ?1 AND project_id = ?2
+`
+
+type DocumentOfParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) DocumentOf(ctx context.Context, arg DocumentOfParams) (Document, error) {
+	row := q.queryRow(ctx, q.documentOfStmt, documentOf, arg.ID, arg.ProjectID)
+	var i Document
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.AttachmentID,
+		&i.Name,
+		&i.GroupName,
+		&i.UploadedByUserID,
+		&i.UploadedAt,
+	)
+	return i, err
+}
+
+const documentsOf = `-- name: DocumentsOf :many
+SELECT documents.id, documents.name, documents.group_name, attachments.id AS attachment_id, attachments.file_name, attachments.content_type, documents.uploaded_at
+FROM documents JOIN attachments ON attachments.id = documents.attachment_id
+WHERE documents.project_id = ? ORDER BY documents.group_name COLLATE names, documents.uploaded_at DESC
+`
+
+type DocumentsOfRow struct {
+	ID           uuid.UUID
+	Name         string
+	GroupName    string
+	AttachmentID uuid.UUID
+	FileName     string
+	ContentType  string
+	UploadedAt   moment.Moment
+}
+
+// A project's documents with their files: those in no group first, then each group in order, newest first within each.
+func (q *Queries) DocumentsOf(ctx context.Context, projectID uuid.UUID) ([]DocumentsOfRow, error) {
+	rows, err := q.query(ctx, q.documentsOfStmt, documentsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DocumentsOfRow
+	for rows.Next() {
+		var i DocumentsOfRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.GroupName,
+			&i.AttachmentID,
+			&i.FileName,
+			&i.ContentType,
+			&i.UploadedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const documentsOfContract = `-- name: DocumentsOfContract :many
 SELECT attachment_id FROM contract_attachments WHERE contract_id = ?
 `
@@ -1507,6 +1945,170 @@ func (q *Queries) EmailTaken(ctx context.Context, arg EmailTakenParams) (bool, e
 	var taken bool
 	err := row.Scan(&taken)
 	return taken, err
+}
+
+const entriesOf = `-- name: EntriesOf :many
+SELECT id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number FROM entries WHERE project_id = ? AND status <> 4 ORDER BY created_at DESC, number DESC
+`
+
+// A project's entries but those removed (redix-api #119), newest first.
+func (q *Queries) EntriesOf(ctx context.Context, projectID uuid.UUID) ([]Entry, error) {
+	rows, err := q.query(ctx, q.entriesOfStmt, entriesOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Entry
+	for rows.Next() {
+		var i Entry
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Kind,
+			&i.Status,
+			&i.EntryDate,
+			&i.Amount,
+			&i.AccountID,
+			&i.Description,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.ApprovedAt,
+			&i.ColumnValues,
+			&i.Number,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const entryExists = `-- name: EntryExists :one
+SELECT EXISTS (SELECT 1 FROM entries WHERE id = ?)
+`
+
+func (q *Queries) EntryExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.queryRow(ctx, q.entryExistsStmt, entryExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const entryFilesOf = `-- name: EntryFilesOf :many
+SELECT entry_attachments.entry_id, entry_attachments.attachment_id, entry_attachments.role, attachments.file_name, attachments.content_type,
+    attachments.uploaded_at, attachments.sha256
+FROM entry_attachments JOIN attachments ON attachments.id = entry_attachments.attachment_id
+WHERE attachments.project_id = ? ORDER BY attachments.uploaded_at, attachments.id
+`
+
+type EntryFilesOfRow struct {
+	EntryID      uuid.UUID
+	AttachmentID uuid.UUID
+	Role         int64
+	FileName     string
+	ContentType  string
+	UploadedAt   moment.Moment
+	Sha256       string
+}
+
+// The files of the project's entries, the oldest first, each with its name and type.
+func (q *Queries) EntryFilesOf(ctx context.Context, projectID uuid.UUID) ([]EntryFilesOfRow, error) {
+	rows, err := q.query(ctx, q.entryFilesOfStmt, entryFilesOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EntryFilesOfRow
+	for rows.Next() {
+		var i EntryFilesOfRow
+		if err := rows.Scan(
+			&i.EntryID,
+			&i.AttachmentID,
+			&i.Role,
+			&i.FileName,
+			&i.ContentType,
+			&i.UploadedAt,
+			&i.Sha256,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const entryOf = `-- name: EntryOf :one
+SELECT id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number FROM entries WHERE id = ?1 AND project_id = ?2
+`
+
+type EntryOfParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) EntryOf(ctx context.Context, arg EntryOfParams) (Entry, error) {
+	row := q.queryRow(ctx, q.entryOfStmt, entryOf, arg.ID, arg.ProjectID)
+	var i Entry
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Kind,
+		&i.Status,
+		&i.EntryDate,
+		&i.Amount,
+		&i.AccountID,
+		&i.Description,
+		&i.CreatedByUserID,
+		&i.CreatedAt,
+		&i.ApprovedAt,
+		&i.ColumnValues,
+		&i.Number,
+	)
+	return i, err
+}
+
+const expenseDetailsOf = `-- name: ExpenseDetailsOf :many
+SELECT expense_details.entry_id, expense_details.item_id, expense_details.subgroup_id, expense_details.payment_method_id FROM expense_details JOIN entries ON entries.id = expense_details.entry_id WHERE entries.project_id = ?
+`
+
+func (q *Queries) ExpenseDetailsOf(ctx context.Context, projectID uuid.UUID) ([]ExpenseDetail, error) {
+	rows, err := q.query(ctx, q.expenseDetailsOfStmt, expenseDetailsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExpenseDetail
+	for rows.Next() {
+		var i ExpenseDetail
+		if err := rows.Scan(
+			&i.EntryID,
+			&i.ItemID,
+			&i.SubgroupID,
+			&i.PaymentMethodID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const hasEntriesWaiting = `-- name: HasEntriesWaiting :one
@@ -1596,6 +2198,39 @@ func (q *Queries) HeldInProjects(ctx context.Context, userID uuid.UUID) ([]HeldI
 	return items, nil
 }
 
+const holdersOf = `-- name: HoldersOf :many
+SELECT user_id FROM project_permissions WHERE project_id = ?1 AND permission = ?2 ORDER BY id
+`
+
+type HoldersOfParams struct {
+	ProjectID  uuid.UUID
+	Permission string
+}
+
+// Who holds a permission in a project.
+func (q *Queries) HoldersOf(ctx context.Context, arg HoldersOfParams) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.holdersOfStmt, holdersOf, arg.ProjectID, arg.Permission)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const inactiveOf = `-- name: InactiveOf :many
 SELECT id, project_id, user_id FROM inactive_members WHERE project_id = ?1 AND user_id = ?2
 `
@@ -1645,6 +2280,33 @@ func (q *Queries) InactiveProjectsOf(ctx context.Context, userID uuid.UUID) ([]u
 			return nil, err
 		}
 		items = append(items, project_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const invoicesOf = `-- name: InvoicesOf :many
+SELECT invoices.entry_id, invoices.number FROM invoices JOIN entries ON entries.id = invoices.entry_id WHERE entries.project_id = ?
+`
+
+func (q *Queries) InvoicesOf(ctx context.Context, projectID uuid.UUID) ([]Invoice, error) {
+	rows, err := q.query(ctx, q.invoicesOfStmt, invoicesOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invoice
+	for rows.Next() {
+		var i Invoice
+		if err := rows.Scan(&i.EntryID, &i.Number); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1979,6 +2641,23 @@ func (q *Queries) ManagersOfPending(ctx context.Context) ([]ManagersOfPendingRow
 	return items, nil
 }
 
+const markRead = `-- name: MarkRead :execrows
+UPDATE notifications SET is_read = 1 WHERE id = ?1 AND user_id = ?2
+`
+
+type MarkReadParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) MarkRead(ctx context.Context, arg MarkReadParams) (int64, error) {
+	result, err := q.exec(ctx, q.markReadStmt, markRead, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const members = `-- name: Members :many
 SELECT users.id, users.display_name FROM users
 WHERE EXISTS (SELECT 1 FROM project_permissions WHERE project_permissions.project_id = ?1 AND project_permissions.user_id = users.id)
@@ -2013,6 +2692,19 @@ func (q *Queries) Members(ctx context.Context, projectID uuid.UUID) ([]MembersRo
 		return nil, err
 	}
 	return items, nil
+}
+
+const nextEntryNumber = `-- name: NextEntryNumber :one
+UPDATE projects SET last_entry_number = last_entry_number + 1 WHERE id = ? RETURNING last_entry_number
+`
+
+// The project's next entry number (FR-54, D3): its counter moves and answers in one statement, so two entries never share a number and a number
+// taken is never given again.
+func (q *Queries) NextEntryNumber(ctx context.Context, id uuid.UUID) (int64, error) {
+	row := q.queryRow(ctx, q.nextEntryNumberStmt, nextEntryNumber, id)
+	var last_entry_number int64
+	err := row.Scan(&last_entry_number)
+	return last_entry_number, err
 }
 
 const nonAdminNamed = `-- name: NonAdminNamed :many
@@ -2054,6 +2746,142 @@ func (q *Queries) NonAdminNamed(ctx context.Context, username string) ([]User, e
 	return items, nil
 }
 
+const notificationsAbout = `-- name: NotificationsAbout :many
+SELECT notification_id FROM notification_entries WHERE entry_id = ?
+`
+
+func (q *Queries) NotificationsAbout(ctx context.Context, entryID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.notificationsAboutStmt, notificationsAbout, entryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var notification_id uuid.UUID
+		if err := rows.Scan(&notification_id); err != nil {
+			return nil, err
+		}
+		items = append(items, notification_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const notificationsOf = `-- name: NotificationsOf :many
+SELECT notifications.id, notifications.kind, notifications.project_id, projects.name AS project_name,
+    COALESCE(notification_entries.entry_id, '') AS entry_id, notifications.at, notifications.is_read
+FROM notifications JOIN projects ON projects.id = notifications.project_id
+    LEFT JOIN notification_entries ON notification_entries.notification_id = notifications.id
+WHERE notifications.user_id = ?1
+    AND EXISTS (SELECT 1 FROM project_permissions WHERE project_permissions.user_id = ?1 AND project_permissions.project_id = notifications.project_id)
+ORDER BY notifications.at DESC, notifications.id DESC LIMIT 100
+`
+
+type NotificationsOfRow struct {
+	ID          uuid.UUID
+	Kind        int64
+	ProjectID   uuid.UUID
+	ProjectName string
+	EntryID     uuid.UUID
+	At          moment.Moment
+	IsRead      bool
+}
+
+// What a person was told, newest first, only about the projects they still hold anything in, at most 100 (NotificationsEndpoints.List).
+func (q *Queries) NotificationsOf(ctx context.Context, userID uuid.UUID) ([]NotificationsOfRow, error) {
+	rows, err := q.query(ctx, q.notificationsOfStmt, notificationsOf, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NotificationsOfRow
+	for rows.Next() {
+		var i NotificationsOfRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.ProjectID,
+			&i.ProjectName,
+			&i.EntryID,
+			&i.At,
+			&i.IsRead,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const offeredContracts = `-- name: OfferedContracts :many
+SELECT contracts.id, contracts.project_id, contracts.item_id, contracts.sort_order, contracts.supplier_id, contracts.value, contracts.is_open_value, contracts.unit_price, contracts.quantity, contracts.notes, contracts.is_active, suppliers.name AS contractor FROM contracts JOIN suppliers ON suppliers.id = contracts.supplier_id
+WHERE contracts.project_id = ? AND contracts.is_active = 1 ORDER BY contracts.sort_order, contracts.id
+`
+
+type OfferedContractsRow struct {
+	ID          uuid.UUID
+	ProjectID   uuid.UUID
+	ItemID      uuid.UUID
+	SortOrder   int64
+	SupplierID  uuid.UUID
+	Value       fixed.Number
+	IsOpenValue bool
+	UnitPrice   fixed.Number
+	Quantity    fixed.Number
+	Notes       string
+	IsActive    bool
+	Contractor  string
+}
+
+// The project's active contracts, each with its contractor's name.
+func (q *Queries) OfferedContracts(ctx context.Context, projectID uuid.UUID) ([]OfferedContractsRow, error) {
+	rows, err := q.query(ctx, q.offeredContractsStmt, offeredContracts, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OfferedContractsRow
+	for rows.Next() {
+		var i OfferedContractsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ItemID,
+			&i.SortOrder,
+			&i.SupplierID,
+			&i.Value,
+			&i.IsOpenValue,
+			&i.UnitPrice,
+			&i.Quantity,
+			&i.Notes,
+			&i.IsActive,
+			&i.Contractor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const otherActiveManagers = `-- name: OtherActiveManagers :one
 SELECT count(*) FROM project_permissions
 WHERE project_permissions.project_id = ?1 AND project_permissions.permission = 'ManageUsers' AND project_permissions.user_id <> ?2
@@ -2071,6 +2899,33 @@ func (q *Queries) OtherActiveManagers(ctx context.Context, arg OtherActiveManage
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const partnerLogins = `-- name: PartnerLogins :many
+SELECT partner_id, project_id, user_id FROM partner_users WHERE project_id = ?
+`
+
+func (q *Queries) PartnerLogins(ctx context.Context, projectID uuid.UUID) ([]PartnerUser, error) {
+	rows, err := q.query(ctx, q.partnerLoginsStmt, partnerLogins, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PartnerUser
+	for rows.Next() {
+		var i PartnerUser
+		if err := rows.Scan(&i.PartnerID, &i.ProjectID, &i.UserID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const partnersInItem = `-- name: PartnersInItem :many
@@ -2096,6 +2951,67 @@ func (q *Queries) PartnersInItem(ctx context.Context, id uuid.UUID) ([]Partner, 
 			&i.SortOrder,
 			&i.IsDeleted,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const partnersOf = `-- name: PartnersOf :many
+SELECT id, project_id, name, sort_order, is_deleted FROM partners WHERE project_id = ? ORDER BY sort_order, id
+`
+
+func (q *Queries) PartnersOf(ctx context.Context, projectID uuid.UUID) ([]Partner, error) {
+	rows, err := q.query(ctx, q.partnersOfStmt, partnersOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Partner
+	for rows.Next() {
+		var i Partner
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.SortOrder,
+			&i.IsDeleted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const paymentDetailsOf = `-- name: PaymentDetailsOf :many
+SELECT contractor_payment_details.entry_id, contractor_payment_details.contract_id, contractor_payment_details.is_outside_contract FROM contractor_payment_details JOIN entries ON entries.id = contractor_payment_details.entry_id
+WHERE entries.project_id = ?
+`
+
+func (q *Queries) PaymentDetailsOf(ctx context.Context, projectID uuid.UUID) ([]ContractorPaymentDetail, error) {
+	rows, err := q.query(ctx, q.paymentDetailsOfStmt, paymentDetailsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContractorPaymentDetail
+	for rows.Next() {
+		var i ContractorPaymentDetail
+		if err := rows.Scan(&i.EntryID, &i.ContractID, &i.IsOutsideContract); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2163,6 +3079,47 @@ func (q *Queries) PaymentMethodsOf(ctx context.Context, projectID uuid.UUID) ([]
 			&i.Name,
 			&i.SortOrder,
 			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingEntriesOf = `-- name: PendingEntriesOf :many
+SELECT id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number FROM entries WHERE project_id = ? AND status = 1 ORDER BY created_at, number
+`
+
+func (q *Queries) PendingEntriesOf(ctx context.Context, projectID uuid.UUID) ([]Entry, error) {
+	rows, err := q.query(ctx, q.pendingEntriesOfStmt, pendingEntriesOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Entry
+	for rows.Next() {
+		var i Entry
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Kind,
+			&i.Status,
+			&i.EntryDate,
+			&i.Amount,
+			&i.AccountID,
+			&i.Description,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.ApprovedAt,
+			&i.ColumnValues,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -2442,12 +3399,82 @@ func (q *Queries) ProjectsOfUserWithRows(ctx context.Context, userID uuid.UUID) 
 	return items, nil
 }
 
+const purchaseDetailsOf = `-- name: PurchaseDetailsOf :many
+SELECT purchase_details.entry_id, purchase_details.supplier_id FROM purchase_details JOIN entries ON entries.id = purchase_details.entry_id WHERE entries.project_id = ?
+`
+
+func (q *Queries) PurchaseDetailsOf(ctx context.Context, projectID uuid.UUID) ([]PurchaseDetail, error) {
+	rows, err := q.query(ctx, q.purchaseDetailsOfStmt, purchaseDetailsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PurchaseDetail
+	for rows.Next() {
+		var i PurchaseDetail
+		if err := rows.Scan(&i.EntryID, &i.SupplierID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const rejectionsOf = `-- name: RejectionsOf :many
+SELECT entry_decisions.entry_id, entry_decisions.reason FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id
+WHERE entries.project_id = ? AND entry_decisions.action = 2 ORDER BY entry_decisions.id
+`
+
+type RejectionsOfRow struct {
+	EntryID uuid.UUID
+	Reason  string
+}
+
+// The reasons the project's entries were rejected, in the order given.
+func (q *Queries) RejectionsOf(ctx context.Context, projectID uuid.UUID) ([]RejectionsOfRow, error) {
+	rows, err := q.query(ctx, q.rejectionsOfStmt, rejectionsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RejectionsOfRow
+	for rows.Next() {
+		var i RejectionsOfRow
+		if err := rows.Scan(&i.EntryID, &i.Reason); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeAccount = `-- name: RemoveAccount :exec
 DELETE FROM accounts WHERE id = ?
 `
 
 func (q *Queries) RemoveAccount(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removeAccountStmt, removeAccount, id)
+	return err
+}
+
+const removeCapitalDetails = `-- name: RemoveCapitalDetails :exec
+DELETE FROM capital_movement_details WHERE entry_id = ?
+`
+
+func (q *Queries) RemoveCapitalDetails(ctx context.Context, entryID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeCapitalDetailsStmt, removeCapitalDetails, entryID)
 	return err
 }
 
@@ -2466,6 +3493,15 @@ DELETE FROM account_custodians WHERE account_id = ?
 
 func (q *Queries) RemoveCustodian(ctx context.Context, accountID uuid.UUID) error {
 	_, err := q.exec(ctx, q.removeCustodianStmt, removeCustodian, accountID)
+	return err
+}
+
+const removeDecisions = `-- name: RemoveDecisions :exec
+DELETE FROM entry_decisions WHERE entry_id = ?
+`
+
+func (q *Queries) RemoveDecisions(ctx context.Context, entryID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeDecisionsStmt, removeDecisions, entryID)
 	return err
 }
 
@@ -2496,6 +3532,47 @@ func (q *Queries) RemoveDefaultProject(ctx context.Context, userID uuid.UUID) er
 	return err
 }
 
+const removeDocument = `-- name: RemoveDocument :exec
+DELETE FROM documents WHERE id = ?
+`
+
+func (q *Queries) RemoveDocument(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeDocumentStmt, removeDocument, id)
+	return err
+}
+
+const removeEntry = `-- name: RemoveEntry :exec
+DELETE FROM entries WHERE id = ?
+`
+
+func (q *Queries) RemoveEntry(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeEntryStmt, removeEntry, id)
+	return err
+}
+
+const removeEntryFile = `-- name: RemoveEntryFile :exec
+DELETE FROM entry_attachments WHERE entry_id = ?1 AND attachment_id = ?2
+`
+
+type RemoveEntryFileParams struct {
+	EntryID      uuid.UUID
+	AttachmentID uuid.UUID
+}
+
+func (q *Queries) RemoveEntryFile(ctx context.Context, arg RemoveEntryFileParams) error {
+	_, err := q.exec(ctx, q.removeEntryFileStmt, removeEntryFile, arg.EntryID, arg.AttachmentID)
+	return err
+}
+
+const removeExpenseDetails = `-- name: RemoveExpenseDetails :exec
+DELETE FROM expense_details WHERE entry_id = ?
+`
+
+func (q *Queries) RemoveExpenseDetails(ctx context.Context, entryID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeExpenseDetailsStmt, removeExpenseDetails, entryID)
+	return err
+}
+
 const removeInactive = `-- name: RemoveInactive :exec
 DELETE FROM inactive_members WHERE id = ?1
 `
@@ -2505,12 +3582,57 @@ func (q *Queries) RemoveInactive(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const removeInvoice = `-- name: RemoveInvoice :exec
+DELETE FROM invoices WHERE entry_id = ?
+`
+
+func (q *Queries) RemoveInvoice(ctx context.Context, entryID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeInvoiceStmt, removeInvoice, entryID)
+	return err
+}
+
 const removeItemColumn = `-- name: RemoveItemColumn :exec
 DELETE FROM item_columns WHERE id = ?
 `
 
 func (q *Queries) RemoveItemColumn(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removeItemColumnStmt, removeItemColumn, id)
+	return err
+}
+
+const removeNotification = `-- name: RemoveNotification :exec
+DELETE FROM notifications WHERE id = ?
+`
+
+func (q *Queries) RemoveNotification(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeNotificationStmt, removeNotification, id)
+	return err
+}
+
+const removeNotificationEntry = `-- name: RemoveNotificationEntry :exec
+DELETE FROM notification_entries WHERE notification_id = ?
+`
+
+func (q *Queries) RemoveNotificationEntry(ctx context.Context, notificationID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeNotificationEntryStmt, removeNotificationEntry, notificationID)
+	return err
+}
+
+const removePartnerLogin = `-- name: RemovePartnerLogin :exec
+DELETE FROM partner_users WHERE partner_id = ?
+`
+
+func (q *Queries) RemovePartnerLogin(ctx context.Context, partnerID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removePartnerLoginStmt, removePartnerLogin, partnerID)
+	return err
+}
+
+const removePaymentDetails = `-- name: RemovePaymentDetails :exec
+DELETE FROM contractor_payment_details WHERE entry_id = ?
+`
+
+func (q *Queries) RemovePaymentDetails(ctx context.Context, entryID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removePaymentDetailsStmt, removePaymentDetails, entryID)
 	return err
 }
 
@@ -2529,6 +3651,24 @@ DELETE FROM project_permissions WHERE id = ?1
 
 func (q *Queries) RemovePermission(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removePermissionStmt, removePermission, id)
+	return err
+}
+
+const removePurchaseDetails = `-- name: RemovePurchaseDetails :exec
+DELETE FROM purchase_details WHERE entry_id = ?
+`
+
+func (q *Queries) RemovePurchaseDetails(ctx context.Context, entryID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removePurchaseDetailsStmt, removePurchaseDetails, entryID)
+	return err
+}
+
+const removeRevenueDetails = `-- name: RemoveRevenueDetails :exec
+DELETE FROM revenue_details WHERE entry_id = ?
+`
+
+func (q *Queries) RemoveRevenueDetails(ctx context.Context, entryID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeRevenueDetailsStmt, removeRevenueDetails, entryID)
 	return err
 }
 
@@ -2581,6 +3721,33 @@ func (q *Queries) RenewDevice(ctx context.Context, arg RenewDeviceParams) error 
 		arg.ID,
 	)
 	return err
+}
+
+const revenueDetailsOf = `-- name: RevenueDetailsOf :many
+SELECT revenue_details.entry_id, revenue_details.item_id, revenue_details.subgroup_id FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id WHERE entries.project_id = ?
+`
+
+func (q *Queries) RevenueDetailsOf(ctx context.Context, projectID uuid.UUID) ([]RevenueDetail, error) {
+	rows, err := q.query(ctx, q.revenueDetailsOfStmt, revenueDetailsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RevenueDetail
+	for rows.Next() {
+		var i RevenueDetail
+		if err := rows.Scan(&i.EntryID, &i.ItemID, &i.SubgroupID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const revokeDevice = `-- name: RevokeDevice :exec
@@ -2837,6 +4004,48 @@ func (q *Queries) SaveDefaultItem(ctx context.Context, arg SaveDefaultItemParams
 	return err
 }
 
+const saveEntry = `-- name: SaveEntry :exec
+INSERT INTO entries (id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET kind = excluded.kind, status = excluded.status, entry_date = excluded.entry_date, amount = excluded.amount,
+    account_id = excluded.account_id, description = excluded.description, approved_at = excluded.approved_at, column_values = excluded.column_values
+`
+
+type SaveEntryParams struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	Kind            int64
+	Status          int64
+	EntryDate       moment.Date
+	Amount          fixed.Number
+	AccountID       uuid.UUID
+	Description     string
+	CreatedByUserID uuid.UUID
+	CreatedAt       moment.Moment
+	ApprovedAt      moment.Moment
+	ColumnValues    string
+	Number          int64
+}
+
+func (q *Queries) SaveEntry(ctx context.Context, arg SaveEntryParams) error {
+	_, err := q.exec(ctx, q.saveEntryStmt, saveEntry,
+		arg.ID,
+		arg.ProjectID,
+		arg.Kind,
+		arg.Status,
+		arg.EntryDate,
+		arg.Amount,
+		arg.AccountID,
+		arg.Description,
+		arg.CreatedByUserID,
+		arg.CreatedAt,
+		arg.ApprovedAt,
+		arg.ColumnValues,
+		arg.Number,
+	)
+	return err
+}
+
 const saveItem = `-- name: SaveItem :exec
 INSERT INTO items (id, category_id, name, type, sort_order, is_active, shows_table_percentages) VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET name = excluded.name, type = excluded.type, sort_order = excluded.sort_order, is_active = excluded.is_active,
@@ -2901,6 +4110,45 @@ func (q *Queries) SaveItemColumn(ctx context.Context, arg SaveItemColumnParams) 
 		arg.SortOrder,
 		arg.Choices,
 	)
+	return err
+}
+
+const savePartner = `-- name: SavePartner :exec
+INSERT INTO partners (id, project_id, name, sort_order, is_deleted) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET name = excluded.name, sort_order = excluded.sort_order, is_deleted = excluded.is_deleted
+`
+
+type SavePartnerParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+	IsDeleted bool
+}
+
+func (q *Queries) SavePartner(ctx context.Context, arg SavePartnerParams) error {
+	_, err := q.exec(ctx, q.savePartnerStmt, savePartner,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.SortOrder,
+		arg.IsDeleted,
+	)
+	return err
+}
+
+const savePartnerLogin = `-- name: SavePartnerLogin :exec
+INSERT INTO partner_users (partner_id, project_id, user_id) VALUES (?, ?, ?) ON CONFLICT (partner_id) DO UPDATE SET user_id = excluded.user_id
+`
+
+type SavePartnerLoginParams struct {
+	PartnerID uuid.UUID
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) SavePartnerLogin(ctx context.Context, arg SavePartnerLoginParams) error {
+	_, err := q.exec(ctx, q.savePartnerLoginStmt, savePartnerLogin, arg.PartnerID, arg.ProjectID, arg.UserID)
 	return err
 }
 
@@ -3441,6 +4689,38 @@ func (q *Queries) UserNamed(ctx context.Context, username string) (User, error) 
 		&i.Email,
 	)
 	return i, err
+}
+
+const userNames = `-- name: UserNames :many
+SELECT id, display_name FROM users
+`
+
+type UserNamesRow struct {
+	ID          uuid.UUID
+	DisplayName string
+}
+
+func (q *Queries) UserNames(ctx context.Context) ([]UserNamesRow, error) {
+	rows, err := q.query(ctx, q.userNamesStmt, userNames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserNamesRow
+	for rows.Next() {
+		var i UserNamesRow
+		if err := rows.Scan(&i.ID, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const userWithEmail = `-- name: UserWithEmail :one

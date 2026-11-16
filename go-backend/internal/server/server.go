@@ -6,13 +6,18 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/documents"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
@@ -35,7 +40,9 @@ type Parts struct {
 	// RegistrationsPerHour is how often one address may register a project an hour (REDIX_Registration__PermitsPerHour).
 	RegistrationsPerHour int
 	WebFolder            string
-	Log                  *slog.Logger
+	// AttachmentsFolder keeps the files people send (REDIX_Attachments__Folder, NFR-10).
+	AttachmentsFolder string
+	Log               *slog.Logger
 }
 
 // Routes is every route of the API on parts.
@@ -66,5 +73,10 @@ func Routes(parts Parts) *web.Router {
 	suppliers.Map(router, gate, database, now)
 	accounts.Map(router, gate, database, now)
 	contracts.Map(router, gate, database, now)
+	entries.Map(router, gate, database, now)
+	notifications.Map(router, gate, database)
+	partners.Map(router, gate, database, now)
+	attachments.Map(router, gate, database, now, parts.AttachmentsFolder)
+	documents.Map(router, gate, database, now, parts.AttachmentsFolder)
 	return router
 }

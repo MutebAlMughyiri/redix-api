@@ -3,9 +3,12 @@ package structure
 import (
 	"encoding/json"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
@@ -87,9 +90,9 @@ func (d *DataType) UnmarshalJSON(data []byte) error {
 type Sign int64
 
 const (
-	unsigned Sign = iota
-	plus
-	minus
+	Unsigned Sign = iota
+	Plus
+	Minus
 )
 
 var signs = web.Enum{"none", "plus", "minus"}
@@ -222,7 +225,7 @@ func (c column) isCustom() bool { return strings.HasPrefix(c.Key, customKeyPrefi
 
 // signed says whether the column is a list whose choices give the amount a sign: a table has at most one (redix-api #129).
 func (c column) signed() bool {
-	return slices.ContainsFunc(c.Choices, func(one choice) bool { return Sign(one.Sign) != unsigned })
+	return slices.ContainsFunc(c.Choices, func(one choice) bool { return Sign(one.Sign) != Unsigned })
 }
 
 func hasTwoSignedLists(columns []column) bool {
@@ -418,4 +421,65 @@ func orEmptyList(kept string) string {
 		return "[]"
 	}
 	return kept
+}
+
+// IsEntryField says whether the column key is one an entry answers in a field of its own - its description, date, supplier, amount, account,
+// payment method, file, contract or place in it - rather than among its column values (Column.IsEntryField, redix-api #129, R5).
+func IsEntryField(key string) bool { return slices.Contains(entryFieldKeys, key) }
+
+// SignOfChoice is the sign value - a choice's id - gives the column, and whether the column is a list whose choices carry a sign at all
+// (Column.SignedChoiceOf): what decides the direction of an entry's amount.
+func SignOfChoice(row store.ItemColumn, value string) (Sign, bool) {
+	one := ofItemColumn(row)
+	if !one.signed() {
+		return Unsigned, false
+	}
+	return Sign(one.choiceOf(value).Sign), true
+}
+
+// choiceOf is the choice whose id value holds; none, which gives no sign, when it names none of the column's.
+func (c column) choiceOf(value string) choice {
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return choice{}
+	}
+	for _, one := range c.Choices {
+		if one.ID == id {
+			return one
+		}
+	}
+	return choice{}
+}
+
+// valueMaxLength is the longest value an entry may give a column (Column.ValueMaxLength).
+const valueMaxLength = 1000
+
+// Accepts says whether an entry may give the column value (Column.Accepts): a number or an amount not negative with at most two decimals; a date
+// as yyyy-MM-dd; the id of one of a list's choices; or a text of at most 1,000 characters.
+func Accepts(row store.ItemColumn, value string) bool {
+	one := ofItemColumn(row)
+	switch one.DataType {
+	case number, amount:
+		parsed, err := fixed.Parse(strings.ReplaceAll(value, ",", ""))
+		return err == nil && !strings.ContainsAny(value, "eE") && parsed >= 0 && parsed.IsAcceptableMoney()
+	case date:
+		_, err := time.Parse("2006-01-02", value)
+		return err == nil && len(value) == 10
+	case list:
+		return one.choiceOf(value).ID != uuid.Nil
+	}
+	return utf8.RuneCountInString(value) <= valueMaxLength
+}
+
+// ChoiceNameIn is the name of what kept - an entry's column values as kept - chose in the one list among columns whose choices carry a sign
+// (Column.SignedChoiceOf): a capital movement's type, as its screen names it; "" for none.
+func ChoiceNameIn(columns []store.ItemColumn, kept string) string {
+	values := map[string]string{}
+	json.Unmarshal([]byte(kept), &values)
+	for _, row := range columns {
+		if one := ofItemColumn(row); one.signed() {
+			return one.choiceOf(values[row.Key]).Name
+		}
+	}
+	return ""
 }

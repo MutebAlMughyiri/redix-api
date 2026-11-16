@@ -70,6 +70,10 @@ sql:
       - internal/suppliers/queries.sql
       - internal/accounts/queries.sql
       - internal/contracts/queries.sql
+      - internal/entries/queries.sql
+      - internal/partners/queries.sql
+      - internal/attachments/queries.sql
+      - internal/documents/queries.sql
       - internal/notifications/queries.sql
     gen:
       go:

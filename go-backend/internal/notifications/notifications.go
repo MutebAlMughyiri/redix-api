@@ -3,6 +3,11 @@ package notifications
 
 import (
 	"context"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -33,4 +38,49 @@ func TellManagers(ctx context.Context, q *store.Queries, projectID uuid.UUID, ki
 		}
 	}
 	return nil
+}
+
+var kinds = web.Enum{"entrySubmitted", "entryApproved", "entryRejected", "projectApproved", "projectRejected"}
+
+func (k Kind) MarshalJSON() ([]byte, error) { return kinds.Write(int64(k)) }
+
+// Map routes what the signed-in person was told, for them alone (UC-036, FR-20).
+func Map(router *web.Router, gate *access.Gate, database db.DB) {
+	router.Handle("GET", "/notifications", gate.Working(func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+		rows, err := database.Queries().NotificationsOf(r.Context(), caller.UserID)
+		if err != nil {
+			problem.Status(w, r, http.StatusInternalServerError)
+			return
+		}
+		type view struct {
+			ID          uuid.UUID     `json:"id"`
+			Kind        Kind          `json:"kind"`
+			ProjectID   uuid.UUID     `json:"projectId"`
+			ProjectName string        `json:"projectName"`
+			EntryID     uuid.UUID     `json:"entryId"`
+			At          moment.Moment `json:"at"`
+			IsRead      bool          `json:"isRead"`
+		}
+		views := []view{}
+		for _, row := range rows {
+			views = append(views, view{ID: row.ID, Kind: Kind(row.Kind), ProjectID: row.ProjectID, ProjectName: row.ProjectName, EntryID: row.EntryID, At: row.At, IsRead: row.IsRead})
+		}
+		web.JSON(w, r, http.StatusOK, views)
+	}))
+	router.Handle("POST", "/notifications/{id:guid}/read", gate.Working(func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+		var marked int64
+		err := database.InTx(r.Context(), func(q *store.Queries) error {
+			var err error
+			marked, err = q.MarkRead(r.Context(), store.MarkReadParams{ID: web.ID(r, "id"), UserID: caller.UserID})
+			return err
+		})
+		switch {
+		case err != nil:
+			problem.Status(w, r, http.StatusInternalServerError)
+		case marked == 0:
+			problem.Status(w, r, http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
 }

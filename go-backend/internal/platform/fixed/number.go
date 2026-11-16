@@ -139,3 +139,56 @@ func (t *Typed) UnmarshalJSON(data []byte) error {
 
 // Total is the typed number as a total of its own scale.
 func (t Typed) Total() Total { return Total{sum: t.Number, decimals: t.decimals} }
+
+// IsBeyond says whether the number stands for one past what is kept.
+func (n Number) IsBeyond() bool { return n == math.MaxInt64 || n == math.MinInt64 }
+
+// Product is a times b as .NET's decimal multiplied them: the scale is the two scales added, at most four - 380 times 2.5 is 950.0 - and the value
+// rounded half away from zero to four decimals, as SQL Server keeps it.
+func Product(a, b Typed) Total {
+	exact := new(big.Rat).Mul(big.NewRat(int64(a.Number), scale), big.NewRat(int64(b.Number), scale))
+	product, err := Parse(exact.FloatString(decimals + 2))
+	if err != nil {
+		return Total{sum: beyond(exact.Sign()), decimals: decimals}
+	}
+	return Total{sum: product, decimals: min(a.decimals+b.decimals, decimals)}
+}
+
+// Written is a number as .NET wrote a decimal it computed, kept as the text it wrote.
+type Written string
+
+// MarshalJSON writes the number as it was written.
+func (w Written) MarshalJSON() ([]byte, error) { return []byte(w), nil }
+
+// Percent is part as a percentage of whole as .NET's decimal reckoned decimal.Round(part / whole * 100, decimals): the quotient carries the fewest
+// decimals that make it exact - 100/400 is 0.25 - which the percentage keeps, 25.00, up to decimals, past which it is rounded, half away from zero
+// when away, to the even digit otherwise, as decimal.Round's default does. 0 for a whole of nothing.
+func Percent(part, whole Number, places int, away bool) Written {
+	if whole == 0 {
+		return "0"
+	}
+	quotient := big.NewRat(int64(part), int64(whole))
+	exact := -1
+	for kept := 0; kept <= 28; kept++ {
+		if new(big.Rat).Mul(quotient, ten(kept)).IsInt() {
+			exact = kept
+			break
+		}
+	}
+	percent := new(big.Rat).Mul(quotient, big.NewRat(100, 1))
+	if exact >= 0 && exact <= places {
+		return Written(percent.FloatString(exact))
+	}
+	scaled := new(big.Rat).Mul(percent, ten(places))
+	whole64 := new(big.Int).Quo(scaled.Num(), scaled.Denom())
+	rest := new(big.Rat).Abs(new(big.Rat).Sub(scaled, new(big.Rat).SetInt(whole64)))
+	half := rest.Cmp(big.NewRat(1, 2))
+	if half > 0 || (half == 0 && (away || whole64.Bit(0) == 1)) {
+		whole64.Add(whole64, big.NewInt(int64(percent.Sign())))
+	}
+	return Written(new(big.Rat).Quo(new(big.Rat).SetInt(whole64), ten(places)).FloatString(places))
+}
+
+func ten(power int) *big.Rat {
+	return new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(power)), nil))
+}

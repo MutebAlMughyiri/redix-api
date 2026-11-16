@@ -23,6 +23,23 @@ type AccountCustodian struct {
 	UserID    uuid.UUID
 }
 
+type Attachment struct {
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	StoragePath      string
+	FileName         string
+	ContentType      string
+	SizeBytes        int64
+	Sha256           string
+	UploadedByUserID uuid.UUID
+	UploadedAt       moment.Moment
+}
+
+type CapitalMovementDetail struct {
+	EntryID   uuid.UUID
+	PartnerID uuid.UUID
+}
+
 type Category struct {
 	ID        uuid.UUID
 	ProjectID uuid.UUID
@@ -52,6 +69,12 @@ type Contract struct {
 	IsActive    bool
 }
 
+type ContractorPaymentDetail struct {
+	EntryID           uuid.UUID
+	ContractID        uuid.UUID
+	IsOutsideContract bool
+}
+
 type DefaultColumn struct {
 	ID            uuid.UUID
 	ProjectID     uuid.UUID
@@ -76,6 +99,16 @@ type Device struct {
 	LastSeenAt       moment.Moment
 }
 
+type Document struct {
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	AttachmentID     uuid.UUID
+	Name             string
+	GroupName        string
+	UploadedByUserID uuid.UUID
+	UploadedAt       moment.Moment
+}
+
 type EmailCode struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
@@ -87,10 +120,38 @@ type EmailCode struct {
 	UsedAt    moment.Moment
 }
 
+type Entry struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	Kind            int64
+	Status          int64
+	EntryDate       moment.Date
+	Amount          fixed.Number
+	AccountID       uuid.UUID
+	Description     string
+	CreatedByUserID uuid.UUID
+	CreatedAt       moment.Moment
+	ApprovedAt      moment.Moment
+	ColumnValues    string
+	Number          int64
+}
+
+type ExpenseDetail struct {
+	EntryID         uuid.UUID
+	ItemID          uuid.UUID
+	SubgroupID      uuid.UUID
+	PaymentMethodID uuid.UUID
+}
+
 type InactiveMember struct {
 	ID        uuid.UUID
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
+}
+
+type Invoice struct {
+	EntryID uuid.UUID
+	Number  string
 }
 
 type Item struct {
@@ -123,6 +184,12 @@ type Partner struct {
 	Name      string
 	SortOrder int64
 	IsDeleted bool
+}
+
+type PartnerUser struct {
+	PartnerID uuid.UUID
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
 }
 
 type PaymentMethod struct {
@@ -158,6 +225,11 @@ type ProjectRoleName struct {
 	RoleName  string
 }
 
+type PurchaseDetail struct {
+	EntryID    uuid.UUID
+	SupplierID uuid.UUID
+}
+
 type Reconciliation struct {
 	ID        uuid.UUID
 	ProjectID uuid.UUID
@@ -169,6 +241,12 @@ type ReconciliationBalance struct {
 	ReconciliationID uuid.UUID
 	AccountID        uuid.UUID
 	ActualBalance    fixed.Number
+}
+
+type RevenueDetail struct {
+	EntryID    uuid.UUID
+	ItemID     uuid.UUID
+	SubgroupID uuid.UUID
 }
 
 type Subgroup struct {

@@ -16,6 +16,7 @@ var exempt = map[string]string{
 	"devices":               "a session's device: signing in, renewing and signing out are recorded against the user (AuthEndpoints)",
 	"email_codes":           "an emailed code is a means, not a record: the reset or the new email it leads to is recorded (EmailCode)",
 	"history":               "History itself",
+	"notification_entries":  "the entry a notification opens, told with it",
 	"notifications":         "what someone is told is not a change to the books: what they are told of has its own line (NotificationsEndpoints)",
 	"goose_db_version":      "the schema's own version",
 	"sqlite_sequence":       "SQLite's own counter for History's ids",
@@ -38,7 +39,13 @@ var recordedWithTheirOwner = map[string]owner{
 	"partners":                {"Projects", "project_id"},
 	"account_custodians":      {"Accounts", "account_id"},
 	"reconciliation_balances": {"Reconciliations", "reconciliation_id"},
+	"entry_decisions":         {"Entries", "entry_id"},
+	"partner_users":           {"Partners", "partner_id"},
 }
+
+// counters are the columns that move with no History line of their own: a project's last entry number, which each entry's own line carries
+// (Entry.Number, FR-54).
+var counters = map[string]string{"projects": "last_entry_number"}
 
 // copiedOnApproval are the tables whose new rows .NET recorded only through the ApproveProject line of the project they were copied into: its
 // structure, its payment methods and its general cash supplier (ProjectStructure.ApproveAsync). A new row of one passes when the same write
@@ -127,9 +134,12 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 			pointers[i] = &values[i]
 		}
 		rows.Scan(pointers...)
-		read := row{text: fmt.Sprint(values...), values: map[string]string{}}
+		read := row{values: map[string]string{}}
 		for i, column := range columns {
 			read.values[column] = fmt.Sprint(values[i])
+			if counters[table] != column {
+				read.text += fmt.Sprint(values[i]) + "|"
+			}
 		}
 		kept[fmt.Sprint(values[0])] = read
 	}

@@ -67,3 +67,20 @@ func TestANumberPastWhatIsKeptIsNoAcceptableAmount(t *testing.T) {
 		}
 	}
 }
+
+func TestAPercentIsWrittenAsDotNetsDecimalReckonedIt(t *testing.T) {
+	for _, c := range []struct {
+		part, whole Number
+		places      int
+		away        bool
+		want        Written
+	}{
+		{1000000, 4000000, 10, true, "25.00"}, {3000000, 3000000, 10, true, "100"}, {20000000, 30000000, 10, true, "66.6666666667"},
+		{10000000, 30000000, 10, true, "33.3333333333"}, {0, 30000000, 10, true, "0"}, {5, 0, 10, true, "0"}, {10000, 80000, 2, false, "12.50"},
+		{1, 3, 2, false, "33.33"},
+	} {
+		if got := Percent(c.part, c.whole, c.places, c.away); got != c.want {
+			t.Errorf("Percent(%d, %d) = %s, want %s", c.part, c.whole, got, c.want)
+		}
+	}
+}

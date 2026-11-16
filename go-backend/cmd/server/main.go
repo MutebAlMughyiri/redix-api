@@ -50,7 +50,8 @@ func run(logger *slog.Logger) error {
 	}
 	router := server.Routes(server.Parts{
 		Database: database, Clock: now, SigningKey: settings.SigningKey, Sender: email.Folder{Path: settings.EmailFolder},
-		EmailCodesPerHour: settings.EmailCodesPerHour, RegistrationsPerHour: settings.RegistrationsPerHour, WebFolder: settings.WebFolder, Log: logger,
+		EmailCodesPerHour: settings.EmailCodesPerHour, RegistrationsPerHour: settings.RegistrationsPerHour, WebFolder: settings.WebFolder,
+		AttachmentsFolder: settings.AttachmentsFolder, Log: logger,
 	})
 
 	address, err := listenAddress(settings.Urls)

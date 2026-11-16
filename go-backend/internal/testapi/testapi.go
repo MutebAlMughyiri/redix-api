@@ -49,6 +49,7 @@ func New(t *testing.T) *API {
 	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
 	emails := &Emails{}
 	routes := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: 100000,
+		AttachmentsFolder:    filepath.Join(t.TempDir(), "attachments"),
 		RegistrationsPerHour: 100000, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: problem.Traced(routes), tokens: credentials.NewTokens(signingKey, fake)}
 }
