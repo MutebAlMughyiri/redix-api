@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.Auth;
@@ -11,8 +10,6 @@ namespace Redix.Api.Reports;
 /// <summary>The numbered periodic report that replaces the manual statement (UC-053, FR-29), and its PDF (UC-054) and workbook (UC-055).</summary>
 public static class PeriodicReportsEndpoints
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     /// <summary>Maps the routes that read, for whoever holds <see cref="Permission.SeeReports"/>, and the one that issues and the files, for whoever holds <see cref="Permission.GenerateReports"/> (redix-api #131 D2).</summary>
     /// <param name="app">The app.</param>
     public static void MapPeriodicReports(this WebApplication app)
@@ -58,7 +55,7 @@ public static class PeriodicReportsEndpoints
     {
         var previous = await PeriodicReport.LatestOfAsync(projectId, db);
         var snapshot = await SnapshotAsync(projectId, number, previous, at, db);
-        var report = new PeriodicReport { ProjectId = projectId, Number = snapshot.Number, IssuedAt = at, IssuedByUserId = userId, ExpensesTotal = snapshot.Expenses, Snapshot = JsonSerializer.Serialize(snapshot, Json) };
+        var report = new PeriodicReport { ProjectId = projectId, Number = snapshot.Number, IssuedAt = at, IssuedByUserId = userId, ExpensesTotal = snapshot.Expenses, Snapshot = PeriodicReport.Write(snapshot) };
         db.PeriodicReports.Add(report);
         await db.SaveChangesAsync();
         return report;
@@ -104,8 +101,8 @@ public static class PeriodicReportsEndpoints
 
     private static async Task<PeriodicReportSnapshot?> SnapshotOfAsync(Guid projectId, int number, RedixDbContext db)
     {
-        var stored = await db.PeriodicReports.Where(report => report.ProjectId == projectId && report.Number == number).Select(report => report.Snapshot).SingleOrDefaultAsync();
-        return stored is null ? null : JsonSerializer.Deserialize<PeriodicReportSnapshot>(stored, Json);
+        var stored = await db.PeriodicReports.Where(report => report.ProjectId == projectId && report.Number == number).SingleOrDefaultAsync();
+        return stored?.Read();
     }
 
     private static async Task<PeriodicReportSnapshot> SnapshotAsync(Guid projectId, int number, PeriodicReport previous, DateTime at, RedixDbContext db)

@@ -107,6 +107,41 @@ public class ReportFilesTests(MigratedApiFactory factory)
     private static async Task<PeriodicReportSnapshot> ReadAsync(HttpClient client, Guid projectId, int number) =>
         (await client.GetFromJsonAsync<PeriodicReportSnapshot>($"/projects/{projectId}/periodic-reports/{number}", Json))!;
 
+    /// <summary>The items of the report <paramref name="number"/> as the database keeps them, as JSON, so two readings compare whole.</summary>
+    private static async Task<string> ItemsKeptAsync(Ledger ledger, int number) =>
+        JsonSerializer.Serialize((await ledger.ReadAsync(db => db.PeriodicReports.SingleAsync(row => row.ProjectId == ledger.ProjectId && row.Number == number))).Read().Items, Json);
+
+    /// <summary><paramref name="item"/> as a report issued before redix-api #129 kept it: no table columns, no amount name, and no values or number on a row.</summary>
+    private static ItemReportView AsBefore129(ItemReportView item) => item with
+    {
+        Subgroups = [.. item.Subgroups.Select(table => table with { Columns = [], AmountName = "", Rows = [.. table.Rows.Select(row => row with { Values = [], Number = 0 })] })],
+        Contracts = [.. item.Contracts.Select(table => table with { Columns = [], AmountName = "", Payments = [.. table.Payments.Select(row => row with { Values = [], Number = 0 })] })],
+    };
+
+    [Fact]
+    public async Task Muteb16Nov_AReportIssuedBeforeTableColumnsTakesThemOnceAndKeepsEveryRowAndAmount()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ApprovedAsync(ledger, ledger.Purchase(200m));
+        await ApprovedAsync(ledger, ledger.Purchase(75.5m));
+        var number = (await IssueAsync(ledger)).Number;
+        var asIssued = await ItemsKeptAsync(ledger, number);
+        await factory.WithDatabaseAsync(async db =>
+        {
+            var report = await db.PeriodicReports.SingleAsync(row => row.ProjectId == ledger.ProjectId && row.Number == number);
+            var snapshot = report.Read();
+            db.Entry(report).Property(row => row.Snapshot).CurrentValue = PeriodicReport.Write(snapshot with { Items = [.. snapshot.Items.Select(AsBefore129)] });
+            await db.SaveChangesAsync();
+        });
+        Assert.NotEqual(asIssued, await ItemsKeptAsync(ledger, number));
+
+        await factory.WithDatabaseAsync(OldReportColumns.FillAsync);
+        var filled = await ItemsKeptAsync(ledger, number);
+        await factory.WithDatabaseAsync(OldReportColumns.FillAsync);
+
+        Assert.Equal(asIssued, filled);
+        Assert.Equal(filled, await ItemsKeptAsync(ledger, number));
+    }
 
     [Fact]
     public async Task AC_29_3_ReportsAreNumberedWithNoGapsAndTheNextSaysWhatWaits()

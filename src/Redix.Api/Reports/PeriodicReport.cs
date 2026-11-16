@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Entries;
 
@@ -6,6 +7,8 @@ namespace Redix.Api.Reports;
 /// <summary>A numbered periodic report as it was issued (FR-29, BR-26): every figure kept as it was, so nothing approved later changes it.</summary>
 public class PeriodicReport : IProjectRow
 {
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
     /// <summary>Its id, time-ordered.</summary>
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
@@ -24,8 +27,14 @@ public class PeriodicReport : IProjectRow
     /// <summary>Its expenses, which the next report's difference starts from (BR-09).</summary>
     public decimal ExpensesTotal { get; init; }
 
-    /// <summary>Every figure as issued, as JSON.</summary>
+    /// <summary>Every figure as issued, as JSON: written by <see cref="Write"/>, read by <see cref="Read"/>.</summary>
     public string Snapshot { get; init; } = "{}";
+
+    /// <summary><paramref name="snapshot"/> as <see cref="Snapshot"/> keeps it.</summary>
+    public static string Write(PeriodicReportSnapshot snapshot) => JsonSerializer.Serialize(snapshot, Json);
+
+    /// <summary>Every figure as issued.</summary>
+    public PeriodicReportSnapshot Read() => JsonSerializer.Deserialize<PeriodicReportSnapshot>(Snapshot, Json)!;
 
     /// <summary>
     /// The latest report issued in the project <paramref name="projectId"/>; while none was, one numbered 0 and issued before anything was approved. The one owner of the next number (AC-29.3),

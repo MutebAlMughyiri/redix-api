@@ -71,8 +71,16 @@ builder.Services.AddSingleton<AccessChanges>();
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(DatabaseConnection.Of(services.GetRequiredService<IConfiguration>()), sql => sql.UseParameterizedCollectionMode(ParameterTranslationMode.Parameter))
     .AddInterceptors(services.GetRequiredService<AccessChanges>())
-    .UseSeeding((context, _) => AdminSeed.Seed(context, services))
-    .UseAsyncSeeding((context, _, cancellation) => AdminSeed.SeedAsync(context, services, cancellation)));
+    .UseSeeding((context, _) =>
+    {
+        AdminSeed.Seed(context, services);
+        OldReportColumns.FillAsync((RedixDbContext)context).GetAwaiter().GetResult();
+    })
+    .UseAsyncSeeding(async (context, _, cancellation) =>
+    {
+        await AdminSeed.SeedAsync(context, services, cancellation);
+        await OldReportColumns.FillAsync((RedixDbContext)context);
+    }));
 builder.Services.AddOptions<AttachmentOptions>().BindConfiguration("Attachments");
 builder.Services.AddOptions<EmailOptions>().BindConfiguration("Email");
 if (builder.Environment.IsEnvironment("Dev"))
