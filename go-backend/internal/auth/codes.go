@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"

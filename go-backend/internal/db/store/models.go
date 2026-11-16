@@ -9,6 +9,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type ChosenPartner struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+	PartnerID uuid.UUID
+}
+
 type Device struct {
 	ID               uuid.UUID
 	UserID           uuid.UUID
@@ -30,6 +37,26 @@ type EmailCode struct {
 	UsedAt    moment.Moment
 }
 
+type InactiveMember struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+}
+
+type ProjectPermission struct {
+	ID         uuid.UUID
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
+	Permission string
+}
+
+type ProjectRoleName struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+	RoleName  string
+}
+
 type User struct {
 	ID                 uuid.UUID
 	Username           string
@@ -41,4 +68,14 @@ type User struct {
 	LockedUntil        moment.Moment
 	CreatedAt          moment.Moment
 	Email              string
+}
+
+type UserProject struct {
+	UserID      uuid.UUID
+	ProjectID   uuid.UUID
+	ProjectName string
+	Permissions string
+	RoleName    string
+	PartnerIds  string
+	IsInactive  bool
 }

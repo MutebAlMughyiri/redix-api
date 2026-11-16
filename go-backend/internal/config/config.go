@@ -5,8 +5,8 @@ package config
 import (
 	"net/http"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 )

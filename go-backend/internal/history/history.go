@@ -8,7 +8,7 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/google/uuid"
 )
@@ -65,7 +65,7 @@ func Write(ctx context.Context, tx *sql.Tx, at moment.Moment, userID uuid.UUID, 
 	if err != nil {
 		return err
 	}
-	return store.New(tx).Add(ctx, store.AddParams{
+	return store.New(tx).AddHistory(ctx, store.AddHistoryParams{
 		At: at, ProjectID: change.ProjectID, UserID: userID, Action: string(action),
 		TableName: change.Table, RecordID: change.RecordID, Before: string(before), After: string(after),
 	})

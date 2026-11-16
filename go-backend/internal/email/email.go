@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/google/uuid"
 )
 

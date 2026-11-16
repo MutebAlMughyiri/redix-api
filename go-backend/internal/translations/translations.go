@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations/store"
 )
 
 // Map routes GET /translations/{language}, open without sign-in because the sign-in screen needs its words.

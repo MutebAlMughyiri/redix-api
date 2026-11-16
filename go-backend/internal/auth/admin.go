@@ -5,8 +5,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/google/uuid"

@@ -8,8 +8,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )

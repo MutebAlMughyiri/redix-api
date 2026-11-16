@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/google/uuid"

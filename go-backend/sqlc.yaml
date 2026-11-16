@@ -1,4 +1,5 @@
-# sqlc: each domain's queries, generated into its own store package (redix-api #140, R9, R16). Every domain shares one schema and one set of types:
+# sqlc: each domain keeps its queries in its own folder; all are generated into one package, internal/db/store, so every domain shares one type per
+# table (redix-api #140, R9, R16). Every domain shares one schema and one set of types:
 # a GUID is uuid.UUID, a moment moment.Moment, a date moment.Date, a yes/no bool, four decimals fixed.Number (G9, G10, N6).
 version: "2"
 overrides:
@@ -26,6 +27,12 @@ overrides:
         go_type: "github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment.Date"
       - column: "*.is_*"
         go_type: "bool"
+      - column: "user_projects.permissions"
+        go_type: "string"
+      - column: "user_projects.role_name"
+        go_type: "string"
+      - column: "user_projects.partner_ids"
+        go_type: "string"
       - column: "users.must_change_password"
         go_type: "bool"
       - column: "*.show_in_reports"
@@ -49,49 +56,16 @@ overrides:
 sql:
   - engine: sqlite
     schema: internal/db/migrations
-    queries: internal/translations/queries.sql
+    queries:
+      - internal/translations/queries.sql
+      - internal/config/queries.sql
+      - internal/auth/queries.sql
+      - internal/access/queries.sql
+      - internal/history/queries.sql
+      - internal/email/queries.sql
+      - internal/users/queries.sql
     gen:
       go:
         package: store
-        out: internal/translations/store
-        omit_unused_structs: true
-  - engine: sqlite
-    schema: internal/db/migrations
-    queries: internal/config/queries.sql
-    gen:
-      go:
-        package: store
-        out: internal/config/store
-        omit_unused_structs: true
-  - engine: sqlite
-    schema: internal/db/migrations
-    queries: internal/auth/queries.sql
-    gen:
-      go:
-        package: store
-        out: internal/auth/store
-        omit_unused_structs: true
-  - engine: sqlite
-    schema: internal/db/migrations
-    queries: internal/access/queries.sql
-    gen:
-      go:
-        package: store
-        out: internal/access/store
-        omit_unused_structs: true
-  - engine: sqlite
-    schema: internal/db/migrations
-    queries: internal/history/queries.sql
-    gen:
-      go:
-        package: store
-        out: internal/history/store
-        omit_unused_structs: true
-  - engine: sqlite
-    schema: internal/db/migrations
-    queries: internal/email/queries.sql
-    gen:
-      go:
-        package: store
-        out: internal/email/store
+        out: internal/db/store
         omit_unused_structs: true
