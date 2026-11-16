@@ -15,7 +15,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -276,21 +275,18 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 		problem.Refuse(w, r, http.StatusBadRequest, "unknownPartner")
 		return
 	}
-	name, login, mobile := strings.TrimSpace(request.DisplayName), strings.TrimSpace(request.Username), strings.TrimSpace(request.Mobile)
-	if refusal := refusalOfNew(name, login, mobile, request.TemporaryPassword); refusal != "" {
-		problem.Refuse(w, r, http.StatusBadRequest, refusal)
+	now := moment.Of(u.clock.Now())
+	user, status, refusal, err := New(r.Context(), read, request.DisplayName, request.Username, request.Mobile, request.TemporaryPassword, true, now)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	if taken, err := read.UsernameTaken(r.Context(), login); err != nil || taken {
-		if err != nil {
-			problem.Status(w, r, http.StatusInternalServerError)
-		} else {
-			problem.Refuse(w, r, http.StatusConflict, "usernameTaken")
-		}
+	if refusal != "" {
+		problem.Refuse(w, r, status, refusal)
 		return
 	}
-	email := strings.TrimSpace(request.Email)
-	if status, refusal, err := RefusalOfEmail(r.Context(), read, email, uuid.Nil); err != nil || refusal != "" {
+	user.Email = strings.TrimSpace(request.Email)
+	if status, refusal, err := RefusalOfEmail(r.Context(), read, user.Email, uuid.Nil); err != nil || refusal != "" {
 		if err != nil {
 			problem.Status(w, r, http.StatusInternalServerError)
 		} else {
@@ -298,17 +294,9 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 		}
 		return
 	}
-	now := moment.Of(u.clock.Now())
-	user := store.User{ID: uuid.Must(uuid.NewV7()), Username: login, DisplayName: name, Mobile: mobile, Email: email,
-		PasswordHash: credentials.Hash(request.TemporaryPassword), MustChangePassword: true, LockedUntil: moment.Never, CreatedAt: now}
 	ticked := append([]access.Permission{access.ReadProject}, request.Permissions...)
 	err = u.write(r, caller, func(c change) error {
-		err := c.q.AddUser(c.ctx, store.AddUserParams{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile,
-			PasswordHash: user.PasswordHash, MustChangePassword: true, LockedUntil: user.LockedUntil, CreatedAt: now, Email: email})
-		if err != nil {
-			return err
-		}
-		if err := c.record(history.Create, Created(user)); err != nil {
+		if err := Add(c.ctx, c.q, c.tx, user, c.actor, now); err != nil {
 			return err
 		}
 		for i, permission := range ticked {

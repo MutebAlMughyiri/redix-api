@@ -164,11 +164,22 @@ func Read(w http.ResponseWriter, r *http.Request, request any) bool {
 	return true
 }
 
-// hasEvery says whether sent names every required field of request, none of them null.
+// hasEvery says whether sent names every required field of request, none of them null; an embedded struct's fields count as request's own, as
+// encoding/json reads them.
 func hasEvery(sent map[string]json.RawMessage, request any) bool {
-	fields := reflect.TypeOf(request).Elem()
+	return hasFields(sent, reflect.TypeOf(request).Elem())
+}
+
+func hasFields(sent map[string]json.RawMessage, fields reflect.Type) bool {
 	for i := range fields.NumField() {
-		name, options, _ := strings.Cut(fields.Field(i).Tag.Get("json"), ",")
+		field := fields.Field(i)
+		if field.Anonymous && field.Type.Kind() == reflect.Struct {
+			if !hasFields(sent, field.Type) {
+				return false
+			}
+			continue
+		}
+		name, options, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if options == "omitzero" {
 			continue
 		}

@@ -3,6 +3,7 @@ package testapi
 import (
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -33,4 +34,17 @@ func TestEveryDomainsTestsAskThroughTestapi(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+// The published binary holds only the server's code: no package made for tests may be linked into it.
+func TestNoTestOnlyPackageIsInThePublishedBinary(t *testing.T) {
+	listed, err := exec.Command("go", "list", "-deps", "../../cmd/server").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range strings.Fields(string(listed)) {
+		if strings.HasSuffix(name, "/testapi") || strings.HasSuffix(name, "/historytest") || strings.HasSuffix(name, "/replay") || name == "testing" {
+			t.Errorf("the server links %s, a package made for tests", name)
+		}
+	}
 }

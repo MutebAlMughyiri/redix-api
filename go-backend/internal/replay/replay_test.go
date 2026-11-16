@@ -66,14 +66,17 @@ type step struct {
 	To            string            `json:"to"`
 	Host          int               `json:"host"`
 	EmailCodes    int               `json:"emailCodesPerHour"`
+	Registrations int               `json:"registrationsPerHour"`
 	file          string
 }
 
-// host is one .NET host a recording's requests went to, and the limit it was set up with; a test that built a host of its own gets a router of its own.
+// host is one .NET host a recording's requests went to, and the limits it was set up with; a test that built a host of its own gets a router of
+// its own.
 type host struct {
-	file       string
-	id         int
-	emailCodes int
+	file          string
+	id            int
+	emailCodes    int
+	registrations int
 }
 
 // recorded is every recorded test, by name, its steps in order, and every host the recordings name.
@@ -102,7 +105,7 @@ func recorded(t *testing.T) (map[string][]step, []string, []host) {
 			}
 			s.file = file
 			if s.Step == "host" {
-				hosts = append(hosts, host{file: file, id: s.Host, emailCodes: s.EmailCodes})
+				hosts = append(hosts, host{file: file, id: s.Host, emailCodes: s.EmailCodes, registrations: s.Registrations})
 			}
 			if s.Test == "" {
 				continue
@@ -128,10 +131,14 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 	}
 	defer discovery.Close()
 	routes := server.Routes(server.Parts{Database: discovery, Clock: clock.System{}, SigningKey: []byte("k"), Log: quiet})
-	var replayed, byHand, waiting int
+	var replayed, byHand, waiting, underReview int
 	for _, name := range order {
 		steps := tests[name]
 		switch {
+		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "request" && s.Status == http.StatusInternalServerError }):
+			// .NET crashed here; what the route should answer waits for Muteb's review once every route is on Go (redix-api #76 row 263).
+			underReview++
+			continue
 		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "direct" }):
 			byHand++
 			continue
@@ -144,7 +151,8 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 		replayed++
 		t.Run(name, func(t *testing.T) { replay(t, steps, hosts) })
 	}
-	t.Logf("%d tests replayed against .NET's answers; %d wait for routes not yet on Go; %d write the database directly and are ported by hand", replayed, waiting, byHand)
+	t.Logf("%d tests replayed against .NET's answers; %d wait for routes not yet on Go; %d write the database directly and are ported by hand; "+
+		"%d crashed on .NET and wait for review (#76 row 263)", replayed, waiting, byHand, underReview)
 }
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -202,14 +210,14 @@ func replay(t *testing.T, steps []step, hosts []host) {
 		if handler, built := handlers[s.Host]; built {
 			return handler
 		}
-		limit := 100000
+		limits := host{emailCodes: 100000, registrations: 100000}
 		for _, known := range hosts {
 			if known.file == s.file && known.id == s.Host {
-				limit = known.emailCodes
+				limits = known
 			}
 		}
 		handlers[s.Host] = problem.Traced(server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: []byte("replay-key-for-go-backend-only-32"),
-			Sender: emails, EmailCodesPerHour: limit, Log: quiet}))
+			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, Log: quiet}))
 		return handlers[s.Host]
 	}
 	names := mapping{}
@@ -355,6 +363,8 @@ func compare(names mapping, s step, got *httptest.ResponseRecorder) []string {
 	if netType != goType {
 		differences = append(differences, fmt.Sprintf("content type %q, .NET answered %q", goType, netType))
 	}
+	differences = append(differences, sameBody(names, netType, s, got)...)
+	// The headers come after the body, which has taught the mapping the ids a header may name, such as a new project's in Location.
 	for name, value := range s.AnswerHeaders {
 		switch name {
 		case "ETag":
@@ -365,18 +375,56 @@ func compare(names mapping, s step, got *httptest.ResponseRecorder) []string {
 			}
 		}
 	}
+	return differences
+}
+
+// sameBody is every difference between .NET's body and Go's: JSON compared value by value, other text as written, a file not at all.
+func sameBody(names mapping, netType string, s step, got *httptest.ResponseRecorder) []string {
 	var answer string
 	if json.Unmarshal(s.Answer, &answer) != nil {
-		return differences
+		return nil
 	}
 	if !strings.Contains(netType, "json") {
 		if names.into(answer) != got.Body.String() {
-			differences = append(differences, fmt.Sprintf("body %q, .NET answered %q", got.Body.String(), answer))
+			return []string{fmt.Sprintf("body %q, .NET answered %q", got.Body.String(), answer)}
 		}
-		return differences
+		return nil
 	}
 	netJSON, goJSON := decode(answer), decode(got.Body.String())
-	return append(differences, same(names, "$", "", netJSON, goJSON)...)
+	if everyones[s.Method+" "+pathPattern.ReplaceAllString(s.Path, "{id}")] {
+		return sameItems(names, netJSON, goJSON)
+	}
+	return same(names, "$", "", netJSON, goJSON)
+}
+
+// everyones are the routes that list rows of every test - every project waiting for the admin - so .NET's answer held other tests' rows too,
+// since its tests share one database, while each replay starts fresh: Go's every item must be .NET's item of the same id, field by field.
+var everyones = map[string]bool{"GET /projects/registered": true}
+
+var pathPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+
+func sameItems(names mapping, net, got any) []string {
+	netItems, netOK := net.([]any)
+	goItems, goOK := got.([]any)
+	if !netOK || !goOK {
+		return same(names, "$", "", net, got)
+	}
+	var differences []string
+	for i, goItem := range goItems {
+		goID, _ := goItem.(map[string]any)["id"].(string)
+		var match any
+		for _, netItem := range netItems {
+			if netID, _ := netItem.(map[string]any)["id"].(string); names.into(netID) == goID {
+				match = netItem
+			}
+		}
+		if match == nil {
+			differences = append(differences, fmt.Sprintf("$[%d]: %s is not in .NET's answer", i, goID))
+			continue
+		}
+		differences = append(differences, same(names, fmt.Sprintf("$[%d]", i), "", match, goItem)...)
+	}
+	return differences
 }
 
 func decode(text string) any {

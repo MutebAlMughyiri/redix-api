@@ -297,10 +297,11 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) error {
 }
 
 const allProjects = `-- name: AllProjects :many
-SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects ORDER BY status, start_date DESC, id
+SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects ORDER BY status, start_date DESC, id DESC
 `
 
-// Every project, the active first, then the finished, the pending and the rejected, the latest start first (ProjectsEndpoints.List).
+// Every project, the active first, then the finished, the pending and the rejected, the latest start first, and of one start the latest made, as
+// .NET answered (ProjectsEndpoints.List).
 func (q *Queries) AllProjects(ctx context.Context) ([]Project, error) {
 	rows, err := q.db.QueryContext(ctx, allProjects)
 	if err != nil {

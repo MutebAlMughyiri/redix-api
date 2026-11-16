@@ -4,6 +4,7 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"net/mail"
 	"regexp"
@@ -115,4 +116,32 @@ func fields(user store.User) map[string]any {
 		"Username": user.Username, "DisplayName": user.DisplayName, "Mobile": user.Mobile, "Email": user.Email,
 		"MustChangePassword": user.MustChangePassword, "FailedSignIns": user.FailedSignIns, "LockedUntil": user.LockedUntil, "CreatedAt": user.CreatedAt,
 	}
+}
+
+// New is a new user as typed - name, username and mobile trimmed, the password hashed - or its refusal: invalidUsername, weakPassword,
+// invalidName or invalidMobile (400), or usernameTaken (409) (User.AddNewAsync). Nothing is kept until Add.
+func New(ctx context.Context, read *store.Queries, displayName, username, mobile, password string, mustChange bool, now moment.Moment) (store.User, int, string, error) {
+	name, login, phone := strings.TrimSpace(displayName), strings.TrimSpace(username), strings.TrimSpace(mobile)
+	if refusal := refusalOfNew(name, login, phone, password); refusal != "" {
+		return store.User{}, http.StatusBadRequest, refusal, nil
+	}
+	taken, err := read.UsernameTaken(ctx, login)
+	if err != nil {
+		return store.User{}, 0, "", err
+	}
+	if taken {
+		return store.User{}, http.StatusConflict, "usernameTaken", nil
+	}
+	return store.User{ID: uuid.Must(uuid.NewV7()), Username: login, DisplayName: name, Mobile: phone, PasswordHash: credentials.Hash(password),
+		MustChangePassword: mustChange, LockedUntil: moment.Never, CreatedAt: now}, 0, "", nil
+}
+
+// Add keeps a user New made, recorded as created by actor.
+func Add(ctx context.Context, q *store.Queries, tx *sql.Tx, user store.User, actor uuid.UUID, now moment.Moment) error {
+	err := q.AddUser(ctx, store.AddUserParams{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile,
+		PasswordHash: user.PasswordHash, MustChangePassword: user.MustChangePassword, LockedUntil: user.LockedUntil, CreatedAt: user.CreatedAt, Email: user.Email})
+	if err != nil {
+		return err
+	}
+	return history.Write(ctx, tx, now, actor, history.Create, Created(user))
 }
