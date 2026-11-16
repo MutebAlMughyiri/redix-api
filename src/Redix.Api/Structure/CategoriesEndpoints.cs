@@ -264,24 +264,25 @@ public static class CategoriesEndpoints
             {
                 return Results.NotFound();
             }
-            var outcome = await AddSubgroupAsync(item, name, db);
+            var (_, outcome) = await AddSubgroupAsync(item, name, db);
             return outcome == StructureChangeOutcome.Done ? Results.Ok() : ProjectStructure.Refused(outcome);
         });
 
     /// <summary>
     /// Adds the subgroup <paramref name="name"/>, a name already accepted, last among <paramref name="item"/>'s tables: the one way a table of purchases is added, by hand and from a
     /// project file's load alike (redix-api #132 D5). A sub-table holds purchases (Muteb, 7 Nov 2026), so an item that takes none answers
-    /// <see cref="StructureChangeOutcome.ItemTakesNoPurchases"/>.
+    /// <see cref="StructureChangeOutcome.ItemTakesNoPurchases"/>. It answers the subgroup's id, empty when refused.
     /// </summary>
-    public static async Task<StructureChangeOutcome> AddSubgroupAsync(Item item, string name, RedixDbContext db)
+    public static async Task<(Guid SubgroupId, StructureChangeOutcome Outcome)> AddSubgroupAsync(Item item, string name, RedixDbContext db)
     {
         if (item.Type is not (ItemType.Purchases or ItemType.Both))
         {
-            return StructureChangeOutcome.ItemTakesNoPurchases;
+            return (Guid.Empty, StructureChangeOutcome.ItemTakesNoPurchases);
         }
-        db.Subgroups.Add(new Subgroup { ItemId = item.Id, Name = name, SortOrder = await ProjectStructure.NextTablePlaceAsync(item.Id, db) });
+        var subgroup = new Subgroup { ItemId = item.Id, Name = name, SortOrder = await ProjectStructure.NextTablePlaceAsync(item.Id, db) };
+        db.Subgroups.Add(subgroup);
         await db.SaveChangesAsync();
-        return StructureChangeOutcome.Done;
+        return (subgroup.Id, StructureChangeOutcome.Done);
     }
 
     /// <summary>

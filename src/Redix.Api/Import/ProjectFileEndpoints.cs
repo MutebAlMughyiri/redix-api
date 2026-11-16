@@ -22,8 +22,6 @@ namespace Redix.Api.Import;
 public static class ProjectFileEndpoints
 {
     /// <summary>What a contract's payments table is called before its contractor's name, as the workbook names it.</summary>
-    private const string ContractTablePrefix = "دفعات ";
-
     /// <summary>Maps the route that loads a project file, for the manager who created the project, who holds <see cref="Permission.ManageProject"/> (D1).</summary>
     /// <param name="app">The app.</param>
     public static void MapProjectFile(this WebApplication app) => app.MapProjectChanges(Permission.ManageProject).MapPost("/project-file", Load).DisableAntiforgery();
@@ -100,28 +98,33 @@ public static class ProjectFileEndpoints
     /// </summary>
     private static async Task<ProjectFileRegisters> RegistersOfAsync(Guid projectId, ProjectFile file, Guid userId, RedixDbContext db, List<ProjectFileRefusal> refused)
     {
-        var suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Select(supplier => supplier.Name).ToListAsync();
-        foreach (var name in LabelsOf(file, ColumnKeys.Supplier).Except(suppliers))
+        var suppliers = ByName(await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Select(supplier => new { supplier.Name, supplier.Id }).ToListAsync(), row => row.Name, row => row.Id);
+        foreach (var name in LabelsOf(file, ColumnKeys.Supplier).Except(suppliers.Keys))
         {
-            var (_, refusal, _) = await SuppliersEndpoints.AddAsync(projectId, new SupplierRequest(name), userId, db);
-            refused.AddRange(refusal.Length > 0 ? [ProjectFileRefusal.Of(ProjectFileOwner.Supplier, refusal) with { Value = name }] : []);
+            var (added, refusal, _) = await SuppliersEndpoints.AddAsync(projectId, new SupplierRequest(name), userId, db);
+            if (refusal.Length > 0)
+            {
+                refused.Add(ProjectFileRefusal.Of(ProjectFileOwner.Supplier, refusal) with { Value = name });
+            }
+            else
+            {
+                suppliers[added.Name] = added.Id;
+            }
         }
-        var methods = await db.PaymentMethods.Where(method => method.ProjectId == projectId).Select(method => method.Name).ToListAsync();
-        foreach (var name in LabelsOf(file, ColumnKeys.PaymentMethod).Except(methods))
+        var methods = ByName(await db.PaymentMethods.Where(method => method.ProjectId == projectId).Select(method => new { method.Name, method.Id }).ToListAsync(), row => row.Name, row => row.Id);
+        foreach (var name in LabelsOf(file, ColumnKeys.PaymentMethod).Except(methods.Keys))
         {
             if (Project.IsAcceptableName(name))
             {
-                await PaymentMethodsEndpoints.AddAsync(projectId, name, db);
+                methods[name] = await PaymentMethodsEndpoints.AddAsync(projectId, name, db);
             }
             else
             {
                 refused.Add(ProjectFileRefusal.Of(ProjectFileOwner.PaymentMethod, nameof(ProjectChangeOutcome.InvalidName)) with { Value = name });
             }
         }
-        return new ProjectFileRegisters(
-            ByName(await db.Accounts.Where(account => account.ProjectId == projectId).Select(account => new { account.Name, account.Id }).ToListAsync(), row => row.Name, row => row.Id),
-            ByName(await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Select(supplier => new { supplier.Name, supplier.Id }).ToListAsync(), row => row.Name, row => row.Id),
-            ByName(await db.PaymentMethods.Where(method => method.ProjectId == projectId).Select(method => new { method.Name, method.Id }).ToListAsync(), row => row.Name, row => row.Id));
+        var accounts = ByName(await db.Accounts.Where(account => account.ProjectId == projectId).Select(account => new { account.Name, account.Id }).ToListAsync(), row => row.Name, row => row.Id);
+        return new ProjectFileRegisters(accounts, suppliers, methods);
     }
 
     private static List<string> LabelsOf(ProjectFile file, string listKey) =>
@@ -201,7 +204,7 @@ public static class ProjectFileEndpoints
         };
     }
 
-    private static string ContractorOf(string tableName) => tableName.StartsWith(ContractTablePrefix) ? tableName[ContractTablePrefix.Length..].Trim() : tableName;
+    private static string ContractorOf(string tableName) => tableName.StartsWith(Contract.TableTitlePrefix) ? tableName[Contract.TableTitlePrefix.Length..].Trim() : tableName;
 
     private static async Task<(ProjectFileOwner Owner, Guid TableId, string Refusal)> SubgroupOfAsync(Item item, string name, RedixDbContext db)
     {
@@ -211,10 +214,8 @@ public static class ProjectFileEndpoints
         {
             return (ProjectFileOwner.Structure, found.Id, "");
         }
-        var outcome = await CategoriesEndpoints.AddSubgroupAsync(item, name, db);
-        return outcome == StructureChangeOutcome.Done
-            ? (ProjectFileOwner.Structure, await db.Subgroups.Where(subgroup => subgroup.ItemId == item.Id && subgroup.Name == name).Select(subgroup => subgroup.Id).FirstAsync(), "")
-            : (ProjectFileOwner.Structure, Guid.Empty, outcome.ToString());
+        var (subgroupId, outcome) = await CategoriesEndpoints.AddSubgroupAsync(item, name, db);
+        return (ProjectFileOwner.Structure, subgroupId, outcome == StructureChangeOutcome.Done ? "" : outcome.ToString());
     }
 
     /// <summary>The contract of <paramref name="item"/> with <paramref name="contractor"/>, or one added for the value agreed, an open value when the file holds none (D6).</summary>
@@ -237,8 +238,8 @@ public static class ProjectFileEndpoints
             supplierId = added.Id;
         }
         var isOpenValue = contractAmount.ValueKind != JsonValueKind.Number;
-        var refusal = await ContractsEndpoints.AddAsync(projectId, new AddContractRequest(supplierId, item.Id, isOpenValue ? 0 : contractAmount.GetDecimal(), isOpenValue), userId, at, db);
-        return refusal.Length > 0 ? (ProjectFileOwner.Contract, Guid.Empty, refusal) : (ProjectFileOwner.Contract, await contracts.FirstAsync(), "");
+        var (addedId, refusal) = await ContractsEndpoints.AddAsync(projectId, new AddContractRequest(supplierId, item.Id, isOpenValue ? 0 : contractAmount.GetDecimal(), isOpenValue), userId, at, db);
+        return (ProjectFileOwner.Contract, addedId, refusal);
     }
 
     /// <summary>The partner <paramref name="name"/> of the capital item <paramref name="item"/>, or one added with no login (D6).</summary>
@@ -250,8 +251,8 @@ public static class ProjectFileEndpoints
         {
             return (ProjectFileOwner.Partner, partnerId, "");
         }
-        var refusal = await PartnersEndpoints.AddAsync(projectId, name, Guid.Empty, userId, at, db);
-        return refusal.Length > 0 ? (ProjectFileOwner.Partner, Guid.Empty, refusal) : (ProjectFileOwner.Partner, await partners.FirstAsync(), "");
+        var (addedId, refusal) = await PartnersEndpoints.AddAsync(projectId, name, Guid.Empty, userId, at, db);
+        return (ProjectFileOwner.Partner, addedId, refusal);
     }
 
     /// <summary>What each account of the file really held, by the project's account of its name (D8); an account the project lacks is listed as <c>accountNotInProject</c> (D6).</summary>

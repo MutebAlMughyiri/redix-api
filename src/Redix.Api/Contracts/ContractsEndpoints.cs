@@ -56,22 +56,23 @@ public static class ContractsEndpoints
     /// <param name="time">The current time, for the history row.</param>
     public static async Task<IResult> Add(Guid projectId, AddContractRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
-        var refusal = await AddAsync(projectId, request, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
+        var (_, refusal) = await AddAsync(projectId, request, AccessTokens.UserIdOf(principal), time.GetUtcNow().UtcDateTime, db);
         return refusal.Length > 0 ? Refusal.Of(StatusCodes.Status400BadRequest, refusal) : Results.Ok();
     }
 
     /// <summary>
     /// Adds the contract <paramref name="request"/> by <paramref name="userId"/> at <paramref name="at"/>, last among its item's tables, in the History table: the one way a contract is
-    /// added, by hand and from a project file's load alike (redix-api #132 D6). It answers the refusals of <see cref="Add"/>; empty once added.
+    /// added, by hand and from a project file's load alike (redix-api #132 D6). It answers the contract's id and the refusals of <see cref="Add"/>: an empty id with one, an empty
+    /// refusal once added.
     /// </summary>
-    public static async Task<string> AddAsync(Guid projectId, AddContractRequest request, Guid userId, DateTime at, RedixDbContext db)
+    public static async Task<(Guid ContractId, string Refusal)> AddAsync(Guid projectId, AddContractRequest request, Guid userId, DateTime at, RedixDbContext db)
     {
         var refusal = await RefusalOfPartiesAsync(projectId, request.SupplierId, request.ItemId, db);
         refusal = refusal.Length > 0 ? refusal : request.RefusalOfTerms();
         refusal = refusal.Length > 0 ? refusal : await RefusalOfDocumentsAsync(projectId, request.AttachmentIds, db);
         if (refusal.Length > 0)
         {
-            return refusal;
+            return (Guid.Empty, refusal);
         }
 
         var contract = new Contract { ProjectId = projectId, ItemId = request.ItemId, SupplierId = request.SupplierId, SortOrder = await ProjectStructure.NextTablePlaceAsync(request.ItemId, db) };
@@ -80,7 +81,7 @@ public static class ContractsEndpoints
         db.AddHistory(contract, HistoryAction.Create, userId, at);
         await AttachAsync(contract.Id, request.AttachmentIds, userId, at, db);
         await db.SaveChangesAsync();
-        return "";
+        return (contract.Id, "");
     }
 
     /// <summary>

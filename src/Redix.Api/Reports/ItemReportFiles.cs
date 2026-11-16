@@ -40,7 +40,7 @@ public static class ItemReportFiles
         List<StatementTable> tables =
         [
             .. item.Subgroups.Select(subgroup => (subgroup.SortOrder, Table: TableOf(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, subgroup.Columns, subgroup.AmountName, subgroup.Rows, 0, fileLinks)))
-                .Concat(item.Contracts.Select(contract => (contract.SortOrder, Table: TableOf($"دفعات {contract.ContractorName}", contract.Columns, contract.AmountName, contract.Payments, contract.IsOpenValue ? 0 : contract.Value, fileLinks))))
+                .Concat(item.Contracts.Select(contract => (contract.SortOrder, Table: TableOf($"{Contract.TableTitlePrefix}{contract.ContractorName}", contract.Columns, contract.AmountName, contract.Payments, contract.IsOpenValue ? 0 : contract.Value, fileLinks))))
                 .OrderBy(table => table.SortOrder)
                 .Select(table => table.Table),
         ];

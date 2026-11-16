@@ -44,11 +44,14 @@ public static class PaymentMethodsEndpoints
             return Results.Ok();
         });
 
-    /// <summary>Adds the payment method <paramref name="name"/>, a name already accepted, at the end of the project's list: the one way one is added, by hand and from a project file's load alike (redix-api #132 D6).</summary>
-    public static async Task AddAsync(Guid projectId, string name, RedixDbContext db)
+    /// <summary>Adds the payment method <paramref name="name"/>, a name already accepted, at the end of the project's list, and answers its id: the one way one is added, by hand and from a project file's load alike (redix-api #132 D6).</summary>
+    public static async Task<Guid> AddAsync(Guid projectId, string name, RedixDbContext db)
     {
-        db.PaymentMethods.Add(new PaymentMethod { ProjectId = projectId, Name = name, SortOrder = await db.PaymentMethods.Where(method => method.ProjectId == projectId).OrderByDescending(method => method.SortOrder).Select(method => method.SortOrder + 1).FirstOrDefaultAsync() });
+        var sortOrder = await db.PaymentMethods.Where(row => row.ProjectId == projectId).OrderByDescending(row => row.SortOrder).Select(row => row.SortOrder + 1).FirstOrDefaultAsync();
+        var method = new PaymentMethod { ProjectId = projectId, Name = name, SortOrder = sortOrder };
+        db.PaymentMethods.Add(method);
         await db.SaveChangesAsync();
+        return method.Id;
     }
 
     /// <summary>Renames a payment method. An unacceptable name answers <c>invalidName</c>.</summary>

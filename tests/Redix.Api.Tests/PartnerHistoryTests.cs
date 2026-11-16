@@ -63,8 +63,9 @@ public class PartnerHistoryTests(MigratedApiFactory factory)
         await factory.WithDatabaseAsync(async db =>
         {
             (await db.Accounts.SingleAsync(row => row.Id == account)).Name = "حساب يُحفظ مع الشريك";
-            Assert.Equal("", await PartnersEndpoints.AddAsync(ledger.ProjectId, "خالد", memberId, memberId, factory.Time.GetUtcNow().UtcDateTime, db));
-            partner = await db.Partners.Where(row => row.ProjectId == ledger.ProjectId && row.Name == "خالد").Select(row => row.Id).SingleAsync();
+            var (added, refusal) = await PartnersEndpoints.AddAsync(ledger.ProjectId, "خالد", memberId, memberId, factory.Time.GetUtcNow().UtcDateTime, db);
+            Assert.Equal("", refusal);
+            partner = added;
         });
 
         var created = await ledger.ReadAsync(db => db.History.Where(row => row.RecordId == partner).Select(row => row.TableName).ToListAsync());

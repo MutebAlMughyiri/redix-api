@@ -5,6 +5,9 @@ namespace Redix.Api.Contracts;
 /// <summary>What a contractor was promised in one project, for an item (FR-07), to follow what is paid and what remains (BR-04). It is disabled rather than deleted, and owns the rule of its remaining.</summary>
 public class Contract : IOrdered, IProjectRow
 {
+    /// <summary>What a contract's table is titled before its contractor's name, in a report and in a project file alike (FR-46, redix-api #132 D6).</summary>
+    public const string TableTitlePrefix = "دفعات ";
+
     /// <summary>The longest notes a contract may have.</summary>
     public const int NotesMaxLength = 1000;
 
