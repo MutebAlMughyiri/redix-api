@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
@@ -28,6 +29,12 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
 
     private static int _instances;
+
+    /// <summary>
+    /// A fingerprint of the checkout these tests run from, the main one or a worktree, on every database they name, so two checkouts' runs on one SQL Server never use, or delete, each
+    /// other's databases (findings rows 237, 249).
+    /// </summary>
+    private static readonly string Checkout = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(AppContext.BaseDirectory)))[..8];
 
     /// <summary>This factory's own database: each collection of tests has one, so the collections run at once without seeing each other's rows.</summary>
     private readonly string _database = $"RedixTests{Interlocked.Increment(ref _instances)}";
@@ -59,7 +66,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     }
 
     private static string ConnectionTo(string database) =>
-        new SqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ConnectionStrings__Redix") ?? "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True") { InitialCatalog = database }.ConnectionString;
+        new SqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ConnectionStrings__Redix") ?? "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True") { InitialCatalog = $"{database}-{Checkout}" }.ConnectionString;
 
     /// <summary>The same API on an empty database of its own, for a test that moves through the migrations. It stands until <paramref name="work"/> ends.</summary>
     public async Task OnScratchDatabaseAsync(string name, Func<RedixDbContext, Task> work)
