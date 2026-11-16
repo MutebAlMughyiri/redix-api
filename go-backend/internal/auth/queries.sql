@@ -42,3 +42,35 @@ UPDATE devices SET is_revoked = 1 WHERE user_id = sqlc.arg(user_id) AND id <> sq
 
 -- name: DefaultProjectOf :many
 SELECT project_id FROM user_default_projects WHERE user_id = sqlc.arg(user_id);
+
+-- name: UserWithEmail :one
+-- The user whose email this is; an empty email names nobody.
+SELECT * FROM users WHERE email = sqlc.arg(email) AND email <> '';
+
+-- name: EmailTaken :one
+SELECT EXISTS (SELECT 1 FROM users WHERE email = sqlc.arg(email) AND id <> sqlc.arg(user_id)) AS taken;
+
+-- name: SetEmail :exec
+UPDATE users SET email = sqlc.arg(email) WHERE id = sqlc.arg(id);
+
+-- name: RevokeEveryDevice :exec
+UPDATE devices SET is_revoked = 1 WHERE user_id = sqlc.arg(user_id);
+
+-- name: DeleteCodes :exec
+DELETE FROM email_codes WHERE user_id = sqlc.arg(user_id) AND purpose = sqlc.arg(purpose);
+
+-- name: DeleteEveryCode :exec
+DELETE FROM email_codes WHERE user_id = sqlc.arg(user_id);
+
+-- name: AddCode :exec
+INSERT INTO email_codes (id, user_id, purpose, email, code_hash, expires_at, tries, used_at) VALUES (?, ?, ?, ?, ?, ?, 0, '1900-01-01T00:00:00.0000000Z');
+
+-- name: LastCode :many
+SELECT * FROM email_codes WHERE user_id = sqlc.arg(user_id) AND purpose = sqlc.arg(purpose) ORDER BY id DESC LIMIT 1;
+
+-- name: CountTry :execrows
+-- Counts one try of a code, only while it has tries left, so two tries at once never both count as the last.
+UPDATE email_codes SET tries = tries + 1 WHERE id = sqlc.arg(id) AND tries < sqlc.arg(tries_allowed);
+
+-- name: SpendCode :exec
+UPDATE email_codes SET used_at = sqlc.arg(used_at) WHERE id = sqlc.arg(id);

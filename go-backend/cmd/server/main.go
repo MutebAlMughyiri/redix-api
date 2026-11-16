@@ -17,9 +17,11 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/environment"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -68,6 +70,7 @@ func run(logger *slog.Logger) error {
 	translations.Map(router, database)
 	config.Map(router, database)
 	auth.MapSessions(router, gate, database, tokens, book, now)
+	auth.MapCodes(router, gate, database, now, email.Folder{Path: settings.EmailFolder}, limits.PerHour(settings.EmailCodesPerHour, now), logger)
 
 	address, err := listenAddress(settings.Urls)
 	if err != nil {

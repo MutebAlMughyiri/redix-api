@@ -8,14 +8,17 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 )
@@ -27,6 +30,7 @@ type api struct {
 	handler  http.Handler
 	clock    *clock.Fake
 	database db.DB
+	emails   string
 }
 
 // newAPI is the auth routes on a fresh database holding "manager", whose password is password.
@@ -37,7 +41,11 @@ func newAPI(t *testing.T, mustChange bool) api {
 	tokens := credentials.NewTokens([]byte("test-key-for-go-backend-only-32b"), fake)
 	book := access.NewBook(database)
 	router := web.NewRouter("")
-	MapSessions(router, access.NewGate(tokens, database, book, slog.New(slog.NewTextHandler(io.Discard, nil))), database, tokens, book, fake)
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
+	gate := access.NewGate(tokens, database, book, quiet)
+	emails := filepath.Join(t.TempDir(), "Emails")
+	MapSessions(router, gate, database, tokens, book, fake)
+	MapCodes(router, gate, database, fake, email.Folder{Path: emails}, limits.PerHour(100000, fake), quiet)
 	change := 0
 	if mustChange {
 		change = 1
@@ -51,7 +59,7 @@ func newAPI(t *testing.T, mustChange bool) api {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return api{t: t, handler: problem.Traced(router), clock: fake, database: database}
+	return api{t: t, handler: problem.Traced(router), clock: fake, database: database, emails: emails}
 }
 
 func (a api) post(path, body, bearer string) (int, map[string]any) {

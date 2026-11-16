@@ -19,6 +19,17 @@ type Device struct {
 	LastSeenAt       moment.Moment
 }
 
+type EmailCode struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Purpose   int64
+	Email     string
+	CodeHash  string
+	ExpiresAt moment.Moment
+	Tries     int64
+	UsedAt    moment.Moment
+}
+
 type User struct {
 	ID                 uuid.UUID
 	Username           string

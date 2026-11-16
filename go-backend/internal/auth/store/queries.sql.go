@@ -12,6 +12,31 @@ import (
 	"github.com/google/uuid"
 )
 
+const addCode = `-- name: AddCode :exec
+INSERT INTO email_codes (id, user_id, purpose, email, code_hash, expires_at, tries, used_at) VALUES (?, ?, ?, ?, ?, ?, 0, '1900-01-01T00:00:00.0000000Z')
+`
+
+type AddCodeParams struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Purpose   int64
+	Email     string
+	CodeHash  string
+	ExpiresAt moment.Moment
+}
+
+func (q *Queries) AddCode(ctx context.Context, arg AddCodeParams) error {
+	_, err := q.db.ExecContext(ctx, addCode,
+		arg.ID,
+		arg.UserID,
+		arg.Purpose,
+		arg.Email,
+		arg.CodeHash,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
 const addDevice = `-- name: AddDevice :exec
 INSERT INTO devices (id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_biometrics, last_seen_at) VALUES (?, ?, ?, ?, 0, 0, ?)
 `
@@ -84,6 +109,24 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) error {
 	return err
 }
 
+const countTry = `-- name: CountTry :execrows
+UPDATE email_codes SET tries = tries + 1 WHERE id = ?1 AND tries < ?2
+`
+
+type CountTryParams struct {
+	ID           uuid.UUID
+	TriesAllowed int64
+}
+
+// Counts one try of a code, only while it has tries left, so two tries at once never both count as the last.
+func (q *Queries) CountTry(ctx context.Context, arg CountTryParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, countTry, arg.ID, arg.TriesAllowed)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const defaultProjectOf = `-- name: DefaultProjectOf :many
 SELECT project_id FROM user_default_projects WHERE user_id = ?1
 `
@@ -109,6 +152,29 @@ func (q *Queries) DefaultProjectOf(ctx context.Context, userID uuid.UUID) ([]uui
 		return nil, err
 	}
 	return items, nil
+}
+
+const deleteCodes = `-- name: DeleteCodes :exec
+DELETE FROM email_codes WHERE user_id = ?1 AND purpose = ?2
+`
+
+type DeleteCodesParams struct {
+	UserID  uuid.UUID
+	Purpose int64
+}
+
+func (q *Queries) DeleteCodes(ctx context.Context, arg DeleteCodesParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCodes, arg.UserID, arg.Purpose)
+	return err
+}
+
+const deleteEveryCode = `-- name: DeleteEveryCode :exec
+DELETE FROM email_codes WHERE user_id = ?1
+`
+
+func (q *Queries) DeleteEveryCode(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteEveryCode, userID)
+	return err
 }
 
 const deviceWithID = `-- name: DeviceWithID :one
@@ -149,6 +215,22 @@ func (q *Queries) DeviceWithRefreshToken(ctx context.Context, refreshTokenHash s
 	return i, err
 }
 
+const emailTaken = `-- name: EmailTaken :one
+SELECT EXISTS (SELECT 1 FROM users WHERE email = ?1 AND id <> ?2) AS taken
+`
+
+type EmailTakenParams struct {
+	Email  string
+	UserID uuid.UUID
+}
+
+func (q *Queries) EmailTaken(ctx context.Context, arg EmailTakenParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, emailTaken, arg.Email, arg.UserID)
+	var taken bool
+	err := row.Scan(&taken)
+	return taken, err
+}
+
 const hasUsers = `-- name: HasUsers :one
 SELECT EXISTS (SELECT 1 FROM users) AS has_users
 `
@@ -159,6 +241,47 @@ func (q *Queries) HasUsers(ctx context.Context) (bool, error) {
 	var has_users bool
 	err := row.Scan(&has_users)
 	return has_users, err
+}
+
+const lastCode = `-- name: LastCode :many
+SELECT id, user_id, purpose, email, code_hash, expires_at, tries, used_at FROM email_codes WHERE user_id = ?1 AND purpose = ?2 ORDER BY id DESC LIMIT 1
+`
+
+type LastCodeParams struct {
+	UserID  uuid.UUID
+	Purpose int64
+}
+
+func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode, error) {
+	rows, err := q.db.QueryContext(ctx, lastCode, arg.UserID, arg.Purpose)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EmailCode
+	for rows.Next() {
+		var i EmailCode
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Purpose,
+			&i.Email,
+			&i.CodeHash,
+			&i.ExpiresAt,
+			&i.Tries,
+			&i.UsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const renewDevice = `-- name: RenewDevice :exec
@@ -191,6 +314,15 @@ UPDATE devices SET is_revoked = 1 WHERE id = ?1
 
 func (q *Queries) RevokeDevice(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, revokeDevice, id)
+	return err
+}
+
+const revokeEveryDevice = `-- name: RevokeEveryDevice :exec
+UPDATE devices SET is_revoked = 1 WHERE user_id = ?1
+`
+
+func (q *Queries) RevokeEveryDevice(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, revokeEveryDevice, userID)
 	return err
 }
 
@@ -233,6 +365,34 @@ func (q *Queries) SaveUser(ctx context.Context, arg SaveUserParams) error {
 	return err
 }
 
+const setEmail = `-- name: SetEmail :exec
+UPDATE users SET email = ?1 WHERE id = ?2
+`
+
+type SetEmailParams struct {
+	Email string
+	ID    uuid.UUID
+}
+
+func (q *Queries) SetEmail(ctx context.Context, arg SetEmailParams) error {
+	_, err := q.db.ExecContext(ctx, setEmail, arg.Email, arg.ID)
+	return err
+}
+
+const spendCode = `-- name: SpendCode :exec
+UPDATE email_codes SET used_at = ?1 WHERE id = ?2
+`
+
+type SpendCodeParams struct {
+	UsedAt moment.Moment
+	ID     uuid.UUID
+}
+
+func (q *Queries) SpendCode(ctx context.Context, arg SpendCodeParams) error {
+	_, err := q.db.ExecContext(ctx, spendCode, arg.UsedAt, arg.ID)
+	return err
+}
+
 const userNamed = `-- name: UserNamed :one
 SELECT id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email FROM users WHERE username = ?1
 `
@@ -240,6 +400,29 @@ SELECT id, username, display_name, mobile, password_hash, must_change_password, 
 // The user signing in, by a username matched whatever its case (R29).
 func (q *Queries) UserNamed(ctx context.Context, username string) (User, error) {
 	row := q.db.QueryRowContext(ctx, userNamed, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.DisplayName,
+		&i.Mobile,
+		&i.PasswordHash,
+		&i.MustChangePassword,
+		&i.FailedSignIns,
+		&i.LockedUntil,
+		&i.CreatedAt,
+		&i.Email,
+	)
+	return i, err
+}
+
+const userWithEmail = `-- name: UserWithEmail :one
+SELECT id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email FROM users WHERE email = ?1 AND email <> ''
+`
+
+// The user whose email this is; an empty email names nobody.
+func (q *Queries) UserWithEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, userWithEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,

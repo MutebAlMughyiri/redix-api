@@ -78,13 +78,16 @@ func visible(user store.User) map[string]any {
 	}
 }
 
-// mayReplace says whether newPassword may replace currentPassword (PasswordPolicy): at least eight characters, a letter and a digit, not the
-// username, and not the current password.
+// holds says whether password keeps the policy (PasswordPolicy.Holds): at least eight characters, a letter and a digit, and not the username.
+func holds(password, username string) bool {
+	hasLetter := strings.IndexFunc(password, unicode.IsLetter) >= 0
+	hasDigit := strings.IndexFunc(password, unicode.IsDigit) >= 0
+	return utf8.RuneCountInString(password) >= minimumLength && hasLetter && hasDigit && !strings.EqualFold(password, strings.TrimSpace(username))
+}
+
+// mayReplace says whether newPassword may replace currentPassword: it keeps the policy and is not the current password (PasswordPolicy.MayReplace).
 func mayReplace(newPassword, currentPassword, username string) bool {
-	hasLetter := strings.IndexFunc(newPassword, unicode.IsLetter) >= 0
-	hasDigit := strings.IndexFunc(newPassword, unicode.IsDigit) >= 0
-	return utf8.RuneCountInString(newPassword) >= minimumLength && hasLetter && hasDigit &&
-		!strings.EqualFold(newPassword, strings.TrimSpace(username)) && newPassword != currentPassword
+	return holds(newPassword, username) && newPassword != currentPassword
 }
 
 // renew gives device a new refresh token, which it returns, keeping only its hash, valid for 12 hours from now (Device.RenewRefreshToken).
