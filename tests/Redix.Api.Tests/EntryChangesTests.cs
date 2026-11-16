@@ -235,7 +235,7 @@ public class EntryChangesTests(MigratedApiFactory factory)
         await Ledger.AssertRefusedAsync(await EditAsync(ledger.Client, ledger, corrected), HttpStatusCode.Forbidden, "notYourEntry");
         await Ledger.AssertRefusedAsync(await ledger.Client.PutAsJsonAsync($"{path}/description", new ChangeDescriptionRequest("ملاحظة المالي"), Json), HttpStatusCode.Forbidden, "notYourEntry");
         await Ledger.AssertRefusedAsync(await DeleteAsync(ledger.Client, ledger, request.Id), HttpStatusCode.Forbidden, "notYourEntry");
-        await Ledger.AssertRefusedAsync(await ledger.Client.PostAsJsonAsync($"{path}/invoice", new AttachInvoiceRequest(await ledger.FileAsync()), Json), HttpStatusCode.Forbidden, "notYourEntry");
+        await Ledger.AssertRefusedAsync(await ledger.Client.PostAsJsonAsync($"{path}/invoice", new EntryFileRequest(await ledger.FileAsync()), Json), HttpStatusCode.Forbidden, "notYourEntry");
         (await field.GetAsync(path)).EnsureSuccessStatusCode();
 
         (await field.PostAsync($"{path}/submit", null)).EnsureSuccessStatusCode();

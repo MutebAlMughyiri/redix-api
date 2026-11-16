@@ -150,7 +150,7 @@ app.MapEntryRecording();
 app.MapEntries();
 app.MapApprovals();
 app.MapNotifications();
-app.MapInvoiceAttach();
+app.MapEntryFiles();
 app.MapReconciliations();
 app.MapCapital();
 app.MapSummary();

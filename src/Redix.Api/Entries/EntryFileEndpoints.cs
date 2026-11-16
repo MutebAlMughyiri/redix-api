@@ -10,7 +10,7 @@ namespace Redix.Api.Entries;
 /// Putting a file shared to REDIX on an entry (UC-039, BR-22, redix-app #115): any entry its person may handle, of any kind, an approved one too, beside the files it has; only the
 /// file goes on, nothing else about the entry changes, and it is not sent back for approval (redix-api #96, D15).
 /// </summary>
-public static class InvoiceAttachEndpoints
+public static class EntryFileEndpoints
 {
     private const decimal MatchingAmountDifference = 1;
 
@@ -18,7 +18,7 @@ public static class InvoiceAttachEndpoints
 
     /// <summary>Maps the routes, for whoever holds <see cref="Permission.RecordEntries"/>.</summary>
     /// <param name="app">The app.</param>
-    public static void MapInvoiceAttach(this WebApplication app)
+    public static void MapEntryFiles(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/entries/attachable", Attachable).RequireAuthorization(nameof(Permission.RecordEntries));
         app.MapProjectChanges(Permission.RecordEntries).MapPost("/entries/{entryId:guid}/invoice", Attach);
@@ -58,7 +58,7 @@ public static class InvoiceAttachEndpoints
     /// <param name="principal">The caller's session.</param>
     /// <param name="db">The database the ledger lives in.</param>
     /// <param name="time">The current time.</param>
-    public static async Task<IResult> Attach(Guid projectId, Guid entryId, AttachInvoiceRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
+    public static async Task<IResult> Attach(Guid projectId, Guid entryId, EntryFileRequest request, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time)
     {
         var entry = await Entry.OfProjectAsync(projectId, entryId, db);
         if (entry == Entry.None)
@@ -105,4 +105,4 @@ public static class InvoiceAttachEndpoints
 
 /// <summary>A file to put on an entry.</summary>
 /// <param name="AttachmentId">The file, already kept.</param>
-public record AttachInvoiceRequest(Guid AttachmentId);
+public record EntryFileRequest(Guid AttachmentId);

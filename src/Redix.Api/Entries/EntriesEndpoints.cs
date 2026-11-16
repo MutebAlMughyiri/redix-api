@@ -46,7 +46,7 @@ public static class EntriesEndpoints
     /// The entries of the project <paramref name="principal"/> may see, newest first: everyone who reads a project sees all its expenses and revenue (Muteb, 8 Nov 2026), as <see cref="SeenByAsync"/> decides.
     /// Only those an <see cref="EntrySearch"/> keeps when anything narrows them (redix-app #104), and only the newest <paramref name="take"/> of them when it is above 0, as the
     /// app's home and Entries screen read them a page at a time (redix-app #105); every one otherwise. With <paramref name="attachable"/>, only those a shared file can go on, which
-    /// the share screen lists (redix-app #115 D6, <see cref="InvoiceAttachEndpoints.AttachableBy"/>).
+    /// the share screen lists (redix-app #115 D6, <see cref="EntryFileEndpoints.AttachableBy"/>).
     /// </summary>
     /// <param name="projectId">The project.</param>
     /// <param name="principal">The caller's session.</param>
@@ -80,7 +80,7 @@ public static class EntriesEndpoints
         if (attachable)
         {
             var held = (await UserAccess.OfAsync(userId, db)).In(projectId);
-            shown = entries => InvoiceAttachEndpoints.AttachableBy(entries, userId, held);
+            shown = entries => EntryFileEndpoints.AttachableBy(entries, userId, held);
         }
         if (!search.Narrows)
         {

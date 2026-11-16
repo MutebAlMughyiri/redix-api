@@ -17,7 +17,7 @@ namespace Redix.Api.Tests;
 /// changes (redix-api #96, D15).
 /// </summary>
 [Collection(DatabaseCollection.Name)]
-public class InvoiceAttachTests(MigratedApiFactory factory)
+public class EntryFileTests(MigratedApiFactory factory)
 {
     private static readonly JsonSerializerOptions Json = Ledger.Json;
 
@@ -29,12 +29,12 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     private static async Task<List<EntryRowView>> MatchesAsync(HttpClient client, Ledger ledger, string vatNumber, decimal total, DateOnly date) =>
         (await client.GetFromJsonAsync<List<EntryRowView>>($"/projects/{ledger.ProjectId}/entries/attachable?vatNumber={vatNumber}&total={total}&date={date:yyyy-MM-dd}", Json))!;
 
-    private static AttachInvoiceRequest Invoice(Guid attachmentId) => new(attachmentId);
+    private static EntryFileRequest Invoice(Guid attachmentId) => new(attachmentId);
 
     private static Task<string> SupplierVatNumberAsync(Ledger ledger) =>
         ledger.ReadAsync(db => db.Suppliers.Where(row => row.Id == ledger.SupplierId).Select(row => row.VatNumber).SingleAsync());
 
-    private static Task<HttpResponseMessage> AttachAsync(HttpClient client, Ledger ledger, Guid entryId, AttachInvoiceRequest request) =>
+    private static Task<HttpResponseMessage> AttachAsync(HttpClient client, Ledger ledger, Guid entryId, EntryFileRequest request) =>
         client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/entries/{entryId}/invoice", request, Json);
 
     private static Task<List<EntryAttachment>> FilesOfAsync(Ledger ledger, Guid entryId) => ledger.ReadAsync(db => db.EntryAttachments.Where(row => row.EntryId == entryId).ToListAsync());

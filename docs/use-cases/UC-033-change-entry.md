@@ -37,7 +37,7 @@
 | D1: a removed payment leaves what its contract paid | `ContractMoney` | `RemoveApprovedEntryTests.D1_ARemovedPaymentLeavesWhatItsContractPaid` |
 | D1: a removed movement leaves its partner's capital and no longer holds the partner | `CapitalEndpoints.BalancesAsync`, `PartnersEndpoints` | `RemoveApprovedEntryTests.D1_ARemovedMovementLeavesItsPartnersCapitalAndNoLongerHoldsThePartner` |
 | D1: the histories leave the removed entry's approval | `ApprovalHistory`, `AccountHistory` | `RemoveApprovedEntryTests.D1_TheHistoriesLeaveTheRemovedEntrysApproval` |
-| D1: a removed entry is not offered to take an invoice | `InvoiceAttachEndpoints` | `InvoiceAttachTests.App_119_ARemovedEntryIsNotOffered` |
+| D1: a removed entry is not offered to take an invoice | `EntryFileEndpoints` | `EntryFileTests.App_119_ARemovedEntryIsNotOffered` |
 | D2: a report issued before keeps the removed entry, and the next shows the difference | BR-26 | `RemoveApprovedEntryTests.D2_AReportIssuedBeforeKeepsTheRemovedEntryAndTheNextShowsTheDifference` |
 | D3: nothing is reversed any more | No route | `RemoveApprovedEntryTests.D3_NothingIsReversedAnyMore` |
 | D5: an entry reversed before reads as an ordinary approved entry | `AccountHistory`, `PartnerHistory` | `RemoveApprovedEntryTests.D5_AnEntryReversedBeforeReadsAsAnOrdinaryApprovedEntry` |
