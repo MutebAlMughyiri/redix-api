@@ -24,6 +24,7 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 
 | Variable | What | Default |
 | --- | --- | --- |
+| `REDIX_Environment` | Which environment's settings: `Dev` takes port 5010, the admin `dev-admin`, no asking limits and `RedixDev.db`; `QA` port 5012, the admin `real-admin` and `RedixQA.db`, as their `appsettings` files named; `Prod`, the published server, port 5012 behind Caddy and its data under `/var/lib/redix`, its secrets in `deploy/prod.env.example`; a variable set wins | `Production` |
 | `REDIX_Urls` | Where the API listens; behind Caddy, `http://127.0.0.1:5012` | `http://0.0.0.0:5012` |
 | `REDIX_Database__Path` | The SQLite file | `Redix/redix.db` in local application data |
 | `REDIX_Attachments__Folder` | The uploaded files | `Redix/Attachments` |
@@ -53,7 +54,8 @@ Every row a change adds, changes or removes has its History line; a test that wr
 On a 1 GB Linux server:
 
 1. Copy `bin/redix-server` to `/usr/local/bin/`, and make a `redix` user. Put Typst 0.15's binary at `/usr/local/bin/typst` for the PDFs.
-2. Write `/etc/redix/redix.env` with the settings above, `REDIX_Urls=http://127.0.0.1:5012`, the database and attachments in `/var/lib/redix`.
+2. Copy `deploy/prod.env.example` to `/etc/redix/redix.env` (mode 600) and fill in its secrets; `REDIX_Environment=Prod` names the rest - port 5012 behind
+   Caddy, the database and files under `/var/lib/redix`.
 3. Install `deploy/redix.service` into `/etc/systemd/system/`, then `systemctl enable --now redix`. It migrates before it starts.
 4. Install Caddy with `deploy/Caddyfile` and `REDIX_DOMAIN` set; Caddy keeps the certificate.
 5. Install Litestream with `deploy/litestream.yml` as `/etc/litestream.yml`, the bucket and keys in its environment, and enable it.

@@ -38,16 +38,36 @@ type Settings struct {
 	WebFolder string
 }
 
-// Read is the settings in the environment variables lookup gives, with .NET's defaults where one is not set.
+// named is what each environment's settings name that is not a secret, as appsettings.{Environment}.json did: where it listens, its admin's
+// username and, for Dev, which Patrol registers projects and asks codes from without end, the limits lifted. Dev and QA each keep their own
+// database file, Redix{Environment}.db, as each had its own database; Prod is the published server, listening behind Caddy and keeping its
+// database and files under /var/lib/redix, as deploy/ lays it out. Its secrets are the server's own, in /etc/redix/redix.env (deploy/prod.env.example).
+// A variable set in the environment wins over all of it.
+var named = map[string]map[string]string{
+	"Dev": {"Urls": "http://127.0.0.1:5010", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000", "EmailCodes__PermitsPerHour": "100000"},
+	"QA":  {"Urls": "http://127.0.0.1:5012", "Admin__Username": "real-admin"},
+	"Prod": {"Urls": "http://127.0.0.1:5012", "Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
+		"Email__Folder": "/var/lib/redix/emails"},
+}
+
+// Read is the settings in the environment variables lookup gives: an environment's own variable, then the shared one, then what its settings
+// file named, then .NET's default.
 func Read(lookup func(string) (string, bool)) (Settings, error) {
 	environment := valueOr(lookup, "REDIX_Environment", "Production")
 	get := func(key, fallback string) string {
 		if value, ok := lookup("REDIX_" + environment + "_" + key); ok {
 			return value
 		}
+		if value, ok := named[environment][key]; ok {
+			fallback = value
+		}
 		return valueOr(lookup, "REDIX_"+key, fallback)
 	}
 	data := filepath.Join(localData(lookup), "Redix")
+	databaseFile := "redix.db"
+	if _, isNamed := named[environment]; isNamed {
+		databaseFile = "Redix" + environment + ".db"
+	}
 	key, err := base64.StdEncoding.DecodeString(get("Jwt__SigningKey", ""))
 	if err != nil || len(key) == 0 {
 		return Settings{}, errors.New("set the REDIX_Jwt__SigningKey environment variable")
@@ -63,7 +83,7 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 	return Settings{
 		Environment:           environment,
 		Urls:                  get("Urls", "http://0.0.0.0:5012"),
-		DatabasePath:          get("Database__Path", filepath.Join(data, "redix.db")),
+		DatabasePath:          get("Database__Path", filepath.Join(data, databaseFile)),
 		SigningKey:            key,
 		AdminUsername:         get("Admin__Username", ""),
 		AdminPassword:         get("Admin__Password", ""),

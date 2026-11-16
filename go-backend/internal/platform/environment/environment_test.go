@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -45,5 +46,34 @@ func TestR11_TheAPIDoesNotStartWithoutItsSigningKey(t *testing.T) {
 	}
 	if _, err := Read(lookupIn(map[string]string{})); err == nil {
 		t.Error("started with no key")
+	}
+}
+
+func TestR11_DevAndQaTakeWhatTheirSettingsFilesNamedEachWithItsOwnDatabaseAndASetVariableStillWins(t *testing.T) {
+	dev, err := Read(lookupIn(map[string]string{"REDIX_Environment": "Dev", "REDIX_Jwt__SigningKey": key, "LOCALAPPDATA": "data", "HOME": "data"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dev.Urls != "http://127.0.0.1:5010" || dev.AdminUsername != "dev-admin" || dev.RegistrationsPerHour != 100000 || dev.EmailCodesPerHour != 100000 ||
+		filepath.Base(dev.DatabasePath) != "RedixDev.db" {
+		t.Errorf("Dev read %+v", dev)
+	}
+	qa, err := Read(lookupIn(map[string]string{"REDIX_Environment": "QA", "REDIX_Jwt__SigningKey": key, "REDIX_Urls": "http://0.0.0.0:6000", "LOCALAPPDATA": "data", "HOME": "data"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if qa.Urls != "http://0.0.0.0:6000" || qa.AdminUsername != "real-admin" || qa.RegistrationsPerHour != 5 || filepath.Base(qa.DatabasePath) != "RedixQA.db" {
+		t.Errorf("QA read %+v", qa)
+	}
+}
+
+func TestR11_ProdListensBehindCaddyAndKeepsItsDataWhereTheDeployLaysItOut(t *testing.T) {
+	prod, err := Read(lookupIn(map[string]string{"REDIX_Environment": "Prod", "REDIX_Jwt__SigningKey": key, "REDIX_Prod_Admin__Username": "owner"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prod.Urls != "http://127.0.0.1:5012" || prod.DatabasePath != "/var/lib/redix/redix.db" || prod.AttachmentsFolder != "/var/lib/redix/attachments" ||
+		prod.EmailFolder != "/var/lib/redix/emails" || prod.AdminUsername != "owner" || prod.RegistrationsPerHour != 5 {
+		t.Errorf("Prod read %+v", prod)
 	}
 }
