@@ -1,12 +1,19 @@
+using System.Data.Common;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using Redix.Api.Email;
+using Xunit.Sdk;
 
 namespace Redix.Api.Tests;
 
@@ -18,9 +25,14 @@ namespace Redix.Api.Tests;
 public sealed class Recorder
 {
     private static readonly AsyncLocal<bool> Inside = new();
+
+    /// <summary>The test running, which every step names, so a direct write marks only its own test as one to port by hand (redix-api #140, G17).</summary>
+    private static readonly AsyncLocal<string> CurrentTest = new();
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly string _file;
     private readonly Lock _writing = new();
+    private int _hosts;
 
     private Recorder(string file) => _file = file;
 
@@ -45,8 +57,25 @@ public sealed class Recorder
         await InsideAsync(seed);
     }
 
-    /// <summary>Records a request and its answer through the API's own pipeline, at <paramref name="time"/>'s moment.</summary>
-    public void Use(IApplicationBuilder app, FakeTimeProvider time) => app.Use(async (context, next) =>
+    /// <summary>Records an email the API sent, so a replay can match the code a test typed from it to the one the Go API sends.</summary>
+    public void Sent(SentEmail email) => Write(new { step = "email", to = email.To, subject = email.Subject, body = email.Body });
+
+    /// <summary>
+    /// Records a request and its answer through the API's own pipeline, at <paramref name="time"/>'s moment, naming the host that answered it: a test that builds a host
+    /// of its own, with a setting of its own, gets a replay router of its own, so the host's limits are recorded once, as it starts.
+    /// </summary>
+    public void Use(IApplicationBuilder app, FakeTimeProvider time)
+    {
+        var host = Interlocked.Increment(ref _hosts);
+        var settings = app.ApplicationServices.GetRequiredService<IConfiguration>();
+        Write(new
+        {
+            step = "host", host, emailCodesPerHour = settings.GetValue("EmailCodes:PermitsPerHour", 5), registrationsPerHour = settings.GetValue("Registration:PermitsPerHour", 5),
+        });
+        UseFor(app, time, host);
+    }
+
+    private void UseFor(IApplicationBuilder app, FakeTimeProvider time, int host) => app.Use(async (context, next) =>
     {
         if (_file.Length == 0)
         {
@@ -68,15 +97,15 @@ public sealed class Recorder
         context.Response.Body = answer;
         Write(new
         {
-            step = "request", at, method = context.Request.Method, path = context.Request.Path.Value, query = context.Request.QueryString.Value,
+            step = "request", host, at, method = context.Request.Method, path = context.Request.Path.Value, query = context.Request.QueryString.Value,
             headers = Headers(context.Request.Headers, "Authorization", "Accept-Language", "If-None-Match"), contentType = context.Request.ContentType ?? "", body = sent,
             status = context.Response.StatusCode, answerType = context.Response.ContentType ?? "", answerHeaders = Headers(context.Response.Headers, "ETag", "Content-Disposition", "WWW-Authenticate", "Allow", "Retry-After", "Location"),
             answer = answered,
         });
     });
 
-    /// <summary>An interceptor that records a database write made outside a request and a seed.</summary>
-    public IInterceptor DirectWrites => new DirectWriteInterceptor(this);
+    /// <summary>The interceptors that record a database write made outside a request and a seed: through a save, or a bulk update or delete that skips it.</summary>
+    public IInterceptor[] DirectWrites => [new DirectWriteInterceptor(this), new BulkWriteInterceptor(this)];
 
     private static async Task InsideAsync(Func<Task> work)
     {
@@ -117,9 +146,11 @@ public sealed class Recorder
         {
             return;
         }
+        var line = JsonSerializer.SerializeToNode(step, Json)!.AsObject();
+        line["test"] = CurrentTest.Value ?? "";
         lock (_writing)
         {
-            File.AppendAllText(_file, JsonSerializer.Serialize(step, Json) + "\n");
+            File.AppendAllText(_file, line.ToJsonString(Json) + "\n");
         }
     }
 
@@ -135,6 +166,31 @@ public sealed class Recorder
             }
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
+    }
+
+    /// <summary>Records a bulk update, delete or insert made outside a request and a seed, as ExecuteUpdateAsync makes one without a save.</summary>
+    private sealed class BulkWriteInterceptor(Recorder recorder) : DbCommandInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var verb = command.CommandText.TrimStart().Split(' ', 2)[0].ToUpperInvariant();
+            if (!Inside.Value && verb is "UPDATE" or "DELETE" or "INSERT" or "MERGE")
+            {
+                recorder.Write(new { step = "direct", tables = new[] { verb } });
+            }
+            return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
+    /// <summary>Names the test that runs, on a collection's definition, so each step the recorder writes says which test took it.</summary>
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class TestNamedAttribute : BeforeAfterTestAttribute
+    {
+        /// <inheritdoc/>
+        public override void Before(MethodInfo methodUnderTest) => CurrentTest.Value = $"{methodUnderTest.DeclaringType!.Name}.{methodUnderTest.Name}";
+
+        /// <inheritdoc/>
+        public override void After(MethodInfo methodUnderTest) => CurrentTest.Value = "";
     }
 
     /// <summary>Puts the recorder first in the API's pipeline, so it sees each request before anything else answers it.</summary>

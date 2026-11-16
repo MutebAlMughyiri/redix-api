@@ -4,8 +4,8 @@ using Redix.Api.Email;
 
 namespace Redix.Api.Tests;
 
-/// <summary>The sender of the tests: keeps every email REDIX sends, in memory, instead of sending it (redix-api #127, D7).</summary>
-public class KeptEmails : EmailSender
+/// <summary>The sender of the tests: keeps every email REDIX sends, in memory, instead of sending it (redix-api #127, D7), and gives it to the recorder.</summary>
+public class KeptEmails(Recorder recorder) : EmailSender
 {
     private static readonly TimeSpan LongestWait = TimeSpan.FromSeconds(30);
 
@@ -49,6 +49,7 @@ public class KeptEmails : EmailSender
     protected override async Task DeliverAsync(SentEmail email)
     {
         await _released;
+        recorder.Sent(email);
         _sent.Enqueue(email);
         Interlocked.Exchange(ref _delivered, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
     }

@@ -44,10 +44,14 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// <summary>What this collection's tests do, written for the Go replays when <c>REDIX_RECORD</c> names a folder (redix-api #140, G12).</summary>
     public Recorder Record { get; }
 
-    public MigratedApiFactory() => Record = Recorder.For(_database);
+    public MigratedApiFactory()
+    {
+        Record = Recorder.For(_database);
+        Emails = new KeptEmails(Record);
+    }
 
     /// <summary>Every email the API sent, kept instead of sent (redix-api #127, D7).</summary>
-    public KeptEmails Emails { get; } = new();
+    public KeptEmails Emails { get; }
 
     /// <summary>A VAT number no other test holds, because a duplicate invoice is looked for across every project (FR-17).</summary>
     public static string NewVatNumber() => $"3{Random.Shared.NextInt64(1_000_000_000_000, 9_999_999_999_999)}3";
@@ -68,7 +72,8 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Attachments:Folder"] = Path.Combine(Path.GetTempPath(), "RedixTestsAttachments"),
         }));
         builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time).AddSingleton<EmailSender>(Emails)
-            .AddSingleton<IStartupFilter>(new Recorder.Startup(Record, Time)).ConfigureDbContext<RedixDbContext>(options => options.AddInterceptors(Record.DirectWrites)));
+            .AddSingleton<IStartupFilter>(new Recorder.Startup(Record, Time)).ConfigureDbContext<RedixDbContext>(options => options.AddInterceptors(Record.DirectWrites))
+            .Configure<TestServerOptions>(server => server.PreserveExecutionContext = true));
     }
 
     private static string ConnectionTo(string database) =>
@@ -189,6 +194,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 /// A class goes in the collection with the least time in it.
 /// </summary>
 [CollectionDefinition(Name)]
+[Recorder.TestNamed]
 public class DatabaseCollection : ICollectionFixture<MigratedApiFactory>
 {
     public const string Name = "Database";
@@ -196,6 +202,7 @@ public class DatabaseCollection : ICollectionFixture<MigratedApiFactory>
 
 /// <summary>The second collection, on its own database.</summary>
 [CollectionDefinition(Name)]
+[Recorder.TestNamed]
 public class SecondDatabaseCollection : ICollectionFixture<MigratedApiFactory>
 {
     public const string Name = "Database 2";
@@ -203,6 +210,7 @@ public class SecondDatabaseCollection : ICollectionFixture<MigratedApiFactory>
 
 /// <summary>The third collection, on its own database.</summary>
 [CollectionDefinition(Name)]
+[Recorder.TestNamed]
 public class ThirdDatabaseCollection : ICollectionFixture<MigratedApiFactory>
 {
     public const string Name = "Database 3";
@@ -210,6 +218,7 @@ public class ThirdDatabaseCollection : ICollectionFixture<MigratedApiFactory>
 
 /// <summary>The fourth collection, on its own database.</summary>
 [CollectionDefinition(Name)]
+[Recorder.TestNamed]
 public class FourthDatabaseCollection : ICollectionFixture<MigratedApiFactory>
 {
     public const string Name = "Database 4";
