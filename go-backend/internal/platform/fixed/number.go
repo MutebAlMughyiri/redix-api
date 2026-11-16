@@ -3,7 +3,9 @@ package fixed
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 )
@@ -39,18 +41,33 @@ func Parse(text string) (Number, error) {
 		whole.Add(whole, big.NewInt(int64(rat.Sign())))
 	}
 	if !whole.IsInt64() {
-		return 0, fmt.Errorf("fixed: %q is too large", text)
+		return beyond(rat.Sign()), errTooLarge
 	}
 	return Number(whole.Int64()), nil
+}
+
+// errTooLarge is a number past what a Number holds.
+var errTooLarge = errors.New("fixed: the number is past what is kept")
+
+// beyond is the number that stands for one past what is kept, on the side of sign: its last decimals make it no acceptable amount, so a request
+// typing such a number is refused by its rule's own code - invalidAmount, invalidValue - as .NET refused a decimal past Money.Largest.
+func beyond(sign int) Number {
+	if sign < 0 {
+		return math.MinInt64
+	}
+	return math.MaxInt64
 }
 
 // MarshalJSON writes the number as a JSON number with four decimals.
 func (n Number) MarshalJSON() ([]byte, error) { return []byte(n.String()), nil }
 
-// UnmarshalJSON reads a JSON number.
+// UnmarshalJSON reads a JSON number; one past what is kept reads as beyond, for the request's rule to refuse.
 func (n *Number) UnmarshalJSON(data []byte) error {
 	parsed, err := Parse(string(data))
 	*n = parsed
+	if errors.Is(err, errTooLarge) {
+		return nil
+	}
 	return err
 }
 

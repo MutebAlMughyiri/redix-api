@@ -155,6 +155,22 @@ func (q *Queries) AccountsUsed(ctx context.Context, projectID uuid.UUID) ([]uuid
 	return items, nil
 }
 
+const activeSupplierExists = `-- name: ActiveSupplierExists :one
+SELECT EXISTS (SELECT 1 FROM suppliers WHERE id = ?1 AND project_id = ?2 AND is_active = 1)
+`
+
+type ActiveSupplierExistsParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) ActiveSupplierExists(ctx context.Context, arg ActiveSupplierExistsParams) (bool, error) {
+	row := q.queryRow(ctx, q.activeSupplierExistsStmt, activeSupplierExists, arg.ID, arg.ProjectID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const addChosen = `-- name: AddChosen :exec
 INSERT INTO chosen_partners (id, project_id, user_id, partner_id) VALUES (?, ?, ?, ?)
 `
@@ -198,6 +214,20 @@ func (q *Queries) AddCode(ctx context.Context, arg AddCodeParams) error {
 		arg.CodeHash,
 		arg.ExpiresAt,
 	)
+	return err
+}
+
+const addContractDocument = `-- name: AddContractDocument :exec
+INSERT INTO contract_attachments (contract_id, attachment_id) VALUES (?, ?)
+`
+
+type AddContractDocumentParams struct {
+	ContractID   uuid.UUID
+	AttachmentID uuid.UUID
+}
+
+func (q *Queries) AddContractDocument(ctx context.Context, arg AddContractDocumentParams) error {
+	_, err := q.exec(ctx, q.addContractDocumentStmt, addContractDocument, arg.ContractID, arg.AttachmentID)
 	return err
 }
 
@@ -668,6 +698,22 @@ func (q *Queries) ApprovedTotalsByKind(ctx context.Context, projectID uuid.UUID)
 	return items, nil
 }
 
+const attachmentExists = `-- name: AttachmentExists :one
+SELECT EXISTS (SELECT 1 FROM attachments WHERE id = ?1 AND project_id = ?2)
+`
+
+type AttachmentExistsParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) AttachmentExists(ctx context.Context, arg AttachmentExistsParams) (bool, error) {
+	row := q.queryRow(ctx, q.attachmentExistsStmt, attachmentExists, arg.ID, arg.ProjectID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const balancesOf = `-- name: BalancesOf :many
 SELECT reconciliation_id, account_id, actual_balance FROM reconciliation_balances WHERE reconciliation_id = ?
 `
@@ -915,6 +961,182 @@ func (q *Queries) ColumnsOfItem(ctx context.Context, itemID uuid.UUID) ([]ItemCo
 	return items, nil
 }
 
+const contractDocuments = `-- name: ContractDocuments :many
+SELECT contract_attachments.contract_id, attachments.id, attachments.file_name, attachments.content_type, attachments.size_bytes
+FROM contract_attachments JOIN attachments ON attachments.id = contract_attachments.attachment_id
+WHERE attachments.project_id = ? ORDER BY attachments.id
+`
+
+type ContractDocumentsRow struct {
+	ContractID  uuid.UUID
+	ID          uuid.UUID
+	FileName    string
+	ContentType string
+	SizeBytes   int64
+}
+
+// The documents each contract of the project carries, in the order they were kept.
+func (q *Queries) ContractDocuments(ctx context.Context, projectID uuid.UUID) ([]ContractDocumentsRow, error) {
+	rows, err := q.query(ctx, q.contractDocumentsStmt, contractDocuments, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContractDocumentsRow
+	for rows.Next() {
+		var i ContractDocumentsRow
+		if err := rows.Scan(
+			&i.ContractID,
+			&i.ID,
+			&i.FileName,
+			&i.ContentType,
+			&i.SizeBytes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const contractMoney = `-- name: ContractMoney :many
+SELECT contractor_payment_details.contract_id, entries.status, CAST(SUM(entries.amount) AS INTEGER) AS total
+FROM contractor_payment_details JOIN entries ON entries.id = contractor_payment_details.entry_id
+WHERE entries.project_id = ?1 AND entries.id <> ?2 AND contractor_payment_details.is_outside_contract = 0
+    AND entries.status IN (1, 2)
+GROUP BY contractor_payment_details.contract_id, entries.status
+`
+
+type ContractMoneyParams struct {
+	ProjectID uuid.UUID
+	LeftOut   uuid.UUID
+}
+
+type ContractMoneyRow struct {
+	ContractID uuid.UUID
+	Status     int64
+	Total      int64
+}
+
+// What the ledger holds inside each contract of the project (ContractMoney, BR-04): its approved payments and those waiting, inside the contract,
+// leaving out the entry left_out, the one being changed.
+func (q *Queries) ContractMoney(ctx context.Context, arg ContractMoneyParams) ([]ContractMoneyRow, error) {
+	rows, err := q.query(ctx, q.contractMoneyStmt, contractMoney, arg.ProjectID, arg.LeftOut)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContractMoneyRow
+	for rows.Next() {
+		var i ContractMoneyRow
+		if err := rows.Scan(&i.ContractID, &i.Status, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const contractOf = `-- name: ContractOf :one
+SELECT id, project_id, item_id, sort_order, supplier_id, value, is_open_value, unit_price, quantity, notes, is_active FROM contracts WHERE id = ?1 AND project_id = ?2
+`
+
+type ContractOfParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) ContractOf(ctx context.Context, arg ContractOfParams) (Contract, error) {
+	row := q.queryRow(ctx, q.contractOfStmt, contractOf, arg.ID, arg.ProjectID)
+	var i Contract
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.ItemID,
+		&i.SortOrder,
+		&i.SupplierID,
+		&i.Value,
+		&i.IsOpenValue,
+		&i.UnitPrice,
+		&i.Quantity,
+		&i.Notes,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const contractsOf = `-- name: ContractsOf :many
+SELECT contracts.id, contracts.project_id, contracts.item_id, contracts.sort_order, contracts.supplier_id, contracts.value, contracts.is_open_value, contracts.unit_price, contracts.quantity, contracts.notes, contracts.is_active, suppliers.name AS supplier_name, items.name AS item_name
+FROM contracts JOIN suppliers ON suppliers.id = contracts.supplier_id JOIN items ON items.id = contracts.item_id
+WHERE contracts.project_id = ? ORDER BY contracts.id
+`
+
+type ContractsOfRow struct {
+	ID           uuid.UUID
+	ProjectID    uuid.UUID
+	ItemID       uuid.UUID
+	SortOrder    int64
+	SupplierID   uuid.UUID
+	Value        fixed.Number
+	IsOpenValue  bool
+	UnitPrice    fixed.Number
+	Quantity     fixed.Number
+	Notes        string
+	IsActive     bool
+	SupplierName string
+	ItemName     string
+}
+
+// A project's contracts, disabled ones included, each with its contractor's and its item's names.
+func (q *Queries) ContractsOf(ctx context.Context, projectID uuid.UUID) ([]ContractsOfRow, error) {
+	rows, err := q.query(ctx, q.contractsOfStmt, contractsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContractsOfRow
+	for rows.Next() {
+		var i ContractsOfRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ItemID,
+			&i.SortOrder,
+			&i.SupplierID,
+			&i.Value,
+			&i.IsOpenValue,
+			&i.UnitPrice,
+			&i.Quantity,
+			&i.Notes,
+			&i.IsActive,
+			&i.SupplierName,
+			&i.ItemName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const contractsOfItem = `-- name: ContractsOfItem :many
 SELECT id, project_id, item_id, sort_order, supplier_id, value, is_open_value, unit_price, quantity, notes, is_active FROM contracts WHERE item_id = ? ORDER BY sort_order, id
 `
@@ -944,6 +1166,35 @@ func (q *Queries) ContractsOfItem(ctx context.Context, itemID uuid.UUID) ([]Cont
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const contractsWithPayments = `-- name: ContractsWithPayments :many
+SELECT DISTINCT contractor_payment_details.contract_id FROM contractor_payment_details
+JOIN contracts ON contracts.id = contractor_payment_details.contract_id WHERE contracts.project_id = ?
+`
+
+// The contracts any payment names, whatever became of it: their contractor and item then stay.
+func (q *Queries) ContractsWithPayments(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.contractsWithPaymentsStmt, contractsWithPayments, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var contract_id uuid.UUID
+		if err := rows.Scan(&contract_id); err != nil {
+			return nil, err
+		}
+		items = append(items, contract_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1213,6 +1464,33 @@ func (q *Queries) DeviceWithRefreshToken(ctx context.Context, refreshTokenHash s
 		&i.LastSeenAt,
 	)
 	return i, err
+}
+
+const documentsOfContract = `-- name: DocumentsOfContract :many
+SELECT attachment_id FROM contract_attachments WHERE contract_id = ?
+`
+
+func (q *Queries) DocumentsOfContract(ctx context.Context, contractID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.documentsOfContractStmt, documentsOfContract, contractID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var attachment_id uuid.UUID
+		if err := rows.Scan(&attachment_id); err != nil {
+			return nil, err
+		}
+		items = append(items, attachment_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const emailTaken = `-- name: EmailTaken :one
@@ -2449,6 +2727,45 @@ func (q *Queries) SaveCategory(ctx context.Context, arg SaveCategoryParams) erro
 		arg.ProjectID,
 		arg.Name,
 		arg.SortOrder,
+		arg.IsActive,
+	)
+	return err
+}
+
+const saveContract = `-- name: SaveContract :exec
+INSERT INTO contracts (id, project_id, item_id, sort_order, supplier_id, value, is_open_value, unit_price, quantity, notes, is_active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET item_id = excluded.item_id, sort_order = excluded.sort_order, supplier_id = excluded.supplier_id,
+    value = excluded.value, is_open_value = excluded.is_open_value, unit_price = excluded.unit_price, quantity = excluded.quantity,
+    notes = excluded.notes, is_active = excluded.is_active
+`
+
+type SaveContractParams struct {
+	ID          uuid.UUID
+	ProjectID   uuid.UUID
+	ItemID      uuid.UUID
+	SortOrder   int64
+	SupplierID  uuid.UUID
+	Value       fixed.Number
+	IsOpenValue bool
+	UnitPrice   fixed.Number
+	Quantity    fixed.Number
+	Notes       string
+	IsActive    bool
+}
+
+func (q *Queries) SaveContract(ctx context.Context, arg SaveContractParams) error {
+	_, err := q.exec(ctx, q.saveContractStmt, saveContract,
+		arg.ID,
+		arg.ProjectID,
+		arg.ItemID,
+		arg.SortOrder,
+		arg.SupplierID,
+		arg.Value,
+		arg.IsOpenValue,
+		arg.UnitPrice,
+		arg.Quantity,
+		arg.Notes,
 		arg.IsActive,
 	)
 	return err

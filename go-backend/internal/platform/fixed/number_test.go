@@ -58,3 +58,12 @@ func TestATypedNumberIsWrittenBackWithTheDecimalsItWasTypedWith(t *testing.T) {
 		}
 	}
 }
+
+func TestANumberPastWhatIsKeptIsNoAcceptableAmount(t *testing.T) {
+	for _, typed := range []string{"1000000000000001", "-1000000000000001"} {
+		var number Number
+		if err := number.UnmarshalJSON([]byte(typed)); err != nil || number.IsAcceptableMoney() {
+			t.Errorf("%s read as %v, %v: want no error and no acceptable amount", typed, number, err)
+		}
+	}
+}

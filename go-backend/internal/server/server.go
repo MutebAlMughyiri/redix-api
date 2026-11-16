@@ -9,6 +9,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
@@ -64,5 +65,6 @@ func Routes(parts Parts) *web.Router {
 	settings.Map(router, gate, database, now)
 	suppliers.Map(router, gate, database, now)
 	accounts.Map(router, gate, database, now)
+	contracts.Map(router, gate, database, now)
 	return router
 }

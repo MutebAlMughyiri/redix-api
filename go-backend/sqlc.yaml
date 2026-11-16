@@ -69,6 +69,7 @@ sql:
       - internal/settings/queries.sql
       - internal/suppliers/queries.sql
       - internal/accounts/queries.sql
+      - internal/contracts/queries.sql
       - internal/notifications/queries.sql
     gen:
       go:

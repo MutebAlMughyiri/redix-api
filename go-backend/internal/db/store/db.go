@@ -36,11 +36,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.accountsUsedStmt, err = db.PrepareContext(ctx, accountsUsed); err != nil {
 		return nil, fmt.Errorf("error preparing query AccountsUsed: %w", err)
 	}
+	if q.activeSupplierExistsStmt, err = db.PrepareContext(ctx, activeSupplierExists); err != nil {
+		return nil, fmt.Errorf("error preparing query ActiveSupplierExists: %w", err)
+	}
 	if q.addChosenStmt, err = db.PrepareContext(ctx, addChosen); err != nil {
 		return nil, fmt.Errorf("error preparing query AddChosen: %w", err)
 	}
 	if q.addCodeStmt, err = db.PrepareContext(ctx, addCode); err != nil {
 		return nil, fmt.Errorf("error preparing query AddCode: %w", err)
+	}
+	if q.addContractDocumentStmt, err = db.PrepareContext(ctx, addContractDocument); err != nil {
+		return nil, fmt.Errorf("error preparing query AddContractDocument: %w", err)
 	}
 	if q.addDeviceStmt, err = db.PrepareContext(ctx, addDevice); err != nil {
 		return nil, fmt.Errorf("error preparing query AddDevice: %w", err)
@@ -99,6 +105,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.approvedTotalsByKindStmt, err = db.PrepareContext(ctx, approvedTotalsByKind); err != nil {
 		return nil, fmt.Errorf("error preparing query ApprovedTotalsByKind: %w", err)
 	}
+	if q.attachmentExistsStmt, err = db.PrepareContext(ctx, attachmentExists); err != nil {
+		return nil, fmt.Errorf("error preparing query AttachmentExists: %w", err)
+	}
 	if q.balancesOfStmt, err = db.PrepareContext(ctx, balancesOf); err != nil {
 		return nil, fmt.Errorf("error preparing query BalancesOf: %w", err)
 	}
@@ -123,8 +132,23 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.columnsOfItemStmt, err = db.PrepareContext(ctx, columnsOfItem); err != nil {
 		return nil, fmt.Errorf("error preparing query ColumnsOfItem: %w", err)
 	}
+	if q.contractDocumentsStmt, err = db.PrepareContext(ctx, contractDocuments); err != nil {
+		return nil, fmt.Errorf("error preparing query ContractDocuments: %w", err)
+	}
+	if q.contractMoneyStmt, err = db.PrepareContext(ctx, contractMoney); err != nil {
+		return nil, fmt.Errorf("error preparing query ContractMoney: %w", err)
+	}
+	if q.contractOfStmt, err = db.PrepareContext(ctx, contractOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ContractOf: %w", err)
+	}
+	if q.contractsOfStmt, err = db.PrepareContext(ctx, contractsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ContractsOf: %w", err)
+	}
 	if q.contractsOfItemStmt, err = db.PrepareContext(ctx, contractsOfItem); err != nil {
 		return nil, fmt.Errorf("error preparing query ContractsOfItem: %w", err)
+	}
+	if q.contractsWithPaymentsStmt, err = db.PrepareContext(ctx, contractsWithPayments); err != nil {
+		return nil, fmt.Errorf("error preparing query ContractsWithPayments: %w", err)
 	}
 	if q.countTryStmt, err = db.PrepareContext(ctx, countTry); err != nil {
 		return nil, fmt.Errorf("error preparing query CountTry: %w", err)
@@ -158,6 +182,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.deviceWithRefreshTokenStmt, err = db.PrepareContext(ctx, deviceWithRefreshToken); err != nil {
 		return nil, fmt.Errorf("error preparing query DeviceWithRefreshToken: %w", err)
+	}
+	if q.documentsOfContractStmt, err = db.PrepareContext(ctx, documentsOfContract); err != nil {
+		return nil, fmt.Errorf("error preparing query DocumentsOfContract: %w", err)
 	}
 	if q.emailTakenStmt, err = db.PrepareContext(ctx, emailTaken); err != nil {
 		return nil, fmt.Errorf("error preparing query EmailTaken: %w", err)
@@ -324,6 +351,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.saveCategoryStmt, err = db.PrepareContext(ctx, saveCategory); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveCategory: %w", err)
 	}
+	if q.saveContractStmt, err = db.PrepareContext(ctx, saveContract); err != nil {
+		return nil, fmt.Errorf("error preparing query SaveContract: %w", err)
+	}
 	if q.saveCustodianStmt, err = db.PrepareContext(ctx, saveCustodian); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveCustodian: %w", err)
 	}
@@ -460,6 +490,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing accountsUsedStmt: %w", cerr)
 		}
 	}
+	if q.activeSupplierExistsStmt != nil {
+		if cerr := q.activeSupplierExistsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing activeSupplierExistsStmt: %w", cerr)
+		}
+	}
 	if q.addChosenStmt != nil {
 		if cerr := q.addChosenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addChosenStmt: %w", cerr)
@@ -468,6 +503,11 @@ func (q *Queries) Close() error {
 	if q.addCodeStmt != nil {
 		if cerr := q.addCodeStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addCodeStmt: %w", cerr)
+		}
+	}
+	if q.addContractDocumentStmt != nil {
+		if cerr := q.addContractDocumentStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addContractDocumentStmt: %w", cerr)
 		}
 	}
 	if q.addDeviceStmt != nil {
@@ -565,6 +605,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing approvedTotalsByKindStmt: %w", cerr)
 		}
 	}
+	if q.attachmentExistsStmt != nil {
+		if cerr := q.attachmentExistsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing attachmentExistsStmt: %w", cerr)
+		}
+	}
 	if q.balancesOfStmt != nil {
 		if cerr := q.balancesOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing balancesOfStmt: %w", cerr)
@@ -605,9 +650,34 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing columnsOfItemStmt: %w", cerr)
 		}
 	}
+	if q.contractDocumentsStmt != nil {
+		if cerr := q.contractDocumentsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing contractDocumentsStmt: %w", cerr)
+		}
+	}
+	if q.contractMoneyStmt != nil {
+		if cerr := q.contractMoneyStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing contractMoneyStmt: %w", cerr)
+		}
+	}
+	if q.contractOfStmt != nil {
+		if cerr := q.contractOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing contractOfStmt: %w", cerr)
+		}
+	}
+	if q.contractsOfStmt != nil {
+		if cerr := q.contractsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing contractsOfStmt: %w", cerr)
+		}
+	}
 	if q.contractsOfItemStmt != nil {
 		if cerr := q.contractsOfItemStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing contractsOfItemStmt: %w", cerr)
+		}
+	}
+	if q.contractsWithPaymentsStmt != nil {
+		if cerr := q.contractsWithPaymentsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing contractsWithPaymentsStmt: %w", cerr)
 		}
 	}
 	if q.countTryStmt != nil {
@@ -663,6 +733,11 @@ func (q *Queries) Close() error {
 	if q.deviceWithRefreshTokenStmt != nil {
 		if cerr := q.deviceWithRefreshTokenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deviceWithRefreshTokenStmt: %w", cerr)
+		}
+	}
+	if q.documentsOfContractStmt != nil {
+		if cerr := q.documentsOfContractStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing documentsOfContractStmt: %w", cerr)
 		}
 	}
 	if q.emailTakenStmt != nil {
@@ -940,6 +1015,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing saveCategoryStmt: %w", cerr)
 		}
 	}
+	if q.saveContractStmt != nil {
+		if cerr := q.saveContractStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing saveContractStmt: %w", cerr)
+		}
+	}
 	if q.saveCustodianStmt != nil {
 		if cerr := q.saveCustodianStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing saveCustodianStmt: %w", cerr)
@@ -1168,8 +1248,10 @@ type Queries struct {
 	accountOfStmt                 *sql.Stmt
 	accountsOfStmt                *sql.Stmt
 	accountsUsedStmt              *sql.Stmt
+	activeSupplierExistsStmt      *sql.Stmt
 	addChosenStmt                 *sql.Stmt
 	addCodeStmt                   *sql.Stmt
+	addContractDocumentStmt       *sql.Stmt
 	addDeviceStmt                 *sql.Stmt
 	addHistoryStmt                *sql.Stmt
 	addInactiveStmt               *sql.Stmt
@@ -1189,6 +1271,7 @@ type Queries struct {
 	allUnitsStmt                  *sql.Stmt
 	approvedRevenueByItemTypeStmt *sql.Stmt
 	approvedTotalsByKindStmt      *sql.Stmt
+	attachmentExistsStmt          *sql.Stmt
 	balancesOfStmt                *sql.Stmt
 	capitalItemExistsStmt         *sql.Stmt
 	categoriesOfStmt              *sql.Stmt
@@ -1197,7 +1280,12 @@ type Queries struct {
 	chosenPartnersStmt            *sql.Stmt
 	columnsOfStmt                 *sql.Stmt
 	columnsOfItemStmt             *sql.Stmt
+	contractDocumentsStmt         *sql.Stmt
+	contractMoneyStmt             *sql.Stmt
+	contractOfStmt                *sql.Stmt
+	contractsOfStmt               *sql.Stmt
 	contractsOfItemStmt           *sql.Stmt
+	contractsWithPaymentsStmt     *sql.Stmt
 	countTryStmt                  *sql.Stmt
 	custodianOfStmt               *sql.Stmt
 	defaultColumnsOfStmt          *sql.Stmt
@@ -1209,6 +1297,7 @@ type Queries struct {
 	deviceIsOpenStmt              *sql.Stmt
 	deviceWithIDStmt              *sql.Stmt
 	deviceWithRefreshTokenStmt    *sql.Stmt
+	documentsOfContractStmt       *sql.Stmt
 	emailTakenStmt                *sql.Stmt
 	hasEntriesWaitingStmt         *sql.Stmt
 	hasUsersStmt                  *sql.Stmt
@@ -1264,6 +1353,7 @@ type Queries struct {
 	roleNamesOfUserStmt           *sql.Stmt
 	saveAccountStmt               *sql.Stmt
 	saveCategoryStmt              *sql.Stmt
+	saveContractStmt              *sql.Stmt
 	saveCustodianStmt             *sql.Stmt
 	saveDefaultColumnStmt         *sql.Stmt
 	saveDefaultItemStmt           *sql.Stmt
@@ -1311,8 +1401,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		accountOfStmt:                 q.accountOfStmt,
 		accountsOfStmt:                q.accountsOfStmt,
 		accountsUsedStmt:              q.accountsUsedStmt,
+		activeSupplierExistsStmt:      q.activeSupplierExistsStmt,
 		addChosenStmt:                 q.addChosenStmt,
 		addCodeStmt:                   q.addCodeStmt,
+		addContractDocumentStmt:       q.addContractDocumentStmt,
 		addDeviceStmt:                 q.addDeviceStmt,
 		addHistoryStmt:                q.addHistoryStmt,
 		addInactiveStmt:               q.addInactiveStmt,
@@ -1332,6 +1424,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		allUnitsStmt:                  q.allUnitsStmt,
 		approvedRevenueByItemTypeStmt: q.approvedRevenueByItemTypeStmt,
 		approvedTotalsByKindStmt:      q.approvedTotalsByKindStmt,
+		attachmentExistsStmt:          q.attachmentExistsStmt,
 		balancesOfStmt:                q.balancesOfStmt,
 		capitalItemExistsStmt:         q.capitalItemExistsStmt,
 		categoriesOfStmt:              q.categoriesOfStmt,
@@ -1340,7 +1433,12 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		chosenPartnersStmt:            q.chosenPartnersStmt,
 		columnsOfStmt:                 q.columnsOfStmt,
 		columnsOfItemStmt:             q.columnsOfItemStmt,
+		contractDocumentsStmt:         q.contractDocumentsStmt,
+		contractMoneyStmt:             q.contractMoneyStmt,
+		contractOfStmt:                q.contractOfStmt,
+		contractsOfStmt:               q.contractsOfStmt,
 		contractsOfItemStmt:           q.contractsOfItemStmt,
+		contractsWithPaymentsStmt:     q.contractsWithPaymentsStmt,
 		countTryStmt:                  q.countTryStmt,
 		custodianOfStmt:               q.custodianOfStmt,
 		defaultColumnsOfStmt:          q.defaultColumnsOfStmt,
@@ -1352,6 +1450,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deviceIsOpenStmt:              q.deviceIsOpenStmt,
 		deviceWithIDStmt:              q.deviceWithIDStmt,
 		deviceWithRefreshTokenStmt:    q.deviceWithRefreshTokenStmt,
+		documentsOfContractStmt:       q.documentsOfContractStmt,
 		emailTakenStmt:                q.emailTakenStmt,
 		hasEntriesWaitingStmt:         q.hasEntriesWaitingStmt,
 		hasUsersStmt:                  q.hasUsersStmt,
@@ -1407,6 +1506,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		roleNamesOfUserStmt:           q.roleNamesOfUserStmt,
 		saveAccountStmt:               q.saveAccountStmt,
 		saveCategoryStmt:              q.saveCategoryStmt,
+		saveContractStmt:              q.saveContractStmt,
 		saveCustodianStmt:             q.saveCustodianStmt,
 		saveDefaultColumnStmt:         q.saveDefaultColumnStmt,
 		saveDefaultItemStmt:           q.saveDefaultItemStmt,
