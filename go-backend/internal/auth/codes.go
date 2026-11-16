@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"math/big"
 	"net/http"
-	"net/mail"
 	"strings"
 	"time"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 	"github.com/google/uuid"
 )
 
@@ -40,8 +40,6 @@ const (
 	triesAllowed = 5
 	// asksPerLoginAnHour is how often one login may ask for a reset code, whatever the address (EmailCode.AsksPerLoginAnHour).
 	asksPerLoginAnHour = 5
-	// emailMaxLength is the longest email kept (User.EmailMaxLength).
-	emailMaxLength = 254
 )
 
 // Codes emails six-digit codes to reset a forgotten password (UC-002, AC-02.8) and to confirm a new email (redix-api #127, AC-10.4).
@@ -116,24 +114,20 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 		problem.Refuse(w, r, http.StatusBadRequest, "codeWrong")
 		return
 	}
-	if !holds(request.NewPassword, user.Username) {
+	if !users.KeepsPolicy(request.NewPassword, user.Username) {
 		problem.Refuse(w, r, http.StatusBadRequest, weakPassword)
 		return
 	}
-	reset := user
-	reset.PasswordHash = credentials.Hash(request.NewPassword)
-	reset.MustChangePassword = false
-	reset.FailedSignIns = 0
-	reset.LockedUntil = moment.Never
 	err = c.database.InTx(r.Context(), func(tx *sql.Tx) error {
 		q := store.New(tx)
 		if err := q.SpendCode(r.Context(), store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
 			return err
 		}
-		if err := q.RevokeEveryDevice(r.Context(), user.ID); err != nil {
+		reset, err := users.ResetPassword(r.Context(), q, user, request.NewPassword, false)
+		if err != nil {
 			return err
 		}
-		return saveAttempt(r.Context(), q, tx, user, reset, history.ResetPassword, now)
+		return history.Write(r.Context(), tx, now, user.ID, history.ResetPassword, users.Change(user, reset))
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -189,22 +183,16 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if c.refuseEmail(w, r, code.Email, user.ID) {
 		return
 	}
-	changed := user
-	changed.Email = code.Email
 	err = c.database.InTx(r.Context(), func(tx *sql.Tx) error {
 		q := store.New(tx)
 		if err := q.SpendCode(r.Context(), store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
 			return err
 		}
-		if changed.Email != user.Email {
-			if err := q.SetEmail(r.Context(), store.SetEmailParams{ID: user.ID, Email: changed.Email}); err != nil {
-				return err
-			}
-			if err := q.DeleteEveryCode(r.Context(), user.ID); err != nil {
-				return err
-			}
+		changed, err := users.ChangeEmail(r.Context(), q, user, code.Email)
+		if err != nil {
+			return err
 		}
-		return history.Write(r.Context(), tx, now, user.ID, history.Update, userChange(user, changed))
+		return history.Write(r.Context(), tx, now, user.ID, history.Update, users.Change(user, changed))
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -213,20 +201,15 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// refuseEmail answers emailInvalid (400) for an address that is not one, or emailTaken (409) for one another account holds (User.RefusalOfEmailAsync).
+// refuseEmail answers the refusal of an email for userID, when there is one (users.RefusalOfEmail).
 func (c Codes) refuseEmail(w http.ResponseWriter, r *http.Request, address string, userID uuid.UUID) bool {
-	parsed, err := mail.ParseAddress(address)
-	if len(address) > emailMaxLength || err != nil || parsed.Address != address {
-		problem.Refuse(w, r, http.StatusBadRequest, "emailInvalid")
-		return true
-	}
-	taken, err := store.New(c.database.Read).EmailTaken(r.Context(), store.EmailTakenParams{Email: address, UserID: userID})
+	status, code, err := users.RefusalOfEmail(r.Context(), store.New(c.database.Read), address, userID)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return true
 	}
-	if taken {
-		problem.Refuse(w, r, http.StatusConflict, "emailTaken")
+	if code != "" {
+		problem.Refuse(w, r, status, code)
 		return true
 	}
 	return false

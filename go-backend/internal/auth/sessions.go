@@ -15,6 +15,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 	"github.com/google/uuid"
 )
 
@@ -220,7 +221,7 @@ func saveAttempt(ctx context.Context, q *store.Queries, tx *sql.Tx, before, afte
 	if err != nil {
 		return err
 	}
-	return history.Write(ctx, tx, now, after.ID, action, userChange(before, after))
+	return history.Write(ctx, tx, now, after.ID, action, users.Change(before, after))
 }
 
 func renewDevice(ctx context.Context, q *store.Queries, device store.Device) error {

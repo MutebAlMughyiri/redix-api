@@ -5,7 +5,9 @@ package access
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
@@ -39,6 +41,41 @@ const (
 	SeeReports            Permission = "SeeReports"
 	GenerateReports       Permission = "GenerateReports"
 )
+
+// All is every permission in the order .NET's enum gave them, which is how History keeps one (as its number) and how a list of them is ordered.
+var All = []Permission{ApproveProjects, ManageUsers, ReadProject, SeeAllCapital, SeeChosenCapital, ManageProject, ManageStructure, ManageSettings, AddSupplier,
+	ChargeAnyAccount, RecordEntries, ManageAnyEntry, DeleteEntries, RemoveApprovedEntries, AttachFiles, ApproveEntries, MoveMoney, SeeReports, GenerateReports}
+
+// Number is the permission's place in All, as History keeps it.
+func (p Permission) Number() int { return slices.Index(All, p) }
+
+// Named is the permission name names, whatever its case, as Enum.TryParse read it with ignoreCase.
+func Named(name string) (Permission, bool) {
+	for _, permission := range All {
+		if strings.EqualFold(string(permission), name) {
+			return permission, true
+		}
+	}
+	return "", false
+}
+
+// UnmarshalJSON reads a permission by its name, whatever its case, or by its number, as JsonStringEnumConverter did.
+func (p *Permission) UnmarshalJSON(data []byte) error {
+	var name string
+	if json.Unmarshal(data, &name) == nil {
+		if named, ok := Named(name); ok {
+			*p = named
+			return nil
+		}
+		return fmt.Errorf("access: no permission %q", name)
+	}
+	var number int
+	if err := json.Unmarshal(data, &number); err != nil || number < 0 || number >= len(All) {
+		return fmt.Errorf("access: no permission %s", data)
+	}
+	*p = All[number]
+	return nil
+}
 
 // MarshalJSON writes the permission as the API's enums are written, camelCase: "approveProjects".
 func (p Permission) MarshalJSON() ([]byte, error) { return json.Marshal(web.Camel(string(p))) }

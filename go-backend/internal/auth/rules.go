@@ -7,13 +7,12 @@ import (
 	"encoding/hex"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 )
 
 // The refusals a sign-in or a password change answers with.
@@ -31,8 +30,6 @@ const (
 	lockDuration = 15 * time.Minute
 	// idleTimeout is how long a refresh token lasts unused on a phone without biometrics (NFR-09).
 	idleTimeout = 12 * time.Hour
-	// minimumLength is the shortest password the policy keeps (redix-app #113).
-	minimumLength = 8
 )
 
 // attempt is what typing password does to user (User.SignIn): "" when it signs in, or the refusal, and the user as the attempt leaves it. A locked
@@ -65,29 +62,9 @@ func refusedAction(before, after store.User) history.Action {
 	return history.SignInFailed
 }
 
-// userChange is what changed on a user, as History keeps it: under the C# property names, never the password hash ([NotInHistory]).
-func userChange(before, after store.User) history.Change {
-	was, is := history.Changed(visible(before), visible(after))
-	return history.Change{Table: "Users", RecordID: before.ID, Before: was, After: is}
-}
-
-func visible(user store.User) map[string]any {
-	return map[string]any{
-		"Username": user.Username, "DisplayName": user.DisplayName, "Mobile": user.Mobile, "Email": user.Email,
-		"MustChangePassword": user.MustChangePassword, "FailedSignIns": user.FailedSignIns, "LockedUntil": user.LockedUntil, "CreatedAt": user.CreatedAt,
-	}
-}
-
-// holds says whether password keeps the policy (PasswordPolicy.Holds): at least eight characters, a letter and a digit, and not the username.
-func holds(password, username string) bool {
-	hasLetter := strings.IndexFunc(password, unicode.IsLetter) >= 0
-	hasDigit := strings.IndexFunc(password, unicode.IsDigit) >= 0
-	return utf8.RuneCountInString(password) >= minimumLength && hasLetter && hasDigit && !strings.EqualFold(password, strings.TrimSpace(username))
-}
-
 // mayReplace says whether newPassword may replace currentPassword: it keeps the policy and is not the current password (PasswordPolicy.MayReplace).
 func mayReplace(newPassword, currentPassword, username string) bool {
-	return holds(newPassword, username) && newPassword != currentPassword
+	return users.KeepsPolicy(newPassword, username) && newPassword != currentPassword
 }
 
 // renew gives device a new refresh token, which it returns, keeping only its hash, valid for 12 hours from now (Device.RenewRefreshToken).
