@@ -27,6 +27,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/settings"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/sync"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 )
@@ -80,5 +81,6 @@ func Routes(parts Parts) *web.Router {
 	attachments.Map(router, gate, database, now, parts.AttachmentsFolder)
 	documents.Map(router, gate, database, now, parts.AttachmentsFolder)
 	reports.Map(router, gate, database)
+	sync.Map(router, gate)
 	return router
 }

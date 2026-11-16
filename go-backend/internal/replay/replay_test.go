@@ -399,10 +399,13 @@ func send(handler http.Handler, names mapping, s step) *httptest.ResponseRecorde
 // learned are the values that are Go's own by nature, so they are mapped rather than compared: ids, tokens and ETags.
 var guid = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+var guidIn = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+
 // generated are the other values a server makes up as it writes: a custom column's key, "custom." and a fresh version 7 id (Column.NewCustomKey).
 var generated = regexp.MustCompile(`^custom\.[0-9a-f]{32}$`)
 
-var tokenKeys = []string{"accessToken", "refreshToken"}
+// tokenKeys are the values a server makes up whose form says nothing: the tokens of a session, and a sync's stamp, a hash of what it answered.
+var tokenKeys = []string{"accessToken", "refreshToken", "stamp"}
 
 func compare(names mapping, s step, got *httptest.ResponseRecorder) []string {
 	var differences []string
@@ -515,19 +518,31 @@ func same(names mapping, path, key string, net, got any) []string {
 		if !ok {
 			return []string{fmt.Sprintf("%s: an object in .NET's answer, %v in Go's", path, got)}
 		}
+		// A key may hold an id - a sync's lists are keyed by address - so keys are read through the mapping too, those naming fewer ids first, so
+		// the lists that show an item's id are compared before the one keyed by it.
+		keys := make([]string, 0, len(net))
+		for name := range net {
+			keys = append(keys, name)
+		}
+		sort.SliceStable(keys, func(i, j int) bool {
+			return len(guidIn.FindAllString(keys[i], -1)) < len(guidIn.FindAllString(keys[j], -1))
+		})
 		var differences []string
-		for name, value := range net {
-			if _, has := got[name]; !has {
+		matched := map[string]bool{}
+		for _, name := range keys {
+			goName := names.into(name)
+			if _, has := got[goName]; !has {
 				differences = append(differences, fmt.Sprintf("%s.%s: missing in Go's answer", path, name))
 				continue
 			}
+			matched[goName] = true
 			if name == "traceId" {
 				continue
 			}
-			differences = append(differences, same(names, path+"."+name, name, value, got[name])...)
+			differences = append(differences, same(names, path+"."+name, name, net[name], got[goName])...)
 		}
 		for name := range got {
-			if _, has := net[name]; !has {
+			if !matched[name] {
 				differences = append(differences, fmt.Sprintf("%s.%s: not in .NET's answer", path, name))
 			}
 		}

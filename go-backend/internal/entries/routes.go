@@ -40,6 +40,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	reads := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.ReadProject, handler) }
 	router.Handle("GET", project+"/entry-tables", reads(s.entryTables))
 	router.Handle("GET", project+"/items/{itemId:guid}/tables", reads(s.itemTables))
+	router.Handle("GET", project+"/entries/attachable", gate.Needs(access.RecordEntries, s.attachable))
+	router.Handle("POST", project+"/entries/{entryId:guid}/invoice", gate.Changes(access.RecordEntries, s.attach))
 	router.Handle("GET", project+"/accounts/history", reads(s.accountHistory))
 	router.Handle("GET", project+"/partners/history", reads(s.partnerHistory))
 	router.Handle("GET", project+"/approvals/history", gate.Needs(access.ApproveEntries, s.approvalHistory))
@@ -465,11 +467,13 @@ func (s Routes) row(w http.ResponseWriter, r *http.Request, caller access.Caller
 }
 
 // list is the entries of the project the caller may see, newest first (Muteb, 8 Nov 2026), those a search keeps when anything narrows them
-// (redix-app #104), the newest take of them when take is above 0 (redix-app #105).
+// (redix-app #104), the newest take of them when take is above 0 (redix-app #105), and with attachable only those a shared file can go on
+// (redix-app #115 D6).
 func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	query := r.URL.Query()
 	search := searchOf(query["kinds"], query["statuses"], query.Get("text"), query.Get("mine"), query.Get("from"), query.Get("to"), query.Get("number"))
-	views, err := s.rows(r, caller, func(store.Entry) bool { return true })
+	attachableOnly := strings.EqualFold(query.Get("attachable"), "true")
+	views, err := s.rows(r, caller, func(entry store.Entry) bool { return !attachableOnly || attachableBy(entry, caller) })
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
