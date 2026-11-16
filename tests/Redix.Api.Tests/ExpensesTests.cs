@@ -412,6 +412,9 @@ public class ExpensesTests(MigratedApiFactory factory)
         await AssertRefusedAsync(setup, Expense(setup) with { Description = new string('م', Entry.DescriptionMaxLength + 1) }, "invalidDescription");
         await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "1.234" } }, "invalidColumnValue");
         await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["quantity"] = "كثير" } }, "invalidColumnValue");
+        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["unitPrice"] = "-5" } }, "invalidColumnValue");
+        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["quantity"] = "-2" } }, "invalidColumnValue");
+        await AssertRefusedAsync(setup, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["quantity"] = "2.125" } }, "invalidColumnValue");
         await AssertRefusedAsync(setup, Expense(setup, 0m), "invalidAmount");
         await AssertRefusedAsync(setup, Expense(setup, -5m), "deductionNeedsDescription");
         await AssertRefusedAsync(setup, Expense(setup, 1.234m), "invalidAmount");

@@ -65,11 +65,14 @@ public abstract class Column : IOrdered
     /// <summary>A key for a column a person adds.</summary>
     public static string NewCustomKey() => CustomKeyPrefix + Guid.CreateVersion7().ToString("N");
 
-    /// <summary>Whether an entry can give this column <paramref name="value"/>: a number, an amount with at most two decimals, a date as <c>yyyy-MM-dd</c>, the id of one of a list's choices (redix-api #129), or a text within its limit.</summary>
+    /// <summary>
+    /// Whether an entry can give this column <paramref name="value"/>: a number or an amount not negative with at most two decimals, as the unit price and the quantity were checked
+    /// before they became columns (redix-api #129); a date as <c>yyyy-MM-dd</c>; the id of one of a list's choices; or a text within its limit. A minus comes from a list's choice, never
+    /// from a typed number.
+    /// </summary>
     public bool Accepts(string value) => DataType switch
     {
-        ColumnDataType.Number => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _),
-        ColumnDataType.Amount => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) && Money.IsAcceptable(amount),
+        ColumnDataType.Number or ColumnDataType.Amount => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) && number >= 0 && Money.IsAcceptable(number),
         ColumnDataType.Date => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
         ColumnDataType.List => ChoiceOf(value) != ColumnChoice.None,
         _ => value.Length <= ValueMaxLength,
