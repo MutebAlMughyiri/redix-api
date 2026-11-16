@@ -5,7 +5,6 @@ package historytest
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 
@@ -23,9 +22,23 @@ var exempt = map[string]string{
 	"user_default_projects": "the project a person opens straight into is their own choice, never recorded (ProjectsEndpoints.SetDefault)",
 }
 
-// createdWithTheirProject are the tables whose new rows .NET recorded only through their project's RegisterProject line: the units and partners a
-// project is started with (Project.New, PartnersEndpoints.DeclaredWith). A new row of one passes when the same write registered its project.
-var createdWithTheirProject = map[string]bool{"units": true, "partners": true}
+// owner is the record whose History line also stands for a row of another table, and the column of that row naming it.
+type owner struct {
+	table  string
+	column string
+}
+
+// recordedWithTheirOwner are the tables whose rows .NET recorded, as they were added or removed, only through the line of the record owning them:
+// the units and partners a project is started with, under its RegisterProject line (Project.New, PartnersEndpoints.DeclaredWith), and an account's
+// custodian, under the account's line (AccountsEndpoints.Add, Delete); and what each account held at a reconciliation, under its line
+// (ReconciliationsEndpoints.EnterAsync). A row of one added or removed passes when the same write recorded its owner;
+// a row changed still needs its own line.
+var recordedWithTheirOwner = map[string]owner{
+	"units":                   {"Projects", "project_id"},
+	"partners":                {"Projects", "project_id"},
+	"account_custodians":      {"Accounts", "account_id"},
+	"reconciliation_balances": {"Reconciliations", "reconciliation_id"},
+}
 
 // copiedOnApproval are the tables whose new rows .NET recorded only through the ApproveProject line of the project they were copied into: its
 // structure, its payment methods and its general cash supplier (ProjectStructure.ApproveAsync). A new row of one passes when the same write
@@ -46,7 +59,7 @@ func Check(t testing.TB, database db.DB, write func()) {
 
 	write()
 
-	lines, registered, approved := map[string]bool{}, map[string]bool{}, false
+	lines, approved := map[string]bool{}, false
 	found, err := database.Read.Query("SELECT table_name, record_id, action FROM history WHERE id > ?", lastLine)
 	if err != nil {
 		t.Fatal(err)
@@ -55,29 +68,28 @@ func Check(t testing.TB, database db.DB, write func()) {
 		var table, record, action string
 		found.Scan(&table, &record, &action)
 		lines[table+" "+record] = true
-		if table == "Projects" && action == "RegisterProject" {
-			registered[record] = true
-		}
 		approved = approved || (table == "Projects" && action == "ApproveProject")
 	}
 	found.Close()
 	for _, table := range tables {
 		after := rowsOf(t, database, table)
 		for _, id := range changed(before[table], after) {
-			_, existed := before[table][id]
-			withItsProject := createdWithTheirProject[table] && !existed && registered[after[id].project]
+			was, existed := before[table][id]
+			now, kept := after[id]
+			owned, hasOwner := recordedWithTheirOwner[table]
+			withItsOwner := hasOwner && (!existed && lines[owned.table+" "+now.values[owned.column]] || !kept && lines[owned.table+" "+was.values[owned.column]])
 			copied := copiedOnApproval[table] && !existed && approved
-			if !lines[historyName(table)+" "+id] && !withItsProject && !copied {
+			if !lines[historyName(table)+" "+id] && !withItsOwner && !copied {
 				t.Errorf("History net: %s %s changed with no History line", table, id)
 			}
 		}
 	}
 }
 
-// row is one row as the net compares it: the text of all its values, and its project when it has a project_id.
+// row is one row as the net compares it: the text of all its values, and each value by its column.
 type row struct {
-	text    string
-	project string
+	text   string
+	values map[string]string
 }
 
 func keptTables(t testing.TB, database db.DB) []string {
@@ -107,7 +119,6 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 	}
 	defer rows.Close()
 	columns, _ := rows.Columns()
-	project := slices.Index(columns, "project_id")
 	kept := map[string]row{}
 	for rows.Next() {
 		values := make([]any, len(columns))
@@ -116,9 +127,9 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 			pointers[i] = &values[i]
 		}
 		rows.Scan(pointers...)
-		read := row{text: fmt.Sprint(values...)}
-		if project >= 0 {
-			read.project = fmt.Sprint(values[project])
+		read := row{text: fmt.Sprint(values...), values: map[string]string{}}
+		for i, column := range columns {
+			read.values[column] = fmt.Sprint(values[i])
 		}
 		kept[fmt.Sprint(values[0])] = read
 	}

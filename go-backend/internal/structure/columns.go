@@ -2,6 +2,7 @@ package structure
 
 import (
 	"errors"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"math"
 	"net/http"
 	"slices"
@@ -39,8 +40,8 @@ func asColumns[T any](rows []T, of func(T) column) []column {
 // columnsOfItem is the columns an item asks for, in order; a deleted one is not among them. 404 for an item the project does not hold.
 func (s Routes) columnsOfItem(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	read := s.database.Queries()
-	item, err := found(read.ItemOf(r.Context(), store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: web.ID(r, "projectId")}))
-	if errors.Is(err, notFound) {
+	item, err := changes.Found(read.ItemOf(r.Context(), store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: web.ID(r, "projectId")}))
+	if errors.Is(err, changes.NotFound) {
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
@@ -91,8 +92,8 @@ func (s Routes) addToItem(w http.ResponseWriter, r *http.Request, caller access.
 	if !web.Read(w, r, &request) {
 		return
 	}
-	if refused := request.refusalOfNew(); refused != "" {
-		refuse(w, r, refused)
+	if reason := request.refusalOfNew(); reason != "" {
+		refuse(w, r, reason)
 		return
 	}
 	s.done(w, r, caller, func(c change) error {
@@ -101,15 +102,15 @@ func (s Routes) addToItem(w http.ResponseWriter, r *http.Request, caller access.
 			return err
 		}
 		if ItemType(item.Type).IsRevenue() {
-			return refusal(revenueTakesNoColumns)
+			return refused(revenueTakesNoColumns)
 		}
-		columns, err := c.q.ColumnsOfItem(c.ctx, item.ID)
+		columns, err := c.Q.ColumnsOfItem(c.Ctx, item.ID)
 		if err != nil {
 			return err
 		}
 		added := request.newColumn(int64(len(columns)))
 		if hasTwoSignedLists(append(asColumns(visible(columns), ofItemColumn), added)) {
-			return refusal(signedListExists)
+			return refused(signedListExists)
 		}
 		return c.saveItemColumn(store.ItemColumn{}, added.onItem(uuid.Must(uuid.NewV7()), item.ID, false))
 	})
@@ -126,14 +127,14 @@ func (s Routes) reorderOfItem(w http.ResponseWriter, r *http.Request, caller acc
 		if err != nil {
 			return err
 		}
-		columns, err := c.q.ColumnsOfItem(c.ctx, item.ID)
+		columns, err := c.Q.ColumnsOfItem(c.Ctx, item.ID)
 		if err != nil {
 			return err
 		}
 		shown := visible(columns)
 		places, ok := inOrder(idsOf(shown, func(row store.ItemColumn) uuid.UUID { return row.ID }), request.IDs)
 		if !ok {
-			return refusal(invalidOrder)
+			return refused(invalidOrder)
 		}
 		for _, before := range shown {
 			after := before
@@ -146,16 +147,16 @@ func (s Routes) reorderOfItem(w http.ResponseWriter, r *http.Request, caller acc
 	})
 }
 
-// itemColumn is the route's column of the route's item, and the item's shown columns: notFound for a column deleted or not the project's.
+// itemColumn is the route's column of the route's item, and the item's shown columns: changes.NotFound for a column deleted or not the project's.
 func (c change) itemColumn(r *http.Request) (store.ItemColumn, []store.ItemColumn, error) {
-	columns, err := c.q.ColumnsOfItem(c.ctx, web.ID(r, "itemId"))
+	columns, err := c.Q.ColumnsOfItem(c.Ctx, web.ID(r, "itemId"))
 	if err != nil {
 		return store.ItemColumn{}, nil, err
 	}
 	shown := visible(columns)
 	at := slices.IndexFunc(shown, func(row store.ItemColumn) bool { return row.ID == web.ID(r, "columnId") })
 	if at < 0 {
-		return store.ItemColumn{}, nil, notFound
+		return store.ItemColumn{}, nil, changes.NotFound
 	}
 	if _, err := c.item(r); err != nil {
 		return store.ItemColumn{}, nil, err
@@ -175,13 +176,13 @@ func (s Routes) editOfItem(w http.ResponseWriter, r *http.Request, caller access
 		if err != nil {
 			return err
 		}
-		edited, refused := ofItemColumn(before).edited(request)
-		if refused != "" {
-			return refusal(refused)
+		edited, reason := ofItemColumn(before).edited(request)
+		if reason != "" {
+			return refused(reason)
 		}
 		after := edited.onItem(before.ID, before.ItemID, false)
 		if hasTwoSignedLists(asColumns(replaced(shown, after), ofItemColumn)) {
-			return refusal(signedListExists)
+			return refused(signedListExists)
 		}
 		return c.saveItemColumn(before, after)
 	})
@@ -213,7 +214,7 @@ func (s Routes) deleteOfItem(w http.ResponseWriter, r *http.Request, caller acce
 // hide deletes an item's column by hiding it (ItemColumn.Hide): coreColumn for a core one.
 func (c change) hide(before store.ItemColumn) error {
 	if before.IsCore {
-		return refusal(coreColumn)
+		return refused(coreColumn)
 	}
 	after := before
 	after.IsHidden = true
@@ -222,16 +223,16 @@ func (c change) hide(before store.ItemColumn) error {
 
 // template is the route project's default columns of itemType.
 func (c change) template(itemType ItemType) ([]store.DefaultColumn, error) {
-	return c.q.DefaultColumnsOfType(c.ctx, store.DefaultColumnsOfTypeParams{ProjectID: c.projectID, ItemType: int64(itemType)})
+	return c.Q.DefaultColumnsOfType(c.Ctx, store.DefaultColumnsOfTypeParams{ProjectID: c.ProjectID, ItemType: int64(itemType)})
 }
 
 // columnsOfType is the shown columns of the project's items of itemType, by item.
 func (c change) columnsOfType(itemType ItemType) (map[uuid.UUID][]store.ItemColumn, error) {
-	items, err := c.q.ItemsOf(c.ctx, c.projectID)
+	items, err := c.Q.ItemsOf(c.Ctx, c.ProjectID)
 	if err != nil {
 		return nil, err
 	}
-	columns, err := c.q.ColumnsOf(c.ctx, c.projectID)
+	columns, err := c.Q.ColumnsOf(c.Ctx, c.ProjectID)
 	byItem := map[uuid.UUID][]store.ItemColumn{}
 	for _, item := range items {
 		if ItemType(item.Type) == itemType {
@@ -260,12 +261,12 @@ func (s Routes) addToTemplate(w http.ResponseWriter, r *http.Request, caller acc
 	if !web.Read(w, r, &request) {
 		return
 	}
-	refused := request.refusalOfNew()
+	reason := request.refusalOfNew()
 	if itemType.IsRevenue() {
-		refused = revenueTakesNoColumns
+		reason = revenueTakesNoColumns
 	}
-	if refused != "" {
-		refuse(w, r, refused)
+	if reason != "" {
+		refuse(w, r, reason)
 		return
 	}
 	s.done(w, r, caller, func(c change) error {
@@ -275,9 +276,9 @@ func (s Routes) addToTemplate(w http.ResponseWriter, r *http.Request, caller acc
 		}
 		added := request.newColumn(int64(len(template)))
 		if hasTwoSignedLists(append(asColumns(template, ofDefaultColumn), added)) {
-			return refusal(signedListExists)
+			return refused(signedListExists)
 		}
-		if err := c.saveDefaultColumn(store.DefaultColumn{}, added.inTemplate(uuid.Must(uuid.NewV7()), c.projectID, int64(itemType))); err != nil {
+		if err := c.saveDefaultColumn(store.DefaultColumn{}, added.inTemplate(uuid.Must(uuid.NewV7()), c.ProjectID, int64(itemType))); err != nil {
 			return err
 		}
 		if !request.ApplyToAllItems {
@@ -291,7 +292,7 @@ func (s Routes) addToTemplate(w http.ResponseWriter, r *http.Request, caller acc
 			onItem := added
 			onItem.SortOrder = int64(len(columns))
 			if hasTwoSignedLists(append(asColumns(visible(columns), ofItemColumn), onItem)) {
-				return refusal(signedListExists)
+				return refused(signedListExists)
 			}
 			if err := c.saveItemColumn(store.ItemColumn{}, onItem.onItem(uuid.Must(uuid.NewV7()), itemID, false)); err != nil {
 				return err
@@ -322,7 +323,7 @@ func (s Routes) reorderOfTemplate(w http.ResponseWriter, r *http.Request, caller
 		}
 		places, ok := inOrder(idsOf(template, func(row store.DefaultColumn) uuid.UUID { return row.ID }), request.IDs)
 		if !ok {
-			return refusal(invalidOrder)
+			return refused(invalidOrder)
 		}
 		placeOfKey := map[string]int64{}
 		for _, before := range template {
@@ -377,7 +378,7 @@ func compare(a, b int64) int {
 	return 0
 }
 
-// templateColumn is the route's column of the template of itemType, and the whole template: notFound for none.
+// templateColumn is the route's column of the template of itemType, and the whole template: changes.NotFound for none.
 func (c change) templateColumn(r *http.Request, itemType ItemType) (store.DefaultColumn, []store.DefaultColumn, error) {
 	template, err := c.template(itemType)
 	if err != nil {
@@ -385,7 +386,7 @@ func (c change) templateColumn(r *http.Request, itemType ItemType) (store.Defaul
 	}
 	at := slices.IndexFunc(template, func(row store.DefaultColumn) bool { return row.ID == web.ID(r, "columnId") })
 	if at < 0 {
-		return store.DefaultColumn{}, nil, notFound
+		return store.DefaultColumn{}, nil, changes.NotFound
 	}
 	return template[at], template, nil
 }
@@ -409,15 +410,15 @@ func (s Routes) editOfTemplate(w http.ResponseWriter, r *http.Request, caller ac
 		if err != nil {
 			return err
 		}
-		edited, refused := ofDefaultColumn(before).edited(request.editRequest)
-		if refused != "" {
-			return refusal(refused)
+		edited, reason := ofDefaultColumn(before).edited(request.editRequest)
+		if reason != "" {
+			return refused(reason)
 		}
 		after := edited.inTemplate(before.ID, before.ProjectID, before.ItemType)
 		edits := asColumns(template, ofDefaultColumn)
 		edits[slices.IndexFunc(template, func(row store.DefaultColumn) bool { return row.ID == before.ID })] = edited
 		if hasTwoSignedLists(edits) {
-			return refusal(signedListExists)
+			return refused(signedListExists)
 		}
 		if err := c.saveDefaultColumn(before, after); err != nil {
 			return err
@@ -443,13 +444,13 @@ func (c change) editOnItems(itemType ItemType, key string, typed editRequest) er
 			if row.Key != key {
 				continue
 			}
-			if edited, refused := ofItemColumn(row).edited(typed); refused == "" {
+			if edited, reason := ofItemColumn(row).edited(typed); reason == "" {
 				shown[i] = edited.onItem(row.ID, row.ItemID, false)
 				changed = append(changed, row)
 			}
 		}
 		if hasTwoSignedLists(asColumns(shown, ofItemColumn)) {
-			return refusal(signedListExists)
+			return refused(signedListExists)
 		}
 		for _, before := range changed {
 			if err := c.saveItemColumn(before, shown[slices.IndexFunc(shown, func(row store.ItemColumn) bool { return row.ID == before.ID })]); err != nil {
@@ -478,9 +479,9 @@ func (s Routes) deleteOfTemplate(w http.ResponseWriter, r *http.Request, caller 
 			return err
 		}
 		if column.IsCore {
-			return refusal(coreColumn)
+			return refused(coreColumn)
 		}
-		if err := c.remove("DefaultColumns", column.ID, defaultColumnFields(column), func() error { return c.q.RemoveDefaultColumn(c.ctx, column.ID) }); err != nil {
+		if err := c.Remove("DefaultColumns", column.ID, defaultColumnFields(column), func() error { return c.Q.RemoveDefaultColumn(c.Ctx, column.ID) }); err != nil {
 			return err
 		}
 		if !applyToAllItems {

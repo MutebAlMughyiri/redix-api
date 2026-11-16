@@ -42,10 +42,16 @@ func RefusalOfDetails(displayName, mobile string) string {
 	if length := utf8.RuneCountInString(displayName); length == 0 || length > nameMaxLength {
 		return "invalidName"
 	}
-	if len(mobile) > mobileMaxLength || !acceptableMobile.MatchString(mobile) {
+	if !IsAcceptableMobile(mobile) {
 		return "invalidMobile"
 	}
 	return ""
+}
+
+// IsAcceptableMobile says whether mobile, already trimmed, may be kept for a user or a supplier (User.IsAcceptableMobile): empty, or ASCII digits
+// after one leading plus at most, in 20 characters.
+func IsAcceptableMobile(mobile string) bool {
+	return len(mobile) <= mobileMaxLength && acceptableMobile.MatchString(mobile)
 }
 
 // refusalOfNew is the refusal of a new user's details, all already trimmed but the password (User.RefusalOfNew).

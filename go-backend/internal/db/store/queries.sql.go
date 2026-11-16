@@ -9,9 +9,151 @@ import (
 	"context"
 	"strings"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/google/uuid"
 )
+
+const accountMovements = `-- name: AccountMovements :many
+SELECT moved.account_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
+    SELECT entries.account_id, CASE WHEN entries.kind IN (2, 4) THEN entries.amount ELSE -entries.amount END AS amount
+    FROM entries WHERE entries.project_id = ?1 AND entries.status = 2
+    UNION ALL SELECT transfers.to_account_id, transfers.amount FROM transfers WHERE transfers.project_id = ?1
+    UNION ALL SELECT transfers.from_account_id, -transfers.amount FROM transfers WHERE transfers.project_id = ?1
+) AS moved GROUP BY moved.account_id
+`
+
+type AccountMovementsRow struct {
+	AccountID uuid.UUID
+	Total     int64
+}
+
+// What each account of the project that anything moved holds (AccountMoney): its approved entries by their kind's sign (BR-10) - capital in and
+// revenue bring money in, the rest take it out - plus the transfers it received, less those it sent.
+func (q *Queries) AccountMovements(ctx context.Context, projectID uuid.UUID) ([]AccountMovementsRow, error) {
+	rows, err := q.query(ctx, q.accountMovementsStmt, accountMovements, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountMovementsRow
+	for rows.Next() {
+		var i AccountMovementsRow
+		if err := rows.Scan(&i.AccountID, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const accountOf = `-- name: AccountOf :one
+SELECT id, project_id, type, name, is_active FROM accounts WHERE id = ?1 AND project_id = ?2
+`
+
+type AccountOfParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) AccountOf(ctx context.Context, arg AccountOfParams) (Account, error) {
+	row := q.queryRow(ctx, q.accountOfStmt, accountOf, arg.ID, arg.ProjectID)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Type,
+		&i.Name,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const accountsOf = `-- name: AccountsOf :many
+SELECT accounts.id, accounts.project_id, accounts.type, accounts.name, accounts.is_active, COALESCE(account_custodians.user_id, '') AS custodian_id, COALESCE(users.display_name, '') AS custodian_name
+FROM accounts LEFT JOIN account_custodians ON account_custodians.account_id = accounts.id LEFT JOIN users ON users.id = account_custodians.user_id
+WHERE accounts.project_id = ? ORDER BY accounts.type, accounts.id
+`
+
+type AccountsOfRow struct {
+	ID            uuid.UUID
+	ProjectID     uuid.UUID
+	Type          int64
+	Name          string
+	IsActive      bool
+	CustodianID   uuid.UUID
+	CustodianName string
+}
+
+// A project's accounts, banks first, then in the order they were added (AC-22.1), each with who holds it.
+func (q *Queries) AccountsOf(ctx context.Context, projectID uuid.UUID) ([]AccountsOfRow, error) {
+	rows, err := q.query(ctx, q.accountsOfStmt, accountsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountsOfRow
+	for rows.Next() {
+		var i AccountsOfRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Type,
+			&i.Name,
+			&i.IsActive,
+			&i.CustodianID,
+			&i.CustodianName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const accountsUsed = `-- name: AccountsUsed :many
+SELECT entries.account_id FROM entries WHERE entries.project_id = ?1
+UNION SELECT reconciliation_balances.account_id FROM reconciliation_balances
+    JOIN reconciliations ON reconciliations.id = reconciliation_balances.reconciliation_id WHERE reconciliations.project_id = ?1
+UNION SELECT transfers.from_account_id FROM transfers WHERE transfers.project_id = ?1
+UNION SELECT transfers.to_account_id FROM transfers WHERE transfers.project_id = ?1
+`
+
+// The project's accounts that something names, which then stay: an entry in any status, an actual-balances check, or a transfer either way (R15).
+func (q *Queries) AccountsUsed(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.accountsUsedStmt, accountsUsed, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var account_id uuid.UUID
+		if err := rows.Scan(&account_id); err != nil {
+			return nil, err
+		}
+		items = append(items, account_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const addChosen = `-- name: AddChosen :exec
 INSERT INTO chosen_partners (id, project_id, user_id, partner_id) VALUES (?, ?, ?, ?)
@@ -172,29 +314,6 @@ func (q *Queries) AddPartner(ctx context.Context, arg AddPartnerParams) error {
 	return err
 }
 
-const addPaymentMethod = `-- name: AddPaymentMethod :exec
-INSERT INTO payment_methods (id, project_id, name, sort_order, is_active) VALUES (?, ?, ?, ?, ?)
-`
-
-type AddPaymentMethodParams struct {
-	ID        uuid.UUID
-	ProjectID uuid.UUID
-	Name      string
-	SortOrder int64
-	IsActive  bool
-}
-
-func (q *Queries) AddPaymentMethod(ctx context.Context, arg AddPaymentMethodParams) error {
-	_, err := q.exec(ctx, q.addPaymentMethodStmt, addPaymentMethod,
-		arg.ID,
-		arg.ProjectID,
-		arg.Name,
-		arg.SortOrder,
-		arg.IsActive,
-	)
-	return err
-}
-
 const addPermission = `-- name: AddPermission :exec
 INSERT INTO project_permissions (id, project_id, user_id, permission) VALUES (?, ?, ?, ?)
 `
@@ -239,6 +358,42 @@ func (q *Queries) AddProject(ctx context.Context, arg AddProjectParams) error {
 	return err
 }
 
+const addReconciliation = `-- name: AddReconciliation :exec
+INSERT INTO reconciliations (id, project_id, at, user_id) VALUES (?, ?, ?, ?)
+`
+
+type AddReconciliationParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	At        moment.Moment
+	UserID    uuid.UUID
+}
+
+func (q *Queries) AddReconciliation(ctx context.Context, arg AddReconciliationParams) error {
+	_, err := q.exec(ctx, q.addReconciliationStmt, addReconciliation,
+		arg.ID,
+		arg.ProjectID,
+		arg.At,
+		arg.UserID,
+	)
+	return err
+}
+
+const addReconciliationBalance = `-- name: AddReconciliationBalance :exec
+INSERT INTO reconciliation_balances (reconciliation_id, account_id, actual_balance) VALUES (?, ?, ?)
+`
+
+type AddReconciliationBalanceParams struct {
+	ReconciliationID uuid.UUID
+	AccountID        uuid.UUID
+	ActualBalance    fixed.Number
+}
+
+func (q *Queries) AddReconciliationBalance(ctx context.Context, arg AddReconciliationBalanceParams) error {
+	_, err := q.exec(ctx, q.addReconciliationBalanceStmt, addReconciliationBalance, arg.ReconciliationID, arg.AccountID, arg.ActualBalance)
+	return err
+}
+
 const addRoleName = `-- name: AddRoleName :exec
 INSERT INTO project_role_names (id, project_id, user_id, role_name) VALUES (?, ?, ?, ?)
 `
@@ -274,40 +429,6 @@ func (q *Queries) AddStructureSource(ctx context.Context, arg AddStructureSource
 	return err
 }
 
-const addSupplier = `-- name: AddSupplier :exec
-INSERT INTO suppliers (id, project_id, name, normalized_name, vat_number, mobile, status, is_active, is_general_cash, created_by_user_id)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`
-
-type AddSupplierParams struct {
-	ID              uuid.UUID
-	ProjectID       uuid.UUID
-	Name            string
-	NormalizedName  string
-	VatNumber       string
-	Mobile          string
-	Status          int64
-	IsActive        bool
-	IsGeneralCash   bool
-	CreatedByUserID uuid.UUID
-}
-
-func (q *Queries) AddSupplier(ctx context.Context, arg AddSupplierParams) error {
-	_, err := q.exec(ctx, q.addSupplierStmt, addSupplier,
-		arg.ID,
-		arg.ProjectID,
-		arg.Name,
-		arg.NormalizedName,
-		arg.VatNumber,
-		arg.Mobile,
-		arg.Status,
-		arg.IsActive,
-		arg.IsGeneralCash,
-		arg.CreatedByUserID,
-	)
-	return err
-}
-
 const addSystemPermission = `-- name: AddSystemPermission :exec
 INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, ?)
 `
@@ -320,6 +441,38 @@ type AddSystemPermissionParams struct {
 
 func (q *Queries) AddSystemPermission(ctx context.Context, arg AddSystemPermissionParams) error {
 	_, err := q.exec(ctx, q.addSystemPermissionStmt, addSystemPermission, arg.ID, arg.UserID, arg.Permission)
+	return err
+}
+
+const addTransfer = `-- name: AddTransfer :exec
+INSERT INTO transfers (id, project_id, from_account_id, to_account_id, amount, date, notes, created_by_user_id, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddTransferParams struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	FromAccountID   uuid.UUID
+	ToAccountID     uuid.UUID
+	Amount          fixed.Number
+	Date            moment.Date
+	Notes           string
+	CreatedByUserID uuid.UUID
+	CreatedAt       moment.Moment
+}
+
+func (q *Queries) AddTransfer(ctx context.Context, arg AddTransferParams) error {
+	_, err := q.exec(ctx, q.addTransferStmt, addTransfer,
+		arg.ID,
+		arg.ProjectID,
+		arg.FromAccountID,
+		arg.ToAccountID,
+		arg.Amount,
+		arg.Date,
+		arg.Notes,
+		arg.CreatedByUserID,
+		arg.CreatedAt,
+	)
 	return err
 }
 
@@ -435,6 +588,100 @@ func (q *Queries) AllUnits(ctx context.Context) ([]Unit, error) {
 			&i.Name,
 			&i.SortOrder,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const approvedRevenueByItemType = `-- name: ApprovedRevenueByItemType :many
+SELECT items.type, CAST(SUM(entries.amount) AS INTEGER) AS total
+FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id JOIN items ON items.id = revenue_details.item_id
+WHERE entries.project_id = ? AND entries.status = 2 GROUP BY items.type
+`
+
+type ApprovedRevenueByItemTypeRow struct {
+	Type  int64
+	Total int64
+}
+
+func (q *Queries) ApprovedRevenueByItemType(ctx context.Context, projectID uuid.UUID) ([]ApprovedRevenueByItemTypeRow, error) {
+	rows, err := q.query(ctx, q.approvedRevenueByItemTypeStmt, approvedRevenueByItemType, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ApprovedRevenueByItemTypeRow
+	for rows.Next() {
+		var i ApprovedRevenueByItemTypeRow
+		if err := rows.Scan(&i.Type, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const approvedTotalsByKind = `-- name: ApprovedTotalsByKind :many
+SELECT entries.kind, CAST(SUM(entries.amount) AS INTEGER) AS total FROM entries
+WHERE entries.project_id = ? AND entries.status = 2 GROUP BY entries.kind
+`
+
+type ApprovedTotalsByKindRow struct {
+	Kind  int64
+	Total int64
+}
+
+func (q *Queries) ApprovedTotalsByKind(ctx context.Context, projectID uuid.UUID) ([]ApprovedTotalsByKindRow, error) {
+	rows, err := q.query(ctx, q.approvedTotalsByKindStmt, approvedTotalsByKind, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ApprovedTotalsByKindRow
+	for rows.Next() {
+		var i ApprovedTotalsByKindRow
+		if err := rows.Scan(&i.Kind, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const balancesOf = `-- name: BalancesOf :many
+SELECT reconciliation_id, account_id, actual_balance FROM reconciliation_balances WHERE reconciliation_id = ?
+`
+
+func (q *Queries) BalancesOf(ctx context.Context, reconciliationID uuid.UUID) ([]ReconciliationBalance, error) {
+	rows, err := q.query(ctx, q.balancesOfStmt, balancesOf, reconciliationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReconciliationBalance
+	for rows.Next() {
+		var i ReconciliationBalance
+		if err := rows.Scan(&i.ReconciliationID, &i.AccountID, &i.ActualBalance); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -725,6 +972,33 @@ func (q *Queries) CountTry(ctx context.Context, arg CountTryParams) (int64, erro
 	return result.RowsAffected()
 }
 
+const custodianOf = `-- name: CustodianOf :many
+SELECT account_id, user_id FROM account_custodians WHERE account_id = ?
+`
+
+func (q *Queries) CustodianOf(ctx context.Context, accountID uuid.UUID) ([]AccountCustodian, error) {
+	rows, err := q.query(ctx, q.custodianOfStmt, custodianOf, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountCustodian
+	for rows.Next() {
+		var i AccountCustodian
+		if err := rows.Scan(&i.AccountID, &i.UserID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const defaultColumnsOf = `-- name: DefaultColumnsOf :many
 SELECT id, project_id, item_type, "key", name, data_type, is_core, is_required, show_in_reports, sort_order, choices FROM default_columns WHERE project_id = ? ORDER BY sort_order, id
 `
@@ -796,6 +1070,33 @@ func (q *Queries) DefaultColumnsOfType(ctx context.Context, arg DefaultColumnsOf
 			&i.SortOrder,
 			&i.Choices,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const defaultItemOf = `-- name: DefaultItemOf :many
+SELECT supplier_id, item_id FROM supplier_default_items WHERE supplier_id = ?
+`
+
+func (q *Queries) DefaultItemOf(ctx context.Context, supplierID uuid.UUID) ([]SupplierDefaultItem, error) {
+	rows, err := q.query(ctx, q.defaultItemOfStmt, defaultItemOf, supplierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SupplierDefaultItem
+	for rows.Next() {
+		var i SupplierDefaultItem
+		if err := rows.Scan(&i.SupplierID, &i.ItemID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1087,6 +1388,23 @@ func (q *Queries) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
 	return is_admin, err
 }
 
+const isMember = `-- name: IsMember :one
+SELECT EXISTS (SELECT 1 FROM project_permissions WHERE project_id = ?1 AND user_id = ?2)
+`
+
+type IsMemberParams struct {
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+}
+
+// Whether the user holds anything in the project (ProjectUsersEndpoints.IsMemberAsync).
+func (q *Queries) IsMember(ctx context.Context, arg IsMemberParams) (bool, error) {
+	row := q.queryRow(ctx, q.isMemberStmt, isMember, arg.ProjectID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const itemHasEntries = `-- name: ItemHasEntries :one
 SELECT EXISTS (SELECT 1 FROM expense_details WHERE expense_details.item_id = ?1
     UNION ALL SELECT 1 FROM revenue_details WHERE revenue_details.item_id = ?1)
@@ -1267,6 +1585,38 @@ func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode
 			&i.ExpiresAt,
 			&i.Tries,
 			&i.UsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const latestReconciliation = `-- name: LatestReconciliation :many
+SELECT id, project_id, at, user_id FROM reconciliations WHERE project_id = ? ORDER BY at DESC, id DESC LIMIT 1
+`
+
+func (q *Queries) LatestReconciliation(ctx context.Context, projectID uuid.UUID) ([]Reconciliation, error) {
+	rows, err := q.query(ctx, q.latestReconciliationStmt, latestReconciliation, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Reconciliation
+	for rows.Next() {
+		var i Reconciliation
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.At,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -1481,10 +1831,45 @@ func (q *Queries) PartnersInItem(ctx context.Context, id uuid.UUID) ([]Partner, 
 	return items, nil
 }
 
+const paymentMethodOf = `-- name: PaymentMethodOf :one
+SELECT id, project_id, name, sort_order, is_active FROM payment_methods WHERE id = ?1 AND project_id = ?2
+`
+
+type PaymentMethodOfParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) PaymentMethodOf(ctx context.Context, arg PaymentMethodOfParams) (PaymentMethod, error) {
+	row := q.queryRow(ctx, q.paymentMethodOfStmt, paymentMethodOf, arg.ID, arg.ProjectID)
+	var i PaymentMethod
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.SortOrder,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const paymentMethodUsed = `-- name: PaymentMethodUsed :one
+SELECT EXISTS (SELECT 1 FROM expense_details WHERE payment_method_id = ?)
+`
+
+// Whether an expense was paid with the payment method, which then keeps it.
+func (q *Queries) PaymentMethodUsed(ctx context.Context, paymentMethodID uuid.UUID) (bool, error) {
+	row := q.queryRow(ctx, q.paymentMethodUsedStmt, paymentMethodUsed, paymentMethodID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const paymentMethodsOf = `-- name: PaymentMethodsOf :many
 SELECT id, project_id, name, sort_order, is_active FROM payment_methods WHERE project_id = ? ORDER BY sort_order, id
 `
 
+// A project's payment methods, disabled ones included, in order.
 func (q *Queries) PaymentMethodsOf(ctx context.Context, projectID uuid.UUID) ([]PaymentMethod, error) {
 	rows, err := q.query(ctx, q.paymentMethodsOfStmt, paymentMethodsOf, projectID)
 	if err != nil {
@@ -1779,6 +2164,15 @@ func (q *Queries) ProjectsOfUserWithRows(ctx context.Context, userID uuid.UUID) 
 	return items, nil
 }
 
+const removeAccount = `-- name: RemoveAccount :exec
+DELETE FROM accounts WHERE id = ?
+`
+
+func (q *Queries) RemoveAccount(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeAccountStmt, removeAccount, id)
+	return err
+}
+
 const removeChosen = `-- name: RemoveChosen :exec
 DELETE FROM chosen_partners WHERE id = ?1
 `
@@ -1788,12 +2182,30 @@ func (q *Queries) RemoveChosen(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const removeCustodian = `-- name: RemoveCustodian :exec
+DELETE FROM account_custodians WHERE account_id = ?
+`
+
+func (q *Queries) RemoveCustodian(ctx context.Context, accountID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeCustodianStmt, removeCustodian, accountID)
+	return err
+}
+
 const removeDefaultColumn = `-- name: RemoveDefaultColumn :exec
 DELETE FROM default_columns WHERE id = ?
 `
 
 func (q *Queries) RemoveDefaultColumn(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removeDefaultColumnStmt, removeDefaultColumn, id)
+	return err
+}
+
+const removeDefaultItem = `-- name: RemoveDefaultItem :exec
+DELETE FROM supplier_default_items WHERE supplier_id = ?
+`
+
+func (q *Queries) RemoveDefaultItem(ctx context.Context, supplierID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeDefaultItemStmt, removeDefaultItem, supplierID)
 	return err
 }
 
@@ -1821,6 +2233,15 @@ DELETE FROM item_columns WHERE id = ?
 
 func (q *Queries) RemoveItemColumn(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removeItemColumnStmt, removeItemColumn, id)
+	return err
+}
+
+const removePaymentMethod = `-- name: RemovePaymentMethod :exec
+DELETE FROM payment_methods WHERE id = ?
+`
+
+func (q *Queries) RemovePaymentMethod(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removePaymentMethodStmt, removePaymentMethod, id)
 	return err
 }
 
@@ -1985,6 +2406,30 @@ func (q *Queries) RoleNamesOfUser(ctx context.Context, userID uuid.UUID) ([]Role
 	return items, nil
 }
 
+const saveAccount = `-- name: SaveAccount :exec
+INSERT INTO accounts (id, project_id, type, name, is_active) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET name = excluded.name, is_active = excluded.is_active
+`
+
+type SaveAccountParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Type      int64
+	Name      string
+	IsActive  bool
+}
+
+func (q *Queries) SaveAccount(ctx context.Context, arg SaveAccountParams) error {
+	_, err := q.exec(ctx, q.saveAccountStmt, saveAccount,
+		arg.ID,
+		arg.ProjectID,
+		arg.Type,
+		arg.Name,
+		arg.IsActive,
+	)
+	return err
+}
+
 const saveCategory = `-- name: SaveCategory :exec
 INSERT INTO categories (id, project_id, name, sort_order, is_active) VALUES (?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET name = excluded.name, sort_order = excluded.sort_order, is_active = excluded.is_active
@@ -2006,6 +2451,20 @@ func (q *Queries) SaveCategory(ctx context.Context, arg SaveCategoryParams) erro
 		arg.SortOrder,
 		arg.IsActive,
 	)
+	return err
+}
+
+const saveCustodian = `-- name: SaveCustodian :exec
+INSERT INTO account_custodians (account_id, user_id) VALUES (?, ?) ON CONFLICT (account_id) DO UPDATE SET user_id = excluded.user_id
+`
+
+type SaveCustodianParams struct {
+	AccountID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) SaveCustodian(ctx context.Context, arg SaveCustodianParams) error {
+	_, err := q.exec(ctx, q.saveCustodianStmt, saveCustodian, arg.AccountID, arg.UserID)
 	return err
 }
 
@@ -2044,6 +2503,20 @@ func (q *Queries) SaveDefaultColumn(ctx context.Context, arg SaveDefaultColumnPa
 		arg.SortOrder,
 		arg.Choices,
 	)
+	return err
+}
+
+const saveDefaultItem = `-- name: SaveDefaultItem :exec
+INSERT INTO supplier_default_items (supplier_id, item_id) VALUES (?, ?) ON CONFLICT (supplier_id) DO UPDATE SET item_id = excluded.item_id
+`
+
+type SaveDefaultItemParams struct {
+	SupplierID uuid.UUID
+	ItemID     uuid.UUID
+}
+
+func (q *Queries) SaveDefaultItem(ctx context.Context, arg SaveDefaultItemParams) error {
+	_, err := q.exec(ctx, q.saveDefaultItemStmt, saveDefaultItem, arg.SupplierID, arg.ItemID)
 	return err
 }
 
@@ -2114,6 +2587,30 @@ func (q *Queries) SaveItemColumn(ctx context.Context, arg SaveItemColumnParams) 
 	return err
 }
 
+const savePaymentMethod = `-- name: SavePaymentMethod :exec
+INSERT INTO payment_methods (id, project_id, name, sort_order, is_active) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET name = excluded.name, sort_order = excluded.sort_order, is_active = excluded.is_active
+`
+
+type SavePaymentMethodParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+	IsActive  bool
+}
+
+func (q *Queries) SavePaymentMethod(ctx context.Context, arg SavePaymentMethodParams) error {
+	_, err := q.exec(ctx, q.savePaymentMethodStmt, savePaymentMethod,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.SortOrder,
+		arg.IsActive,
+	)
+	return err
+}
+
 const saveSubgroup = `-- name: SaveSubgroup :exec
 INSERT INTO subgroups (id, item_id, name, sort_order) VALUES (?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET name = excluded.name, sort_order = excluded.sort_order
@@ -2132,6 +2629,42 @@ func (q *Queries) SaveSubgroup(ctx context.Context, arg SaveSubgroupParams) erro
 		arg.ItemID,
 		arg.Name,
 		arg.SortOrder,
+	)
+	return err
+}
+
+const saveSupplier = `-- name: SaveSupplier :exec
+INSERT INTO suppliers (id, project_id, name, normalized_name, vat_number, mobile, status, is_active, is_general_cash, created_by_user_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET name = excluded.name, normalized_name = excluded.normalized_name, vat_number = excluded.vat_number,
+    mobile = excluded.mobile, status = excluded.status, is_active = excluded.is_active
+`
+
+type SaveSupplierParams struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	Name            string
+	NormalizedName  string
+	VatNumber       string
+	Mobile          string
+	Status          int64
+	IsActive        bool
+	IsGeneralCash   bool
+	CreatedByUserID uuid.UUID
+}
+
+func (q *Queries) SaveSupplier(ctx context.Context, arg SaveSupplierParams) error {
+	_, err := q.exec(ctx, q.saveSupplierStmt, saveSupplier,
+		arg.ID,
+		arg.ProjectID,
+		arg.Name,
+		arg.NormalizedName,
+		arg.VatNumber,
+		arg.Mobile,
+		arg.Status,
+		arg.IsActive,
+		arg.IsGeneralCash,
+		arg.CreatedByUserID,
 	)
 	return err
 }
@@ -2427,6 +2960,103 @@ func (q *Queries) SubgroupsOfItem(ctx context.Context, itemID uuid.UUID) ([]Subg
 			&i.ItemID,
 			&i.Name,
 			&i.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const supplierOf = `-- name: SupplierOf :one
+SELECT id, project_id, name, normalized_name, vat_number, mobile, status, is_active, is_general_cash, created_by_user_id FROM suppliers WHERE id = ?1 AND project_id = ?2
+`
+
+type SupplierOfParams struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) SupplierOf(ctx context.Context, arg SupplierOfParams) (Supplier, error) {
+	row := q.queryRow(ctx, q.supplierOfStmt, supplierOf, arg.ID, arg.ProjectID)
+	var i Supplier
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.NormalizedName,
+		&i.VatNumber,
+		&i.Mobile,
+		&i.Status,
+		&i.IsActive,
+		&i.IsGeneralCash,
+		&i.CreatedByUserID,
+	)
+	return i, err
+}
+
+const suppliersOf = `-- name: SuppliersOf :many
+SELECT suppliers.id, suppliers.project_id, suppliers.name, suppliers.normalized_name, suppliers.vat_number, suppliers.mobile, suppliers.status, suppliers.is_active, suppliers.is_general_cash, suppliers.created_by_user_id, COALESCE(supplier_default_items.item_id, '') AS default_item_id, COALESCE(items.name, '') AS default_item_name,
+    (SELECT count(*) FROM purchase_details JOIN entries ON entries.id = purchase_details.entry_id
+     WHERE purchase_details.supplier_id = suppliers.id AND entries.created_by_user_id = ?1) AS times_used
+FROM suppliers LEFT JOIN supplier_default_items ON supplier_default_items.supplier_id = suppliers.id
+    LEFT JOIN items ON items.id = supplier_default_items.item_id
+WHERE suppliers.project_id = ?2
+ORDER BY suppliers.name COLLATE names, suppliers.id
+`
+
+type SuppliersOfParams struct {
+	UserID    uuid.UUID
+	ProjectID uuid.UUID
+}
+
+type SuppliersOfRow struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	Name            string
+	NormalizedName  string
+	VatNumber       string
+	Mobile          string
+	Status          int64
+	IsActive        bool
+	IsGeneralCash   bool
+	CreatedByUserID uuid.UUID
+	DefaultItemID   uuid.UUID
+	DefaultItemName string
+	TimesUsed       int64
+}
+
+// A project's suppliers by name, disabled ones included, each with the item its expenses usually go to and how many of user_id's purchases name
+// it.
+func (q *Queries) SuppliersOf(ctx context.Context, arg SuppliersOfParams) ([]SuppliersOfRow, error) {
+	rows, err := q.query(ctx, q.suppliersOfStmt, suppliersOf, arg.UserID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SuppliersOfRow
+	for rows.Next() {
+		var i SuppliersOfRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.NormalizedName,
+			&i.VatNumber,
+			&i.Mobile,
+			&i.Status,
+			&i.IsActive,
+			&i.IsGeneralCash,
+			&i.CreatedByUserID,
+			&i.DefaultItemID,
+			&i.DefaultItemName,
+			&i.TimesUsed,
 		); err != nil {
 			return nil, err
 		}

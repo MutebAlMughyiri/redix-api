@@ -107,9 +107,3 @@ UPDATE contracts SET sort_order = sqlc.arg(sort_order) WHERE id = sqlc.arg(id);
 
 -- name: SetPartnerPlace :exec
 UPDATE partners SET sort_order = sqlc.arg(sort_order) WHERE id = sqlc.arg(id);
-
--- name: PaymentMethodsOf :many
-SELECT * FROM payment_methods WHERE project_id = ? ORDER BY sort_order, id;
-
--- name: AddPaymentMethod :exec
-INSERT INTO payment_methods (id, project_id, name, sort_order, is_active) VALUES (?, ?, ?, ?, ?);

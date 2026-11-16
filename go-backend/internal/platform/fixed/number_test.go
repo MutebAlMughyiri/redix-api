@@ -36,3 +36,25 @@ func TestBR13_AddingAmountsNeverLosesAHalala(t *testing.T) {
 		t.Errorf("a thousand times 0.1000 is %s", total)
 	}
 }
+
+func TestATotalWritesWhatDotNetWrote(t *testing.T) {
+	nothing := Total{}
+	moved := Counted(1000000)
+	for total, want := range map[Total]string{nothing: "0", moved: "100.0000", moved.Minus(moved): "0.0000", nothing.Plus(nothing): "0", nothing.Minus(moved): "-100.0000"} {
+		if written, _ := total.MarshalJSON(); string(written) != want {
+			t.Errorf("%+v wrote %s, want %s", total, written, want)
+		}
+	}
+}
+
+func TestATypedNumberIsWrittenBackWithTheDecimalsItWasTypedWith(t *testing.T) {
+	for typed, want := range map[string]string{"700.25": "700.25", "0": "0", "12.5000": "12.5000", "-3.1": "-3.1"} {
+		var number Typed
+		if err := number.UnmarshalJSON([]byte(typed)); err != nil {
+			t.Fatal(err)
+		}
+		if written, _ := number.Total().MarshalJSON(); string(written) != want {
+			t.Errorf("%s was written back as %s, want %s", typed, written, want)
+		}
+	}
+}

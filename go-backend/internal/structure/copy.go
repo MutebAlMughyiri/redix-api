@@ -40,7 +40,7 @@ func Copy(ctx context.Context, q *store.Queries, projectID uuid.UUID) error {
 	}
 	for _, method := range methods {
 		method.ID, method.ProjectID, method.IsActive = uuid.Must(uuid.NewV7()), projectID, true
-		if err := q.AddPaymentMethod(ctx, store.AddPaymentMethodParams(method)); err != nil {
+		if err := q.SavePaymentMethod(ctx, store.SavePaymentMethodParams(method)); err != nil {
 			return err
 		}
 	}

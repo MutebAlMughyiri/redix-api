@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
@@ -16,7 +17,9 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/settings"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 )
@@ -58,5 +61,8 @@ func Routes(parts Parts) *web.Router {
 	users.Map(router, gate, database, now)
 	projects.Map(router, gate, database, book, now, limits.PerHour(parts.RegistrationsPerHour, now))
 	structure.Map(router, gate, database, now)
+	settings.Map(router, gate, database, now)
+	suppliers.Map(router, gate, database, now)
+	accounts.Map(router, gate, database, now)
 	return router
 }

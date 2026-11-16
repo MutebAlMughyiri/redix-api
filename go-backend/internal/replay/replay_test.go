@@ -122,6 +122,14 @@ func recorded(t *testing.T) (map[string][]step, []string, []host) {
 	return tests, order, hosts
 }
 
+// readTheDatabase are the tests that send an id they read straight from .NET's database, which no answer showed - an item the approval copied,
+// read with WithDatabaseAsync - so the replay cannot know which of Go's rows it means; like a direct write, each is ported by hand.
+var readTheDatabase = []string{
+	"SuppliersTests.FinanceAddsASupplierWithAllItsDetails",
+	"SuppliersTests.AnEditChangesASupplierAndLeavesItItsOwnNumber",
+	"SuppliersTests.AnEditCanTakeTheDefaultItemAndTheVatNumberAway",
+}
+
 // seeds is what a replay can put straight into the database, as the factory's helpers did.
 var seeds = []string{"user", "give", "inactive", "approve"}
 
@@ -141,7 +149,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			// .NET crashed here; what the route should answer waits for Muteb's review once every route is on Go (redix-api #76 row 263).
 			underReview++
 			continue
-		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "direct" }):
+		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "direct" }), slices.Contains(readTheDatabase, name):
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {

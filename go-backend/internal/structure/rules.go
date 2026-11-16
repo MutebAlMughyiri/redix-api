@@ -1,16 +1,14 @@
 package structure
 
 import (
-	"context"
 	"encoding/json"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
@@ -147,14 +145,24 @@ const (
 
 var conflicts = []string{generalSubgroup, subgroupInUse, itemHasEntries, itemHasContract, itemHasPartners, capitalItemExists, coreColumn}
 
-// refuse answers refusal: 409 for one about what a row holds, 400 for any other.
-func refuse(w http.ResponseWriter, r *http.Request, refusal string) {
-	status := http.StatusBadRequest
-	if slices.Contains(conflicts, refusal) {
-		status = http.StatusConflict
+// statusOf is the status code answers with: 409 for one about what a row holds, 400 for any other.
+func statusOf(code string) int {
+	if slices.Contains(conflicts, code) {
+		return http.StatusConflict
 	}
-	problem.Refuse(w, r, status, refusal)
+	return http.StatusBadRequest
 }
+
+// refused is the refusal of code, which rolls a change back.
+func refused(code string) error { return changes.Refuse(statusOf(code), code) }
+
+// refuse answers code before any change began.
+func refuse(w http.ResponseWriter, r *http.Request, code string) {
+	problem.Refuse(w, r, statusOf(code), code)
+}
+
+// change is one write to a project's structure, with the writers of its rows.
+type change struct{ changes.Change }
 
 // generalName is the name of an item's general group, the one an entry falls in when it names no other (Subgroup.GeneralName).
 const generalName = ""
@@ -353,66 +361,29 @@ func inOrder(rows []uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]int64, bool) {
 	return places, true
 }
 
-// change is one write to a project's structure: its queries, and who makes it in which project and when, which each History line names. Every
-// row it adds, changes or removes has its line (UC-069, #86: every action is recorded), where .NET recorded only an item's type and its
-// percentages.
-type change struct {
-	ctx       context.Context
-	q         *store.Queries
-	projectID uuid.UUID
-	actor     uuid.UUID
-	now       moment.Moment
-}
-
-// save writes a row by write and records it: created when isNew, otherwise only what changed between before and after, and a row that did not
-// change is neither written nor recorded.
-func (c change) save(table string, id uuid.UUID, isNew bool, before, after map[string]any, write func() error) error {
-	action := history.Create
-	if isNew {
-		before = nil
-	} else {
-		action = history.Update
-		if before, after = history.Changed(before, after); len(after) == 0 {
-			return nil
-		}
-	}
-	if err := write(); err != nil {
-		return err
-	}
-	return history.Write(c.ctx, c.q, c.now, c.actor, action, history.Change{Table: table, RecordID: id, ProjectID: c.projectID, Before: before, After: after})
-}
-
-// remove deletes a row by write and records what it held.
-func (c change) remove(table string, id uuid.UUID, before map[string]any, write func() error) error {
-	if err := write(); err != nil {
-		return err
-	}
-	return history.Write(c.ctx, c.q, c.now, c.actor, history.Delete, history.Change{Table: table, RecordID: id, ProjectID: c.projectID, Before: before})
-}
-
 func (c change) saveCategory(before, after store.Category) error {
-	return c.save("Categories", after.ID, before.ID == uuid.Nil, categoryFields(before), categoryFields(after),
-		func() error { return c.q.SaveCategory(c.ctx, store.SaveCategoryParams(after)) })
+	return c.Save("Categories", after.ID, before.ID == uuid.Nil, categoryFields(before), categoryFields(after),
+		func() error { return c.Q.SaveCategory(c.Ctx, store.SaveCategoryParams(after)) })
 }
 
 func (c change) saveItem(before, after store.Item) error {
-	return c.save("Items", after.ID, before.ID == uuid.Nil, itemFields(before), itemFields(after),
-		func() error { return c.q.SaveItem(c.ctx, store.SaveItemParams(after)) })
+	return c.Save("Items", after.ID, before.ID == uuid.Nil, itemFields(before), itemFields(after),
+		func() error { return c.Q.SaveItem(c.Ctx, store.SaveItemParams(after)) })
 }
 
 func (c change) saveSubgroup(before, after store.Subgroup) error {
-	return c.save("Subgroups", after.ID, before.ID == uuid.Nil, subgroupFields(before), subgroupFields(after),
-		func() error { return c.q.SaveSubgroup(c.ctx, store.SaveSubgroupParams(after)) })
+	return c.Save("Subgroups", after.ID, before.ID == uuid.Nil, subgroupFields(before), subgroupFields(after),
+		func() error { return c.Q.SaveSubgroup(c.Ctx, store.SaveSubgroupParams(after)) })
 }
 
 func (c change) saveItemColumn(before, after store.ItemColumn) error {
-	return c.save("ItemColumns", after.ID, before.ID == uuid.Nil, itemColumnFields(before), itemColumnFields(after),
-		func() error { return c.q.SaveItemColumn(c.ctx, store.SaveItemColumnParams(after)) })
+	return c.Save("ItemColumns", after.ID, before.ID == uuid.Nil, itemColumnFields(before), itemColumnFields(after),
+		func() error { return c.Q.SaveItemColumn(c.Ctx, store.SaveItemColumnParams(after)) })
 }
 
 func (c change) saveDefaultColumn(before, after store.DefaultColumn) error {
-	return c.save("DefaultColumns", after.ID, before.ID == uuid.Nil, defaultColumnFields(before), defaultColumnFields(after),
-		func() error { return c.q.SaveDefaultColumn(c.ctx, store.SaveDefaultColumnParams(after)) })
+	return c.Save("DefaultColumns", after.ID, before.ID == uuid.Nil, defaultColumnFields(before), defaultColumnFields(after),
+		func() error { return c.Q.SaveDefaultColumn(c.Ctx, store.SaveDefaultColumnParams(after)) })
 }
 
 // The rows as History keeps them, under the C# property names, an enum as its number.

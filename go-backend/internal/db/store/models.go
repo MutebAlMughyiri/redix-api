@@ -10,6 +10,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type Account struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Type      int64
+	Name      string
+	IsActive  bool
+}
+
+type AccountCustodian struct {
+	AccountID uuid.UUID
+	UserID    uuid.UUID
+}
+
 type Category struct {
 	ID        uuid.UUID
 	ProjectID uuid.UUID
@@ -145,11 +158,42 @@ type ProjectRoleName struct {
 	RoleName  string
 }
 
+type Reconciliation struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	At        moment.Moment
+	UserID    uuid.UUID
+}
+
+type ReconciliationBalance struct {
+	ReconciliationID uuid.UUID
+	AccountID        uuid.UUID
+	ActualBalance    fixed.Number
+}
+
 type Subgroup struct {
 	ID        uuid.UUID
 	ItemID    uuid.UUID
 	Name      string
 	SortOrder int64
+}
+
+type Supplier struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	Name            string
+	NormalizedName  string
+	VatNumber       string
+	Mobile          string
+	Status          int64
+	IsActive        bool
+	IsGeneralCash   bool
+	CreatedByUserID uuid.UUID
+}
+
+type SupplierDefaultItem struct {
+	SupplierID uuid.UUID
+	ItemID     uuid.UUID
 }
 
 type Unit struct {

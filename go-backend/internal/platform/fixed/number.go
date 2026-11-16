@@ -8,8 +8,11 @@ import (
 	"strings"
 )
 
-// scale is ten to the number of decimals kept.
-const scale = 10000
+// decimals is how many decimals a number keeps, and scale ten to that.
+const (
+	decimals = 4
+	scale    = 10000
+)
 
 // Number is a number with four decimals, kept as an integer count of ten-thousandths, so adding never loses a halala.
 type Number int64
@@ -63,3 +66,59 @@ func (n *Number) Scan(src any) error {
 
 // Value is the integer the column keeps.
 func (n Number) Value() (driver.Value, error) { return int64(n), nil }
+
+// IsAcceptableMoney says whether the number may be an amount of money: at most two decimals (Money.IsAcceptable); every number kept is within
+// the largest amount.
+func (n Number) IsAcceptableMoney() bool { return n%100 == 0 }
+
+// Total is a number as .NET's decimal wrote it, with its scale: 0 while nothing was counted into it - a decimal's default has no decimals - four
+// decimals once a kept number was, as SQL Server's sum of a decimal(19,4) keeps its scale, and as many as it was typed with when it comes straight
+// from a request; adding or taking away keeps the wider scale of the two, as decimal arithmetic does. A balance nothing moved writes 0, one moved
+// back to nothing 0.0000, and a typed 700.25 writes 700.25.
+type Total struct {
+	sum      Number
+	decimals int
+}
+
+// Counted is n, a kept number, as a total.
+func Counted(n Number) Total { return Total{sum: n, decimals: decimals} }
+
+// Plus is the total with other added.
+func (t Total) Plus(other Total) Total {
+	return Total{sum: t.sum + other.sum, decimals: max(t.decimals, other.decimals)}
+}
+
+// Minus is the total with other taken away.
+func (t Total) Minus(other Total) Total {
+	return Total{sum: t.sum - other.sum, decimals: max(t.decimals, other.decimals)}
+}
+
+// Number is the total's value.
+func (t Total) Number() Number { return t.sum }
+
+// MarshalJSON writes the total with its scale.
+func (t Total) MarshalJSON() ([]byte, error) {
+	written := t.sum.String()
+	written = written[:len(written)-(decimals-t.decimals)]
+	return []byte(strings.TrimSuffix(written, ".")), nil
+}
+
+// Typed is a number as a request typed it, with the decimals it was typed with, which .NET's decimal kept and wrote back in an answer built from it.
+type Typed struct {
+	Number
+	decimals int
+}
+
+// UnmarshalJSON reads a JSON number and how many decimals it was written with, at most four.
+func (t *Typed) UnmarshalJSON(data []byte) error {
+	if err := t.Number.UnmarshalJSON(data); err != nil {
+		return err
+	}
+	if dot := strings.IndexByte(string(data), '.'); dot >= 0 {
+		t.decimals = min(len(strings.TrimRight(strings.SplitN(string(data[dot+1:]), "e", 2)[0], "E")), decimals)
+	}
+	return nil
+}
+
+// Total is the typed number as a total of its own scale.
+func (t Typed) Total() Total { return Total{sum: t.Number, decimals: t.decimals} }

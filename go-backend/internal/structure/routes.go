@@ -1,8 +1,10 @@
 package structure
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
@@ -10,7 +12,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
@@ -19,13 +20,23 @@ import (
 // Routes keeps a project's structure (UC-012, UC-013).
 type Routes struct {
 	database db.DB
-	clock    clock.Clock
+	writer   changes.Writer
+}
+
+// write runs work as one change to the project's structure (changes.Writer.Write).
+func (s Routes) write(w http.ResponseWriter, r *http.Request, caller access.Caller, work func(change) error) bool {
+	return s.writer.Write(w, r, caller, func(c changes.Change) error { return work(change{c}) })
+}
+
+// done runs work as write does and answers 200 with no body.
+func (s Routes) done(w http.ResponseWriter, r *http.Request, caller access.Caller, work func(change) error) {
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return work(change{c}) })
 }
 
 // Map routes the structure: reading it for whoever reads the project, changing it for whoever holds ManageStructure in a project not finished
 // (AC-04.1). What is no longer wanted is disabled (BR-15); only a subgroup no entry uses is removed.
 func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
-	s := Routes{database: database, clock: clock}
+	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}}
 	reads := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.ReadProject, handler) }
 	changes := func(handler access.Handler) http.HandlerFunc { return gate.Changes(access.ManageStructure, handler) }
 	const project = "/projects/{projectId:guid}"
@@ -57,66 +68,6 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", project+"/default-columns/{itemType}/reorder", changes(s.reorderOfTemplate))
 	router.Handle("PUT", project+"/default-columns/{itemType}/{columnId:guid}", changes(s.editOfTemplate))
 	router.Handle("DELETE", project+"/default-columns/{itemType}/{columnId:guid}", changes(s.deleteOfTemplate))
-}
-
-// refusal is a change refused, by its code; notFound is a row the project does not hold.
-type refusal string
-
-func (r refusal) Error() string { return "structure: refused " + string(r) }
-
-const notFound refusal = ""
-
-// found is a row a lookup found, or notFound for none.
-func found[T any](row T, err error) (T, error) {
-	if errors.Is(err, sql.ErrNoRows) {
-		return row, notFound
-	}
-	return row, err
-}
-
-// write runs work as one change to the route's project and says whether it was done; otherwise it has answered: a refusal with its code, a row
-// the project does not hold 404, any other failure 500. Nothing work wrote is kept when it fails.
-func (s Routes) write(w http.ResponseWriter, r *http.Request, caller access.Caller, work func(change) error) bool {
-	c := change{ctx: r.Context(), projectID: web.ID(r, "projectId"), actor: caller.UserID, now: moment.Of(s.clock.Now())}
-	err := s.database.InTx(r.Context(), func(q *store.Queries) error {
-		c.q = q
-		return work(c)
-	})
-	var refused refusal
-	switch {
-	case err == nil:
-		return true
-	case errors.As(err, &refused) && refused == notFound:
-		problem.Status(w, r, http.StatusNotFound)
-	case errors.As(err, &refused):
-		refuse(w, r, string(refused))
-	default:
-		problem.Status(w, r, http.StatusInternalServerError)
-	}
-	return false
-}
-
-// done runs work as write does and answers 200 with no body once it is done.
-func (s Routes) done(w http.ResponseWriter, r *http.Request, caller access.Caller, work func(change) error) {
-	if s.write(w, r, caller, work) {
-		w.WriteHeader(http.StatusOK)
-	}
-}
-
-// named reads a request holding a name and answers invalidName (400) for one the rule refuses (ProjectChanges.WithNameAsync); "" and false when
-// it has answered.
-func named(w http.ResponseWriter, r *http.Request) (string, bool) {
-	var request struct {
-		Name string `json:"name"`
-	}
-	if !web.Read(w, r, &request) {
-		return "", false
-	}
-	name, ok := naming.Named(request.Name)
-	if !ok {
-		refuse(w, r, naming.Invalid)
-	}
-	return name, ok
 }
 
 type reorderRequest struct {
@@ -211,17 +162,17 @@ func (s Routes) offered(w http.ResponseWriter, r *http.Request, _ access.Caller)
 
 // addCategory adds a category at the end of the project's list (FR-39): 201 with it.
 func (s Routes) addCategory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, ok := named(w, r)
+	name, ok := changes.Named(w, r)
 	if !ok {
 		return
 	}
 	var category store.Category
 	added := s.write(w, r, caller, func(c change) error {
-		categories, err := c.q.CategoriesOf(c.ctx, c.projectID)
+		categories, err := c.Q.CategoriesOf(c.Ctx, c.ProjectID)
 		if err != nil {
 			return err
 		}
-		category = store.Category{ID: uuid.Must(uuid.NewV7()), ProjectID: c.projectID, Name: name, SortOrder: int64(len(categories)), IsActive: true}
+		category = store.Category{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: int64(len(categories)), IsActive: true}
 		return c.saveCategory(store.Category{}, category)
 	})
 	if added {
@@ -238,13 +189,13 @@ func (s Routes) reorderCategories(w http.ResponseWriter, r *http.Request, caller
 		return
 	}
 	s.done(w, r, caller, func(c change) error {
-		categories, err := c.q.CategoriesOf(c.ctx, c.projectID)
+		categories, err := c.Q.CategoriesOf(c.Ctx, c.ProjectID)
 		if err != nil {
 			return err
 		}
 		places, ok := inOrder(idsOf(categories, func(row store.Category) uuid.UUID { return row.ID }), request.IDs)
 		if !ok {
-			return refusal(invalidOrder)
+			return refused(invalidOrder)
 		}
 		for _, before := range categories {
 			after := before
@@ -268,7 +219,7 @@ func idsOf[T any](rows []T, id func(T) uuid.UUID) []uuid.UUID {
 // changeCategory applies change to the route's category: 404 for one the project does not hold.
 func (s Routes) changeCategory(w http.ResponseWriter, r *http.Request, caller access.Caller, apply func(*store.Category)) {
 	s.done(w, r, caller, func(c change) error {
-		before, err := found(c.q.CategoryOf(c.ctx, store.CategoryOfParams{ID: web.ID(r, "categoryId"), ProjectID: c.projectID}))
+		before, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: web.ID(r, "categoryId"), ProjectID: c.ProjectID}))
 		if err != nil {
 			return err
 		}
@@ -279,7 +230,7 @@ func (s Routes) changeCategory(w http.ResponseWriter, r *http.Request, caller ac
 }
 
 func (s Routes) renameCategory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	if name, ok := named(w, r); ok {
+	if name, ok := changes.Named(w, r); ok {
 		s.changeCategory(w, r, caller, func(category *store.Category) { category.Name = name })
 	}
 }
@@ -310,13 +261,13 @@ func (s Routes) addItem(w http.ResponseWriter, r *http.Request, caller access.Ca
 	var general store.Subgroup
 	added := s.write(w, r, caller, func(c change) error {
 		categoryID := web.ID(r, "categoryId")
-		if _, err := found(c.q.CategoryOf(c.ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.projectID})); err != nil {
+		if _, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.ProjectID})); err != nil {
 			return err
 		}
 		if err := c.refuseASecondCapital(request.Type); err != nil {
 			return err
 		}
-		items, err := c.q.ItemsOfCategory(c.ctx, categoryID)
+		items, err := c.Q.ItemsOfCategory(c.Ctx, categoryID)
 		if err != nil {
 			return err
 		}
@@ -342,9 +293,9 @@ func (c change) refuseASecondCapital(itemType ItemType) error {
 	if itemType != Capital {
 		return nil
 	}
-	exists, err := c.q.CapitalItemExists(c.ctx, c.projectID)
+	exists, err := c.Q.CapitalItemExists(c.Ctx, c.ProjectID)
 	if err == nil && exists {
-		return refusal(capitalItemExists)
+		return refused(capitalItemExists)
 	}
 	return err
 }
@@ -352,7 +303,7 @@ func (c change) refuseASecondCapital(itemType ItemType) error {
 // addTemplateColumns gives item the project's default columns of its type: each at its place in the template for a new item (Item.New), or
 // renumbered from the first place when the item's type changes (FR-38).
 func (c change) addTemplateColumns(item store.Item, renumbered bool) error {
-	defaults, err := c.q.DefaultColumnsOfType(c.ctx, store.DefaultColumnsOfTypeParams{ProjectID: c.projectID, ItemType: item.Type})
+	defaults, err := c.Q.DefaultColumnsOfType(c.Ctx, store.DefaultColumnsOfTypeParams{ProjectID: c.ProjectID, ItemType: item.Type})
 	if err != nil {
 		return err
 	}
@@ -377,16 +328,16 @@ func (s Routes) reorderItems(w http.ResponseWriter, r *http.Request, caller acce
 	}
 	s.done(w, r, caller, func(c change) error {
 		categoryID := web.ID(r, "categoryId")
-		if _, err := found(c.q.CategoryOf(c.ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.projectID})); err != nil {
+		if _, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.ProjectID})); err != nil {
 			return err
 		}
-		items, err := c.q.ItemsOfCategory(c.ctx, categoryID)
+		items, err := c.Q.ItemsOfCategory(c.Ctx, categoryID)
 		if err != nil {
 			return err
 		}
 		places, ok := inOrder(idsOf(items, func(row store.Item) uuid.UUID { return row.ID }), request.IDs)
 		if !ok {
-			return refusal(invalidOrder)
+			return refused(invalidOrder)
 		}
 		for _, before := range items {
 			after := before
@@ -399,9 +350,9 @@ func (s Routes) reorderItems(w http.ResponseWriter, r *http.Request, caller acce
 	})
 }
 
-// item is the route's item, or notFound for one the project does not hold (ProjectStructure.ItemOfAsync, BR-33).
+// item is the route's item, or changes.NotFound for one the project does not hold (ProjectStructure.ItemOfAsync, BR-33).
 func (c change) item(r *http.Request) (store.Item, error) {
-	return found(c.q.ItemOf(c.ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.projectID}))
+	return changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
 }
 
 // changeItem applies change to the route's item: 404 for one the project does not hold.
@@ -418,7 +369,7 @@ func (s Routes) changeItem(w http.ResponseWriter, r *http.Request, caller access
 }
 
 func (s Routes) renameItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	if name, ok := named(w, r); ok {
+	if name, ok := changes.Named(w, r); ok {
 		s.changeItem(w, r, caller, func(item *store.Item) { item.Name = name })
 	}
 }
@@ -443,7 +394,7 @@ func (s Routes) setTablePercentages(w http.ResponseWriter, r *http.Request, call
 // addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400)
 // for an item that takes no purchases, since a sub-table holds purchases (Muteb, 7 Nov 2026).
 func (s Routes) addSubgroup(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, ok := named(w, r)
+	name, ok := changes.Named(w, r)
 	if !ok {
 		return
 	}
@@ -453,9 +404,9 @@ func (s Routes) addSubgroup(w http.ResponseWriter, r *http.Request, caller acces
 			return err
 		}
 		if !ItemType(item.Type).takesPurchases() {
-			return refusal(itemTakesNoPurchases)
+			return refused(itemTakesNoPurchases)
 		}
-		place, err := c.nextTablePlace(item.ID)
+		place, err := NextTablePlace(c.Ctx, c.Q, item.ID)
 		if err != nil {
 			return err
 		}
@@ -463,12 +414,12 @@ func (s Routes) addSubgroup(w http.ResponseWriter, r *http.Request, caller acces
 	})
 }
 
-// nextTablePlace is the place after every table of the item, its subgroups, contracts and partners alike (ProjectStructure.NextTablePlaceAsync,
-// AC-46.8).
-func (c change) nextTablePlace(itemID uuid.UUID) (int64, error) {
-	subgroups, err := c.q.SubgroupsOfItem(c.ctx, itemID)
-	contracts, contractsErr := c.q.ContractsOfItem(c.ctx, itemID)
-	partners, partnersErr := c.q.PartnersInItem(c.ctx, itemID)
+// NextTablePlace is the place after every table of the item, its subgroups, contracts and partners alike (ProjectStructure.NextTablePlaceAsync,
+// AC-46.8): where a subgroup, a contract or a partner added to it goes.
+func NextTablePlace(ctx context.Context, q *store.Queries, itemID uuid.UUID) (int64, error) {
+	subgroups, err := q.SubgroupsOfItem(ctx, itemID)
+	contracts, contractsErr := q.ContractsOfItem(ctx, itemID)
+	partners, partnersErr := q.PartnersInItem(ctx, itemID)
 	last := int64(-1)
 	for _, subgroup := range subgroups {
 		last = max(last, subgroup.SortOrder)
@@ -480,6 +431,20 @@ func (c change) nextTablePlace(itemID uuid.UUID) (int64, error) {
 		last = max(last, partner.SortOrder)
 	}
 	return last + 1, errors.Join(err, contractsErr, partnersErr)
+}
+
+// Offers says whether entering kind in projectID offers the item itemID (ProjectStructure.OfferedItemAsync, AC-05.3, AC-38.1): an item of the
+// project, active in an active category, of a type kind is offered.
+func Offers(ctx context.Context, q *store.Queries, projectID, itemID uuid.UUID, kind ItemType) (bool, error) {
+	item, err := q.ItemOf(ctx, store.ItemOfParams{ID: itemID, ProjectID: projectID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	category, err := q.CategoryOf(ctx, store.CategoryOfParams{ID: item.CategoryID, ProjectID: projectID})
+	return err == nil && category.IsActive && item.IsActive && ItemType(item.Type).OfferedFor(kind), err
 }
 
 // changeItemType changes what an item is for (FR-38): while no entry names it, or itemHasEntries, and no contract, or itemHasContract - though an
@@ -514,16 +479,16 @@ func (c change) refuseTypeChange(item store.Item, to ItemType) error {
 	from := ItemType(item.Type)
 	widens := to == Both && (from == Purchases || from == ContractorPayments)
 	if !widens {
-		holds, err := c.q.ItemHasEntries(c.ctx, item.ID)
+		holds, err := c.Q.ItemHasEntries(c.Ctx, item.ID)
 		if err != nil || holds {
 			return errors.Join(err, refusalIf(holds, itemHasEntries))
 		}
-		contracts, err := c.q.ContractsOfItem(c.ctx, item.ID)
+		contracts, err := c.Q.ContractsOfItem(c.Ctx, item.ID)
 		if err != nil || len(contracts) > 0 {
 			return errors.Join(err, refusalIf(len(contracts) > 0, itemHasContract))
 		}
 	}
-	partners, err := c.q.PartnersInItem(c.ctx, item.ID)
+	partners, err := c.Q.PartnersInItem(c.Ctx, item.ID)
 	if err != nil || len(partners) > 0 {
 		return errors.Join(err, refusalIf(len(partners) > 0, itemHasPartners))
 	}
@@ -534,9 +499,9 @@ func (c change) refuseTypeChange(item store.Item, to ItemType) error {
 }
 
 // refusalIf is code when refused, and no error otherwise.
-func refusalIf(refused bool, code string) error {
-	if refused {
-		return refusal(code)
+func refusalIf(holds bool, code string) error {
+	if holds {
+		return refused(code)
 	}
 	return nil
 }
@@ -544,11 +509,11 @@ func refusalIf(refused bool, code string) error {
 // rebuildColumns gives item the default columns of its type in place of its built-in ones, keeping after them the columns a person added that the
 // template does not hold.
 func (c change) rebuildColumns(item store.Item) error {
-	defaults, err := c.q.DefaultColumnsOfType(c.ctx, store.DefaultColumnsOfTypeParams{ProjectID: c.projectID, ItemType: item.Type})
+	defaults, err := c.Q.DefaultColumnsOfType(c.Ctx, store.DefaultColumnsOfTypeParams{ProjectID: c.ProjectID, ItemType: item.Type})
 	if err != nil {
 		return err
 	}
-	columns, err := c.q.ColumnsOfItem(c.ctx, item.ID)
+	columns, err := c.Q.ColumnsOfItem(c.Ctx, item.ID)
 	if err != nil {
 		return err
 	}
@@ -562,7 +527,7 @@ func (c change) rebuildColumns(item store.Item) error {
 			kept = append(kept, row)
 			continue
 		}
-		if err := c.remove("ItemColumns", row.ID, itemColumnFields(row), func() error { return c.q.RemoveItemColumn(c.ctx, row.ID) }); err != nil {
+		if err := c.Remove("ItemColumns", row.ID, itemColumnFields(row), func() error { return c.Q.RemoveItemColumn(c.Ctx, row.ID) }); err != nil {
 			return err
 		}
 	}
@@ -593,11 +558,11 @@ func (s Routes) reorderTables(w http.ResponseWriter, r *http.Request, caller acc
 		}
 		var subgroups []store.Subgroup
 		if ItemType(item.Type).hasSubgroupTables() {
-			if subgroups, err = c.q.SubgroupsOfItem(c.ctx, item.ID); err != nil {
+			if subgroups, err = c.Q.SubgroupsOfItem(c.Ctx, item.ID); err != nil {
 				return err
 			}
 		}
-		contracts, err := c.q.ContractsOfItem(c.ctx, item.ID)
+		contracts, err := c.Q.ContractsOfItem(c.Ctx, item.ID)
 		if err != nil {
 			return err
 		}
@@ -609,7 +574,7 @@ func (s Routes) reorderTables(w http.ResponseWriter, r *http.Request, caller acc
 			idsOf(contracts, func(row store.Contract) uuid.UUID { return row.ID })...), idsOf(partners, func(row store.Partner) uuid.UUID { return row.ID })...)
 		places, ok := inOrder(ids, request.IDs)
 		if !ok {
-			return refusal(invalidOrder)
+			return refused(invalidOrder)
 		}
 		for _, before := range subgroups {
 			after := before
@@ -620,18 +585,18 @@ func (s Routes) reorderTables(w http.ResponseWriter, r *http.Request, caller acc
 		}
 		for _, contract := range contracts {
 			place := places[contract.ID]
-			if err := c.save("Contracts", contract.ID, false, map[string]any{"SortOrder": contract.SortOrder}, map[string]any{"SortOrder": place},
+			if err := c.Save("Contracts", contract.ID, false, map[string]any{"SortOrder": contract.SortOrder}, map[string]any{"SortOrder": place},
 				func() error {
-					return c.q.SetContractPlace(c.ctx, store.SetContractPlaceParams{ID: contract.ID, SortOrder: place})
+					return c.Q.SetContractPlace(c.Ctx, store.SetContractPlaceParams{ID: contract.ID, SortOrder: place})
 				}); err != nil {
 				return err
 			}
 		}
 		for _, partner := range partners {
 			place := places[partner.ID]
-			if err := c.save("Partners", partner.ID, false, map[string]any{"SortOrder": partner.SortOrder}, map[string]any{"SortOrder": place},
+			if err := c.Save("Partners", partner.ID, false, map[string]any{"SortOrder": partner.SortOrder}, map[string]any{"SortOrder": place},
 				func() error {
-					return c.q.SetPartnerPlace(c.ctx, store.SetPartnerPlaceParams{ID: partner.ID, SortOrder: place})
+					return c.Q.SetPartnerPlace(c.Ctx, store.SetPartnerPlaceParams{ID: partner.ID, SortOrder: place})
 				}); err != nil {
 				return err
 			}
@@ -642,7 +607,7 @@ func (s Routes) reorderTables(w http.ResponseWriter, r *http.Request, caller acc
 
 // keptPartnersIn is the partners whose tables are in the item, those deleted aside (Partner.Kept).
 func (c change) keptPartnersIn(itemID uuid.UUID) ([]store.Partner, error) {
-	partners, err := c.q.PartnersInItem(c.ctx, itemID)
+	partners, err := c.Q.PartnersInItem(c.Ctx, itemID)
 	var kept []store.Partner
 	for _, partner := range partners {
 		if !partner.IsDeleted {
@@ -652,10 +617,10 @@ func (c change) keptPartnersIn(itemID uuid.UUID) ([]store.Partner, error) {
 	return kept, err
 }
 
-// subgroup is the route's subgroup of the route's item: notFound for either not the project's; generalSubgroup (409) for the item's general
+// subgroup is the route's subgroup of the route's item: changes.NotFound for either not the project's; generalSubgroup (409) for the item's general
 // group, which is never renamed or removed, so an entry always has a subgroup (UC-012).
 func (c change) subgroup(r *http.Request) (store.Subgroup, error) {
-	subgroups, err := c.q.SubgroupsOfItem(c.ctx, web.ID(r, "itemId"))
+	subgroups, err := c.Q.SubgroupsOfItem(c.Ctx, web.ID(r, "itemId"))
 	if err != nil {
 		return store.Subgroup{}, err
 	}
@@ -668,15 +633,15 @@ func (c change) subgroup(r *http.Request) (store.Subgroup, error) {
 			return subgroup, err
 		}
 		if subgroup.Name == generalName {
-			return subgroup, refusal(generalSubgroup)
+			return subgroup, refused(generalSubgroup)
 		}
 		return subgroup, nil
 	}
-	return store.Subgroup{}, notFound
+	return store.Subgroup{}, changes.NotFound
 }
 
 func (s Routes) renameSubgroup(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, ok := named(w, r)
+	name, ok := changes.Named(w, r)
 	if !ok {
 		return
 	}
@@ -698,9 +663,9 @@ func (s Routes) deleteSubgroup(w http.ResponseWriter, r *http.Request, caller ac
 		if err != nil {
 			return err
 		}
-		if inUse, err := c.q.SubgroupHasEntries(c.ctx, subgroup.ID); err != nil || inUse {
+		if inUse, err := c.Q.SubgroupHasEntries(c.Ctx, subgroup.ID); err != nil || inUse {
 			return errors.Join(err, refusalIf(inUse, subgroupInUse))
 		}
-		return c.remove("Subgroups", subgroup.ID, subgroupFields(subgroup), func() error { return c.q.RemoveSubgroup(c.ctx, subgroup.ID) })
+		return c.Remove("Subgroups", subgroup.ID, subgroupFields(subgroup), func() error { return c.Q.RemoveSubgroup(c.Ctx, subgroup.ID) })
 	})
 }

@@ -34,8 +34,12 @@ func (m *Moment) Scan(src any) error {
 // Value is the text the column keeps.
 func (m Moment) Value() (driver.Value, error) { return m.UTC().Format(column), nil }
 
-// MarshalJSON writes the moment as .NET writes a UTC DateTime: decimals only as far as they are not zero, then Z.
+// MarshalJSON writes the moment as .NET writes a UTC DateTime: decimals only as far as they are not zero, then Z; the zero moment as .NET wrote
+// default(DateTime), which has no zone - what a view of something not yet done says, as the latest reconciliation before the first.
 func (m Moment) MarshalJSON() ([]byte, error) {
+	if m.IsZero() {
+		return []byte(`"0001-01-01T00:00:00"`), nil
+	}
 	return []byte(`"` + m.UTC().Format(time.RFC3339Nano) + `"`), nil
 }
 

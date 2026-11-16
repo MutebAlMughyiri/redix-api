@@ -24,6 +24,18 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.accountMovementsStmt, err = db.PrepareContext(ctx, accountMovements); err != nil {
+		return nil, fmt.Errorf("error preparing query AccountMovements: %w", err)
+	}
+	if q.accountOfStmt, err = db.PrepareContext(ctx, accountOf); err != nil {
+		return nil, fmt.Errorf("error preparing query AccountOf: %w", err)
+	}
+	if q.accountsOfStmt, err = db.PrepareContext(ctx, accountsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query AccountsOf: %w", err)
+	}
+	if q.accountsUsedStmt, err = db.PrepareContext(ctx, accountsUsed); err != nil {
+		return nil, fmt.Errorf("error preparing query AccountsUsed: %w", err)
+	}
 	if q.addChosenStmt, err = db.PrepareContext(ctx, addChosen); err != nil {
 		return nil, fmt.Errorf("error preparing query AddChosen: %w", err)
 	}
@@ -45,14 +57,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addPartnerStmt, err = db.PrepareContext(ctx, addPartner); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPartner: %w", err)
 	}
-	if q.addPaymentMethodStmt, err = db.PrepareContext(ctx, addPaymentMethod); err != nil {
-		return nil, fmt.Errorf("error preparing query AddPaymentMethod: %w", err)
-	}
 	if q.addPermissionStmt, err = db.PrepareContext(ctx, addPermission); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPermission: %w", err)
 	}
 	if q.addProjectStmt, err = db.PrepareContext(ctx, addProject); err != nil {
 		return nil, fmt.Errorf("error preparing query AddProject: %w", err)
+	}
+	if q.addReconciliationStmt, err = db.PrepareContext(ctx, addReconciliation); err != nil {
+		return nil, fmt.Errorf("error preparing query AddReconciliation: %w", err)
+	}
+	if q.addReconciliationBalanceStmt, err = db.PrepareContext(ctx, addReconciliationBalance); err != nil {
+		return nil, fmt.Errorf("error preparing query AddReconciliationBalance: %w", err)
 	}
 	if q.addRoleNameStmt, err = db.PrepareContext(ctx, addRoleName); err != nil {
 		return nil, fmt.Errorf("error preparing query AddRoleName: %w", err)
@@ -60,11 +75,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addStructureSourceStmt, err = db.PrepareContext(ctx, addStructureSource); err != nil {
 		return nil, fmt.Errorf("error preparing query AddStructureSource: %w", err)
 	}
-	if q.addSupplierStmt, err = db.PrepareContext(ctx, addSupplier); err != nil {
-		return nil, fmt.Errorf("error preparing query AddSupplier: %w", err)
-	}
 	if q.addSystemPermissionStmt, err = db.PrepareContext(ctx, addSystemPermission); err != nil {
 		return nil, fmt.Errorf("error preparing query AddSystemPermission: %w", err)
+	}
+	if q.addTransferStmt, err = db.PrepareContext(ctx, addTransfer); err != nil {
+		return nil, fmt.Errorf("error preparing query AddTransfer: %w", err)
 	}
 	if q.addUnitStmt, err = db.PrepareContext(ctx, addUnit); err != nil {
 		return nil, fmt.Errorf("error preparing query AddUnit: %w", err)
@@ -77,6 +92,15 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.allUnitsStmt, err = db.PrepareContext(ctx, allUnits); err != nil {
 		return nil, fmt.Errorf("error preparing query AllUnits: %w", err)
+	}
+	if q.approvedRevenueByItemTypeStmt, err = db.PrepareContext(ctx, approvedRevenueByItemType); err != nil {
+		return nil, fmt.Errorf("error preparing query ApprovedRevenueByItemType: %w", err)
+	}
+	if q.approvedTotalsByKindStmt, err = db.PrepareContext(ctx, approvedTotalsByKind); err != nil {
+		return nil, fmt.Errorf("error preparing query ApprovedTotalsByKind: %w", err)
+	}
+	if q.balancesOfStmt, err = db.PrepareContext(ctx, balancesOf); err != nil {
+		return nil, fmt.Errorf("error preparing query BalancesOf: %w", err)
 	}
 	if q.capitalItemExistsStmt, err = db.PrepareContext(ctx, capitalItemExists); err != nil {
 		return nil, fmt.Errorf("error preparing query CapitalItemExists: %w", err)
@@ -105,11 +129,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.countTryStmt, err = db.PrepareContext(ctx, countTry); err != nil {
 		return nil, fmt.Errorf("error preparing query CountTry: %w", err)
 	}
+	if q.custodianOfStmt, err = db.PrepareContext(ctx, custodianOf); err != nil {
+		return nil, fmt.Errorf("error preparing query CustodianOf: %w", err)
+	}
 	if q.defaultColumnsOfStmt, err = db.PrepareContext(ctx, defaultColumnsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query DefaultColumnsOf: %w", err)
 	}
 	if q.defaultColumnsOfTypeStmt, err = db.PrepareContext(ctx, defaultColumnsOfType); err != nil {
 		return nil, fmt.Errorf("error preparing query DefaultColumnsOfType: %w", err)
+	}
+	if q.defaultItemOfStmt, err = db.PrepareContext(ctx, defaultItemOf); err != nil {
+		return nil, fmt.Errorf("error preparing query DefaultItemOf: %w", err)
 	}
 	if q.defaultProjectOfStmt, err = db.PrepareContext(ctx, defaultProjectOf); err != nil {
 		return nil, fmt.Errorf("error preparing query DefaultProjectOf: %w", err)
@@ -153,6 +183,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.isAdminStmt, err = db.PrepareContext(ctx, isAdmin); err != nil {
 		return nil, fmt.Errorf("error preparing query IsAdmin: %w", err)
 	}
+	if q.isMemberStmt, err = db.PrepareContext(ctx, isMember); err != nil {
+		return nil, fmt.Errorf("error preparing query IsMember: %w", err)
+	}
 	if q.itemHasEntriesStmt, err = db.PrepareContext(ctx, itemHasEntries); err != nil {
 		return nil, fmt.Errorf("error preparing query ItemHasEntries: %w", err)
 	}
@@ -171,6 +204,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.lastCodeStmt, err = db.PrepareContext(ctx, lastCode); err != nil {
 		return nil, fmt.Errorf("error preparing query LastCode: %w", err)
 	}
+	if q.latestReconciliationStmt, err = db.PrepareContext(ctx, latestReconciliation); err != nil {
+		return nil, fmt.Errorf("error preparing query LatestReconciliation: %w", err)
+	}
 	if q.managersOfStmt, err = db.PrepareContext(ctx, managersOf); err != nil {
 		return nil, fmt.Errorf("error preparing query ManagersOf: %w", err)
 	}
@@ -188,6 +224,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.partnersInItemStmt, err = db.PrepareContext(ctx, partnersInItem); err != nil {
 		return nil, fmt.Errorf("error preparing query PartnersInItem: %w", err)
+	}
+	if q.paymentMethodOfStmt, err = db.PrepareContext(ctx, paymentMethodOf); err != nil {
+		return nil, fmt.Errorf("error preparing query PaymentMethodOf: %w", err)
+	}
+	if q.paymentMethodUsedStmt, err = db.PrepareContext(ctx, paymentMethodUsed); err != nil {
+		return nil, fmt.Errorf("error preparing query PaymentMethodUsed: %w", err)
 	}
 	if q.paymentMethodsOfStmt, err = db.PrepareContext(ctx, paymentMethodsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PaymentMethodsOf: %w", err)
@@ -219,11 +261,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.projectsOfUserWithRowsStmt, err = db.PrepareContext(ctx, projectsOfUserWithRows); err != nil {
 		return nil, fmt.Errorf("error preparing query ProjectsOfUserWithRows: %w", err)
 	}
+	if q.removeAccountStmt, err = db.PrepareContext(ctx, removeAccount); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveAccount: %w", err)
+	}
 	if q.removeChosenStmt, err = db.PrepareContext(ctx, removeChosen); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveChosen: %w", err)
 	}
+	if q.removeCustodianStmt, err = db.PrepareContext(ctx, removeCustodian); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveCustodian: %w", err)
+	}
 	if q.removeDefaultColumnStmt, err = db.PrepareContext(ctx, removeDefaultColumn); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveDefaultColumn: %w", err)
+	}
+	if q.removeDefaultItemStmt, err = db.PrepareContext(ctx, removeDefaultItem); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveDefaultItem: %w", err)
 	}
 	if q.removeDefaultProjectStmt, err = db.PrepareContext(ctx, removeDefaultProject); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveDefaultProject: %w", err)
@@ -233,6 +284,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.removeItemColumnStmt, err = db.PrepareContext(ctx, removeItemColumn); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveItemColumn: %w", err)
+	}
+	if q.removePaymentMethodStmt, err = db.PrepareContext(ctx, removePaymentMethod); err != nil {
+		return nil, fmt.Errorf("error preparing query RemovePaymentMethod: %w", err)
 	}
 	if q.removePermissionStmt, err = db.PrepareContext(ctx, removePermission); err != nil {
 		return nil, fmt.Errorf("error preparing query RemovePermission: %w", err)
@@ -264,11 +318,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.roleNamesOfUserStmt, err = db.PrepareContext(ctx, roleNamesOfUser); err != nil {
 		return nil, fmt.Errorf("error preparing query RoleNamesOfUser: %w", err)
 	}
+	if q.saveAccountStmt, err = db.PrepareContext(ctx, saveAccount); err != nil {
+		return nil, fmt.Errorf("error preparing query SaveAccount: %w", err)
+	}
 	if q.saveCategoryStmt, err = db.PrepareContext(ctx, saveCategory); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveCategory: %w", err)
 	}
+	if q.saveCustodianStmt, err = db.PrepareContext(ctx, saveCustodian); err != nil {
+		return nil, fmt.Errorf("error preparing query SaveCustodian: %w", err)
+	}
 	if q.saveDefaultColumnStmt, err = db.PrepareContext(ctx, saveDefaultColumn); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveDefaultColumn: %w", err)
+	}
+	if q.saveDefaultItemStmt, err = db.PrepareContext(ctx, saveDefaultItem); err != nil {
+		return nil, fmt.Errorf("error preparing query SaveDefaultItem: %w", err)
 	}
 	if q.saveItemStmt, err = db.PrepareContext(ctx, saveItem); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveItem: %w", err)
@@ -276,8 +339,14 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.saveItemColumnStmt, err = db.PrepareContext(ctx, saveItemColumn); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveItemColumn: %w", err)
 	}
+	if q.savePaymentMethodStmt, err = db.PrepareContext(ctx, savePaymentMethod); err != nil {
+		return nil, fmt.Errorf("error preparing query SavePaymentMethod: %w", err)
+	}
 	if q.saveSubgroupStmt, err = db.PrepareContext(ctx, saveSubgroup); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveSubgroup: %w", err)
+	}
+	if q.saveSupplierStmt, err = db.PrepareContext(ctx, saveSupplier); err != nil {
+		return nil, fmt.Errorf("error preparing query SaveSupplier: %w", err)
 	}
 	if q.saveUserStmt, err = db.PrepareContext(ctx, saveUser); err != nil {
 		return nil, fmt.Errorf("error preparing query SaveUser: %w", err)
@@ -330,6 +399,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.subgroupsOfItemStmt, err = db.PrepareContext(ctx, subgroupsOfItem); err != nil {
 		return nil, fmt.Errorf("error preparing query SubgroupsOfItem: %w", err)
 	}
+	if q.supplierOfStmt, err = db.PrepareContext(ctx, supplierOf); err != nil {
+		return nil, fmt.Errorf("error preparing query SupplierOf: %w", err)
+	}
+	if q.suppliersOfStmt, err = db.PrepareContext(ctx, suppliersOf); err != nil {
+		return nil, fmt.Errorf("error preparing query SuppliersOf: %w", err)
+	}
 	if q.unitsOfStmt, err = db.PrepareContext(ctx, unitsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query UnitsOf: %w", err)
 	}
@@ -365,6 +440,26 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.accountMovementsStmt != nil {
+		if cerr := q.accountMovementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing accountMovementsStmt: %w", cerr)
+		}
+	}
+	if q.accountOfStmt != nil {
+		if cerr := q.accountOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing accountOfStmt: %w", cerr)
+		}
+	}
+	if q.accountsOfStmt != nil {
+		if cerr := q.accountsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing accountsOfStmt: %w", cerr)
+		}
+	}
+	if q.accountsUsedStmt != nil {
+		if cerr := q.accountsUsedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing accountsUsedStmt: %w", cerr)
+		}
+	}
 	if q.addChosenStmt != nil {
 		if cerr := q.addChosenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addChosenStmt: %w", cerr)
@@ -400,11 +495,6 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addPartnerStmt: %w", cerr)
 		}
 	}
-	if q.addPaymentMethodStmt != nil {
-		if cerr := q.addPaymentMethodStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing addPaymentMethodStmt: %w", cerr)
-		}
-	}
 	if q.addPermissionStmt != nil {
 		if cerr := q.addPermissionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addPermissionStmt: %w", cerr)
@@ -413,6 +503,16 @@ func (q *Queries) Close() error {
 	if q.addProjectStmt != nil {
 		if cerr := q.addProjectStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addProjectStmt: %w", cerr)
+		}
+	}
+	if q.addReconciliationStmt != nil {
+		if cerr := q.addReconciliationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addReconciliationStmt: %w", cerr)
+		}
+	}
+	if q.addReconciliationBalanceStmt != nil {
+		if cerr := q.addReconciliationBalanceStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addReconciliationBalanceStmt: %w", cerr)
 		}
 	}
 	if q.addRoleNameStmt != nil {
@@ -425,14 +525,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addStructureSourceStmt: %w", cerr)
 		}
 	}
-	if q.addSupplierStmt != nil {
-		if cerr := q.addSupplierStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing addSupplierStmt: %w", cerr)
-		}
-	}
 	if q.addSystemPermissionStmt != nil {
 		if cerr := q.addSystemPermissionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addSystemPermissionStmt: %w", cerr)
+		}
+	}
+	if q.addTransferStmt != nil {
+		if cerr := q.addTransferStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addTransferStmt: %w", cerr)
 		}
 	}
 	if q.addUnitStmt != nil {
@@ -453,6 +553,21 @@ func (q *Queries) Close() error {
 	if q.allUnitsStmt != nil {
 		if cerr := q.allUnitsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing allUnitsStmt: %w", cerr)
+		}
+	}
+	if q.approvedRevenueByItemTypeStmt != nil {
+		if cerr := q.approvedRevenueByItemTypeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing approvedRevenueByItemTypeStmt: %w", cerr)
+		}
+	}
+	if q.approvedTotalsByKindStmt != nil {
+		if cerr := q.approvedTotalsByKindStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing approvedTotalsByKindStmt: %w", cerr)
+		}
+	}
+	if q.balancesOfStmt != nil {
+		if cerr := q.balancesOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing balancesOfStmt: %w", cerr)
 		}
 	}
 	if q.capitalItemExistsStmt != nil {
@@ -500,6 +615,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing countTryStmt: %w", cerr)
 		}
 	}
+	if q.custodianOfStmt != nil {
+		if cerr := q.custodianOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing custodianOfStmt: %w", cerr)
+		}
+	}
 	if q.defaultColumnsOfStmt != nil {
 		if cerr := q.defaultColumnsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing defaultColumnsOfStmt: %w", cerr)
@@ -508,6 +628,11 @@ func (q *Queries) Close() error {
 	if q.defaultColumnsOfTypeStmt != nil {
 		if cerr := q.defaultColumnsOfTypeStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing defaultColumnsOfTypeStmt: %w", cerr)
+		}
+	}
+	if q.defaultItemOfStmt != nil {
+		if cerr := q.defaultItemOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing defaultItemOfStmt: %w", cerr)
 		}
 	}
 	if q.defaultProjectOfStmt != nil {
@@ -580,6 +705,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing isAdminStmt: %w", cerr)
 		}
 	}
+	if q.isMemberStmt != nil {
+		if cerr := q.isMemberStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing isMemberStmt: %w", cerr)
+		}
+	}
 	if q.itemHasEntriesStmt != nil {
 		if cerr := q.itemHasEntriesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing itemHasEntriesStmt: %w", cerr)
@@ -610,6 +740,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing lastCodeStmt: %w", cerr)
 		}
 	}
+	if q.latestReconciliationStmt != nil {
+		if cerr := q.latestReconciliationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing latestReconciliationStmt: %w", cerr)
+		}
+	}
 	if q.managersOfStmt != nil {
 		if cerr := q.managersOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing managersOfStmt: %w", cerr)
@@ -638,6 +773,16 @@ func (q *Queries) Close() error {
 	if q.partnersInItemStmt != nil {
 		if cerr := q.partnersInItemStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing partnersInItemStmt: %w", cerr)
+		}
+	}
+	if q.paymentMethodOfStmt != nil {
+		if cerr := q.paymentMethodOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing paymentMethodOfStmt: %w", cerr)
+		}
+	}
+	if q.paymentMethodUsedStmt != nil {
+		if cerr := q.paymentMethodUsedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing paymentMethodUsedStmt: %w", cerr)
 		}
 	}
 	if q.paymentMethodsOfStmt != nil {
@@ -690,14 +835,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing projectsOfUserWithRowsStmt: %w", cerr)
 		}
 	}
+	if q.removeAccountStmt != nil {
+		if cerr := q.removeAccountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeAccountStmt: %w", cerr)
+		}
+	}
 	if q.removeChosenStmt != nil {
 		if cerr := q.removeChosenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removeChosenStmt: %w", cerr)
 		}
 	}
+	if q.removeCustodianStmt != nil {
+		if cerr := q.removeCustodianStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeCustodianStmt: %w", cerr)
+		}
+	}
 	if q.removeDefaultColumnStmt != nil {
 		if cerr := q.removeDefaultColumnStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removeDefaultColumnStmt: %w", cerr)
+		}
+	}
+	if q.removeDefaultItemStmt != nil {
+		if cerr := q.removeDefaultItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeDefaultItemStmt: %w", cerr)
 		}
 	}
 	if q.removeDefaultProjectStmt != nil {
@@ -713,6 +873,11 @@ func (q *Queries) Close() error {
 	if q.removeItemColumnStmt != nil {
 		if cerr := q.removeItemColumnStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removeItemColumnStmt: %w", cerr)
+		}
+	}
+	if q.removePaymentMethodStmt != nil {
+		if cerr := q.removePaymentMethodStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removePaymentMethodStmt: %w", cerr)
 		}
 	}
 	if q.removePermissionStmt != nil {
@@ -765,14 +930,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing roleNamesOfUserStmt: %w", cerr)
 		}
 	}
+	if q.saveAccountStmt != nil {
+		if cerr := q.saveAccountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing saveAccountStmt: %w", cerr)
+		}
+	}
 	if q.saveCategoryStmt != nil {
 		if cerr := q.saveCategoryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing saveCategoryStmt: %w", cerr)
 		}
 	}
+	if q.saveCustodianStmt != nil {
+		if cerr := q.saveCustodianStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing saveCustodianStmt: %w", cerr)
+		}
+	}
 	if q.saveDefaultColumnStmt != nil {
 		if cerr := q.saveDefaultColumnStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing saveDefaultColumnStmt: %w", cerr)
+		}
+	}
+	if q.saveDefaultItemStmt != nil {
+		if cerr := q.saveDefaultItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing saveDefaultItemStmt: %w", cerr)
 		}
 	}
 	if q.saveItemStmt != nil {
@@ -785,9 +965,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing saveItemColumnStmt: %w", cerr)
 		}
 	}
+	if q.savePaymentMethodStmt != nil {
+		if cerr := q.savePaymentMethodStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing savePaymentMethodStmt: %w", cerr)
+		}
+	}
 	if q.saveSubgroupStmt != nil {
 		if cerr := q.saveSubgroupStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing saveSubgroupStmt: %w", cerr)
+		}
+	}
+	if q.saveSupplierStmt != nil {
+		if cerr := q.saveSupplierStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing saveSupplierStmt: %w", cerr)
 		}
 	}
 	if q.saveUserStmt != nil {
@@ -873,6 +1063,16 @@ func (q *Queries) Close() error {
 	if q.subgroupsOfItemStmt != nil {
 		if cerr := q.subgroupsOfItemStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing subgroupsOfItemStmt: %w", cerr)
+		}
+	}
+	if q.supplierOfStmt != nil {
+		if cerr := q.supplierOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing supplierOfStmt: %w", cerr)
+		}
+	}
+	if q.suppliersOfStmt != nil {
+		if cerr := q.suppliersOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing suppliersOfStmt: %w", cerr)
 		}
 	}
 	if q.unitsOfStmt != nil {
@@ -962,237 +1162,287 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                         DBTX
-	tx                         *sql.Tx
-	addChosenStmt              *sql.Stmt
-	addCodeStmt                *sql.Stmt
-	addDeviceStmt              *sql.Stmt
-	addHistoryStmt             *sql.Stmt
-	addInactiveStmt            *sql.Stmt
-	addNotificationStmt        *sql.Stmt
-	addPartnerStmt             *sql.Stmt
-	addPaymentMethodStmt       *sql.Stmt
-	addPermissionStmt          *sql.Stmt
-	addProjectStmt             *sql.Stmt
-	addRoleNameStmt            *sql.Stmt
-	addStructureSourceStmt     *sql.Stmt
-	addSupplierStmt            *sql.Stmt
-	addSystemPermissionStmt    *sql.Stmt
-	addUnitStmt                *sql.Stmt
-	addUserStmt                *sql.Stmt
-	allProjectsStmt            *sql.Stmt
-	allUnitsStmt               *sql.Stmt
-	capitalItemExistsStmt      *sql.Stmt
-	categoriesOfStmt           *sql.Stmt
-	categoryOfStmt             *sql.Stmt
-	chosenOfStmt               *sql.Stmt
-	chosenPartnersStmt         *sql.Stmt
-	columnsOfStmt              *sql.Stmt
-	columnsOfItemStmt          *sql.Stmt
-	contractsOfItemStmt        *sql.Stmt
-	countTryStmt               *sql.Stmt
-	defaultColumnsOfStmt       *sql.Stmt
-	defaultColumnsOfTypeStmt   *sql.Stmt
-	defaultProjectOfStmt       *sql.Stmt
-	deleteCodesStmt            *sql.Stmt
-	deleteEveryCodeStmt        *sql.Stmt
-	deviceIsOpenStmt           *sql.Stmt
-	deviceWithIDStmt           *sql.Stmt
-	deviceWithRefreshTokenStmt *sql.Stmt
-	emailTakenStmt             *sql.Stmt
-	hasEntriesWaitingStmt      *sql.Stmt
-	hasUsersStmt               *sql.Stmt
-	heldEverywhereStmt         *sql.Stmt
-	heldInProjectsStmt         *sql.Stmt
-	inactiveOfStmt             *sql.Stmt
-	inactiveProjectsOfStmt     *sql.Stmt
-	isAdminStmt                *sql.Stmt
-	itemHasEntriesStmt         *sql.Stmt
-	itemOfStmt                 *sql.Stmt
-	itemsOfStmt                *sql.Stmt
-	itemsOfCategoryStmt        *sql.Stmt
-	keptPartnerIDsStmt         *sql.Stmt
-	lastCodeStmt               *sql.Stmt
-	managersOfStmt             *sql.Stmt
-	managersOfPendingStmt      *sql.Stmt
-	membersStmt                *sql.Stmt
-	nonAdminNamedStmt          *sql.Stmt
-	otherActiveManagersStmt    *sql.Stmt
-	partnersInItemStmt         *sql.Stmt
-	paymentMethodsOfStmt       *sql.Stmt
-	pendingProjectsStmt        *sql.Stmt
-	permissionsOfStmt          *sql.Stmt
-	projectIDsOfUserStmt       *sql.Stmt
-	projectIsFinishedStmt      *sql.Stmt
-	projectOfUserStmt          *sql.Stmt
-	projectWithIDStmt          *sql.Stmt
-	projectsHoldingEntriesStmt *sql.Stmt
-	projectsOfUserStmt         *sql.Stmt
-	projectsOfUserWithRowsStmt *sql.Stmt
-	removeChosenStmt           *sql.Stmt
-	removeDefaultColumnStmt    *sql.Stmt
-	removeDefaultProjectStmt   *sql.Stmt
-	removeInactiveStmt         *sql.Stmt
-	removeItemColumnStmt       *sql.Stmt
-	removePermissionStmt       *sql.Stmt
-	removeRoleNameStmt         *sql.Stmt
-	removeSubgroupStmt         *sql.Stmt
-	removeUnitStmt             *sql.Stmt
-	renewDeviceStmt            *sql.Stmt
-	revokeDeviceStmt           *sql.Stmt
-	revokeEveryDeviceStmt      *sql.Stmt
-	revokeOtherDevicesStmt     *sql.Stmt
-	roleNameOfStmt             *sql.Stmt
-	roleNamesOfUserStmt        *sql.Stmt
-	saveCategoryStmt           *sql.Stmt
-	saveDefaultColumnStmt      *sql.Stmt
-	saveItemStmt               *sql.Stmt
-	saveItemColumnStmt         *sql.Stmt
-	saveSubgroupStmt           *sql.Stmt
-	saveUserStmt               *sql.Stmt
-	setContractPlaceStmt       *sql.Stmt
-	setDefaultProjectStmt      *sql.Stmt
-	setDetailsStmt             *sql.Stmt
-	setEmailStmt               *sql.Stmt
-	setPartnerPlaceStmt        *sql.Stmt
-	setPasswordStmt            *sql.Stmt
-	setProjectDescriptionStmt  *sql.Stmt
-	setProjectNameStmt         *sql.Stmt
-	setProjectStatusStmt       *sql.Stmt
-	setRoleNameStmt            *sql.Stmt
-	setUnitNameStmt            *sql.Stmt
-	spendCodeStmt              *sql.Stmt
-	structureSourceOfStmt      *sql.Stmt
-	subgroupHasEntriesStmt     *sql.Stmt
-	subgroupsOfStmt            *sql.Stmt
-	subgroupsOfItemStmt        *sql.Stmt
-	unitsOfStmt                *sql.Stmt
-	userNamedStmt              *sql.Stmt
-	userWithEmailStmt          *sql.Stmt
-	userWithIDStmt             *sql.Stmt
-	usernameTakenStmt          *sql.Stmt
-	usersInProjectStmt         *sql.Stmt
-	usersOfProjectStmt         *sql.Stmt
-	valuesStmt                 *sql.Stmt
-	wordsInStmt                *sql.Stmt
-	wordsOfStmt                *sql.Stmt
+	db                            DBTX
+	tx                            *sql.Tx
+	accountMovementsStmt          *sql.Stmt
+	accountOfStmt                 *sql.Stmt
+	accountsOfStmt                *sql.Stmt
+	accountsUsedStmt              *sql.Stmt
+	addChosenStmt                 *sql.Stmt
+	addCodeStmt                   *sql.Stmt
+	addDeviceStmt                 *sql.Stmt
+	addHistoryStmt                *sql.Stmt
+	addInactiveStmt               *sql.Stmt
+	addNotificationStmt           *sql.Stmt
+	addPartnerStmt                *sql.Stmt
+	addPermissionStmt             *sql.Stmt
+	addProjectStmt                *sql.Stmt
+	addReconciliationStmt         *sql.Stmt
+	addReconciliationBalanceStmt  *sql.Stmt
+	addRoleNameStmt               *sql.Stmt
+	addStructureSourceStmt        *sql.Stmt
+	addSystemPermissionStmt       *sql.Stmt
+	addTransferStmt               *sql.Stmt
+	addUnitStmt                   *sql.Stmt
+	addUserStmt                   *sql.Stmt
+	allProjectsStmt               *sql.Stmt
+	allUnitsStmt                  *sql.Stmt
+	approvedRevenueByItemTypeStmt *sql.Stmt
+	approvedTotalsByKindStmt      *sql.Stmt
+	balancesOfStmt                *sql.Stmt
+	capitalItemExistsStmt         *sql.Stmt
+	categoriesOfStmt              *sql.Stmt
+	categoryOfStmt                *sql.Stmt
+	chosenOfStmt                  *sql.Stmt
+	chosenPartnersStmt            *sql.Stmt
+	columnsOfStmt                 *sql.Stmt
+	columnsOfItemStmt             *sql.Stmt
+	contractsOfItemStmt           *sql.Stmt
+	countTryStmt                  *sql.Stmt
+	custodianOfStmt               *sql.Stmt
+	defaultColumnsOfStmt          *sql.Stmt
+	defaultColumnsOfTypeStmt      *sql.Stmt
+	defaultItemOfStmt             *sql.Stmt
+	defaultProjectOfStmt          *sql.Stmt
+	deleteCodesStmt               *sql.Stmt
+	deleteEveryCodeStmt           *sql.Stmt
+	deviceIsOpenStmt              *sql.Stmt
+	deviceWithIDStmt              *sql.Stmt
+	deviceWithRefreshTokenStmt    *sql.Stmt
+	emailTakenStmt                *sql.Stmt
+	hasEntriesWaitingStmt         *sql.Stmt
+	hasUsersStmt                  *sql.Stmt
+	heldEverywhereStmt            *sql.Stmt
+	heldInProjectsStmt            *sql.Stmt
+	inactiveOfStmt                *sql.Stmt
+	inactiveProjectsOfStmt        *sql.Stmt
+	isAdminStmt                   *sql.Stmt
+	isMemberStmt                  *sql.Stmt
+	itemHasEntriesStmt            *sql.Stmt
+	itemOfStmt                    *sql.Stmt
+	itemsOfStmt                   *sql.Stmt
+	itemsOfCategoryStmt           *sql.Stmt
+	keptPartnerIDsStmt            *sql.Stmt
+	lastCodeStmt                  *sql.Stmt
+	latestReconciliationStmt      *sql.Stmt
+	managersOfStmt                *sql.Stmt
+	managersOfPendingStmt         *sql.Stmt
+	membersStmt                   *sql.Stmt
+	nonAdminNamedStmt             *sql.Stmt
+	otherActiveManagersStmt       *sql.Stmt
+	partnersInItemStmt            *sql.Stmt
+	paymentMethodOfStmt           *sql.Stmt
+	paymentMethodUsedStmt         *sql.Stmt
+	paymentMethodsOfStmt          *sql.Stmt
+	pendingProjectsStmt           *sql.Stmt
+	permissionsOfStmt             *sql.Stmt
+	projectIDsOfUserStmt          *sql.Stmt
+	projectIsFinishedStmt         *sql.Stmt
+	projectOfUserStmt             *sql.Stmt
+	projectWithIDStmt             *sql.Stmt
+	projectsHoldingEntriesStmt    *sql.Stmt
+	projectsOfUserStmt            *sql.Stmt
+	projectsOfUserWithRowsStmt    *sql.Stmt
+	removeAccountStmt             *sql.Stmt
+	removeChosenStmt              *sql.Stmt
+	removeCustodianStmt           *sql.Stmt
+	removeDefaultColumnStmt       *sql.Stmt
+	removeDefaultItemStmt         *sql.Stmt
+	removeDefaultProjectStmt      *sql.Stmt
+	removeInactiveStmt            *sql.Stmt
+	removeItemColumnStmt          *sql.Stmt
+	removePaymentMethodStmt       *sql.Stmt
+	removePermissionStmt          *sql.Stmt
+	removeRoleNameStmt            *sql.Stmt
+	removeSubgroupStmt            *sql.Stmt
+	removeUnitStmt                *sql.Stmt
+	renewDeviceStmt               *sql.Stmt
+	revokeDeviceStmt              *sql.Stmt
+	revokeEveryDeviceStmt         *sql.Stmt
+	revokeOtherDevicesStmt        *sql.Stmt
+	roleNameOfStmt                *sql.Stmt
+	roleNamesOfUserStmt           *sql.Stmt
+	saveAccountStmt               *sql.Stmt
+	saveCategoryStmt              *sql.Stmt
+	saveCustodianStmt             *sql.Stmt
+	saveDefaultColumnStmt         *sql.Stmt
+	saveDefaultItemStmt           *sql.Stmt
+	saveItemStmt                  *sql.Stmt
+	saveItemColumnStmt            *sql.Stmt
+	savePaymentMethodStmt         *sql.Stmt
+	saveSubgroupStmt              *sql.Stmt
+	saveSupplierStmt              *sql.Stmt
+	saveUserStmt                  *sql.Stmt
+	setContractPlaceStmt          *sql.Stmt
+	setDefaultProjectStmt         *sql.Stmt
+	setDetailsStmt                *sql.Stmt
+	setEmailStmt                  *sql.Stmt
+	setPartnerPlaceStmt           *sql.Stmt
+	setPasswordStmt               *sql.Stmt
+	setProjectDescriptionStmt     *sql.Stmt
+	setProjectNameStmt            *sql.Stmt
+	setProjectStatusStmt          *sql.Stmt
+	setRoleNameStmt               *sql.Stmt
+	setUnitNameStmt               *sql.Stmt
+	spendCodeStmt                 *sql.Stmt
+	structureSourceOfStmt         *sql.Stmt
+	subgroupHasEntriesStmt        *sql.Stmt
+	subgroupsOfStmt               *sql.Stmt
+	subgroupsOfItemStmt           *sql.Stmt
+	supplierOfStmt                *sql.Stmt
+	suppliersOfStmt               *sql.Stmt
+	unitsOfStmt                   *sql.Stmt
+	userNamedStmt                 *sql.Stmt
+	userWithEmailStmt             *sql.Stmt
+	userWithIDStmt                *sql.Stmt
+	usernameTakenStmt             *sql.Stmt
+	usersInProjectStmt            *sql.Stmt
+	usersOfProjectStmt            *sql.Stmt
+	valuesStmt                    *sql.Stmt
+	wordsInStmt                   *sql.Stmt
+	wordsOfStmt                   *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                         tx,
-		tx:                         tx,
-		addChosenStmt:              q.addChosenStmt,
-		addCodeStmt:                q.addCodeStmt,
-		addDeviceStmt:              q.addDeviceStmt,
-		addHistoryStmt:             q.addHistoryStmt,
-		addInactiveStmt:            q.addInactiveStmt,
-		addNotificationStmt:        q.addNotificationStmt,
-		addPartnerStmt:             q.addPartnerStmt,
-		addPaymentMethodStmt:       q.addPaymentMethodStmt,
-		addPermissionStmt:          q.addPermissionStmt,
-		addProjectStmt:             q.addProjectStmt,
-		addRoleNameStmt:            q.addRoleNameStmt,
-		addStructureSourceStmt:     q.addStructureSourceStmt,
-		addSupplierStmt:            q.addSupplierStmt,
-		addSystemPermissionStmt:    q.addSystemPermissionStmt,
-		addUnitStmt:                q.addUnitStmt,
-		addUserStmt:                q.addUserStmt,
-		allProjectsStmt:            q.allProjectsStmt,
-		allUnitsStmt:               q.allUnitsStmt,
-		capitalItemExistsStmt:      q.capitalItemExistsStmt,
-		categoriesOfStmt:           q.categoriesOfStmt,
-		categoryOfStmt:             q.categoryOfStmt,
-		chosenOfStmt:               q.chosenOfStmt,
-		chosenPartnersStmt:         q.chosenPartnersStmt,
-		columnsOfStmt:              q.columnsOfStmt,
-		columnsOfItemStmt:          q.columnsOfItemStmt,
-		contractsOfItemStmt:        q.contractsOfItemStmt,
-		countTryStmt:               q.countTryStmt,
-		defaultColumnsOfStmt:       q.defaultColumnsOfStmt,
-		defaultColumnsOfTypeStmt:   q.defaultColumnsOfTypeStmt,
-		defaultProjectOfStmt:       q.defaultProjectOfStmt,
-		deleteCodesStmt:            q.deleteCodesStmt,
-		deleteEveryCodeStmt:        q.deleteEveryCodeStmt,
-		deviceIsOpenStmt:           q.deviceIsOpenStmt,
-		deviceWithIDStmt:           q.deviceWithIDStmt,
-		deviceWithRefreshTokenStmt: q.deviceWithRefreshTokenStmt,
-		emailTakenStmt:             q.emailTakenStmt,
-		hasEntriesWaitingStmt:      q.hasEntriesWaitingStmt,
-		hasUsersStmt:               q.hasUsersStmt,
-		heldEverywhereStmt:         q.heldEverywhereStmt,
-		heldInProjectsStmt:         q.heldInProjectsStmt,
-		inactiveOfStmt:             q.inactiveOfStmt,
-		inactiveProjectsOfStmt:     q.inactiveProjectsOfStmt,
-		isAdminStmt:                q.isAdminStmt,
-		itemHasEntriesStmt:         q.itemHasEntriesStmt,
-		itemOfStmt:                 q.itemOfStmt,
-		itemsOfStmt:                q.itemsOfStmt,
-		itemsOfCategoryStmt:        q.itemsOfCategoryStmt,
-		keptPartnerIDsStmt:         q.keptPartnerIDsStmt,
-		lastCodeStmt:               q.lastCodeStmt,
-		managersOfStmt:             q.managersOfStmt,
-		managersOfPendingStmt:      q.managersOfPendingStmt,
-		membersStmt:                q.membersStmt,
-		nonAdminNamedStmt:          q.nonAdminNamedStmt,
-		otherActiveManagersStmt:    q.otherActiveManagersStmt,
-		partnersInItemStmt:         q.partnersInItemStmt,
-		paymentMethodsOfStmt:       q.paymentMethodsOfStmt,
-		pendingProjectsStmt:        q.pendingProjectsStmt,
-		permissionsOfStmt:          q.permissionsOfStmt,
-		projectIDsOfUserStmt:       q.projectIDsOfUserStmt,
-		projectIsFinishedStmt:      q.projectIsFinishedStmt,
-		projectOfUserStmt:          q.projectOfUserStmt,
-		projectWithIDStmt:          q.projectWithIDStmt,
-		projectsHoldingEntriesStmt: q.projectsHoldingEntriesStmt,
-		projectsOfUserStmt:         q.projectsOfUserStmt,
-		projectsOfUserWithRowsStmt: q.projectsOfUserWithRowsStmt,
-		removeChosenStmt:           q.removeChosenStmt,
-		removeDefaultColumnStmt:    q.removeDefaultColumnStmt,
-		removeDefaultProjectStmt:   q.removeDefaultProjectStmt,
-		removeInactiveStmt:         q.removeInactiveStmt,
-		removeItemColumnStmt:       q.removeItemColumnStmt,
-		removePermissionStmt:       q.removePermissionStmt,
-		removeRoleNameStmt:         q.removeRoleNameStmt,
-		removeSubgroupStmt:         q.removeSubgroupStmt,
-		removeUnitStmt:             q.removeUnitStmt,
-		renewDeviceStmt:            q.renewDeviceStmt,
-		revokeDeviceStmt:           q.revokeDeviceStmt,
-		revokeEveryDeviceStmt:      q.revokeEveryDeviceStmt,
-		revokeOtherDevicesStmt:     q.revokeOtherDevicesStmt,
-		roleNameOfStmt:             q.roleNameOfStmt,
-		roleNamesOfUserStmt:        q.roleNamesOfUserStmt,
-		saveCategoryStmt:           q.saveCategoryStmt,
-		saveDefaultColumnStmt:      q.saveDefaultColumnStmt,
-		saveItemStmt:               q.saveItemStmt,
-		saveItemColumnStmt:         q.saveItemColumnStmt,
-		saveSubgroupStmt:           q.saveSubgroupStmt,
-		saveUserStmt:               q.saveUserStmt,
-		setContractPlaceStmt:       q.setContractPlaceStmt,
-		setDefaultProjectStmt:      q.setDefaultProjectStmt,
-		setDetailsStmt:             q.setDetailsStmt,
-		setEmailStmt:               q.setEmailStmt,
-		setPartnerPlaceStmt:        q.setPartnerPlaceStmt,
-		setPasswordStmt:            q.setPasswordStmt,
-		setProjectDescriptionStmt:  q.setProjectDescriptionStmt,
-		setProjectNameStmt:         q.setProjectNameStmt,
-		setProjectStatusStmt:       q.setProjectStatusStmt,
-		setRoleNameStmt:            q.setRoleNameStmt,
-		setUnitNameStmt:            q.setUnitNameStmt,
-		spendCodeStmt:              q.spendCodeStmt,
-		structureSourceOfStmt:      q.structureSourceOfStmt,
-		subgroupHasEntriesStmt:     q.subgroupHasEntriesStmt,
-		subgroupsOfStmt:            q.subgroupsOfStmt,
-		subgroupsOfItemStmt:        q.subgroupsOfItemStmt,
-		unitsOfStmt:                q.unitsOfStmt,
-		userNamedStmt:              q.userNamedStmt,
-		userWithEmailStmt:          q.userWithEmailStmt,
-		userWithIDStmt:             q.userWithIDStmt,
-		usernameTakenStmt:          q.usernameTakenStmt,
-		usersInProjectStmt:         q.usersInProjectStmt,
-		usersOfProjectStmt:         q.usersOfProjectStmt,
-		valuesStmt:                 q.valuesStmt,
-		wordsInStmt:                q.wordsInStmt,
-		wordsOfStmt:                q.wordsOfStmt,
+		db:                            tx,
+		tx:                            tx,
+		accountMovementsStmt:          q.accountMovementsStmt,
+		accountOfStmt:                 q.accountOfStmt,
+		accountsOfStmt:                q.accountsOfStmt,
+		accountsUsedStmt:              q.accountsUsedStmt,
+		addChosenStmt:                 q.addChosenStmt,
+		addCodeStmt:                   q.addCodeStmt,
+		addDeviceStmt:                 q.addDeviceStmt,
+		addHistoryStmt:                q.addHistoryStmt,
+		addInactiveStmt:               q.addInactiveStmt,
+		addNotificationStmt:           q.addNotificationStmt,
+		addPartnerStmt:                q.addPartnerStmt,
+		addPermissionStmt:             q.addPermissionStmt,
+		addProjectStmt:                q.addProjectStmt,
+		addReconciliationStmt:         q.addReconciliationStmt,
+		addReconciliationBalanceStmt:  q.addReconciliationBalanceStmt,
+		addRoleNameStmt:               q.addRoleNameStmt,
+		addStructureSourceStmt:        q.addStructureSourceStmt,
+		addSystemPermissionStmt:       q.addSystemPermissionStmt,
+		addTransferStmt:               q.addTransferStmt,
+		addUnitStmt:                   q.addUnitStmt,
+		addUserStmt:                   q.addUserStmt,
+		allProjectsStmt:               q.allProjectsStmt,
+		allUnitsStmt:                  q.allUnitsStmt,
+		approvedRevenueByItemTypeStmt: q.approvedRevenueByItemTypeStmt,
+		approvedTotalsByKindStmt:      q.approvedTotalsByKindStmt,
+		balancesOfStmt:                q.balancesOfStmt,
+		capitalItemExistsStmt:         q.capitalItemExistsStmt,
+		categoriesOfStmt:              q.categoriesOfStmt,
+		categoryOfStmt:                q.categoryOfStmt,
+		chosenOfStmt:                  q.chosenOfStmt,
+		chosenPartnersStmt:            q.chosenPartnersStmt,
+		columnsOfStmt:                 q.columnsOfStmt,
+		columnsOfItemStmt:             q.columnsOfItemStmt,
+		contractsOfItemStmt:           q.contractsOfItemStmt,
+		countTryStmt:                  q.countTryStmt,
+		custodianOfStmt:               q.custodianOfStmt,
+		defaultColumnsOfStmt:          q.defaultColumnsOfStmt,
+		defaultColumnsOfTypeStmt:      q.defaultColumnsOfTypeStmt,
+		defaultItemOfStmt:             q.defaultItemOfStmt,
+		defaultProjectOfStmt:          q.defaultProjectOfStmt,
+		deleteCodesStmt:               q.deleteCodesStmt,
+		deleteEveryCodeStmt:           q.deleteEveryCodeStmt,
+		deviceIsOpenStmt:              q.deviceIsOpenStmt,
+		deviceWithIDStmt:              q.deviceWithIDStmt,
+		deviceWithRefreshTokenStmt:    q.deviceWithRefreshTokenStmt,
+		emailTakenStmt:                q.emailTakenStmt,
+		hasEntriesWaitingStmt:         q.hasEntriesWaitingStmt,
+		hasUsersStmt:                  q.hasUsersStmt,
+		heldEverywhereStmt:            q.heldEverywhereStmt,
+		heldInProjectsStmt:            q.heldInProjectsStmt,
+		inactiveOfStmt:                q.inactiveOfStmt,
+		inactiveProjectsOfStmt:        q.inactiveProjectsOfStmt,
+		isAdminStmt:                   q.isAdminStmt,
+		isMemberStmt:                  q.isMemberStmt,
+		itemHasEntriesStmt:            q.itemHasEntriesStmt,
+		itemOfStmt:                    q.itemOfStmt,
+		itemsOfStmt:                   q.itemsOfStmt,
+		itemsOfCategoryStmt:           q.itemsOfCategoryStmt,
+		keptPartnerIDsStmt:            q.keptPartnerIDsStmt,
+		lastCodeStmt:                  q.lastCodeStmt,
+		latestReconciliationStmt:      q.latestReconciliationStmt,
+		managersOfStmt:                q.managersOfStmt,
+		managersOfPendingStmt:         q.managersOfPendingStmt,
+		membersStmt:                   q.membersStmt,
+		nonAdminNamedStmt:             q.nonAdminNamedStmt,
+		otherActiveManagersStmt:       q.otherActiveManagersStmt,
+		partnersInItemStmt:            q.partnersInItemStmt,
+		paymentMethodOfStmt:           q.paymentMethodOfStmt,
+		paymentMethodUsedStmt:         q.paymentMethodUsedStmt,
+		paymentMethodsOfStmt:          q.paymentMethodsOfStmt,
+		pendingProjectsStmt:           q.pendingProjectsStmt,
+		permissionsOfStmt:             q.permissionsOfStmt,
+		projectIDsOfUserStmt:          q.projectIDsOfUserStmt,
+		projectIsFinishedStmt:         q.projectIsFinishedStmt,
+		projectOfUserStmt:             q.projectOfUserStmt,
+		projectWithIDStmt:             q.projectWithIDStmt,
+		projectsHoldingEntriesStmt:    q.projectsHoldingEntriesStmt,
+		projectsOfUserStmt:            q.projectsOfUserStmt,
+		projectsOfUserWithRowsStmt:    q.projectsOfUserWithRowsStmt,
+		removeAccountStmt:             q.removeAccountStmt,
+		removeChosenStmt:              q.removeChosenStmt,
+		removeCustodianStmt:           q.removeCustodianStmt,
+		removeDefaultColumnStmt:       q.removeDefaultColumnStmt,
+		removeDefaultItemStmt:         q.removeDefaultItemStmt,
+		removeDefaultProjectStmt:      q.removeDefaultProjectStmt,
+		removeInactiveStmt:            q.removeInactiveStmt,
+		removeItemColumnStmt:          q.removeItemColumnStmt,
+		removePaymentMethodStmt:       q.removePaymentMethodStmt,
+		removePermissionStmt:          q.removePermissionStmt,
+		removeRoleNameStmt:            q.removeRoleNameStmt,
+		removeSubgroupStmt:            q.removeSubgroupStmt,
+		removeUnitStmt:                q.removeUnitStmt,
+		renewDeviceStmt:               q.renewDeviceStmt,
+		revokeDeviceStmt:              q.revokeDeviceStmt,
+		revokeEveryDeviceStmt:         q.revokeEveryDeviceStmt,
+		revokeOtherDevicesStmt:        q.revokeOtherDevicesStmt,
+		roleNameOfStmt:                q.roleNameOfStmt,
+		roleNamesOfUserStmt:           q.roleNamesOfUserStmt,
+		saveAccountStmt:               q.saveAccountStmt,
+		saveCategoryStmt:              q.saveCategoryStmt,
+		saveCustodianStmt:             q.saveCustodianStmt,
+		saveDefaultColumnStmt:         q.saveDefaultColumnStmt,
+		saveDefaultItemStmt:           q.saveDefaultItemStmt,
+		saveItemStmt:                  q.saveItemStmt,
+		saveItemColumnStmt:            q.saveItemColumnStmt,
+		savePaymentMethodStmt:         q.savePaymentMethodStmt,
+		saveSubgroupStmt:              q.saveSubgroupStmt,
+		saveSupplierStmt:              q.saveSupplierStmt,
+		saveUserStmt:                  q.saveUserStmt,
+		setContractPlaceStmt:          q.setContractPlaceStmt,
+		setDefaultProjectStmt:         q.setDefaultProjectStmt,
+		setDetailsStmt:                q.setDetailsStmt,
+		setEmailStmt:                  q.setEmailStmt,
+		setPartnerPlaceStmt:           q.setPartnerPlaceStmt,
+		setPasswordStmt:               q.setPasswordStmt,
+		setProjectDescriptionStmt:     q.setProjectDescriptionStmt,
+		setProjectNameStmt:            q.setProjectNameStmt,
+		setProjectStatusStmt:          q.setProjectStatusStmt,
+		setRoleNameStmt:               q.setRoleNameStmt,
+		setUnitNameStmt:               q.setUnitNameStmt,
+		spendCodeStmt:                 q.spendCodeStmt,
+		structureSourceOfStmt:         q.structureSourceOfStmt,
+		subgroupHasEntriesStmt:        q.subgroupHasEntriesStmt,
+		subgroupsOfStmt:               q.subgroupsOfStmt,
+		subgroupsOfItemStmt:           q.subgroupsOfItemStmt,
+		supplierOfStmt:                q.supplierOfStmt,
+		suppliersOfStmt:               q.suppliersOfStmt,
+		unitsOfStmt:                   q.unitsOfStmt,
+		userNamedStmt:                 q.userNamedStmt,
+		userWithEmailStmt:             q.userWithEmailStmt,
+		userWithIDStmt:                q.userWithIDStmt,
+		usernameTakenStmt:             q.usernameTakenStmt,
+		usersInProjectStmt:            q.usersInProjectStmt,
+		usersOfProjectStmt:            q.usersOfProjectStmt,
+		valuesStmt:                    q.valuesStmt,
+		wordsInStmt:                   q.wordsInStmt,
+		wordsOfStmt:                   q.wordsOfStmt,
 	}
 }
