@@ -2,9 +2,10 @@
 
 .PHONY: build test sqlc migrate golden
 
-# A Linux binary for the server, with no C toolchain: modernc's SQLite is pure Go.
+# A Linux binary for the server, with no C toolchain: modernc's SQLite is pure Go; and the one-time data move, for the machine SQL Server runs on.
 build:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o bin/redix-server ./cmd/server
+	go build -trimpath -o bin/ ./cmd/migrate-data
 
 # Every test, the replay of .NET's recorded answers among them.
 test:
