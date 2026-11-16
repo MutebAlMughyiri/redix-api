@@ -41,6 +41,11 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
 
+    /// <summary>What this collection's tests do, written for the Go replays when <c>REDIX_RECORD</c> names a folder (redix-api #140, G12).</summary>
+    public Recorder Record { get; }
+
+    public MigratedApiFactory() => Record = Recorder.For(_database);
+
     /// <summary>Every email the API sent, kept instead of sent (redix-api #127, D7).</summary>
     public KeptEmails Emails { get; } = new();
 
@@ -62,7 +67,8 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["EmailCodes:PermitsPerHour"] = "100000",
             ["Attachments:Folder"] = Path.Combine(Path.GetTempPath(), "RedixTestsAttachments"),
         }));
-        builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time).AddSingleton<EmailSender>(Emails));
+        builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time).AddSingleton<EmailSender>(Emails)
+            .AddSingleton<IStartupFilter>(new Recorder.Startup(Record, Time)).ConfigureDbContext<RedixDbContext>(options => options.AddInterceptors(Record.DirectWrites)));
     }
 
     private static string ConnectionTo(string database) =>
@@ -107,7 +113,7 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             db.SystemPermissions.Add(new SystemPermission { UserId = user.Id, Permission = Permission.ApproveProjects });
         }
-        await db.SaveChangesAsync();
+        await Record.SeedAsync("user", new { user.Id, user.Username, password, mustChangePassword, isAdmin, email, user.CreatedAt }, () => db.SaveChangesAsync());
         return user;
     }
 
@@ -121,12 +127,12 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     }
 
     /// <summary>Makes <paramref name="userId"/> inactive in <paramref name="projectId"/> straight in the database (redix-api #126), for a test whose subject is something else.</summary>
-    public Task MakeInactiveAsync(Guid userId, Guid projectId) =>
+    public Task MakeInactiveAsync(Guid userId, Guid projectId) => Record.SeedAsync("inactive", new { userId, projectId }, () =>
         WithDatabaseAsync(async db =>
         {
             db.InactiveMembers.Add(new InactiveMember { UserId = userId, ProjectId = projectId });
             await db.SaveChangesAsync();
-        });
+        }));
 
     public async Task<List<HistoryRecord>> HistoryOfAsync(Guid recordId)
     {
@@ -135,25 +141,29 @@ public class MigratedApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     }
 
     /// <summary>Gives <paramref name="permissions"/> in a project straight in the database, those not held already, for a test whose subject is something else.</summary>
-    public Task GiveAsync(Guid userId, Guid projectId, IEnumerable<Permission> permissions) =>
-        WithDatabaseAsync(async db =>
-        {
-            var held = await db.ProjectPermissions.Where(row => row.UserId == userId && row.ProjectId == projectId).Select(row => row.Permission).ToListAsync();
-            db.ProjectPermissions.AddRange(permissions.Except(held).Select(permission => new ProjectPermission { UserId = userId, ProjectId = projectId, Permission = permission }));
-            await db.SaveChangesAsync();
-        });
+    public Task GiveAsync(Guid userId, Guid projectId, IEnumerable<Permission> permissions)
+    {
+        var given = permissions.ToList();
+        return Record.SeedAsync("give", new { userId, projectId, permissions = given }, () =>
+            WithDatabaseAsync(async db =>
+            {
+                var held = await db.ProjectPermissions.Where(row => row.UserId == userId && row.ProjectId == projectId).Select(row => row.Permission).ToListAsync();
+                db.ProjectPermissions.AddRange(given.Except(held).Select(permission => new ProjectPermission { UserId = userId, ProjectId = projectId, Permission = permission }));
+                await db.SaveChangesAsync();
+            }));
+    }
 
     /// <summary>Registers a project for <paramref name="client"/> and approves it straight in the database, for a test whose subject is something else.</summary>
     public async Task<ProjectView> ApprovedProjectAsync(HttpClient client, string name, params List<string> units)
     {
         var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest(name, new DateOnly(2026, 11, 1), units));
         var project = (await created.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ProjectView>(Json))!;
-        await WithDatabaseAsync(async db =>
+        await Record.SeedAsync("approve", new { projectId = project.Id }, () => WithDatabaseAsync(async db =>
         {
             var managerId = await db.ProjectPermissions.Where(held => held.ProjectId == project.Id).Select(held => held.UserId).FirstAsync();
             await ProjectStructure.ApproveAsync(await db.Projects.SingleAsync(stored => stored.Id == project.Id), managerId, db);
             await db.SaveChangesAsync();
-        });
+        }));
         return (await client.GetFromJsonAsync<List<ProjectView>>("/projects", Json))!.Single(listed => listed.Id == project.Id);
     }
 
