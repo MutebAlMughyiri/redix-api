@@ -590,7 +590,8 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options, AccessCach
 
     /// <summary>
     /// Keeps a list's choices, each with its id, name and sign, as one JSON column (redix-api #129), the way EF Core's documentation converts a collection of value objects: serialized with
-    /// System.Text.Json, and compared by what it holds.
+    /// System.Text.Json, and compared by what it holds. EF Core's own JSON mapping, <c>ComplexCollection(...).ToJson()</c>, cannot take its place: the default template's columns are
+    /// seeded with their choices, and EF Core does not seed a complex property (dotnet/efcore#31254; tried 16 Nov 2026).
     /// </summary>
     private static void KeepsChoicesAsJson(PropertyBuilder<List<ColumnChoice>> choices) => choices
         .HasConversion(
