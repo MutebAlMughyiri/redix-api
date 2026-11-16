@@ -19,9 +19,6 @@ public sealed record PartnerTable(Category Category, Item Item, Partner Partner)
     public override decimal AmountOf(EntryRequest request) => TotalOf(request);
 
     /// <inheritdoc />
-    public override EntryAttachmentRole FileRole => EntryAttachmentRole.BankReceipt;
-
-    /// <inheritdoc />
     public override List<object> DetailsOf(EntryRequest request) =>
         [new CapitalMovementDetails { EntryId = request.Id, PartnerId = Partner.Id }];
 }

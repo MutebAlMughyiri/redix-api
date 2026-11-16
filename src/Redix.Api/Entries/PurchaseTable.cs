@@ -19,9 +19,6 @@ public sealed record PurchaseTable(Category Category, Item Item, Subgroup Subgro
     /// <inheritdoc />
     public override EntryKind EntryKindOf(EntryRequest request) => EntryKind.Purchase;
 
-    /// <inheritdoc />
-    public override EntryAttachmentRole FileRole => EntryAttachmentRole.Invoice;
-
     /// <summary>The amount typed; left out, the unit price times the quantity, when the entry gives both (BR-01).</summary>
     public override decimal TotalOf(EntryRequest request)
     {

@@ -5,8 +5,7 @@ using Redix.Api.Structure;
 namespace Redix.Api.Entries;
 
 /// <summary>
-/// A table an entry goes into, and what its kind adds to every entry (redix-api #110): its own checks, its own rows, what the entry is, what its file is, and what recording it
-/// answers. Everything every entry shares is asked by <see cref="EntryRecording"/>; nothing outside a kind's own class asks which kind it is.
+/// A table an entry goes into, and what its kind adds to every entry (redix-api #110): its own checks, its own rows, what the entry is, and what recording it answers. Everything every entry shares is asked by <see cref="EntryRecording"/>; nothing outside a kind's own class asks which kind it is.
 /// </summary>
 /// <param name="Category">The category its item is in.</param>
 /// <param name="Item">The item it belongs to.</param>
@@ -21,9 +20,6 @@ public abstract record EntryTable(Category Category, Item Item, Guid Id, string 
 
     /// <summary>What an entry of <paramref name="request"/> in this table is.</summary>
     public abstract EntryKind EntryKindOf(EntryRequest request);
-
-    /// <summary>What the entry's file is.</summary>
-    public abstract EntryAttachmentRole FileRole { get; }
 
     /// <summary>Whether this kind of table asks <paramref name="column"/> of its item's: every one, unless the kind says otherwise.</summary>
     protected virtual bool Asks(ItemColumn column) => true;

@@ -16,9 +16,6 @@ public sealed record ContractTable(Category Category, Item Item, Contract Contra
     /// <inheritdoc />
     public override EntryKind EntryKindOf(EntryRequest request) => EntryKind.ContractorPayment;
 
-    /// <inheritdoc />
-    public override EntryAttachmentRole FileRole => EntryAttachmentRole.Receipt;
-
     /// <summary>Everything of its item but what only a purchase has, its supplier among it (FR-38).</summary>
     protected override bool Asks(ItemColumn column) => column.IsAskedOf(EntryKind.ContractorPayment);
 

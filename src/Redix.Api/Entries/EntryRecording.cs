@@ -109,8 +109,8 @@ public static class EntryRecording
         {
             return (status, code, columnKey, Entry.None);
         }
-        var at = time.GetUtcNow().UtcDateTime;
-        return (0, "", "", await KeepAsync(EntryOf(request, projectId, table, userId, at), [.. table.DetailsOf(request), .. FileOf(request, table.FileRole)], existing, userId, tellDeciders, db));
+        var entry = EntryOf(request, projectId, table, userId, time.GetUtcNow().UtcDateTime);
+        return (0, "", "", await KeepAsync(entry, [.. table.DetailsOf(request), .. FileOf(request, entry.Kind.FileRole())], existing, userId, tellDeciders, db));
     }
 
     private static async Task<(int Status, string Code, string ColumnKey)> RefusalOfAsync(Guid projectId, EntryRequest request, EntryTable table, Guid userId, List<Permission> held, Guid editing, RedixDbContext db, TimeProvider time)

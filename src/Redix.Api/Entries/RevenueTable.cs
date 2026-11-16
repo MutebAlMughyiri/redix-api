@@ -13,8 +13,5 @@ public sealed record RevenueTable(Category Category, Item Item, Subgroup Subgrou
     public override EntryKind EntryKindOf(EntryRequest request) => EntryKind.Revenue;
 
     /// <inheritdoc />
-    public override EntryAttachmentRole FileRole => EntryAttachmentRole.Other;
-
-    /// <inheritdoc />
     public override List<object> DetailsOf(EntryRequest request) => [new RevenueDetails { EntryId = request.Id, ItemId = Item.Id, SubgroupId = Subgroup.Id }];
 }

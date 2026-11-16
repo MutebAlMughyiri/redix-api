@@ -282,6 +282,19 @@ public class InvoiceAttachTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task D5_AFileSharedOntoAPaymentOfAContractDisabledSinceIsStillItsReceipt()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var payment = await ContractorPaymentAsync(ledger);
+        await ledger.RecordAsync(payment);
+        (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/contracts/{payment.TableId}/disable", null)).EnsureSuccessStatusCode();
+
+        (await AttachAsync(ledger.Client, ledger, payment.Id, Invoice(await ledger.FileAsync()))).EnsureSuccessStatusCode();
+
+        Assert.Equal(EntryAttachmentRole.Receipt, Assert.Single(await FilesOfAsync(ledger, payment.Id)).Role);
+    }
+
+    [Fact]
     public async Task AWaitingEntryStaysWaitingAndADraftStaysADraft()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);

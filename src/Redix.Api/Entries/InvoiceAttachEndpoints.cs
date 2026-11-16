@@ -48,7 +48,7 @@ public static class InvoiceAttachEndpoints
     }
 
     /// <summary>
-    /// Puts the file on the entry beside any it has, as its table's file (D5), in the History table, and changes nothing else (D15). Someone else's draft, or someone else's sent entry
+    /// Puts the file on the entry beside any it has, as its kind's file (D5), in the History table, and changes nothing else (D15). Someone else's draft, or someone else's sent entry
     /// to whoever may not manage any entry, answers <c>notYourEntry</c> (BR-42); a deduction, a credit note or a removed entry answers <c>entryNotAttachable</c>; a file of no such
     /// attachment <c>unknownAttachment</c>, and one already on an entry <c>invoiceAlreadyAttached</c> (BR-22).
     /// </summary>
@@ -84,7 +84,7 @@ public static class InvoiceAttachEndpoints
             return Refusal.Of(StatusCodes.Status409Conflict, "InvoiceAlreadyAttached");
         }
 
-        var file = new EntryAttachment { EntryId = entryId, AttachmentId = request.AttachmentId, Role = await FileRoleOfAsync(entry, db) };
+        var file = new EntryAttachment { EntryId = entryId, AttachmentId = request.AttachmentId, Role = entry.Kind.FileRole() };
         db.Add(file);
         db.AddHistory(file, HistoryAction.Create, userId, time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync();
@@ -101,14 +101,6 @@ public static class InvoiceAttachEndpoints
     /// <param name="held">What they hold in the project.</param>
     public static IQueryable<Entry> AttachableBy(IQueryable<Entry> entries, Guid userId, List<Permission> held) =>
         entries.Where(entry => entry.Amount > 0 && entry.Status != EntryStatus.Removed).Where(EntryChanges.MayHandle(userId, held));
-
-    /// <summary>What a file is to <paramref name="entry"/>: what its table's own file is (D5), the owner Add entry asks; anything else for a table the project no longer offers.</summary>
-    private static async Task<EntryAttachmentRole> FileRoleOfAsync(Entry entry, RedixDbContext db)
-    {
-        var tableId = (await EntriesEndpoints.ViewOfAsync(entry, db)).TableId;
-        var tables = await EntryTable.OfferedAsync(entry.ProjectId, [Permission.RecordEntries, Permission.MoveMoney], db);
-        return tables.FirstOrDefault(table => table.Id == tableId)?.FileRole ?? EntryAttachmentRole.Other;
-    }
 }
 
 /// <summary>A file to put on an entry.</summary>

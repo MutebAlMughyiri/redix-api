@@ -24,6 +24,18 @@ public static class EntryKinds
 {
     /// <summary><paramref name="amount"/> as <paramref name="kind"/> moves money: as it is for capital coming in and revenue, negated for what goes out. A database query cannot call it.</summary>
     public static decimal Signed(this EntryKind kind, decimal amount) => kind is EntryKind.CapitalIn or EntryKind.Revenue ? amount : -amount;
+
+    /// <summary>
+    /// What a file is to an entry of <paramref name="kind"/>: a purchase's invoice, a contractor payment's receipt voucher, a partner's bank transfer receipt, and anything else for
+    /// revenue. Asked when the entry is kept and when a file is put on it later, whether or not its table is still offered (redix-app #115 D5).
+    /// </summary>
+    public static EntryAttachmentRole FileRole(this EntryKind kind) => kind switch
+    {
+        EntryKind.Purchase => EntryAttachmentRole.Invoice,
+        EntryKind.ContractorPayment => EntryAttachmentRole.Receipt,
+        EntryKind.CapitalIn or EntryKind.CapitalOut => EntryAttachmentRole.BankReceipt,
+        _ => EntryAttachmentRole.Other,
+    };
 }
 
 /// <summary>Where an entry stands. Only approved entries count in any total (BR-10).</summary>
