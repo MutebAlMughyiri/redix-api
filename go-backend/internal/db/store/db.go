@@ -198,6 +198,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.custodianOfStmt, err = db.PrepareContext(ctx, custodianOf); err != nil {
 		return nil, fmt.Errorf("error preparing query CustodianOf: %w", err)
 	}
+	if q.decisionsOfStmt, err = db.PrepareContext(ctx, decisionsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query DecisionsOf: %w", err)
+	}
 	if q.defaultColumnsOfStmt, err = db.PrepareContext(ctx, defaultColumnsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query DefaultColumnsOf: %w", err)
 	}
@@ -267,6 +270,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.heldInProjectsStmt, err = db.PrepareContext(ctx, heldInProjects); err != nil {
 		return nil, fmt.Errorf("error preparing query HeldInProjects: %w", err)
 	}
+	if q.historyOfProjectStmt, err = db.PrepareContext(ctx, historyOfProject); err != nil {
+		return nil, fmt.Errorf("error preparing query HistoryOfProject: %w", err)
+	}
 	if q.holdersOfStmt, err = db.PrepareContext(ctx, holdersOf); err != nil {
 		return nil, fmt.Errorf("error preparing query HoldersOf: %w", err)
 	}
@@ -290,6 +296,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.itemOfStmt, err = db.PrepareContext(ctx, itemOf); err != nil {
 		return nil, fmt.Errorf("error preparing query ItemOf: %w", err)
+	}
+	if q.itemTotalsOfStmt, err = db.PrepareContext(ctx, itemTotalsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ItemTotalsOf: %w", err)
 	}
 	if q.itemsOfStmt, err = db.PrepareContext(ctx, itemsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query ItemsOf: %w", err)
@@ -389,6 +398,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.purchaseDetailsOfStmt, err = db.PrepareContext(ctx, purchaseDetailsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PurchaseDetailsOf: %w", err)
+	}
+	if q.reconciliationBalancesOfStmt, err = db.PrepareContext(ctx, reconciliationBalancesOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ReconciliationBalancesOf: %w", err)
 	}
 	if q.rejectionsOfStmt, err = db.PrepareContext(ctx, rejectionsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query RejectionsOf: %w", err)
@@ -591,6 +603,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.suppliersOfStmt, err = db.PrepareContext(ctx, suppliersOf); err != nil {
 		return nil, fmt.Errorf("error preparing query SuppliersOf: %w", err)
 	}
+	if q.transfersOfStmt, err = db.PrepareContext(ctx, transfersOf); err != nil {
+		return nil, fmt.Errorf("error preparing query TransfersOf: %w", err)
+	}
 	if q.unitsOfStmt, err = db.PrepareContext(ctx, unitsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query UnitsOf: %w", err)
 	}
@@ -617,6 +632,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.valuesStmt, err = db.PrepareContext(ctx, values); err != nil {
 		return nil, fmt.Errorf("error preparing query Values: %w", err)
+	}
+	if q.waitingByKindStmt, err = db.PrepareContext(ctx, waitingByKind); err != nil {
+		return nil, fmt.Errorf("error preparing query WaitingByKind: %w", err)
 	}
 	if q.wordsInStmt, err = db.PrepareContext(ctx, wordsIn); err != nil {
 		return nil, fmt.Errorf("error preparing query WordsIn: %w", err)
@@ -919,6 +937,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing custodianOfStmt: %w", cerr)
 		}
 	}
+	if q.decisionsOfStmt != nil {
+		if cerr := q.decisionsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing decisionsOfStmt: %w", cerr)
+		}
+	}
 	if q.defaultColumnsOfStmt != nil {
 		if cerr := q.defaultColumnsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing defaultColumnsOfStmt: %w", cerr)
@@ -1034,6 +1057,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing heldInProjectsStmt: %w", cerr)
 		}
 	}
+	if q.historyOfProjectStmt != nil {
+		if cerr := q.historyOfProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing historyOfProjectStmt: %w", cerr)
+		}
+	}
 	if q.holdersOfStmt != nil {
 		if cerr := q.holdersOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing holdersOfStmt: %w", cerr)
@@ -1072,6 +1100,11 @@ func (q *Queries) Close() error {
 	if q.itemOfStmt != nil {
 		if cerr := q.itemOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing itemOfStmt: %w", cerr)
+		}
+	}
+	if q.itemTotalsOfStmt != nil {
+		if cerr := q.itemTotalsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing itemTotalsOfStmt: %w", cerr)
 		}
 	}
 	if q.itemsOfStmt != nil {
@@ -1237,6 +1270,11 @@ func (q *Queries) Close() error {
 	if q.purchaseDetailsOfStmt != nil {
 		if cerr := q.purchaseDetailsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing purchaseDetailsOfStmt: %w", cerr)
+		}
+	}
+	if q.reconciliationBalancesOfStmt != nil {
+		if cerr := q.reconciliationBalancesOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing reconciliationBalancesOfStmt: %w", cerr)
 		}
 	}
 	if q.rejectionsOfStmt != nil {
@@ -1574,6 +1612,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing suppliersOfStmt: %w", cerr)
 		}
 	}
+	if q.transfersOfStmt != nil {
+		if cerr := q.transfersOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing transfersOfStmt: %w", cerr)
+		}
+	}
 	if q.unitsOfStmt != nil {
 		if cerr := q.unitsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing unitsOfStmt: %w", cerr)
@@ -1617,6 +1660,11 @@ func (q *Queries) Close() error {
 	if q.valuesStmt != nil {
 		if cerr := q.valuesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing valuesStmt: %w", cerr)
+		}
+	}
+	if q.waitingByKindStmt != nil {
+		if cerr := q.waitingByKindStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing waitingByKindStmt: %w", cerr)
 		}
 	}
 	if q.wordsInStmt != nil {
@@ -1726,6 +1774,7 @@ type Queries struct {
 	contractsWithPaymentsStmt     *sql.Stmt
 	countTryStmt                  *sql.Stmt
 	custodianOfStmt               *sql.Stmt
+	decisionsOfStmt               *sql.Stmt
 	defaultColumnsOfStmt          *sql.Stmt
 	defaultColumnsOfTypeStmt      *sql.Stmt
 	defaultItemOfStmt             *sql.Stmt
@@ -1749,6 +1798,7 @@ type Queries struct {
 	hasUsersStmt                  *sql.Stmt
 	heldEverywhereStmt            *sql.Stmt
 	heldInProjectsStmt            *sql.Stmt
+	historyOfProjectStmt          *sql.Stmt
 	holdersOfStmt                 *sql.Stmt
 	inactiveOfStmt                *sql.Stmt
 	inactiveProjectsOfStmt        *sql.Stmt
@@ -1757,6 +1807,7 @@ type Queries struct {
 	isMemberStmt                  *sql.Stmt
 	itemHasEntriesStmt            *sql.Stmt
 	itemOfStmt                    *sql.Stmt
+	itemTotalsOfStmt              *sql.Stmt
 	itemsOfStmt                   *sql.Stmt
 	itemsOfCategoryStmt           *sql.Stmt
 	keptPartnerIDsStmt            *sql.Stmt
@@ -1790,6 +1841,7 @@ type Queries struct {
 	projectsOfUserStmt            *sql.Stmt
 	projectsOfUserWithRowsStmt    *sql.Stmt
 	purchaseDetailsOfStmt         *sql.Stmt
+	reconciliationBalancesOfStmt  *sql.Stmt
 	rejectionsOfStmt              *sql.Stmt
 	removeAccountStmt             *sql.Stmt
 	removeCapitalDetailsStmt      *sql.Stmt
@@ -1857,6 +1909,7 @@ type Queries struct {
 	subgroupsOfItemStmt           *sql.Stmt
 	supplierOfStmt                *sql.Stmt
 	suppliersOfStmt               *sql.Stmt
+	transfersOfStmt               *sql.Stmt
 	unitsOfStmt                   *sql.Stmt
 	userNamedStmt                 *sql.Stmt
 	userNamesStmt                 *sql.Stmt
@@ -1866,6 +1919,7 @@ type Queries struct {
 	usersInProjectStmt            *sql.Stmt
 	usersOfProjectStmt            *sql.Stmt
 	valuesStmt                    *sql.Stmt
+	waitingByKindStmt             *sql.Stmt
 	wordsInStmt                   *sql.Stmt
 	wordsOfStmt                   *sql.Stmt
 }
@@ -1932,6 +1986,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		contractsWithPaymentsStmt:     q.contractsWithPaymentsStmt,
 		countTryStmt:                  q.countTryStmt,
 		custodianOfStmt:               q.custodianOfStmt,
+		decisionsOfStmt:               q.decisionsOfStmt,
 		defaultColumnsOfStmt:          q.defaultColumnsOfStmt,
 		defaultColumnsOfTypeStmt:      q.defaultColumnsOfTypeStmt,
 		defaultItemOfStmt:             q.defaultItemOfStmt,
@@ -1955,6 +2010,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		hasUsersStmt:                  q.hasUsersStmt,
 		heldEverywhereStmt:            q.heldEverywhereStmt,
 		heldInProjectsStmt:            q.heldInProjectsStmt,
+		historyOfProjectStmt:          q.historyOfProjectStmt,
 		holdersOfStmt:                 q.holdersOfStmt,
 		inactiveOfStmt:                q.inactiveOfStmt,
 		inactiveProjectsOfStmt:        q.inactiveProjectsOfStmt,
@@ -1963,6 +2019,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		isMemberStmt:                  q.isMemberStmt,
 		itemHasEntriesStmt:            q.itemHasEntriesStmt,
 		itemOfStmt:                    q.itemOfStmt,
+		itemTotalsOfStmt:              q.itemTotalsOfStmt,
 		itemsOfStmt:                   q.itemsOfStmt,
 		itemsOfCategoryStmt:           q.itemsOfCategoryStmt,
 		keptPartnerIDsStmt:            q.keptPartnerIDsStmt,
@@ -1996,6 +2053,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		projectsOfUserStmt:            q.projectsOfUserStmt,
 		projectsOfUserWithRowsStmt:    q.projectsOfUserWithRowsStmt,
 		purchaseDetailsOfStmt:         q.purchaseDetailsOfStmt,
+		reconciliationBalancesOfStmt:  q.reconciliationBalancesOfStmt,
 		rejectionsOfStmt:              q.rejectionsOfStmt,
 		removeAccountStmt:             q.removeAccountStmt,
 		removeCapitalDetailsStmt:      q.removeCapitalDetailsStmt,
@@ -2063,6 +2121,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		subgroupsOfItemStmt:           q.subgroupsOfItemStmt,
 		supplierOfStmt:                q.supplierOfStmt,
 		suppliersOfStmt:               q.suppliersOfStmt,
+		transfersOfStmt:               q.transfersOfStmt,
 		unitsOfStmt:                   q.unitsOfStmt,
 		userNamedStmt:                 q.userNamedStmt,
 		userNamesStmt:                 q.userNamesStmt,
@@ -2072,6 +2131,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		usersInProjectStmt:            q.usersInProjectStmt,
 		usersOfProjectStmt:            q.usersOfProjectStmt,
 		valuesStmt:                    q.valuesStmt,
+		waitingByKindStmt:             q.waitingByKindStmt,
 		wordsInStmt:                   q.wordsInStmt,
 		wordsOfStmt:                   q.wordsOfStmt,
 	}

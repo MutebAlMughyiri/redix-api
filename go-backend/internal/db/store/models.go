@@ -136,11 +136,32 @@ type Entry struct {
 	Number          int64
 }
 
+type EntryDecision struct {
+	ID      int64
+	EntryID uuid.UUID
+	Action  int64
+	UserID  uuid.UUID
+	At      moment.Moment
+	Reason  string
+}
+
 type ExpenseDetail struct {
 	EntryID         uuid.UUID
 	ItemID          uuid.UUID
 	SubgroupID      uuid.UUID
 	PaymentMethodID uuid.UUID
+}
+
+type History struct {
+	ID        int64
+	At        moment.Moment
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+	Action    string
+	TableName string
+	RecordID  uuid.UUID
+	Before    string
+	After     string
 }
 
 type InactiveMember struct {
@@ -272,6 +293,18 @@ type Supplier struct {
 type SupplierDefaultItem struct {
 	SupplierID uuid.UUID
 	ItemID     uuid.UUID
+}
+
+type Transfer struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	FromAccountID   uuid.UUID
+	ToAccountID     uuid.UUID
+	Amount          fixed.Number
+	Date            moment.Date
+	Notes           string
+	CreatedByUserID uuid.UUID
+	CreatedAt       moment.Moment
 }
 
 type Unit struct {

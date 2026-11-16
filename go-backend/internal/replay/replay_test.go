@@ -17,6 +17,7 @@ import (
 	"mime"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -286,7 +287,9 @@ type mapping map[string]string
 func (m mapping) into(text string) string {
 	keys := make([]string, 0, len(m))
 	for key := range m {
-		keys = append(keys, key)
+		if !strings.HasPrefix(key, lineKey) {
+			keys = append(keys, key)
+		}
 	}
 	sort.Slice(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
 	for _, key := range keys {
@@ -381,7 +384,7 @@ func send(handler http.Handler, names mapping, s step) *httptest.ResponseRecorde
 		json.Unmarshal(s.Body, &file)
 		body, _ = base64.StdEncoding.DecodeString(file.Base64)
 	}
-	request := httptest.NewRequest(s.Method, names.into(s.Path+s.Query), bytes.NewReader(body))
+	request := httptest.NewRequest(s.Method, names.into(s.Path+lineQuery(names, s.Query)), bytes.NewReader(body))
 	if s.ContentType != "" {
 		request.Header.Set("Content-Type", s.ContentType)
 	}
@@ -557,9 +560,32 @@ func same(names mapping, path, key string, net, got any) []string {
 		}
 		return []string{fmt.Sprintf("%s: %q, .NET answered %q", path, got, net)}
 	default:
+		if key == "id" {
+			// A number under "id" is a History line's, which .NET numbered across every test of its shared database: learned as a GUID is.
+			if known, learned := names[lineKey+fmt.Sprint(net)]; !learned || known == fmt.Sprint(got) {
+				names[lineKey+fmt.Sprint(net)] = fmt.Sprint(got)
+				return nil
+			}
+		}
 		if fmt.Sprint(net) != fmt.Sprint(got) {
 			return []string{fmt.Sprintf("%s: %v, .NET answered %v", path, got, net)}
 		}
 		return nil
 	}
+}
+
+// lineKey marks a History line's number in the mapping, kept apart from the text into replaces, since a number may be part of another value.
+const lineKey = "line:"
+
+// lineQuery is the request's query with a page's starting line, before, named by Go's number.
+func lineQuery(names mapping, query string) string {
+	values, err := url.ParseQuery(strings.TrimPrefix(query, "?"))
+	if err != nil || values.Get("before") == "" {
+		return query
+	}
+	if goLine, learned := names[lineKey+values.Get("before")]; learned {
+		values.Set("before", goLine)
+		return "?" + values.Encode()
+	}
+	return query
 }

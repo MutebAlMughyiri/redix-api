@@ -1,6 +1,7 @@
 package accounts
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"slices"
@@ -343,16 +344,15 @@ type balanceView struct {
 // latestOf is the surplus now, the latest check's balances and the difference; with no check yet the balances are empty and the difference is
 // what the surplus says is missing (UC-041, BR-08). typed are the balances of a check just entered, as they were typed, which .NET's answer
 // carried; nil for one read back.
-func latestOf(r *http.Request, q *store.Queries, typed map[uuid.UUID]fixed.Total) (reconciliationView, error) {
-	projectID := web.ID(r, "projectId")
-	latest, err := q.LatestReconciliation(r.Context(), projectID)
+func latestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed map[uuid.UUID]fixed.Total) (reconciliationView, error) {
+	latest, err := q.LatestReconciliation(ctx, projectID)
 	if err != nil {
 		return reconciliationView{}, err
 	}
 	view, actual := reconciliationView{Balances: []balanceView{}}, map[uuid.UUID]fixed.Total{}
 	for _, check := range latest {
 		view.At = check.At
-		balances, err := q.BalancesOf(r.Context(), check.ID)
+		balances, err := q.BalancesOf(ctx, check.ID)
 		if err != nil {
 			return view, err
 		}
@@ -364,12 +364,12 @@ func latestOf(r *http.Request, q *store.Queries, typed map[uuid.UUID]fixed.Total
 			view.ActualTotal = view.ActualTotal.Plus(actual[row.AccountID])
 		}
 	}
-	figures, err := FiguresOf(r.Context(), q, projectID)
+	figures, err := FiguresOf(ctx, q, projectID)
 	if err != nil {
 		return view, err
 	}
-	accounts, err := q.AccountsOf(r.Context(), projectID)
-	moved, movedErr := Balances(r.Context(), q, projectID)
+	accounts, err := q.AccountsOf(ctx, projectID)
+	moved, movedErr := Balances(ctx, q, projectID)
 	for _, account := range accounts {
 		held, checked := actual[account.ID]
 		if account.IsActive || checked {
@@ -383,7 +383,7 @@ func latestOf(r *http.Request, q *store.Queries, typed map[uuid.UUID]fixed.Total
 }
 
 func (s Routes) latest(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	view, err := latestOf(r, s.database.Queries(), nil)
+	view, err := latestOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), nil)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -444,10 +444,17 @@ func (s Routes) enter(w http.ResponseWriter, r *http.Request, caller access.Call
 	for _, row := range request.Balances {
 		typed[row.AccountID] = row.ActualBalance.Total()
 	}
-	view, err := latestOf(r, s.database.Queries(), typed)
+	view, err := latestOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), typed)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
 	web.JSON(w, r, http.StatusOK, view)
+}
+
+// Reconciled is when the project's latest check was made, the zero moment for none yet, and what it differs from the surplus (UC-041, BR-08): what
+// the summary and the periodic report show of it.
+func Reconciled(ctx context.Context, q *store.Queries, projectID uuid.UUID) (moment.Moment, fixed.Total, error) {
+	view, err := latestOf(ctx, q, projectID, nil)
+	return view.At, view.Difference, err
 }

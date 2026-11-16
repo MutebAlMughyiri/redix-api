@@ -74,6 +74,7 @@ sql:
       - internal/partners/queries.sql
       - internal/attachments/queries.sql
       - internal/documents/queries.sql
+      - internal/reports/queries.sql
       - internal/notifications/queries.sql
     gen:
       go:

@@ -131,3 +131,17 @@ WHERE contracts.project_id = ? AND contracts.is_active = 1 ORDER BY contracts.so
 
 -- name: UserNames :many
 SELECT id, display_name FROM users;
+
+-- name: HistoryOfProject :many
+-- Every History line of a project, newest first: what the history screens read (D11), so no line of another project can reach them.
+SELECT * FROM history WHERE project_id = ? ORDER BY id DESC;
+
+-- name: TransfersOf :many
+SELECT * FROM transfers WHERE project_id = ?;
+
+-- name: ReconciliationBalancesOf :many
+SELECT reconciliation_balances.* FROM reconciliation_balances JOIN reconciliations ON reconciliations.id = reconciliation_balances.reconciliation_id
+WHERE reconciliations.project_id = ?;
+
+-- name: DecisionsOf :many
+SELECT entry_decisions.* FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id WHERE entries.project_id = ? ORDER BY entry_decisions.id;

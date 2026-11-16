@@ -40,6 +40,9 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	reads := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.ReadProject, handler) }
 	router.Handle("GET", project+"/entry-tables", reads(s.entryTables))
 	router.Handle("GET", project+"/items/{itemId:guid}/tables", reads(s.itemTables))
+	router.Handle("GET", project+"/accounts/history", reads(s.accountHistory))
+	router.Handle("GET", project+"/partners/history", reads(s.partnerHistory))
+	router.Handle("GET", project+"/approvals/history", gate.Needs(access.ApproveEntries, s.approvalHistory))
 	router.Handle("POST", project+"/entries", gate.Changes(access.ReadProject, s.record))
 	router.Handle("PUT", project+"/entries/{entryId:guid}", gate.Changes(access.ReadProject, s.change))
 	router.Handle("GET", project+"/entries/{entryId:guid}", reads(s.read))

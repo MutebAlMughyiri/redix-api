@@ -1600,6 +1600,40 @@ func (q *Queries) CustodianOf(ctx context.Context, accountID uuid.UUID) ([]Accou
 	return items, nil
 }
 
+const decisionsOf = `-- name: DecisionsOf :many
+SELECT entry_decisions.id, entry_decisions.entry_id, entry_decisions."action", entry_decisions.user_id, entry_decisions.at, entry_decisions.reason FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id WHERE entries.project_id = ? ORDER BY entry_decisions.id
+`
+
+func (q *Queries) DecisionsOf(ctx context.Context, projectID uuid.UUID) ([]EntryDecision, error) {
+	rows, err := q.query(ctx, q.decisionsOfStmt, decisionsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EntryDecision
+	for rows.Next() {
+		var i EntryDecision
+		if err := rows.Scan(
+			&i.ID,
+			&i.EntryID,
+			&i.Action,
+			&i.UserID,
+			&i.At,
+			&i.Reason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const defaultColumnsOf = `-- name: DefaultColumnsOf :many
 SELECT id, project_id, item_type, "key", name, data_type, is_core, is_required, show_in_reports, sort_order, choices FROM default_columns WHERE project_id = ? ORDER BY sort_order, id
 `
@@ -2198,6 +2232,44 @@ func (q *Queries) HeldInProjects(ctx context.Context, userID uuid.UUID) ([]HeldI
 	return items, nil
 }
 
+const historyOfProject = `-- name: HistoryOfProject :many
+SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after" FROM history WHERE project_id = ? ORDER BY id DESC
+`
+
+// Every History line of a project, newest first: what the history screens read (D11), so no line of another project can reach them.
+func (q *Queries) HistoryOfProject(ctx context.Context, projectID uuid.UUID) ([]History, error) {
+	rows, err := q.query(ctx, q.historyOfProjectStmt, historyOfProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []History
+	for rows.Next() {
+		var i History
+		if err := rows.Scan(
+			&i.ID,
+			&i.At,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.RecordID,
+			&i.Before,
+			&i.After,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const holdersOf = `-- name: HoldersOf :many
 SELECT user_id FROM project_permissions WHERE project_id = ?1 AND permission = ?2 ORDER BY id
 `
@@ -2381,6 +2453,49 @@ func (q *Queries) ItemOf(ctx context.Context, arg ItemOfParams) (Item, error) {
 		&i.ShowsTablePercentages,
 	)
 	return i, err
+}
+
+const itemTotalsOf = `-- name: ItemTotalsOf :many
+SELECT moved.item_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
+    SELECT expense_details.item_id, entries.amount FROM expense_details JOIN entries ON entries.id = expense_details.entry_id
+    WHERE entries.project_id = ?1 AND entries.status = 2
+    UNION ALL SELECT revenue_details.item_id, entries.amount FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id
+    WHERE entries.project_id = ?1 AND entries.status = 2
+    UNION ALL SELECT items.id, CASE WHEN entries.kind = 3 THEN -entries.amount ELSE entries.amount END
+    FROM capital_movement_details JOIN entries ON entries.id = capital_movement_details.entry_id
+        JOIN categories ON categories.project_id = entries.project_id JOIN items ON items.category_id = categories.id AND items.type = 6
+    WHERE entries.project_id = ?1 AND entries.status = 2
+) AS moved GROUP BY moved.item_id
+`
+
+type ItemTotalsOfRow struct {
+	ItemID uuid.UUID
+	Total  int64
+}
+
+// What each item of the project came to (ItemTotals, BR-02, BR-05): an expense item's approved expenses, a revenue item's approved revenue, the
+// capital item what the partners put in less what they took out.
+func (q *Queries) ItemTotalsOf(ctx context.Context, projectID uuid.UUID) ([]ItemTotalsOfRow, error) {
+	rows, err := q.query(ctx, q.itemTotalsOfStmt, itemTotalsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ItemTotalsOfRow
+	for rows.Next() {
+		var i ItemTotalsOfRow
+		if err := rows.Scan(&i.ItemID, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const itemsOf = `-- name: ItemsOf :many
@@ -3413,6 +3528,34 @@ func (q *Queries) PurchaseDetailsOf(ctx context.Context, projectID uuid.UUID) ([
 	for rows.Next() {
 		var i PurchaseDetail
 		if err := rows.Scan(&i.EntryID, &i.SupplierID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const reconciliationBalancesOf = `-- name: ReconciliationBalancesOf :many
+SELECT reconciliation_balances.reconciliation_id, reconciliation_balances.account_id, reconciliation_balances.actual_balance FROM reconciliation_balances JOIN reconciliations ON reconciliations.id = reconciliation_balances.reconciliation_id
+WHERE reconciliations.project_id = ?
+`
+
+func (q *Queries) ReconciliationBalancesOf(ctx context.Context, projectID uuid.UUID) ([]ReconciliationBalance, error) {
+	rows, err := q.query(ctx, q.reconciliationBalancesOfStmt, reconciliationBalancesOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReconciliationBalance
+	for rows.Next() {
+		var i ReconciliationBalance
+		if err := rows.Scan(&i.ReconciliationID, &i.AccountID, &i.ActualBalance); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -4636,6 +4779,43 @@ func (q *Queries) SuppliersOf(ctx context.Context, arg SuppliersOfParams) ([]Sup
 	return items, nil
 }
 
+const transfersOf = `-- name: TransfersOf :many
+SELECT id, project_id, from_account_id, to_account_id, amount, date, notes, created_by_user_id, created_at FROM transfers WHERE project_id = ?
+`
+
+func (q *Queries) TransfersOf(ctx context.Context, projectID uuid.UUID) ([]Transfer, error) {
+	rows, err := q.query(ctx, q.transfersOfStmt, transfersOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Transfer
+	for rows.Next() {
+		var i Transfer
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.FromAccountID,
+			&i.ToAccountID,
+			&i.Amount,
+			&i.Date,
+			&i.Notes,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const unitsOf = `-- name: UnitsOf :many
 SELECT id, project_id, name, sort_order FROM units WHERE project_id = ?1 ORDER BY sort_order
 `
@@ -4876,6 +5056,40 @@ func (q *Queries) Values(ctx context.Context) ([]ValuesRow, error) {
 	for rows.Next() {
 		var i ValuesRow
 		if err := rows.Scan(&i.Key, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const waitingByKind = `-- name: WaitingByKind :many
+SELECT kind, count(*) AS entries, CAST(SUM(amount) AS INTEGER) AS total FROM entries WHERE project_id = ? AND status = 1 GROUP BY kind
+`
+
+type WaitingByKindRow struct {
+	Kind    int64
+	Entries int64
+	Total   int64
+}
+
+// What waits for approval in the project, by kind: how many and how much.
+func (q *Queries) WaitingByKind(ctx context.Context, projectID uuid.UUID) ([]WaitingByKindRow, error) {
+	rows, err := q.query(ctx, q.waitingByKindStmt, waitingByKind, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WaitingByKindRow
+	for rows.Next() {
+		var i WaitingByKindRow
+		if err := rows.Scan(&i.Kind, &i.Entries, &i.Total); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
