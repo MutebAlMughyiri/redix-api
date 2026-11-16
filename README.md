@@ -13,6 +13,8 @@ dotnet ef database update --project src/Redix.Api -- --environment Dev
 dotnet run --project src/Redix.Api --launch-profile dev
 ```
 
+The launch profile sets `ASPNETCORE_ENVIRONMENT`. `dotnet run --environment Dev` does not choose the environment on .NET 10: the API starts as Production, on qa's port. From Git Bash, first run `export MSYS2_ENV_CONV_EXCL=REDIX_`: the sign-in key begins with `/`, which Git Bash otherwise rewrites as a Windows path before the API reads it, and every request answers 500. PowerShell, which the `.night` scripts use, needs nothing.
+
 Each environment is a name, and the name alone picks the port, the database and the admin, from `appsettings.{name}.json` (redix-api #118):
 
 | Environment | Start it | Address | Database |
