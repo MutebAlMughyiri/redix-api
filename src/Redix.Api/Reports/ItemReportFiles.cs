@@ -72,7 +72,7 @@ public static class ItemReportFiles
     {
         Choices = column.Choices,
         AllowsBlank = !column.IsRequired,
-        IsFile = column.Key == "attachment",
+        IsFile = column.Key == ColumnKeys.Attachment,
     };
 
     /// <summary>A value as its cell holds it: a day, a number, or the text kept; nothing when none was given.</summary>

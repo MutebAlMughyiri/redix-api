@@ -101,13 +101,13 @@ public static class ProjectFileEndpoints
     private static async Task<ProjectFileRegisters> RegistersOfAsync(Guid projectId, ProjectFile file, Guid userId, RedixDbContext db, List<ProjectFileRefusal> refused)
     {
         var suppliers = await db.Suppliers.Where(supplier => supplier.ProjectId == projectId).Select(supplier => supplier.Name).ToListAsync();
-        foreach (var name in LabelsOf(file, "supplier").Except(suppliers))
+        foreach (var name in LabelsOf(file, ColumnKeys.Supplier).Except(suppliers))
         {
             var (_, refusal, _) = await SuppliersEndpoints.AddAsync(projectId, new SupplierRequest(name), userId, db);
             refused.AddRange(refusal.Length > 0 ? [ProjectFileRefusal.Of(ProjectFileOwner.Supplier, refusal) with { Value = name }] : []);
         }
         var methods = await db.PaymentMethods.Where(method => method.ProjectId == projectId).Select(method => method.Name).ToListAsync();
-        foreach (var name in LabelsOf(file, "paymentMethod").Except(methods))
+        foreach (var name in LabelsOf(file, ColumnKeys.PaymentMethod).Except(methods))
         {
             if (Project.IsAcceptableName(name))
             {
@@ -343,38 +343,38 @@ public static class ProjectFileEndpoints
             }
             switch (key)
             {
-                case "description":
+                case ColumnKeys.Description:
                     request = request with { Description = value };
                     break;
-                case "date":
+                case ColumnKeys.Date:
                     request = request with { Date = DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : DateOnly.MinValue };
                     break;
-                case "total" or "amount":
+                case ColumnKeys.Total or ColumnKeys.Amount:
                     request = request with { Amount = decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) ? amount : 0 };
                     break;
-                case "account" when value.Length > 0:
+                case ColumnKeys.Account when value.Length > 0:
                     if (!registers.Accounts.TryGetValue(value, out var accountId))
                     {
                         return ProjectFileRow.Refused("AccountNotInProject", key, value, column.Name);
                     }
                     request = request with { AccountId = accountId };
                     break;
-                case "supplier":
+                case ColumnKeys.Supplier:
                     request = request with { SupplierId = registers.Suppliers.GetValueOrDefault(value) };
                     break;
-                case "paymentMethod":
+                case ColumnKeys.PaymentMethod:
                     request = request with { PaymentMethodId = registers.PaymentMethods.GetValueOrDefault(value) };
                     break;
-                case "outsideContract" when value.Length > 0:
+                case ColumnKeys.OutsideContract when value.Length > 0:
                     if (value != ReportColumns.PlaceInContract(true) && value != ReportColumns.PlaceInContract(false))
                     {
                         return ProjectFileRow.Refused("UnknownChoice", key, value, column.Name);
                     }
                     request = request with { IsOutsideContract = value == ReportColumns.PlaceInContract(true) };
                     break;
-                case "attachment" when value.Length > 0:
+                case ColumnKeys.Attachment when value.Length > 0:
                     return ProjectFileRow.Refused("AttachmentNotInFile", key, value, column.Name);
-                case "account" or "outsideContract" or "attachment":
+                case ColumnKeys.Account or ColumnKeys.OutsideContract or ColumnKeys.Attachment:
                     break;
                 default:
                     var choices = table.Columns.Where(asked => asked.Key == key && asked.DataType == ColumnDataType.List && asked.Choices.Count > 0).SelectMany(asked => asked.Choices).ToList();

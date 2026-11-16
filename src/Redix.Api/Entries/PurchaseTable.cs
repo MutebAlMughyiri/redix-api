@@ -27,8 +27,8 @@ public sealed record PurchaseTable(Category Category, Item Item, Subgroup Subgro
             return request.Amount;
         }
         var values = request.ColumnValuesKept();
-        var unitPrice = NumberOf(values.GetValueOrDefault("unitPrice", ""));
-        var quantity = NumberOf(values.GetValueOrDefault("quantity", ""));
+        var unitPrice = NumberOf(values.GetValueOrDefault(ColumnKeys.UnitPrice, ""));
+        var quantity = NumberOf(values.GetValueOrDefault(ColumnKeys.Quantity, ""));
         return unitPrice > 0 && quantity > 0 && unitPrice <= Money.Largest / quantity ? unitPrice * quantity : 0;
     }
 

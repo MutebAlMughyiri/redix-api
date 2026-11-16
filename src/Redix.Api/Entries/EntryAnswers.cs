@@ -11,5 +11,5 @@ public record EntryAnswers(string Description, Dictionary<string, string> Column
     public List<string> MissingOf(IEnumerable<ItemColumn> columns) => columns.Where(column => column.IsRequired && !Gives(column)).Select(column => column.Key).ToList();
 
     /// <summary>Whether this gives <paramref name="column"/> a value: a field of the entry's own is checked elsewhere and counts as given, the description but for what a person may leave empty (FR-41).</summary>
-    private bool Gives(ItemColumn column) => column.Key == "description" ? Description.Length > 0 : column.IsEntryField || ColumnValues.ContainsKey(column.Key);
+    private bool Gives(ItemColumn column) => column.Key == ColumnKeys.Description ? Description.Length > 0 : column.IsEntryField || ColumnValues.ContainsKey(column.Key);
 }

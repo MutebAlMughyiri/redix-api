@@ -46,13 +46,13 @@ public sealed record ReportColumns(List<string> Suppliers, List<string> Accounts
         var values = entry.ColumnValuesByKey();
         return [.. columns.Select(column => column.Key switch
         {
-            "description" => entry.Description,
-            "date" => entry.EntryDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            "supplier" or "contract" => facts.SupplierNameOf(entry),
-            "account" => facts.AccountNameOf(entry),
-            "paymentMethod" => facts.PaymentMethodNameOf(entry),
-            "attachment" => facts.AttachmentIdOf(entry).Length > 0 ? AttachmentWord : "",
-            "outsideContract" => PlaceInContract(isOutsideContract),
+            ColumnKeys.Description => entry.Description,
+            ColumnKeys.Date => entry.EntryDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ColumnKeys.Supplier or ColumnKeys.Contract => facts.SupplierNameOf(entry),
+            ColumnKeys.Account => facts.AccountNameOf(entry),
+            ColumnKeys.PaymentMethod => facts.PaymentMethodNameOf(entry),
+            ColumnKeys.Attachment => facts.AttachmentIdOf(entry).Length > 0 ? AttachmentWord : "",
+            ColumnKeys.OutsideContract => PlaceInContract(isOutsideContract),
             _ when column.DataType == ColumnDataType.List => column.ChoiceOf(values.GetValueOrDefault(column.Key, "")).Name,
             _ => values.GetValueOrDefault(column.Key, ""),
         })];
@@ -60,10 +60,10 @@ public sealed record ReportColumns(List<string> Suppliers, List<string> Accounts
 
     private List<ReportChoiceView> ChoicesOf(ItemColumn column) => column.Key switch
     {
-        "supplier" => NamesOnly(Suppliers),
-        "account" => NamesOnly(Accounts),
-        "paymentMethod" => NamesOnly(PaymentMethods),
-        "outsideContract" => NamesOnly([PlaceInContract(false), PlaceInContract(true)]),
+        ColumnKeys.Supplier => NamesOnly(Suppliers),
+        ColumnKeys.Account => NamesOnly(Accounts),
+        ColumnKeys.PaymentMethod => NamesOnly(PaymentMethods),
+        ColumnKeys.OutsideContract => NamesOnly([PlaceInContract(false), PlaceInContract(true)]),
         _ => [.. column.Choices.Select(choice => new ReportChoiceView(choice.Name, choice.Sign))],
     };
 

@@ -48,7 +48,7 @@ public static class StructureSeed
     /// «الوصف», every entry's one description (Muteb, 13 Nov 2026, redix-api #129): a purchase's product and notes became it. It is first in every table but رأس المال's, where
     /// «نوع الحركة» comes before it, as the approved workbook shows.
     /// </summary>
-    private static readonly TemplateColumn Description = new("description", "الوصف", ColumnDataType.Text, true, false, true);
+    private static readonly TemplateColumn Description = new(ColumnKeys.Description, "الوصف", ColumnDataType.Text, true, false, true);
 
     /// <summary>
     /// A purchase's columns, in the order and under the words of the report workbook Muteb approved on 13 Nov 2026 (redix-api #129): الوصف, المورد, التاريخ, سعر الحبة, العدد,
@@ -57,16 +57,16 @@ public static class StructureSeed
     private static readonly TemplateColumn[] PurchaseColumns =
     [
         Description,
-        new("supplier", "المورد", ColumnDataType.List, true, false, true),
-        new("date", "التاريخ", ColumnDataType.Date, true, true, true),
-        new("unitPrice", "سعر الحبة", ColumnDataType.Amount, false, false, true),
-        new("quantity", "العدد", ColumnDataType.Number, false, false, true),
-        new("entryType", "نوع القيد", ColumnDataType.List, true, false, true,
+        new(ColumnKeys.Supplier, "المورد", ColumnDataType.List, true, false, true),
+        new(ColumnKeys.Date, "التاريخ", ColumnDataType.Date, true, true, true),
+        new(ColumnKeys.UnitPrice, "سعر الحبة", ColumnDataType.Amount, false, false, true),
+        new(ColumnKeys.Quantity, "العدد", ColumnDataType.Number, false, false, true),
+        new(ColumnKeys.EntryType, "نوع القيد", ColumnDataType.List, true, false, true,
             [new ColumnChoice { Id = PurchaseChoiceId, Name = "شراء", Sign = ChoiceSign.Plus }, new ColumnChoice { Id = CreditNoteChoiceId, Name = "مرتجع", Sign = ChoiceSign.Minus }]),
-        new("account", "الحساب", ColumnDataType.List, true, true, true),
-        new("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, true),
-        new("attachment", "المرفق", ColumnDataType.File, true, false, true),
-        new("total", "التكلفة", ColumnDataType.Amount, true, true, true),
+        new(ColumnKeys.Account, "الحساب", ColumnDataType.List, true, true, true),
+        new(ColumnKeys.PaymentMethod, "طريقة الدفع", ColumnDataType.List, false, false, true),
+        new(ColumnKeys.Attachment, "المرفق", ColumnDataType.File, true, false, true),
+        new(ColumnKeys.Total, "التكلفة", ColumnDataType.Amount, true, true, true),
     ];
 
     /// <summary>
@@ -76,14 +76,14 @@ public static class StructureSeed
     private static readonly TemplateColumn[] ContractorPaymentColumns =
     [
         Description,
-        new("date", "التاريخ", ColumnDataType.Date, true, true, true),
-        new("outsideContract", "الاتفاق", ColumnDataType.List, true, false, true),
-        new("account", "الحساب", ColumnDataType.List, true, true, true),
-        new("paymentMethod", "طريقة الدفع", ColumnDataType.List, false, false, true),
-        new("supplier", "المورد", ColumnDataType.List, true, false, false),
-        new("attachment", "المرفق", ColumnDataType.File, true, false, true),
-        new("contract", "العقد", ColumnDataType.List, true, true, false),
-        new("amount", "الدفعة", ColumnDataType.Amount, true, true, true),
+        new(ColumnKeys.Date, "التاريخ", ColumnDataType.Date, true, true, true),
+        new(ColumnKeys.OutsideContract, "الاتفاق", ColumnDataType.List, true, false, true),
+        new(ColumnKeys.Account, "الحساب", ColumnDataType.List, true, true, true),
+        new(ColumnKeys.PaymentMethod, "طريقة الدفع", ColumnDataType.List, false, false, true),
+        new(ColumnKeys.Supplier, "المورد", ColumnDataType.List, true, false, false),
+        new(ColumnKeys.Attachment, "المرفق", ColumnDataType.File, true, false, true),
+        new(ColumnKeys.Contract, "العقد", ColumnDataType.List, true, true, false),
+        new(ColumnKeys.Amount, "الدفعة", ColumnDataType.Amount, true, true, true),
     ];
 
     /// <summary>
@@ -92,23 +92,23 @@ public static class StructureSeed
     /// </summary>
     private static readonly TemplateColumn[] CapitalColumns =
     [
-        new("movementType", "نوع الحركة", ColumnDataType.List, true, false, true,
+        new(ColumnKeys.MovementType, "نوع الحركة", ColumnDataType.List, true, false, true,
             [new ColumnChoice { Id = ContributionChoiceId, Name = "إضافة مبلغ", Sign = ChoiceSign.Plus }, new ColumnChoice { Id = WithdrawalChoiceId, Name = "سحب مبلغ", Sign = ChoiceSign.Minus }]),
         Description,
-        new("date", "التاريخ", ColumnDataType.Date, true, true, true),
-        new("account", "الحساب", ColumnDataType.List, true, true, true),
-        new("attachment", "المرفق", ColumnDataType.File, true, false, true),
-        new("amount", "المبلغ", ColumnDataType.Amount, true, true, true),
+        new(ColumnKeys.Date, "التاريخ", ColumnDataType.Date, true, true, true),
+        new(ColumnKeys.Account, "الحساب", ColumnDataType.List, true, true, true),
+        new(ColumnKeys.Attachment, "المرفق", ColumnDataType.File, true, false, true),
+        new(ColumnKeys.Amount, "المبلغ", ColumnDataType.Amount, true, true, true),
     ];
 
     /// <summary>Revenue's columns, the sale, the VAT refunded and anything else that comes in (redix-api #129): الوصف, التاريخ and المبلغ print, the account and the file are asked.</summary>
     private static readonly TemplateColumn[] RevenueColumns =
     [
         Description,
-        new("date", "التاريخ", ColumnDataType.Date, true, true, true),
-        new("account", "الحساب", ColumnDataType.List, true, true, false),
-        new("attachment", "المرفق", ColumnDataType.File, true, false, false),
-        new("amount", "المبلغ", ColumnDataType.Amount, true, true, true),
+        new(ColumnKeys.Date, "التاريخ", ColumnDataType.Date, true, true, true),
+        new(ColumnKeys.Account, "الحساب", ColumnDataType.List, true, true, false),
+        new(ColumnKeys.Attachment, "المرفق", ColumnDataType.File, true, false, false),
+        new(ColumnKeys.Amount, "المبلغ", ColumnDataType.Amount, true, true, true),
     ];
 
     /// <summary>
@@ -119,7 +119,7 @@ public static class StructureSeed
     public static bool IsAsked(string key, EntryKind kind) => kind switch
     {
         EntryKind.Purchase => !IsOnlyIn(ContractorPaymentColumns, PurchaseColumns, key),
-        EntryKind.ContractorPayment => key != "supplier" && !IsOnlyIn(PurchaseColumns, ContractorPaymentColumns, key),
+        EntryKind.ContractorPayment => key != ColumnKeys.Supplier && !IsOnlyIn(PurchaseColumns, ContractorPaymentColumns, key),
         _ => true,
     };
 
