@@ -63,6 +63,17 @@ func (t Tokens) Create(session Session) (string, time.Time) {
 // ErrNotValid says a token is not one this API signed, or is not valid now.
 var ErrNotValid = errors.New("auth: the access token is not valid")
 
+// LifetimeError says a token this API signed is not valid at this moment - before its start, or from its end on - with both moments, which
+// the challenge names as JwtBearer named them.
+type LifetimeError struct {
+	NotBefore, Expires time.Time
+}
+
+func (e LifetimeError) Error() string { return "auth: the access token's lifetime does not hold now" }
+
+// Is makes a lifetime error one of ErrNotValid.
+func (e LifetimeError) Is(target error) bool { return target == ErrNotValid }
+
 // Check is the session a token speaks for, when this key signed it for this issuer and audience and it is valid now: not before its start and
 // before its end, with no leeway, as AccessTokens.ValidationParameters checked it.
 func (t Tokens) Check(token string) (Session, error) {
@@ -70,6 +81,9 @@ func (t Tokens) Check(token string) (Session, error) {
 	_, err := jwt.ParseWithClaims(token, &read, func(*jwt.Token) (any, error) { return t.key, nil },
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithIssuer(issuer), jwt.WithAudience(issuer),
 		jwt.WithExpirationRequired(), jwt.WithTimeFunc(t.clock.Now))
+	if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet) {
+		return Session{}, LifetimeError{NotBefore: read.NotBefore.Time.UTC(), Expires: read.ExpiresAt.Time.UTC()}
+	}
 	if err != nil {
 		return Session{}, ErrNotValid
 	}

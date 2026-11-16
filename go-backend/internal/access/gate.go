@@ -1,6 +1,7 @@
 package access
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -102,6 +103,12 @@ func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 			err = credentials.ErrNotValid
 		}
 	}
+	var lifetime credentials.LifetimeError
+	if errors.As(err, &lifetime) {
+		g.challenge(w, r, `Bearer error="invalid_token", error_description="The token lifetime is invalid; NotBefore: '`+
+			lifetime.NotBefore.Format(dotNetMoment)+`', Expires: '`+lifetime.Expires.Format(dotNetMoment)+`'"`)
+		return Caller{}, false
+	}
 	if err != nil {
 		g.challenge(w, r, `Bearer error="invalid_token"`)
 		return Caller{}, false
@@ -113,6 +120,9 @@ func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 	}
 	return Caller{Session: session, Access: access}, true
 }
+
+// dotNetMoment is how JwtBearer wrote a moment in its challenge: invariant culture, month first.
+const dotNetMoment = "01/02/2006 15:04:05"
 
 func (g *Gate) challenge(w http.ResponseWriter, r *http.Request, header string) {
 	w.Header().Set("WWW-Authenticate", header)
