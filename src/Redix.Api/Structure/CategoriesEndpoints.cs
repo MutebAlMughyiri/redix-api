@@ -4,6 +4,7 @@ using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
 using Redix.Api.Entries;
+using Redix.Api.Partners;
 using Redix.Api.Projects;
 
 namespace Redix.Api.Structure;
@@ -308,8 +309,8 @@ public static class CategoriesEndpoints
             .GroupBy(partnerId => partnerId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count);
         var counts = purchases.Concat(payments).Concat(movements).ToDictionary();
         var subgroups = await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync();
-        var sight = await Partners.PartnerSight.OfAsync(principal, projectId, db);
-        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), (await db.Partners.Where(Partners.Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync()).Where(sight.Sees), db);
+        var sight = await PartnerSight.OfAsync(principal, projectId, db);
+        var own = await OwnTablesAsync(db.Contracts.Where(contract => contract.ItemId == itemId), (await db.Partners.Where(Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync()).Where(sight.Sees), db);
         return Results.Ok(TablesOf(item, subgroups, own).Select(table => new ItemTableView(table.Id, table.Kind, table.Name, counts.GetValueOrDefault(table.Id))).ToList());
     }
 
@@ -362,7 +363,7 @@ public static class CategoriesEndpoints
         [
             .. item.HasSubgroupTables ? await db.Subgroups.Where(subgroup => subgroup.ItemId == itemId).ToListAsync() : [],
             .. await db.Contracts.Where(contract => contract.ItemId == itemId).ToListAsync(),
-            .. await db.Partners.Where(Partners.Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync(),
+            .. await db.Partners.Where(Partner.Kept).Where(partner => partner.ItemId == itemId).ToListAsync(),
         ];
         return await ReorderAsync(tables, request, db);
     }

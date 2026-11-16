@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Redix.Api.Partners;
 using Redix.Api.Revenue;
 using Redix.Api.History;
 using Redix.Api.Auth;
@@ -98,7 +99,7 @@ public static class EntriesEndpoints
     /// <param name="db">The database the ledger lives in.</param>
     public static async Task<IQueryable<Entry>> SeenByAsync(Guid projectId, Guid userId, RedixDbContext db)
     {
-        var sight = await Partners.PartnerSight.OfUserAsync(userId, projectId, db);
+        var sight = await PartnerSight.OfUserAsync(userId, projectId, db);
         var seesAll = sight.SeesAll;
         var chosen = sight.Chosen;
         return db.Entries.Where(entry => entry.ProjectId == projectId

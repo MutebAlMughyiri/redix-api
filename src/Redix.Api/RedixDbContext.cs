@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Redix.Api.Accounts;
 using Redix.Api.Attachments;
+using Redix.Api.Config;
 using Redix.Api.History;
 using Redix.Api.Auth;
 using Redix.Api.Contracts;
@@ -512,10 +513,10 @@ public class RedixDbContext(DbContextOptions<RedixDbContext> options, AccessCach
         });
         modelBuilder.Entity<Config.ConfigValue>(value =>
         {
-            value.Property(v => v.Key).HasMaxLength(Config.ConfigValue.KeyMaxLength).IsUnicode(false);
-            value.Property(v => v.Value).HasMaxLength(Config.ConfigValue.ValueMaxLength);
+            value.Property(v => v.Key).HasMaxLength(ConfigValue.KeyMaxLength).IsUnicode(false);
+            value.Property(v => v.Value).HasMaxLength(ConfigValue.ValueMaxLength);
             value.HasIndex(v => v.Key).IsUnique();
-            value.HasData(Config.ConfigValue.Seeded);
+            value.HasData(ConfigValue.Seeded);
         });
         modelBuilder.Entity<SystemPermission>(held =>
         {

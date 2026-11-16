@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Auth;
+using Redix.Api.Partners;
 using Redix.Api.Structure;
 
 namespace Redix.Api.Entries;
@@ -68,7 +69,7 @@ public abstract record EntryTable(Category Category, Item Item, Guid Id, string 
             join supplier in db.Suppliers on contract.SupplierId equals supplier.Id
             where contract.ProjectId == projectId && contract.IsActive
             select new { Contract = contract, Contractor = supplier.Name }).ToListAsync();
-        var partners = await db.Partners.Where(Partners.Partner.Kept).Where(partner => partner.ProjectId == projectId).ToListAsync();
+        var partners = await db.Partners.Where(Partner.Kept).Where(partner => partner.ProjectId == projectId).ToListAsync();
         var recordsEntries = held.Contains(Permission.RecordEntries);
         var movesMoney = held.Contains(Permission.MoveMoney);
         return categories.SelectMany(category => category.Items.SelectMany(item =>

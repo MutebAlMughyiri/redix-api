@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Redix.Api.Attachments;
 using Redix.Api.Auth;
+using Redix.Api.Contracts;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
 using Redix.Api.Reports;
@@ -800,7 +801,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     public async Task Findings131_TheContractsWorkbookIsOneStatementTableOfWhatEachContractHasLeft()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
-        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new Contracts.AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000m, false), Json)).EnsureSuccessStatusCode();
+        (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/contracts", new AddContractRequest(ledger.SupplierId, ledger.ItemId, 1000m, false), Json)).EnsureSuccessStatusCode();
 
         using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/contracts/xlsx")));
         var sheet = workbook.Worksheet(1);

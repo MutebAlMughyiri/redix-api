@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
 using Redix.Api.History;
@@ -521,7 +522,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
 
         var pdf = await first.Ledger.Client.GetByteArrayAsync($"{address}/pdf");
         using var workbook = new ClosedXML.Excel.XLWorkbook(new MemoryStream(await first.Ledger.Client.GetByteArrayAsync($"{address}/xlsx")));
-        var amounts = workbook.Worksheets.SelectMany(sheet => sheet.CellsUsed()).Where(cell => cell.DataType == ClosedXML.Excel.XLDataType.Number).Select(cell => (decimal)cell.Value.GetNumber()).ToList();
+        var amounts = workbook.Worksheets.SelectMany(sheet => sheet.CellsUsed()).Where(cell => cell.DataType == XLDataType.Number).Select(cell => (decimal)cell.Value.GetNumber()).ToList();
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(pdf, 0, 4));
         Assert.Contains(3000m, amounts);
