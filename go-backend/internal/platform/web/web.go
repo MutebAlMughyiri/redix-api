@@ -30,11 +30,12 @@ type Router struct {
 	mux      *http.ServeMux
 	frontEnd string
 	files    http.Handler
+	checks   map[string]map[string]func(string) bool
 }
 
 // NewRouter is a router whose every other path is a file of frontEnd, the web front end's folder; "" when there is none yet.
 func NewRouter(frontEnd string) *Router {
-	return &Router{mux: http.NewServeMux(), frontEnd: frontEnd, files: http.FileServer(http.Dir(frontEnd))}
+	return &Router{mux: http.NewServeMux(), frontEnd: frontEnd, files: http.FileServer(http.Dir(frontEnd)), checks: map[string]map[string]func(string) bool{}}
 }
 
 // Handle routes method and path at the path and under /api/v1. A path names its values as .NET did, with their constraints: "/projects/{projectId:guid}",
@@ -52,6 +53,7 @@ func (r *Router) Handle(method, path string, handler http.HandlerFunc) {
 	}
 	r.mux.HandleFunc(method+" "+pattern, checked)
 	r.mux.HandleFunc(method+" "+version+pattern, checked)
+	r.checks[method+" "+pattern] = constraints
 }
 
 // constraints are the route constraints the API's paths use.
@@ -78,7 +80,17 @@ var routeValue = regexp.MustCompile(`\{(\w+)(?::(guid|int))?\}`)
 // Handles says whether a route answers method on path, so a replay can tell the routes already on Go from the rest.
 func (r *Router) Handles(method, path string) bool {
 	_, pattern := r.mux.Handler(&http.Request{Method: method, URL: &url.URL{Path: path}})
-	return pattern != ""
+	if pattern == "" {
+		return false
+	}
+	routeSegments, pathSegments := strings.Split(strings.SplitN(pattern, " ", 2)[1], "/"), strings.Split(path, "/")
+	for i, segment := range routeSegments {
+		name := strings.TrimSuffix(strings.TrimPrefix(segment, "{"), "}")
+		if fits, constrained := r.checks[pattern][name]; constrained && i < len(pathSegments) && !fits(pathSegments[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // ServeHTTP answers a route, then a front end file, then what ASP.NET Core answered: 405 for a known path with another method, 404 for the rest.

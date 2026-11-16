@@ -145,3 +145,18 @@ WHERE reconciliations.project_id = ?;
 
 -- name: DecisionsOf :many
 SELECT entry_decisions.* FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id WHERE entries.project_id = ? ORDER BY entry_decisions.id;
+
+-- name: LatestIssuedAt :many
+-- When the project's latest periodic report was issued; what was approved after it is new (BR-26).
+SELECT issued_at FROM periodic_reports WHERE project_id = ? ORDER BY number DESC LIMIT 1;
+
+-- name: ArabicWord :one
+SELECT translations.value FROM translations JOIN translation_keys ON translation_keys.id = translations.translation_key_id
+WHERE translation_keys.key = ? AND translations.language = 'ar';
+
+-- name: RegisterNames :many
+-- The names a report's list columns choose from: the project's suppliers and accounts by name, its payment methods in their order.
+SELECT 'supplier' AS register, suppliers.name, 0 AS place FROM suppliers WHERE suppliers.project_id = sqlc.arg(project_id)
+UNION ALL SELECT 'account', accounts.name, 0 FROM accounts WHERE accounts.project_id = sqlc.arg(project_id)
+UNION ALL SELECT 'paymentMethod', payment_methods.name, payment_methods.sort_order FROM payment_methods WHERE payment_methods.project_id = sqlc.arg(project_id)
+ORDER BY 1, 3, 2 COLLATE names;

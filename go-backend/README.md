@@ -60,6 +60,6 @@ To restore: `litestream restore -o /var/lib/redix/redix.db /var/lib/redix/redix.
 
 ## Where it stands (16 Nov 2026)
 
-130 of the API's 147 routes are on Go, and 719 of .NET's recorded tests replay against them, every answer matching. Still on .NET: the periodic
-report and the item and contract reports with their PDF and workbook files, the VAT statement, the project file and file links. Then P3, the data
+132 of the API's 147 routes are on Go, and 722 of .NET's recorded tests replay against them, every answer matching. Still on .NET: the periodic
+report, the PDF and workbook files of the item and contract reports, the VAT statement, the project file and file links. Then P3, the data
 moved from SQL Server; P4, the phone's Patrol tests against Go; and P6, the switch.

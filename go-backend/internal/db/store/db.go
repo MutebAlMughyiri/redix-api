@@ -135,6 +135,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.approvedTotalsByKindStmt, err = db.PrepareContext(ctx, approvedTotalsByKind); err != nil {
 		return nil, fmt.Errorf("error preparing query ApprovedTotalsByKind: %w", err)
 	}
+	if q.arabicWordStmt, err = db.PrepareContext(ctx, arabicWord); err != nil {
+		return nil, fmt.Errorf("error preparing query ArabicWord: %w", err)
+	}
 	if q.attachmentExistsStmt, err = db.PrepareContext(ctx, attachmentExists); err != nil {
 		return nil, fmt.Errorf("error preparing query AttachmentExists: %w", err)
 	}
@@ -312,6 +315,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.lastCodeStmt, err = db.PrepareContext(ctx, lastCode); err != nil {
 		return nil, fmt.Errorf("error preparing query LastCode: %w", err)
 	}
+	if q.latestIssuedAtStmt, err = db.PrepareContext(ctx, latestIssuedAt); err != nil {
+		return nil, fmt.Errorf("error preparing query LatestIssuedAt: %w", err)
+	}
 	if q.latestReconciliationStmt, err = db.PrepareContext(ctx, latestReconciliation); err != nil {
 		return nil, fmt.Errorf("error preparing query LatestReconciliation: %w", err)
 	}
@@ -401,6 +407,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.reconciliationBalancesOfStmt, err = db.PrepareContext(ctx, reconciliationBalancesOf); err != nil {
 		return nil, fmt.Errorf("error preparing query ReconciliationBalancesOf: %w", err)
+	}
+	if q.registerNamesStmt, err = db.PrepareContext(ctx, registerNames); err != nil {
+		return nil, fmt.Errorf("error preparing query RegisterNames: %w", err)
 	}
 	if q.rejectionsOfStmt, err = db.PrepareContext(ctx, rejectionsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query RejectionsOf: %w", err)
@@ -832,6 +841,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing approvedTotalsByKindStmt: %w", cerr)
 		}
 	}
+	if q.arabicWordStmt != nil {
+		if cerr := q.arabicWordStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing arabicWordStmt: %w", cerr)
+		}
+	}
 	if q.attachmentExistsStmt != nil {
 		if cerr := q.attachmentExistsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing attachmentExistsStmt: %w", cerr)
@@ -1127,6 +1141,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing lastCodeStmt: %w", cerr)
 		}
 	}
+	if q.latestIssuedAtStmt != nil {
+		if cerr := q.latestIssuedAtStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing latestIssuedAtStmt: %w", cerr)
+		}
+	}
 	if q.latestReconciliationStmt != nil {
 		if cerr := q.latestReconciliationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing latestReconciliationStmt: %w", cerr)
@@ -1275,6 +1294,11 @@ func (q *Queries) Close() error {
 	if q.reconciliationBalancesOfStmt != nil {
 		if cerr := q.reconciliationBalancesOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing reconciliationBalancesOfStmt: %w", cerr)
+		}
+	}
+	if q.registerNamesStmt != nil {
+		if cerr := q.registerNamesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing registerNamesStmt: %w", cerr)
 		}
 	}
 	if q.rejectionsOfStmt != nil {
@@ -1753,6 +1777,7 @@ type Queries struct {
 	allUnitsStmt                  *sql.Stmt
 	approvedRevenueByItemTypeStmt *sql.Stmt
 	approvedTotalsByKindStmt      *sql.Stmt
+	arabicWordStmt                *sql.Stmt
 	attachmentExistsStmt          *sql.Stmt
 	attachmentOfStmt              *sql.Stmt
 	attachmentSentStmt            *sql.Stmt
@@ -1812,6 +1837,7 @@ type Queries struct {
 	itemsOfCategoryStmt           *sql.Stmt
 	keptPartnerIDsStmt            *sql.Stmt
 	lastCodeStmt                  *sql.Stmt
+	latestIssuedAtStmt            *sql.Stmt
 	latestReconciliationStmt      *sql.Stmt
 	managersOfStmt                *sql.Stmt
 	managersOfPendingStmt         *sql.Stmt
@@ -1842,6 +1868,7 @@ type Queries struct {
 	projectsOfUserWithRowsStmt    *sql.Stmt
 	purchaseDetailsOfStmt         *sql.Stmt
 	reconciliationBalancesOfStmt  *sql.Stmt
+	registerNamesStmt             *sql.Stmt
 	rejectionsOfStmt              *sql.Stmt
 	removeAccountStmt             *sql.Stmt
 	removeCapitalDetailsStmt      *sql.Stmt
@@ -1965,6 +1992,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		allUnitsStmt:                  q.allUnitsStmt,
 		approvedRevenueByItemTypeStmt: q.approvedRevenueByItemTypeStmt,
 		approvedTotalsByKindStmt:      q.approvedTotalsByKindStmt,
+		arabicWordStmt:                q.arabicWordStmt,
 		attachmentExistsStmt:          q.attachmentExistsStmt,
 		attachmentOfStmt:              q.attachmentOfStmt,
 		attachmentSentStmt:            q.attachmentSentStmt,
@@ -2024,6 +2052,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		itemsOfCategoryStmt:           q.itemsOfCategoryStmt,
 		keptPartnerIDsStmt:            q.keptPartnerIDsStmt,
 		lastCodeStmt:                  q.lastCodeStmt,
+		latestIssuedAtStmt:            q.latestIssuedAtStmt,
 		latestReconciliationStmt:      q.latestReconciliationStmt,
 		managersOfStmt:                q.managersOfStmt,
 		managersOfPendingStmt:         q.managersOfPendingStmt,
@@ -2054,6 +2083,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		projectsOfUserWithRowsStmt:    q.projectsOfUserWithRowsStmt,
 		purchaseDetailsOfStmt:         q.purchaseDetailsOfStmt,
 		reconciliationBalancesOfStmt:  q.reconciliationBalancesOfStmt,
+		registerNamesStmt:             q.registerNamesStmt,
 		rejectionsOfStmt:              q.rejectionsOfStmt,
 		removeAccountStmt:             q.removeAccountStmt,
 		removeCapitalDetailsStmt:      q.removeCapitalDetailsStmt,

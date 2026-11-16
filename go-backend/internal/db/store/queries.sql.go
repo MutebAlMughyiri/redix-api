@@ -888,6 +888,18 @@ func (q *Queries) ApprovedTotalsByKind(ctx context.Context, projectID uuid.UUID)
 	return items, nil
 }
 
+const arabicWord = `-- name: ArabicWord :one
+SELECT translations.value FROM translations JOIN translation_keys ON translation_keys.id = translations.translation_key_id
+WHERE translation_keys.key = ? AND translations.language = 'ar'
+`
+
+func (q *Queries) ArabicWord(ctx context.Context, key string) (string, error) {
+	row := q.queryRow(ctx, q.arabicWordStmt, arabicWord, key)
+	var value string
+	err := row.Scan(&value)
+	return value, err
+}
+
 const attachmentExists = `-- name: AttachmentExists :one
 SELECT EXISTS (SELECT 1 FROM attachments WHERE id = ?1 AND project_id = ?2)
 `
@@ -2654,6 +2666,34 @@ func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode
 	return items, nil
 }
 
+const latestIssuedAt = `-- name: LatestIssuedAt :many
+SELECT issued_at FROM periodic_reports WHERE project_id = ? ORDER BY number DESC LIMIT 1
+`
+
+// When the project's latest periodic report was issued; what was approved after it is new (BR-26).
+func (q *Queries) LatestIssuedAt(ctx context.Context, projectID uuid.UUID) ([]moment.Moment, error) {
+	rows, err := q.query(ctx, q.latestIssuedAtStmt, latestIssuedAt, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []moment.Moment
+	for rows.Next() {
+		var issued_at moment.Moment
+		if err := rows.Scan(&issued_at); err != nil {
+			return nil, err
+		}
+		items = append(items, issued_at)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const latestReconciliation = `-- name: LatestReconciliation :many
 SELECT id, project_id, at, user_id FROM reconciliations WHERE project_id = ? ORDER BY at DESC, id DESC LIMIT 1
 `
@@ -3556,6 +3596,43 @@ func (q *Queries) ReconciliationBalancesOf(ctx context.Context, projectID uuid.U
 	for rows.Next() {
 		var i ReconciliationBalance
 		if err := rows.Scan(&i.ReconciliationID, &i.AccountID, &i.ActualBalance); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const registerNames = `-- name: RegisterNames :many
+SELECT 'supplier' AS register, suppliers.name, 0 AS place FROM suppliers WHERE suppliers.project_id = ?1
+UNION ALL SELECT 'account', accounts.name, 0 FROM accounts WHERE accounts.project_id = ?1
+UNION ALL SELECT 'paymentMethod', payment_methods.name, payment_methods.sort_order FROM payment_methods WHERE payment_methods.project_id = ?1
+ORDER BY 1, 3, 2 COLLATE names
+`
+
+type RegisterNamesRow struct {
+	Register string
+	Name     string
+	Place    int64
+}
+
+// The names a report's list columns choose from: the project's suppliers and accounts by name, its payment methods in their order.
+func (q *Queries) RegisterNames(ctx context.Context, projectID uuid.UUID) ([]RegisterNamesRow, error) {
+	rows, err := q.query(ctx, q.registerNamesStmt, registerNames, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RegisterNamesRow
+	for rows.Next() {
+		var i RegisterNamesRow
+		if err := rows.Scan(&i.Register, &i.Name, &i.Place); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

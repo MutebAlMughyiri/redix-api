@@ -483,3 +483,26 @@ func ChoiceNameIn(columns []store.ItemColumn, kept string) string {
 	}
 	return ""
 }
+
+// Choice is one of a list column's choices as a report shows it: its name and the sign it gives the amount.
+type Choice struct {
+	Name string
+	Sign Sign
+}
+
+// ChoicesIn is the column's own choices, in their order.
+func ChoicesIn(row store.ItemColumn) []Choice {
+	choices := []Choice{}
+	for _, one := range ofItemColumn(row).Choices {
+		choices = append(choices, Choice{Name: one.Name, Sign: Sign(one.Sign)})
+	}
+	return choices
+}
+
+// ChoiceNameOf is the name of the column's choice whose id value holds; "" for none.
+func ChoiceNameOf(row store.ItemColumn, value string) string {
+	return ofItemColumn(row).choiceOf(value).Name
+}
+
+// IsList says whether the column is a list a person chooses from.
+func IsList(row store.ItemColumn) bool { return DataType(row.DataType) == list }
