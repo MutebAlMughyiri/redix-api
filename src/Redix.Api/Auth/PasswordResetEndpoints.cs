@@ -9,16 +9,16 @@ namespace Redix.Api.Auth;
 
 /// <summary>
 /// A forgotten password, reset by the person himself from the sign-in screen (redix-api #127, AC-02.6): a code to the account's email, then the code and a new password; the admin's the
-/// same way (R10). Both routes are open without a session and limited per caller, asking per login typed too (D4), and neither answer says whether an account or its email exists
-/// (R5, AC-02.7).
+/// same way (R10). Both routes are open without a session. Asking is limited per caller and per login typed (D4); typing a code is bounded by the code's own
+/// <see cref="EmailCode.TriesAllowed"/> tries alone (Muteb, 16 Nov 2026). Neither answer says whether an account or its email exists (R5, AC-02.7).
 /// </summary>
 public static class PasswordResetEndpoints
 {
-    /// <summary>Maps <c>POST /auth/forgot-password</c> and <c>POST /auth/reset-with-code</c>, open with no session and limited by <see cref="EmailCode.AskingLimit"/>.</summary>
+    /// <summary>Maps <c>POST /auth/forgot-password</c>, limited by <see cref="EmailCode.AskingLimit"/>, and <c>POST /auth/reset-with-code</c>, both open with no session.</summary>
     public static void MapPasswordReset(this WebApplication app)
     {
         app.MapPost("/auth/forgot-password", ForgotPassword).AllowAnonymous().RequireRateLimiting(EmailCode.AskingLimit);
-        app.MapPost("/auth/reset-with-code", ResetWithCode).AllowAnonymous().RequireRateLimiting(EmailCode.AskingLimit);
+        app.MapPost("/auth/reset-with-code", ResetWithCode).AllowAnonymous();
     }
 
     /// <summary>

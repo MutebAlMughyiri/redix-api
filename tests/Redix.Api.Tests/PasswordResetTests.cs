@@ -196,18 +196,24 @@ public class PasswordResetTests(MigratedApiFactory factory)
     }
 
     [Fact]
-    public async Task AC_02_8_D4_AskingTooOftenIsRefusedForAWhileAndAskingWithinTheLimitIsNot()
+    public async Task AC_02_8_D4_AskingTooOftenIsRefusedForAWhileAndTypingACodeIsNotCountedAgainstIt()
     {
         using var limited = factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(configuration =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["EmailCodes:PermitsPerHour"] = "2" })));
         var client = limited.CreateClient();
 
         var first = await AskAsync(MigratedApiFactory.NewEmail(), client);
-        var second = await client.PostAsJsonAsync("/auth/reset-with-code", new ResetWithCodeRequest(MigratedApiFactory.NewEmail(), "123456", NewPassword));
+        var typed = new List<HttpStatusCode>();
+        for (var mistyped = 0; mistyped < 3; mistyped++)
+        {
+            typed.Add((await client.PostAsJsonAsync("/auth/reset-with-code", new ResetWithCodeRequest(MigratedApiFactory.NewEmail(), "123456", NewPassword))).StatusCode);
+        }
+        var second = await AskAsync(MigratedApiFactory.NewEmail(), client);
         var third = await AskAsync(MigratedApiFactory.NewEmail(), client);
 
         Assert.Equal(HttpStatusCode.Accepted, first.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
+        Assert.All(typed, status => Assert.Equal(HttpStatusCode.BadRequest, status));
+        Assert.Equal(HttpStatusCode.Accepted, second.StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
     }
 

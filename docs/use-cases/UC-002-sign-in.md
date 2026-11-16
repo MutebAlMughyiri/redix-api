@@ -13,7 +13,7 @@
 | `POST /auth/sign-in` | Checks a username and password and opens a session on a new device | `200` a session; `401` with `code` `invalidCredentials` or `accountLocked` |
 | `POST /auth/refresh` | Renews a session with the device's refresh token, which it replaces | `200` a session; `401` with `code` `sessionExpired` |
 | `POST /auth/forgot-password` | `{ login }`, a username or an email: sends a six-digit code to the account's email, in the language of `Accept-Language`, once the answer has left (redix-api #127, R5) | `202` at once whatever was typed, an unknown account and one with no email included; `429` asked too often |
-| `POST /auth/reset-with-code` | `{ login, code, newPassword }`: replaces the password once the code is right, and signs the person out everywhere | `204`; `400` `codeWrong` or `weakPassword`; `429` asked too often |
+| `POST /auth/reset-with-code` | `{ login, code, newPassword }`: replaces the password once the code is right, and signs the person out everywhere | `204`; `400` `codeWrong` or `weakPassword` |
 
 The two routes of a forgotten password are open without a session too, and share one limit per caller, `EmailCodes:PermitsPerHour` (5 by default, as registration's); `/auth/forgot-password` is limited per login typed too, `EmailCode.AsksPerLoginAnHour` (5 an hour), whatever its case and whether or not it names an account (D4). A session is a JWT access token valid 15 minutes, the moment it expires (`accessTokenExpiresAt`, UTC, which the app renews before, redix-api #126), a refresh token, and whether the password must be changed first. Both endpoints are open without a session. Full requests and responses are in Swagger.
 
