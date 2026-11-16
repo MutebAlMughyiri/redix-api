@@ -11,7 +11,8 @@ import (
 	"net/http"
 )
 
-// standard is the type link and title ASP.NET Core gives each status it knows (ProblemDetailsDefaults).
+// standard is the type link and title ASP.NET Core gives each status it knows (ProblemDetailsDefaults), checked against every problem the .NET API
+// answered in its recorded tests: 429 has a title and no type.
 var standard = map[int]struct{ link, title string }{
 	400: {"https://tools.ietf.org/html/rfc9110#section-15.5.1", "Bad Request"},
 	401: {"https://tools.ietf.org/html/rfc9110#section-15.5.2", "Unauthorized"},
@@ -25,6 +26,7 @@ var standard = map[int]struct{ link, title string }{
 	415: {"https://tools.ietf.org/html/rfc9110#section-15.5.16", "Unsupported Media Type"},
 	422: {"https://tools.ietf.org/html/rfc9110#section-15.5.21", "Unprocessable Entity"},
 	426: {"https://tools.ietf.org/html/rfc9110#section-15.5.22", "Upgrade Required"},
+	429: {"", "Too Many Requests"},
 	500: {"https://tools.ietf.org/html/rfc9110#section-15.6.1", "An error occurred while processing your request."},
 	502: {"https://tools.ietf.org/html/rfc9110#section-15.6.3", "Bad Gateway"},
 	503: {"https://tools.ietf.org/html/rfc9110#section-15.6.4", "Service Unavailable"},
@@ -54,8 +56,11 @@ type field struct {
 // write keeps ASP.NET Core's order: type and title when the status has them, status, the extensions, then traceId.
 func write(w http.ResponseWriter, r *http.Request, status int, extensions ...field) {
 	var fields []field
-	if known, ok := standard[status]; ok {
-		fields = append(fields, field{"type", known.link}, field{"title", known.title})
+	if known := standard[status]; known.link != "" {
+		fields = append(fields, field{"type", known.link})
+	}
+	if known := standard[status]; known.title != "" {
+		fields = append(fields, field{"title", known.title})
 	}
 	fields = append(fields, field{"status", status})
 	fields = append(fields, extensions...)

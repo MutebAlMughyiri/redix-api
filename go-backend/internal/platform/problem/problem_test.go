@@ -44,9 +44,16 @@ func TestN16_ABareNotFoundIsProblemDetailsAsUseStatusCodePagesWroteIt(t *testing
 	}
 }
 
-func TestN16_AStatusASPNETHasNoTitleForHasNeitherTypeNorTitle(t *testing.T) {
+func TestN16_TooManyRequestsHasATitleAndNoTypeAsDotNetAnswered(t *testing.T) {
 	got := answer(func(w http.ResponseWriter, r *http.Request) { Status(w, r, 429) })
-	if !strings.HasPrefix(got.Body.String(), `{"status":429,"traceId":`) {
+	if !strings.HasPrefix(got.Body.String(), `{"title":"Too Many Requests","status":429,"traceId":`) {
+		t.Errorf("body %s", got.Body)
+	}
+}
+
+func TestN16_AStatusASPNETHasNoDefaultsForHasNeitherTypeNorTitle(t *testing.T) {
+	got := answer(func(w http.ResponseWriter, r *http.Request) { Status(w, r, 418) })
+	if !strings.HasPrefix(got.Body.String(), `{"status":418,"traceId":`) {
 		t.Errorf("body %s", got.Body)
 	}
 }
