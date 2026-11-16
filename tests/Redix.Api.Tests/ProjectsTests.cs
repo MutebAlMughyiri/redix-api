@@ -44,9 +44,6 @@ public class ProjectsTests(MigratedApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<ProjectView>(Json))!;
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private static Task<List<ProjectView>?> ListAsync(HttpClient client) => client.GetFromJsonAsync<List<ProjectView>>("/projects", Json);
 
     private static Task<HttpResponseMessage> CreateAsync(HttpClient client, string name, params List<string> units) =>
@@ -97,7 +94,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var response = await CreateAsync(client, name, "الفلة الغربية", "   ");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("invalidName", await CodeOf(response));
+        Assert.Equal("invalidName", await Ledger.CodeOf(response));
         Assert.DoesNotContain((await ListAsync(client))!, listed => listed.Name == name);
     }
 
@@ -136,8 +133,8 @@ public class ProjectsTests(MigratedApiFactory factory)
 
         Assert.Equal(ProjectStatus.Finished, finished.Status);
         Assert.Equal(HttpStatusCode.Conflict, newUnit.StatusCode);
-        Assert.Equal("projectFinished", await CodeOf(newUnit));
-        Assert.Equal("projectFinished", await CodeOf(closedAgain));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(newUnit));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(closedAgain));
         Assert.Equal(ProjectStatus.Finished, (await ListAsync(client))!.Single(listed => listed.Id == project.Id).Status);
     }
 
@@ -161,9 +158,9 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refusedUnit = await AddUnitAsync(client, project.Id, name);
 
         Assert.Equal(HttpStatusCode.BadRequest, refusedProject.StatusCode);
-        Assert.Equal("invalidName", await CodeOf(refusedProject));
+        Assert.Equal("invalidName", await Ledger.CodeOf(refusedProject));
         Assert.Equal(HttpStatusCode.BadRequest, refusedUnit.StatusCode);
-        Assert.Equal("invalidName", await CodeOf(refusedUnit));
+        Assert.Equal("invalidName", await Ledger.CodeOf(refusedUnit));
     }
 
     [Fact]
@@ -461,7 +458,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refused = await DescribeAsync(client, project.Id, new string('و', Project.DescriptionMaxLength + 1));
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidDescription", await CodeOf(refused));
+        Assert.Equal("invalidDescription", await Ledger.CodeOf(refused));
         Assert.Equal(Project.DescriptionMaxLength, (await ListAsync(client))!.Single(each => each.Id == project.Id).Description.Length);
     }
 
@@ -498,7 +495,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refused = await DescribeAsync(client, project.Id, "ثلاث فلل");
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("projectFinished", await CodeOf(refused));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         Assert.Equal("فيلتان", (await ListAsync(client))!.Single(each => each.Id == project.Id).Description);
     }
 
@@ -521,7 +518,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refused = await client.PostAsJsonAsync("/projects", new CreateProjectRequest(name, new DateOnly(2026, 11, 1), []) { Description = new string('و', Project.DescriptionMaxLength + 1) });
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidDescription", await CodeOf(refused));
+        Assert.Equal("invalidDescription", await Ledger.CodeOf(refused));
         Assert.DoesNotContain((await ListAsync(client))!, each => each.Name == name);
     }
 
@@ -560,7 +557,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refused = await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/close", null);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("pendingEntries", await CodeOf(refused));
+        Assert.Equal("pendingEntries", await Ledger.CodeOf(refused));
         Assert.Equal(ProjectStatus.Active, (await ListAsync(ledger.Client))!.Single(project => project.Id == ledger.ProjectId).Status);
     }
 
@@ -598,7 +595,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refused = await AddUnitAsync(client, project.Id, name);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("unitNameTaken", await CodeOf(refused));
+        Assert.Equal("unitNameTaken", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -609,7 +606,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refused = await CreateAsync(client, "غصون 6", "الفلة الغربية", " الفلة الغربية ");
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("unitNameTaken", await CodeOf(refused));
+        Assert.Equal("unitNameTaken", await Ledger.CodeOf(refused));
         Assert.Empty((await ListAsync(client))!);
     }
 
@@ -653,8 +650,8 @@ public class ProjectsTests(MigratedApiFactory factory)
     {
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية");
 
-        Assert.Equal("invalidName", await CodeOf(await RenameAsync(client, project.Id, name)));
-        Assert.Equal("invalidName", await CodeOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, name)));
+        Assert.Equal("invalidName", await Ledger.CodeOf(await RenameAsync(client, project.Id, name)));
+        Assert.Equal("invalidName", await Ledger.CodeOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, name)));
     }
 
     [Fact]
@@ -679,7 +676,7 @@ public class ProjectsTests(MigratedApiFactory factory)
         var refused = await RenameUnitAsync(client, project.Id, project.Units[0].Id, " الفلة الشرقية ");
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("unitNameTaken", await CodeOf(refused));
+        Assert.Equal("unitNameTaken", await Ledger.CodeOf(refused));
         await ProjectOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, "الفلة الغربية"));
     }
 
@@ -725,9 +722,9 @@ public class ProjectsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceOfNewProjectAsync("غصون 6", "الفلة الغربية");
         (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
 
-        Assert.Equal("projectFinished", await CodeOf(await RenameAsync(client, project.Id, "غصون 7")));
-        Assert.Equal("projectFinished", await CodeOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, "الوحدة")));
-        Assert.Equal("projectFinished", await CodeOf(await DeleteUnitAsync(client, project.Id, project.Units[0].Id)));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(await RenameAsync(client, project.Id, "غصون 7")));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(await RenameUnitAsync(client, project.Id, project.Units[0].Id, "الوحدة")));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(await DeleteUnitAsync(client, project.Id, project.Units[0].Id)));
     }
 
     [Fact]

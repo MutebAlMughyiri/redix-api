@@ -59,9 +59,6 @@ public class AttachmentsTests(MigratedApiFactory factory)
         return (await response.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<AttachmentView>(Json))!;
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private async Task<Attachment> StoredAsync(Guid attachmentId)
     {
         using var scope = factory.Services.CreateScope();
@@ -110,7 +107,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var kept = await UploadAsync(client, project.Id, Pdf, "invoice.png", "image/png");
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidFileType", await CodeOf(refused));
+        Assert.Equal("invalidFileType", await Ledger.CodeOf(refused));
         Assert.Equal("application/pdf", (await kept.Content.ReadFromJsonAsync<AttachmentView>(Json))!.ContentType);
     }
 
@@ -122,7 +119,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var response = await UploadAsync(client, project.Id, "PK zip"u8.ToArray(), "invoice.zip", "application/zip");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("invalidFileType", await CodeOf(response));
+        Assert.Equal("invalidFileType", await Ledger.CodeOf(response));
     }
 
     [Fact]
@@ -137,7 +134,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Created, kept.StatusCode);
         Assert.Equal("quantities.zip", (await kept.Content.ReadFromJsonAsync<AttachmentView>(Json))!.FileName);
-        Assert.Equal("invalidFileType", await CodeOf(refused));
+        Assert.Equal("invalidFileType", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -151,7 +148,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var kept = await UploadAsync(client, project.Id, large[..^1]);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("imageTooLarge", await CodeOf(refused));
+        Assert.Equal("imageTooLarge", await Ledger.CodeOf(refused));
         Assert.Equal(HttpStatusCode.Created, kept.StatusCode);
     }
 
@@ -260,7 +257,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var refused = await UploadAsync(client, project.Id, Jpeg);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("projectFinished", await CodeOf(refused));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/projects/{project.Id}/attachments/{view.Id}")).StatusCode);
     }
 
@@ -330,7 +327,7 @@ public class AttachmentsTests(MigratedApiFactory factory)
         var response = await client.PostAsJsonAsync($"/projects/{project.Id}/contracts", request, Json);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("unknownAttachment", await CodeOf(response));
+        Assert.Equal("unknownAttachment", await Ledger.CodeOf(response));
     }
 
     [Fact]

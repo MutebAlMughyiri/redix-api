@@ -47,9 +47,6 @@ public class SuppliersTests(MigratedApiFactory factory)
     private static async Task<SupplierView> AddAsync(HttpClient client, Guid projectId, string name, string vatNumber = VatNumber) =>
         (await (await PostAsync(client, projectId, new SupplierRequest(name) { VatNumber = vatNumber })).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<SupplierView>(Json))!;
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private async Task<Guid> AnItemOfAsync(Guid projectId)
     {
         var itemId = Guid.Empty;
@@ -101,7 +98,7 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         var refused = await PostAsync(client, project.Id, new SupplierRequest("مورد") { VatNumber = vatNumber });
 
-        Assert.Equal("invalidVatNumber", await CodeOf(refused));
+        Assert.Equal("invalidVatNumber", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -215,7 +212,7 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         var refused = await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("شركة الأفق") { VatNumber = VatNumber }, Json);
 
-        Assert.Equal("vatNumberTaken", await CodeOf(refused));
+        Assert.Equal("vatNumberTaken", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -225,7 +222,7 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         foreach (var name in new[] { "   ", new string('x', Project.NameMaxLength + 1) })
         {
-            Assert.Equal("invalidName", await CodeOf(await PostAsync(client, project.Id, new SupplierRequest(name) { VatNumber = VatNumber })));
+            Assert.Equal("invalidName", await Ledger.CodeOf(await PostAsync(client, project.Id, new SupplierRequest(name) { VatNumber = VatNumber })));
         }
     }
 
@@ -236,7 +233,7 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         var refused = await PostAsync(client, project.Id, new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = new string('5', User.MobileMaxLength + 1) });
 
-        Assert.Equal("invalidMobile", await CodeOf(refused));
+        Assert.Equal("invalidMobile", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -245,8 +242,8 @@ public class SuppliersTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var supplier = await AddAsync(client, project.Id, "مورد");
 
-        Assert.Equal("invalidMobile", await CodeOf(await PostAsync(client, project.Id, new SupplierRequest("مورد آخر") { Mobile = "٠٥٠٠٠٠٠٠٠٠" })));
-        Assert.Equal("invalidMobile", await CodeOf(await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "050 000" }, Json)));
+        Assert.Equal("invalidMobile", await Ledger.CodeOf(await PostAsync(client, project.Id, new SupplierRequest("مورد آخر") { Mobile = "٠٥٠٠٠٠٠٠٠٠" })));
+        Assert.Equal("invalidMobile", await Ledger.CodeOf(await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "050 000" }, Json)));
         (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{supplier.Id}", new SupplierRequest("مورد") { VatNumber = VatNumber, Mobile = "+966500000000" }, Json)).EnsureSuccessStatusCode();
     }
 
@@ -258,7 +255,7 @@ public class SuppliersTests(MigratedApiFactory factory)
 
         foreach (var itemId in new[] { await AnItemOfAsync(other.Id), Guid.CreateVersion7() })
         {
-            Assert.Equal("unknownItem", await CodeOf(await PostAsync(client, project.Id, new SupplierRequest("مورد") { VatNumber = VatNumber, DefaultItemId = itemId })));
+            Assert.Equal("unknownItem", await Ledger.CodeOf(await PostAsync(client, project.Id, new SupplierRequest("مورد") { VatNumber = VatNumber, DefaultItemId = itemId })));
         }
     }
 
@@ -507,8 +504,8 @@ public class SuppliersTests(MigratedApiFactory factory)
         var (_, project) = await FinanceAsync();
         var fieldClient = await MemberAsync(project, Field);
 
-        Assert.Equal("invalidVatNumber", await CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest("مورد") { VatNumber = "111111111111111111111" })));
-        Assert.Equal("invalidName", await CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest(" ") { VatNumber = VatNumber })));
+        Assert.Equal("invalidVatNumber", await Ledger.CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest("مورد") { VatNumber = "111111111111111111111" })));
+        Assert.Equal("invalidName", await Ledger.CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest(" ") { VatNumber = VatNumber })));
     }
 
     [Fact]
@@ -533,7 +530,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var secondClient = await MemberAsync(project, Field);
         await AddAsync(firstClient, project.Id, "شركة النخيل");
 
-        Assert.Equal("vatNumberTaken", await CodeOf(await PostAsync(secondClient, project.Id, new SupplierRequest("النخيل") { VatNumber = VatNumber })));
+        Assert.Equal("vatNumberTaken", await Ledger.CodeOf(await PostAsync(secondClient, project.Id, new SupplierRequest("النخيل") { VatNumber = VatNumber })));
     }
 
     [Fact]
@@ -568,7 +565,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var fieldClient = await MemberAsync(project, Field);
         (await client.PostAsync($"/projects/{project.Id}/close", null)).EnsureSuccessStatusCode();
 
-        Assert.Equal("projectFinished", await CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest("مورد") { VatNumber = VatNumber })));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(await PostAsync(fieldClient, project.Id, new SupplierRequest("مورد") { VatNumber = VatNumber })));
     }
 
     [Fact]
@@ -586,7 +583,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-            Assert.Equal("projectFinished", await CodeOf(refused));
+            Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         }
         Assert.Equal(2, (await RegisterOf(client, project.Id)).Count);
     }
@@ -603,7 +600,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         var refused = await DisableAsync(client, project.Id, general.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("generalCashSupplier", await CodeOf(refused));
+        Assert.Equal("generalCashSupplier", await Ledger.CodeOf(refused));
         Assert.True(Assert.Single(await RegisterOf(client, project.Id)).IsActive);
     }
 
@@ -616,7 +613,7 @@ public class SuppliersTests(MigratedApiFactory factory)
         (await client.PutAsJsonAsync($"/projects/{project.Id}/suppliers/{general.Id}", new SupplierRequest("نقدي"), Json)).EnsureSuccessStatusCode();
 
         Assert.Equal("نقدي", Assert.Single(await RegisterOf(client, project.Id)).Name);
-        Assert.Equal("generalCashSupplier", await CodeOf(await DisableAsync(client, project.Id, general.Id)));
+        Assert.Equal("generalCashSupplier", await Ledger.CodeOf(await DisableAsync(client, project.Id, general.Id)));
     }
 
     [Fact]

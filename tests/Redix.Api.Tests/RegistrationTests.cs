@@ -25,9 +25,6 @@ public class RegistrationTests(MigratedApiFactory factory)
 
     private Task<HttpResponseMessage> RegisterAsync(RegisterProjectRequest request) => factory.CreateClient().PostAsJsonAsync("/projects/register", request);
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private static async Task<ProjectView> ProjectOf(HttpResponseMessage response)
     {
         Assert.True(response.IsSuccessStatusCode, response.StatusCode.ToString());
@@ -92,7 +89,7 @@ public class RegistrationTests(MigratedApiFactory factory)
         var refused = await RegisterAsync(Request(NewUsername(), units: ["الفلة الغربية", " الفلة الغربية "]));
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("unitNameTaken", await CodeOf(refused));
+        Assert.Equal("unitNameTaken", await Ledger.CodeOf(refused));
     }
 
     [Theory]
@@ -109,7 +106,7 @@ public class RegistrationTests(MigratedApiFactory factory)
         var refused = await RegisterAsync(Request(username, name, null, displayName, mobile, password));
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal(code, await CodeOf(refused));
+        Assert.Equal(code, await Ledger.CodeOf(refused));
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, password))).StatusCode);
     }
 
@@ -120,7 +117,7 @@ public class RegistrationTests(MigratedApiFactory factory)
 
         var refused = await RegisterAsync(Request(username, units: ["   "]));
 
-        Assert.Equal("invalidName", await CodeOf(refused));
+        Assert.Equal("invalidName", await Ledger.CodeOf(refused));
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, Password))).StatusCode);
     }
 
@@ -134,7 +131,7 @@ public class RegistrationTests(MigratedApiFactory factory)
         var refused = await RegisterAsync(Request(existing.Username.ToUpperInvariant(), name));
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("usernameTaken", await CodeOf(refused));
+        Assert.Equal("usernameTaken", await Ledger.CodeOf(refused));
         var waiting = (await admin.GetFromJsonAsync<List<RegisteredProjectView>>("/projects/registered", Json))!;
         Assert.DoesNotContain(waiting, project => project.Name == name);
     }
@@ -231,7 +228,7 @@ public class RegistrationTests(MigratedApiFactory factory)
         var refused = await RegisterAsync(Request(username) with { Description = new string('و', Project.DescriptionMaxLength + 1) });
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidDescription", await CodeOf(refused));
+        Assert.Equal("invalidDescription", await Ledger.CodeOf(refused));
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, Password))).StatusCode);
     }
 
@@ -289,7 +286,7 @@ public class RegistrationTests(MigratedApiFactory factory)
         var refused = await RejectAsync(admin, projectId, reason ?? new string('x', Project.ReasonMaxLength + 1));
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidReason", await CodeOf(refused));
+        Assert.Equal("invalidReason", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -301,9 +298,9 @@ public class RegistrationTests(MigratedApiFactory factory)
         await admin.PostAsync($"/projects/{approvedId}/approve", null);
         await RejectAsync(admin, rejectedId);
 
-        Assert.Equal("notPending", await CodeOf(await admin.PostAsync($"/projects/{approvedId}/approve", null)));
-        Assert.Equal("notPending", await CodeOf(await RejectAsync(admin, approvedId)));
-        Assert.Equal("notPending", await CodeOf(await admin.PostAsync($"/projects/{rejectedId}/approve", null)));
+        Assert.Equal("notPending", await Ledger.CodeOf(await admin.PostAsync($"/projects/{approvedId}/approve", null)));
+        Assert.Equal("notPending", await Ledger.CodeOf(await RejectAsync(admin, approvedId)));
+        Assert.Equal("notPending", await Ledger.CodeOf(await admin.PostAsync($"/projects/{rejectedId}/approve", null)));
         Assert.Equal(HttpStatusCode.Conflict, (await RejectAsync(admin, rejectedId)).StatusCode);
     }
 

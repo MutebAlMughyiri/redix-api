@@ -40,9 +40,6 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
     private static async Task<List<PaymentMethodView>> MethodsOf(HttpClient client, Guid projectId, string path = "") =>
         (await client.GetFromJsonAsync<List<PaymentMethodView>>($"/projects/{projectId}/payment-methods{path}", Json))!;
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     [Fact]
     public async Task AMethodAddedAfterADeleteGoesLastAndNoTwoMethodsShareAPlace()
     {
@@ -130,7 +127,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidName", await CodeOf(refused));
+            Assert.Equal("invalidName", await Ledger.CodeOf(refused));
         }
         Assert.Equal(3, (await MethodsOf(client, project.Id)).Count);
     }
@@ -178,7 +175,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
 
         var refused = await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/payment-methods/{ledger.MethodId}");
 
-        Assert.Equal((HttpStatusCode.Conflict, "paymentMethodUsed"), (refused.StatusCode, await CodeOf(refused)));
+        Assert.Equal((HttpStatusCode.Conflict, "paymentMethodUsed"), (refused.StatusCode, await Ledger.CodeOf(refused)));
         Assert.Contains(await MethodsOf(ledger.Client, ledger.ProjectId), method => method.Id == ledger.MethodId);
     }
 
@@ -252,7 +249,7 @@ public class PaymentMethodsTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-            Assert.Equal("projectFinished", await CodeOf(refused));
+            Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         }
         Assert.Equal(3, (await MethodsOf(client, project.Id)).Count);
     }

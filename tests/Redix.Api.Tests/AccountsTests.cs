@@ -47,9 +47,6 @@ public class AccountsTests(MigratedApiFactory factory)
         return (await AccountsOf(client, projectId)).Single(account => account.Name == name);
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     [Fact]
     public async Task R10_FinanceAddsABankAccountThatHoldsNothingUntilMoneyMovesIntoIt()
     {
@@ -97,7 +94,7 @@ public class AccountsTests(MigratedApiFactory factory)
         var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/accounts", new AddAccountRequest("كاش", AccountType.CashCustody), Json);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("custodianRequired", await CodeOf(refused));
+        Assert.Equal("custodianRequired", await Ledger.CodeOf(refused));
         Assert.Empty(await AccountsOf(client, project.Id));
     }
 
@@ -110,7 +107,7 @@ public class AccountsTests(MigratedApiFactory factory)
 
         var refused = await client.PutAsJsonAsync($"/projects/{project.Id}/accounts/{custody.Id}", new EditAccountRequest("كاش مع نواف"), Json);
 
-        Assert.Equal("custodianRequired", await CodeOf(refused));
+        Assert.Equal("custodianRequired", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -127,7 +124,7 @@ public class AccountsTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("unknownCustodian", await CodeOf(refused));
+            Assert.Equal("unknownCustodian", await Ledger.CodeOf(refused));
         }
     }
 
@@ -145,7 +142,7 @@ public class AccountsTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidName", await CodeOf(refused));
+            Assert.Equal("invalidName", await Ledger.CodeOf(refused));
         }
     }
 
@@ -341,7 +338,7 @@ public class AccountsTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-            Assert.Equal("projectFinished", await CodeOf(refused));
+            Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         }
         Assert.Single(await AccountsOf(client, project.Id));
     }

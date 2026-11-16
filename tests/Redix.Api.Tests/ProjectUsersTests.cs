@@ -35,9 +35,6 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<UserView>(Json))!;
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private static Task<HttpResponseMessage> CreateAsync(HttpClient client, Guid projectId, string username, string displayName = "نواف", string mobile = "0500000000", string password = Temporary, List<Permission>? ticked = null, string? email = null) =>
         client.PostAsJsonAsync($"/projects/{projectId}/users", new CreateUserRequest(displayName, username, mobile, email ?? MigratedApiFactory.NewEmail(), password) { Permissions = ticked ?? [] }, Json);
 
@@ -108,7 +105,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var refused = await CreateAsync(client, projectId, username, email: email);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("emailInvalid", await CodeOf(refused));
+        Assert.Equal("emailInvalid", await Ledger.CodeOf(refused));
         Assert.Equal(HttpStatusCode.Created, (await CreateAsync(client, projectId, username)).StatusCode);
     }
 
@@ -117,8 +114,8 @@ public class ProjectUsersTests(MigratedApiFactory factory)
     {
         var (_, client, projectId) = await ManagerAsync();
 
-        Assert.Equal("invalidUsername", await CodeOf(await CreateAsync(client, projectId, "", "", "", "", email: "")));
-        Assert.Equal("emailInvalid", await CodeOf(await CreateAsync(client, projectId, NewUsername(), email: "")));
+        Assert.Equal("invalidUsername", await Ledger.CodeOf(await CreateAsync(client, projectId, "", "", "", "", email: "")));
+        Assert.Equal("emailInvalid", await Ledger.CodeOf(await CreateAsync(client, projectId, NewUsername(), email: "")));
     }
 
     [Fact]
@@ -131,7 +128,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var repeated = await CreateAsync(client, projectId, NewUsername(), email: email.ToUpperInvariant());
 
         Assert.Equal(HttpStatusCode.Conflict, repeated.StatusCode);
-        Assert.Equal("emailTaken", await CodeOf(repeated));
+        Assert.Equal("emailTaken", await Ledger.CodeOf(repeated));
     }
 
     [Fact]
@@ -141,7 +138,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
         var refused = await CreateAsync(client, projectId, NewUsername(), ticked: [Permission.ApproveProjects]);
 
-        Assert.Equal("invalidPermission", await CodeOf(refused));
+        Assert.Equal("invalidPermission", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -162,7 +159,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var repeated = await CreateAsync(client, projectId, username.ToUpperInvariant());
 
         Assert.Equal(HttpStatusCode.Conflict, repeated.StatusCode);
-        Assert.Equal("usernameTaken", await CodeOf(repeated));
+        Assert.Equal("usernameTaken", await Ledger.CodeOf(repeated));
     }
 
     [Theory]
@@ -180,7 +177,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var refused = await CreateAsync(client, projectId, username, displayName, mobile, password);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal(code, await CodeOf(refused));
+        Assert.Equal(code, await Ledger.CodeOf(refused));
     }
 
     [Theory]
@@ -197,7 +194,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var refused = await CreateAsync(client, projectId, NewUsername(), mobile: mobile);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidMobile", await CodeOf(refused));
+        Assert.Equal("invalidMobile", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -229,7 +226,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var refused = await AddExistingAsync(client, projectId, "nobody-has-this");
 
         Assert.Equal(HttpStatusCode.NotFound, refused.StatusCode);
-        Assert.Equal("unknownUser", await CodeOf(refused));
+        Assert.Equal("unknownUser", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -331,8 +328,8 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var tooLong = await NameRoleAsync(client, projectId, created.Id, new string('م', ProjectRoleName.MaxLength + 1));
         var creating = await client.PostAsJsonAsync($"/projects/{projectId}/users", new CreateUserRequest("نواف", NewUsername(), "", MigratedApiFactory.NewEmail(), Temporary) { RoleName = new string('م', ProjectRoleName.MaxLength + 1) }, Json);
 
-        Assert.Equal((HttpStatusCode.BadRequest, "invalidRoleName"), (tooLong.StatusCode, await CodeOf(tooLong)));
-        Assert.Equal((HttpStatusCode.BadRequest, "invalidRoleName"), (creating.StatusCode, await CodeOf(creating)));
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidRoleName"), (tooLong.StatusCode, await Ledger.CodeOf(tooLong)));
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidRoleName"), (creating.StatusCode, await Ledger.CodeOf(creating)));
         Assert.Equal(HttpStatusCode.OK, (await NameRoleAsync(client, projectId, created.Id, new string('م', ProjectRoleName.MaxLength))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await NameRoleAsync(client, projectId, stranger.Id, "مشرف")).StatusCode);
     }
@@ -402,8 +399,8 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var unknown = await client.PostAsync($"/projects/{projectId}/users/{manager.Id}/permissions/notAPermission", null);
 
         Assert.Equal(HttpStatusCode.BadRequest, system.StatusCode);
-        Assert.Equal("invalidPermission", await CodeOf(system));
-        Assert.Equal("invalidPermission", await CodeOf(unknown));
+        Assert.Equal("invalidPermission", await Ledger.CodeOf(system));
+        Assert.Equal("invalidPermission", await Ledger.CodeOf(unknown));
     }
 
     [Theory]
@@ -416,7 +413,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var refused = await TakeAsync(client, projectId, manager.Id, unticked);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("lastManager", await CodeOf(refused));
+        Assert.Equal("lastManager", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -440,7 +437,7 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         await factory.GiveAsync(second.Id, projectId, Holds.Manager);
         await factory.MakeInactiveAsync(second.Id, projectId);
 
-        Assert.Equal("lastManager", await CodeOf(await TakeAsync(client, projectId, manager.Id, Permission.ManageUsers)));
+        Assert.Equal("lastManager", await Ledger.CodeOf(await TakeAsync(client, projectId, manager.Id, Permission.ManageUsers)));
     }
 
     [Fact]
@@ -468,8 +465,8 @@ public class ProjectUsersTests(MigratedApiFactory factory)
         var refused = await ResetAsync(client, shared.Id);
 
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
-        Assert.Equal("otherProject", await CodeOf(refused));
-        Assert.Equal("otherProject", await CodeOf(await client.PutAsJsonAsync($"/users/{shared.Id}", new EditUserRequest("x", "", MigratedApiFactory.NewEmail()))));
+        Assert.Equal("otherProject", await Ledger.CodeOf(refused));
+        Assert.Equal("otherProject", await Ledger.CodeOf(await client.PutAsJsonAsync($"/users/{shared.Id}", new EditUserRequest("x", "", MigratedApiFactory.NewEmail()))));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(shared.Username, Password)).StatusCode);
         var renewal = await factory.CreateClient().PostAsJsonAsync("/auth/refresh", new RefreshRequest(theirSession.RefreshToken));
         Assert.Equal(HttpStatusCode.OK, renewal.StatusCode);
@@ -483,13 +480,13 @@ public class ProjectUsersTests(MigratedApiFactory factory)
 
         var added = await AddExistingAsync(client, projectId, admin.Username);
         Assert.Equal(HttpStatusCode.NotFound, added.StatusCode);
-        Assert.Equal("unknownUser", await CodeOf(added));
+        Assert.Equal("unknownUser", await Ledger.CodeOf(added));
 
         await factory.GiveAsync(admin.Id, projectId, Holds.Reader);
         var reset = await ResetAsync(client, admin.Id);
         Assert.Equal(HttpStatusCode.Forbidden, reset.StatusCode);
-        Assert.Equal("otherProject", await CodeOf(reset));
-        Assert.Equal("otherProject", await CodeOf(await client.PutAsJsonAsync($"/users/{admin.Id}", new EditUserRequest("x", "", MigratedApiFactory.NewEmail()))));
+        Assert.Equal("otherProject", await Ledger.CodeOf(reset));
+        Assert.Equal("otherProject", await Ledger.CodeOf(await client.PutAsJsonAsync($"/users/{admin.Id}", new EditUserRequest("x", "", MigratedApiFactory.NewEmail()))));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(admin.Username, Password)).StatusCode);
     }
 

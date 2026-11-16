@@ -50,9 +50,6 @@ public class TransfersTests(MigratedApiFactory factory)
         return request.Id;
     }
 
-    private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code) =>
-        Assert.Equal((status, code), (response.StatusCode, await Ledger.CodeOf(response)));
-
     [Fact]
     public async Task FR_23_ATransferMovesMoneyBetweenTwoAccountsAtOnceAndNeverTheSurplus()
     {
@@ -77,7 +74,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var custody = await AccountAsync(ledger, "كاش");
         await FundAsync(ledger, 500m);
 
-        await AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, 500.01m), HttpStatusCode.BadRequest, "insufficientBalance");
+        await Ledger.AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, 500.01m), HttpStatusCode.BadRequest, "insufficientBalance");
         Assert.Equal(500m, await BalanceAsync(ledger, ledger.AccountId));
 
         (await TransferAsync(ledger, ledger.AccountId, custody, 500m)).EnsureSuccessStatusCode();
@@ -93,7 +90,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var custody = await AccountAsync(ledger, "كاش");
         await FundAsync(ledger, 100m);
 
-        await AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, amount), HttpStatusCode.BadRequest, "invalidAmount");
+        await Ledger.AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, amount), HttpStatusCode.BadRequest, "invalidAmount");
 
         Assert.Equal(100m, await BalanceAsync(ledger, ledger.AccountId));
         Assert.False(await ledger.ReadAsync(db => db.Transfers.AnyAsync(row => row.ProjectId == ledger.ProjectId)));
@@ -105,7 +102,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         await FundAsync(ledger, 100m);
 
-        await AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, ledger.AccountId, 50m), HttpStatusCode.BadRequest, "sameAccount");
+        await Ledger.AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, ledger.AccountId, 50m), HttpStatusCode.BadRequest, "sameAccount");
     }
 
     [Fact]
@@ -117,8 +114,8 @@ public class TransfersTests(MigratedApiFactory factory)
         (await TransferAsync(ledger, ledger.AccountId, custody, 50m)).EnsureSuccessStatusCode();
         (await ledger.Client.PostAsync($"/projects/{ledger.ProjectId}/accounts/{custody}/disable", null)).EnsureSuccessStatusCode();
 
-        await AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, 10m), HttpStatusCode.BadRequest, "accountDisabled");
-        await AssertRefusedAsync(await TransferAsync(ledger, custody, ledger.AccountId, 10m), HttpStatusCode.BadRequest, "accountDisabled");
+        await Ledger.AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, 10m), HttpStatusCode.BadRequest, "accountDisabled");
+        await Ledger.AssertRefusedAsync(await TransferAsync(ledger, custody, ledger.AccountId, 10m), HttpStatusCode.BadRequest, "accountDisabled");
         Assert.Equal(50m, await BalanceAsync(ledger, custody));
     }
 
@@ -129,7 +126,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var other = await Ledger.WithFinanceAsync(factory);
         await FundAsync(ledger, 100m);
 
-        await AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, other.AccountId, 10m), HttpStatusCode.BadRequest, "unknownAccount");
+        await Ledger.AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, other.AccountId, 10m), HttpStatusCode.BadRequest, "unknownAccount");
         Assert.Equal(0m, await BalanceAsync(other, other.AccountId));
     }
 
@@ -140,7 +137,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var custody = await AccountAsync(ledger, "كاش");
         await FundAsync(ledger, 100m);
 
-        await AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, 10m, new string('م', Transfer.NotesMaxLength + 1)), HttpStatusCode.BadRequest, "invalidNotes");
+        await Ledger.AssertRefusedAsync(await TransferAsync(ledger, ledger.AccountId, custody, 10m, new string('م', Transfer.NotesMaxLength + 1)), HttpStatusCode.BadRequest, "invalidNotes");
         (await TransferAsync(ledger, ledger.AccountId, custody, 10m, new string('م', Transfer.NotesMaxLength))).EnsureSuccessStatusCode();
     }
 
@@ -214,7 +211,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var ledger = await Ledger.WithFinanceAsync(factory);
         await ledger.RecordAsync(ledger.Purchase(70m));
 
-        await AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}"), HttpStatusCode.Conflict, "accountInUse");
+        await Ledger.AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{ledger.AccountId}"), HttpStatusCode.Conflict, "accountInUse");
 
         Assert.True((await AccountOf(ledger, ledger.AccountId)).IsUsed);
     }
@@ -227,7 +224,7 @@ public class TransfersTests(MigratedApiFactory factory)
         await FundAsync(ledger, 100m);
         (await TransferAsync(ledger, ledger.AccountId, custody, 100m)).EnsureSuccessStatusCode();
 
-        await AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{custody}"), HttpStatusCode.Conflict, "accountInUse");
+        await Ledger.AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{custody}"), HttpStatusCode.Conflict, "accountInUse");
 
         Assert.True((await AccountOf(ledger, custody)).IsUsed);
     }
@@ -239,7 +236,7 @@ public class TransfersTests(MigratedApiFactory factory)
         var spare = await AccountAsync(ledger, "احتياطي");
         (await ledger.Client.PostAsJsonAsync($"/projects/{ledger.ProjectId}/reconciliations", new ReconcileRequest([new(ledger.AccountId, 0m), new(spare, 0m)]), Json)).EnsureSuccessStatusCode();
 
-        await AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{spare}"), HttpStatusCode.Conflict, "accountInUse");
+        await Ledger.AssertRefusedAsync(await ledger.Client.DeleteAsync($"/projects/{ledger.ProjectId}/accounts/{spare}"), HttpStatusCode.Conflict, "accountInUse");
     }
 
     [Fact]

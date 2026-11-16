@@ -49,9 +49,6 @@ public class ColumnsTests(MigratedApiFactory factory)
     private static async Task<List<ColumnView>> TemplateOf(HttpClient client, Guid projectId, string itemType = "both") =>
         (await client.GetFromJsonAsync<List<ColumnView>>($"/projects/{projectId}/default-columns/{itemType}", Json))!;
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private static Task<HttpResponseMessage> AddToTemplateAsync(HttpClient client, Guid projectId, bool applyToAllItems, string name = "رقم أمر الشراء", string itemType = "both") =>
         client.PostAsJsonAsync($"/projects/{projectId}/default-columns/{itemType}", new AddDefaultColumnRequest(name, ColumnDataType.Text, false, true, [], applyToAllItems));
 
@@ -160,7 +157,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{capital.Id}/columns", AreaColumn, Json);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("revenueTakesNoColumns", await CodeOf(refused));
+        Assert.Equal("revenueTakesNoColumns", await Ledger.CodeOf(refused));
     }
 
     [Theory]
@@ -226,7 +223,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidName", await CodeOf(refused));
+            Assert.Equal("invalidName", await Ledger.CodeOf(refused));
         }
     }
 
@@ -240,7 +237,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         {
             var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { DataType = ColumnDataType.List, Choices = choices });
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidOptions", await CodeOf(refused));
+            Assert.Equal("invalidOptions", await Ledger.CodeOf(refused));
         }
     }
 
@@ -286,8 +283,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         var gainingASign = await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{unsigned.Id}", new EditColumnRequest(unsigned.Name, false, true) { NewChoices = [new("شمال", ChoiceSign.Minus)] }, Json);
 
         Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
-        Assert.Equal("signedListExists", await CodeOf(second));
-        Assert.Equal("signedListExists", await CodeOf(gainingASign));
+        Assert.Equal("signedListExists", await Ledger.CodeOf(second));
+        Assert.Equal("signedListExists", await Ledger.CodeOf(gainingASign));
         Assert.DoesNotContain("شمال", NamesOf((await ColumnsOf(client, project.Id, item.Id)).Single(column => column.Name == "الجهة")));
     }
 
@@ -302,7 +299,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn with { DataType = ColumnDataType.File });
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidDataType", await CodeOf(refused));
+        Assert.Equal("invalidDataType", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -332,7 +329,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var refused = await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/{date.Id}", new EditColumnRequest(date.Name, !date.IsRequired, date.ShowInReports));
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("coreColumn", await CodeOf(refused));
+        Assert.Equal("coreColumn", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -376,8 +373,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         var refused = await client.DeleteAsync($"/projects/{project.Id}/items/{item.Id}/columns/{inItem.Id}");
         var refusedInTemplate = await client.DeleteAsync($"/projects/{project.Id}/default-columns/both/{inTemplate.Id}?applyToAllItems=true");
 
-        Assert.Equal((HttpStatusCode.Conflict, "coreColumn"), (refused.StatusCode, await CodeOf(refused)));
-        Assert.Equal((HttpStatusCode.Conflict, "coreColumn"), (refusedInTemplate.StatusCode, await CodeOf(refusedInTemplate)));
+        Assert.Equal((HttpStatusCode.Conflict, "coreColumn"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+        Assert.Equal((HttpStatusCode.Conflict, "coreColumn"), (refusedInTemplate.StatusCode, await Ledger.CodeOf(refusedInTemplate)));
         Assert.Contains(await ColumnsOf(client, project.Id, item.Id), kept => kept.Key == key);
     }
 
@@ -430,8 +427,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns/reorder", new ReorderRequest([.. ids.Skip(1)]));
         var refusedInTemplate = await client.PostAsJsonAsync($"/projects/{project.Id}/default-columns/both/reorder", new ReorderDefaultColumnsRequest([.. templateIds.Skip(1)], true));
 
-        Assert.Equal((HttpStatusCode.BadRequest, "invalidOrder"), (refused.StatusCode, await CodeOf(refused)));
-        Assert.Equal((HttpStatusCode.BadRequest, "invalidOrder"), (refusedInTemplate.StatusCode, await CodeOf(refusedInTemplate)));
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidOrder"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidOrder"), (refusedInTemplate.StatusCode, await Ledger.CodeOf(refusedInTemplate)));
     }
 
     [Fact]
@@ -621,7 +618,7 @@ public class ColumnsTests(MigratedApiFactory factory)
             await AddToTemplateAsync(client, project.Id, true),
         })
         {
-            Assert.Equal((HttpStatusCode.Conflict, "projectFinished"), (refused.StatusCode, await CodeOf(refused)));
+            Assert.Equal((HttpStatusCode.Conflict, "projectFinished"), (refused.StatusCode, await Ledger.CodeOf(refused)));
         }
         Assert.NotEmpty(await ColumnsOf(client, project.Id, item.Id));
     }
@@ -675,7 +672,7 @@ public class ColumnsTests(MigratedApiFactory factory)
         var refused = await EditItemColumnAsync(client, projectId, itemId, column, new string('x', Project.NameMaxLength + 1));
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidOptions", await CodeOf(refused));
+        Assert.Equal("invalidOptions", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -687,8 +684,8 @@ public class ColumnsTests(MigratedApiFactory factory)
         (await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/columns", AreaColumn, Json)).EnsureSuccessStatusCode();
         var area = (await ColumnsOf(client, project.Id, item.Id)).Last();
 
-        Assert.Equal("invalidOptions", await CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, area, "شمال")));
-        Assert.Equal("invalidOptions", await CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, columns.Single(column => column.Key == "paymentMethod"), "شمال")));
+        Assert.Equal("invalidOptions", await Ledger.CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, area, "شمال")));
+        Assert.Equal("invalidOptions", await Ledger.CodeOf(await EditItemColumnAsync(client, project.Id, item.Id, columns.Single(column => column.Key == "paymentMethod"), "شمال")));
     }
 
     [Fact]

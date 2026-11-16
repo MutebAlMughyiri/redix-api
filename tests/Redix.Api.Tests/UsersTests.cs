@@ -30,9 +30,6 @@ public class UsersTests(MigratedApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<UserView>(Json))!;
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private Task<HttpResponseMessage> SignInAsync(string username, string password) =>
         factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(username, password));
 
@@ -58,7 +55,7 @@ public class UsersTests(MigratedApiFactory factory)
         var edited = await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" نواف الأول ", "0511111111", MigratedApiFactory.NewEmail())));
 
         Assert.Equal((user.Username, "نواف الأول", "0511111111"), (edited.Username, edited.DisplayName, edited.Mobile));
-        Assert.Equal("invalidName", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", "", MigratedApiFactory.NewEmail()))));
+        Assert.Equal("invalidName", await Ledger.CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest(" ", "", MigratedApiFactory.NewEmail()))));
     }
 
     [Fact]
@@ -84,7 +81,7 @@ public class UsersTests(MigratedApiFactory factory)
 
         await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", MigratedApiFactory.NewEmail())));
 
-        Assert.Equal("codeWrong", await CodeOf(await ResetWithCodeAsync(user.Username, code)));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetWithCodeAsync(user.Username, code)));
     }
 
     [Fact]
@@ -99,7 +96,7 @@ public class UsersTests(MigratedApiFactory factory)
 
         await ViewOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", MigratedApiFactory.NewEmail())));
 
-        Assert.Equal("codeWrong", await CodeOf(await person.PostAsJsonAsync("/me/email/confirm", new ConfirmMyEmailRequest(code))));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await person.PostAsJsonAsync("/me/email/confirm", new ConfirmMyEmailRequest(code))));
     }
 
     [Fact]
@@ -125,9 +122,9 @@ public class UsersTests(MigratedApiFactory factory)
 
         var taken = await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", other.ToUpperInvariant()));
 
-        Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (taken.StatusCode, await CodeOf(taken)));
-        Assert.Equal("emailInvalid", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", ""))));
-        Assert.Equal("emailInvalid", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", "nawaf"))));
+        Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (taken.StatusCode, await Ledger.CodeOf(taken)));
+        Assert.Equal("emailInvalid", await Ledger.CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", ""))));
+        Assert.Equal("emailInvalid", await Ledger.CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "", "nawaf"))));
     }
 
     [Fact]
@@ -136,7 +133,7 @@ public class UsersTests(MigratedApiFactory factory)
         var user = await factory.AddUserAsync(Password);
         var manager = await ManagerOfAsync(user);
 
-        Assert.Equal("invalidMobile", await CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "٠٥١١١١١١١١", MigratedApiFactory.NewEmail()))));
+        Assert.Equal("invalidMobile", await Ledger.CodeOf(await manager.PutAsJsonAsync($"/users/{user.Id}", new EditUserRequest("نواف", "٠٥١١١١١١١١", MigratedApiFactory.NewEmail()))));
     }
 
     [Fact]
@@ -149,19 +146,19 @@ public class UsersTests(MigratedApiFactory factory)
         {
             await SignInAsync(user.Username, "wrong");
         }
-        Assert.Equal("accountLocked", await CodeOf(await SignInAsync(user.Username, Password)));
+        Assert.Equal("accountLocked", await Ledger.CodeOf(await SignInAsync(user.Username, Password)));
 
         var reset = await ViewOf(await ResetAsync(manager, user.Id));
 
         Assert.True(reset.MustChangePassword);
         var renewal = await factory.CreateClient().PostAsJsonAsync("/auth/refresh", new RefreshRequest(session.RefreshToken));
         Assert.Equal(HttpStatusCode.Unauthorized, renewal.StatusCode);
-        Assert.Equal("invalidCredentials", await CodeOf(await SignInAsync(user.Username, Password)));
+        Assert.Equal("invalidCredentials", await Ledger.CodeOf(await SignInAsync(user.Username, Password)));
         var signedIn = (await (await SignInAsync(user.Username, Temporary)).Content.ReadFromJsonAsync<Session>(Json))!;
         Assert.True(signedIn.MustChangePassword);
-        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(manager, user.Id, "Short-1")));
-        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(manager, user.Id, "only-letters")));
-        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(manager, user.Id, user.Username)));
+        Assert.Equal("weakPassword", await Ledger.CodeOf(await ResetAsync(manager, user.Id, "Short-1")));
+        Assert.Equal("weakPassword", await Ledger.CodeOf(await ResetAsync(manager, user.Id, "only-letters")));
+        Assert.Equal("weakPassword", await Ledger.CodeOf(await ResetAsync(manager, user.Id, user.Username)));
     }
 
     [Fact]
@@ -192,7 +189,7 @@ public class UsersTests(MigratedApiFactory factory)
         var refused = await ResetAsync(client, target.Id);
 
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
-        Assert.Equal("otherProject", await CodeOf(refused));
+        Assert.Equal("otherProject", await Ledger.CodeOf(refused));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(target.Username, Password)).StatusCode);
     }
 
@@ -207,8 +204,8 @@ public class UsersTests(MigratedApiFactory factory)
         var edit = await client.PutAsJsonAsync($"/users/{target.Id}", new EditUserRequest("نواف", "", taken));
         var reset = await ResetAsync(client, target.Id, "Short-1");
 
-        Assert.Equal((HttpStatusCode.Forbidden, "otherProject"), (edit.StatusCode, await CodeOf(edit)));
-        Assert.Equal((HttpStatusCode.Forbidden, "otherProject"), (reset.StatusCode, await CodeOf(reset)));
+        Assert.Equal((HttpStatusCode.Forbidden, "otherProject"), (edit.StatusCode, await Ledger.CodeOf(edit)));
+        Assert.Equal((HttpStatusCode.Forbidden, "otherProject"), (reset.StatusCode, await Ledger.CodeOf(reset)));
     }
 
     [Fact]

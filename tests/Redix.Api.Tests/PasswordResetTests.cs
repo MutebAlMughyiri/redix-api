@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,9 +17,6 @@ public class PasswordResetTests(MigratedApiFactory factory)
     private const string NewPassword = "Remembered-2";
 
     private static string WrongCodeFor(string code) => code == "000000" ? "111111" : "000000";
-
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
 
     private Task<HttpResponseMessage> AskAsync(string login) => AskAsync(login, factory.CreateClient());
 
@@ -54,7 +50,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(user.Username, code)).StatusCode);
 
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(user.Username, NewPassword)).StatusCode);
-        Assert.Equal("invalidCredentials", await CodeOf(await SignInAsync(user.Username, Password)));
+        Assert.Equal("invalidCredentials", await Ledger.CodeOf(await SignInAsync(user.Username, Password)));
     }
 
     [Fact]
@@ -74,7 +70,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
     {
         var (user, code) = await AskedAsync(MigratedApiFactory.NewEmail());
 
-        var answers = await Task.WhenAll(Enumerable.Range(0, EmailCode.TriesAllowed * 2).Select(async _ => await CodeOf(await ResetAsync(user.Username, code, "weak"))));
+        var answers = await Task.WhenAll(Enumerable.Range(0, EmailCode.TriesAllowed * 2).Select(async _ => await Ledger.CodeOf(await ResetAsync(user.Username, code, "weak"))));
 
         Assert.InRange(answers.Count(answer => answer == "weakPassword"), 1, EmailCode.TriesAllowed);
         Assert.All(answers, answer => Assert.Contains(answer, new[] { "weakPassword", "codeWrong" }));
@@ -85,7 +81,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
     {
         var (user, code) = await AskedAsync(MigratedApiFactory.NewEmail());
 
-        Assert.Equal("codeWrong", await CodeOf(await ResetAsync(user.Username, WrongCodeFor(code))));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(user.Username, WrongCodeFor(code))));
 
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(user.Username, Password)).StatusCode);
     }
@@ -116,8 +112,8 @@ public class PasswordResetTests(MigratedApiFactory factory)
         Assert.Single((await Task.WhenAll(answers.Select(answer => answer.Content.ReadAsStringAsync()))).Distinct());
         Assert.Single(await factory.Emails.ToAsync(email));
         Assert.Empty(factory.Emails.To(stranger));
-        Assert.Equal("codeWrong", await CodeOf(await ResetAsync(withoutEmail.Username, "123456")));
-        Assert.Equal("codeWrong", await CodeOf(await ResetAsync(stranger, "123456")));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(withoutEmail.Username, "123456")));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(stranger, "123456")));
     }
 
     [Fact]
@@ -144,7 +140,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
 
         Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(user.Username, code)).StatusCode);
 
-        Assert.Equal("codeWrong", await CodeOf(await ResetAsync(user.Username, code, "Another-pass-3")));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(user.Username, code, "Another-pass-3")));
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(user.Username, NewPassword)).StatusCode);
     }
 
@@ -158,7 +154,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
         Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(onTime.Username, onTimeCode)).StatusCode);
         factory.Time.Advance(TimeSpan.FromSeconds(1));
 
-        Assert.Equal("codeWrong", await CodeOf(await ResetAsync(late.Username, lateCode)));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(late.Username, lateCode)));
     }
 
     [Fact]
@@ -168,13 +164,13 @@ public class PasswordResetTests(MigratedApiFactory factory)
         var (other, otherCode) = await AskedAsync(MigratedApiFactory.NewEmail());
         for (var attempt = 1; attempt < EmailCode.TriesAllowed; attempt++)
         {
-            Assert.Equal("codeWrong", await CodeOf(await ResetAsync(user.Username, WrongCodeFor(code))));
-            Assert.Equal("codeWrong", await CodeOf(await ResetAsync(other.Username, WrongCodeFor(otherCode))));
+            Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(user.Username, WrongCodeFor(code))));
+            Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(other.Username, WrongCodeFor(otherCode))));
         }
 
         Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(other.Username, otherCode)).StatusCode);
-        Assert.Equal("codeWrong", await CodeOf(await ResetAsync(user.Username, WrongCodeFor(code))));
-        Assert.Equal("codeWrong", await CodeOf(await ResetAsync(user.Username, code)));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(user.Username, WrongCodeFor(code))));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(user.Username, code)));
     }
 
     [Fact]
@@ -189,7 +185,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
         Assert.Equal(2, factory.Emails.To(email).Count);
         if (earlier != later)
         {
-            Assert.Equal("codeWrong", await CodeOf(await ResetAsync(user.Username, earlier)));
+            Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetAsync(user.Username, earlier)));
         }
         Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(user.Username, later)).StatusCode);
         await factory.WithDatabaseAsync(async db => Assert.Single(await db.EmailCodes.Where(code => code.UserId == user.Id).ToListAsync()));
@@ -254,7 +250,7 @@ public class PasswordResetTests(MigratedApiFactory factory)
         {
             await SignInAsync(user.Username, "wrong");
         }
-        Assert.Equal("accountLocked", await CodeOf(await SignInAsync(user.Username, Password)));
+        Assert.Equal("accountLocked", await Ledger.CodeOf(await SignInAsync(user.Username, Password)));
         await AskAsync(user.Username);
 
         Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(user.Username, await factory.Emails.LastCodeToAsync(email))).StatusCode);
@@ -279,8 +275,8 @@ public class PasswordResetTests(MigratedApiFactory factory)
     {
         var (user, code) = await AskedAsync(MigratedApiFactory.NewEmail());
 
-        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(user.Username, code, "short")));
-        Assert.Equal("weakPassword", await CodeOf(await ResetAsync(user.Username, code, user.Username)));
+        Assert.Equal("weakPassword", await Ledger.CodeOf(await ResetAsync(user.Username, code, "short")));
+        Assert.Equal("weakPassword", await Ledger.CodeOf(await ResetAsync(user.Username, code, user.Username)));
 
         Assert.Equal(HttpStatusCode.NoContent, (await ResetAsync(user.Username, code)).StatusCode);
     }

@@ -115,12 +115,12 @@ public sealed record Ledger(MigratedApiFactory Factory, HttpClient Client, Proje
 
     public static async Task<string> CodeOf(HttpResponseMessage response) => (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
 
-    public async Task AssertRefusedAsync(EntryRequest request, string code)
-    {
-        var response = await PostAsync(request);
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(code, await CodeOf(response));
-    }
+    /// <summary>Asserts that recording <paramref name="request"/> is refused as invalid, with <paramref name="code"/>.</summary>
+    public async Task AssertRefusedAsync(EntryRequest request, string code) => await AssertRefusedAsync(await PostAsync(request), HttpStatusCode.BadRequest, code);
+
+    /// <summary>Asserts that <paramref name="response"/> is a refusal with <paramref name="status"/> and <paramref name="code"/>: the one check every test class makes.</summary>
+    public static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code) =>
+        Assert.Equal((status, code), (response.StatusCode, await CodeOf(response)));
 
     public async Task<T> ReadAsync<T>(Func<RedixDbContext, Task<T>> read)
     {

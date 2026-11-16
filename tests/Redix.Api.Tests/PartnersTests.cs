@@ -71,7 +71,7 @@ public class PartnersTests(MigratedApiFactory factory)
         (await client.PostAsync($"/projects/{project.Id}/items/{capital}/disable", null)).EnsureSuccessStatusCode();
         var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/partners", new PartnerRequest("ريم"), Json);
 
-        Assert.Equal((HttpStatusCode.BadRequest, "itemNotOffered"), (refused.StatusCode, await CodeOf(refused)));
+        Assert.Equal((HttpStatusCode.BadRequest, "itemNotOffered"), (refused.StatusCode, await Ledger.CodeOf(refused)));
     }
 
     private static async Task<List<PartnerView>> PartnersOf(HttpClient client, Guid projectId) =>
@@ -82,9 +82,6 @@ public class PartnersTests(MigratedApiFactory factory)
         (await client.PostAsJsonAsync($"/projects/{projectId}/partners", new PartnerRequest(name) { UserId = userId }, Json)).EnsureSuccessStatusCode();
         return (await PartnersOf(client, projectId)).Single(partner => partner.Name == name);
     }
-
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
 
     [Fact]
     public async Task FinanceAddsAPartnerByNameWithNoLogin()
@@ -204,7 +201,7 @@ public class PartnersTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidName", await CodeOf(refused));
+            Assert.Equal("invalidName", await Ledger.CodeOf(refused));
         }
     }
 
@@ -222,7 +219,7 @@ public class PartnersTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("unknownUser", await CodeOf(refused));
+            Assert.Equal("unknownUser", await Ledger.CodeOf(refused));
         }
     }
 
@@ -241,7 +238,7 @@ public class PartnersTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("userTaken", await CodeOf(refused));
+            Assert.Equal("userTaken", await Ledger.CodeOf(refused));
         }
         (await client.PutAsJsonAsync($"/projects/{project.Id}/partners/{mine.Id}", new PartnerRequest("نواف بن محمد") { UserId = nawaf.Id }, Json)).EnsureSuccessStatusCode();
     }
@@ -361,8 +358,8 @@ public class PartnersTests(MigratedApiFactory factory)
         var stranger = await client.PostAsJsonAsync($"/projects/{project.Id}/users", Request($"stranger-{Guid.NewGuid():N}", [Permission.SeeChosenCapital], [theirs.Id]), Json);
 
         Assert.Equal([partner.Id], (await made.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<UserView>(Json))!.Projects.Single().PartnerIds);
-        Assert.Equal((HttpStatusCode.BadRequest, "invalidPermission"), (both.StatusCode, await CodeOf(both)));
-        Assert.Equal((HttpStatusCode.BadRequest, "unknownPartner"), (stranger.StatusCode, await CodeOf(stranger)));
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidPermission"), (both.StatusCode, await Ledger.CodeOf(both)));
+        Assert.Equal((HttpStatusCode.BadRequest, "unknownPartner"), (stranger.StatusCode, await Ledger.CodeOf(stranger)));
     }
 
     [Fact]
@@ -465,7 +462,7 @@ public class PartnersTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-            Assert.Equal("projectFinished", await CodeOf(refused));
+            Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         }
         Assert.Single(await PartnersOf(client, project.Id));
     }

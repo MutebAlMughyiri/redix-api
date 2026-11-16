@@ -31,9 +31,6 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         return client.PostAsJsonAsync("/auth/change-password", new ChangePasswordRequest(currentPassword, newPassword));
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     [Fact]
     public async Task ChangingATemporaryPasswordEndsTheForcedChangeAndTheNewPasswordWorks()
     {
@@ -57,11 +54,11 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         {
             var refused = await ChangePasswordAsync(session.AccessToken, "wrong", NewPassword);
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidCredentials", await CodeOf(refused));
+            Assert.Equal("invalidCredentials", await Ledger.CodeOf(refused));
         }
         await ChangePasswordAsync(session.AccessToken, "wrong", NewPassword);
 
-        Assert.Equal("accountLocked", await CodeOf(await ChangePasswordAsync(session.AccessToken, Password, NewPassword)));
+        Assert.Equal("accountLocked", await Ledger.CodeOf(await ChangePasswordAsync(session.AccessToken, Password, NewPassword)));
         var trail = await factory.HistoryOfAsync(user.Id);
         Assert.Contains(trail, record => record.Action == HistoryAction.AccountLocked);
         Assert.Contains(trail, record => record.Action == HistoryAction.SignInFailed);
@@ -80,7 +77,7 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         var response = await ChangePasswordAsync(session.AccessToken, Password, newPassword);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("weakPassword", await CodeOf(response));
+        Assert.Equal("weakPassword", await Ledger.CodeOf(response));
     }
 
     [Fact]
@@ -141,6 +138,6 @@ public class ChangePasswordTests(MigratedApiFactory factory)
         var response = await ChangePasswordAsync(session.AccessToken, Password, user.Username.ToUpperInvariant());
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("weakPassword", await CodeOf(response));
+        Assert.Equal("weakPassword", await Ledger.CodeOf(response));
     }
 }

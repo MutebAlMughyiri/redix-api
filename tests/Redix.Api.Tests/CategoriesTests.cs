@@ -61,9 +61,6 @@ public class CategoriesTests(MigratedApiFactory factory)
         return (await added.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ItemView>(Json))!;
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private async Task<ProjectView> RegisterAsync(HttpClient client, Guid structureSourceId)
     {
         var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 7", new DateOnly(2026, 11, 1), []) { StructureSourceId = structureSourceId });
@@ -122,7 +119,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var refused = await DeleteSubgroupAsync(ledger.Client, ledger.ProjectId, itemId, subgroup.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("subgroupInUse", await CodeOf(refused));
+        Assert.Equal("subgroupInUse", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -269,7 +266,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var created = await stranger.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 7", new DateOnly(2026, 11, 1), []) { StructureSourceId = earlier.Id });
 
         Assert.Equal(HttpStatusCode.BadRequest, created.StatusCode);
-        Assert.Equal("unknownSource", await CodeOf(created));
+        Assert.Equal("unknownSource", await Ledger.CodeOf(created));
     }
 
     [Fact]
@@ -279,7 +276,7 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("غصون 7", new DateOnly(2026, 11, 1), []) { StructureSourceId = StructureSeed.TemplateId });
 
-        Assert.Equal("unknownSource", await CodeOf(created));
+        Assert.Equal("unknownSource", await Ledger.CodeOf(created));
     }
 
     [Fact]
@@ -324,7 +321,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidName", await CodeOf(refused));
+            Assert.Equal("invalidName", await Ledger.CodeOf(refused));
         }
     }
 
@@ -376,7 +373,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         {
             var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/categories/reorder", new ReorderRequest(order));
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidOrder", await CodeOf(refused));
+            Assert.Equal("invalidOrder", await Ledger.CodeOf(refused));
         }
         Assert.Equal(ids, (await CategoriesOf(client, project.Id)).Select(category => category.Id));
     }
@@ -501,7 +498,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var refused = await client.PutAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups/{item.Subgroups[0].Id}", new NameRequest("عام"));
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("generalSubgroup", await CodeOf(refused));
+        Assert.Equal("generalSubgroup", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -560,7 +557,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-            Assert.Equal("projectFinished", await CodeOf(refused));
+            Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         }
         Assert.Equal(9, (await CategoriesOf(client, project.Id)).Count);
     }
@@ -807,7 +804,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var refused = await DeleteSubgroupAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, subgroup.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("subgroupInUse", await CodeOf(refused));
+        Assert.Equal("subgroupInUse", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -818,7 +815,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var refused = await DeleteSubgroupAsync(client, projectId, item.Id, item.Subgroups[0].Id);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("generalSubgroup", await CodeOf(refused));
+        Assert.Equal("generalSubgroup", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -859,7 +856,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         {
             var refused = await ReorderTablesAsync(client, projectId, item.Id, ids);
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("invalidOrder", await CodeOf(refused));
+            Assert.Equal("invalidOrder", await Ledger.CodeOf(refused));
         }
     }
 
@@ -952,7 +949,7 @@ public class CategoriesTests(MigratedApiFactory factory)
             var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{item.Id}/subgroups", new NameRequest("الجلاي"));
 
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            Assert.Equal("itemTakesNoPurchases", await CodeOf(refused));
+            Assert.Equal("itemTakesNoPurchases", await Ledger.CodeOf(refused));
         }
     }
 
@@ -978,7 +975,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var refused = await ChangeTypeAsync(ledger.Client, ledger.ProjectId, ledger.ItemId, ItemType.ContractorPayments);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("itemHasEntries", await CodeOf(refused));
+        Assert.Equal("itemHasEntries", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -992,7 +989,7 @@ public class CategoriesTests(MigratedApiFactory factory)
         var refused = await ChangeTypeAsync(ledger.Client, ledger.ProjectId, item.Id, ItemType.Purchases);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("itemHasContract", await CodeOf(refused));
+        Assert.Equal("itemHasContract", await Ledger.CodeOf(refused));
     }
 
     [Fact]
@@ -1088,6 +1085,6 @@ public class CategoriesTests(MigratedApiFactory factory)
 
         var refused = await client.PostAsJsonAsync($"/projects/{project.Id}/items/{sale.Id}/columns", new AddColumnRequest("المشتري", ColumnDataType.Text, false, false, []), Json);
 
-        Assert.Equal((HttpStatusCode.BadRequest, "revenueTakesNoColumns"), (refused.StatusCode, await CodeOf(refused)));
+        Assert.Equal((HttpStatusCode.BadRequest, "revenueTakesNoColumns"), (refused.StatusCode, await Ledger.CodeOf(refused)));
     }
 }

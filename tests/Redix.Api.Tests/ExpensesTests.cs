@@ -76,15 +76,8 @@ public class ExpensesTests(MigratedApiFactory factory)
     private static async Task<RecordedEntryView> RecordAsync(HttpClient client, Guid projectId, EntryRequest request) =>
         (await (await PostAsync(client, projectId, request)).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<RecordedEntryView>(Json))!;
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
-    private static async Task AssertRefusedAsync(Setup setup, EntryRequest request, string code)
-    {
-        var response = await PostAsync(setup.Client, setup.Project.Id, request);
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(code, await CodeOf(response));
-    }
+    private static async Task AssertRefusedAsync(Setup setup, EntryRequest request, string code) =>
+        await Ledger.AssertRefusedAsync(await PostAsync(setup.Client, setup.Project.Id, request), HttpStatusCode.BadRequest, code);
 
     private async Task<T> ReadAsync<T>(Func<RedixDbContext, Task<T>> read)
     {
@@ -357,7 +350,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         {
             var response = await PostAsync(field, setup.Project.Id, Expense(setup) with { AccountId = accountId });
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Equal("accountNotOffered", await CodeOf(response));
+            Assert.Equal("accountNotOffered", await Ledger.CodeOf(response));
         }
         Assert.NotNull(other);
     }
@@ -507,7 +500,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
         var response = await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = new Dictionary<string, string> { ["custom.nothing"] = "1" } });
 
-        Assert.Equal("unknownColumn", await CodeOf(response));
+        Assert.Equal("unknownColumn", await Ledger.CodeOf(response));
     }
 
     [Fact]
@@ -521,7 +514,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var view = await RecordAsync(setup.Client, setup.Project.Id, Expense(setup) with { Submit = true, AttachmentId = await ImageAsync(setup.Client, setup.Project.Id) });
 
         Assert.Equal(EntryStatus.PendingApproval, view.Status);
-        Assert.Equal("unknownColumn", await CodeOf(await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = new Dictionary<string, string> { [key] = "1" } })));
+        Assert.Equal("unknownColumn", await Ledger.CodeOf(await PostAsync(setup.Client, setup.Project.Id, Expense(setup) with { ColumnValues = new Dictionary<string, string> { [key] = "1" } })));
     }
 
     [Theory]
@@ -572,7 +565,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var refused = await PostAsync(otherClient, setup.Project.Id, request);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("entryExists", await CodeOf(refused));
+        Assert.Equal("entryExists", await Ledger.CodeOf(refused));
     }
 
     [Theory]
@@ -585,7 +578,7 @@ public class ExpensesTests(MigratedApiFactory factory)
 
         var refused = await PostAsync(member, setup.Project.Id, Expense(setup));
 
-        Assert.Equal((HttpStatusCode.BadRequest, "unknownTable"), (refused.StatusCode, await CodeOf(refused)));
+        Assert.Equal((HttpStatusCode.BadRequest, "unknownTable"), (refused.StatusCode, await Ledger.CodeOf(refused)));
     }
 
     [Fact]
@@ -606,7 +599,7 @@ public class ExpensesTests(MigratedApiFactory factory)
         var response = await PostAsync(setup.Client, setup.Project.Id, Expense(setup));
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal("projectFinished", await CodeOf(response));
+        Assert.Equal("projectFinished", await Ledger.CodeOf(response));
     }
 
     [Fact]

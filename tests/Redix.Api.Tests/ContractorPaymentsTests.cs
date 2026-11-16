@@ -107,13 +107,6 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     private static async Task<ContractView> ContractOfAsync(Setup setup) =>
         (await setup.Ledger.Client.GetFromJsonAsync<List<ContractView>>($"/projects/{setup.Ledger.ProjectId}/contracts", Ledger.Json))!.Single(row => row.Id == setup.ContractId);
 
-    private static async Task AssertRefusedAsync(Setup setup, EntryRequest request, string code)
-    {
-        var response = await PostAsync(setup, request);
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(code, await Ledger.CodeOf(response));
-    }
-
     /// <summary>The item's total as the design defines it (BR-02): the approved entries of the item, by Entries.Amount.</summary>
     private static Task<decimal> ItemTotalAsync(Setup setup) => setup.Ledger.ReadAsync(db => (
         from details in db.ExpenseDetails
@@ -289,7 +282,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     {
         var setup = await ContractAsync();
 
-        await AssertRefusedAsync(setup, Payment(setup, -136m), "deductionNeedsDescription");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup, -136m), "deductionNeedsDescription");
         Assert.Equal(-136m, (await RecordAsync(setup, Payment(setup, -136m) with { Description = "خصم" })).Amount);
     }
 
@@ -385,11 +378,11 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         var setup = await ContractAsync();
         var today = setup.Ledger.Today;
 
-        await AssertRefusedAsync(setup, Payment(setup, 0m), "invalidAmount");
-        await AssertRefusedAsync(setup, Payment(setup, 1.234m), "invalidAmount");
-        await AssertRefusedAsync(setup, Payment(setup) with { Description = new string('م', Entry.DescriptionMaxLength + 1) }, "invalidDescription");
-        await AssertRefusedAsync(setup, Payment(setup) with { Date = default }, "invalidDate");
-        await AssertRefusedAsync(setup, Payment(setup) with { Date = today.AddDays(1) }, "invalidDate");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup, 0m), "invalidAmount");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup, 1.234m), "invalidAmount");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup) with { Description = new string('م', Entry.DescriptionMaxLength + 1) }, "invalidDescription");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup) with { Date = default }, "invalidDate");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup) with { Date = today.AddDays(1) }, "invalidDate");
     }
 
     [Fact]
@@ -398,9 +391,9 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         var setup = await ContractAsync();
         var other = await ContractAsync();
 
-        await AssertRefusedAsync(setup, Payment(setup) with { TableId = other.ContractId }, "unknownTable");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup) with { TableId = other.ContractId }, "unknownTable");
         (await setup.Ledger.Client.PostAsync($"/projects/{setup.Ledger.ProjectId}/contracts/{setup.ContractId}/disable", null)).EnsureSuccessStatusCode();
-        await AssertRefusedAsync(setup, Payment(setup), "unknownTable");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup), "unknownTable");
     }
 
     [Fact]
@@ -409,7 +402,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
         var setup = await ContractAsync();
         await factory.WithDatabaseAsync(db => db.Items.Where(item => item.Id == setup.ItemId).ExecuteUpdateAsync(item => item.SetProperty(row => row.IsActive, false)));
 
-        await AssertRefusedAsync(setup, Payment(setup), "unknownTable");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup), "unknownTable");
     }
 
     [Fact]
@@ -461,7 +454,7 @@ public class ContractorPaymentsTests(MigratedApiFactory factory)
     {
         var setup = await ContractAsync();
 
-        await AssertRefusedAsync(setup, Payment(setup) with { Id = Guid.Empty }, "invalidEntryId");
+        await setup.Ledger.AssertRefusedAsync(Payment(setup) with { Id = Guid.Empty }, "invalidEntryId");
     }
 
     [Fact]

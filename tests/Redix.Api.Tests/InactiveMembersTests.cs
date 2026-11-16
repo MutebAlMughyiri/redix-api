@@ -45,9 +45,6 @@ public class InactiveMembersTests(MigratedApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<UserView>(Json))!;
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private static async Task<List<ProjectView>> ProjectsOf(HttpClient client) => (await client.GetFromJsonAsync<List<ProjectView>>("/projects", Json))!;
 
     private async Task<Session> SignInAsync(User user)
@@ -202,7 +199,7 @@ public class InactiveMembersTests(MigratedApiFactory factory)
         var refused = await DisableAsync(client, projectId, manager.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("lastManager", await CodeOf(refused));
+        Assert.Equal("lastManager", await Ledger.CodeOf(refused));
         Assert.Equal(0, await InactiveRowsAsync(projectId, manager.Id));
         Assert.Empty(await InactiveHistoryAsync(projectId, manager.Id));
     }
@@ -216,7 +213,7 @@ public class InactiveMembersTests(MigratedApiFactory factory)
         var secondClient = await factory.ClientSignedInAsAsync(second, Password);
 
         Assert.True(Assert.Single((await ViewOf(await DisableAsync(client, projectId, manager.Id))).Projects).IsInactive);
-        Assert.Equal("lastManager", await CodeOf(await DisableAsync(secondClient, projectId, second.Id)));
+        Assert.Equal("lastManager", await Ledger.CodeOf(await DisableAsync(secondClient, projectId, second.Id)));
     }
 
     [Fact]

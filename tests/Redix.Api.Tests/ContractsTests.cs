@@ -63,9 +63,6 @@ public class ContractsTests(MigratedApiFactory factory)
         return (await ContractsOf(client, project.Id)).Last();
     }
 
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
-
     private static Contract ContractOf(decimal value, bool isOpenValue = false)
     {
         var contract = new Contract();
@@ -154,7 +151,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var refused = await PostAsync(client, project.Id, await RequestFor(client, project, value));
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Equal("invalidValue", await CodeOf(refused));
+        Assert.Equal("invalidValue", await Ledger.CodeOf(refused));
     }
 
     [Theory]
@@ -164,8 +161,8 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var request = await RequestFor(client, project);
 
-        Assert.Equal("invalidUnitPrice", await CodeOf(await PostAsync(client, project.Id, request with { UnitPrice = amount })));
-        Assert.Equal("invalidQuantity", await CodeOf(await PostAsync(client, project.Id, request with { Quantity = amount })));
+        Assert.Equal("invalidUnitPrice", await Ledger.CodeOf(await PostAsync(client, project.Id, request with { UnitPrice = amount })));
+        Assert.Equal("invalidQuantity", await Ledger.CodeOf(await PostAsync(client, project.Id, request with { Quantity = amount })));
     }
 
     [Fact]
@@ -174,7 +171,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var request = await RequestFor(client, project) with { Notes = new string('x', Contract.NotesMaxLength + 1) };
 
-        Assert.Equal("invalidNotes", await CodeOf(await PostAsync(client, project.Id, request)));
+        Assert.Equal("invalidNotes", await Ledger.CodeOf(await PostAsync(client, project.Id, request)));
     }
 
     [Fact]
@@ -188,7 +185,7 @@ public class ContractsTests(MigratedApiFactory factory)
 
         foreach (var supplierId in new[] { disabled.Id, Guid.Empty, (await ContractorOf(otherClient, other.Id)).Id })
         {
-            Assert.Equal("unknownSupplier", await CodeOf(await PostAsync(client, project.Id, request with { SupplierId = supplierId })));
+            Assert.Equal("unknownSupplier", await Ledger.CodeOf(await PostAsync(client, project.Id, request with { SupplierId = supplierId })));
         }
     }
 
@@ -203,7 +200,7 @@ public class ContractsTests(MigratedApiFactory factory)
 
         foreach (var itemId in new[] { purchasesOnly, Guid.Empty, (await ItemOf(otherClient, other.Id)).Id })
         {
-            Assert.Equal("itemNotOffered", await CodeOf(await PostAsync(client, project.Id, request with { ItemId = itemId })));
+            Assert.Equal("itemNotOffered", await Ledger.CodeOf(await PostAsync(client, project.Id, request with { ItemId = itemId })));
         }
     }
 
@@ -214,7 +211,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var request = await RequestFor(client, project);
         (await client.PostAsync($"/projects/{project.Id}/items/{request.ItemId}/disable", null)).EnsureSuccessStatusCode();
 
-        Assert.Equal("itemNotOffered", await CodeOf(await PostAsync(client, project.Id, request)));
+        Assert.Equal("itemNotOffered", await Ledger.CodeOf(await PostAsync(client, project.Id, request)));
     }
 
     [Fact]
@@ -260,7 +257,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var (client, project) = await FinanceAsync();
         var contract = await AddAsync(client, project);
 
-        Assert.Equal("invalidValue", await CodeOf(await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(0m, false), Json)));
+        Assert.Equal("invalidValue", await Ledger.CodeOf(await client.PutAsJsonAsync($"/projects/{project.Id}/contracts/{contract.Id}", new ContractTerms(0m, false), Json)));
     }
 
     [Fact]
@@ -369,7 +366,7 @@ public class ContractsTests(MigratedApiFactory factory)
         })
         {
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-            Assert.Equal("projectFinished", await CodeOf(refused));
+            Assert.Equal("projectFinished", await Ledger.CodeOf(refused));
         }
         Assert.Single(await ContractsOf(client, project.Id));
     }
@@ -437,7 +434,7 @@ public class ContractsTests(MigratedApiFactory factory)
         var refused = await AmendAsync(ledger.Client, ledger.ProjectId, contract.Id, new { value = 99000m, isOpenValue = false, supplierId = contractor.Id, itemId = item.Id });
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal("contractHasPayments", await CodeOf(refused));
+        Assert.Equal("contractHasPayments", await Ledger.CodeOf(refused));
         var kept = Assert.Single(await ContractsOf(ledger.Client, ledger.ProjectId));
         Assert.Equal((contract.SupplierName, 34000m), (kept.SupplierName, kept.Value));
     }
@@ -467,8 +464,8 @@ public class ContractsTests(MigratedApiFactory factory)
         var contract = Assert.Single(await ContractsOf(client, project.Id));
         var purchasesOnly = (await client.GetFromJsonAsync<List<CategoryView>>($"/projects/{project.Id}/categories", Json))!.SelectMany(category => category.Items).First(item => item.Type == ItemType.Purchases);
 
-        Assert.Equal("unknownSupplier", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, supplierId = Guid.NewGuid() })));
-        Assert.Equal("itemNotOffered", await CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, itemId = purchasesOnly.Id })));
+        Assert.Equal("unknownSupplier", await Ledger.CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, supplierId = Guid.NewGuid() })));
+        Assert.Equal("itemNotOffered", await Ledger.CodeOf(await AmendAsync(client, project.Id, contract.Id, new { value = 1m, isOpenValue = false, itemId = purchasesOnly.Id })));
         Assert.Equal(34000m, Assert.Single(await ContractsOf(client, project.Id)).Value);
     }
 }

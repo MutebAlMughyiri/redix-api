@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Redix.Api.Auth;
 using Redix.Api.History;
 
@@ -11,9 +10,6 @@ namespace Redix.Api.Tests;
 public class MyEmailTests(MigratedApiFactory factory)
 {
     private const string Password = "My-email-pass-1";
-
-    private static async Task<string> CodeOf(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
 
     private static string WrongCodeFor(string code) => code == "000000" ? "111111" : "000000";
 
@@ -71,7 +67,7 @@ public class MyEmailTests(MigratedApiFactory factory)
         var (user, client) = await SignedInAsync(old);
         await AskAsync(client, changed);
 
-        Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, WrongCodeFor(await factory.Emails.LastCodeToAsync(changed)))));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ConfirmAsync(client, WrongCodeFor(await factory.Emails.LastCodeToAsync(changed)))));
 
         Assert.Equal(old, (await SessionOfAsync(user)).Email);
     }
@@ -81,10 +77,10 @@ public class MyEmailTests(MigratedApiFactory factory)
     {
         var old = MigratedApiFactory.NewEmail();
         var (user, client) = await SignedInAsync(old);
-        Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, "123456")));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ConfirmAsync(client, "123456")));
         await ForgotAsync(user.Username);
 
-        Assert.Equal("codeWrong", await CodeOf(await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(old))));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(old))));
 
         Assert.Equal(old, (await SessionOfAsync(user)).Email);
     }
@@ -100,7 +96,7 @@ public class MyEmailTests(MigratedApiFactory factory)
 
         await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(changed));
 
-        Assert.Equal("codeWrong", await CodeOf(await ResetWithCodeAsync(user.Username, resetCode)));
+        Assert.Equal("codeWrong", await Ledger.CodeOf(await ResetWithCodeAsync(user.Username, resetCode)));
     }
 
     [Fact]
@@ -125,9 +121,9 @@ public class MyEmailTests(MigratedApiFactory factory)
 
         var taken = await AskAsync(client, other.ToUpperInvariant());
 
-        Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (taken.StatusCode, await CodeOf(taken)));
-        Assert.Equal("emailInvalid", await CodeOf(await AskAsync(client, "not an email")));
-        Assert.Equal("emailInvalid", await CodeOf(await AskAsync(client, "")));
+        Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (taken.StatusCode, await Ledger.CodeOf(taken)));
+        Assert.Equal("emailInvalid", await Ledger.CodeOf(await AskAsync(client, "not an email")));
+        Assert.Equal("emailInvalid", await Ledger.CodeOf(await AskAsync(client, "")));
         Assert.Empty(factory.Emails.To(other.ToUpperInvariant()));
     }
 
@@ -141,7 +137,7 @@ public class MyEmailTests(MigratedApiFactory factory)
 
         var refused = await ConfirmAsync(client, await factory.Emails.LastCodeToAsync(wanted));
 
-        Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (refused.StatusCode, await CodeOf(refused)));
+        Assert.Equal((HttpStatusCode.Conflict, "emailTaken"), (refused.StatusCode, await Ledger.CodeOf(refused)));
         Assert.Equal("", (await SessionOfAsync(user)).Email);
     }
 
