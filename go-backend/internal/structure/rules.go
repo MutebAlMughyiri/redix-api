@@ -66,12 +66,12 @@ func (t ItemType) takesPurchases() bool { return t == Purchases || t == Both }
 type DataType int64
 
 const (
-	text DataType = iota
-	number
-	amount
-	date
-	list
-	file
+	Text DataType = iota
+	Number
+	Amount
+	Date
+	List
+	File
 )
 
 var dataTypes = web.Enum{"text", "number", "amount", "date", "list", "file"}
@@ -295,9 +295,9 @@ func (typed columnRequest) refusalOfNew() string {
 	switch {
 	case !named:
 		return naming.Invalid
-	case typed.DataType == file:
+	case typed.DataType == File:
 		return invalidDataType
-	case typed.DataType == list && (len(choices) == 0 || !acceptable(choices)):
+	case typed.DataType == List && (len(choices) == 0 || !acceptable(choices)):
 		return invalidOptions
 	}
 	return ""
@@ -307,7 +307,7 @@ func (typed columnRequest) refusalOfNew() string {
 func (typed columnRequest) newColumn(sortOrder int64) column {
 	name, _ := naming.Named(typed.Name)
 	choices := []choice{}
-	if typed.DataType == list {
+	if typed.DataType == List {
 		choices = choicesOf(typed.Choices)
 	}
 	return column{Key: customKeyPrefix + strings.ReplaceAll(uuid.Must(uuid.NewV7()).String(), "-", ""), Name: name, DataType: typed.DataType,
@@ -334,7 +334,7 @@ func (c column) edited(typed editRequest) (column, string) {
 		return c, coreColumn
 	}
 	added := choicesOf(typed.NewChoices)
-	if len(added) > 0 && (c.DataType != list || !c.isCustom() || !acceptable(added)) {
+	if len(added) > 0 && (c.DataType != List || !c.isCustom() || !acceptable(added)) {
 		return c, invalidOptions
 	}
 	c.Name, c.IsRequired, c.ShowInReports = name, typed.IsRequired, typed.ShowInReports
@@ -459,13 +459,13 @@ const valueMaxLength = 1000
 func Accepts(row store.ItemColumn, value string) bool {
 	one := ofItemColumn(row)
 	switch one.DataType {
-	case number, amount:
+	case Number, Amount:
 		parsed, err := fixed.Parse(strings.ReplaceAll(value, ",", ""))
 		return err == nil && !strings.ContainsAny(value, "eE") && parsed >= 0 && parsed.IsAcceptableMoney()
-	case date:
+	case Date:
 		_, err := time.Parse("2006-01-02", value)
 		return err == nil && len(value) == 10
-	case list:
+	case List:
 		return one.choiceOf(value).ID != uuid.Nil
 	}
 	return utf8.RuneCountInString(value) <= valueMaxLength
@@ -503,6 +503,3 @@ func ChoicesIn(row store.ItemColumn) []Choice {
 func ChoiceNameOf(row store.ItemColumn, value string) string {
 	return ofItemColumn(row).choiceOf(value).Name
 }
-
-// IsList says whether the column is a list a person chooses from.
-func IsList(row store.ItemColumn) bool { return DataType(row.DataType) == list }

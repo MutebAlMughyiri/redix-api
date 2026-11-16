@@ -1013,6 +1013,28 @@ func (q *Queries) AttachmentSent(ctx context.Context, arg AttachmentSentParams) 
 	return items, nil
 }
 
+const attachmentWithID = `-- name: AttachmentWithID :one
+SELECT id, project_id, storage_path, file_name, content_type, size_bytes, sha256, uploaded_by_user_id, uploaded_at FROM attachments WHERE id = ?
+`
+
+// The attachment a signed link opens, whatever its project: the link names it, and its signature says it was made for it.
+func (q *Queries) AttachmentWithID(ctx context.Context, id uuid.UUID) (Attachment, error) {
+	row := q.queryRow(ctx, q.attachmentWithIDStmt, attachmentWithID, id)
+	var i Attachment
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.StoragePath,
+		&i.FileName,
+		&i.ContentType,
+		&i.SizeBytes,
+		&i.Sha256,
+		&i.UploadedByUserID,
+		&i.UploadedAt,
+	)
+	return i, err
+}
+
 const balancesOf = `-- name: BalancesOf :many
 SELECT reconciliation_id, account_id, actual_balance FROM reconciliation_balances WHERE reconciliation_id = ?
 `
@@ -1932,7 +1954,7 @@ func (q *Queries) DocumentOf(ctx context.Context, arg DocumentOfParams) (Documen
 const documentsOf = `-- name: DocumentsOf :many
 SELECT documents.id, documents.name, documents.group_name, attachments.id AS attachment_id, attachments.file_name, attachments.content_type, documents.uploaded_at
 FROM documents JOIN attachments ON attachments.id = documents.attachment_id
-WHERE documents.project_id = ? ORDER BY documents.group_name COLLATE names, documents.uploaded_at DESC
+WHERE documents.project_id = ? ORDER BY documents.group_name COLLATE names, documents.uploaded_at DESC, documents.id DESC
 `
 
 type DocumentsOfRow struct {

@@ -28,6 +28,8 @@ type Settings struct {
 	RegistrationsPerHour, EmailCodesPerHour int
 	// AttachmentsFolder keeps uploaded files; the backup must include it (Attachments__Folder, NFR-10, R32).
 	AttachmentsFolder string
+	// TypstPath is the typst binary that makes the report PDFs (Typst__Path, #140 D2); typst on the path by default.
+	TypstPath string
 	// EmailConnectionString and EmailFrom send email through Azure Communication Services; empty until set (Email__ConnectionString, Email__From).
 	EmailConnectionString, EmailFrom string
 	// EmailFolder keeps each email instead of sending it while no connection string is set (Email__Folder).
@@ -68,6 +70,7 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 		RegistrationsPerHour:  registrations,
 		EmailCodesPerHour:     emailCodes,
 		AttachmentsFolder:     get("Attachments__Folder", filepath.Join(data, "Attachments")),
+		TypstPath:             get("Typst__Path", "typst"),
 		EmailConnectionString: get("Email__ConnectionString", ""),
 		EmailFrom:             get("Email__From", ""),
 		EmailFolder:           get("Email__Folder", filepath.Join(data, "Emails")),

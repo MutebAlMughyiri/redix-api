@@ -4,6 +4,7 @@ package contracts
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -95,8 +96,9 @@ type documentView struct {
 	SizeBytes   int64     `json:"sizeBytes"`
 }
 
-// contractView is a contract as the app shows it (ContractView).
-type contractView struct {
+// View is a contract as the app shows it (ContractView).
+// View is a contract as its list and the contracts report show it, with its value, paid and remaining (ContractView, BR-04).
+type View struct {
 	ID           uuid.UUID      `json:"id"`
 	ItemID       uuid.UUID      `json:"itemId"`
 	SupplierName string         `json:"supplierName"`
@@ -116,23 +118,22 @@ type contractView struct {
 	Documents    []documentView `json:"documents"`
 }
 
-// list is every contract of the project, disabled ones included, in the order they were added, each with its value, paid and remaining (BR-04).
-func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	rows, err := read.ContractsOf(r.Context(), projectID)
-	documents, documentsErr := read.ContractDocuments(r.Context(), projectID)
-	money, moneyErr := MoneyOf(r.Context(), read, projectID, uuid.Nil)
-	withPayments, paymentsErr := read.ContractsWithPayments(r.Context(), projectID)
-	if err != nil || documentsErr != nil || moneyErr != nil || paymentsErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+// List is every contract of the project, disabled ones included, in the order they were added, each with its value, paid and remaining (BR-04,
+// ContractsEndpoints.List): the one owner of the contracts screen and the contracts report.
+func List(ctx context.Context, q *store.Queries, projectID uuid.UUID) ([]View, error) {
+	rows, err := q.ContractsOf(ctx, projectID)
+	documents, documentsErr := q.ContractDocuments(ctx, projectID)
+	money, moneyErr := MoneyOf(ctx, q, projectID, uuid.Nil)
+	withPayments, paymentsErr := q.ContractsWithPayments(ctx, projectID)
+	if err := errors.Join(err, documentsErr, moneyErr, paymentsErr); err != nil {
+		return nil, err
 	}
-	views := []contractView{}
+	views := []View{}
 	for _, row := range rows {
 		contract := store.Contract{ID: row.ID, ProjectID: row.ProjectID, ItemID: row.ItemID, SortOrder: row.SortOrder, SupplierID: row.SupplierID, Value: row.Value,
 			IsOpenValue: row.IsOpenValue, UnitPrice: row.UnitPrice, Quantity: row.Quantity, Notes: row.Notes, IsActive: row.IsActive}
 		held := money[row.ID]
-		view := contractView{ID: row.ID, ItemID: row.ItemID, SupplierName: row.SupplierName, ItemName: row.ItemName, Value: row.Value, IsOpenValue: row.IsOpenValue,
+		view := View{ID: row.ID, ItemID: row.ItemID, SupplierName: row.SupplierName, ItemName: row.ItemName, Value: row.Value, IsOpenValue: row.IsOpenValue,
 			UnitPrice: row.UnitPrice, Quantity: row.Quantity, Notes: row.Notes, Paid: held.Paid, Pending: held.Pending, Remaining: Remaining(contract, held.Paid),
 			IsOverrun: Overrun(contract, held.Paid), IsActive: row.IsActive, SupplierID: row.SupplierID, HasPayments: slices.Contains(withPayments, row.ID),
 			Documents: []documentView{}}
@@ -142,6 +143,15 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 			}
 		}
 		views = append(views, view)
+	}
+	return views, nil
+}
+
+func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
+	views, err := List(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }

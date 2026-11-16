@@ -24,13 +24,13 @@ import (
 
 // What kind of account holds a project's money (AccountType, FR-22).
 const (
-	bank int64 = iota
-	cashCustody
+	Bank AccountType = iota
+	CashCustody
 )
 
 var accountTypes = web.Enum{"bank", "cashCustody"}
 
-// AccountType is what an account is: a bank account, or cash a custodian holds (FR-21).
+// AccountType is what an account is: a Bank account, or cash a custodian holds (FR-21).
 type AccountType int64
 
 func (t AccountType) MarshalJSON() ([]byte, error) { return accountTypes.Write(int64(t)) }
@@ -117,7 +117,7 @@ func (s Routes) refused(w http.ResponseWriter, r *http.Request, name string, typ
 	refusal := ""
 	if _, named := naming.Named(name); !named {
 		refusal = naming.Invalid
-	} else if typeOf == cashCustody && custodianID == uuid.Nil {
+	} else if AccountType(typeOf) == CashCustody && custodianID == uuid.Nil {
 		refusal = "custodianRequired"
 	} else if custodianID != uuid.Nil {
 		member, err := s.database.Queries().IsMember(r.Context(), store.IsMemberParams{ProjectID: web.ID(r, "projectId"), UserID: custodianID})

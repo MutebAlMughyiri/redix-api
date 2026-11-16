@@ -150,6 +150,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.attachmentSentStmt, err = db.PrepareContext(ctx, attachmentSent); err != nil {
 		return nil, fmt.Errorf("error preparing query AttachmentSent: %w", err)
 	}
+	if q.attachmentWithIDStmt, err = db.PrepareContext(ctx, attachmentWithID); err != nil {
+		return nil, fmt.Errorf("error preparing query AttachmentWithID: %w", err)
+	}
 	if q.balancesOfStmt, err = db.PrepareContext(ctx, balancesOf); err != nil {
 		return nil, fmt.Errorf("error preparing query BalancesOf: %w", err)
 	}
@@ -873,6 +876,11 @@ func (q *Queries) Close() error {
 	if q.attachmentSentStmt != nil {
 		if cerr := q.attachmentSentStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing attachmentSentStmt: %w", cerr)
+		}
+	}
+	if q.attachmentWithIDStmt != nil {
+		if cerr := q.attachmentWithIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing attachmentWithIDStmt: %w", cerr)
 		}
 	}
 	if q.balancesOfStmt != nil {
@@ -1806,6 +1814,7 @@ type Queries struct {
 	attachmentExistsStmt          *sql.Stmt
 	attachmentOfStmt              *sql.Stmt
 	attachmentSentStmt            *sql.Stmt
+	attachmentWithIDStmt          *sql.Stmt
 	balancesOfStmt                *sql.Stmt
 	capitalDetailsOfStmt          *sql.Stmt
 	capitalItemExistsStmt         *sql.Stmt
@@ -2024,6 +2033,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		attachmentExistsStmt:          q.attachmentExistsStmt,
 		attachmentOfStmt:              q.attachmentOfStmt,
 		attachmentSentStmt:            q.attachmentSentStmt,
+		attachmentWithIDStmt:          q.attachmentWithIDStmt,
 		balancesOfStmt:                q.balancesOfStmt,
 		capitalDetailsOfStmt:          q.capitalDetailsOfStmt,
 		capitalItemExistsStmt:         q.capitalItemExistsStmt,

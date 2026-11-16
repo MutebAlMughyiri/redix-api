@@ -5,3 +5,7 @@ SELECT * FROM attachments WHERE project_id = sqlc.arg(project_id) AND uploaded_b
 -- name: AddAttachment :exec
 INSERT INTO attachments (id, project_id, storage_path, file_name, content_type, size_bytes, sha256, uploaded_by_user_id, uploaded_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: AttachmentWithID :one
+-- The attachment a signed link opens, whatever its project: the link names it, and its signature says it was made for it.
+SELECT * FROM attachments WHERE id = ?;

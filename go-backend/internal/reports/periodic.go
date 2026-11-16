@@ -191,14 +191,10 @@ func (s Routes) nextPeriodicReport(w http.ResponseWriter, r *http.Request, _ acc
 // the caller sees, and no item's report (BR-31); 404 for a number not issued.
 func (s Routes) periodicReport(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
-	kept, err := s.database.Queries().PeriodicReportSnapshot(r.Context(), store.PeriodicReportSnapshotParams{ProjectID: projectID, Number: web.Int(r, "number")})
-	if err == nil && len(kept) == 0 {
+	report, found, err := s.issued(r, web.Int(r, "number"))
+	if err == nil && !found {
 		problem.Status(w, r, http.StatusNotFound)
 		return
-	}
-	var report snapshot
-	if err == nil {
-		err = json.Unmarshal([]byte(kept[0]), &report)
 	}
 	if !caller.Access.Holds(projectID, access.SeeAllCapital) {
 		seen := []reportPartner{}

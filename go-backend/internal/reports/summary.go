@@ -9,6 +9,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
@@ -16,6 +17,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/google/uuid"
 )
@@ -24,18 +26,31 @@ import (
 type Routes struct {
 	database db.DB
 	writer   changes.Writer
+	links    attachments.Links
+	typst    statement.Typst
 }
 
 // Map routes the summary, for whoever reads the project, and the periodic reports: read by whoever holds SeeReports, issued by whoever holds
 // GenerateReports (redix-api #131 D2).
-func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
-	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}}
-	const reports = "/projects/{projectId:guid}/periodic-reports"
+func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock, links attachments.Links, typst statement.Typst) {
+	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}, links: links, typst: typst}
+	const project = "/projects/{projectId:guid}"
+	const reports = project + "/periodic-reports"
+	files := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.GenerateReports, handler) }
 	router.Handle("GET", "/projects/{projectId:guid}/summary", gate.Needs(access.ReadProject, s.summary))
 	router.Handle("GET", reports, gate.Needs(access.SeeReports, s.periodicReports))
 	router.Handle("GET", reports+"/next", gate.Needs(access.SeeReports, s.nextPeriodicReport))
 	router.Handle("GET", reports+"/{number:int}", gate.Needs(access.SeeReports, s.periodicReport))
 	router.Handle("POST", reports, gate.Changes(access.GenerateReports, s.issue))
+	router.Handle("GET", reports+"/{number:int}/xlsx", files(s.periodicWorkbook))
+	router.Handle("GET", reports+"/{number:int}/pdf", files(s.periodicPdf))
+	router.Handle("GET", project+"/reports/items/{itemId:guid}/xlsx", files(s.itemFile(false)))
+	router.Handle("GET", project+"/reports/items/{itemId:guid}/pdf", files(s.itemFile(true)))
+	router.Handle("GET", project+"/reports/contracts/{contractId:guid}/xlsx", files(s.contractFile(false)))
+	router.Handle("GET", project+"/reports/contracts/{contractId:guid}/pdf", files(s.contractFile(true)))
+	router.Handle("GET", project+"/reports/contracts/xlsx", files(s.contractsWorkbook))
+	router.Handle("GET", project+"/reports/contracts/pdf", files(s.contractsPdf))
+	router.Handle("GET", project+"/vat-statement/xlsx", files(s.vatWorkbook))
 }
 
 // Waiting is what waits for approval, as two figures (WaitingFigures, findings row 147): expenses, which lower the surplus once approved, and

@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"mime"
 	"net/http"
 	"net/http/httptest"
@@ -23,10 +24,13 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
@@ -238,7 +242,7 @@ func replay(t *testing.T, steps []step, hosts []host) {
 			}
 		}
 		handlers[s.Host] = problem.Traced(server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: []byte("replay-key-for-go-backend-only-32"),
-			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, AttachmentsFolder: files, Log: quiet}))
+			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, AttachmentsFolder: files, TypstPath: typstPath(), Log: quiet}))
 		return handlers[s.Host]
 	}
 	names := mapping{}
@@ -432,8 +436,15 @@ func compare(names mapping, s step, got *httptest.ResponseRecorder) []string {
 	return differences
 }
 
-// sameBody is every difference between .NET's body and Go's: JSON compared value by value, other text as written, a file not at all.
+// sameBody is every difference between .NET's body and Go's: JSON compared value by value, a workbook cell by cell, other text as written, any
+// other file not at all.
 func sameBody(names mapping, netType string, s step, got *httptest.ResponseRecorder) []string {
+	var recorded struct {
+		Workbook []recordedSheet `json:"workbook"`
+	}
+	if json.Unmarshal(s.Answer, &recorded) == nil && recorded.Workbook != nil {
+		return sameWorkbook(recorded.Workbook, got.Body.Bytes())
+	}
 	var answer string
 	if json.Unmarshal(s.Answer, &answer) != nil {
 		return nil
@@ -458,7 +469,7 @@ var everyones = map[string]bool{"GET /projects/registered": true}
 
 // tiedByChance are the routes whose list .NET ordered on fields two items may share, leaving such items in the order SQL Server read them - for
 // version 7 GUIDs, chance - where Go breaks the tie by name: Go's items must be .NET's items, every one, each compared with .NET's of its id.
-var tiedByChance = map[string]bool{"GET /projects": true, "GET /projects/{id}/users": true}
+var tiedByChance = map[string]bool{"GET /projects": true, "GET /projects/{id}/users": true, "GET /projects/{id}/members": true}
 
 var pathPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 
@@ -603,4 +614,93 @@ func lineQuery(names mapping, query string) string {
 		return "?" + values.Encode()
 	}
 	return query
+}
+
+// recordedSheet is a sheet of a workbook .NET answered, as the recorder kept it: every cell that holds something, its formula or its value as Excel
+// keeps it, a day as its serial number.
+type recordedSheet struct {
+	Name  string `json:"name"`
+	Cells []struct {
+		At      string `json:"at"`
+		Formula string `json:"formula"`
+		Value   string `json:"value"`
+	} `json:"cells"`
+}
+
+// sameWorkbook is every difference between the workbook .NET answered and Go's: the sheets, in order, and each cell's formula or value, a number
+// as a number. A cell only Go fills, inside what .NET's sheet covers or just past it, is a difference too. The look is the workbook tests' to check.
+func sameWorkbook(net []recordedSheet, content []byte) []string {
+	file, err := excelize.OpenReader(bytes.NewReader(content))
+	if err != nil {
+		return []string{fmt.Sprintf("Go's workbook does not open: %v", err)}
+	}
+	defer file.Close()
+	var names []string
+	for _, sheet := range net {
+		names = append(names, sheet.Name)
+	}
+	if goNames := file.GetSheetList(); !slices.Equal(goNames, names) {
+		return []string{fmt.Sprintf("the sheets %q, .NET's %q", goNames, names)}
+	}
+	var differences []string
+	for _, sheet := range net {
+		kept := map[string]bool{}
+		lastRow, lastColumn := 1, 1
+		for _, cell := range sheet.Cells {
+			kept[cell.At] = true
+			column, row, _ := excelize.CellNameToCoordinates(cell.At)
+			lastRow, lastColumn = max(lastRow, row), max(lastColumn, column)
+			if difference := sameCell(file, sheet.Name, cell.At, cell.Formula, cell.Value); difference != "" {
+				differences = append(differences, difference)
+			}
+		}
+		merged, _ := file.GetMergeCells(sheet.Name)
+		for row := 1; row <= lastRow+2; row++ {
+			for column := 1; column <= lastColumn+2; column++ {
+				at, _ := excelize.CoordinatesToCellName(column, row)
+				if !kept[at] && !insideMerge(merged, column, row) {
+					if difference := sameCell(file, sheet.Name, at, "", ""); difference != "" {
+						differences = append(differences, difference)
+					}
+				}
+			}
+		}
+	}
+	return differences
+}
+
+// sameCell is how the cell at of Go's sheet differs from .NET's formula and value; "" when it does not.
+func sameCell(file *excelize.File, sheet, at, formula, value string) string {
+	goFormula, _ := file.GetCellFormula(sheet, at)
+	goValue, _ := file.GetCellValue(sheet, at, excelize.Options{RawCellValue: true})
+	if goFormula != "" {
+		goValue = ""
+	}
+	netNumber, netErr := strconv.ParseFloat(value, 64)
+	goNumber, goErr := strconv.ParseFloat(goValue, 64)
+	sameValue := goValue == value || (netErr == nil && goErr == nil && math.Abs(netNumber-goNumber) < 1e-9)
+	if goFormula == formula && sameValue {
+		return ""
+	}
+	return fmt.Sprintf("%s!%s holds %q =%q, .NET's %q =%q", sheet, at, goValue, goFormula, value, formula)
+}
+
+// insideMerge says whether the cell is a merged range's but its first, which holds the range's content.
+func insideMerge(merged []excelize.MergeCell, column, row int) bool {
+	for _, merge := range merged {
+		left, top, _ := excelize.CellNameToCoordinates(merge.GetStartAxis())
+		right, bottom, _ := excelize.CellNameToCoordinates(merge.GetEndAxis())
+		if column >= left && column <= right && row >= top && row <= bottom && (column != left || row != top) {
+			return true
+		}
+	}
+	return false
+}
+
+// typstPath is the typst binary the replay makes PDFs with: REDIX_Typst__Path, as the server reads it, or typst on the path.
+func typstPath() string {
+	if path := os.Getenv("REDIX_Typst__Path"); path != "" {
+		return path
+	}
+	return "typst"
 }

@@ -1,9 +1,11 @@
 using System.Data.Common;
+using System.Globalization;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -124,7 +126,10 @@ public sealed class Recorder
     private static Dictionary<string, string> Headers(IHeaderDictionary headers, params string[] names) =>
         names.Where(headers.ContainsKey).ToDictionary(name => name, name => headers[name].ToString());
 
-    /// <summary>Text as it is; a file as its length and SHA-256, since a Go file is not .NET's byte for byte.</summary>
+    /// <summary>
+    /// Text as it is; a workbook as its sheets' cells, which the Go replay compares cell by cell; any other file as its length and SHA-256, since a Go file is not .NET's byte
+    /// for byte.
+    /// </summary>
     private static async Task<object> BodyOf(Stream body, string contentType)
     {
         using var copy = new MemoryStream();
@@ -135,10 +140,38 @@ public sealed class Recorder
         {
             return Encoding.UTF8.GetString(bytes);
         }
+        if (contentType.Contains("spreadsheetml"))
+        {
+            return new { workbook = CellsOf(bytes) };
+        }
         return contentType.StartsWith("multipart/")
             ? new { base64 = Convert.ToBase64String(bytes) }
             : new { length = bytes.Length, sha256 = Convert.ToHexStringLower(SHA256.HashData(bytes)) };
     }
+
+    /// <summary>Each sheet of the workbook <paramref name="bytes"/>, in order, with every cell that holds something: its formula, or its value as Excel keeps it - a day as its serial number.</summary>
+    private static object CellsOf(byte[] bytes)
+    {
+        using var workbook = new XLWorkbook(new MemoryStream(bytes));
+        return workbook.Worksheets.Select(sheet => new
+        {
+            name = sheet.Name,
+            cells = sheet.CellsUsed(XLCellsUsedOptions.Contents).Select(cell => new
+            {
+                at = cell.Address.ToStringRelative(),
+                formula = cell.HasFormula ? cell.FormulaA1 : "",
+                value = cell.HasFormula ? "" : ValueOf(cell.Value),
+            }).ToList(),
+        }).ToList();
+    }
+
+    private static string ValueOf(XLCellValue value) => value.Type switch
+    {
+        XLDataType.Number => value.GetNumber().ToString("R", CultureInfo.InvariantCulture),
+        XLDataType.DateTime => value.GetDateTime().ToOADate().ToString("R", CultureInfo.InvariantCulture),
+        XLDataType.Boolean => value.GetBoolean() ? "1" : "0",
+        _ => value.ToString(CultureInfo.InvariantCulture),
+    };
 
     private void Write(object step)
     {

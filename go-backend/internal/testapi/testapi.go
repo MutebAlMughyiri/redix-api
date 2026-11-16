@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -49,7 +50,7 @@ func New(t *testing.T) *API {
 	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
 	emails := &Emails{}
 	routes := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: 100000,
-		AttachmentsFolder:    filepath.Join(t.TempDir(), "attachments"),
+		AttachmentsFolder: filepath.Join(t.TempDir(), "attachments"), TypstPath: typstPath(),
 		RegistrationsPerHour: 100000, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: problem.Traced(routes), tokens: credentials.NewTokens(signingKey, fake)}
 }
@@ -149,4 +150,12 @@ func (e *Emails) LastCodeTo(address string) string {
 		}
 	}
 	return ""
+}
+
+// typstPath is the typst binary the tests make PDFs with: REDIX_Typst__Path, as the server reads it, or typst on the path.
+func typstPath() string {
+	if path := os.Getenv("REDIX_Typst__Path"); path != "" {
+		return path
+	}
+	return "typst"
 }

@@ -12,6 +12,7 @@ of the .NET API, at its old paths and again under `/api/v1` (redix-api #140).
 | `internal/db` | The SQLite file, its two pools (one writer, four readers), the migrations, and the one way to write (`InTx`) |
 | `internal/db/store` | The code sqlc generates from every domain's queries, each prepared once as the server starts |
 | `internal/changes` | What every change inside a project shares: one transaction, the refusal it rolls back with, a History line for every row |
+| `internal/statement` | The statement workbook every report file shares, written with excelize, and the report PDFs' pages, laid out by a Typst template with the Arabic font embedded |
 | `internal/platform` | What the domains share: the router, problem answers, tokens and passwords, money and moments as .NET wrote them |
 | `internal/replay` | .NET's recorded tests replayed against Go, every answer compared (`testdata/golden`) |
 | `deploy/` | Caddy, the systemd units, Litestream |
@@ -30,6 +31,7 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 | `REDIX_Admin__Username`, `REDIX_Admin__Password` | The first user, made on an empty database | |
 | `REDIX_Email__ConnectionString`, `REDIX_Email__From` | The email sender; empty writes emails to `REDIX_Email__Folder` | |
 | `REDIX_Registration__PermitsPerHour`, `REDIX_EmailCodes__PermitsPerHour` | The two limits | 5 |
+| `REDIX_Typst__Path` | The typst binary that makes the report PDFs; the tests read it too | `typst` on the path |
 
 ## Working on it
 
@@ -48,7 +50,7 @@ Every row a change adds, changes or removes has its History line; a test that wr
 
 On a 1 GB Linux server:
 
-1. Copy `bin/redix-server` to `/usr/local/bin/`, and make a `redix` user.
+1. Copy `bin/redix-server` to `/usr/local/bin/`, and make a `redix` user. Put Typst 0.15's binary at `/usr/local/bin/typst` for the PDFs.
 2. Write `/etc/redix/redix.env` with the settings above, `REDIX_Urls=http://127.0.0.1:5012`, the database and attachments in `/var/lib/redix`.
 3. Install `deploy/redix.service` into `/etc/systemd/system/`, then `systemctl enable --now redix`. It migrates before it starts.
 4. Install Caddy with `deploy/Caddyfile` and `REDIX_DOMAIN` set; Caddy keeps the certificate.
@@ -60,6 +62,6 @@ To restore: `litestream restore -o /var/lib/redix/redix.db /var/lib/redix/redix.
 
 ## Where it stands (16 Nov 2026)
 
-136 of the API's 147 routes are on Go, and 727 of .NET's recorded tests replay against them, every answer matching. Still on .NET: the PDF
-and workbook files of the periodic, item and contract reports, the VAT statement, the project file and file links. Then P3, the data
-moved from SQL Server; P4, the phone's Patrol tests against Go; and P6, the switch.
+146 of the API's 147 routes are on Go, and 734 of .NET's recorded tests replay against them, every answer matching - each workbook cell by cell,
+its values and formulas. Still on .NET: loading a project file. Then P3, the data moved from SQL Server; P4, the phone's Patrol tests against Go;
+P5, the rehearsal on a 1 GB server; and P6, the switch.

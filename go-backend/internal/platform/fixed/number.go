@@ -84,6 +84,9 @@ func (n *Number) Scan(src any) error {
 // Value is the integer the column keeps.
 func (n Number) Value() (driver.Value, error) { return int64(n), nil }
 
+// Float is the number as a double, as a workbook keeps a number.
+func (n Number) Float() float64 { return float64(n) / scale }
+
 // IsAcceptableMoney says whether the number may be an amount of money: at most two decimals (Money.IsAcceptable); every number kept is within
 // the largest amount.
 func (n Number) IsAcceptableMoney() bool { return n%100 == 0 }

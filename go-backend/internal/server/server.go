@@ -25,6 +25,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/reports"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/settings"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/sync"
@@ -44,12 +45,15 @@ type Parts struct {
 	WebFolder            string
 	// AttachmentsFolder keeps the files people send (REDIX_Attachments__Folder, NFR-10).
 	AttachmentsFolder string
-	Log               *slog.Logger
+	// TypstPath is the typst binary that makes the report PDFs (REDIX_Typst__Path, #140 D2).
+	TypstPath string
+	Log       *slog.Logger
 }
 
 // Routes is every route of the API on parts.
 func Routes(parts Parts) *web.Router {
 	database, now := parts.Database, parts.Clock
+	links := attachments.NewLinks(parts.SigningKey, now)
 	tokens := credentials.NewTokens(parts.SigningKey, now)
 	book := access.NewBook(database)
 	gate := access.NewGate(tokens, database, book, parts.Log)
@@ -78,9 +82,9 @@ func Routes(parts Parts) *web.Router {
 	entries.Map(router, gate, database, now)
 	notifications.Map(router, gate, database)
 	partners.Map(router, gate, database, now)
-	attachments.Map(router, gate, database, now, parts.AttachmentsFolder)
+	attachments.Map(router, gate, database, now, parts.AttachmentsFolder, links)
 	documents.Map(router, gate, database, now, parts.AttachmentsFolder)
-	reports.Map(router, gate, database, now)
+	reports.Map(router, gate, database, now, links, statement.Typst{Path: parts.TypstPath})
 	sync.Map(router, gate)
 	return router
 }

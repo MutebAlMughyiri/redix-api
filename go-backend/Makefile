@@ -21,7 +21,9 @@ sqlc:
 migrate:
 	go run ./cmd/server migrate
 
-# Records .NET's answers again (the recorder lives in the .NET tests only, R23), each collection compressed into testdata/golden.
+# Records .NET's answers again (the recorder lives in the .NET tests only, R23) into an empty folder, since the recorder adds to what it finds, then
+# compresses each collection into testdata/golden.
 golden:
-	cd .. && REDIX_RECORD=$(CURDIR)/.golden dotnet test
+	rm -rf .golden && mkdir .golden
+	cd .. && REDIX_RECORD=$(CURDIR)/.golden dotnet test tests/Redix.Api.Tests
 	for f in .golden/*.jsonl; do gzip -c "$$f" > "testdata/golden/$$(basename "$$f").gz"; done

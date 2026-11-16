@@ -22,20 +22,23 @@ const attachmentWord = "فتح المرفق"
 // Everything spent on one item (UC-050, FR-30): its purchases by subgroup, then each contract's payments; for a revenue item, its revenue by
 // subgroup; for a capital item, each partner's money in and out, a table each (ItemReportEndpoints, redix-api #109).
 
-type reportChoice struct {
+// ReportChoice is a choice of a list column in a report, with the sign it gives the amount (ReportChoiceView).
+type ReportChoice struct {
 	Name string         `json:"name"`
 	Sign structure.Sign `json:"sign"`
 }
 
-type reportColumn struct {
+// ReportColumn is a column of a table in a report, as the report keeps it (ReportColumnView, redix-api #129).
+type ReportColumn struct {
 	Key        string             `json:"key"`
 	Name       string             `json:"name"`
 	DataType   structure.DataType `json:"dataType"`
 	IsRequired bool               `json:"isRequired"`
-	Choices    []reportChoice     `json:"choices"`
+	Choices    []ReportChoice     `json:"choices"`
 }
 
-type reportRow struct {
+// ReportRow is one entry in an item's report, in its table's columns (ItemEntryRow, R1); Number is 0 in a report issued before entries had one (G6).
+type ReportRow struct {
 	EntryID           uuid.UUID    `json:"entryId"`
 	Date              moment.Date  `json:"date"`
 	Amount            fixed.Number `json:"amount"`
@@ -45,17 +48,19 @@ type reportRow struct {
 	Number            int64        `json:"number"`
 }
 
-type tableReport struct {
+// TableReport is one table's rows: a subgroup's purchases or revenue, or a partner's money in and out (SubgroupReportView).
+type TableReport struct {
 	ID         uuid.UUID      `json:"id"`
 	Name       string         `json:"name"`
 	Total      fixed.Total    `json:"total"`
-	Rows       []reportRow    `json:"rows"`
+	Rows       []ReportRow    `json:"rows"`
 	SortOrder  int64          `json:"sortOrder"`
-	Columns    []reportColumn `json:"columns"`
+	Columns    []ReportColumn `json:"columns"`
 	AmountName string         `json:"amountName"`
 }
 
-type contractReport struct {
+// ContractReport is one contract with its payments (ContractReportView).
+type ContractReport struct {
 	ID             uuid.UUID      `json:"id"`
 	ContractorName string         `json:"contractorName"`
 	Value          fixed.Number   `json:"value"`
@@ -64,9 +69,9 @@ type contractReport struct {
 	Remaining      fixed.Total    `json:"remaining"`
 	IsOverrun      bool           `json:"isOverrun"`
 	PaymentsTotal  fixed.Total    `json:"paymentsTotal"`
-	Payments       []reportRow    `json:"payments"`
+	Payments       []ReportRow    `json:"payments"`
 	SortOrder      int64          `json:"sortOrder"`
-	Columns        []reportColumn `json:"columns"`
+	Columns        []ReportColumn `json:"columns"`
 	AmountName     string         `json:"amountName"`
 }
 
@@ -76,8 +81,8 @@ type ItemReport struct {
 	ItemName              string             `json:"itemName"`
 	CategoryName          string             `json:"categoryName"`
 	Total                 fixed.Total        `json:"total"`
-	Subgroups             []tableReport      `json:"subgroups"`
-	Contracts             []contractReport   `json:"contracts"`
+	Subgroups             []TableReport      `json:"subgroups"`
+	Contracts             []ContractReport   `json:"contracts"`
 	ShowsTablePercentages bool               `json:"showsTablePercentages"`
 	Type                  structure.ItemType `json:"type"`
 	ShowsEveryTable       bool               `json:"showsEveryTable"`
@@ -125,20 +130,20 @@ type registers struct {
 	places [2]string
 }
 
-func (g registers) viewsOf(columns []store.ItemColumn) []reportColumn {
-	views := []reportColumn{}
+func (g registers) viewsOf(columns []store.ItemColumn) []ReportColumn {
+	views := []ReportColumn{}
 	for _, column := range columns {
-		view := reportColumn{Key: column.Key, Name: column.Name, DataType: structure.DataType(column.DataType), IsRequired: column.IsRequired, Choices: []reportChoice{}}
+		view := ReportColumn{Key: column.Key, Name: column.Name, DataType: structure.DataType(column.DataType), IsRequired: column.IsRequired, Choices: []ReportChoice{}}
 		switch column.Key {
 		case "supplier", "account", "paymentMethod":
 			for _, name := range g.names[column.Key] {
-				view.Choices = append(view.Choices, reportChoice{Name: name})
+				view.Choices = append(view.Choices, ReportChoice{Name: name})
 			}
 		case "outsideContract":
-			view.Choices = append(view.Choices, reportChoice{Name: g.places[0]}, reportChoice{Name: g.places[1]})
+			view.Choices = append(view.Choices, ReportChoice{Name: g.places[0]}, ReportChoice{Name: g.places[1]})
 		default:
 			for _, choice := range structure.ChoicesIn(column) {
-				view.Choices = append(view.Choices, reportChoice{Name: choice.Name, Sign: choice.Sign})
+				view.Choices = append(view.Choices, ReportChoice{Name: choice.Name, Sign: choice.Sign})
 			}
 		}
 		views = append(views, view)
@@ -176,7 +181,7 @@ func (g registers) valuesOf(columns []store.ItemColumn, entry store.Entry, known
 				value = g.places[1]
 			}
 		default:
-			if structure.IsList(column) {
+			if structure.DataType(column.DataType) == structure.List {
 				value = structure.ChoiceNameOf(column, value)
 			}
 		}
@@ -234,12 +239,12 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	if structure.ItemType(item.Type).IsRevenue() {
 		groupKind = revenue
 	}
-	rowOf := func(entry store.Entry, printed []store.ItemColumn, amount fixed.Number) reportRow {
+	rowOf := func(entry store.Entry, printed []store.ItemColumn, amount fixed.Number) ReportRow {
 		isOutside := known.payments[entry.ID].IsOutsideContract
-		return reportRow{EntryID: entry.ID, Date: entry.EntryDate, Amount: amount, IsOutsideContract: isOutside, Values: g.valuesOf(printed, entry, known, isOutside),
+		return ReportRow{EntryID: entry.ID, Date: entry.EntryDate, Amount: amount, IsOutsideContract: isOutside, Values: g.valuesOf(printed, entry, known, isOutside),
 			IsNew: entry.ApprovedAt.After(newSince.Time), Number: entry.Number}
 	}
-	report := ItemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name, Subgroups: []tableReport{}, Contracts: []contractReport{},
+	report := ItemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name, Subgroups: []TableReport{}, Contracts: []ContractReport{},
 		ShowsTablePercentages: item.ShowsTablePercentages, Type: structure.ItemType(item.Type), ShowsEveryTable: true}
 	for _, entry := range approvedOldestFirst {
 		if entry.Status != approved {
@@ -256,7 +261,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	}
 	groupColumns, paymentColumns, capitalColumns := printedOf(columns, groupKind), printedOf(columns, contractorPayment), printedOf(columns, capitalIn)
 	for _, subgroup := range subgroups {
-		table := tableReport{ID: subgroup.ID, Name: subgroup.Name, Rows: []reportRow{}, SortOrder: subgroup.SortOrder, Columns: g.viewsOf(groupColumns),
+		table := TableReport{ID: subgroup.ID, Name: subgroup.Name, Rows: []ReportRow{}, SortOrder: subgroup.SortOrder, Columns: g.viewsOf(groupColumns),
 			AmountName: amountNameOf(columns, groupKind)}
 		for _, entry := range approvedOldestFirst {
 			expense, isExpense := known.expenses[entry.ID]
@@ -282,8 +287,8 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	for _, row := range itemContracts {
 		contract := store.Contract{ID: row.ID, Value: row.Value, IsOpenValue: row.IsOpenValue}
 		paid := money[row.ID].Paid
-		view := contractReport{ID: row.ID, ContractorName: row.SupplierName, Value: row.Value, IsOpenValue: row.IsOpenValue, Paid: paid,
-			Remaining: contracts.Remaining(contract, paid), IsOverrun: contracts.Overrun(contract, paid), Payments: []reportRow{}, SortOrder: row.SortOrder,
+		view := ContractReport{ID: row.ID, ContractorName: row.SupplierName, Value: row.Value, IsOpenValue: row.IsOpenValue, Paid: paid,
+			Remaining: contracts.Remaining(contract, paid), IsOverrun: contracts.Overrun(contract, paid), Payments: []ReportRow{}, SortOrder: row.SortOrder,
 			Columns: g.viewsOf(paymentColumns), AmountName: amountNameOf(columns, contractorPayment)}
 		for _, entry := range approvedOldestFirst {
 			payment, isPayment := known.payments[entry.ID]
@@ -303,7 +308,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 			continue
 		}
 		shown++
-		table := tableReport{ID: partner.ID, Name: partner.Name, Rows: []reportRow{}, SortOrder: partner.SortOrder, Columns: g.viewsOf(capitalColumns),
+		table := TableReport{ID: partner.ID, Name: partner.Name, Rows: []ReportRow{}, SortOrder: partner.SortOrder, Columns: g.viewsOf(capitalColumns),
 			AmountName: amountNameOf(columns, capitalIn)}
 		for _, entry := range approvedOldestFirst {
 			if mover, isCapital := known.capital[entry.ID]; entry.Status == approved && isCapital && mover == partner.ID {
@@ -345,24 +350,63 @@ func (s Routes) itemReportRoute(w http.ResponseWriter, r *http.Request, caller a
 // contract's table alone; 404 for a contract of another project.
 func (s Routes) contractReportRoute(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	contract, err := c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: web.ID(r, "contractId"), ProjectID: c.ProjectID})
-	if err != nil {
+	report, found, err := ContractReportOf(c, web.ID(r, "contractId"))
+	if err == nil && !found {
 		problem.Status(w, r, http.StatusNotFound)
 		return
+	}
+	s.answer(w, r, report, err)
+}
+
+// ContractReportOf is the report of the contract contractID (ItemReportEndpoints.OfContractAsync), for its screen and its files: its item's report
+// holding that contract's table alone; not found for a contract of another project.
+func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, bool, error) {
+	contract, err := c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: contractID, ProjectID: c.ProjectID})
+	if err != nil {
+		return ItemReport{}, false, nil
 	}
 	item, err := c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: contract.ItemID, ProjectID: c.ProjectID})
 	if err != nil {
-		problem.Status(w, r, http.StatusNotFound)
-		return
+		return ItemReport{}, false, nil
 	}
 	report, err := ItemReportOf(c, item, func(uuid.UUID) bool { return false })
-	report.Subgroups = []tableReport{}
-	var kept []contractReport
+	report.Subgroups = []TableReport{}
+	kept := []ContractReport{}
 	for _, one := range report.Contracts {
 		if one.ID == contract.ID {
 			kept = append(kept, one)
 		}
 	}
-	report.Contracts = append([]contractReport{}, kept...)
-	s.answer(w, r, report, err)
+	report.Contracts = kept
+	return report, true, err
+}
+
+// WithTablesOf is the same report holding only the tables shows keeps, the partners' of رأس المال a reader may see; its total stays the whole (BR-31).
+func (r ItemReport) WithTablesOf(shows func(uuid.UUID) bool) ItemReport {
+	kept := []TableReport{}
+	for _, table := range r.Subgroups {
+		if shows(table.ID) {
+			kept = append(kept, table)
+		}
+	}
+	if len(kept) < len(r.Subgroups) {
+		r.Subgroups, r.ShowsEveryTable = kept, false
+	}
+	return r
+}
+
+// EntryIDs is the entries the report's tables show, every row and payment.
+func (r ItemReport) EntryIDs() []uuid.UUID {
+	var ids []uuid.UUID
+	for _, table := range r.Subgroups {
+		for _, row := range table.Rows {
+			ids = append(ids, row.EntryID)
+		}
+	}
+	for _, table := range r.Contracts {
+		for _, row := range table.Payments {
+			ids = append(ids, row.EntryID)
+		}
+	}
+	return ids
 }

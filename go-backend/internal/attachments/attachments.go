@@ -58,11 +58,13 @@ type Routes struct {
 	database db.DB
 	writer   changes.Writer
 	folder   string
+	links    Links
 }
 
 // Map routes the files: reading one for whoever reads the project, keeping one for whoever attaches files, an entry's or a document's.
-func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock, folder string) {
-	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}, folder: folder}
+func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock, folder string, links Links) {
+	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}, folder: folder, links: links}
+	router.Handle("GET", "/files/{link}", s.readByLink)
 	const project = "/projects/{projectId:guid}"
 	router.Handle("GET", project+"/attachments/{attachmentId:guid}", gate.Needs(access.ReadProject, s.read))
 	router.Handle("POST", project+"/attachments", gate.Changes(access.AttachFiles, s.upload(false)))
@@ -72,6 +74,17 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 // read is the file of an attachment of the project, by its name; one of another project is not found (BR-33).
 func (s Routes) read(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	attachment, err := s.database.Queries().AttachmentOf(r.Context(), store.AttachmentOfParams{ID: web.ID(r, "attachmentId"), ProjectID: web.ID(r, "projectId")})
+	s.send(w, r, attachment, err)
+}
+
+// readByLink is the file a signed link opens, with no sign-in (FileLinks, Muteb, 16 Nov 2026); 404 for a link expired, changed or never made.
+func (s Routes) readByLink(w http.ResponseWriter, r *http.Request) {
+	attachment, err := s.database.Queries().AttachmentWithID(r.Context(), s.links.AttachmentOf(r.PathValue("link")))
+	s.send(w, r, attachment, err)
+}
+
+// send sends the attachment's file under its own name; 404 when it was not found, or its file is not kept.
+func (s Routes) send(w http.ResponseWriter, r *http.Request, attachment store.Attachment, err error) {
 	if err != nil {
 		problem.Status(w, r, http.StatusNotFound)
 		return
