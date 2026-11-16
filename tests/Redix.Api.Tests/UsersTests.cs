@@ -197,6 +197,21 @@ public class UsersTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task SomeoneWhoMayNotChangeALoginLearnsNothingFromWhatTheySend()
+    {
+        var taken = MigratedApiFactory.NewEmail();
+        await factory.AddUserAsync(Password, email: taken);
+        var target = await factory.AddUserAsync(Password);
+        var client = await factory.ClientSignedInAsAsync(await factory.AddUserAsync(Password), Password);
+
+        var edit = await client.PutAsJsonAsync($"/users/{target.Id}", new EditUserRequest("نواف", "", taken));
+        var reset = await ResetAsync(client, target.Id, "Short-1");
+
+        Assert.Equal((HttpStatusCode.Forbidden, "otherProject"), (edit.StatusCode, await CodeOf(edit)));
+        Assert.Equal((HttpStatusCode.Forbidden, "otherProject"), (reset.StatusCode, await CodeOf(reset)));
+    }
+
+    [Fact]
     public async Task EveryChangeIsInTheHistoryWithNoPasswordHash()
     {
         var managerUser = await factory.AddUserAsync(Password);

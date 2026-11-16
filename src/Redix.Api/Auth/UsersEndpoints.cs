@@ -44,7 +44,7 @@ public static class UsersEndpoints
     /// <summary>
     /// Changes a user's name, mobile and email, which the manager may change as he typed it when adding them (redix-api #127, AC-07.8); another email ends the codes sent before it.
     /// A name outside its limit answers <c>invalidName</c>; a mobile that is not digits with a leading plus at most, or too long, <c>invalidMobile</c>; an email not well formed
-    /// <c>emailInvalid</c>, and one another account holds <c>emailTaken</c> (R9).
+    /// <c>emailInvalid</c>, and one another account holds <c>emailTaken</c> (R9), each only once the caller may change this user.
     /// </summary>
     /// <param name="userId">The user to change.</param>
     /// <param name="request">The new name, mobile and email.</param>
@@ -56,17 +56,11 @@ public static class UsersEndpoints
         var displayName = request.DisplayName.Trim();
         var mobile = request.Mobile.Trim();
         var email = request.Email.Trim();
-        var refusal = User.RefusalOfDetails(displayName, mobile);
-        if (refusal.Length > 0)
+        return await ChangeAsync(userId, principal, db, time, HistoryAction.Update, async _ =>
         {
-            return Refusal.Of(StatusCodes.Status400BadRequest, refusal);
-        }
-        var (emailStatus, emailRefusal) = await User.RefusalOfEmailAsync(email, userId, db);
-        if (emailRefusal.Length > 0)
-        {
-            return Refusal.Of(emailStatus, emailRefusal);
-        }
-        return await ChangeAsync(userId, principal, db, time, HistoryAction.Update, user =>
+            var refusal = User.RefusalOfDetails(displayName, mobile);
+            return refusal.Length > 0 ? (StatusCodes.Status400BadRequest, refusal) : await User.RefusalOfEmailAsync(email, userId, db);
+        }, user =>
         {
             user.DisplayName = displayName;
             user.Mobile = mobile;
@@ -76,7 +70,7 @@ public static class UsersEndpoints
 
     /// <summary>
     /// Sets a new temporary password for a forgotten one: the user must change it, a lock from wrong passwords ends, and every device is signed out.
-    /// One <see cref="PasswordPolicy"/> refuses for that user answers <c>weakPassword</c>.
+    /// One <see cref="PasswordPolicy"/> refuses for that user answers <c>weakPassword</c>, only once the caller may change this user.
     /// </summary>
     /// <param name="userId">The user to reset.</param>
     /// <param name="request">The new temporary password.</param>
@@ -84,15 +78,10 @@ public static class UsersEndpoints
     /// <param name="db">The database the user and devices live in.</param>
     /// <param name="hasher">Hashes the temporary password.</param>
     /// <param name="time">The current time, for the history row.</param>
-    public static async Task<IResult> ResetPassword(Guid userId, ResetPasswordRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time)
-    {
-        var username = await db.Users.Where(user => user.Id == userId).Select(user => user.Username).SingleOrDefaultAsync() ?? "";
-        if (!PasswordPolicy.Holds(request.TemporaryPassword, username))
-        {
-            return Refusal.Of(StatusCodes.Status400BadRequest, "WeakPassword");
-        }
-        return await ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword, user => user.ResetPasswordAsync(request.TemporaryPassword, mustChangePassword: true, hasher, db));
-    }
+    public static async Task<IResult> ResetPassword(Guid userId, ResetPasswordRequest request, ClaimsPrincipal principal, RedixDbContext db, IPasswordHasher<User> hasher, TimeProvider time) =>
+        await ChangeAsync(userId, principal, db, time, HistoryAction.ResetPassword,
+            user => Task.FromResult(PasswordPolicy.Holds(request.TemporaryPassword, user.Username) ? (0, "") : (StatusCodes.Status400BadRequest, "WeakPassword")),
+            user => user.ResetPasswordAsync(request.TemporaryPassword, mustChangePassword: true, hasher, db));
 
     private static async Task<bool> MayChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db)
     {
@@ -105,7 +94,11 @@ public static class UsersEndpoints
         return theirProjects.Count > 0 && theirProjects.All(project => access.In(project).Contains(Permission.ManageUsers));
     }
 
-    private static async Task<IResult> ChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, Func<User, Task> change)
+    /// <summary>
+    /// Makes <paramref name="change"/> to the user <paramref name="userId"/> with its History line, refusing first a caller who may not change them, so only that caller learns what
+    /// <paramref name="refusalOf"/> then says of the request, such as an email another account holds: its status and code, or <c>(0, "")</c> when acceptable.
+    /// </summary>
+    private static async Task<IResult> ChangeAsync(Guid userId, ClaimsPrincipal principal, RedixDbContext db, TimeProvider time, HistoryAction action, Func<User, Task<(int Status, string Reason)>> refusalOf, Func<User, Task> change)
     {
         var user = await db.Users.SingleOrDefaultAsync(user => user.Id == userId);
         if (user is null)
@@ -115,6 +108,11 @@ public static class UsersEndpoints
         if (!await MayChangeAsync(userId, principal, db))
         {
             return Refusal.Of(StatusCodes.Status403Forbidden, "OtherProject");
+        }
+        var (status, reason) = await refusalOf(user);
+        if (reason.Length > 0)
+        {
+            return Refusal.Of(status, reason);
         }
 
         await change(user);
