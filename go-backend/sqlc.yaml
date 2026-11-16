@@ -87,3 +87,11 @@ sql:
         package: store
         out: internal/history/store
         omit_unused_structs: true
+  - engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/email/queries.sql
+    gen:
+      go:
+        package: store
+        out: internal/email/store
+        omit_unused_structs: true

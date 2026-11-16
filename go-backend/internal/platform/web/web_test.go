@@ -105,3 +105,13 @@ func TestR4_ARequestIsReadAsDotNetBoundItsRecord(t *testing.T) {
 		t.Errorf("text/plain: %d", code)
 	}
 }
+
+func TestR4_TheLanguageIsArabicUnlessEnglishIsAskedFirst(t *testing.T) {
+	for header, want := range map[string]string{"": "ar", "en": "en", "en-US,en;q=0.9": "en", "ar-SA": "ar", "fr": "ar", "fr,en;q=0.8": "en", "de;q=0.9,ar;q=0.5,en;q=0.95": "en", "fr,de,it,en": "ar"} {
+		request := httptest.NewRequest(http.MethodGet, "/", nil)
+		request.Header.Set("Accept-Language", header)
+		if got := Language(request); got != want {
+			t.Errorf("%q: %s, want %s", header, got, want)
+		}
+	}
+}

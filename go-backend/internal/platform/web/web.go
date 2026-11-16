@@ -3,6 +3,7 @@
 package web
 
 import (
+	"cmp"
 	"encoding/json"
 	"io"
 	"mime"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -178,4 +180,33 @@ func Camel(name string) string {
 		return name
 	}
 	return strings.ToLower(name[:1]) + name[1:]
+}
+
+// Language is the language the caller asked for, as RequestLocalization chose it: "en" when English comes first among Accept-Language's first three
+// tags by preference, "ar" otherwise - Arabic is the default.
+func Language(r *http.Request) string {
+	type tag struct {
+		name    string
+		quality float64
+	}
+	var tags []tag
+	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
+		name, parameters, _ := strings.Cut(strings.TrimSpace(part), ";")
+		quality := 1.0
+		if value, ok := strings.CutPrefix(strings.TrimSpace(parameters), "q="); ok {
+			quality, _ = strconv.ParseFloat(value, 64)
+		}
+		if name != "" {
+			tags = append(tags, tag{strings.ToLower(name), quality})
+		}
+	}
+	slices.SortStableFunc(tags, func(a, b tag) int { return cmp.Compare(b.quality, a.quality) })
+	for _, asked := range tags[:min(3, len(tags))] {
+		for _, language := range []string{"ar", "en"} {
+			if asked.name == language || strings.HasPrefix(asked.name, language+"-") {
+				return language
+			}
+		}
+	}
+	return "ar"
 }
