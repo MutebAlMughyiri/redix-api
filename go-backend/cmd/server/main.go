@@ -13,9 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/environment"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
@@ -42,6 +45,9 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer database.Close()
+	if err := auth.SeedAdmin(ctx, database, settings.AdminUsername, settings.AdminPassword, moment.Of(clock.System{}.Now())); err != nil {
+		return err
+	}
 
 	router := web.NewRouter(settings.WebFolder)
 	router.Handle("GET", "/health", func(w http.ResponseWriter, r *http.Request) {

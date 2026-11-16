@@ -1,6 +1,6 @@
-// Package auth owns who a request comes from: passwords and codes kept as ASP.NET Core Identity hashed them, and the access tokens the app sends
+// Package credentials owns who a request comes from: passwords and codes kept as ASP.NET Core Identity hashed them, and the access tokens the app sends
 // (redix-api #140, N2, N3, R26).
-package auth
+package credentials
 
 import (
 	"crypto/pbkdf2"
