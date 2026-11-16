@@ -67,6 +67,7 @@ builder.Services.AddKeyedSingleton(EmailCode.AskingLimit, (_, _) => PartitionedR
     login,
     _ => new FixedWindowRateLimiterOptions { PermitLimit = EmailCode.AsksPerLoginAnHour, Window = TimeSpan.FromHours(1) })));
 builder.Services.AddSingleton<AccessCache>();
+builder.Services.AddSingleton<FileLinks>();
 builder.Services.AddSingleton<AccessChanges>();
 builder.Services.AddDbContext<RedixDbContext>((services, options) => options
     .UseSqlServer(DatabaseConnection.Of(services.GetRequiredService<IConfiguration>()), sql => sql.UseParameterizedCollectionMode(ParameterTranslationMode.Parameter))

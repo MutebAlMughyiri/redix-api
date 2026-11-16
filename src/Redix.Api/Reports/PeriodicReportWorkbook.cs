@@ -17,14 +17,14 @@ public static class PeriodicReportWorkbook
     private const int Revenue = 1;
     private const int Expenses = 4;
 
-    /// <summary>The workbook of <paramref name="report"/>.</summary>
-    public static byte[] Of(PeriodicReportSnapshot report)
+    /// <summary>The workbook of <paramref name="report"/>, each «المرفق» opening its entry's file by its link in <paramref name="fileLinks"/>.</summary>
+    public static byte[] Of(PeriodicReportSnapshot report, Dictionary<Guid, string> fileLinks)
     {
         using var workbook = StatementStyle.NewWorkbook();
         var book = new StatementBook($"{report.ProjectName} · التقرير {report.Number.ToString(CultureInfo.InvariantCulture)}", Summary);
         var summary = StatementStyle.AddSheet(workbook, Summary, book.Taken, 21.5, 13.13, 5.25, 22, 15.5, 15.63);
         var repeated = report.Items.GroupBy(item => item.ItemName).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
-        var sheets = InReadingOrder(report).ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, book));
+        var sheets = InReadingOrder(report).ToDictionary(item => item.ItemId, item => StatementWriter.Add(workbook, ItemReportFiles.SheetOf(item, fileLinks) with { Name = repeated.Contains(item.ItemName) ? $"{item.ItemName} · {item.CategoryName}" : item.ItemName }, book));
         book.Lists.AddTo(workbook, book.Footer);
         FillSummary(summary, report, sheets);
         StatementStyle.Fit(summary);

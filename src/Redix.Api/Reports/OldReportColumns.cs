@@ -45,7 +45,7 @@ public static class OldReportColumns
         {
             return item;
         }
-        var ids = item.Subgroups.SelectMany(table => table.Rows).Concat(item.Contracts.SelectMany(table => table.Payments)).Select(row => row.EntryId).ToList();
+        var ids = item.EntryIds().ToList();
         var entries = await db.Entries.Where(entry => ids.Contains(entry.Id)).ToDictionaryAsync(entry => entry.Id);
         var facts = await EntryFacts.OfAsync(projectId, [.. entries.Values], db);
         var registers = await ReportColumns.OfProjectAsync(projectId, db);

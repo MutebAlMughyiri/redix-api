@@ -99,7 +99,12 @@ public static class StatementWriter
             sheet.Cell(row, 1).SetCentred(line.Number);
             for (var column = 0; column < table.Columns.Count; column++)
             {
-                Write(Span(sheet, row, column, stretch), table.Columns[column].Kind, line.Cells[column]);
+                var cell = Span(sheet, row, column, stretch);
+                Write(cell, table.Columns[column].Kind, line.Cells[column]);
+                if (table.Columns[column].IsFile && line.FileLink.Length > 0)
+                {
+                    cell.SetHyperlink(new XLHyperlink(line.FileLink));
+                }
             }
             sheet.Cell(row, last).SetMoney(line.Amount);
             var body = sheet.Range(row, 1, row, last).AsBody();

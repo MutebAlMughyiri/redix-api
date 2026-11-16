@@ -180,6 +180,9 @@ public record ItemReportView(Guid ItemId, string ItemName, string CategoryName, 
     /// <summary>The same report holding only the tables <paramref name="shows"/> keeps, the partners' of رأس المال a reader may see; its total stays the whole (BR-31).</summary>
     public ItemReportView WithTablesOf(Func<Guid, bool> shows) =>
         Subgroups.All(table => shows(table.Id)) ? this : this with { Subgroups = [.. Subgroups.Where(table => shows(table.Id))], ShowsEveryTable = false };
+
+    /// <summary>The entries its tables show, every row and payment.</summary>
+    public IEnumerable<Guid> EntryIds() => Subgroups.SelectMany(table => table.Rows).Concat(Contracts.SelectMany(table => table.Payments)).Select(row => row.EntryId);
 }
 
 /// <summary>One table's rows: a subgroup's purchases or revenue, or a partner's money in and out.</summary>

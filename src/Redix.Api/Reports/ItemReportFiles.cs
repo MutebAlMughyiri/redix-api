@@ -13,15 +13,18 @@ public static class ItemReportFiles
     public static byte[] Pdf(ItemReportView item)
     {
         ReportFormats.PreparePdf();
-        return Document.Create(document => PeriodicReportFiles.Page(document, page => StatementPdf.Draw(page, SheetOf(item)))).GeneratePdf();
+        return Document.Create(document => PeriodicReportFiles.Page(document, page => StatementPdf.Draw(page, SheetOf(item, [])))).GeneratePdf();
     }
 
-    /// <summary>One item's report as a workbook of the project <paramref name="projectName"/>, its sheet as the periodic report's, its lists on «القوائم» (redix-api #129).</summary>
-    public static byte[] Excel(string projectName, ItemReportView item)
+    /// <summary>
+    /// One item's report as a workbook of the project <paramref name="projectName"/>, its sheet as the periodic report's, its lists on «القوائم» (redix-api #129), each «المرفق» opening
+    /// its entry's file by its link in <paramref name="fileLinks"/>.
+    /// </summary>
+    public static byte[] Excel(string projectName, ItemReportView item, Dictionary<Guid, string> fileLinks)
     {
         using var workbook = StatementStyle.NewWorkbook();
         var book = new StatementBook(projectName);
-        StatementWriter.Add(workbook, SheetOf(item), book);
+        StatementWriter.Add(workbook, SheetOf(item, fileLinks), book);
         book.Lists.AddTo(workbook, book.Footer);
         return StatementStyle.Bytes(workbook);
     }
@@ -30,29 +33,29 @@ public static class ItemReportFiles
     /// An item's sheet (FR-46): a table per subgroup that has entries, titled with its name or, for the general one, the item's; a table of payments per contract, its agreed amount
     /// under it (AC-46.2); and for رأس المال a table per partner; all in the order the item's tables were put in (AC-46.8). Every table prints its own columns (redix-api #129, R1):
     /// its item's columns that print, in their order, «الوصف» first but on رأس المال, each headed by its own name, and its amount column last; nothing is fixed. The item's choice
-    /// says whether each table's percentage is calculated (AC-46.9).
+    /// says whether each table's percentage is calculated (AC-46.9). A row's «المرفق» opens its entry's file by its link in <paramref name="fileLinks"/>, by entry; none in a PDF.
     /// </summary>
-    public static StatementSheet SheetOf(ItemReportView item)
+    public static StatementSheet SheetOf(ItemReportView item, Dictionary<Guid, string> fileLinks)
     {
         List<StatementTable> tables =
         [
-            .. item.Subgroups.Select(subgroup => (subgroup.SortOrder, Table: TableOf(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, subgroup.Columns, subgroup.AmountName, subgroup.Rows, 0)))
-                .Concat(item.Contracts.Select(contract => (contract.SortOrder, Table: TableOf($"دفعات {contract.ContractorName}", contract.Columns, contract.AmountName, contract.Payments, contract.IsOpenValue ? 0 : contract.Value))))
+            .. item.Subgroups.Select(subgroup => (subgroup.SortOrder, Table: TableOf(subgroup.Name.Length > 0 ? subgroup.Name : item.ItemName, subgroup.Columns, subgroup.AmountName, subgroup.Rows, 0, fileLinks)))
+                .Concat(item.Contracts.Select(contract => (contract.SortOrder, Table: TableOf($"دفعات {contract.ContractorName}", contract.Columns, contract.AmountName, contract.Payments, contract.IsOpenValue ? 0 : contract.Value, fileLinks))))
                 .OrderBy(table => table.SortOrder)
                 .Select(table => table.Table),
         ];
-        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [TableOf(item.ItemName, [], "", [], 0)], item.ShowsTablePercentages ? "النسبة" : "")
+        return new StatementSheet(item.ItemName, tables.Count > 0 ? tables : [TableOf(item.ItemName, [], "", [], 0, fileLinks)], item.ShowsTablePercentages ? "النسبة" : "")
         {
             ShowsEveryTable = item.ShowsEveryTable,
             Whole = item.Total,
         };
     }
 
-    private static StatementTable TableOf(string title, List<ReportColumnView> columns, string amountName, List<ItemEntryRow> rows, decimal agreedAmount) => new(
+    private static StatementTable TableOf(string title, List<ReportColumnView> columns, string amountName, List<ItemEntryRow> rows, decimal agreedAmount, Dictionary<Guid, string> fileLinks) => new(
         title,
         [.. columns.Select(ColumnOf)],
         new StatementColumn(amountName, CellKind.Text),
-        [.. rows.Select(row => new StatementRow(row.Number > 0 ? row.Number : Blank.Value, [.. columns.Zip(row.Values, CellOf)], row.Amount, row.IsNew, !row.IsOutsideContract))],
+        [.. rows.Select(row => new StatementRow(row.Number > 0 ? row.Number : Blank.Value, [.. columns.Zip(row.Values, CellOf)], row.Amount, row.IsNew, !row.IsOutsideContract) { FileLink = fileLinks.GetValueOrDefault(row.EntryId, "") })],
         agreedAmount)
     {
         NumberHeader = "رقم القيد",
@@ -69,6 +72,7 @@ public static class ItemReportFiles
     {
         Choices = column.Choices,
         AllowsBlank = !column.IsRequired,
+        IsFile = column.Key == "attachment",
     };
 
     /// <summary>A value as its cell holds it: a day, a number, or the text kept; nothing when none was given.</summary>

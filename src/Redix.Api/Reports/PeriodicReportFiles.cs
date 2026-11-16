@@ -20,7 +20,7 @@ public static class PeriodicReportFiles
             Page(document, page => Summary(page, report));
             foreach (var item in report.Items)
             {
-                Page(document, page => StatementPdf.Draw(page, ItemReportFiles.SheetOf(item)));
+                Page(document, page => StatementPdf.Draw(page, ItemReportFiles.SheetOf(item, [])));
             }
         }).GeneratePdf();
     }

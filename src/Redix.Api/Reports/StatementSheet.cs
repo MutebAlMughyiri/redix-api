@@ -38,6 +38,9 @@ public record StatementColumn(string Header, CellKind Kind)
 
     /// <summary>Whether a cell may be left empty: true unless entry requires the column, so an optional supplier may be none (Muteb, 13 Nov 2026).</summary>
     public bool AllowsBlank { get; init; } = true;
+
+    /// <summary>True for «المرفق», whose cell opens its row's <see cref="StatementRow.FileLink"/> (Muteb, 16 Nov 2026).</summary>
+    public bool IsFile { get; init; }
 }
 
 /// <summary>A row of a table.</summary>
@@ -46,7 +49,11 @@ public record StatementColumn(string Header, CellKind Kind)
 /// <param name="Amount">Its amount.</param>
 /// <param name="IsNew">True when it was approved after the previous report, shaded green (BR-26).</param>
 /// <param name="CountsAgainstAgreement">False for a payment outside its contract, which leaves المتبقي as it was (BR-04).</param>
-public record StatementRow(XLCellValue Number, List<XLCellValue> Cells, decimal Amount, bool IsNew, bool CountsAgainstAgreement);
+public record StatementRow(XLCellValue Number, List<XLCellValue> Cells, decimal Amount, bool IsNew, bool CountsAgainstAgreement)
+{
+    /// <summary>The signed link to its entry's own file, which its file column's cell opens in a workbook; empty for none, and in a PDF.</summary>
+    public string FileLink { get; init; } = "";
+}
 
 /// <summary>How a cell is written.</summary>
 public enum CellKind : byte

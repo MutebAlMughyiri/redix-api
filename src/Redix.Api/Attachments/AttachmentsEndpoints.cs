@@ -12,10 +12,14 @@ namespace Redix.Api.Attachments;
 /// <summary>Keeps a project's files, and serves them only to people with access to that project (UC-021, FR-09). There is no delete (NFR-11).</summary>
 public static class AttachmentsEndpoints
 {
-    /// <summary>Maps the route that reads a file, for anyone who reads the project, and the two that keep one, for whoever holds <see cref="Permission.AttachFiles"/>: an entry's file, and a document's.</summary>
+    /// <summary>
+    /// Maps the route that reads a file, for anyone who reads the project; the one that reads it by a workbook's link, open to whoever holds the link until it expires; and the two that
+    /// keep one, for whoever holds <see cref="Permission.AttachFiles"/>: an entry's file, and a document's.
+    /// </summary>
     public static void MapAttachments(this WebApplication app)
     {
         app.MapGet("/projects/{projectId:guid}/attachments/{attachmentId:guid}", Read).RequireAuthorization(nameof(Permission.ReadProject));
+        app.MapGet("/files/{link}", ReadByLink).AllowAnonymous();
         var changes = app.MapProjectChanges(Permission.AttachFiles);
         changes.MapPost("/attachments", Upload).DisableAntiforgery();
         changes.MapPost("/attachments/document", UploadDocument).DisableAntiforgery().WithMetadata(new RequestSizeLimitAttribute(FormOptions.DefaultMultipartBodyLengthLimit));
@@ -29,6 +33,18 @@ public static class AttachmentsEndpoints
     public static async Task<IResult> Read(Guid projectId, Guid attachmentId, RedixDbContext db, IOptions<AttachmentOptions> options)
     {
         var attachment = await db.Attachments.SingleOrDefaultAsync(row => row.Id == attachmentId && row.ProjectId == projectId);
+        return attachment is null ? Results.NotFound() : Results.File(options.Value.PathOf(attachment), attachment.ContentType, attachment.FileName);
+    }
+
+    /// <summary>The file a workbook's «المرفق» link opens (Muteb, 16 Nov 2026); a link expired, changed or never made is not found.</summary>
+    /// <param name="link">The signed link, as <see cref="FileLinks"/> made it.</param>
+    /// <param name="links">Reads the link.</param>
+    /// <param name="db">The database that knows where the file is.</param>
+    /// <param name="options">The folder files are kept under.</param>
+    public static async Task<IResult> ReadByLink(string link, FileLinks links, RedixDbContext db, IOptions<AttachmentOptions> options)
+    {
+        var attachmentId = links.AttachmentOf(link);
+        var attachment = await db.Attachments.SingleOrDefaultAsync(row => row.Id == attachmentId);
         return attachment is null ? Results.NotFound() : Results.File(options.Value.PathOf(attachment), attachment.ContentType, attachment.FileName);
     }
 

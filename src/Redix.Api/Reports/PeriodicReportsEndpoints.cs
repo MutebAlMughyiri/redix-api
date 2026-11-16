@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Redix.Api.Accounts;
+using Redix.Api.Attachments;
 using Redix.Api.Auth;
 using Redix.Api.Partners;
 using Redix.Api.Projects;
@@ -92,11 +93,19 @@ public static class PeriodicReportsEndpoints
     /// <param name="projectId">The project.</param>
     /// <param name="number">The report's number.</param>
     /// <param name="principal">The caller's session, which says whose capital they see.</param>
+    /// <param name="request">The request, whose address the «المرفق» links are on.</param>
+    /// <param name="links">Makes the «المرفق» links (Muteb, 16 Nov 2026).</param>
     /// <param name="db">The database the reports live in.</param>
-    public static async Task<IResult> Excel(Guid projectId, int number, ClaimsPrincipal principal, RedixDbContext db)
+    public static async Task<IResult> Excel(Guid projectId, int number, ClaimsPrincipal principal, HttpRequest request, FileLinks links, RedixDbContext db)
     {
         var snapshot = await SnapshotOfAsync(projectId, number, db);
-        return snapshot is null ? Results.NotFound() : Results.File(PeriodicReportWorkbook.Of(snapshot.ForFilesOf(await PartnerSight.OfAsync(principal, projectId, db))), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
+        if (snapshot is null)
+        {
+            return Results.NotFound();
+        }
+        var seen = snapshot.ForFilesOf(await PartnerSight.OfAsync(principal, projectId, db));
+        var fileLinks = await links.OfEntriesAsync(seen.Items.SelectMany(item => item.EntryIds()), request, db);
+        return Results.File(PeriodicReportWorkbook.Of(seen, fileLinks), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-{number}.xlsx");
     }
 
     private static async Task<PeriodicReportSnapshot?> SnapshotOfAsync(Guid projectId, int number, RedixDbContext db)

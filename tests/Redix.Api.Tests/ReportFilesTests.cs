@@ -6,7 +6,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
+using Redix.Api.Attachments;
 using Redix.Api.Auth;
 using Redix.Api.Entries;
 using Redix.Api.Partners;
@@ -330,6 +334,28 @@ public class ReportFilesTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task Muteb16Nov_AWorkbooksFileCellOpensItsFileWithNoSignInForSevenDaysAndAChangedLinkOpensNothing()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        var entryId = await ApprovedAsync(ledger, ledger.Purchase(200m) with { Description = "بلاط" });
+        var kept = await ledger.ReadAsync(db => db.EntryAttachments.SingleAsync(file => file.EntryId == entryId));
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/reports/items/{ledger.ItemId}/xlsx")));
+        var link = workbook.Worksheet(1).CellsUsed().Single(cell => cell.GetString() == ReportColumns.AttachmentWord).GetHyperlink().ExternalAddress;
+        var stranger = factory.CreateClient();
+
+        var opened = await stranger.GetAsync(link.AbsolutePath);
+        var changed = await stranger.GetAsync($"{link.AbsolutePath[..^2]}{(link.AbsolutePath.EndsWith("AA") ? "BB" : "AA")}");
+
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        Assert.Equal(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/attachments/{kept.AttachmentId}"), await opened.Content.ReadAsByteArrayAsync());
+        Assert.Equal(HttpStatusCode.NotFound, changed.StatusCode);
+        var protection = factory.Services.GetRequiredService<IDataProtectionProvider>();
+        var signed = link.Segments[^1];
+        Assert.Equal(kept.AttachmentId, new FileLinks(protection, new FakeTimeProvider(factory.Time.GetUtcNow() + FileLinks.Lifetime - TimeSpan.FromMinutes(1))).AttachmentOf(signed));
+        Assert.Equal(Guid.Empty, new FileLinks(protection, new FakeTimeProvider(factory.Time.GetUtcNow() + FileLinks.Lifetime)).AttachmentOf(signed));
+    }
+
+    [Fact]
     public async Task R129_R2_ATableWithoutTheUnitPriceAndTheQuantityPrintsNeither()
     {
         var ledger = await Ledger.WithFinanceAsync(factory);
@@ -393,7 +419,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var report = Report([Item("السباكة", "العظم", Subgroup("", Row(100, "P1"))), Item("السباكة", "التشطيب", Subgroup("", Row(100, "P2")))]);
 
-        using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report)));
+        using var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, [])));
 
         Assert.Equal(["السباكة · العظم", "السباكة · التشطيب"], workbook.Worksheets.Where(sheet => sheet.Visibility == XLWorksheetVisibility.Visible).Skip(1).Select(sheet => sheet.Name));
     }
@@ -596,7 +622,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
         var sheet = workbook.Worksheet(1);
         Assert.Equal((45d, true), (sheet.Column(2).Width, sheet.Cell("B3").Style.Alignment.WrapText));
-        using var file = new ZipArchive(new MemoryStream(ItemReportFiles.Excel("غصون 6", Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), 590400, false, [longText, "2025-07-05", "", "", ""], false))))));
+        using var file = new ZipArchive(new MemoryStream(ItemReportFiles.Excel("غصون 6", Item("الرسوم", "الرسوم والفواتير", Subgroup("", new ItemEntryRow(Guid.NewGuid(), new DateOnly(2025, 7, 5), 590400, false, [longText, "2025-07-05", "", "", ""], false))), [])));
         using var sheetXml = new StreamReader(file.GetEntry("xl/worksheets/sheet1.xml")!.Open());
         Assert.DoesNotContain("customHeight", sheetXml.ReadToEnd());
         Assert.True(sheet.Column(3).Width >= 10 && sheet.Column(7).Width >= 10, "a date and an amount show whole");
@@ -604,14 +630,14 @@ public class ReportFilesTests(MigratedApiFactory factory)
 
     private static XLWorkbook Workbook(PeriodicReportSnapshot report)
     {
-        var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report)));
+        var workbook = new XLWorkbook(new MemoryStream(PeriodicReportWorkbook.Of(report, [])));
         workbook.RecalculateAllFormulas();
         return workbook;
     }
 
     private static XLWorkbook ItemWorkbook(ItemReportView item)
     {
-        var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel("غصون 6", item)));
+        var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel("غصون 6", item, [])));
         workbook.RecalculateAllFormulas();
         return workbook;
     }
@@ -723,7 +749,7 @@ public class ReportFilesTests(MigratedApiFactory factory)
     {
         var item = Tiles();
 
-        using var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel("غصون 6", item)));
+        using var workbook = new XLWorkbook(new MemoryStream(ItemReportFiles.Excel("غصون 6", item, [])));
         workbook.RecalculateAllFormulas();
 
         var figures = FiguresOf(workbook);
