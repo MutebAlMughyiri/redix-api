@@ -44,6 +44,23 @@ func (q *Queries) ChosenPartners(ctx context.Context, userID uuid.UUID) ([]Chose
 	return items, nil
 }
 
+const deviceIsOpen = `-- name: DeviceIsOpen :one
+SELECT EXISTS (SELECT 1 FROM devices WHERE id = ?1 AND user_id = ?2 AND is_revoked = 0) AS is_open
+`
+
+type DeviceIsOpenParams struct {
+	DeviceID uuid.UUID
+	UserID   uuid.UUID
+}
+
+// Whether the session's device is still open, so a revoked device is refused at its next request, not when its token expires.
+func (q *Queries) DeviceIsOpen(ctx context.Context, arg DeviceIsOpenParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, deviceIsOpen, arg.DeviceID, arg.UserID)
+	var is_open bool
+	err := row.Scan(&is_open)
+	return is_open, err
+}
+
 const heldEverywhere = `-- name: HeldEverywhere :many
 SELECT permission FROM system_permissions WHERE user_id = ?1
 `

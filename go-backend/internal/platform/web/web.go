@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
+	"strconv"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/google/uuid"
@@ -28,11 +30,43 @@ func NewRouter(frontEnd string) *Router {
 	return &Router{mux: http.NewServeMux(), frontEnd: frontEnd, files: http.FileServer(http.Dir(frontEnd))}
 }
 
-// Handle routes method and path, such as "GET" and "/projects/{projectId}", at the path and under /api/v1.
+// Handle routes method and path at the path and under /api/v1. A path names its values as .NET did, with their constraints: "/projects/{projectId:guid}",
+// "/periodic-reports/{number:int}". A value that does not fit answers 404 before anything else, as a route that did not match did.
 func (r *Router) Handle(method, path string, handler http.HandlerFunc) {
-	r.mux.HandleFunc(method+" "+path, handler)
-	r.mux.HandleFunc(method+" "+version+path, handler)
+	pattern, constraints := constrained(path)
+	checked := func(w http.ResponseWriter, request *http.Request) {
+		for name, fits := range constraints {
+			if !fits(request.PathValue(name)) {
+				problem.Status(w, request, http.StatusNotFound)
+				return
+			}
+		}
+		handler(w, request)
+	}
+	r.mux.HandleFunc(method+" "+pattern, checked)
+	r.mux.HandleFunc(method+" "+version+pattern, checked)
 }
+
+// constraints are the route constraints the API's paths use.
+var constraints = map[string]func(string) bool{
+	"guid": func(value string) bool { _, err := uuid.Parse(value); return err == nil && len(value) == 36 },
+	"int":  func(value string) bool { _, err := strconv.ParseInt(value, 10, 32); return err == nil },
+}
+
+// constrained is path as the standard mux reads it, "{projectId}", and the constraint of each value that has one.
+func constrained(path string) (string, map[string]func(string) bool) {
+	found := map[string]func(string) bool{}
+	pattern := routeValue.ReplaceAllStringFunc(path, func(value string) string {
+		parts := routeValue.FindStringSubmatch(value)
+		if parts[2] != "" {
+			found[parts[1]] = constraints[parts[2]]
+		}
+		return "{" + parts[1] + "}"
+	})
+	return pattern, found
+}
+
+var routeValue = regexp.MustCompile(`\{(\w+)(?::(guid|int))?\}`)
 
 // ServeHTTP answers a route, then a front end file, then what ASP.NET Core answered: 405 for a known path with another method, 404 for the rest.
 func (r *Router) ServeHTTP(w http.ResponseWriter, request *http.Request) {
@@ -84,15 +118,8 @@ func (p *problemOnly) Write(body []byte) (int, error) {
 	return len(body), nil
 }
 
-// ID is the GUID path value name; a value that is not a GUID answers 404, as the route constraint {name:guid} did.
-func ID(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, bool) {
-	id, err := uuid.Parse(r.PathValue(name))
-	if err != nil || len(r.PathValue(name)) != 36 {
-		problem.Status(w, r, http.StatusNotFound)
-		return uuid.Nil, false
-	}
-	return id, true
-}
+// ID is the GUID route value name, which the route's {name:guid} constraint has already checked.
+func ID(r *http.Request, name string) uuid.UUID { return uuid.MustParse(r.PathValue(name)) }
 
 // JSON answers status with value as JSON, as Results.Ok and Results.Json wrote it.
 func JSON(w http.ResponseWriter, r *http.Request, status int, value any) {

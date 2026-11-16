@@ -16,10 +16,11 @@ func router(t *testing.T) *Router {
 	folder := t.TempDir()
 	os.WriteFile(filepath.Join(folder, "index.html"), []byte("<h1>REDIX</h1>"), 0o644)
 	r := NewRouter(folder)
-	r.Handle("GET", "/projects/{projectId}", func(w http.ResponseWriter, request *http.Request) {
-		if id, ok := ID(w, request, "projectId"); ok {
-			JSON(w, request, http.StatusOK, map[string]string{"id": id.String()})
-		}
+	r.Handle("GET", "/projects/{projectId:guid}", func(w http.ResponseWriter, request *http.Request) {
+		JSON(w, request, http.StatusOK, map[string]string{"id": ID(request, "projectId").String()})
+	})
+	r.Handle("GET", "/reports/{number:int}", func(w http.ResponseWriter, request *http.Request) {
+		JSON(w, request, http.StatusOK, map[string]string{"number": request.PathValue("number")})
 	})
 	return r
 }
@@ -40,10 +41,15 @@ func TestR6_ARouteAnswersAtItsOldPathAndUnderApiV1(t *testing.T) {
 	}
 }
 
-func TestR6_AGuidRouteValueThatIsNotAGuidIsNotFound(t *testing.T) {
-	got := ask(router(t), "GET", "/projects/12")
-	if got.Code != 404 || !strings.Contains(got.Body.String(), `"title":"Not Found"`) {
-		t.Errorf("%d %s", got.Code, got.Body)
+func TestR4_ARouteValueThatDoesNotFitItsConstraintIsNotFound(t *testing.T) {
+	r := router(t)
+	for _, path := range []string{"/projects/12", "/projects/0193a1b200007000800000000000001", "/reports/x", "/reports/99999999999"} {
+		if got := ask(r, "GET", path); got.Code != 404 || !strings.Contains(got.Body.String(), `"title":"Not Found"`) {
+			t.Errorf("%s: %d %s", path, got.Code, got.Body)
+		}
+	}
+	if got := ask(r, "GET", "/api/v1/reports/7"); got.Code != 200 || got.Body.String() != `{"number":"7"}` {
+		t.Errorf("a fitting int: %d %s", got.Code, got.Body)
 	}
 }
 
