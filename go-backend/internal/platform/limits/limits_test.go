@@ -48,3 +48,21 @@ func TestN15_PastItsPermitsAnAddressIsAnsweredTooManyRequests(t *testing.T) {
 		t.Errorf("%v", codes)
 	}
 }
+
+func TestG14_BehindCaddyEachPersonIsTheAddressCaddySaw(t *testing.T) {
+	for _, c := range []struct{ remote, forwarded, want string }{
+		{"127.0.0.1:41000", "198.51.100.4", "198.51.100.4"},
+		{"127.0.0.1:41000", "203.0.113.9, 198.51.100.4", "198.51.100.4"},
+		{"127.0.0.1:41000", "", "127.0.0.1"},
+		{"192.0.2.7:51000", "198.51.100.4", "192.0.2.7"},
+	} {
+		request := httptest.NewRequest("POST", "/projects/register", nil)
+		request.RemoteAddr = c.remote
+		if c.forwarded != "" {
+			request.Header.Set("X-Forwarded-For", c.forwarded)
+		}
+		if got := clientOf(request); got != c.want {
+			t.Errorf("from %s forwarded %q: %s, want %s", c.remote, c.forwarded, got, c.want)
+		}
+	}
+}

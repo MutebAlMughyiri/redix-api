@@ -1,0 +1,10 @@
+# Runs the attachments backup every ten minutes.
+[Unit]
+Description=REDIX attachments backup, every ten minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target

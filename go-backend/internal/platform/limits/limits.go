@@ -5,6 +5,7 @@ package limits
 import (
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,14 +57,24 @@ func (w *Window) Allow(key string) bool {
 // PerAddress lets a request through within the window for its caller's address, and answers 429 past it, as RequireRateLimiting did.
 func (w *Window) PerAddress(next http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, r *http.Request) {
-		address, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			address = r.RemoteAddr
-		}
-		if !w.Allow(address) {
+		if !w.Allow(clientOf(r)) {
 			problem.Status(writer, r, http.StatusTooManyRequests)
 			return
 		}
 		next(writer, r)
 	}
+}
+
+// clientOf is the address a request came from (G14): its own, or behind Caddy - a request from this machine, the API listening there alone - the
+// last one Caddy put in X-Forwarded-For, the one it saw, so every person behind Caddy is not one address.
+func clientOf(r *http.Request) string {
+	address, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		address = r.RemoteAddr
+	}
+	forwarded := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+	if ip := net.ParseIP(address); ip != nil && ip.IsLoopback() && strings.TrimSpace(forwarded[len(forwarded)-1]) != "" {
+		return strings.TrimSpace(forwarded[len(forwarded)-1])
+	}
+	return address
 }

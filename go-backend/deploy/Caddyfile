@@ -1,0 +1,10 @@
+# REDIX behind Caddy (redix-api #140, R22, G1): Caddy keeps the certificate and passes every request to the Go binary, which routes the API at
+# its old paths and under /api/v1, and serves the web front end's files for every other path. The binary listens on this machine alone, so the
+# address it limits a registration by is the one Caddy saw (G14).
+{$REDIX_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 30MB
+	}
+	reverse_proxy 127.0.0.1:5012
+}

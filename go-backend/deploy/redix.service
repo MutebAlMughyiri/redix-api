@@ -1,0 +1,26 @@
+# The REDIX API as a systemd service (redix-api #140, R22). Its settings are REDIX_ variables in /etc/redix/redix.env, as on Windows today;
+# the database, its WAL and the attachments live in /var/lib/redix, which Litestream and the attachments timer back up.
+[Unit]
+Description=REDIX API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=redix
+Group=redix
+EnvironmentFile=/etc/redix/redix.env
+ExecStartPre=/usr/local/bin/redix-server migrate
+ExecStart=/usr/local/bin/redix-server
+Restart=on-failure
+RestartSec=2
+StateDirectory=redix
+WorkingDirectory=/var/lib/redix
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/redix
+PrivateTmp=true
+MemoryMax=600M
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+# Continuous backup of the SQLite file to an S3-compatible bucket (redix-api #140, R22, D5), read by Litestream's own service from
+# /etc/litestream.yml. The bucket, its endpoint and its keys come from Litestream's environment; the provider is named at P5.
+dbs:
+  - path: /var/lib/redix/redix.db
+    replicas:
+      - type: s3
+        bucket: ${REDIX_BACKUP_BUCKET}
+        path: redix.db
+        endpoint: ${REDIX_BACKUP_ENDPOINT}
+        region: auto
+        access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+        secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+        sync-interval: 1s
+        retention: 720h

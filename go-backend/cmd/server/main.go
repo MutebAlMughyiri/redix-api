@@ -44,6 +44,10 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer database.Close()
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		logger.Info("the database's schema is up to date", "path", settings.DatabasePath)
+		return nil
+	}
 	now := clock.System{}
 	if err := auth.SeedAdmin(ctx, database, settings.AdminUsername, settings.AdminPassword, moment.Of(now.Now())); err != nil {
 		return err

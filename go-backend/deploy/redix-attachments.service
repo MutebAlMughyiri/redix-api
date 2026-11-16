@@ -1,0 +1,10 @@
+# Copies the uploaded files to the same bucket as the database (redix-api #140, R32): Litestream copies only the database, and a file is never
+# deleted (NFR-11), so a copy only adds. rclone's remote "backup" is configured in /etc/redix/rclone.conf.
+[Unit]
+Description=REDIX attachments backup
+
+[Service]
+Type=oneshot
+User=redix
+ExecStart=/usr/bin/rclone --config /etc/redix/rclone.conf copy /var/lib/redix/attachments backup:${REDIX_BACKUP_BUCKET}/attachments
+EnvironmentFile=/etc/redix/backup.env
