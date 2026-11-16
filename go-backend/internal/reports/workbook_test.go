@@ -526,3 +526,18 @@ func TestAC_54_6_G6_TheWorkbookShowsTheNumberAndAReportIssuedBeforeEntriesHadOne
 	book.want(book.number(sheet, "A3"), 312.0, "A3")
 	book.want(book.text(sheet, "A4"), "", "a row of a report issued before entries had a number shows none")
 }
+
+func TestRow267_TheVatWorkbookIsInExcelsOwnLookCalibri11WithNoPageSetup(t *testing.T) {
+	quarter := entries.VatQuarter{Start: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), End: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+		Purchases: []entries.VatRow{{Date: moment.Date{Time: time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)}, Party: "شركة النخيل", VatNumber: "300000000000003",
+			Description: "حديد", Total: amountOf(115)}}}
+	content, err := vatWorkbookOf([]entries.VatQuarter{quarter}, "15")
+	book := open(t, content, err)
+	sheet := book.first()
+	if font := book.style(sheet, "A1").Font; font.Family != "Calibri" || font.Size != 11 {
+		t.Errorf("the VAT workbook's font is %s %v", font.Family, font.Size)
+	}
+	if props, _ := book.file.GetSheetProps(sheet); props.FitToPage != nil && *props.FitToPage {
+		t.Error("the VAT workbook is fitted to a page")
+	}
+}

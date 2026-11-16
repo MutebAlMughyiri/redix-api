@@ -47,12 +47,21 @@ type Book struct {
 	Lists       *ChoiceLists
 	Footer      string
 	SummaryName string
+	plain       bool
 }
 
 // NewBook is a workbook whose sheets print footer at their foot, right, and link back to summaryName, "" for a workbook with no summary.
 func NewBook(footer, summaryName string) *Book {
 	book := &Book{taken: map[string]bool{}, Footer: footer, SummaryName: summaryName}
 	book.Lists = newChoiceLists(book)
+	return book
+}
+
+// NewWorkbook is a workbook in Excel's own look rather than the statement's: Calibri 11, no page setup and no footer, as the VAT statement's
+// workbook for the accountant keeps it (Muteb, 17 Nov 2026, #76 row 267).
+func NewWorkbook() *Book {
+	book := NewBook("", "")
+	book.plain = true
 	return book
 }
 
@@ -107,7 +116,7 @@ func (b *Book) Bytes() ([]byte, error) {
 			_, err = file.NewSheet(sheet.Name)
 		}
 		if err == nil {
-			err = sheet.writeTo(file, styles)
+			err = sheet.writeTo(file, styles, b.plain)
 		}
 		if err != nil {
 			return nil, err
@@ -191,7 +200,7 @@ func (s *Worksheet) isMerged(row, column int) bool {
 	return slices.ContainsFunc(s.merges, func(m [4]int) bool { return row >= m[0] && row <= m[2] && column >= m[1] && column <= m[3] })
 }
 
-func (s *Worksheet) writeTo(file *excelize.File, styles map[look]int) error {
+func (s *Worksheet) writeTo(file *excelize.File, styles map[look]int, plain bool) error {
 	rightToLeft := true
 	errs := []error{file.SetSheetView(s.Name, -1, &excelize.ViewOptions{RightToLeft: &rightToLeft})}
 	for column, width := range s.widths {
@@ -199,7 +208,7 @@ func (s *Worksheet) writeTo(file *excelize.File, styles map[look]int) error {
 		errs = append(errs, file.SetColWidth(s.Name, letter, letter, width))
 	}
 	for _, cell := range s.cells {
-		errs = append(errs, cell.writeTo(file, s.Name, styles))
+		errs = append(errs, cell.writeTo(file, s.Name, styles, plain))
 	}
 	for _, merge := range s.merges {
 		errs = append(errs, file.MergeCell(s.Name, Address(merge[0], merge[1]), Address(merge[2], merge[3])))
@@ -211,8 +220,10 @@ func (s *Worksheet) writeTo(file *excelize.File, styles map[look]int) error {
 	if s.landscape {
 		orientation = "landscape"
 	}
-	errs = append(errs, file.SetPageLayout(s.Name, &excelize.PageLayoutOptions{Size: &size, Orientation: &orientation, FitToWidth: &wide, FitToHeight: &tall}),
-		file.SetSheetProps(s.Name, &excelize.SheetPropsOptions{FitToPage: &fits}))
+	if !plain {
+		errs = append(errs, file.SetPageLayout(s.Name, &excelize.PageLayoutOptions{Size: &size, Orientation: &orientation, FitToWidth: &wide, FitToHeight: &tall}),
+			file.SetSheetProps(s.Name, &excelize.SheetPropsOptions{FitToPage: &fits}))
+	}
 	if s.footer != "" {
 		errs = append(errs, file.SetHeaderFooter(s.Name, &excelize.HeaderFooterOptions{OddFooter: "&L&A&C&P / &N&R" + strings.ReplaceAll(s.footer, "&", "&&")}))
 	}
@@ -348,7 +359,7 @@ func (c *Cell) width() float64 {
 	return float64(widest)
 }
 
-func (c *Cell) writeTo(file *excelize.File, sheet string, styles map[look]int) error {
+func (c *Cell) writeTo(file *excelize.File, sheet string, styles map[look]int, plain bool) error {
 	address := c.Address()
 	var err error
 	switch {
@@ -371,7 +382,7 @@ func (c *Cell) writeTo(file *excelize.File, sheet string, styles map[look]int) e
 	}
 	style, known := styles[c.look]
 	if !known {
-		if style, err = file.NewStyle(c.look.style()); err != nil {
+		if style, err = file.NewStyle(c.look.style(plain)); err != nil {
 			return err
 		}
 		styles[c.look] = style
@@ -393,13 +404,17 @@ const (
 	medium = 2
 )
 
-func (l look) style() *excelize.Style {
-	size := float64(fontSize)
+// style is the look as one style: in the statement's font, centred upright, or - plain - in Excel's own, Calibri 11 at the cell's foot.
+func (l look) style(plain bool) *excelize.Style {
+	family, size, vertical := font, float64(fontSize), "center"
+	if plain {
+		family, size, vertical = "Calibri", 11, ""
+	}
 	if l.size > 0 {
 		size = l.size
 	}
-	style := &excelize.Style{Font: &excelize.Font{Family: font, Size: size, Bold: l.bold, Color: l.color},
-		Alignment: &excelize.Alignment{Horizontal: l.horizontal, Vertical: "center", WrapText: l.wrap}}
+	style := &excelize.Style{Font: &excelize.Font{Family: family, Size: size, Bold: l.bold, Color: l.color},
+		Alignment: &excelize.Alignment{Horizontal: l.horizontal, Vertical: vertical, WrapText: l.wrap}}
 	if l.fill != "" {
 		style.Fill = excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{l.fill}}
 	}

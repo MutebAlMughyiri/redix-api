@@ -15,7 +15,8 @@ import (
 )
 
 // The كشف الضريبة as the accountant's workbook (VatStatementFiles, redix-api #96, D5, D19): a sheet per quarter, its purchases, each row's VAT and
-// amount before VAT as formulas on its total at the configured rate, and the net due at the foot.
+// amount before VAT as formulas on its total at the configured rate, and the net due at the foot; in Excel's own look, not the statement's (#76
+// row 267).
 
 var (
 	quarterOrdinals = [4]string{"الأول", "الثاني", "الثالث", "الرابع"}
@@ -24,7 +25,7 @@ var (
 
 // vatWorkbookOf is the workbook of quarters at ratePercent, as the config value writes it: 15 for 15%.
 func vatWorkbookOf(quarters []entries.VatQuarter, ratePercent string) ([]byte, error) {
-	book := statement.NewBook("", "")
+	book := statement.NewWorkbook()
 	for _, quarter := range quarters {
 		ordinal := quarterOrdinals[(quarter.Start.Month()-1)/3]
 		sheet := book.AddSheet(fmt.Sprintf("ضريبة الربع %s %d", ordinal, quarter.Start.Year()))
