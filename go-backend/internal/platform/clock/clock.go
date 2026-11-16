@@ -40,3 +40,10 @@ func (f *Fake) Advance(d time.Duration) {
 	defer f.mu.Unlock()
 	f.now = f.now.Add(d)
 }
+
+// Set stands the clock at now, as a replay does at each recorded request's moment.
+func (f *Fake) Set(now time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.now = now.UTC()
+}

@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -73,6 +74,12 @@ func constrained(path string) (string, map[string]func(string) bool) {
 }
 
 var routeValue = regexp.MustCompile(`\{(\w+)(?::(guid|int))?\}`)
+
+// Handles says whether a route answers method on path, so a replay can tell the routes already on Go from the rest.
+func (r *Router) Handles(method, path string) bool {
+	_, pattern := r.mux.Handler(&http.Request{Method: method, URL: &url.URL{Path: path}})
+	return pattern != ""
+}
 
 // ServeHTTP answers a route, then a front end file, then what ASP.NET Core answered: 405 for a known path with another method, 404 for the rest.
 func (r *Router) ServeHTTP(w http.ResponseWriter, request *http.Request) {

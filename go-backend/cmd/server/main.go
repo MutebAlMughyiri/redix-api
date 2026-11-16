@@ -13,20 +13,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/environment"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/server"
 )
 
 func main() {
@@ -54,39 +48,24 @@ func run(logger *slog.Logger) error {
 	if err := auth.SeedAdmin(ctx, database, settings.AdminUsername, settings.AdminPassword, moment.Of(now.Now())); err != nil {
 		return err
 	}
-	tokens := credentials.NewTokens(settings.SigningKey, now)
-	book := access.NewBook(database)
-	gate := access.NewGate(tokens, database, book, logger)
-
-	router := web.NewRouter(settings.WebFolder)
-	router.Handle("GET", "/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		if database.Read.PingContext(r.Context()) != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("Unhealthy"))
-			return
-		}
-		w.Write([]byte("Healthy"))
+	router := server.Routes(server.Parts{
+		Database: database, Clock: now, SigningKey: settings.SigningKey, Sender: email.Folder{Path: settings.EmailFolder},
+		EmailCodesPerHour: settings.EmailCodesPerHour, WebFolder: settings.WebFolder, Log: logger,
 	})
-	translations.Map(router, database)
-	config.Map(router, database)
-	auth.MapSessions(router, gate, database, tokens, book, now)
-	auth.MapCodes(router, gate, database, now, email.Folder{Path: settings.EmailFolder}, limits.PerHour(settings.EmailCodesPerHour, now), logger)
-	users.Map(router, gate, database, now)
 
 	address, err := listenAddress(settings.Urls)
 	if err != nil {
 		return err
 	}
-	server := &http.Server{Addr: address, Handler: problem.Traced(router), ReadHeaderTimeout: 10 * time.Second}
+	api := &http.Server{Addr: address, Handler: problem.Traced(router), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		server.Shutdown(shutdown)
+		api.Shutdown(shutdown)
 	}()
 	logger.Info("the API is listening", "address", address, "environment", settings.Environment, "database", settings.DatabasePath)
-	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+	if err := api.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
