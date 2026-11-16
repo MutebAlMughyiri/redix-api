@@ -378,6 +378,9 @@ func send(handler http.Handler, names mapping, s step) *httptest.ResponseRecorde
 // learned are the values that are Go's own by nature, so they are mapped rather than compared: ids, tokens and ETags.
 var guid = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+// generated are the other values a server makes up as it writes: a custom column's key, "custom." and a fresh version 7 id (Column.NewCustomKey).
+var generated = regexp.MustCompile(`^custom\.[0-9a-f]{32}$`)
+
 var tokenKeys = []string{"accessToken", "refreshToken"}
 
 func compare(names mapping, s step, got *httptest.ResponseRecorder) []string {
@@ -528,7 +531,7 @@ func same(names mapping, path, key string, net, got any) []string {
 			return []string{fmt.Sprintf("%s: %q in .NET's answer, %v in Go's", path, net, got)}
 		case names.into(net) == got:
 			return nil
-		case slices.Contains(tokenKeys, key), guid.MatchString(net) && guid.MatchString(got):
+		case slices.Contains(tokenKeys, key), guid.MatchString(net) && guid.MatchString(got), generated.MatchString(net) && generated.MatchString(got):
 			if _, known := names[net]; !known {
 				names[net] = got
 				return nil

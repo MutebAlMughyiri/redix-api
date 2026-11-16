@@ -5,6 +5,7 @@
 package store
 
 import (
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/google/uuid"
 )
@@ -22,6 +23,20 @@ type ChosenPartner struct {
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
 	PartnerID uuid.UUID
+}
+
+type Contract struct {
+	ID          uuid.UUID
+	ProjectID   uuid.UUID
+	ItemID      uuid.UUID
+	SortOrder   int64
+	SupplierID  uuid.UUID
+	Value       fixed.Number
+	IsOpenValue bool
+	UnitPrice   fixed.Number
+	Quantity    fixed.Number
+	Notes       string
+	IsActive    bool
 }
 
 type DefaultColumn struct {
@@ -87,6 +102,14 @@ type ItemColumn struct {
 	ShowInReports bool
 	SortOrder     int64
 	Choices       string
+}
+
+type Partner struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Name      string
+	SortOrder int64
+	IsDeleted bool
 }
 
 type PaymentMethod struct {

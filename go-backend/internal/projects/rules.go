@@ -3,6 +3,7 @@
 package projects
 
 import (
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -23,7 +24,6 @@ const (
 var statusNames = map[int64]string{active: "active", finished: "finished", pendingApproval: "pendingApproval", rejected: "rejected"}
 
 const (
-	nameMaxLength        = 100
 	descriptionMaxLength = 2000
 	reasonMaxLength      = 500
 )
@@ -31,7 +31,7 @@ const (
 // The refusals a change to a project answers with (ProjectChangeOutcome).
 const (
 	projectFinished    = "projectFinished"
-	invalidName        = "invalidName"
+	invalidName        = naming.Invalid
 	invalidDescription = "invalidDescription"
 	unitNameTaken      = "unitNameTaken"
 	unknownUnit        = "unknownUnit"
@@ -40,21 +40,10 @@ const (
 	invalidReason      = "invalidReason"
 )
 
-// Named is typed trimmed, and whether it may name something of a project - the project, a unit, a partner, a category, an item, a payment
-// method: one to a hundred characters (Project.IsAcceptableName, ProjectChanges.WithNameAsync). A refusal of it answers invalidName (400).
-func Named(typed string) (string, bool) {
-	name := strings.TrimSpace(typed)
-	length := utf8.RuneCountInString(name)
-	return name, length > 0 && length <= nameMaxLength
-}
-
-// InvalidName is the code a name Named refuses answers with.
-const InvalidName = invalidName
-
 // newProject is a project as Project.New makes it: its name, its description and its units, each trimmed; "" when it may be kept, or the last
 // refusal found - invalidName, invalidDescription, or unitNameTaken.
 func newProject(name, description string, units []string) (string, string, []string, string) {
-	kept, ok := Named(name)
+	kept, ok := naming.Named(name)
 	refusal := ""
 	trimmed := strings.TrimSpace(description)
 	switch {
@@ -65,7 +54,7 @@ func newProject(name, description string, units []string) (string, string, []str
 	}
 	var names []string
 	for _, unit := range units {
-		unitName, ok := Named(unit)
+		unitName, ok := naming.Named(unit)
 		switch {
 		case !ok:
 			refusal = invalidName
@@ -82,7 +71,7 @@ func newProject(name, description string, units []string) (string, string, []str
 func declaredPartners(names []string) ([]string, bool) {
 	var kept []string
 	for _, typed := range names {
-		name, ok := Named(typed)
+		name, ok := naming.Named(typed)
 		if !ok {
 			return nil, false
 		}

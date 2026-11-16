@@ -11,6 +11,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
@@ -414,7 +415,7 @@ func (p Routes) rename(w http.ResponseWriter, r *http.Request, caller access.Cal
 		return
 	}
 	p.change(w, r, caller, history.Update, func(c projectChangeContext) string {
-		name, ok := Named(request.Name)
+		name, ok := naming.Named(request.Name)
 		if !ok {
 			return invalidName
 		}
@@ -450,7 +451,7 @@ func (p Routes) addUnit(w http.ResponseWriter, r *http.Request, caller access.Ca
 		return
 	}
 	p.change(w, r, caller, history.Create, func(c projectChangeContext) string {
-		name, ok := Named(request.Name)
+		name, ok := naming.Named(request.Name)
 		switch {
 		case !ok:
 			return invalidName
@@ -480,7 +481,7 @@ func (p Routes) renameUnit(w http.ResponseWriter, r *http.Request, caller access
 		if unit == nil {
 			return unknownUnit
 		}
-		name, ok := Named(request.Name)
+		name, ok := naming.Named(request.Name)
 		switch {
 		case !ok:
 			return invalidName

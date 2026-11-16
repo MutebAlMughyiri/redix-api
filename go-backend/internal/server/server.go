@@ -16,6 +16,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 )
@@ -56,5 +57,6 @@ func Routes(parts Parts) *web.Router {
 	auth.MapCodes(router, gate, database, now, parts.Sender, limits.PerHour(parts.EmailCodesPerHour, now), parts.Log)
 	users.Map(router, gate, database, now)
 	projects.Map(router, gate, database, book, now, limits.PerHour(parts.RegistrationsPerHour, now))
+	structure.Map(router, gate, database, now)
 	return router
 }
