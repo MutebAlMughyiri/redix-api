@@ -1,6 +1,6 @@
-// Package config owns the API's settings, read from environment variables only (R11), under the names .NET read: REDIX_Jwt__SigningKey, and an
+// Package environment owns the API's settings, read from environment variables only (R11), under the names .NET read: REDIX_Jwt__SigningKey, and an
 // environment's own REDIX_{Environment}_Jwt__SigningKey, which wins (redix-api #118).
-package config
+package environment
 
 import (
 	"encoding/base64"
@@ -12,8 +12,8 @@ import (
 	"strconv"
 )
 
-// Config is every setting the API reads.
-type Config struct {
+// Settings is every setting the API reads.
+type Settings struct {
 	// Environment names the settings' environment, such as Dev or QA (REDIX_Environment).
 	Environment string
 	// Urls is where the API listens (Urls).
@@ -37,7 +37,7 @@ type Config struct {
 }
 
 // Read is the settings in the environment variables lookup gives, with .NET's defaults where one is not set.
-func Read(lookup func(string) (string, bool)) (Config, error) {
+func Read(lookup func(string) (string, bool)) (Settings, error) {
 	environment := valueOr(lookup, "REDIX_Environment", "Production")
 	get := func(key, fallback string) string {
 		if value, ok := lookup("REDIX_" + environment + "_" + key); ok {
@@ -48,17 +48,17 @@ func Read(lookup func(string) (string, bool)) (Config, error) {
 	data := filepath.Join(localData(lookup), "Redix")
 	key, err := base64.StdEncoding.DecodeString(get("Jwt__SigningKey", ""))
 	if err != nil || len(key) == 0 {
-		return Config{}, errors.New("set the REDIX_Jwt__SigningKey environment variable")
+		return Settings{}, errors.New("set the REDIX_Jwt__SigningKey environment variable")
 	}
 	registrations, err := strconv.Atoi(get("Registration__PermitsPerHour", "5"))
 	if err != nil {
-		return Config{}, fmt.Errorf("REDIX_Registration__PermitsPerHour: %w", err)
+		return Settings{}, fmt.Errorf("REDIX_Registration__PermitsPerHour: %w", err)
 	}
 	emailCodes, err := strconv.Atoi(get("EmailCodes__PermitsPerHour", "5"))
 	if err != nil {
-		return Config{}, fmt.Errorf("REDIX_EmailCodes__PermitsPerHour: %w", err)
+		return Settings{}, fmt.Errorf("REDIX_EmailCodes__PermitsPerHour: %w", err)
 	}
-	return Config{
+	return Settings{
 		Environment:           environment,
 		Urls:                  get("Urls", "http://0.0.0.0:5012"),
 		DatabasePath:          get("Database__Path", filepath.Join(data, "redix.db")),
@@ -75,8 +75,8 @@ func Read(lookup func(string) (string, bool)) (Config, error) {
 	}, nil
 }
 
-// FromEnvironment is the settings in this process's environment variables.
-func FromEnvironment() (Config, error) { return Read(os.LookupEnv) }
+// FromProcess is the settings in this process's environment variables.
+func FromProcess() (Settings, error) { return Read(os.LookupEnv) }
 
 func valueOr(lookup func(string) (string, bool), key, fallback string) string {
 	if value, ok := lookup(key); ok {

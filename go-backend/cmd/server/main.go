@@ -13,8 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/config"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/environment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
@@ -32,7 +33,7 @@ func run(logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	settings, err := config.FromEnvironment()
+	settings, err := environment.FromProcess()
 	if err != nil {
 		return err
 	}
@@ -53,6 +54,7 @@ func run(logger *slog.Logger) error {
 		w.Write([]byte("Healthy"))
 	})
 	translations.Map(router, database)
+	config.Map(router, database)
 
 	address, err := listenAddress(settings.Urls)
 	if err != nil {

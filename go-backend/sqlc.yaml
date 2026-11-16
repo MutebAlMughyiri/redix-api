@@ -55,3 +55,11 @@ sql:
         package: store
         out: internal/translations/store
         omit_unused_structs: true
+  - engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/config/queries.sql
+    gen:
+      go:
+        package: store
+        out: internal/config/store
+        omit_unused_structs: true
