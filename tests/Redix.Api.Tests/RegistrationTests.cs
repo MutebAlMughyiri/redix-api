@@ -111,6 +111,22 @@ public class RegistrationTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task R109_TheDeclaredPartnersAreKeptInTheirOrderAndABlankOneCreatesNothing()
+    {
+        var username = NewUsername();
+        var refusedUsername = NewUsername();
+
+        var project = await ProjectOf(await RegisterAsync(Request(username) with { Partners = [" نواف ", "ريم"] }));
+        var refused = await RegisterAsync(Request(refusedUsername, "غصون 9") with { Partners = ["نواف", " "] });
+
+        var partners = new List<string>();
+        await factory.WithDatabaseAsync(async db => partners = await db.Partners.Where(partner => partner.ProjectId == project.Id).OrderBy(partner => partner.SortOrder).Select(partner => partner.Name).ToListAsync());
+        Assert.Equal(["نواف", "ريم"], partners);
+        Assert.Equal((HttpStatusCode.BadRequest, "invalidName"), (refused.StatusCode, await Ledger.CodeOf(refused)));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/auth/sign-in", new SignInRequest(refusedUsername, Password))).StatusCode);
+    }
+
+    [Fact]
     public async Task ABadUnitCreatesNothing()
     {
         var username = NewUsername();

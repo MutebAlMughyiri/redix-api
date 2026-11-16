@@ -16,6 +16,8 @@
 | `POST /projects/{projectId}/approve` | `ApproveProjects` | `200`, and the project's structure is copied (UC-012); `404`; `409` `notPending` |
 | `POST /projects/{projectId}/reject` with `{ reason }` | `ApproveProjects` | `200`; `400` `invalidReason`; `404`; `409` `notPending` |
 
+Both `POST /projects/register` and `POST /projects` take `partners`, the names of its partners in order, left out for none: each becomes a table of its رأس المال once it is approved (redix-api #109). A blank or overlong name answers `invalidName`, and nothing is kept.
+
 A project answers `status`, now also `pendingApproval` or `rejected`, and `rejectionReason`.
 
 ## Rules and where they live
@@ -23,6 +25,7 @@ A project answers `status`, now also `pendingApproval` or `rejected`, and `rejec
 | Rule | Code | Test |
 | --- | --- | --- |
 | A registered project has its manager, all or nothing | `RegistrationEndpoints.Register` | `RegistrationTests.ARegisteredProjectHasItsManager`, `ABadFieldCreatesNothing` |
+| Its declared partners are kept in their order with it, all or nothing | `PartnersEndpoints.DeclaredWith` | `RegistrationTests.R109_TheDeclaredPartnersAreKeptInTheirOrderAndABlankOneCreatesNothing` |
 | Someone signed in registers with their own login | `ProjectsEndpoints.Create` | `RegistrationTests.SomeoneSignedInRegistersWithTheirOwnLogin` |
 | A waiting project gives no permission (BR-34) | `UserAccess.OfAsync` | `RegistrationTests.AWaitingProjectGivesNoPermission` |
 | Only the admin approves, and sees what is needed to decide | `Permission.ApproveProjects` | `RegistrationTests.OnlyTheAdminApproves`, `TheAdminSeesWhatIsNeededToDecide` |
