@@ -16,6 +16,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/historytest"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
@@ -70,7 +71,7 @@ func (a api) post(path, body, bearer string) (int, map[string]any) {
 		request.Header.Set("Authorization", "Bearer "+bearer)
 	}
 	recorder := httptest.NewRecorder()
-	a.handler.ServeHTTP(recorder, request)
+	historytest.Check(a.t, a.database, func() { a.handler.ServeHTTP(recorder, request) })
 	answer := map[string]any{}
 	json.Unmarshal(recorder.Body.Bytes(), &answer)
 	return recorder.Code, answer
