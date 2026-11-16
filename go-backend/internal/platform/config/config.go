@@ -32,6 +32,8 @@ type Config struct {
 	EmailConnectionString, EmailFrom string
 	// EmailFolder keeps each email instead of sending it while no connection string is set (Email__Folder).
 	EmailFolder string
+	// WebFolder holds the web front end's files, served for every path that is not a route; "" while there is no front end (Web__Folder, R18).
+	WebFolder string
 }
 
 // Read is the settings in the environment variables lookup gives, with .NET's defaults where one is not set.
@@ -69,6 +71,7 @@ func Read(lookup func(string) (string, bool)) (Config, error) {
 		EmailConnectionString: get("Email__ConnectionString", ""),
 		EmailFrom:             get("Email__From", ""),
 		EmailFolder:           get("Email__Folder", filepath.Join(data, "Emails")),
+		WebFolder:             get("Web__Folder", ""),
 	}, nil
 }
 
