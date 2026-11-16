@@ -116,12 +116,16 @@ public static class ApprovalsEndpoints
         return Results.Ok();
     }
 
+    /// <summary>
+    /// Approves the supplier of the entry <paramref name="entryId"/> when it waits (AC-44.1). Its status is read from the supplier as tracked, not as saved, so a second entry on it
+    /// approved in the same request finds it approved already and writes no second History line.
+    /// </summary>
     private static async Task ApproveItsSupplierAsync(Guid entryId, Guid userId, DateTime at, RedixDbContext db)
     {
         var bought = db.PurchaseDetails.Where(row => row.EntryId == entryId).Select(row => row.SupplierId);
         var paid = db.ContractorPaymentDetails.Where(row => row.EntryId == entryId).Join(db.Contracts, row => row.ContractId, contract => contract.Id, (_, contract) => contract.SupplierId);
         var supplier = await db.Suppliers.SingleOrDefaultAsync(row => row.Status == SupplierStatus.PendingApproval && (bought.Contains(row.Id) || paid.Contains(row.Id)));
-        if (supplier is not null)
+        if (supplier is not null && supplier.Status == SupplierStatus.PendingApproval)
         {
             supplier.Status = SupplierStatus.Approved;
             db.AddHistory(supplier, HistoryAction.Update, userId, at);

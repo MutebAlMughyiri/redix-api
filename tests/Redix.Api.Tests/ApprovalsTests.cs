@@ -210,6 +210,22 @@ public class ApprovalsTests(MigratedApiFactory factory)
     }
 
     [Fact]
+    public async Task AC_44_1_TwoEntriesOnOnePendingSupplierApprovedTogetherApproveItOnceInTheHistory()
+    {
+        var (ledger, _, supplierId) = await PendingSupplierAsync();
+        var first = ledger.Purchase(200m) with { SupplierId = supplierId, Submit = true };
+        var second = ledger.Purchase(90m) with { SupplierId = supplierId, Submit = true };
+        await ledger.RecordAsync(first);
+        await ledger.RecordAsync(second);
+        var linesBefore = await ledger.ReadAsync(db => db.History.CountAsync(row => row.RecordId == supplierId));
+
+        await ApproveAsync(ledger, first.Id, second.Id);
+
+        Assert.Equal(SupplierStatus.Approved, await ledger.ReadAsync(db => db.Suppliers.Where(row => row.Id == supplierId).Select(row => row.Status).SingleAsync()));
+        Assert.Equal(linesBefore + 1, await ledger.ReadAsync(db => db.History.CountAsync(row => row.RecordId == supplierId)));
+    }
+
+    [Fact]
     public async Task AC_44_1_RejectingItLeavesTheSupplierPending()
     {
         var (ledger, _, supplierId) = await PendingSupplierAsync();
