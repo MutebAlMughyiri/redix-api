@@ -3484,6 +3484,18 @@ func (q *Queries) PermissionsOf(ctx context.Context, arg PermissionsOfParams) ([
 	return items, nil
 }
 
+const projectHoldsEntries = `-- name: ProjectHoldsEntries :one
+SELECT EXISTS (SELECT 1 FROM entries WHERE project_id = ?)
+`
+
+// Whether the project holds any entry, a removed one too (Project.HoldingEntriesAsync): a project file loads only into a project holding none.
+func (q *Queries) ProjectHoldsEntries(ctx context.Context, projectID uuid.UUID) (bool, error) {
+	row := q.queryRow(ctx, q.projectHoldsEntriesStmt, projectHoldsEntries, projectID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const projectIDsOfUser = `-- name: ProjectIDsOfUser :many
 SELECT DISTINCT project_id FROM project_permissions WHERE user_id = ?1
 `

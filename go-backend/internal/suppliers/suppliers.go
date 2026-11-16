@@ -138,53 +138,46 @@ func (s Routes) search(w http.ResponseWriter, r *http.Request, caller access.Cal
 	web.JSON(w, r, http.StatusOK, views)
 }
 
-// supplierRequest is a supplier as the app sends it (SupplierRequest).
-type supplierRequest struct {
+// Request is a supplier as the app sends it (SupplierRequest).
+// Request is a supplier as a person types it (SupplierRequest).
+type Request struct {
 	Name          string    `json:"name"`
 	VatNumber     string    `json:"vatNumber,omitzero"`
 	Mobile        string    `json:"mobile,omitzero"`
 	DefaultItemID uuid.UUID `json:"defaultItemId,omitzero"`
 }
 
-// refused answers why typed cannot be the supplier supplierID of the project, uuid.Nil for a new one, and says whether it did (Supplier.RefusalOf):
+// refusalOf is why typed cannot be the supplier supplierID of the change's project, uuid.Nil for a new one; nil when it can (Supplier.RefusalOf):
 // invalidName, invalidVatNumber for anything but at most twenty digits (BR-16), invalidMobile, unknownItem for a default item outside the project
 // (400); vatNumberTaken (409) for a number another of its suppliers holds, with that supplier as existing.
-func (s Routes) refused(w http.ResponseWriter, r *http.Request, supplierID uuid.UUID, typed supplierRequest) bool {
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
+func refusalOf(c changes.Change, supplierID uuid.UUID, typed Request) error {
 	_, named := naming.Named(typed.Name)
 	vatNumber := strings.TrimSpace(typed.VatNumber)
-	refusal := ""
 	switch {
 	case !named:
-		refusal = naming.Invalid
+		return changes.Refuse(http.StatusBadRequest, naming.Invalid)
 	case len(vatNumber) > vatNumberMaxLength || strings.IndexFunc(vatNumber, func(c rune) bool { return c < '0' || c > '9' }) >= 0:
-		refusal = "invalidVatNumber"
+		return changes.Refuse(http.StatusBadRequest, "invalidVatNumber")
 	case !users.IsAcceptableMobile(strings.TrimSpace(typed.Mobile)):
-		refusal = "invalidMobile"
+		return changes.Refuse(http.StatusBadRequest, "invalidMobile")
 	case typed.DefaultItemID != uuid.Nil:
-		if _, err := read.ItemOf(r.Context(), store.ItemOfParams{ID: typed.DefaultItemID, ProjectID: projectID}); err != nil {
-			refusal = "unknownItem"
+		if _, err := c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: typed.DefaultItemID, ProjectID: c.ProjectID}); err != nil {
+			return changes.Refuse(http.StatusBadRequest, "unknownItem")
 		}
 	}
-	if refusal != "" {
-		problem.Refuse(w, r, http.StatusBadRequest, refusal)
-		return true
-	}
 	if vatNumber == "" {
-		return false
+		return nil
 	}
-	rows, err := read.SuppliersOf(r.Context(), store.SuppliersOfParams{ProjectID: projectID})
+	rows, err := c.Q.SuppliersOf(c.Ctx, store.SuppliersOfParams{ProjectID: c.ProjectID})
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return true
+		return err
 	}
 	for _, row := range rows {
 		if row.VatNumber == vatNumber && row.ID != supplierID {
-			problem.RefuseOver(w, r, http.StatusConflict, "vatNumberTaken", "existing", viewOf(row, false))
-			return true
+			return changes.RefuseOver(http.StatusConflict, "vatNumberTaken", "existing", viewOf(row, false))
 		}
 	}
-	return false
+	return nil
 }
 
 func fields(row store.Supplier) map[string]any {
@@ -198,7 +191,7 @@ func save(c changes.Change, before, after store.Supplier) error {
 }
 
 // typedInto is supplier as typed changes it: its name, kept with its search form, VAT number and mobile, each trimmed.
-func typedInto(supplier store.Supplier, typed supplierRequest) store.Supplier {
+func typedInto(supplier store.Supplier, typed Request) store.Supplier {
 	supplier.Name, _ = naming.Named(typed.Name)
 	supplier.NormalizedName = spelling.Normalize(supplier.Name)
 	supplier.VatNumber, supplier.Mobile = strings.TrimSpace(typed.VatNumber), strings.TrimSpace(typed.Mobile)
@@ -231,27 +224,37 @@ func defaultTo(c changes.Change, supplierID, itemID uuid.UUID) error {
 		})
 }
 
-// add adds a supplier, approved for whoever keeps the settings and otherwise waiting for approval (FR-44), refused as refused says; 201 with it.
-func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request supplierRequest
-	if !web.Read(w, r, &request) || s.refused(w, r, uuid.Nil, request) {
-		return
+// Add adds a supplier to the change's project, approved for whoever keeps the settings and otherwise waiting for approval (FR-44,
+// SuppliersEndpoints.AddAsync), refused as refusalOf says: the one way a supplier is added, by hand or by a project file's load.
+func Add(c changes.Change, request Request) (store.Supplier, error) {
+	if err := refusalOf(c, uuid.Nil, request); err != nil {
+		return store.Supplier{}, err
 	}
-	projectID := web.ID(r, "projectId")
-	supplier := store.Supplier{ID: uuid.Must(uuid.NewV7()), ProjectID: projectID, Status: pendingApproval, IsActive: true, CreatedByUserID: caller.UserID}
-	if caller.Access.Holds(projectID, access.ManageSettings) {
+	supplier := store.Supplier{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Status: pendingApproval, IsActive: true, CreatedByUserID: c.Actor}
+	if c.Access.Holds(c.ProjectID, access.ManageSettings) {
 		supplier.Status = approved
 	}
 	supplier = typedInto(supplier, request)
-	added := s.writer.Write(w, r, caller, func(c changes.Change) error {
-		if err := save(c, store.Supplier{}, supplier); err != nil {
-			return err
-		}
-		return defaultTo(c, supplier.ID, request.DefaultItemID)
-	})
-	if !added {
+	if err := save(c, store.Supplier{}, supplier); err != nil {
+		return store.Supplier{}, err
+	}
+	return supplier, defaultTo(c, supplier.ID, request.DefaultItemID)
+}
+
+// add adds a supplier as Add does; 201 with it.
+func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	var request Request
+	if !web.Read(w, r, &request) {
 		return
 	}
+	var supplier store.Supplier
+	if !s.writer.Write(w, r, caller, func(c changes.Change) (err error) {
+		supplier, err = Add(c, request)
+		return err
+	}) {
+		return
+	}
+	projectID := web.ID(r, "projectId")
 	rows, err := s.database.Queries().SuppliersOf(r.Context(), store.SuppliersOfParams{ProjectID: projectID})
 	at := slices.IndexFunc(rows, func(row store.SuppliersOfRow) bool { return row.ID == supplier.ID })
 	if err != nil || at < 0 {
@@ -265,19 +268,18 @@ func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller
 // edit changes a supplier's name, VAT number, mobile and default item: 404 for one the project does not hold, refused as add is, a supplier
 // keeping its own number.
 func (s Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request supplierRequest
+	var request Request
 	if !web.Read(w, r, &request) {
 		return
 	}
-	before, err := s.database.Queries().SupplierOf(r.Context(), store.SupplierOfParams{ID: web.ID(r, "supplierId"), ProjectID: web.ID(r, "projectId")})
-	if _, notFound := changes.Found(before, err); notFound != nil {
-		problem.Status(w, r, http.StatusNotFound)
-		return
-	}
-	if s.refused(w, r, before.ID, request) {
-		return
-	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
+		before, err := changes.Found(c.Q.SupplierOf(c.Ctx, store.SupplierOfParams{ID: web.ID(r, "supplierId"), ProjectID: c.ProjectID}))
+		if err != nil {
+			return err
+		}
+		if err := refusalOf(c, before.ID, request); err != nil {
+			return err
+		}
 		if err := save(c, before, typedInto(before, request)); err != nil {
 			return err
 		}

@@ -1,7 +1,6 @@
 package entries
 
 import (
-	"errors"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"net/http"
 	"slices"
@@ -64,8 +63,6 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 
 func (s Routes) now() moment.Moment { return moment.Of(s.clock.Now()) }
 
-func errorsAs[T error](err error, target *T) bool { return errors.As(err, target) }
-
 // entry is the route's entry when it is the project's and not removed (Entry.OfProjectAsync, BR-33, redix-api #119): 404 otherwise.
 func (s Routes) entry(w http.ResponseWriter, r *http.Request) (store.Entry, bool) {
 	entry, err := s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")})
@@ -110,7 +107,7 @@ func (s Routes) submit(w http.ResponseWriter, r *http.Request, caller access.Cal
 		if err := c.Record(history.Submit, "Entries", entry.ID, was, is); err != nil {
 			return err
 		}
-		return sendOff(c, after)
+		return sendOff(c, after, true)
 	})
 	if sent {
 		s.answerView(w, r, entry.ID)

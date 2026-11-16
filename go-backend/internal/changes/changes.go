@@ -28,6 +28,8 @@ type Change struct {
 	ProjectID uuid.UUID
 	Actor     uuid.UUID
 	Now       moment.Moment
+	// Access is what the actor holds, for an owner whose change depends on it.
+	Access access.Access
 }
 
 // Save writes a row by write and records it: created when isNew, otherwise only what changed between before and after - the C# names of the
@@ -62,10 +64,13 @@ func (c Change) Record(action history.Action, table string, id uuid.UUID, before
 	return history.Write(c.Ctx, c.Q, c.Now, c.Actor, action, history.Change{Table: table, RecordID: id, ProjectID: c.ProjectID, Before: before, After: after})
 }
 
-// Refusal is a change refused: the status it answers and its code; one with no code answers its status alone, as a row not found does.
+// Refusal is a change refused: the status it answers and its code, and what it was refused over, under Name, when it carries something; one with
+// no code answers its status alone, as a row not found does.
 type Refusal struct {
 	Status int
 	Code   string
+	Name   string
+	Detail any
 }
 
 func (r Refusal) Error() string { return "changes: refused " + r.Code }
@@ -75,6 +80,11 @@ var NotFound = Refusal{Status: http.StatusNotFound}
 
 // Refuse is the refusal code answered with status.
 func Refuse(status int, code string) error { return Refusal{Status: status, Code: code} }
+
+// RefuseOver is the refusal code answered with status, carrying detail under name.
+func RefuseOver(status int, code, name string, detail any) error {
+	return Refusal{Status: status, Code: code, Name: name, Detail: detail}
+}
 
 // Found is a row a lookup found, or NotFound for none.
 func Found[T any](row T, err error) (T, error) {
@@ -93,7 +103,7 @@ type Writer struct {
 // Write runs work as one change to the route's project and says whether it was done; otherwise it has answered: a refusal with its status and
 // code, any other failure 500. Nothing work wrote is kept when it fails.
 func (w Writer) Write(rw http.ResponseWriter, r *http.Request, caller access.Caller, work func(Change) error) bool {
-	c := Change{Ctx: r.Context(), ProjectID: web.ID(r, "projectId"), Actor: caller.UserID, Now: moment.Of(w.Clock.Now())}
+	c := Change{Ctx: r.Context(), ProjectID: web.ID(r, "projectId"), Actor: caller.UserID, Now: moment.Of(w.Clock.Now()), Access: caller.Access}
 	err := w.Database.InTx(r.Context(), func(q *store.Queries) error {
 		c.Q = q
 		return work(c)
@@ -104,6 +114,8 @@ func (w Writer) Write(rw http.ResponseWriter, r *http.Request, caller access.Cal
 		return true
 	case errors.As(err, &refused) && refused.Code == "":
 		problem.Status(rw, r, refused.Status)
+	case errors.As(err, &refused) && refused.Name != "":
+		problem.RefuseOver(rw, r, refused.Status, refused.Code, refused.Name, refused.Detail)
 	case errors.As(err, &refused):
 		problem.Refuse(rw, r, refused.Status, refused.Code)
 	default:

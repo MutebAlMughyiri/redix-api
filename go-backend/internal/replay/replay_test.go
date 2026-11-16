@@ -142,6 +142,12 @@ var ranAtOnce = []string{
 	"EntryNumberTests.G1_EntriesArrivingAtTheSameMomentEachTakeANumberOfTheirOwn",
 }
 
+// isGone says whether s asked for a route .NET did not have - one removed, or a method a path does not take - which Go's router answers as
+// ASP.NET Core's did, 404 or 405, with no route of its own.
+func isGone(s step) bool {
+	return s.Status == http.StatusNotFound || s.Status == http.StatusMethodNotAllowed
+}
+
 // seeds is what a replay can put straight into the database, as the factory's helpers did.
 var seeds = []string{"user", "give", "inactive", "approve"}
 
@@ -165,7 +171,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {
-			return (s.Step == "request" && !routes.Handles(s.Method, s.Path)) || (s.Step == "seed" && !slices.Contains(seeds, s.Kind))
+			return (s.Step == "request" && !routes.Handles(s.Method, s.Path) && !isGone(s)) || (s.Step == "seed" && !slices.Contains(seeds, s.Kind))
 		}):
 			waiting++
 			continue

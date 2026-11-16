@@ -70,23 +70,31 @@ func save(c changes.Change, before, after store.PaymentMethod) error {
 		func() error { return c.Q.SavePaymentMethod(c.Ctx, store.SavePaymentMethodParams(after)) })
 }
 
-// add adds a payment method at the end of the project's list.
+// add adds a payment method as AddPaymentMethod does.
 func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	name, ok := changes.Named(w, r)
 	if !ok {
 		return
 	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		methods, err := c.Q.PaymentMethodsOf(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		place := int64(0)
-		for _, method := range methods {
-			place = max(place, method.SortOrder+1)
-		}
-		return save(c, store.PaymentMethod{}, store.PaymentMethod{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: place, IsActive: true})
+		_, err := AddPaymentMethod(c, name)
+		return err
 	})
+}
+
+// AddPaymentMethod adds the payment method named name at the end of the change's project's list (PaymentMethodsEndpoints.AddAsync): the one way
+// a payment method is added, by hand or by a project file's load.
+func AddPaymentMethod(c changes.Change, name string) (uuid.UUID, error) {
+	methods, err := c.Q.PaymentMethodsOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	place := int64(0)
+	for _, method := range methods {
+		place = max(place, method.SortOrder+1)
+	}
+	method := store.PaymentMethod{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: place, IsActive: true}
+	return method.ID, save(c, store.PaymentMethod{}, method)
 }
 
 // change applies apply to the route's payment method: 404 for one the project does not hold.

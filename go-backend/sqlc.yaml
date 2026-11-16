@@ -58,6 +58,7 @@ sql:
     schema: internal/db/migrations
     queries:
       - internal/translations/queries.sql
+      - internal/projectfile/queries.sql
       - internal/config/queries.sql
       - internal/auth/queries.sql
       - internal/access/queries.sql

@@ -160,20 +160,27 @@ func (s Routes) offered(w http.ResponseWriter, r *http.Request, _ access.Caller)
 	web.JSON(w, r, http.StatusOK, offering)
 }
 
-// addCategory adds a category at the end of the project's list (FR-39): 201 with it.
+// AddCategory adds the category named name at the end of the change's project's list (FR-39, CategoriesEndpoints.AddCategoryAsync): the one way
+// a category is added, by hand or by a project file's load.
+func AddCategory(c changes.Change, name string) (store.Category, error) {
+	categories, err := c.Q.CategoriesOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return store.Category{}, err
+	}
+	category := store.Category{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: int64(len(categories)), IsActive: true}
+	return category, change{c}.saveCategory(store.Category{}, category)
+}
+
+// addCategory adds a category as AddCategory does: 201 with it.
 func (s Routes) addCategory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	name, ok := changes.Named(w, r)
 	if !ok {
 		return
 	}
 	var category store.Category
-	added := s.write(w, r, caller, func(c change) error {
-		categories, err := c.Q.CategoriesOf(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		category = store.Category{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: int64(len(categories)), IsActive: true}
-		return c.saveCategory(store.Category{}, category)
+	added := s.write(w, r, caller, func(c change) (err error) {
+		category, err = AddCategory(c.Change, name)
+		return err
 	})
 	if added {
 		w.Header().Set("Location", "/projects/"+category.ProjectID.String()+"/categories/"+category.ID.String())
@@ -259,32 +266,40 @@ func (s Routes) addItem(w http.ResponseWriter, r *http.Request, caller access.Ca
 	}
 	var item store.Item
 	var general store.Subgroup
-	added := s.write(w, r, caller, func(c change) error {
-		categoryID := web.ID(r, "categoryId")
-		if _, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.ProjectID})); err != nil {
-			return err
-		}
-		if err := c.refuseASecondCapital(request.Type); err != nil {
-			return err
-		}
-		items, err := c.Q.ItemsOfCategory(c.Ctx, categoryID)
-		if err != nil {
-			return err
-		}
-		item = store.Item{ID: uuid.Must(uuid.NewV7()), CategoryID: categoryID, Name: name, Type: int64(request.Type), SortOrder: int64(len(items)), IsActive: true}
-		general = store.Subgroup{ID: uuid.Must(uuid.NewV7()), ItemID: item.ID, Name: generalName}
-		if err := c.saveItem(store.Item{}, item); err != nil {
-			return err
-		}
-		if err := c.saveSubgroup(store.Subgroup{}, general); err != nil {
-			return err
-		}
-		return c.addTemplateColumns(item, false)
+	added := s.write(w, r, caller, func(c change) (err error) {
+		item, general, err = AddItem(c.Change, web.ID(r, "categoryId"), name, request.Type)
+		return err
 	})
 	if added {
 		w.Header().Set("Location", "/projects/"+web.ID(r, "projectId").String()+"/items/"+item.ID.String())
 		web.JSON(w, r, http.StatusCreated, itemViewOf(item, []store.Subgroup{general}))
 	}
+}
+
+// AddItem adds the item named name of its type at the end of the category, with its general group and the default columns of its type (FR-05,
+// FR-38, CategoriesEndpoints.AddItemAsync): 404 for a category the project does not hold, capitalItemExists (409) for a second capital item
+// (BR-31). The one way an item is added, by hand or by a project file's load.
+func AddItem(c changes.Change, categoryID uuid.UUID, name string, itemType ItemType) (store.Item, store.Subgroup, error) {
+	one := change{c}
+	if _, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.ProjectID})); err != nil {
+		return store.Item{}, store.Subgroup{}, err
+	}
+	if err := one.refuseASecondCapital(itemType); err != nil {
+		return store.Item{}, store.Subgroup{}, err
+	}
+	items, err := c.Q.ItemsOfCategory(c.Ctx, categoryID)
+	if err != nil {
+		return store.Item{}, store.Subgroup{}, err
+	}
+	item := store.Item{ID: uuid.Must(uuid.NewV7()), CategoryID: categoryID, Name: name, Type: int64(itemType), SortOrder: int64(len(items)), IsActive: true}
+	general := store.Subgroup{ID: uuid.Must(uuid.NewV7()), ItemID: item.ID, Name: generalName}
+	if err := one.saveItem(store.Item{}, item); err != nil {
+		return store.Item{}, store.Subgroup{}, err
+	}
+	if err := one.saveSubgroup(store.Subgroup{}, general); err != nil {
+		return store.Item{}, store.Subgroup{}, err
+	}
+	return item, general, one.addTemplateColumns(item, false)
 }
 
 // refuseASecondCapital refuses capitalItemExists when itemType is the capital and the project has its capital item already: one project, one
@@ -403,15 +418,23 @@ func (s Routes) addSubgroup(w http.ResponseWriter, r *http.Request, caller acces
 		if err != nil {
 			return err
 		}
-		if !ItemType(item.Type).takesPurchases() {
-			return refused(itemTakesNoPurchases)
-		}
-		place, err := NextTablePlace(c.Ctx, c.Q, item.ID)
-		if err != nil {
-			return err
-		}
-		return c.saveSubgroup(store.Subgroup{}, store.Subgroup{ID: uuid.Must(uuid.NewV7()), ItemID: item.ID, Name: name, SortOrder: place})
+		_, err = AddSubgroup(c.Change, item, name)
+		return err
 	})
+}
+
+// AddSubgroup adds the subgroup named name last among the item's tables (UC-012, CategoriesEndpoints.AddSubgroupAsync): itemTakesNoPurchases
+// (400) for an item that takes no purchases. The one way a subgroup is added, by hand or by a project file's load.
+func AddSubgroup(c changes.Change, item store.Item, name string) (uuid.UUID, error) {
+	if !ItemType(item.Type).takesPurchases() {
+		return uuid.Nil, refused(itemTakesNoPurchases)
+	}
+	place, err := NextTablePlace(c.Ctx, c.Q, item.ID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	subgroup := store.Subgroup{ID: uuid.Must(uuid.NewV7()), ItemID: item.ID, Name: name, SortOrder: place}
+	return subgroup.ID, change{c}.saveSubgroup(store.Subgroup{}, subgroup)
 }
 
 // NextTablePlace is the place after every table of the item, its subgroups, contracts and partners alike (ProjectStructure.NextTablePlaceAsync,

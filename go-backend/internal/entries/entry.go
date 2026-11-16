@@ -89,7 +89,8 @@ const SaudiOffset = 3 * time.Hour
 var notApproved = moment.Never
 
 // request is what the app sends for any entry, whatever its table (EntryRequest, redix-api #110).
-type request struct {
+// Request is an entry as Add entry sends it (EntryRequest).
+type Request struct {
 	ID                uuid.UUID   `json:"id"`
 	ItemID            uuid.UUID   `json:"itemId,omitzero"`
 	TableID           uuid.UUID   `json:"tableId,omitzero"`
@@ -106,7 +107,7 @@ type request struct {
 }
 
 // kept is the column values that hold something, trimmed, in the order typed (EntryRequest.ColumnValuesKept).
-func (r request) kept() web.Ordered {
+func (r Request) kept() web.Ordered {
 	values := web.Ordered{Values: map[string]string{}}
 	for _, key := range r.ColumnValues.Keys {
 		if value := strings.TrimSpace(r.ColumnValues.Values[key]); value != "" {
@@ -117,7 +118,7 @@ func (r request) kept() web.Ordered {
 	return values
 }
 
-func (r request) description() string { return strings.TrimSpace(r.Description) }
+func (r Request) description() string { return strings.TrimSpace(r.Description) }
 
 // fields is an entry as History keeps it, under the C# property names.
 func fields(entry store.Entry) map[string]any {

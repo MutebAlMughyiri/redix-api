@@ -62,6 +62,6 @@ To restore: `litestream restore -o /var/lib/redix/redix.db /var/lib/redix/redix.
 
 ## Where it stands (16 Nov 2026)
 
-146 of the API's 147 routes are on Go, and 734 of .NET's recorded tests replay against them, every answer matching - each workbook cell by cell,
-its values and formulas. Still on .NET: loading a project file. Then P3, the data moved from SQL Server; P4, the phone's Patrol tests against Go;
-P5, the rehearsal on a 1 GB server; and P6, the switch.
+Every one of the API's 147 routes is on Go, and 758 of .NET's recorded tests replay against them, every answer matching - each workbook cell by
+cell, its values and formulas. The one test that waits checks .NET's Swagger page, which Go does not serve. Then P3, the data moved from SQL
+Server; P4, the phone's Patrol tests against Go; P5, the rehearsal on a 1 GB server; and P6, the switch.

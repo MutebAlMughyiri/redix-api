@@ -82,10 +82,10 @@ func latestOf(c changes.Change) (store.LatestPeriodicReportRow, error) {
 	return store.LatestPeriodicReportRow{}, err
 }
 
-// snapshotOf is the report numbered number, issued now from what is approved: what was approved since the previous one is marked new, whatever
+// snapshotOf is the report numbered number, issued at from what is approved now: what was approved since the previous one is marked new, whatever
 // its date, and the expenses' difference starts from the previous report's (BR-09, BR-26). Every item with a total has its report, the expenses'
 // first, then the revenue's.
-func snapshotOf(c changes.Change, number int64, previous fixed.Total) (snapshot, error) {
+func snapshotOf(c changes.Change, number int64, at moment.Moment, previous fixed.Total) (snapshot, error) {
 	project, err := c.Q.ProjectWithID(c.Ctx, c.ProjectID)
 	figures, figuresErr := accounts.FiguresOf(c.Ctx, c.Q, c.ProjectID)
 	capital, lines, capitalErr := partners.Capital(c.Ctx, c.Q, c.ProjectID, func(uuid.UUID) bool { return true })
@@ -95,7 +95,7 @@ func snapshotOf(c changes.Change, number int64, previous fixed.Total) (snapshot,
 	if err := errors.Join(err, figuresErr, capitalErr, categoriesErr, reconciliationErr, waitingErr); err != nil {
 		return snapshot{}, err
 	}
-	report := snapshot{ProjectName: project.Name, Number: number, IssuedAt: c.Now, PreviousExpenses: previous, Expenses: figures.Expenses,
+	report := snapshot{ProjectName: project.Name, Number: number, IssuedAt: at, PreviousExpenses: previous, Expenses: figures.Expenses,
 		Capital: figures.Capital, VatRefunds: figures.VatRefunds, Sales: figures.Sales, OtherRevenue: figures.OtherRevenue, Surplus: figures.Surplus(),
 		SurplusWithoutSales: figures.SurplusWithoutSales(), Categories: expenses, Accounts: []reportAccount{}, AccountsTotal: reconciliation.ActualTotal,
 		ReconciliationDifference: reconciliation.Difference, PendingCount: waiting.ExpensesCount, PendingAmount: waiting.ExpensesAmount,
@@ -131,30 +131,42 @@ func snapshotOf(c changes.Change, number int64, previous fixed.Total) (snapshot,
 func (s Routes) issue(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var issued reportRow
 	if !s.writer.Write(w, r, caller, func(c changes.Change) error {
-		previous, err := latestOf(c)
-		if err != nil {
-			return err
+		latest, err := latestOf(c)
+		if err == nil {
+			issued, err = Issue(c, latest.Number+1, c.Now)
 		}
-		report, err := snapshotOf(c, previous.Number+1, fixedTotalOf(previous))
-		if err != nil {
-			return err
-		}
-		kept, err := json.Marshal(report)
-		if err != nil {
-			return err
-		}
-		row := store.AddPeriodicReportParams{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Number: report.Number, IssuedAt: c.Now,
-			IssuedByUserID: c.Actor, ExpensesTotal: report.Expenses.Number(), Snapshot: string(kept)}
-		if err := c.Q.AddPeriodicReport(c.Ctx, row); err != nil {
-			return err
-		}
-		issued = reportRow{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: report.Expenses}
-		return c.Record(history.Create, "PeriodicReports", row.ID, nil, map[string]any{"ProjectId": row.ProjectID, "Number": row.Number,
-			"IssuedAt": row.IssuedAt, "IssuedByUserId": row.IssuedByUserID, "ExpensesTotal": row.ExpensesTotal})
+		return err
 	}) {
 		return
 	}
 	web.JSON(w, r, http.StatusOK, issued)
+}
+
+// Issue issues the change's project's report numbered number at the moment at, from what is approved now: a numbered snapshot that never
+// changes (BR-26, PeriodicReportsEndpoints.IssueAsync). What was approved since the previous one is marked new, whatever its date, and the
+// expenses' difference starts from the previous report's (BR-09). The route issues the next number now; a project file's load, the file's number
+// at the file's time (redix-api #132 D9).
+func Issue(c changes.Change, number int64, at moment.Moment) (reportRow, error) {
+	previous, err := latestOf(c)
+	if err != nil {
+		return reportRow{}, err
+	}
+	report, err := snapshotOf(c, number, at, fixedTotalOf(previous))
+	if err != nil {
+		return reportRow{}, err
+	}
+	kept, err := json.Marshal(report)
+	if err != nil {
+		return reportRow{}, err
+	}
+	row := store.AddPeriodicReportParams{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Number: report.Number, IssuedAt: at,
+		IssuedByUserID: c.Actor, ExpensesTotal: report.Expenses.Number(), Snapshot: string(kept)}
+	if err := c.Q.AddPeriodicReport(c.Ctx, row); err != nil {
+		return reportRow{}, err
+	}
+	return reportRow{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: report.Expenses}, c.Record(history.Create, "PeriodicReports", row.ID, nil,
+		map[string]any{"ProjectId": row.ProjectID, "Number": row.Number, "IssuedAt": row.IssuedAt, "IssuedByUserId": row.IssuedByUserID,
+			"ExpensesTotal": row.ExpensesTotal})
 }
 
 // fixedTotalOf is the previous report's expenses, which the next one's difference starts from (BR-09): kept with four decimals, nothing while no

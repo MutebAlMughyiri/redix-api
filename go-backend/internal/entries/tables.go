@@ -49,25 +49,25 @@ type table struct {
 type form interface {
 	entryKind(sign structure.Sign) int64
 	asks(key string) bool
-	total(r request) fixed.Total
-	amount(r request, sign structure.Sign) fixed.Total
-	refusal(c changes.Change, r request, held access.Access) (string, error)
-	keep(c changes.Change, r request, entry store.Entry, t table) error
-	answer(c changes.Change, r request, entry store.Entry, amount fixed.Total) (any, error)
+	total(r Request) fixed.Total
+	amount(r Request, sign structure.Sign) fixed.Total
+	refusal(c changes.Change, r Request, held access.Access) (string, error)
+	keep(c changes.Change, r Request, entry store.Entry, t table) error
+	answer(c changes.Change, r Request, entry store.Entry, amount fixed.Total) (any, error)
 }
 
 // expense is what the forms of expenses share.
 type expense struct{}
 
-func (expense) total(r request) fixed.Total { return r.Amount.Total() }
+func (expense) total(r Request) fixed.Total { return r.Amount.Total() }
 
-func (expense) amount(r request, sign structure.Sign) fixed.Total {
+func (expense) amount(r Request, sign structure.Sign) fixed.Total {
 	return amountOf(r.Amount.Total(), sign)
 }
 
-func (expense) refusal(changes.Change, request, access.Access) (string, error) { return "", nil }
+func (expense) refusal(changes.Change, Request, access.Access) (string, error) { return "", nil }
 
-func (expense) answer(_ changes.Change, _ request, entry store.Entry, amount fixed.Total) (any, error) {
+func (expense) answer(_ changes.Change, _ Request, entry store.Entry, amount fixed.Total) (any, error) {
 	return recordedView{ID: entry.ID, Status: statusOf(entry.Status), Amount: amount}, nil
 }
 
@@ -99,7 +99,7 @@ func (purchaseForm) asks(key string) bool { return !slices.Contains(onlyPayments
 
 // total is the amount typed; left out, the unit price times the quantity, when the entry gives both (BR-01) and their product is within what is
 // kept - none otherwise, as .NET's guard against a product past Money.Largest left none.
-func (purchaseForm) total(r request) fixed.Total {
+func (purchaseForm) total(r Request) fixed.Total {
 	if r.Amount.Number != 0 {
 		return r.Amount.Total()
 	}
@@ -115,12 +115,12 @@ func (purchaseForm) total(r request) fixed.Total {
 	return fixed.Total{}
 }
 
-func (f purchaseForm) amount(r request, sign structure.Sign) fixed.Total {
+func (f purchaseForm) amount(r Request, sign structure.Sign) fixed.Total {
 	return amountOf(f.total(r), sign)
 }
 
 // refusal is unknownSupplier for a supplier named that the caller may not use (BR-19); naming none is no refusal (redix-api #129).
-func (purchaseForm) refusal(c changes.Change, r request, held access.Access) (string, error) {
+func (purchaseForm) refusal(c changes.Change, r Request, held access.Access) (string, error) {
 	if r.SupplierID == uuid.Nil {
 		return "", nil
 	}
@@ -132,7 +132,7 @@ func (purchaseForm) refusal(c changes.Change, r request, held access.Access) (st
 	return "unknownSupplier", nil
 }
 
-func (f purchaseForm) keep(c changes.Change, r request, entry store.Entry, t table) error {
+func (f purchaseForm) keep(c changes.Change, r Request, entry store.Entry, t table) error {
 	if err := keepExpense(c, r, entry, t.item.ID, f.subgroup.ID); err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (f purchaseForm) keep(c changes.Change, r request, entry store.Entry, t tab
 }
 
 // keepExpense keeps what every expense holds, in its item's group subgroupID: how it was paid.
-func keepExpense(c changes.Change, r request, entry store.Entry, itemID, subgroupID uuid.UUID) error {
+func keepExpense(c changes.Change, r Request, entry store.Entry, itemID, subgroupID uuid.UUID) error {
 	return addDetail(c, "ExpenseDetails", entry.ID, map[string]any{"ItemId": itemID, "SubgroupId": subgroupID, "PaymentMethodId": r.PaymentMethodID},
 		func() error {
 			return c.Q.AddExpenseDetails(c.Ctx, store.AddExpenseDetailsParams{EntryID: entry.ID, ItemID: itemID, SubgroupID: subgroupID, PaymentMethodID: r.PaymentMethodID})
@@ -175,7 +175,7 @@ func (contractForm) asks(key string) bool {
 	return key != "supplier" && !slices.Contains(onlyPurchases, key)
 }
 
-func (f contractForm) keep(c changes.Change, r request, entry store.Entry, t table) error {
+func (f contractForm) keep(c changes.Change, r Request, entry store.Entry, t table) error {
 	if err := keepExpense(c, r, entry, t.item.ID, f.general); err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ type paymentView struct {
 	IsOverrun      bool        `json:"isOverrun"`
 }
 
-func (f contractForm) answer(c changes.Change, r request, entry store.Entry, amount fixed.Total) (any, error) {
+func (f contractForm) answer(c changes.Change, r Request, entry store.Entry, amount fixed.Total) (any, error) {
 	money, err := contracts.MoneyOf(c.Ctx, c.Q, c.ProjectID, entry.ID)
 	held := money[f.contract.ID]
 	counted := held.Paid.Plus(held.Pending)
@@ -217,7 +217,7 @@ func (revenueForm) entryKind(structure.Sign) int64 { return revenue }
 
 func (revenueForm) asks(string) bool { return true }
 
-func (f revenueForm) keep(c changes.Change, _ request, entry store.Entry, t table) error {
+func (f revenueForm) keep(c changes.Change, _ Request, entry store.Entry, t table) error {
 	return addDetail(c, "RevenueDetails", entry.ID, map[string]any{"ItemId": t.item.ID, "SubgroupId": f.subgroup.ID},
 		func() error {
 			return c.Q.AddRevenueDetails(c.Ctx, store.AddRevenueDetailsParams{EntryID: entry.ID, ItemID: t.item.ID, SubgroupID: f.subgroup.ID})
@@ -241,9 +241,9 @@ func (partnerForm) entryKind(sign structure.Sign) int64 {
 func (partnerForm) asks(string) bool { return true }
 
 // amount is the total as typed: what a movement does to the capital is its kind's to say.
-func (partnerForm) amount(r request, _ structure.Sign) fixed.Total { return r.Amount.Total() }
+func (partnerForm) amount(r Request, _ structure.Sign) fixed.Total { return r.Amount.Total() }
 
-func (f partnerForm) keep(c changes.Change, _ request, entry store.Entry, _ table) error {
+func (f partnerForm) keep(c changes.Change, _ Request, entry store.Entry, _ table) error {
 	return addDetail(c, "CapitalMovementDetails", entry.ID, map[string]any{"PartnerId": f.partner.ID},
 		func() error {
 			return c.Q.AddCapitalDetails(c.Ctx, store.AddCapitalDetailsParams{EntryID: entry.ID, PartnerID: f.partner.ID})
@@ -255,7 +255,7 @@ func (f partnerForm) keep(c changes.Change, _ request, entry store.Entry, _ tabl
 func (t table) isRevenue() bool { return structure.ItemType(t.item.Type).IsRevenue() }
 
 // sign is the sign of what r chose in the table's list whose choices carry one (redix-api #129); none when it has no such list or chose nothing.
-func (t table) sign(r request) structure.Sign {
+func (t table) sign(r Request) structure.Sign {
 	values := r.kept()
 	for _, column := range t.columns {
 		if sign, isSigned := structure.SignOfChoice(column, values.Values[column.Key]); isSigned {

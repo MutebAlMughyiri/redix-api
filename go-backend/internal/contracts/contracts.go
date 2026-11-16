@@ -156,8 +156,8 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	web.JSON(w, r, http.StatusOK, views)
 }
 
-// terms is what can change on a contract, which is what the app sends to amend it (ContractTerms).
-type terms struct {
+// Terms is what can change on a contract, which is what the app sends to amend it (ContractTerms).
+type Terms struct {
 	Value         fixed.Number `json:"value"`
 	IsOpenValue   bool         `json:"isOpenValue"`
 	UnitPrice     fixed.Number `json:"unitPrice,omitzero"`
@@ -168,7 +168,7 @@ type terms struct {
 
 // refusal is why a contract cannot have these terms (Contract.RefusalOf): invalidValue for a value not above zero unless the contract is of open
 // value, invalidUnitPrice or invalidQuantity below zero, any amount with more than two decimals, invalidNotes past 1,000 characters; "" when it can.
-func (t terms) refusal() string {
+func (t Terms) refusal() string {
 	switch {
 	case !t.IsOpenValue && (t.Value <= 0 || !t.Value.IsAcceptableMoney()):
 		return "invalidValue"
@@ -183,7 +183,7 @@ func (t terms) refusal() string {
 }
 
 // into is contract with these terms (Contract.SetTerms): an open-value contract keeps no value.
-func (t terms) into(contract store.Contract) store.Contract {
+func (t Terms) into(contract store.Contract) store.Contract {
 	contract.Value, contract.IsOpenValue, contract.UnitPrice, contract.Quantity, contract.Notes = t.Value, t.IsOpenValue, t.UnitPrice, t.Quantity, strings.TrimSpace(t.Notes)
 	if t.IsOpenValue {
 		contract.Value = 0
@@ -261,41 +261,48 @@ func keep(c changes.Change, action history.Action, before, after store.Contract,
 	return nil
 }
 
-// add adds a contract last among its item's tables, refused as refusalOfParties, terms.refusal and refusalOfDocuments say (400).
+// add adds a contract last among its item's tables, refused as refusalOfParties, Terms.refusal and refusalOfDocuments say (400).
 func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request struct {
 		SupplierID uuid.UUID `json:"supplierId"`
 		ItemID     uuid.UUID `json:"itemId"`
-		terms
+		Terms
 	}
 	if !web.Read(w, r, &request) {
 		return
 	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		if err := refusalOfParties(c, request.SupplierID, request.ItemID); err != nil {
-			return err
-		}
-		if refused := request.refusal(); refused != "" {
-			return changes.Refuse(http.StatusBadRequest, refused)
-		}
-		if err := refusalOfDocuments(c, request.AttachmentIDs); err != nil {
-			return err
-		}
-		place, err := structure.NextTablePlace(c.Ctx, c.Q, request.ItemID)
-		if err != nil {
-			return err
-		}
-		contract := request.into(store.Contract{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, ItemID: request.ItemID, SortOrder: place,
-			SupplierID: request.SupplierID, IsActive: true})
-		return keep(c, history.Create, store.Contract{}, contract, request.AttachmentIDs)
+		_, err := Add(c, request.SupplierID, request.ItemID, request.Terms)
+		return err
 	})
 }
 
-// amend amends a contract's terms and adds to its documents, and changes its contractor or item while no payment names it, or answers
+// Add adds the contract of the supplier for the item on terms, last among the item's tables (ContractsEndpoints.AddAsync), refused as
+// refusalOfParties, Terms.refusal and refusalOfDocuments say (400): the one way a contract is added, by hand or by a project file's load.
+func Add(c changes.Change, supplierID, itemID uuid.UUID, terms Terms) (uuid.UUID, error) {
+	if err := refusalOfParties(c, supplierID, itemID); err != nil {
+		return uuid.Nil, err
+	}
+	if refused := terms.refusal(); refused != "" {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, refused)
+	}
+	if err := refusalOfDocuments(c, terms.AttachmentIDs); err != nil {
+		return uuid.Nil, err
+	}
+	place, err := structure.NextTablePlace(c.Ctx, c.Q, itemID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	contract := terms.into(store.Contract{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, ItemID: itemID, SortOrder: place, SupplierID: supplierID,
+		IsActive: true})
+	return contract.ID, keep(c, history.Create, store.Contract{}, contract, terms.AttachmentIDs)
+}
+
+// amend amends a contract's Terms and adds to its documents, and changes its contractor or item while no payment names it, or answers
 // contractHasPayments (409); refused as add is.
 func (s Routes) amend(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request struct {
-		terms
+		Terms
 		SupplierID uuid.UUID `json:"supplierId,omitzero"`
 		ItemID     uuid.UUID `json:"itemId,omitzero"`
 	}

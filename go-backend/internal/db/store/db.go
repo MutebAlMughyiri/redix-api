@@ -393,6 +393,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.permissionsOfStmt, err = db.PrepareContext(ctx, permissionsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PermissionsOf: %w", err)
 	}
+	if q.projectHoldsEntriesStmt, err = db.PrepareContext(ctx, projectHoldsEntries); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectHoldsEntries: %w", err)
+	}
 	if q.projectIDsOfUserStmt, err = db.PrepareContext(ctx, projectIDsOfUser); err != nil {
 		return nil, fmt.Errorf("error preparing query ProjectIDsOfUser: %w", err)
 	}
@@ -1283,6 +1286,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing permissionsOfStmt: %w", cerr)
 		}
 	}
+	if q.projectHoldsEntriesStmt != nil {
+		if cerr := q.projectHoldsEntriesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectHoldsEntriesStmt: %w", cerr)
+		}
+	}
 	if q.projectIDsOfUserStmt != nil {
 		if cerr := q.projectIDsOfUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing projectIDsOfUserStmt: %w", cerr)
@@ -1895,6 +1903,7 @@ type Queries struct {
 	periodicReportSnapshotStmt    *sql.Stmt
 	periodicReportsOfStmt         *sql.Stmt
 	permissionsOfStmt             *sql.Stmt
+	projectHoldsEntriesStmt       *sql.Stmt
 	projectIDsOfUserStmt          *sql.Stmt
 	projectIsFinishedStmt         *sql.Stmt
 	projectOfUserStmt             *sql.Stmt
@@ -2114,6 +2123,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		periodicReportSnapshotStmt:    q.periodicReportSnapshotStmt,
 		periodicReportsOfStmt:         q.periodicReportsOfStmt,
 		permissionsOfStmt:             q.permissionsOfStmt,
+		projectHoldsEntriesStmt:       q.projectHoldsEntriesStmt,
 		projectIDsOfUserStmt:          q.projectIDsOfUserStmt,
 		projectIsFinishedStmt:         q.projectIsFinishedStmt,
 		projectOfUserStmt:             q.projectOfUserStmt,

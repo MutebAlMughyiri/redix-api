@@ -17,18 +17,14 @@ import (
 )
 
 // refusedOver is a refusal of a recorded entry, which names the column it was refused over, "" for none (Refusal.Of with columnKey).
-type refusedOver struct {
-	status int
-	code   string
-	column string
+func refusedOver(status int, code, column string) error {
+	return changes.RefuseOver(status, code, "columnKey", column)
 }
-
-func (r refusedOver) Error() string { return "entries: refused " + r.code }
 
 // record records an entry as a draft, or sent for approval (EntryRecording.Record, UC-022): the same id from whoever recorded it answers that
 // entry, so a retried upload lands once (AC-16.3, UC-029); from anyone else entryExists (409), and an empty one invalidEntryId (400).
 func (s Routes) record(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var typed request
+	var typed Request
 	if !web.Read(w, r, &typed) {
 		return
 	}
@@ -63,7 +59,7 @@ type statusView struct {
 // change changes an entry before it is approved (EntryRecording.Change, UC-033), through every check a new one passes; it may move to another
 // table, of any kind: 404 for one not in the project, then the refusals of refusalOfChange.
 func (s Routes) change(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var typed request
+	var typed Request
 	if !web.Read(w, r, &typed) {
 		return
 	}
@@ -101,32 +97,19 @@ func mayHandle(entry store.Entry, caller access.Caller) bool {
 
 // save keeps typed as a new entry, or in place of existing (EntryRecording.SaveAsync): unknownTable (400) for a table the caller is not offered,
 // then the refusals of refusal, naming the column; 201 with what was kept for a new entry, 200 for a changed one.
-func (s Routes) save(w http.ResponseWriter, r *http.Request, caller access.Caller, typed request, existing store.Entry) {
+func (s Routes) save(w http.ResponseWriter, r *http.Request, caller access.Caller, typed Request, existing store.Entry) {
 	var answer any
-	err := s.database.InTx(r.Context(), func(q *store.Queries) error {
-		c := changes.Change{Ctx: r.Context(), Q: q, ProjectID: web.ID(r, "projectId"), Actor: caller.UserID, Now: s.now()}
-		tables, err := offered(c, caller.Access)
+	if !s.writer.Write(w, r, caller, func(c changes.Change) error {
+		t, err := tableOf(c, typed)
 		if err != nil {
 			return err
 		}
-		at := slices.IndexFunc(tables, func(t table) bool { return t.item.ID == typed.ItemID && t.id == typed.TableID })
-		if at < 0 {
-			return changes.Refuse(http.StatusBadRequest, "unknownTable")
-		}
-		t := tables[at]
-		if err := refusal(c, typed, t, caller.Access, existing.ID); err != nil {
+		entry, amount, err := entryOf(c, typed, t, existing.ID)
+		if err != nil {
 			return err
 		}
-		sign := t.sign(typed)
-		amount := t.form.amount(typed, sign)
-		entry := store.Entry{ID: typed.ID, ProjectID: c.ProjectID, Kind: t.form.entryKind(sign), Status: draft, EntryDate: typed.Date, Amount: amount.Number(),
-			AccountID: typed.AccountID, Description: typed.description(), ColumnValues: typed.kept().DotNetText(), CreatedByUserID: caller.UserID, CreatedAt: c.Now,
-			ApprovedAt: notApproved}
-		if typed.Submit {
-			entry.Status = pendingApproval
-		}
 		if existing.ID == uuid.Nil {
-			err = add(c, entry, typed, t)
+			err = add(c, entry, typed, t, true)
 		} else {
 			entry, err = replace(c, existing, entry, typed, t)
 		}
@@ -135,29 +118,73 @@ func (s Routes) save(w http.ResponseWriter, r *http.Request, caller access.Calle
 		}
 		answer, err = t.form.answer(c, typed, entry, amount)
 		return err
-	})
-	var over refusedOver
-	var refused changes.Refusal
-	switch {
-	case err == nil && existing.ID == uuid.Nil:
+	}) {
+		return
+	}
+	if existing.ID == uuid.Nil {
 		w.Header().Set("Location", "/projects/"+web.ID(r, "projectId").String()+"/entries/"+typed.ID.String())
 		web.JSON(w, r, http.StatusCreated, answer)
-	case err == nil:
-		web.JSON(w, r, http.StatusOK, answer)
-	case errorsAs(err, &over):
-		problem.RefuseOver(w, r, over.status, over.code, "columnKey", over.column)
-	case errorsAs(err, &refused):
-		problem.Refuse(w, r, refused.Status, refused.Code)
-	default:
-		problem.Status(w, r, http.StatusInternalServerError)
+		return
 	}
+	web.JSON(w, r, http.StatusOK, answer)
+}
+
+// Record records typed as a new entry of the change's project through every check Add entry passes, sent for approval when typed.Submit
+// (EntryRecording.RecordAsync): whoever decides entries is told unless tellDeciders is false, as a project file's load records them (redix-api
+// #132 D7). Each refusal names its column under columnKey. The one way an entry is recorded, by hand or by a project file's load.
+func Record(c changes.Change, typed Request, tellDeciders bool) (store.Entry, error) {
+	t, err := tableOf(c, typed)
+	if err != nil {
+		return store.Entry{}, err
+	}
+	entry, _, err := entryOf(c, typed, t, uuid.Nil)
+	if err != nil {
+		return store.Entry{}, err
+	}
+	return entry, add(c, entry, typed, t, tellDeciders)
+}
+
+// AskedColumns is the columns the table tableID of the item asks an entry, when the actor is offered it (EntryTable.OfferedAsync): unknownTable
+// (400) for a table they are not offered.
+func AskedColumns(c changes.Change, itemID, tableID uuid.UUID) ([]store.ItemColumn, error) {
+	t, err := tableOf(c, Request{ItemID: itemID, TableID: tableID})
+	return t.columns, err
+}
+
+// tableOf is the table typed goes into, among those the actor is offered: unknownTable (400) for any other.
+func tableOf(c changes.Change, typed Request) (table, error) {
+	tables, err := offered(c, c.Access)
+	if err != nil {
+		return table{}, err
+	}
+	at := slices.IndexFunc(tables, func(t table) bool { return t.item.ID == typed.ItemID && t.id == typed.TableID })
+	if at < 0 {
+		return table{}, changes.Refuse(http.StatusBadRequest, "unknownTable")
+	}
+	return tables[at], nil
+}
+
+// entryOf is typed as an entry of t, refused as refusal says, with the amount it comes to; editing is the entry it replaces, uuid.Nil for none.
+func entryOf(c changes.Change, typed Request, t table, editing uuid.UUID) (store.Entry, fixed.Total, error) {
+	if err := refusal(c, typed, t, c.Access, editing); err != nil {
+		return store.Entry{}, fixed.Total{}, err
+	}
+	sign := t.sign(typed)
+	amount := t.form.amount(typed, sign)
+	entry := store.Entry{ID: typed.ID, ProjectID: c.ProjectID, Kind: t.form.entryKind(sign), Status: draft, EntryDate: typed.Date, Amount: amount.Number(),
+		AccountID: typed.AccountID, Description: typed.description(), ColumnValues: typed.kept().DotNetText(), CreatedByUserID: c.Actor, CreatedAt: c.Now,
+		ApprovedAt: notApproved}
+	if typed.Submit {
+		entry.Status = pendingApproval
+	}
+	return entry, amount, nil
 }
 
 // refusal is why typed cannot go into t (EntryRecording.RefusalOfAsync), in .NET's order: the payment - unknownPaymentMethod for an expense,
 // accountNotOffered, unknownAttachment; what was typed - invalidDescription, deductionNeedsDescription, the table's own typing, invalidAmount; the
 // date, invalidDate (BR-12); the table's own checks; the columns - unknownColumn, invalidColumnValue, requiredColumnMissing on sending (FR-41); and
 // invoiceAlreadyAttached (409) for a file on another entry (BR-22). Each names its column, "" for none.
-func refusal(c changes.Change, typed request, t table, held access.Access, editing uuid.UUID) error {
+func refusal(c changes.Change, typed Request, t table, held access.Access, editing uuid.UUID) error {
 	code, err := refusalOfPayment(c, typed, t, held)
 	if err != nil {
 		return err
@@ -180,10 +207,10 @@ func refusal(c changes.Change, typed request, t table, held access.Access, editi
 		}
 	}
 	if code != "" {
-		return refusedOver{status: http.StatusBadRequest, code: code}
+		return refusedOver(http.StatusBadRequest, code, "")
 	}
 	if reason, column := refusalOfColumns(typed, t.columns); reason != "" {
-		return refusedOver{status: http.StatusBadRequest, code: reason, column: column}
+		return refusedOver(http.StatusBadRequest, reason, column)
 	}
 	if typed.AttachmentID == uuid.Nil {
 		return nil
@@ -192,10 +219,10 @@ func refusal(c changes.Change, typed request, t table, held access.Access, editi
 	if err != nil || !onAnother {
 		return err
 	}
-	return refusedOver{status: http.StatusConflict, code: "invoiceAlreadyAttached"}
+	return refusedOver(http.StatusConflict, "invoiceAlreadyAttached", "")
 }
 
-func refusalOfPayment(c changes.Change, typed request, t table, held access.Access) (string, error) {
+func refusalOfPayment(c changes.Change, typed Request, t table, held access.Access) (string, error) {
 	if !t.isRevenue() {
 		methods, err := c.Q.PaymentMethodsOf(c.Ctx, c.ProjectID)
 		if err != nil {
@@ -224,7 +251,7 @@ func refusalOfPayment(c changes.Change, typed request, t table, held access.Acce
 	return "", nil
 }
 
-func refusalOfTyped(typed request, t table) string {
+func refusalOfTyped(typed Request, t table) string {
 	description := typed.description()
 	if tooLong(description, descriptionMaxLength) {
 		return "invalidDescription"
@@ -244,7 +271,7 @@ func refusalOfTyped(typed request, t table) string {
 
 // refusalOfColumns is why typed's column values do not fit columns, those its table asks, or, when sending, a required one is empty (FR-41), and
 // the column's key; "" when they fit. Every column whose value the entry keeps is checked the same way, whatever it is (redix-api #129, R5).
-func refusalOfColumns(typed request, columns []store.ItemColumn) (string, string) {
+func refusalOfColumns(typed Request, columns []store.ItemColumn) (string, string) {
 	values := typed.kept()
 	for _, key := range values.Keys {
 		at := slices.IndexFunc(columns, func(column store.ItemColumn) bool { return column.Key == key && !structure.IsEntryField(column.Key) })
@@ -292,7 +319,7 @@ func fileOnAnotherEntry(c changes.Change, attachmentID, editing uuid.UUID) (bool
 
 // add keeps a new entry under its project's next number (FR-54), with its line - sent, or created - its decision and the deciders told when sent,
 // and each of its rows with its line (EntryRecording.AddAsync).
-func add(c changes.Change, entry store.Entry, typed request, t table) error {
+func add(c changes.Change, entry store.Entry, typed Request, t table, tellDeciders bool) error {
 	number, err := c.Q.NextEntryNumber(c.Ctx, c.ProjectID)
 	if err != nil {
 		return err
@@ -310,7 +337,7 @@ func add(c changes.Change, entry store.Entry, typed request, t table) error {
 		return err
 	}
 	if sent {
-		if err := sendOff(c, entry); err != nil {
+		if err := sendOff(c, entry, tellDeciders); err != nil {
 			return err
 		}
 	}
@@ -318,7 +345,7 @@ func add(c changes.Change, entry store.Entry, typed request, t table) error {
 }
 
 // keepRows writes what the entry's table adds to it, and its own file.
-func keepRows(c changes.Change, typed request, entry store.Entry, t table) error {
+func keepRows(c changes.Change, typed Request, entry store.Entry, t table) error {
 	if err := t.form.keep(c, typed, entry, t); err != nil {
 		return err
 	}
@@ -332,9 +359,10 @@ func keepRows(c changes.Change, typed request, entry store.Entry, t table) error
 		})
 }
 
-// sendOff records that entry was sent for approval and tells whoever decides entries in its project, but the sender (TellDecidersAsync).
-func sendOff(c changes.Change, entry store.Entry) error {
-	if err := c.Q.AddDecision(c.Ctx, store.AddDecisionParams{EntryID: entry.ID, Action: submitted, UserID: c.Actor, At: c.Now}); err != nil {
+// sendOff records that entry was sent for approval and, when tellDeciders, tells whoever decides entries in its project, but the sender
+// (TellDecidersAsync).
+func sendOff(c changes.Change, entry store.Entry, tellDeciders bool) error {
+	if err := c.Q.AddDecision(c.Ctx, store.AddDecisionParams{EntryID: entry.ID, Action: submitted, UserID: c.Actor, At: c.Now}); err != nil || !tellDeciders {
 		return err
 	}
 	deciders, err := c.Q.HoldersOf(c.Ctx, store.HoldersOfParams{ProjectID: c.ProjectID, Permission: string(access.ApproveEntries)})
@@ -362,7 +390,7 @@ func tell(c changes.Change, entry store.Entry, userID uuid.UUID, kind notificati
 
 // replace puts edited in place of existing, keeping who entered it and when, and its status unless it is sent now (EntryChanges.ReplaceAsync);
 // of its files only the oldest is replaced, the one the edit form shows and sends back, a file shared onto it later staying (redix-app #115, R5).
-func replace(c changes.Change, existing, edited store.Entry, typed request, t table) (store.Entry, error) {
+func replace(c changes.Change, existing, edited store.Entry, typed Request, t table) (store.Entry, error) {
 	files, err := filesOf(c, existing.ID)
 	if err != nil {
 		return existing, err
@@ -389,7 +417,7 @@ func replace(c changes.Change, existing, edited store.Entry, typed request, t ta
 		return after, err
 	}
 	if sending {
-		if err := sendOff(c, after); err != nil {
+		if err := sendOff(c, after, true); err != nil {
 			return after, err
 		}
 	}

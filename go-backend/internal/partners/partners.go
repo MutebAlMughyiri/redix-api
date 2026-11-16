@@ -181,42 +181,49 @@ func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller
 		return
 	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		items, err := c.Q.ItemsOf(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		capitalItem := uuid.Nil
-		for _, item := range items {
-			if item.Type == int64(structure.Capital) {
-				capitalItem = item.ID
-			}
-		}
-		offered, err := structure.Offers(c.Ctx, c.Q, c.ProjectID, capitalItem, structure.Capital)
-		if err != nil || !offered {
-			return orRefused(err, "itemNotOffered")
-		}
-		if code, err := refusalOfLogin(c, uuid.Nil, typed.UserID); err != nil || code != "" {
-			return orRefused(err, code)
-		}
-		place, err := structure.NextTablePlace(c.Ctx, c.Q, capitalItem)
-		if err != nil {
-			return err
-		}
-		partner := store.Partner{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: place}
-		if err := c.Q.SavePartner(c.Ctx, store.SavePartnerParams(partner)); err != nil {
-			return err
-		}
-		if err := c.Record(history.Create, "Partners", partner.ID, nil, fields(partner)); err != nil {
-			return err
-		}
-		if typed.UserID == uuid.Nil {
-			return nil
-		}
-		if err := c.Q.SavePartnerLogin(c.Ctx, store.SavePartnerLoginParams{PartnerID: partner.ID, ProjectID: c.ProjectID, UserID: typed.UserID}); err != nil {
-			return err
-		}
-		return c.Record(history.Create, "PartnerUsers", partner.ID, nil, map[string]any{"ProjectId": c.ProjectID, "UserId": typed.UserID})
+		_, err := Add(c, name, typed.UserID)
+		return err
 	})
+}
+
+// Add adds the partner named name, with login as their own login unless it is uuid.Nil, as the last table of the change's project's capital item
+// (PartnersEndpoints.AddAsync): itemNotOffered, unknownUser, userTaken (400). The one way a partner is added, by hand or by a project file's load.
+func Add(c changes.Change, name string, login uuid.UUID) (uuid.UUID, error) {
+	items, err := c.Q.ItemsOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	capitalItem := uuid.Nil
+	for _, item := range items {
+		if item.Type == int64(structure.Capital) {
+			capitalItem = item.ID
+		}
+	}
+	offered, err := structure.Offers(c.Ctx, c.Q, c.ProjectID, capitalItem, structure.Capital)
+	if err != nil || !offered {
+		return uuid.Nil, orRefused(err, "itemNotOffered")
+	}
+	if code, err := refusalOfLogin(c, uuid.Nil, login); err != nil || code != "" {
+		return uuid.Nil, orRefused(err, code)
+	}
+	place, err := structure.NextTablePlace(c.Ctx, c.Q, capitalItem)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	partner := store.Partner{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: place}
+	if err := c.Q.SavePartner(c.Ctx, store.SavePartnerParams(partner)); err != nil {
+		return uuid.Nil, err
+	}
+	if err := c.Record(history.Create, "Partners", partner.ID, nil, fields(partner)); err != nil {
+		return uuid.Nil, err
+	}
+	if login == uuid.Nil {
+		return partner.ID, nil
+	}
+	if err := c.Q.SavePartnerLogin(c.Ctx, store.SavePartnerLoginParams{PartnerID: partner.ID, ProjectID: c.ProjectID, UserID: login}); err != nil {
+		return uuid.Nil, err
+	}
+	return partner.ID, c.Record(history.Create, "PartnerUsers", partner.ID, nil, map[string]any{"ProjectId": c.ProjectID, "UserId": login})
 }
 
 func orRefused(err error, code string) error {

@@ -393,52 +393,59 @@ func (s Routes) latest(w http.ResponseWriter, r *http.Request, _ access.Caller) 
 	web.JSON(w, r, http.StatusOK, view)
 }
 
-// enter keeps what each account really holds as one check (FR-24), and answers the accounts against the books: unknownAccount for an account
-// not in the project, invalidAmount for more than two decimals, accountMissing for an active account left out (400).
+// Actual is what an account really held, as it was typed (ActualBalanceRequest).
+type Actual struct {
+	AccountID     uuid.UUID   `json:"accountId"`
+	ActualBalance fixed.Typed `json:"actualBalance"`
+}
+
+// Enter keeps what each account really holds as one check of the change's project (FR-24, ReconciliationsEndpoints.EnterAsync): unknownAccount
+// for an account not in the project, invalidAmount for more than two decimals, accountMissing for an active account left out (400). The one way a
+// check is kept, by hand or by a project file's load.
+func Enter(c changes.Change, balances []Actual) error {
+	accounts, err := c.Q.AccountsOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return err
+	}
+	given := map[uuid.UUID]bool{}
+	for _, row := range balances {
+		given[row.AccountID] = true
+		if !slices.ContainsFunc(accounts, func(account store.AccountsOfRow) bool { return account.ID == row.AccountID }) {
+			return changes.Refuse(http.StatusBadRequest, "unknownAccount")
+		}
+	}
+	for _, row := range balances {
+		if !row.ActualBalance.IsAcceptableMoney() {
+			return changes.Refuse(http.StatusBadRequest, "invalidAmount")
+		}
+	}
+	for _, account := range accounts {
+		if account.IsActive && !given[account.ID] {
+			return changes.Refuse(http.StatusBadRequest, "accountMissing")
+		}
+	}
+	check := store.AddReconciliationParams{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, At: c.Now, UserID: c.Actor}
+	if err := c.Q.AddReconciliation(c.Ctx, check); err != nil {
+		return err
+	}
+	for _, row := range balances {
+		if err := c.Q.AddReconciliationBalance(c.Ctx, store.AddReconciliationBalanceParams{ReconciliationID: check.ID, AccountID: row.AccountID,
+			ActualBalance: row.ActualBalance.Number}); err != nil {
+			return err
+		}
+	}
+	return c.Record(history.Create, "Reconciliations", check.ID, nil, map[string]any{"ProjectId": check.ProjectID, "At": check.At, "UserId": check.UserID})
+}
+
+// enter keeps a check as Enter does, and answers the accounts against the books, each balance as it was typed.
 func (s Routes) enter(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request struct {
-		Balances []struct {
-			AccountID     uuid.UUID   `json:"accountId"`
-			ActualBalance fixed.Typed `json:"actualBalance"`
-		} `json:"balances"`
+		Balances []Actual `json:"balances"`
 	}
 	if !web.Read(w, r, &request) {
 		return
 	}
-	entered := s.writer.Write(w, r, caller, func(c changes.Change) error {
-		accounts, err := c.Q.AccountsOf(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		given := map[uuid.UUID]bool{}
-		for _, row := range request.Balances {
-			given[row.AccountID] = true
-			if !slices.ContainsFunc(accounts, func(account store.AccountsOfRow) bool { return account.ID == row.AccountID }) {
-				return changes.Refuse(http.StatusBadRequest, "unknownAccount")
-			}
-		}
-		for _, row := range request.Balances {
-			if !row.ActualBalance.IsAcceptableMoney() {
-				return changes.Refuse(http.StatusBadRequest, "invalidAmount")
-			}
-		}
-		for _, account := range accounts {
-			if account.IsActive && !given[account.ID] {
-				return changes.Refuse(http.StatusBadRequest, "accountMissing")
-			}
-		}
-		check := store.AddReconciliationParams{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, At: c.Now, UserID: c.Actor}
-		if err := c.Q.AddReconciliation(c.Ctx, check); err != nil {
-			return err
-		}
-		for _, row := range request.Balances {
-			if err := c.Q.AddReconciliationBalance(c.Ctx, store.AddReconciliationBalanceParams{ReconciliationID: check.ID, AccountID: row.AccountID,
-				ActualBalance: row.ActualBalance.Number}); err != nil {
-				return err
-			}
-		}
-		return c.Record(history.Create, "Reconciliations", check.ID, nil, map[string]any{"ProjectId": check.ProjectID, "At": check.At, "UserId": check.UserID})
-	})
+	entered := s.writer.Write(w, r, caller, func(c changes.Change) error { return Enter(c, request.Balances) })
 	if !entered {
 		return
 	}

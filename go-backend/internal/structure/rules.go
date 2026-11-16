@@ -484,8 +484,9 @@ func ChoiceNameIn(columns []store.ItemColumn, kept string) string {
 	return ""
 }
 
-// Choice is one of a list column's choices as a report shows it: its name and the sign it gives the amount.
+// Choice is one of a list column's choices: the id an entry keeps, its name and the sign it gives the amount.
 type Choice struct {
+	ID   uuid.UUID
 	Name string
 	Sign Sign
 }
@@ -494,7 +495,7 @@ type Choice struct {
 func ChoicesIn(row store.ItemColumn) []Choice {
 	choices := []Choice{}
 	for _, one := range ofItemColumn(row).Choices {
-		choices = append(choices, Choice{Name: one.Name, Sign: Sign(one.Sign)})
+		choices = append(choices, Choice{ID: one.ID, Name: one.Name, Sign: Sign(one.Sign)})
 	}
 	return choices
 }
