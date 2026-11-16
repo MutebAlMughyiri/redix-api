@@ -4,11 +4,13 @@ package access
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
 	"sync"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
 
@@ -38,6 +40,9 @@ const (
 	GenerateReports       Permission = "GenerateReports"
 )
 
+// MarshalJSON writes the permission as the API's enums are written, camelCase: "approveProjects".
+func (p Permission) MarshalJSON() ([]byte, error) { return json.Marshal(web.Camel(string(p))) }
+
 // Access is what one person holds: everywhere, in each project, and the partners chosen for them (UserAccess). Nothing in it changes once read.
 type Access struct {
 	everywhere []Permission
@@ -50,6 +55,9 @@ type Access struct {
 func (a Access) Holds(projectID uuid.UUID, permission Permission) bool {
 	return slices.Contains(a.everywhere, permission) || slices.Contains(a.byProject[projectID], permission)
 }
+
+// Everywhere is what the person holds across the system, which the session tells the app; empty, never nil, when nothing.
+func (a Access) Everywhere() []Permission { return append([]Permission{}, a.everywhere...) }
 
 // ChosenIn is the partners of projectID chosen for the person (#106); empty when none are.
 func (a Access) ChosenIn(projectID uuid.UUID) []uuid.UUID { return a.chosen[projectID] }

@@ -3,3 +3,31 @@
 //   sqlc v1.31.1
 
 package store
+
+import (
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
+	"github.com/google/uuid"
+)
+
+type Device struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	RefreshTokenHash string
+	RefreshExpiresAt moment.Moment
+	IsRevoked        bool
+	UsesBiometrics   bool
+	LastSeenAt       moment.Moment
+}
+
+type User struct {
+	ID                 uuid.UUID
+	Username           string
+	DisplayName        string
+	Mobile             string
+	PasswordHash       string
+	MustChangePassword bool
+	FailedSignIns      int64
+	LockedUntil        moment.Moment
+	CreatedAt          moment.Moment
+	Email              string
+}

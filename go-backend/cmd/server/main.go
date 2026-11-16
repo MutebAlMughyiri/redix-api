@@ -13,10 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/environment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -45,9 +47,13 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer database.Close()
-	if err := auth.SeedAdmin(ctx, database, settings.AdminUsername, settings.AdminPassword, moment.Of(clock.System{}.Now())); err != nil {
+	now := clock.System{}
+	if err := auth.SeedAdmin(ctx, database, settings.AdminUsername, settings.AdminPassword, moment.Of(now.Now())); err != nil {
 		return err
 	}
+	tokens := credentials.NewTokens(settings.SigningKey, now)
+	book := access.NewBook(database)
+	gate := access.NewGate(tokens, database, book, logger)
 
 	router := web.NewRouter(settings.WebFolder)
 	router.Handle("GET", "/health", func(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +67,7 @@ func run(logger *slog.Logger) error {
 	})
 	translations.Map(router, database)
 	config.Map(router, database)
+	auth.MapSessions(router, gate, database, tokens, book, now)
 
 	address, err := listenAddress(settings.Urls)
 	if err != nil {

@@ -12,6 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+const addDevice = `-- name: AddDevice :exec
+INSERT INTO devices (id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_biometrics, last_seen_at) VALUES (?, ?, ?, ?, 0, 0, ?)
+`
+
+type AddDeviceParams struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	RefreshTokenHash string
+	RefreshExpiresAt moment.Moment
+	LastSeenAt       moment.Moment
+}
+
+func (q *Queries) AddDevice(ctx context.Context, arg AddDeviceParams) error {
+	_, err := q.db.ExecContext(ctx, addDevice,
+		arg.ID,
+		arg.UserID,
+		arg.RefreshTokenHash,
+		arg.RefreshExpiresAt,
+		arg.LastSeenAt,
+	)
+	return err
+}
+
 const addSystemPermission = `-- name: AddSystemPermission :exec
 INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, ?)
 `
@@ -61,6 +84,71 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) error {
 	return err
 }
 
+const defaultProjectOf = `-- name: DefaultProjectOf :many
+SELECT project_id FROM user_default_projects WHERE user_id = ?1
+`
+
+func (q *Queries) DefaultProjectOf(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, defaultProjectOf, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var project_id uuid.UUID
+		if err := rows.Scan(&project_id); err != nil {
+			return nil, err
+		}
+		items = append(items, project_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deviceWithID = `-- name: DeviceWithID :one
+SELECT id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_biometrics, last_seen_at FROM devices WHERE id = ?1
+`
+
+func (q *Queries) DeviceWithID(ctx context.Context, id uuid.UUID) (Device, error) {
+	row := q.db.QueryRowContext(ctx, deviceWithID, id)
+	var i Device
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.RefreshTokenHash,
+		&i.RefreshExpiresAt,
+		&i.IsRevoked,
+		&i.UsesBiometrics,
+		&i.LastSeenAt,
+	)
+	return i, err
+}
+
+const deviceWithRefreshToken = `-- name: DeviceWithRefreshToken :one
+SELECT id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_biometrics, last_seen_at FROM devices WHERE refresh_token_hash = ?1
+`
+
+func (q *Queries) DeviceWithRefreshToken(ctx context.Context, refreshTokenHash string) (Device, error) {
+	row := q.db.QueryRowContext(ctx, deviceWithRefreshToken, refreshTokenHash)
+	var i Device
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.RefreshTokenHash,
+		&i.RefreshExpiresAt,
+		&i.IsRevoked,
+		&i.UsesBiometrics,
+		&i.LastSeenAt,
+	)
+	return i, err
+}
+
 const hasUsers = `-- name: HasUsers :one
 SELECT EXISTS (SELECT 1 FROM users) AS has_users
 `
@@ -71,4 +159,121 @@ func (q *Queries) HasUsers(ctx context.Context) (bool, error) {
 	var has_users bool
 	err := row.Scan(&has_users)
 	return has_users, err
+}
+
+const renewDevice = `-- name: RenewDevice :exec
+UPDATE devices SET refresh_token_hash = ?1, refresh_expires_at = ?2, last_seen_at = ?3,
+    uses_biometrics = ?4 WHERE id = ?5
+`
+
+type RenewDeviceParams struct {
+	RefreshTokenHash string
+	RefreshExpiresAt moment.Moment
+	LastSeenAt       moment.Moment
+	UsesBiometrics   bool
+	ID               uuid.UUID
+}
+
+func (q *Queries) RenewDevice(ctx context.Context, arg RenewDeviceParams) error {
+	_, err := q.db.ExecContext(ctx, renewDevice,
+		arg.RefreshTokenHash,
+		arg.RefreshExpiresAt,
+		arg.LastSeenAt,
+		arg.UsesBiometrics,
+		arg.ID,
+	)
+	return err
+}
+
+const revokeDevice = `-- name: RevokeDevice :exec
+UPDATE devices SET is_revoked = 1 WHERE id = ?1
+`
+
+func (q *Queries) RevokeDevice(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, revokeDevice, id)
+	return err
+}
+
+const revokeOtherDevices = `-- name: RevokeOtherDevices :exec
+UPDATE devices SET is_revoked = 1 WHERE user_id = ?1 AND id <> ?2
+`
+
+type RevokeOtherDevicesParams struct {
+	UserID       uuid.UUID
+	KeptDeviceID uuid.UUID
+}
+
+func (q *Queries) RevokeOtherDevices(ctx context.Context, arg RevokeOtherDevicesParams) error {
+	_, err := q.db.ExecContext(ctx, revokeOtherDevices, arg.UserID, arg.KeptDeviceID)
+	return err
+}
+
+const saveUser = `-- name: SaveUser :exec
+UPDATE users SET failed_sign_ins = ?1, locked_until = ?2, password_hash = ?3,
+    must_change_password = ?4 WHERE id = ?5
+`
+
+type SaveUserParams struct {
+	FailedSignIns      int64
+	LockedUntil        moment.Moment
+	PasswordHash       string
+	MustChangePassword bool
+	ID                 uuid.UUID
+}
+
+// What signing in or changing the password leaves on the user: the wrong passwords counted, the lock, the hash, and whether it must still change.
+func (q *Queries) SaveUser(ctx context.Context, arg SaveUserParams) error {
+	_, err := q.db.ExecContext(ctx, saveUser,
+		arg.FailedSignIns,
+		arg.LockedUntil,
+		arg.PasswordHash,
+		arg.MustChangePassword,
+		arg.ID,
+	)
+	return err
+}
+
+const userNamed = `-- name: UserNamed :one
+SELECT id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email FROM users WHERE username = ?1
+`
+
+// The user signing in, by a username matched whatever its case (R29).
+func (q *Queries) UserNamed(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, userNamed, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.DisplayName,
+		&i.Mobile,
+		&i.PasswordHash,
+		&i.MustChangePassword,
+		&i.FailedSignIns,
+		&i.LockedUntil,
+		&i.CreatedAt,
+		&i.Email,
+	)
+	return i, err
+}
+
+const userWithID = `-- name: UserWithID :one
+SELECT id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email FROM users WHERE id = ?1
+`
+
+func (q *Queries) UserWithID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, userWithID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.DisplayName,
+		&i.Mobile,
+		&i.PasswordHash,
+		&i.MustChangePassword,
+		&i.FailedSignIns,
+		&i.LockedUntil,
+		&i.CreatedAt,
+		&i.Email,
+	)
+	return i, err
 }

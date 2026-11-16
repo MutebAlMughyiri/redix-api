@@ -171,3 +171,11 @@ func hasEvery(sent map[string]json.RawMessage, request any) bool {
 	}
 	return true
 }
+
+// Camel is a name as .NET's JsonNamingPolicy.CamelCase wrote an enum value or a refusal's code: its first letter lower case, "approveProjects".
+func Camel(name string) string {
+	if name == "" {
+		return name
+	}
+	return strings.ToLower(name[:1]) + name[1:]
+}
