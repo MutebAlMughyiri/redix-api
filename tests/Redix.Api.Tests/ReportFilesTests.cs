@@ -148,6 +148,38 @@ public class ReportFilesTests(MigratedApiFactory factory)
         Assert.Equal(filled, await ItemsKeptAsync(ledger, number));
     }
 
+    /// <summary>
+    /// The golden statement (findings row 119): a made-up project shaped like Muteb's report 28, two purchases and a credit note on one item, revenue, and two partners' capital
+    /// with a withdrawal, whose every figure was worked out by hand before the report was issued. No figure is real.
+    /// </summary>
+    [Fact]
+    public async Task AC_29_1_AC_45_2_TheIssuedReportHoldsEveryFigureAsWorkedOutByHand()
+    {
+        var ledger = await Ledger.WithFinanceAsync(factory);
+        await ApprovedAsync(ledger, ledger.Purchase(1250.50m));
+        await ApprovedAsync(ledger, ledger.Purchase(749.50m));
+        await ApprovedAsync(ledger, ledger.CreditNote(200));
+        await ledger.ApproveAsync(await ledger.PostAsync(await ledger.RevenueAsync(ItemType.OtherRevenue, 300)));
+        var (salem, khaled) = (await PartnerAsync(ledger, "سالم"), await PartnerAsync(ledger, "خالد"));
+        await ledger.ApproveAsync(await ledger.PostAsync(await ledger.PartnerEntryAsync(salem, 6000)));
+        await ledger.ApproveAsync(await ledger.PostAsync(await ledger.PartnerEntryAsync(khaled, 4000)));
+        await ledger.ApproveAsync(await ledger.PostAsync(await ledger.PartnerEntryAsync(salem, 1000, isWithdrawal: true)));
+
+        var number = (await IssueAsync(ledger)).Number;
+
+        var report = (await ledger.ReadAsync(db => db.PeriodicReports.SingleAsync(row => row.ProjectId == ledger.ProjectId && row.Number == number))).Read();
+        Assert.Equal((1800m, 9000m, 300m, 0m, 0m, 9300m, 7500m), (report.Expenses, report.Capital, report.OtherRevenue, report.VatRefunds, report.Sales, report.Revenue, report.Surplus));
+        Assert.Equal(1800m, report.Items.Single(item => item.ItemId == ledger.ItemId).Total);
+        Assert.Equal(1800m, report.Categories.Single(category => category.Items.Any(item => item.Id == ledger.ItemId)).Total);
+        Assert.Equal([("سالم", 5000m, 55.5555555556m), ("خالد", 4000m, 44.4444444444m)], report.Partners.OrderByDescending(partner => partner.Balance).Select(partner => (partner.Name, partner.Balance, partner.SharePercent)));
+        using var workbook = new XLWorkbook(new MemoryStream(await ledger.Client.GetByteArrayAsync($"/projects/{ledger.ProjectId}/periodic-reports/{number}/xlsx")));
+        workbook.RecalculateAllFormulas();
+        var figures = workbook.Worksheet("الخلاصة").CellsUsed().Where(cell => cell.Value.IsNumber).Select(cell => decimal.Round((decimal)cell.Value.GetNumber(), 2)).ToList();
+        Assert.Contains(1800m, figures);
+        Assert.Contains(9300m, figures);
+        Assert.Contains(7500m, figures);
+    }
+
     [Fact]
     public async Task AC_29_3_ReportsAreNumberedWithNoGapsAndTheNextSaysWhatWaits()
     {
