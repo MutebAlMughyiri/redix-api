@@ -79,3 +79,11 @@ sql:
         package: store
         out: internal/access/store
         omit_unused_structs: true
+  - engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/history/queries.sql
+    gen:
+      go:
+        package: store
+        out: internal/history/store
+        omit_unused_structs: true
