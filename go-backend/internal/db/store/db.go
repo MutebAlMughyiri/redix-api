@@ -87,6 +87,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addPaymentDetailsStmt, err = db.PrepareContext(ctx, addPaymentDetails); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPaymentDetails: %w", err)
 	}
+	if q.addPeriodicReportStmt, err = db.PrepareContext(ctx, addPeriodicReport); err != nil {
+		return nil, fmt.Errorf("error preparing query AddPeriodicReport: %w", err)
+	}
 	if q.addPermissionStmt, err = db.PrepareContext(ctx, addPermission); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPermission: %w", err)
 	}
@@ -315,8 +318,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.lastCodeStmt, err = db.PrepareContext(ctx, lastCode); err != nil {
 		return nil, fmt.Errorf("error preparing query LastCode: %w", err)
 	}
-	if q.latestIssuedAtStmt, err = db.PrepareContext(ctx, latestIssuedAt); err != nil {
-		return nil, fmt.Errorf("error preparing query LatestIssuedAt: %w", err)
+	if q.latestPeriodicReportStmt, err = db.PrepareContext(ctx, latestPeriodicReport); err != nil {
+		return nil, fmt.Errorf("error preparing query LatestPeriodicReport: %w", err)
 	}
 	if q.latestReconciliationStmt, err = db.PrepareContext(ctx, latestReconciliation); err != nil {
 		return nil, fmt.Errorf("error preparing query LatestReconciliation: %w", err)
@@ -377,6 +380,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.pendingProjectsStmt, err = db.PrepareContext(ctx, pendingProjects); err != nil {
 		return nil, fmt.Errorf("error preparing query PendingProjects: %w", err)
+	}
+	if q.periodicReportSnapshotStmt, err = db.PrepareContext(ctx, periodicReportSnapshot); err != nil {
+		return nil, fmt.Errorf("error preparing query PeriodicReportSnapshot: %w", err)
+	}
+	if q.periodicReportsOfStmt, err = db.PrepareContext(ctx, periodicReportsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query PeriodicReportsOf: %w", err)
 	}
 	if q.permissionsOfStmt, err = db.PrepareContext(ctx, permissionsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PermissionsOf: %w", err)
@@ -761,6 +770,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addPaymentDetailsStmt: %w", cerr)
 		}
 	}
+	if q.addPeriodicReportStmt != nil {
+		if cerr := q.addPeriodicReportStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addPeriodicReportStmt: %w", cerr)
+		}
+	}
 	if q.addPermissionStmt != nil {
 		if cerr := q.addPermissionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addPermissionStmt: %w", cerr)
@@ -1141,9 +1155,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing lastCodeStmt: %w", cerr)
 		}
 	}
-	if q.latestIssuedAtStmt != nil {
-		if cerr := q.latestIssuedAtStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing latestIssuedAtStmt: %w", cerr)
+	if q.latestPeriodicReportStmt != nil {
+		if cerr := q.latestPeriodicReportStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing latestPeriodicReportStmt: %w", cerr)
 		}
 	}
 	if q.latestReconciliationStmt != nil {
@@ -1244,6 +1258,16 @@ func (q *Queries) Close() error {
 	if q.pendingProjectsStmt != nil {
 		if cerr := q.pendingProjectsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing pendingProjectsStmt: %w", cerr)
+		}
+	}
+	if q.periodicReportSnapshotStmt != nil {
+		if cerr := q.periodicReportSnapshotStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing periodicReportSnapshotStmt: %w", cerr)
+		}
+	}
+	if q.periodicReportsOfStmt != nil {
+		if cerr := q.periodicReportsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing periodicReportsOfStmt: %w", cerr)
 		}
 	}
 	if q.permissionsOfStmt != nil {
@@ -1761,6 +1785,7 @@ type Queries struct {
 	addNotificationEntryStmt      *sql.Stmt
 	addPartnerStmt                *sql.Stmt
 	addPaymentDetailsStmt         *sql.Stmt
+	addPeriodicReportStmt         *sql.Stmt
 	addPermissionStmt             *sql.Stmt
 	addProjectStmt                *sql.Stmt
 	addPurchaseDetailsStmt        *sql.Stmt
@@ -1837,7 +1862,7 @@ type Queries struct {
 	itemsOfCategoryStmt           *sql.Stmt
 	keptPartnerIDsStmt            *sql.Stmt
 	lastCodeStmt                  *sql.Stmt
-	latestIssuedAtStmt            *sql.Stmt
+	latestPeriodicReportStmt      *sql.Stmt
 	latestReconciliationStmt      *sql.Stmt
 	managersOfStmt                *sql.Stmt
 	managersOfPendingStmt         *sql.Stmt
@@ -1858,6 +1883,8 @@ type Queries struct {
 	paymentMethodsOfStmt          *sql.Stmt
 	pendingEntriesOfStmt          *sql.Stmt
 	pendingProjectsStmt           *sql.Stmt
+	periodicReportSnapshotStmt    *sql.Stmt
+	periodicReportsOfStmt         *sql.Stmt
 	permissionsOfStmt             *sql.Stmt
 	projectIDsOfUserStmt          *sql.Stmt
 	projectIsFinishedStmt         *sql.Stmt
@@ -1976,6 +2003,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addNotificationEntryStmt:      q.addNotificationEntryStmt,
 		addPartnerStmt:                q.addPartnerStmt,
 		addPaymentDetailsStmt:         q.addPaymentDetailsStmt,
+		addPeriodicReportStmt:         q.addPeriodicReportStmt,
 		addPermissionStmt:             q.addPermissionStmt,
 		addProjectStmt:                q.addProjectStmt,
 		addPurchaseDetailsStmt:        q.addPurchaseDetailsStmt,
@@ -2052,7 +2080,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		itemsOfCategoryStmt:           q.itemsOfCategoryStmt,
 		keptPartnerIDsStmt:            q.keptPartnerIDsStmt,
 		lastCodeStmt:                  q.lastCodeStmt,
-		latestIssuedAtStmt:            q.latestIssuedAtStmt,
+		latestPeriodicReportStmt:      q.latestPeriodicReportStmt,
 		latestReconciliationStmt:      q.latestReconciliationStmt,
 		managersOfStmt:                q.managersOfStmt,
 		managersOfPendingStmt:         q.managersOfPendingStmt,
@@ -2073,6 +2101,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		paymentMethodsOfStmt:          q.paymentMethodsOfStmt,
 		pendingEntriesOfStmt:          q.pendingEntriesOfStmt,
 		pendingProjectsStmt:           q.pendingProjectsStmt,
+		periodicReportSnapshotStmt:    q.periodicReportSnapshotStmt,
+		periodicReportsOfStmt:         q.periodicReportsOfStmt,
 		permissionsOfStmt:             q.permissionsOfStmt,
 		projectIDsOfUserStmt:          q.projectIDsOfUserStmt,
 		projectIsFinishedStmt:         q.projectIsFinishedStmt,

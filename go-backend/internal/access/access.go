@@ -93,6 +93,12 @@ func (a Access) Holds(projectID uuid.UUID, permission Permission) bool {
 	return slices.Contains(a.everywhere, permission) || slices.Contains(a.byProject[projectID], permission)
 }
 
+// SeesCapitalOf says whether the person may see the partner's capital in projectID (PartnerSight, BR-31): every partner's with SeeAllCapital, only the
+// partners chosen for them with SeeChosenCapital.
+func (a Access) SeesCapitalOf(projectID, partnerID uuid.UUID) bool {
+	return a.Holds(projectID, SeeAllCapital) || (a.Holds(projectID, SeeChosenCapital) && slices.Contains(a.chosen[projectID], partnerID))
+}
+
 // In is what the person holds in projectID: what they hold everywhere first, then the project's own, each once (UserAccess.In); empty, never
 // nil, when nothing.
 func (a Access) In(projectID uuid.UUID) []Permission {

@@ -120,6 +120,14 @@ func (t Total) MarshalJSON() ([]byte, error) {
 	return []byte(strings.TrimSuffix(written, ".")), nil
 }
 
+// UnmarshalJSON reads a total as it was written, with its scale, so a kept periodic report writes every figure again as it was issued (BR-26).
+func (t *Total) UnmarshalJSON(data []byte) error {
+	var typed Typed
+	err := typed.UnmarshalJSON(data)
+	*t = typed.Total()
+	return err
+}
+
 // Typed is a number as a request typed it, with the decimals it was typed with, which .NET's decimal kept and wrote back in an answer built from it.
 type Typed struct {
 	Number
@@ -159,6 +167,12 @@ type Written string
 
 // MarshalJSON writes the number as it was written.
 func (w Written) MarshalJSON() ([]byte, error) { return []byte(w), nil }
+
+// UnmarshalJSON keeps the number as it was written.
+func (w *Written) UnmarshalJSON(data []byte) error {
+	*w = Written(data)
+	return nil
+}
 
 // Percent is part as a percentage of whole as .NET's decimal reckoned decimal.Round(part / whole * 100, decimals): the quotient carries the fewest
 // decimals that make it exact - 100/400 is 0.25 - which the percentage keeps, 25.00, up to decimals, past which it is rounded, half away from zero

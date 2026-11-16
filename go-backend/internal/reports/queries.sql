@@ -15,3 +15,17 @@ SELECT moved.item_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
         JOIN categories ON categories.project_id = entries.project_id JOIN items ON items.category_id = categories.id AND items.type = 6
     WHERE entries.project_id = sqlc.arg(project_id) AND entries.status = 2
 ) AS moved GROUP BY moved.item_id;
+
+-- name: LatestPeriodicReport :many
+-- The project's latest periodic report, the one owner of what follows it (PeriodicReport.LatestOfAsync): the next takes its number plus one
+-- (AC-29.3), starts its expenses' difference from its expenses (BR-09), and marks new what was approved after it (BR-26).
+SELECT number, issued_at, expenses_total FROM periodic_reports WHERE project_id = ? ORDER BY number DESC LIMIT 1;
+
+-- name: PeriodicReportsOf :many
+SELECT number, issued_at, expenses_total FROM periodic_reports WHERE project_id = ? ORDER BY number DESC;
+
+-- name: PeriodicReportSnapshot :many
+SELECT snapshot FROM periodic_reports WHERE project_id = ? AND number = ?;
+
+-- name: AddPeriodicReport :exec
+INSERT INTO periodic_reports (id, project_id, number, issued_at, issued_by_user_id, expenses_total, snapshot) VALUES (?, ?, ?, ?, ?, ?, ?);

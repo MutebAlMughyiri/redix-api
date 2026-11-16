@@ -30,13 +30,14 @@ const (
 
 var accountTypes = web.Enum{"bank", "cashCustody"}
 
-type accountType int64
+// AccountType is what an account is: a bank account, or cash a custodian holds (FR-21).
+type AccountType int64
 
-func (t accountType) MarshalJSON() ([]byte, error) { return accountTypes.Write(int64(t)) }
+func (t AccountType) MarshalJSON() ([]byte, error) { return accountTypes.Write(int64(t)) }
 
-func (t *accountType) UnmarshalJSON(data []byte) error {
+func (t *AccountType) UnmarshalJSON(data []byte) error {
 	value, err := accountTypes.Read(data)
-	*t = accountType(value)
+	*t = AccountType(value)
 	return err
 }
 
@@ -70,7 +71,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 // accountView is an account as the app shows it (AccountView).
 type accountView struct {
 	ID            uuid.UUID   `json:"id"`
-	Type          accountType `json:"type"`
+	Type          AccountType `json:"type"`
 	Name          string      `json:"name"`
 	Balance       fixed.Total `json:"balance"`
 	CustodianID   string      `json:"custodianId"`
@@ -99,7 +100,7 @@ func (s Routes) list(offeredOnly bool) access.Handler {
 			if offeredOnly && !(account.IsActive && (chargesAny || mine)) {
 				continue
 			}
-			view := accountView{ID: account.ID, Type: accountType(account.Type), Name: account.Name, Balance: balances[account.ID],
+			view := accountView{ID: account.ID, Type: AccountType(account.Type), Name: account.Name, Balance: balances[account.ID],
 				CustodianName: account.CustodianName, IsMine: mine, IsActive: account.IsActive, IsUsed: slices.Contains(used, account.ID)}
 			if account.CustodianID != uuid.Nil {
 				view.CustodianID = account.CustodianID.String()
@@ -110,7 +111,7 @@ func (s Routes) list(offeredOnly bool) access.Handler {
 	}
 }
 
-// refused answers why an account named name, of accountType, held by custodianID, cannot be kept (Account.RefusalOf): invalidName,
+// refused answers why an account named name, of its type, held by custodianID, cannot be kept (Account.RefusalOf): invalidName,
 // custodianRequired for a cash custody nobody holds, unknownCustodian for a custodian not in the project (400).
 func (s Routes) refused(w http.ResponseWriter, r *http.Request, name string, typeOf int64, custodianID uuid.UUID) bool {
 	refusal := ""
@@ -147,7 +148,7 @@ func custodianFields(userID uuid.UUID) map[string]any { return map[string]any{"U
 func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request struct {
 		Name        string      `json:"name"`
-		Type        accountType `json:"type"`
+		Type        AccountType `json:"type"`
 		CustodianID uuid.UUID   `json:"custodianId,omitzero"`
 	}
 	if !web.Read(w, r, &request) || s.refused(w, r, request.Name, int64(request.Type), request.CustodianID) {
@@ -323,33 +324,34 @@ func (s Routes) transfer(w http.ResponseWriter, r *http.Request, caller access.C
 	})
 }
 
-// reconciliationView is the accounts against the books (ReconciliationView).
-type reconciliationView struct {
-	At          moment.Moment `json:"at"`
-	Surplus     fixed.Total   `json:"surplus"`
-	ActualTotal fixed.Total   `json:"actualTotal"`
-	Difference  fixed.Total   `json:"difference"`
-	Balances    []balanceView `json:"balances"`
+// Reconciliation is the accounts against the books (ReconciliationView).
+type Reconciliation struct {
+	At          moment.Moment    `json:"at"`
+	Surplus     fixed.Total      `json:"surplus"`
+	ActualTotal fixed.Total      `json:"actualTotal"`
+	Difference  fixed.Total      `json:"difference"`
+	Balances    []AccountBalance `json:"balances"`
 }
 
-type balanceView struct {
+// AccountBalance is one account in a reconciliation: what the books say it holds, and what it really held.
+type AccountBalance struct {
 	AccountID     uuid.UUID   `json:"accountId"`
 	AccountName   string      `json:"accountName"`
-	Type          accountType `json:"type"`
+	Type          AccountType `json:"type"`
 	BooksBalance  fixed.Total `json:"booksBalance"`
 	ActualBalance fixed.Total `json:"actualBalance"`
 	WasChecked    bool        `json:"wasChecked"`
 }
 
-// latestOf is the surplus now, the latest check's balances and the difference; with no check yet the balances are empty and the difference is
+// LatestOf is the surplus now, the latest check's balances and the difference; with no check yet the balances are empty and the difference is
 // what the surplus says is missing (UC-041, BR-08). typed are the balances of a check just entered, as they were typed, which .NET's answer
 // carried; nil for one read back.
-func latestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed map[uuid.UUID]fixed.Total) (reconciliationView, error) {
+func LatestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed map[uuid.UUID]fixed.Total) (Reconciliation, error) {
 	latest, err := q.LatestReconciliation(ctx, projectID)
 	if err != nil {
-		return reconciliationView{}, err
+		return Reconciliation{}, err
 	}
-	view, actual := reconciliationView{Balances: []balanceView{}}, map[uuid.UUID]fixed.Total{}
+	view, actual := Reconciliation{Balances: []AccountBalance{}}, map[uuid.UUID]fixed.Total{}
 	for _, check := range latest {
 		view.At = check.At
 		balances, err := q.BalancesOf(ctx, check.ID)
@@ -373,7 +375,7 @@ func latestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed 
 	for _, account := range accounts {
 		held, checked := actual[account.ID]
 		if account.IsActive || checked {
-			view.Balances = append(view.Balances, balanceView{AccountID: account.ID, AccountName: account.Name, Type: accountType(account.Type),
+			view.Balances = append(view.Balances, AccountBalance{AccountID: account.ID, AccountName: account.Name, Type: AccountType(account.Type),
 				BooksBalance: moved[account.ID], ActualBalance: held, WasChecked: checked})
 		}
 	}
@@ -383,7 +385,7 @@ func latestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed 
 }
 
 func (s Routes) latest(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	view, err := latestOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), nil)
+	view, err := LatestOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), nil)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -444,7 +446,7 @@ func (s Routes) enter(w http.ResponseWriter, r *http.Request, caller access.Call
 	for _, row := range request.Balances {
 		typed[row.AccountID] = row.ActualBalance.Total()
 	}
-	view, err := latestOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), typed)
+	view, err := LatestOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), typed)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -455,6 +457,6 @@ func (s Routes) enter(w http.ResponseWriter, r *http.Request, caller access.Call
 // Reconciled is when the project's latest check was made, the zero moment for none yet, and what it differs from the surplus (UC-041, BR-08): what
 // the summary and the periodic report show of it.
 func Reconciled(ctx context.Context, q *store.Queries, projectID uuid.UUID) (moment.Moment, fixed.Total, error) {
-	view, err := latestOf(ctx, q, projectID, nil)
+	view, err := LatestOf(ctx, q, projectID, nil)
 	return view.At, view.Difference, err
 }

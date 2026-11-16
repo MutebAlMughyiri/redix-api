@@ -4,12 +4,15 @@ package reports
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -17,15 +20,22 @@ import (
 	"github.com/google/uuid"
 )
 
-// Routes reads a project's figures.
+// Routes reads a project's figures, and issues its periodic reports.
 type Routes struct {
 	database db.DB
+	writer   changes.Writer
 }
 
-// Map routes the summary, for whoever reads the project.
-func Map(router *web.Router, gate *access.Gate, database db.DB) {
-	s := Routes{database: database}
+// Map routes the summary, for whoever reads the project, and the periodic reports: read by whoever holds SeeReports, issued by whoever holds
+// GenerateReports (redix-api #131 D2).
+func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
+	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}}
+	const reports = "/projects/{projectId:guid}/periodic-reports"
 	router.Handle("GET", "/projects/{projectId:guid}/summary", gate.Needs(access.ReadProject, s.summary))
+	router.Handle("GET", reports, gate.Needs(access.SeeReports, s.periodicReports))
+	router.Handle("GET", reports+"/next", gate.Needs(access.SeeReports, s.nextPeriodicReport))
+	router.Handle("GET", reports+"/{number:int}", gate.Needs(access.SeeReports, s.periodicReport))
+	router.Handle("POST", reports, gate.Changes(access.GenerateReports, s.issue))
 }
 
 // Waiting is what waits for approval, as two figures (WaitingFigures, findings row 147): expenses, which lower the surplus once approved, and
@@ -82,21 +92,14 @@ type categoryTotalView struct {
 	Items []itemTotalView `json:"items"`
 }
 
-// summary is revenue, expenses, the surplus, the reconciliation difference, what waits, each category's total with its items' - the capital among
-// the revenue (redix-api #109) - and the completion (UC-049, UC-063), read on every request so an approval shows at once (AC-34.1).
-func (s Routes) summary(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	figures, err := accounts.FiguresOf(r.Context(), read, projectID)
-	at, difference, reconciledErr := accounts.Reconciled(r.Context(), read, projectID)
-	waiting, waitingErr := WaitingOf(r.Context(), read, projectID)
-	totals, totalsErr := ItemTotals(r.Context(), read, projectID)
-	categories, categoriesErr := read.CategoriesOf(r.Context(), projectID)
-	items, itemsErr := read.ItemsOf(r.Context(), projectID)
-	for _, failed := range []error{err, reconciledErr, waitingErr, totalsErr, categoriesErr, itemsErr} {
-		if failed != nil {
-			problem.Status(w, r, http.StatusInternalServerError)
-			return
-		}
+// categoriesOf is each category's total with its items', the expenses' side and the revenue's, the capital among the revenue (redix-api #109): the
+// one owner of the categories the summary and a periodic report show.
+func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID) ([]categoryTotalView, []categoryTotalView, error) {
+	totals, err := ItemTotals(ctx, q, projectID)
+	categories, categoriesErr := q.CategoriesOf(ctx, projectID)
+	items, itemsErr := q.ItemsOf(ctx, projectID)
+	if err := errors.Join(err, categoriesErr, itemsErr); err != nil {
+		return nil, nil, err
 	}
 	side := func(isRevenue bool) []categoryTotalView {
 		lines := []categoryTotalView{}
@@ -114,6 +117,21 @@ func (s Routes) summary(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		}
 		return lines
 	}
+	return side(false), side(true), nil
+}
+
+// summary is revenue, expenses, the surplus, the reconciliation difference, what waits, each category's total with its items' - the capital among
+// the revenue (redix-api #109) - and the completion (UC-049, UC-063), read on every request so an approval shows at once (AC-34.1).
+func (s Routes) summary(w http.ResponseWriter, r *http.Request, _ access.Caller) {
+	read, projectID := s.database.Queries(), web.ID(r, "projectId")
+	figures, err := accounts.FiguresOf(r.Context(), read, projectID)
+	at, difference, reconciledErr := accounts.Reconciled(r.Context(), read, projectID)
+	waiting, waitingErr := WaitingOf(r.Context(), read, projectID)
+	expenses, revenue, categoriesErr := categoriesOf(r.Context(), read, projectID)
+	if errors.Join(err, reconciledErr, waitingErr, categoriesErr) != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	web.JSON(w, r, http.StatusOK, struct {
 		Revenue                  fixed.Total         `json:"revenue"`
 		Expenses                 fixed.Total         `json:"expenses"`
@@ -125,5 +143,5 @@ func (s Routes) summary(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		Categories               []categoryTotalView `json:"categories"`
 		RevenueCategories        []categoryTotalView `json:"revenueCategories"`
 	}{figures.Revenue(), figures.Expenses, figures.Surplus(), !at.IsZero(), difference, waiting,
-		fixed.Percent(figures.Expenses.Number(), figures.Revenue().Number(), 2, false), side(false), side(true)})
+		fixed.Percent(figures.Expenses.Number(), figures.Revenue().Number(), 2, false), expenses, revenue})
 }

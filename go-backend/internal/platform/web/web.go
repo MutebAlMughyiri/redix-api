@@ -146,6 +146,12 @@ func (p *problemOnly) Write(body []byte) (int, error) {
 // ID is the GUID route value name, which the route's {name:guid} constraint has already checked.
 func ID(r *http.Request, name string) uuid.UUID { return uuid.MustParse(r.PathValue(name)) }
 
+// Int is the path's whole number named name, which its route's int constraint let through.
+func Int(r *http.Request, name string) int64 {
+	number, _ := strconv.ParseInt(r.PathValue(name), 10, 32)
+	return number
+}
+
 // JSON answers status with value as JSON, as Results.Ok and Results.Json wrote it.
 func JSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	body, err := json.Marshal(value)

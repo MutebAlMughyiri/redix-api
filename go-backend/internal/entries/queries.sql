@@ -146,10 +146,6 @@ WHERE reconciliations.project_id = ?;
 -- name: DecisionsOf :many
 SELECT entry_decisions.* FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id WHERE entries.project_id = ? ORDER BY entry_decisions.id;
 
--- name: LatestIssuedAt :many
--- When the project's latest periodic report was issued; what was approved after it is new (BR-26).
-SELECT issued_at FROM periodic_reports WHERE project_id = ? ORDER BY number DESC LIMIT 1;
-
 -- name: ArabicWord :one
 SELECT translations.value FROM translations JOIN translation_keys ON translation_keys.id = translations.translation_key_id
 WHERE translation_keys.key = ? AND translations.language = 'ar';

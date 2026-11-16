@@ -505,6 +505,33 @@ func (q *Queries) AddPaymentDetails(ctx context.Context, arg AddPaymentDetailsPa
 	return err
 }
 
+const addPeriodicReport = `-- name: AddPeriodicReport :exec
+INSERT INTO periodic_reports (id, project_id, number, issued_at, issued_by_user_id, expenses_total, snapshot) VALUES (?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddPeriodicReportParams struct {
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Number         int64
+	IssuedAt       moment.Moment
+	IssuedByUserID uuid.UUID
+	ExpensesTotal  fixed.Number
+	Snapshot       string
+}
+
+func (q *Queries) AddPeriodicReport(ctx context.Context, arg AddPeriodicReportParams) error {
+	_, err := q.exec(ctx, q.addPeriodicReportStmt, addPeriodicReport,
+		arg.ID,
+		arg.ProjectID,
+		arg.Number,
+		arg.IssuedAt,
+		arg.IssuedByUserID,
+		arg.ExpensesTotal,
+		arg.Snapshot,
+	)
+	return err
+}
+
 const addPermission = `-- name: AddPermission :exec
 INSERT INTO project_permissions (id, project_id, user_id, permission) VALUES (?, ?, ?, ?)
 `
@@ -2666,24 +2693,31 @@ func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode
 	return items, nil
 }
 
-const latestIssuedAt = `-- name: LatestIssuedAt :many
-SELECT issued_at FROM periodic_reports WHERE project_id = ? ORDER BY number DESC LIMIT 1
+const latestPeriodicReport = `-- name: LatestPeriodicReport :many
+SELECT number, issued_at, expenses_total FROM periodic_reports WHERE project_id = ? ORDER BY number DESC LIMIT 1
 `
 
-// When the project's latest periodic report was issued; what was approved after it is new (BR-26).
-func (q *Queries) LatestIssuedAt(ctx context.Context, projectID uuid.UUID) ([]moment.Moment, error) {
-	rows, err := q.query(ctx, q.latestIssuedAtStmt, latestIssuedAt, projectID)
+type LatestPeriodicReportRow struct {
+	Number        int64
+	IssuedAt      moment.Moment
+	ExpensesTotal fixed.Number
+}
+
+// The project's latest periodic report, the one owner of what follows it (PeriodicReport.LatestOfAsync): the next takes its number plus one
+// (AC-29.3), starts its expenses' difference from its expenses (BR-09), and marks new what was approved after it (BR-26).
+func (q *Queries) LatestPeriodicReport(ctx context.Context, projectID uuid.UUID) ([]LatestPeriodicReportRow, error) {
+	rows, err := q.query(ctx, q.latestPeriodicReportStmt, latestPeriodicReport, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []moment.Moment
+	var items []LatestPeriodicReportRow
 	for rows.Next() {
-		var issued_at moment.Moment
-		if err := rows.Scan(&issued_at); err != nil {
+		var i LatestPeriodicReportRow
+		if err := rows.Scan(&i.Number, &i.IssuedAt, &i.ExpensesTotal); err != nil {
 			return nil, err
 		}
-		items = append(items, issued_at)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3313,6 +3347,71 @@ func (q *Queries) PendingProjects(ctx context.Context) ([]Project, error) {
 			&i.IsTemplate,
 			&i.LastEntryNumber,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const periodicReportSnapshot = `-- name: PeriodicReportSnapshot :many
+SELECT snapshot FROM periodic_reports WHERE project_id = ? AND number = ?
+`
+
+type PeriodicReportSnapshotParams struct {
+	ProjectID uuid.UUID
+	Number    int64
+}
+
+func (q *Queries) PeriodicReportSnapshot(ctx context.Context, arg PeriodicReportSnapshotParams) ([]string, error) {
+	rows, err := q.query(ctx, q.periodicReportSnapshotStmt, periodicReportSnapshot, arg.ProjectID, arg.Number)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var snapshot string
+		if err := rows.Scan(&snapshot); err != nil {
+			return nil, err
+		}
+		items = append(items, snapshot)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const periodicReportsOf = `-- name: PeriodicReportsOf :many
+SELECT number, issued_at, expenses_total FROM periodic_reports WHERE project_id = ? ORDER BY number DESC
+`
+
+type PeriodicReportsOfRow struct {
+	Number        int64
+	IssuedAt      moment.Moment
+	ExpensesTotal fixed.Number
+}
+
+func (q *Queries) PeriodicReportsOf(ctx context.Context, projectID uuid.UUID) ([]PeriodicReportsOfRow, error) {
+	rows, err := q.query(ctx, q.periodicReportsOfStmt, periodicReportsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PeriodicReportsOfRow
+	for rows.Next() {
+		var i PeriodicReportsOfRow
+		if err := rows.Scan(&i.Number, &i.IssuedAt, &i.ExpensesTotal); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

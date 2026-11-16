@@ -80,7 +80,7 @@ func Routes(parts Parts) *web.Router {
 	partners.Map(router, gate, database, now)
 	attachments.Map(router, gate, database, now, parts.AttachmentsFolder)
 	documents.Map(router, gate, database, now, parts.AttachmentsFolder)
-	reports.Map(router, gate, database)
+	reports.Map(router, gate, database, now)
 	sync.Map(router, gate)
 	return router
 }

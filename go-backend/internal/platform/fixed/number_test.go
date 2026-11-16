@@ -84,3 +84,25 @@ func TestAPercentIsWrittenAsDotNetsDecimalReckonedIt(t *testing.T) {
 		}
 	}
 }
+
+func TestBR26_AKeptTotalIsReadBackWithTheScaleItWasWrittenWith(t *testing.T) {
+	for kept := range map[string]bool{"0": true, "100.0000": true, "-700.25": true, "0.0000": true} {
+		var total Total
+		if err := json.Unmarshal([]byte(kept), &total); err != nil {
+			t.Fatal(err)
+		}
+		if written, _ := json.Marshal(total); string(written) != kept {
+			t.Errorf("%s was read back as %s", kept, written)
+		}
+	}
+}
+
+func TestBR26_AKeptShareIsReadBackAsItWasWritten(t *testing.T) {
+	var share Written
+	if err := json.Unmarshal([]byte("33.3333333333"), &share); err != nil {
+		t.Fatal(err)
+	}
+	if written, _ := json.Marshal(share); string(written) != "33.3333333333" {
+		t.Errorf("the share was read back as %s", written)
+	}
+}

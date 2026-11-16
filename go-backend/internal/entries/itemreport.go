@@ -70,7 +70,8 @@ type contractReport struct {
 	AmountName     string         `json:"amountName"`
 }
 
-type itemReport struct {
+// ItemReport is everything spent on one item, as its screen, its files and a periodic report show it (ItemReportView).
+type ItemReport struct {
 	ItemID                uuid.UUID          `json:"itemId"`
 	ItemName              string             `json:"itemName"`
 	CategoryName          string             `json:"categoryName"`
@@ -184,25 +185,25 @@ func (g registers) valuesOf(columns []store.ItemColumn, entry store.Entry, known
 	return values
 }
 
-// itemReportOf is the report of the item, from what is approved, in date order, what was approved after newSince marked new (BR-26); of a capital
-// item's partners only those shows keeps have their table, its total staying the whole capital (BR-31).
-func itemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool) (itemReport, error) {
+// ItemReportOf is the report of the item, from what is approved, in date order, what was approved since the latest periodic report marked new
+// (BR-26); of a capital item's partners only those shows keeps have their table, its total staying the whole capital (BR-31).
+func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool) (ItemReport, error) {
 	q, ctx, projectID := c.Q, c.Ctx, c.ProjectID
 	all, err := q.EntriesOf(ctx, projectID)
 	if err != nil {
-		return itemReport{}, err
+		return ItemReport{}, err
 	}
 	known, err := factsOf(c, all)
 	if err != nil {
-		return itemReport{}, err
+		return ItemReport{}, err
 	}
-	issued, err := q.LatestIssuedAt(ctx, projectID)
+	latest, err := q.LatestPeriodicReport(ctx, projectID)
 	if err != nil {
-		return itemReport{}, err
+		return ItemReport{}, err
 	}
 	newSince := notApproved
-	if len(issued) > 0 {
-		newSince = issued[0]
+	for _, report := range latest {
+		newSince = report.IssuedAt
 	}
 	columns, err := q.ColumnsOfItem(ctx, item.ID)
 	subgroups, subgroupsErr := q.SubgroupsOfItem(ctx, item.ID)
@@ -215,7 +216,7 @@ func itemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	money, moneyErr := contracts.MoneyOf(ctx, q, projectID, uuid.Nil)
 	for _, failed := range []error{err, subgroupsErr, contractsErr, partnersErr, categoryErr, namesErr, insideErr, outsideErr, moneyErr} {
 		if failed != nil {
-			return itemReport{}, failed
+			return ItemReport{}, failed
 		}
 	}
 	g := registers{names: map[string][]string{}, places: [2]string{inside, outside}}
@@ -238,7 +239,7 @@ func itemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		return reportRow{EntryID: entry.ID, Date: entry.EntryDate, Amount: amount, IsOutsideContract: isOutside, Values: g.valuesOf(printed, entry, known, isOutside),
 			IsNew: entry.ApprovedAt.After(newSince.Time), Number: entry.Number}
 	}
-	report := itemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name, Subgroups: []tableReport{}, Contracts: []contractReport{},
+	report := ItemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name, Subgroups: []tableReport{}, Contracts: []contractReport{},
 		ShowsTablePercentages: item.ShowsTablePercentages, Type: structure.ItemType(item.Type), ShowsEveryTable: true}
 	for _, entry := range approvedOldestFirst {
 		if entry.Status != approved {
@@ -336,11 +337,7 @@ func (s Routes) itemReportRoute(w http.ResponseWriter, r *http.Request, caller a
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
-	seesAll, chosen := caller.Access.Holds(c.ProjectID, access.SeeAllCapital), caller.Access.ChosenIn(c.ProjectID)
-	if !caller.Access.Holds(c.ProjectID, access.SeeChosenCapital) {
-		chosen = nil
-	}
-	report, err := itemReportOf(c, item, func(partnerID uuid.UUID) bool { return seesAll || slices.Contains(chosen, partnerID) })
+	report, err := ItemReportOf(c, item, func(partnerID uuid.UUID) bool { return caller.Access.SeesCapitalOf(c.ProjectID, partnerID) })
 	s.answer(w, r, report, err)
 }
 
@@ -358,7 +355,7 @@ func (s Routes) contractReportRoute(w http.ResponseWriter, r *http.Request, _ ac
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
-	report, err := itemReportOf(c, item, func(uuid.UUID) bool { return false })
+	report, err := ItemReportOf(c, item, func(uuid.UUID) bool { return false })
 	report.Subgroups = []tableReport{}
 	var kept []contractReport
 	for _, one := range report.Contracts {

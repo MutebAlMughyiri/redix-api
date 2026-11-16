@@ -4,6 +4,8 @@
 package partners
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -48,13 +50,6 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("DELETE", project+"/partners/{partnerId:guid}", keeps(s.delete))
 	router.Handle("GET", project+"/capital", gate.Needs(access.ReadProject, s.capital))
 	router.Handle("GET", project+"/partners/{partnerId:guid}/movements", gate.Needs(access.ReadProject, s.movements))
-}
-
-// sees says whether caller sees partnerID's capital (PartnerSight, BR-31): all of it with SeeAllCapital, the partners chosen for them with
-// SeeChosenCapital (redix-api #106), none otherwise.
-func sees(caller access.Caller, projectID, partnerID uuid.UUID) bool {
-	return caller.Access.Holds(projectID, access.SeeAllCapital) ||
-		(caller.Access.Holds(projectID, access.SeeChosenCapital) && slices.Contains(caller.Access.ChosenIn(projectID), partnerID))
 }
 
 // balances is each partner's capital from their approved movements (CapitalEndpoints.BalancesAsync, BR-05): in less out.
@@ -123,7 +118,7 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 	may := deletable(partners, movements, caller, projectID)
 	views := []view{}
 	for _, partner := range partners {
-		if partner.IsDeleted || !sees(caller, projectID, partner.ID) {
+		if partner.IsDeleted || !caller.Access.SeesCapitalOf(projectID, partner.ID) {
 			continue
 		}
 		one := view{ID: partner.ID, Name: partner.Name, MayDelete: may[partner.ID], OthersDrafts: []string{}, MyDrafts: []draftView{}}
@@ -338,42 +333,53 @@ func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Cal
 	})
 }
 
-// capital is the project's total capital and each partner's balance and share (BR-05, BR-28): everyone who reads the project sees the total, each
-// line whoever sees that partner (BR-31), the largest balance first.
-func (s Routes) capital(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	type line struct {
-		ID           uuid.UUID     `json:"id"`
-		Name         string        `json:"name"`
-		Balance      fixed.Total   `json:"balance"`
-		SharePercent fixed.Written `json:"sharePercent"`
-	}
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	partners, err := read.PartnersOf(r.Context(), projectID)
-	movements, movementsErr := read.CapitalMovements(r.Context(), projectID)
-	if err != nil || movementsErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+// CapitalLine is one partner's capital and share of the whole (CapitalLineView).
+type CapitalLine struct {
+	ID           uuid.UUID     `json:"id"`
+	Name         string        `json:"name"`
+	Balance      fixed.Total   `json:"balance"`
+	SharePercent fixed.Written `json:"sharePercent"`
+}
+
+// Capital is the project's whole capital and each partner's balance and share (BR-05, BR-28), for the partners shows keeps, the largest balance
+// first (CapitalEndpoints.ViewOfAsync): the one owner of the capital screen and the periodic report's partners.
+func Capital(ctx context.Context, q *store.Queries, projectID uuid.UUID, shows func(uuid.UUID) bool) (fixed.Total, []CapitalLine, error) {
+	partners, err := q.PartnersOf(ctx, projectID)
+	movements, movementsErr := q.CapitalMovements(ctx, projectID)
+	if err := errors.Join(err, movementsErr); err != nil {
+		return fixed.Total{}, nil, err
 	}
 	held := balances(movements)
 	total := fixed.Total{}
 	for _, balance := range held {
 		total = total.Plus(balance)
 	}
-	lines := []line{}
+	lines := []CapitalLine{}
 	for _, partner := range partners {
-		if !partner.IsDeleted && sees(caller, projectID, partner.ID) {
-			lines = append(lines, line{ID: partner.ID, Name: partner.Name, Balance: held[partner.ID], SharePercent: fixed.Percent(held[partner.ID].Number(), total.Number(), 10, true)})
+		if !partner.IsDeleted && shows(partner.ID) {
+			lines = append(lines, CapitalLine{ID: partner.ID, Name: partner.Name, Balance: held[partner.ID], SharePercent: fixed.Percent(held[partner.ID].Number(), total.Number(), 10, true)})
 		}
 	}
-	slices.SortStableFunc(lines, func(a, b line) int {
+	slices.SortStableFunc(lines, func(a, b CapitalLine) int {
 		if a.Balance.Number() != b.Balance.Number() {
 			return int(b.Balance.Number() - a.Balance.Number())
 		}
 		return strings.Compare(a.ID.String(), b.ID.String())
 	})
+	return total, lines, nil
+}
+
+// capital is the capital screen: everyone who reads the project sees the total, each line whoever sees that partner (BR-31).
+func (s Routes) capital(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	projectID := web.ID(r, "projectId")
+	total, lines, err := Capital(r.Context(), s.database.Queries(), projectID, func(partnerID uuid.UUID) bool { return caller.Access.SeesCapitalOf(projectID, partnerID) })
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	web.JSON(w, r, http.StatusOK, struct {
-		Total    fixed.Total `json:"total"`
-		Partners []line      `json:"partners"`
+		Total    fixed.Total   `json:"total"`
+		Partners []CapitalLine `json:"partners"`
 	}{total, lines})
 }
 
@@ -393,7 +399,7 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 	}
 	read, projectID, partnerID := s.database.Queries(), web.ID(r, "projectId"), web.ID(r, "partnerId")
 	partners, err := read.PartnersOf(r.Context(), projectID)
-	if err != nil || !sees(caller, projectID, partnerID) || !slices.ContainsFunc(partners, func(partner store.Partner) bool { return partner.ID == partnerID }) {
+	if err != nil || !caller.Access.SeesCapitalOf(projectID, partnerID) || !slices.ContainsFunc(partners, func(partner store.Partner) bool { return partner.ID == partnerID }) {
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
