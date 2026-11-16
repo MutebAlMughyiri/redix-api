@@ -86,7 +86,7 @@ func (p Routes) sightOf(ctx context.Context, userID uuid.UUID) (sight, error) {
 	if err != nil {
 		return sight{}, err
 	}
-	read := store.New(p.database.Read)
+	read := p.database.Queries()
 	named, err := read.RoleNamesOfUser(ctx, userID)
 	if err != nil {
 		return sight{}, err
@@ -129,7 +129,7 @@ func (s sight) view(project store.Project, units []store.Unit) projectView {
 // list is the projects the person may read, and those they started or were made inactive in, the active first, the latest start first
 // (ProjectsEndpoints.List).
 func (p Routes) list(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	read := store.New(p.database.Read)
+	read := p.database.Queries()
 	seen, err := p.sightOf(r.Context(), caller.UserID)
 	projects, projectsErr := read.AllProjects(r.Context())
 	units, unitsErr := read.AllUnits(r.Context())
@@ -183,9 +183,8 @@ func (p Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 		return
 	}
 	now := moment.Of(p.clock.Now())
-	err := p.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		q := store.New(tx)
-		if err := addWithManager(r.Context(), q, tx, project, units, partners, caller.UserID, now); err != nil {
+	err := p.database.InTx(r.Context(), func(q *store.Queries) error {
+		if err := addWithManager(r.Context(), q, project, units, partners, caller.UserID, now); err != nil {
 			return err
 		}
 		if request.StructureSourceID == uuid.Nil {
@@ -194,7 +193,7 @@ func (p Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 		if err := q.AddStructureSource(r.Context(), store.AddStructureSourceParams{ProjectID: project.ID, StructureSourceID: request.StructureSourceID}); err != nil {
 			return err
 		}
-		return history.Write(r.Context(), tx, now, caller.UserID, history.RegisterProject, history.Change{Table: "ProjectStructureSources", RecordID: project.ID,
+		return history.Write(r.Context(), q, now, caller.UserID, history.RegisterProject, history.Change{Table: "ProjectStructureSources", RecordID: project.ID,
 			ProjectID: project.ID, After: map[string]any{"StructureSourceId": request.StructureSourceID}})
 	})
 	if err != nil {
@@ -220,12 +219,12 @@ func (p Routes) started(request startRequest) (store.Project, []string, []string
 
 // addWithManager keeps a new project waiting for the admin, its units and partners, and its manager's permissions, recording the project as
 // registered by its manager (ProjectsEndpoints.AddWithManager).
-func addWithManager(ctx context.Context, q *store.Queries, tx *sql.Tx, project store.Project, units, partners []string, managerID uuid.UUID, now moment.Moment) error {
+func addWithManager(ctx context.Context, q *store.Queries, project store.Project, units, partners []string, managerID uuid.UUID, now moment.Moment) error {
 	err := q.AddProject(ctx, store.AddProjectParams{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Status: project.Status, Description: project.Description})
 	if err != nil {
 		return err
 	}
-	if err := history.Write(ctx, tx, now, managerID, history.RegisterProject, history.Change{Table: "Projects", RecordID: project.ID, ProjectID: project.ID,
+	if err := history.Write(ctx, q, now, managerID, history.RegisterProject, history.Change{Table: "Projects", RecordID: project.ID, ProjectID: project.ID,
 		After: projectFields(project)}); err != nil {
 		return err
 	}
@@ -239,7 +238,7 @@ func addWithManager(ctx context.Context, q *store.Queries, tx *sql.Tx, project s
 			return err
 		}
 	}
-	return users.TickStarter(ctx, q, tx, project.ID, managerID, now)
+	return users.TickStarter(ctx, q, project.ID, managerID, now)
 }
 
 // register lets someone with no account register a project and become its manager (UC-066): the project's refusals as create's, then the new
@@ -261,7 +260,7 @@ func (p Routes) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := moment.Of(p.clock.Now())
-	manager, status, refusal, err := users.New(r.Context(), store.New(p.database.Read), request.DisplayName, request.Username, request.Mobile, request.Password, false, now)
+	manager, status, refusal, err := users.New(r.Context(), p.database.Queries(), request.DisplayName, request.Username, request.Mobile, request.Password, false, now)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -270,12 +269,11 @@ func (p Routes) register(w http.ResponseWriter, r *http.Request) {
 		problem.Refuse(w, r, status, refusal)
 		return
 	}
-	err = p.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		q := store.New(tx)
-		if err := users.Add(r.Context(), q, tx, manager, manager.ID, now); err != nil {
+	err = p.database.InTx(r.Context(), func(q *store.Queries) error {
+		if err := users.Add(r.Context(), q, manager, manager.ID, now); err != nil {
 			return err
 		}
-		return addWithManager(r.Context(), q, tx, project, units, partners, manager.ID, now)
+		return addWithManager(r.Context(), q, project, units, partners, manager.ID, now)
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -299,7 +297,7 @@ type registeredView struct {
 
 // waiting is the projects waiting for the admin, the earliest start first, each with its manager (RegistrationEndpoints.Waiting).
 func (p Routes) waiting(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	read := store.New(p.database.Read)
+	read := p.database.Queries()
 	projects, err := read.PendingProjects(r.Context())
 	managers, managersErr := read.ManagersOfPending(r.Context())
 	units, unitsErr := read.AllUnits(r.Context())
@@ -369,7 +367,7 @@ func (p Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Cal
 
 // waitingProject is the route's project while it waits for the admin: 404 for no such project, notPending (409) for one decided already.
 func (p Routes) waitingProject(w http.ResponseWriter, r *http.Request) (store.Project, bool) {
-	project, err := store.New(p.database.Read).ProjectWithID(r.Context(), web.ID(r, "projectId"))
+	project, err := p.database.Queries().ProjectWithID(r.Context(), web.ID(r, "projectId"))
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		problem.Status(w, r, http.StatusNotFound)
@@ -388,9 +386,8 @@ func (p Routes) waitingProject(w http.ResponseWriter, r *http.Request) (store.Pr
 func (p Routes) decide(w http.ResponseWriter, r *http.Request, caller access.Caller, action history.Action, told notifications.Kind, before, after store.Project,
 	also func(context.Context, *store.Queries) error) {
 	now := moment.Of(p.clock.Now())
-	err := p.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		q := store.New(tx)
-		if err := keepChanges(r.Context(), q, tx, caller.UserID, action, now, before, after, nil, nil); err != nil {
+	err := p.database.InTx(r.Context(), func(q *store.Queries) error {
+		if err := keepChanges(r.Context(), q, caller.UserID, action, now, before, after, nil, nil); err != nil {
 			return err
 		}
 		if err := also(r.Context(), q); err != nil {
@@ -515,7 +512,7 @@ func (p Routes) deleteUnit(w http.ResponseWriter, r *http.Request, caller access
 
 // close finishes the project, which then only reads (AC-04.1): pendingEntries (409) while an entry waits for approval.
 func (p Routes) close(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	waiting, err := store.New(p.database.Read).HasEntriesWaiting(r.Context(), web.ID(r, "projectId"))
+	waiting, err := p.database.Queries().HasEntriesWaiting(r.Context(), web.ID(r, "projectId"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -558,7 +555,7 @@ func (c projectChangeContext) unitNamed(name string, other uuid.UUID) bool {
 // invalidDescription answer 400, any other refusal 409; then the project as the caller sees it.
 func (p Routes) change(w http.ResponseWriter, r *http.Request, caller access.Caller, action history.Action, decide func(projectChangeContext) string) {
 	projectID := web.ID(r, "projectId")
-	read := store.New(p.database.Read)
+	read := p.database.Queries()
 	before, err := read.ProjectWithID(r.Context(), projectID)
 	if errors.Is(err, sql.ErrNoRows) {
 		problem.Status(w, r, http.StatusNotFound)
@@ -587,8 +584,8 @@ func (p Routes) change(w http.ResponseWriter, r *http.Request, caller access.Cal
 		return
 	}
 	now := moment.Of(p.clock.Now())
-	err = p.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		return keepChanges(r.Context(), store.New(tx), tx, caller.UserID, action, now, before, project, unitsBefore, units)
+	err = p.database.InTx(r.Context(), func(q *store.Queries) error {
+		return keepChanges(r.Context(), q, caller.UserID, action, now, before, project, unitsBefore, units)
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -598,7 +595,7 @@ func (p Routes) change(w http.ResponseWriter, r *http.Request, caller access.Cal
 }
 
 // keepChanges writes what changed between before and after - the project and each unit added, renamed or removed - each with its History line.
-func keepChanges(ctx context.Context, q *store.Queries, tx *sql.Tx, actor uuid.UUID, action history.Action, now moment.Moment,
+func keepChanges(ctx context.Context, q *store.Queries, actor uuid.UUID, action history.Action, now moment.Moment,
 	before, after store.Project, unitsBefore, unitsAfter []store.Unit) error {
 	if line := projectChange(before, after); len(line.After) > 0 {
 		if err := q.SetProjectName(ctx, store.SetProjectNameParams{ID: after.ID, Name: after.Name}); err != nil {
@@ -610,7 +607,7 @@ func keepChanges(ctx context.Context, q *store.Queries, tx *sql.Tx, actor uuid.U
 		if err := q.SetProjectStatus(ctx, store.SetProjectStatusParams{ID: after.ID, Status: after.Status, RejectionReason: after.RejectionReason}); err != nil {
 			return err
 		}
-		if err := history.Write(ctx, tx, now, actor, action, line); err != nil {
+		if err := history.Write(ctx, q, now, actor, action, line); err != nil {
 			return err
 		}
 	}
@@ -626,14 +623,14 @@ func keepChanges(ctx context.Context, q *store.Queries, tx *sql.Tx, actor uuid.U
 			if err := q.AddUnit(ctx, store.AddUnitParams{ID: unit.ID, ProjectID: unit.ProjectID, Name: unit.Name, SortOrder: unit.SortOrder}); err != nil {
 				return err
 			}
-			if err := history.Write(ctx, tx, now, actor, action, history.Change{Table: "Units", RecordID: unit.ID, ProjectID: unit.ProjectID, After: unitFields(unit)}); err != nil {
+			if err := history.Write(ctx, q, now, actor, action, history.Change{Table: "Units", RecordID: unit.ID, ProjectID: unit.ProjectID, After: unitFields(unit)}); err != nil {
 				return err
 			}
 		case old.Name != unit.Name:
 			if err := q.SetUnitName(ctx, store.SetUnitNameParams{ID: unit.ID, Name: unit.Name}); err != nil {
 				return err
 			}
-			if err := history.Write(ctx, tx, now, actor, action, history.Change{Table: "Units", RecordID: unit.ID, ProjectID: unit.ProjectID,
+			if err := history.Write(ctx, q, now, actor, action, history.Change{Table: "Units", RecordID: unit.ID, ProjectID: unit.ProjectID,
 				Before: map[string]any{"Name": old.Name}, After: map[string]any{"Name": unit.Name}}); err != nil {
 				return err
 			}
@@ -643,7 +640,7 @@ func keepChanges(ctx context.Context, q *store.Queries, tx *sql.Tx, actor uuid.U
 		if err := q.RemoveUnit(ctx, unit.ID); err != nil {
 			return err
 		}
-		if err := history.Write(ctx, tx, now, actor, action, history.Change{Table: "Units", RecordID: unit.ID, ProjectID: unit.ProjectID, Before: unitFields(unit)}); err != nil {
+		if err := history.Write(ctx, q, now, actor, action, history.Change{Table: "Units", RecordID: unit.ID, ProjectID: unit.ProjectID, Before: unitFields(unit)}); err != nil {
 			return err
 		}
 	}
@@ -653,8 +650,8 @@ func keepChanges(ctx context.Context, q *store.Queries, tx *sql.Tx, actor uuid.U
 // setDefault makes the project the one sign-in opens straight into (AC-37.1).
 func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
-	err := p.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		return store.New(tx).SetDefaultProject(r.Context(), store.SetDefaultProjectParams{UserID: caller.UserID, ProjectID: projectID})
+	err := p.database.InTx(r.Context(), func(q *store.Queries) error {
+		return q.SetDefaultProject(r.Context(), store.SetDefaultProjectParams{UserID: caller.UserID, ProjectID: projectID})
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -665,7 +662,7 @@ func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access
 
 // removeDefault lets sign-in open the project list again.
 func (p Routes) removeDefault(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	err := p.database.InTx(r.Context(), func(tx *sql.Tx) error { return store.New(tx).RemoveDefaultProject(r.Context(), caller.UserID) })
+	err := p.database.InTx(r.Context(), func(q *store.Queries) error { return q.RemoveDefaultProject(r.Context(), caller.UserID) })
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -675,7 +672,7 @@ func (p Routes) removeDefault(w http.ResponseWriter, r *http.Request, caller acc
 
 // answer is the project as userID sees it (ProjectsEndpoints.ViewOfAsync).
 func (p Routes) answer(w http.ResponseWriter, r *http.Request, status int, projectID, userID uuid.UUID) {
-	read := store.New(p.database.Read)
+	read := p.database.Queries()
 	project, err := read.ProjectWithID(r.Context(), projectID)
 	units, unitsErr := read.UnitsOf(r.Context(), projectID)
 	seen, seenErr := p.sightOf(r.Context(), userID)

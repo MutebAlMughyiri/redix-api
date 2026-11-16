@@ -5,7 +5,6 @@ package history
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
@@ -55,8 +54,8 @@ type Change struct {
 	After     map[string]any
 }
 
-// Write adds one History line inside tx.
-func Write(ctx context.Context, tx *sql.Tx, at moment.Moment, userID uuid.UUID, action Action, change Change) error {
+// Write adds one History line with q, inside the write it records.
+func Write(ctx context.Context, q *store.Queries, at moment.Moment, userID uuid.UUID, action Action, change Change) error {
 	before, err := json.Marshal(orEmpty(change.Before))
 	if err != nil {
 		return err
@@ -65,7 +64,7 @@ func Write(ctx context.Context, tx *sql.Tx, at moment.Moment, userID uuid.UUID, 
 	if err != nil {
 		return err
 	}
-	return store.New(tx).AddHistory(ctx, store.AddHistoryParams{
+	return q.AddHistory(ctx, store.AddHistoryParams{
 		At: at, ProjectID: change.ProjectID, UserID: userID, Action: string(action),
 		TableName: change.Table, RecordID: change.RecordID, Before: string(before), After: string(after),
 	})

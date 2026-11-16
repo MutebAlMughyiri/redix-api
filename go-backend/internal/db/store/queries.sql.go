@@ -18,7 +18,7 @@ SELECT id, project_id, name, sort_order, is_active FROM categories WHERE project
 `
 
 func (q *Queries) ActiveCategoriesOf(ctx context.Context, projectID uuid.UUID) ([]Category, error) {
-	rows, err := q.db.QueryContext(ctx, activeCategoriesOf, projectID)
+	rows, err := q.query(ctx, q.activeCategoriesOfStmt, activeCategoriesOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ SELECT id, category_id, name, type, sort_order, is_active, shows_table_percentag
 `
 
 func (q *Queries) ActiveItemsOf(ctx context.Context, projectID uuid.UUID) ([]Item, error) {
-	rows, err := q.db.QueryContext(ctx, activeItemsOf, projectID)
+	rows, err := q.query(ctx, q.activeItemsOfStmt, activeItemsOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ type AddCategoryParams struct {
 }
 
 func (q *Queries) AddCategory(ctx context.Context, arg AddCategoryParams) error {
-	_, err := q.db.ExecContext(ctx, addCategory,
+	_, err := q.exec(ctx, q.addCategoryStmt, addCategory,
 		arg.ID,
 		arg.ProjectID,
 		arg.Name,
@@ -116,7 +116,7 @@ type AddChosenParams struct {
 }
 
 func (q *Queries) AddChosen(ctx context.Context, arg AddChosenParams) error {
-	_, err := q.db.ExecContext(ctx, addChosen,
+	_, err := q.exec(ctx, q.addChosenStmt, addChosen,
 		arg.ID,
 		arg.ProjectID,
 		arg.UserID,
@@ -139,7 +139,7 @@ type AddCodeParams struct {
 }
 
 func (q *Queries) AddCode(ctx context.Context, arg AddCodeParams) error {
-	_, err := q.db.ExecContext(ctx, addCode,
+	_, err := q.exec(ctx, q.addCodeStmt, addCode,
 		arg.ID,
 		arg.UserID,
 		arg.Purpose,
@@ -170,7 +170,7 @@ type AddDefaultColumnParams struct {
 }
 
 func (q *Queries) AddDefaultColumn(ctx context.Context, arg AddDefaultColumnParams) error {
-	_, err := q.db.ExecContext(ctx, addDefaultColumn,
+	_, err := q.exec(ctx, q.addDefaultColumnStmt, addDefaultColumn,
 		arg.ID,
 		arg.ProjectID,
 		arg.ItemType,
@@ -199,7 +199,7 @@ type AddDeviceParams struct {
 }
 
 func (q *Queries) AddDevice(ctx context.Context, arg AddDeviceParams) error {
-	_, err := q.db.ExecContext(ctx, addDevice,
+	_, err := q.exec(ctx, q.addDeviceStmt, addDevice,
 		arg.ID,
 		arg.UserID,
 		arg.RefreshTokenHash,
@@ -225,7 +225,7 @@ type AddHistoryParams struct {
 }
 
 func (q *Queries) AddHistory(ctx context.Context, arg AddHistoryParams) error {
-	_, err := q.db.ExecContext(ctx, addHistory,
+	_, err := q.exec(ctx, q.addHistoryStmt, addHistory,
 		arg.At,
 		arg.ProjectID,
 		arg.UserID,
@@ -249,7 +249,7 @@ type AddInactiveParams struct {
 }
 
 func (q *Queries) AddInactive(ctx context.Context, arg AddInactiveParams) error {
-	_, err := q.db.ExecContext(ctx, addInactive, arg.ID, arg.ProjectID, arg.UserID)
+	_, err := q.exec(ctx, q.addInactiveStmt, addInactive, arg.ID, arg.ProjectID, arg.UserID)
 	return err
 }
 
@@ -268,7 +268,7 @@ type AddItemParams struct {
 }
 
 func (q *Queries) AddItem(ctx context.Context, arg AddItemParams) error {
-	_, err := q.db.ExecContext(ctx, addItem,
+	_, err := q.exec(ctx, q.addItemStmt, addItem,
 		arg.ID,
 		arg.CategoryID,
 		arg.Name,
@@ -300,7 +300,7 @@ type AddItemColumnParams struct {
 }
 
 func (q *Queries) AddItemColumn(ctx context.Context, arg AddItemColumnParams) error {
-	_, err := q.db.ExecContext(ctx, addItemColumn,
+	_, err := q.exec(ctx, q.addItemColumnStmt, addItemColumn,
 		arg.ID,
 		arg.ItemID,
 		arg.IsHidden,
@@ -330,7 +330,7 @@ type AddNotificationParams struct {
 }
 
 func (q *Queries) AddNotification(ctx context.Context, arg AddNotificationParams) error {
-	_, err := q.db.ExecContext(ctx, addNotification,
+	_, err := q.exec(ctx, q.addNotificationStmt, addNotification,
 		arg.ID,
 		arg.UserID,
 		arg.ProjectID,
@@ -353,7 +353,7 @@ type AddPartnerParams struct {
 }
 
 func (q *Queries) AddPartner(ctx context.Context, arg AddPartnerParams) error {
-	_, err := q.db.ExecContext(ctx, addPartner,
+	_, err := q.exec(ctx, q.addPartnerStmt, addPartner,
 		arg.ID,
 		arg.ProjectID,
 		arg.Name,
@@ -375,7 +375,7 @@ type AddPaymentMethodParams struct {
 }
 
 func (q *Queries) AddPaymentMethod(ctx context.Context, arg AddPaymentMethodParams) error {
-	_, err := q.db.ExecContext(ctx, addPaymentMethod,
+	_, err := q.exec(ctx, q.addPaymentMethodStmt, addPaymentMethod,
 		arg.ID,
 		arg.ProjectID,
 		arg.Name,
@@ -397,7 +397,7 @@ type AddPermissionParams struct {
 }
 
 func (q *Queries) AddPermission(ctx context.Context, arg AddPermissionParams) error {
-	_, err := q.db.ExecContext(ctx, addPermission,
+	_, err := q.exec(ctx, q.addPermissionStmt, addPermission,
 		arg.ID,
 		arg.ProjectID,
 		arg.UserID,
@@ -419,7 +419,7 @@ type AddProjectParams struct {
 }
 
 func (q *Queries) AddProject(ctx context.Context, arg AddProjectParams) error {
-	_, err := q.db.ExecContext(ctx, addProject,
+	_, err := q.exec(ctx, q.addProjectStmt, addProject,
 		arg.ID,
 		arg.Name,
 		arg.StartDate,
@@ -441,7 +441,7 @@ type AddRoleNameParams struct {
 }
 
 func (q *Queries) AddRoleName(ctx context.Context, arg AddRoleNameParams) error {
-	_, err := q.db.ExecContext(ctx, addRoleName,
+	_, err := q.exec(ctx, q.addRoleNameStmt, addRoleName,
 		arg.ID,
 		arg.ProjectID,
 		arg.UserID,
@@ -460,7 +460,7 @@ type AddStructureSourceParams struct {
 }
 
 func (q *Queries) AddStructureSource(ctx context.Context, arg AddStructureSourceParams) error {
-	_, err := q.db.ExecContext(ctx, addStructureSource, arg.ProjectID, arg.StructureSourceID)
+	_, err := q.exec(ctx, q.addStructureSourceStmt, addStructureSource, arg.ProjectID, arg.StructureSourceID)
 	return err
 }
 
@@ -476,7 +476,7 @@ type AddSubgroupParams struct {
 }
 
 func (q *Queries) AddSubgroup(ctx context.Context, arg AddSubgroupParams) error {
-	_, err := q.db.ExecContext(ctx, addSubgroup,
+	_, err := q.exec(ctx, q.addSubgroupStmt, addSubgroup,
 		arg.ID,
 		arg.ItemID,
 		arg.Name,
@@ -504,7 +504,7 @@ type AddSupplierParams struct {
 }
 
 func (q *Queries) AddSupplier(ctx context.Context, arg AddSupplierParams) error {
-	_, err := q.db.ExecContext(ctx, addSupplier,
+	_, err := q.exec(ctx, q.addSupplierStmt, addSupplier,
 		arg.ID,
 		arg.ProjectID,
 		arg.Name,
@@ -530,7 +530,7 @@ type AddSystemPermissionParams struct {
 }
 
 func (q *Queries) AddSystemPermission(ctx context.Context, arg AddSystemPermissionParams) error {
-	_, err := q.db.ExecContext(ctx, addSystemPermission, arg.ID, arg.UserID, arg.Permission)
+	_, err := q.exec(ctx, q.addSystemPermissionStmt, addSystemPermission, arg.ID, arg.UserID, arg.Permission)
 	return err
 }
 
@@ -546,7 +546,7 @@ type AddUnitParams struct {
 }
 
 func (q *Queries) AddUnit(ctx context.Context, arg AddUnitParams) error {
-	_, err := q.db.ExecContext(ctx, addUnit,
+	_, err := q.exec(ctx, q.addUnitStmt, addUnit,
 		arg.ID,
 		arg.ProjectID,
 		arg.Name,
@@ -574,7 +574,7 @@ type AddUserParams struct {
 }
 
 func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) error {
-	_, err := q.db.ExecContext(ctx, addUser,
+	_, err := q.exec(ctx, q.addUserStmt, addUser,
 		arg.ID,
 		arg.Username,
 		arg.DisplayName,
@@ -596,7 +596,7 @@ SELECT id, name, start_date, status, rejection_reason, description, is_template,
 // Every project, the active first, then the finished, the pending and the rejected, the latest start first (ProjectsEndpoints.List); projects of
 // one status and one start by name in Arabic dictionary order (D7), where .NET left them in the order SQL Server read them, which was chance.
 func (q *Queries) AllProjects(ctx context.Context) ([]Project, error) {
-	rows, err := q.db.QueryContext(ctx, allProjects)
+	rows, err := q.query(ctx, q.allProjectsStmt, allProjects)
 	if err != nil {
 		return nil, err
 	}
@@ -632,7 +632,7 @@ SELECT id, project_id, name, sort_order FROM units ORDER BY project_id, sort_ord
 `
 
 func (q *Queries) AllUnits(ctx context.Context) ([]Unit, error) {
-	rows, err := q.db.QueryContext(ctx, allUnits)
+	rows, err := q.query(ctx, q.allUnitsStmt, allUnits)
 	if err != nil {
 		return nil, err
 	}
@@ -669,7 +669,7 @@ type ChosenOfParams struct {
 }
 
 func (q *Queries) ChosenOf(ctx context.Context, arg ChosenOfParams) ([]ChosenPartner, error) {
-	rows, err := q.db.QueryContext(ctx, chosenOf, arg.ProjectID, arg.UserID)
+	rows, err := q.query(ctx, q.chosenOfStmt, chosenOf, arg.ProjectID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -707,7 +707,7 @@ type ChosenPartnersRow struct {
 
 // The partners chosen for a person, in each project (#106).
 func (q *Queries) ChosenPartners(ctx context.Context, userID uuid.UUID) ([]ChosenPartnersRow, error) {
-	rows, err := q.db.QueryContext(ctx, chosenPartners, userID)
+	rows, err := q.query(ctx, q.chosenPartnersStmt, chosenPartners, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -740,7 +740,7 @@ type CountTryParams struct {
 
 // Counts one try of a code, only while it has tries left, so two tries at once never both count as the last.
 func (q *Queries) CountTry(ctx context.Context, arg CountTryParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, countTry, arg.ID, arg.TriesAllowed)
+	result, err := q.exec(ctx, q.countTryStmt, countTry, arg.ID, arg.TriesAllowed)
 	if err != nil {
 		return 0, err
 	}
@@ -753,7 +753,7 @@ SELECT id, project_id, item_type, "key", name, data_type, is_core, is_required, 
 
 // A project's default columns, the ones a new item of each type takes.
 func (q *Queries) DefaultColumnsOf(ctx context.Context, projectID uuid.UUID) ([]DefaultColumn, error) {
-	rows, err := q.db.QueryContext(ctx, defaultColumnsOf, projectID)
+	rows, err := q.query(ctx, q.defaultColumnsOfStmt, defaultColumnsOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -792,7 +792,7 @@ SELECT project_id FROM user_default_projects WHERE user_id = ?1
 `
 
 func (q *Queries) DefaultProjectOf(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, defaultProjectOf, userID)
+	rows, err := q.query(ctx, q.defaultProjectOfStmt, defaultProjectOf, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -824,7 +824,7 @@ type DeleteCodesParams struct {
 }
 
 func (q *Queries) DeleteCodes(ctx context.Context, arg DeleteCodesParams) error {
-	_, err := q.db.ExecContext(ctx, deleteCodes, arg.UserID, arg.Purpose)
+	_, err := q.exec(ctx, q.deleteCodesStmt, deleteCodes, arg.UserID, arg.Purpose)
 	return err
 }
 
@@ -833,7 +833,7 @@ DELETE FROM email_codes WHERE user_id = ?1
 `
 
 func (q *Queries) DeleteEveryCode(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteEveryCode, userID)
+	_, err := q.exec(ctx, q.deleteEveryCodeStmt, deleteEveryCode, userID)
 	return err
 }
 
@@ -848,7 +848,7 @@ type DeviceIsOpenParams struct {
 
 // Whether the session's device is still open, so a revoked device is refused at its next request, not when its token expires.
 func (q *Queries) DeviceIsOpen(ctx context.Context, arg DeviceIsOpenParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, deviceIsOpen, arg.DeviceID, arg.UserID)
+	row := q.queryRow(ctx, q.deviceIsOpenStmt, deviceIsOpen, arg.DeviceID, arg.UserID)
 	var is_open bool
 	err := row.Scan(&is_open)
 	return is_open, err
@@ -859,7 +859,7 @@ SELECT id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_bio
 `
 
 func (q *Queries) DeviceWithID(ctx context.Context, id uuid.UUID) (Device, error) {
-	row := q.db.QueryRowContext(ctx, deviceWithID, id)
+	row := q.queryRow(ctx, q.deviceWithIDStmt, deviceWithID, id)
 	var i Device
 	err := row.Scan(
 		&i.ID,
@@ -878,7 +878,7 @@ SELECT id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_bio
 `
 
 func (q *Queries) DeviceWithRefreshToken(ctx context.Context, refreshTokenHash string) (Device, error) {
-	row := q.db.QueryRowContext(ctx, deviceWithRefreshToken, refreshTokenHash)
+	row := q.queryRow(ctx, q.deviceWithRefreshTokenStmt, deviceWithRefreshToken, refreshTokenHash)
 	var i Device
 	err := row.Scan(
 		&i.ID,
@@ -902,7 +902,7 @@ type EmailTakenParams struct {
 }
 
 func (q *Queries) EmailTaken(ctx context.Context, arg EmailTakenParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, emailTaken, arg.Email, arg.UserID)
+	row := q.queryRow(ctx, q.emailTakenStmt, emailTaken, arg.Email, arg.UserID)
 	var taken bool
 	err := row.Scan(&taken)
 	return taken, err
@@ -913,7 +913,7 @@ SELECT EXISTS (SELECT 1 FROM entries WHERE project_id = ?1 AND status = 1) AS wa
 `
 
 func (q *Queries) HasEntriesWaiting(ctx context.Context, projectID uuid.UUID) (bool, error) {
-	row := q.db.QueryRowContext(ctx, hasEntriesWaiting, projectID)
+	row := q.queryRow(ctx, q.hasEntriesWaitingStmt, hasEntriesWaiting, projectID)
 	var waiting bool
 	err := row.Scan(&waiting)
 	return waiting, err
@@ -925,7 +925,7 @@ SELECT EXISTS (SELECT 1 FROM users) AS has_users
 
 // Whether the database holds any user.
 func (q *Queries) HasUsers(ctx context.Context) (bool, error) {
-	row := q.db.QueryRowContext(ctx, hasUsers)
+	row := q.queryRow(ctx, q.hasUsersStmt, hasUsers)
 	var has_users bool
 	err := row.Scan(&has_users)
 	return has_users, err
@@ -937,7 +937,7 @@ SELECT permission FROM system_permissions WHERE user_id = ?1
 
 // What a person holds across the system.
 func (q *Queries) HeldEverywhere(ctx context.Context, userID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, heldEverywhere, userID)
+	rows, err := q.query(ctx, q.heldEverywhereStmt, heldEverywhere, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -973,7 +973,7 @@ type HeldInProjectsRow struct {
 
 // What a person holds in each project that is approved (Active or Finished, BR-34) and that they are not inactive in (#126 D1).
 func (q *Queries) HeldInProjects(ctx context.Context, userID uuid.UUID) ([]HeldInProjectsRow, error) {
-	rows, err := q.db.QueryContext(ctx, heldInProjects, userID)
+	rows, err := q.query(ctx, q.heldInProjectsStmt, heldInProjects, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1005,7 +1005,7 @@ type InactiveOfParams struct {
 }
 
 func (q *Queries) InactiveOf(ctx context.Context, arg InactiveOfParams) ([]InactiveMember, error) {
-	rows, err := q.db.QueryContext(ctx, inactiveOf, arg.ProjectID, arg.UserID)
+	rows, err := q.query(ctx, q.inactiveOfStmt, inactiveOf, arg.ProjectID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1032,7 +1032,7 @@ SELECT project_id FROM inactive_members WHERE user_id = ?1
 `
 
 func (q *Queries) InactiveProjectsOf(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, inactiveProjectsOf, userID)
+	rows, err := q.query(ctx, q.inactiveProjectsOfStmt, inactiveProjectsOf, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1059,7 +1059,7 @@ SELECT EXISTS (SELECT 1 FROM system_permissions WHERE user_id = ?1) AS is_admin
 `
 
 func (q *Queries) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
-	row := q.db.QueryRowContext(ctx, isAdmin, userID)
+	row := q.queryRow(ctx, q.isAdminStmt, isAdmin, userID)
 	var is_admin bool
 	err := row.Scan(&is_admin)
 	return is_admin, err
@@ -1087,7 +1087,7 @@ func (q *Queries) KeptPartnerIDs(ctx context.Context, arg KeptPartnerIDsParams) 
 	} else {
 		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
 	}
-	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	rows, err := q.query(ctx, nil, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -1119,7 +1119,7 @@ type LastCodeParams struct {
 }
 
 func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode, error) {
-	rows, err := q.db.QueryContext(ctx, lastCode, arg.UserID, arg.Purpose)
+	rows, err := q.query(ctx, q.lastCodeStmt, lastCode, arg.UserID, arg.Purpose)
 	if err != nil {
 		return nil, err
 	}
@@ -1156,7 +1156,7 @@ SELECT user_id FROM project_permissions WHERE project_id = ? AND permission = 'M
 
 // Who manages the users of a project.
 func (q *Queries) ManagersOf(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, managersOf, projectID)
+	rows, err := q.query(ctx, q.managersOfStmt, managersOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -1193,7 +1193,7 @@ type ManagersOfPendingRow struct {
 
 // Who manages the users of each project waiting for the admin.
 func (q *Queries) ManagersOfPending(ctx context.Context) ([]ManagersOfPendingRow, error) {
-	rows, err := q.db.QueryContext(ctx, managersOfPending)
+	rows, err := q.query(ctx, q.managersOfPendingStmt, managersOfPending)
 	if err != nil {
 		return nil, err
 	}
@@ -1234,7 +1234,7 @@ type MembersRow struct {
 
 // Everyone active in a project, by name (D7).
 func (q *Queries) Members(ctx context.Context, projectID uuid.UUID) ([]MembersRow, error) {
-	rows, err := q.db.QueryContext(ctx, members, projectID)
+	rows, err := q.query(ctx, q.membersStmt, members, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -1262,7 +1262,7 @@ SELECT id, username, display_name, mobile, password_hash, must_change_password, 
 
 // A user who is not an admin, by a username matched whatever its case.
 func (q *Queries) NonAdminNamed(ctx context.Context, username string) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, nonAdminNamed, username)
+	rows, err := q.query(ctx, q.nonAdminNamedStmt, nonAdminNamed, username)
 	if err != nil {
 		return nil, err
 	}
@@ -1308,7 +1308,7 @@ type OtherActiveManagersParams struct {
 
 // How many others manage the project's users and are active in it (ProjectManagers).
 func (q *Queries) OtherActiveManagers(ctx context.Context, arg OtherActiveManagersParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, otherActiveManagers, arg.ProjectID, arg.UserID)
+	row := q.queryRow(ctx, q.otherActiveManagersStmt, otherActiveManagers, arg.ProjectID, arg.UserID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -1319,7 +1319,7 @@ SELECT id, project_id, name, sort_order, is_active FROM payment_methods WHERE pr
 `
 
 func (q *Queries) PaymentMethodsOf(ctx context.Context, projectID uuid.UUID) ([]PaymentMethod, error) {
-	rows, err := q.db.QueryContext(ctx, paymentMethodsOf, projectID)
+	rows, err := q.query(ctx, q.paymentMethodsOfStmt, paymentMethodsOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -1353,7 +1353,7 @@ SELECT id, name, start_date, status, rejection_reason, description, is_template,
 
 // The projects waiting for the admin, the earliest start first, by name (D7).
 func (q *Queries) PendingProjects(ctx context.Context) ([]Project, error) {
-	rows, err := q.db.QueryContext(ctx, pendingProjects)
+	rows, err := q.query(ctx, q.pendingProjectsStmt, pendingProjects)
 	if err != nil {
 		return nil, err
 	}
@@ -1394,7 +1394,7 @@ type PermissionsOfParams struct {
 }
 
 func (q *Queries) PermissionsOf(ctx context.Context, arg PermissionsOfParams) ([]ProjectPermission, error) {
-	rows, err := q.db.QueryContext(ctx, permissionsOf, arg.ProjectID, arg.UserID)
+	rows, err := q.query(ctx, q.permissionsOfStmt, permissionsOf, arg.ProjectID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1426,7 +1426,7 @@ SELECT DISTINCT project_id FROM project_permissions WHERE user_id = ?1
 `
 
 func (q *Queries) ProjectIDsOfUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, projectIDsOfUser, userID)
+	rows, err := q.query(ctx, q.projectIDsOfUserStmt, projectIDsOfUser, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1454,7 +1454,7 @@ SELECT EXISTS (SELECT 1 FROM projects WHERE id = ?1 AND status = 1) AS is_finish
 
 // Whether a project is finished, and so read-only (AC-04.1).
 func (q *Queries) ProjectIsFinished(ctx context.Context, projectID uuid.UUID) (bool, error) {
-	row := q.db.QueryRowContext(ctx, projectIsFinished, projectID)
+	row := q.queryRow(ctx, q.projectIsFinishedStmt, projectIsFinished, projectID)
 	var is_finished bool
 	err := row.Scan(&is_finished)
 	return is_finished, err
@@ -1470,7 +1470,7 @@ type ProjectOfUserParams struct {
 }
 
 func (q *Queries) ProjectOfUser(ctx context.Context, arg ProjectOfUserParams) ([]UserProject, error) {
-	rows, err := q.db.QueryContext(ctx, projectOfUser, arg.ProjectID, arg.UserID)
+	rows, err := q.query(ctx, q.projectOfUserStmt, projectOfUser, arg.ProjectID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1505,7 +1505,7 @@ SELECT id, name, start_date, status, rejection_reason, description, is_template,
 `
 
 func (q *Queries) ProjectWithID(ctx context.Context, id uuid.UUID) (Project, error) {
-	row := q.db.QueryRowContext(ctx, projectWithID, id)
+	row := q.queryRow(ctx, q.projectWithIDStmt, projectWithID, id)
 	var i Project
 	err := row.Scan(
 		&i.ID,
@@ -1526,7 +1526,7 @@ SELECT DISTINCT project_id FROM entries
 
 // The projects that hold an entry, whatever it is and wherever it stands.
 func (q *Queries) ProjectsHoldingEntries(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, projectsHoldingEntries)
+	rows, err := q.query(ctx, q.projectsHoldingEntriesStmt, projectsHoldingEntries)
 	if err != nil {
 		return nil, err
 	}
@@ -1554,7 +1554,7 @@ SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, i
 
 // Every project a user is in, as the users routes show it.
 func (q *Queries) ProjectsOfUser(ctx context.Context, userID uuid.UUID) ([]UserProject, error) {
-	rows, err := q.db.QueryContext(ctx, projectsOfUser, userID)
+	rows, err := q.query(ctx, q.projectsOfUserStmt, projectsOfUser, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1590,7 +1590,7 @@ SELECT DISTINCT project_id FROM project_permissions WHERE user_id = ?1
 
 // The projects a person holds a permission row in, approved or not.
 func (q *Queries) ProjectsOfUserWithRows(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, projectsOfUserWithRows, userID)
+	rows, err := q.query(ctx, q.projectsOfUserWithRowsStmt, projectsOfUserWithRows, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1617,7 +1617,7 @@ DELETE FROM chosen_partners WHERE id = ?1
 `
 
 func (q *Queries) RemoveChosen(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, removeChosen, id)
+	_, err := q.exec(ctx, q.removeChosenStmt, removeChosen, id)
 	return err
 }
 
@@ -1626,7 +1626,7 @@ DELETE FROM user_default_projects WHERE user_id = ?1
 `
 
 func (q *Queries) RemoveDefaultProject(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, removeDefaultProject, userID)
+	_, err := q.exec(ctx, q.removeDefaultProjectStmt, removeDefaultProject, userID)
 	return err
 }
 
@@ -1635,7 +1635,7 @@ DELETE FROM inactive_members WHERE id = ?1
 `
 
 func (q *Queries) RemoveInactive(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, removeInactive, id)
+	_, err := q.exec(ctx, q.removeInactiveStmt, removeInactive, id)
 	return err
 }
 
@@ -1644,7 +1644,7 @@ DELETE FROM project_permissions WHERE id = ?1
 `
 
 func (q *Queries) RemovePermission(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, removePermission, id)
+	_, err := q.exec(ctx, q.removePermissionStmt, removePermission, id)
 	return err
 }
 
@@ -1653,7 +1653,7 @@ DELETE FROM project_role_names WHERE id = ?1
 `
 
 func (q *Queries) RemoveRoleName(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, removeRoleName, id)
+	_, err := q.exec(ctx, q.removeRoleNameStmt, removeRoleName, id)
 	return err
 }
 
@@ -1662,7 +1662,7 @@ DELETE FROM units WHERE id = ?1
 `
 
 func (q *Queries) RemoveUnit(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, removeUnit, id)
+	_, err := q.exec(ctx, q.removeUnitStmt, removeUnit, id)
 	return err
 }
 
@@ -1680,7 +1680,7 @@ type RenewDeviceParams struct {
 }
 
 func (q *Queries) RenewDevice(ctx context.Context, arg RenewDeviceParams) error {
-	_, err := q.db.ExecContext(ctx, renewDevice,
+	_, err := q.exec(ctx, q.renewDeviceStmt, renewDevice,
 		arg.RefreshTokenHash,
 		arg.RefreshExpiresAt,
 		arg.LastSeenAt,
@@ -1695,7 +1695,7 @@ UPDATE devices SET is_revoked = 1 WHERE id = ?1
 `
 
 func (q *Queries) RevokeDevice(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, revokeDevice, id)
+	_, err := q.exec(ctx, q.revokeDeviceStmt, revokeDevice, id)
 	return err
 }
 
@@ -1704,7 +1704,7 @@ UPDATE devices SET is_revoked = 1 WHERE user_id = ?1
 `
 
 func (q *Queries) RevokeEveryDevice(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, revokeEveryDevice, userID)
+	_, err := q.exec(ctx, q.revokeEveryDeviceStmt, revokeEveryDevice, userID)
 	return err
 }
 
@@ -1718,7 +1718,7 @@ type RevokeOtherDevicesParams struct {
 }
 
 func (q *Queries) RevokeOtherDevices(ctx context.Context, arg RevokeOtherDevicesParams) error {
-	_, err := q.db.ExecContext(ctx, revokeOtherDevices, arg.UserID, arg.KeptDeviceID)
+	_, err := q.exec(ctx, q.revokeOtherDevicesStmt, revokeOtherDevices, arg.UserID, arg.KeptDeviceID)
 	return err
 }
 
@@ -1732,7 +1732,7 @@ type RoleNameOfParams struct {
 }
 
 func (q *Queries) RoleNameOf(ctx context.Context, arg RoleNameOfParams) ([]ProjectRoleName, error) {
-	rows, err := q.db.QueryContext(ctx, roleNameOf, arg.ProjectID, arg.UserID)
+	rows, err := q.query(ctx, q.roleNameOfStmt, roleNameOf, arg.ProjectID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1769,7 +1769,7 @@ type RoleNamesOfUserRow struct {
 }
 
 func (q *Queries) RoleNamesOfUser(ctx context.Context, userID uuid.UUID) ([]RoleNamesOfUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, roleNamesOfUser, userID)
+	rows, err := q.query(ctx, q.roleNamesOfUserStmt, roleNamesOfUser, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1806,7 +1806,7 @@ type SaveUserParams struct {
 
 // What signing in or changing the password leaves on the user: the wrong passwords counted, the lock, the hash, and whether it must still change.
 func (q *Queries) SaveUser(ctx context.Context, arg SaveUserParams) error {
-	_, err := q.db.ExecContext(ctx, saveUser,
+	_, err := q.exec(ctx, q.saveUserStmt, saveUser,
 		arg.FailedSignIns,
 		arg.LockedUntil,
 		arg.PasswordHash,
@@ -1826,7 +1826,7 @@ type SetDefaultProjectParams struct {
 }
 
 func (q *Queries) SetDefaultProject(ctx context.Context, arg SetDefaultProjectParams) error {
-	_, err := q.db.ExecContext(ctx, setDefaultProject, arg.UserID, arg.ProjectID)
+	_, err := q.exec(ctx, q.setDefaultProjectStmt, setDefaultProject, arg.UserID, arg.ProjectID)
 	return err
 }
 
@@ -1841,7 +1841,7 @@ type SetDetailsParams struct {
 }
 
 func (q *Queries) SetDetails(ctx context.Context, arg SetDetailsParams) error {
-	_, err := q.db.ExecContext(ctx, setDetails, arg.DisplayName, arg.Mobile, arg.ID)
+	_, err := q.exec(ctx, q.setDetailsStmt, setDetails, arg.DisplayName, arg.Mobile, arg.ID)
 	return err
 }
 
@@ -1855,7 +1855,7 @@ type SetEmailParams struct {
 }
 
 func (q *Queries) SetEmail(ctx context.Context, arg SetEmailParams) error {
-	_, err := q.db.ExecContext(ctx, setEmail, arg.Email, arg.ID)
+	_, err := q.exec(ctx, q.setEmailStmt, setEmail, arg.Email, arg.ID)
 	return err
 }
 
@@ -1872,7 +1872,7 @@ type SetPasswordParams struct {
 
 // A password set by a reset: the lock lifted and the wrong passwords forgotten.
 func (q *Queries) SetPassword(ctx context.Context, arg SetPasswordParams) error {
-	_, err := q.db.ExecContext(ctx, setPassword, arg.PasswordHash, arg.MustChangePassword, arg.ID)
+	_, err := q.exec(ctx, q.setPasswordStmt, setPassword, arg.PasswordHash, arg.MustChangePassword, arg.ID)
 	return err
 }
 
@@ -1886,7 +1886,7 @@ type SetProjectDescriptionParams struct {
 }
 
 func (q *Queries) SetProjectDescription(ctx context.Context, arg SetProjectDescriptionParams) error {
-	_, err := q.db.ExecContext(ctx, setProjectDescription, arg.Description, arg.ID)
+	_, err := q.exec(ctx, q.setProjectDescriptionStmt, setProjectDescription, arg.Description, arg.ID)
 	return err
 }
 
@@ -1900,7 +1900,7 @@ type SetProjectNameParams struct {
 }
 
 func (q *Queries) SetProjectName(ctx context.Context, arg SetProjectNameParams) error {
-	_, err := q.db.ExecContext(ctx, setProjectName, arg.Name, arg.ID)
+	_, err := q.exec(ctx, q.setProjectNameStmt, setProjectName, arg.Name, arg.ID)
 	return err
 }
 
@@ -1915,7 +1915,7 @@ type SetProjectStatusParams struct {
 }
 
 func (q *Queries) SetProjectStatus(ctx context.Context, arg SetProjectStatusParams) error {
-	_, err := q.db.ExecContext(ctx, setProjectStatus, arg.Status, arg.RejectionReason, arg.ID)
+	_, err := q.exec(ctx, q.setProjectStatusStmt, setProjectStatus, arg.Status, arg.RejectionReason, arg.ID)
 	return err
 }
 
@@ -1929,7 +1929,7 @@ type SetRoleNameParams struct {
 }
 
 func (q *Queries) SetRoleName(ctx context.Context, arg SetRoleNameParams) error {
-	_, err := q.db.ExecContext(ctx, setRoleName, arg.RoleName, arg.ID)
+	_, err := q.exec(ctx, q.setRoleNameStmt, setRoleName, arg.RoleName, arg.ID)
 	return err
 }
 
@@ -1943,7 +1943,7 @@ type SetUnitNameParams struct {
 }
 
 func (q *Queries) SetUnitName(ctx context.Context, arg SetUnitNameParams) error {
-	_, err := q.db.ExecContext(ctx, setUnitName, arg.Name, arg.ID)
+	_, err := q.exec(ctx, q.setUnitNameStmt, setUnitName, arg.Name, arg.ID)
 	return err
 }
 
@@ -1955,7 +1955,7 @@ ORDER BY sort_order, id
 
 // The columns of every item of a project but those deleted, which are hidden (BR-21).
 func (q *Queries) ShownColumnsOf(ctx context.Context, projectID uuid.UUID) ([]ItemColumn, error) {
-	rows, err := q.db.QueryContext(ctx, shownColumnsOf, projectID)
+	rows, err := q.query(ctx, q.shownColumnsOfStmt, shownColumnsOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -1999,7 +1999,7 @@ type SpendCodeParams struct {
 }
 
 func (q *Queries) SpendCode(ctx context.Context, arg SpendCodeParams) error {
-	_, err := q.db.ExecContext(ctx, spendCode, arg.UsedAt, arg.ID)
+	_, err := q.exec(ctx, q.spendCodeStmt, spendCode, arg.UsedAt, arg.ID)
 	return err
 }
 
@@ -2009,7 +2009,7 @@ SELECT structure_source_id FROM project_structure_sources WHERE project_id = ?
 
 // The earlier project a registration chose to copy the structure from; none is copying the template (ProjectStructureSource.OfAsync).
 func (q *Queries) StructureSourceOf(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, structureSourceOf, projectID)
+	rows, err := q.query(ctx, q.structureSourceOfStmt, structureSourceOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -2039,7 +2039,7 @@ ORDER BY sort_order, id
 
 // The subgroups of every item of a project.
 func (q *Queries) SubgroupsOf(ctx context.Context, projectID uuid.UUID) ([]Subgroup, error) {
-	rows, err := q.db.QueryContext(ctx, subgroupsOf, projectID)
+	rows, err := q.query(ctx, q.subgroupsOfStmt, subgroupsOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -2071,7 +2071,7 @@ SELECT id, project_id, name, sort_order FROM units WHERE project_id = ?1 ORDER B
 `
 
 func (q *Queries) UnitsOf(ctx context.Context, projectID uuid.UUID) ([]Unit, error) {
-	rows, err := q.db.QueryContext(ctx, unitsOf, projectID)
+	rows, err := q.query(ctx, q.unitsOfStmt, unitsOf, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -2104,7 +2104,7 @@ SELECT id, username, display_name, mobile, password_hash, must_change_password, 
 
 // The user signing in, by a username matched whatever its case (R29).
 func (q *Queries) UserNamed(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, userNamed, username)
+	row := q.queryRow(ctx, q.userNamedStmt, userNamed, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -2127,7 +2127,7 @@ SELECT id, username, display_name, mobile, password_hash, must_change_password, 
 
 // The user whose email this is; an empty email names nobody.
 func (q *Queries) UserWithEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, userWithEmail, email)
+	row := q.queryRow(ctx, q.userWithEmailStmt, userWithEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -2149,7 +2149,7 @@ SELECT id, username, display_name, mobile, password_hash, must_change_password, 
 `
 
 func (q *Queries) UserWithID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, userWithID, id)
+	row := q.queryRow(ctx, q.userWithIDStmt, userWithID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -2171,7 +2171,7 @@ SELECT EXISTS (SELECT 1 FROM users WHERE username = ?1) AS taken
 `
 
 func (q *Queries) UsernameTaken(ctx context.Context, username string) (bool, error) {
-	row := q.db.QueryRowContext(ctx, usernameTaken, username)
+	row := q.queryRow(ctx, q.usernameTakenStmt, usernameTaken, username)
 	var taken bool
 	err := row.Scan(&taken)
 	return taken, err
@@ -2185,7 +2185,7 @@ ORDER BY user_projects.is_inactive, users.display_name COLLATE names
 
 // Everyone in a project, the inactive last, by name (D7).
 func (q *Queries) UsersInProject(ctx context.Context, projectID uuid.UUID) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, usersInProject, projectID)
+	rows, err := q.query(ctx, q.usersInProjectStmt, usersInProject, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -2224,7 +2224,7 @@ SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, i
 
 // Every user in a project, each with this project only.
 func (q *Queries) UsersOfProject(ctx context.Context, projectID uuid.UUID) ([]UserProject, error) {
-	rows, err := q.db.QueryContext(ctx, usersOfProject, projectID)
+	rows, err := q.query(ctx, q.usersOfProjectStmt, usersOfProject, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -2265,7 +2265,7 @@ type ValuesRow struct {
 
 // Every configurable value, by its key.
 func (q *Queries) Values(ctx context.Context) ([]ValuesRow, error) {
-	rows, err := q.db.QueryContext(ctx, values)
+	rows, err := q.query(ctx, q.valuesStmt, values)
 	if err != nil {
 		return nil, err
 	}
@@ -2300,7 +2300,7 @@ type WordsInRow struct {
 
 // Every word of one language, by its key.
 func (q *Queries) WordsIn(ctx context.Context, language string) ([]WordsInRow, error) {
-	rows, err := q.db.QueryContext(ctx, wordsIn, language)
+	rows, err := q.query(ctx, q.wordsInStmt, wordsIn, language)
 	if err != nil {
 		return nil, err
 	}
@@ -2341,7 +2341,7 @@ type WordsOfRow struct {
 
 // The subject and body words of one email, in one language.
 func (q *Queries) WordsOf(ctx context.Context, arg WordsOfParams) ([]WordsOfRow, error) {
-	rows, err := q.db.QueryContext(ctx, wordsOf, arg.Language, arg.SubjectKey, arg.BodyKey)
+	rows, err := q.query(ctx, q.wordsOfStmt, wordsOf, arg.Language, arg.SubjectKey, arg.BodyKey)
 	if err != nil {
 		return nil, err
 	}

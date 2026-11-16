@@ -73,3 +73,4 @@ sql:
         package: store
         out: internal/db/store
         omit_unused_structs: true
+        emit_prepared_queries: true

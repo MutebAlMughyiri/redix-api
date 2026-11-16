@@ -65,7 +65,7 @@ func (s Sessions) signIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := moment.Of(s.clock.Now())
-	user, err := store.New(s.database.Read).UserNamed(r.Context(), request.Username)
+	user, err := s.database.Queries().UserNamed(r.Context(), request.Username)
 	if errors.Is(err, sql.ErrNoRows) {
 		problem.Refuse(w, r, http.StatusUnauthorized, invalidCredentials)
 		return
@@ -76,19 +76,19 @@ func (s Sessions) signIn(w http.ResponseWriter, r *http.Request) {
 	}
 	refusal, left := attempt(user, request.Password, now)
 	if refusal != "" {
-		s.write(w, r, func(ctx context.Context, q *store.Queries, tx *sql.Tx) error {
-			return saveAttempt(ctx, q, tx, user, left, refusedAction(user, left), now)
+		s.write(w, r, func(ctx context.Context, q *store.Queries) error {
+			return saveAttempt(ctx, q, user, left, refusedAction(user, left), now)
 		}, func() { problem.Refuse(w, r, http.StatusUnauthorized, refusal) })
 		return
 	}
 	device := store.Device{ID: uuid.Must(uuid.NewV7()), UserID: user.ID}
 	refreshToken := renew(&device, now)
-	s.write(w, r, func(ctx context.Context, q *store.Queries, tx *sql.Tx) error {
+	s.write(w, r, func(ctx context.Context, q *store.Queries) error {
 		err := q.AddDevice(ctx, store.AddDeviceParams{ID: device.ID, UserID: user.ID, RefreshTokenHash: device.RefreshTokenHash, RefreshExpiresAt: device.RefreshExpiresAt, LastSeenAt: now})
 		if err != nil {
 			return err
 		}
-		return saveAttempt(ctx, q, tx, user, left, history.SignIn, now)
+		return saveAttempt(ctx, q, user, left, history.SignIn, now)
 	}, func() { s.answer(w, r, left, device, refreshToken) })
 }
 
@@ -101,7 +101,7 @@ func (s Sessions) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := moment.Of(s.clock.Now())
-	read := store.New(s.database.Read)
+	read := s.database.Queries()
 	device, err := read.DeviceWithRefreshToken(r.Context(), hashOf(request.RefreshToken))
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && !canRefresh(device, now)) {
 		problem.Refuse(w, r, http.StatusUnauthorized, sessionExpired)
@@ -113,7 +113,7 @@ func (s Sessions) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	refreshToken := renew(&device, now)
-	s.write(w, r, func(ctx context.Context, q *store.Queries, _ *sql.Tx) error { return renewDevice(ctx, q, device) },
+	s.write(w, r, func(ctx context.Context, q *store.Queries) error { return renewDevice(ctx, q, device) },
 		func() { s.answer(w, r, user, device, refreshToken) })
 }
 
@@ -129,7 +129,7 @@ func (s Sessions) changePassword(w http.ResponseWriter, r *http.Request, caller 
 		return
 	}
 	now := moment.Of(s.clock.Now())
-	read := store.New(s.database.Read)
+	read := s.database.Queries()
 	user, err := read.UserWithID(r.Context(), caller.UserID)
 	device, deviceErr := read.DeviceWithID(r.Context(), caller.DeviceID)
 	if err != nil || deviceErr != nil {
@@ -138,8 +138,8 @@ func (s Sessions) changePassword(w http.ResponseWriter, r *http.Request, caller 
 	}
 	refusal, left := attempt(user, request.CurrentPassword, now)
 	if refusal != "" {
-		s.write(w, r, func(ctx context.Context, q *store.Queries, tx *sql.Tx) error {
-			return saveAttempt(ctx, q, tx, user, left, refusedAction(user, left), now)
+		s.write(w, r, func(ctx context.Context, q *store.Queries) error {
+			return saveAttempt(ctx, q, user, left, refusedAction(user, left), now)
 		}, func() { problem.Refuse(w, r, http.StatusBadRequest, refusal) })
 		return
 	}
@@ -150,25 +150,25 @@ func (s Sessions) changePassword(w http.ResponseWriter, r *http.Request, caller 
 	left.PasswordHash = credentials.Hash(request.NewPassword)
 	left.MustChangePassword = false
 	refreshToken := renew(&device, now)
-	s.write(w, r, func(ctx context.Context, q *store.Queries, tx *sql.Tx) error {
+	s.write(w, r, func(ctx context.Context, q *store.Queries) error {
 		if err := q.RevokeOtherDevices(ctx, store.RevokeOtherDevicesParams{UserID: user.ID, KeptDeviceID: device.ID}); err != nil {
 			return err
 		}
 		if err := renewDevice(ctx, q, device); err != nil {
 			return err
 		}
-		return saveAttempt(ctx, q, tx, user, left, history.ChangePassword, now)
+		return saveAttempt(ctx, q, user, left, history.ChangePassword, now)
 	}, func() { s.answer(w, r, left, device, refreshToken) })
 }
 
 // signOut ends the session on this device, and only this one (UC-062), and records it.
 func (s Sessions) signOut(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	now := moment.Of(s.clock.Now())
-	s.write(w, r, func(ctx context.Context, q *store.Queries, tx *sql.Tx) error {
+	s.write(w, r, func(ctx context.Context, q *store.Queries) error {
 		if err := q.RevokeDevice(ctx, caller.DeviceID); err != nil {
 			return err
 		}
-		return history.Write(ctx, tx, now, caller.UserID, history.SignOut, history.Change{Table: "Users", RecordID: caller.UserID})
+		return history.Write(ctx, q, now, caller.UserID, history.SignOut, history.Change{Table: "Users", RecordID: caller.UserID})
 	}, func() { w.WriteHeader(http.StatusNoContent) })
 }
 
@@ -182,7 +182,7 @@ func (s Sessions) setBiometrics(w http.ResponseWriter, r *http.Request, caller a
 		return
 	}
 	now := moment.Of(s.clock.Now())
-	read := store.New(s.database.Read)
+	read := s.database.Queries()
 	user, err := read.UserWithID(r.Context(), caller.UserID)
 	device, deviceErr := read.DeviceWithID(r.Context(), caller.DeviceID)
 	if err != nil || deviceErr != nil {
@@ -195,17 +195,17 @@ func (s Sessions) setBiometrics(w http.ResponseWriter, r *http.Request, caller a
 	if request.On {
 		action = history.TurnOnBiometrics
 	}
-	s.write(w, r, func(ctx context.Context, q *store.Queries, tx *sql.Tx) error {
+	s.write(w, r, func(ctx context.Context, q *store.Queries) error {
 		if err := renewDevice(ctx, q, device); err != nil {
 			return err
 		}
-		return history.Write(ctx, tx, now, user.ID, action, history.Change{Table: "Users", RecordID: user.ID})
+		return history.Write(ctx, q, now, user.ID, action, history.Change{Table: "Users", RecordID: user.ID})
 	}, func() { s.answer(w, r, user, device, refreshToken) })
 }
 
 // write runs change in one write transaction, then answers with answered; a failed write answers 500.
-func (s Sessions) write(w http.ResponseWriter, r *http.Request, change func(context.Context, *store.Queries, *sql.Tx) error, answered func()) {
-	err := s.database.InTx(r.Context(), func(tx *sql.Tx) error { return change(r.Context(), store.New(tx), tx) })
+func (s Sessions) write(w http.ResponseWriter, r *http.Request, change func(context.Context, *store.Queries) error, answered func()) {
+	err := s.database.InTx(r.Context(), func(q *store.Queries) error { return change(r.Context(), q) })
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -214,14 +214,14 @@ func (s Sessions) write(w http.ResponseWriter, r *http.Request, change func(cont
 }
 
 // saveAttempt keeps what an attempt left on the user, and its History line.
-func saveAttempt(ctx context.Context, q *store.Queries, tx *sql.Tx, before, after store.User, action history.Action, now moment.Moment) error {
+func saveAttempt(ctx context.Context, q *store.Queries, before, after store.User, action history.Action, now moment.Moment) error {
 	err := q.SaveUser(ctx, store.SaveUserParams{
 		ID: after.ID, FailedSignIns: after.FailedSignIns, LockedUntil: after.LockedUntil, PasswordHash: after.PasswordHash, MustChangePassword: after.MustChangePassword,
 	})
 	if err != nil {
 		return err
 	}
-	return history.Write(ctx, tx, now, after.ID, action, users.Change(before, after))
+	return history.Write(ctx, q, now, after.ID, action, users.Change(before, after))
 }
 
 func renewDevice(ctx context.Context, q *store.Queries, device store.Device) error {
@@ -234,7 +234,7 @@ func renewDevice(ctx context.Context, q *store.Queries, device store.Device) err
 // user may still read it, so one check covers every way of losing it, being made inactive included (AC-37.2, #126).
 func (s Sessions) answer(w http.ResponseWriter, r *http.Request, user store.User, device store.Device, refreshToken string) {
 	held, err := s.book.Of(r.Context(), user.ID)
-	chosen, chosenErr := store.New(s.database.Read).DefaultProjectOf(r.Context(), user.ID)
+	chosen, chosenErr := s.database.Queries().DefaultProjectOf(r.Context(), user.ID)
 	if err != nil || chosenErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return

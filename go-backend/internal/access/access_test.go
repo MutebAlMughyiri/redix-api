@@ -2,7 +2,6 @@ package access
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
 	"testing"
 
@@ -45,16 +44,10 @@ func permission(projectID uuid.UUID, name string) string {
 
 func exec(t *testing.T, database db.DB, statements ...string) {
 	t.Helper()
-	err := database.InTx(context.Background(), func(tx *sql.Tx) error {
-		for _, statement := range statements {
-			if _, err := tx.Exec(statement); err != nil {
-				return err
-			}
+	for _, statement := range statements {
+		if err := database.Exec(context.Background(), statement); err != nil {
+			t.Fatal(err)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 

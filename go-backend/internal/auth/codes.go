@@ -118,8 +118,7 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 		problem.Refuse(w, r, http.StatusBadRequest, weakPassword)
 		return
 	}
-	err = c.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		q := store.New(tx)
+	err = c.database.InTx(r.Context(), func(q *store.Queries) error {
 		if err := q.SpendCode(r.Context(), store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
 			return err
 		}
@@ -127,7 +126,7 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		return history.Write(r.Context(), tx, now, user.ID, history.ResetPassword, users.Change(user, reset))
+		return history.Write(r.Context(), q, now, user.ID, history.ResetPassword, users.Change(user, reset))
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -170,7 +169,7 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 		return
 	}
 	now := moment.Of(c.clock.Now())
-	user, err := store.New(c.database.Read).UserWithID(r.Context(), caller.UserID)
+	user, err := c.database.Queries().UserWithID(r.Context(), caller.UserID)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -183,8 +182,7 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if c.refuseEmail(w, r, code.Email, user.ID) {
 		return
 	}
-	err = c.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		q := store.New(tx)
+	err = c.database.InTx(r.Context(), func(q *store.Queries) error {
 		if err := q.SpendCode(r.Context(), store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
 			return err
 		}
@@ -192,7 +190,7 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 		if err != nil {
 			return err
 		}
-		return history.Write(r.Context(), tx, now, user.ID, history.Update, users.Change(user, changed))
+		return history.Write(r.Context(), q, now, user.ID, history.Update, users.Change(user, changed))
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -203,7 +201,7 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 
 // refuseEmail answers the refusal of an email for userID, when there is one (users.RefusalOfEmail).
 func (c Codes) refuseEmail(w http.ResponseWriter, r *http.Request, address string, userID uuid.UUID) bool {
-	status, code, err := users.RefusalOfEmail(r.Context(), store.New(c.database.Read), address, userID)
+	status, code, err := users.RefusalOfEmail(r.Context(), c.database.Queries(), address, userID)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return true
@@ -218,7 +216,7 @@ func (c Codes) refuseEmail(w http.ResponseWriter, r *http.Request, address strin
 // accountOf is the account login names: the one with that username, or else the one with that email (AccountOfAsync).
 func (c Codes) accountOf(ctx context.Context, login string) (store.User, bool, error) {
 	typed := strings.TrimSpace(login)
-	read := store.New(c.database.Read)
+	read := c.database.Queries()
 	user, err := read.UserNamed(ctx, typed)
 	if errors.Is(err, sql.ErrNoRows) {
 		user, err = read.UserWithEmail(ctx, typed)
@@ -237,8 +235,7 @@ func (c Codes) make(ctx context.Context, userID uuid.UUID, purpose int64, addres
 	}
 	code := fmt.Sprintf("%06d", number.Int64())
 	expiresAt := moment.Of(c.clock.Now().Add(codeLifetime))
-	err = c.database.InTx(ctx, func(tx *sql.Tx) error {
-		q := store.New(tx)
+	err = c.database.InTx(ctx, func(q *store.Queries) error {
 		if err := q.DeleteCodes(ctx, store.DeleteCodesParams{UserID: userID, Purpose: purpose}); err != nil {
 			return err
 		}
@@ -250,7 +247,7 @@ func (c Codes) make(ctx context.Context, userID uuid.UUID, purpose int64, addres
 // check is the user's latest code for purpose when typed is it, unused, unexpired and with a try left; each check counts a try, right or wrong
 // (EmailCode.CheckAsync).
 func (c Codes) check(ctx context.Context, userID uuid.UUID, purpose int64, typed string, now moment.Moment) (store.EmailCode, bool) {
-	last, err := store.New(c.database.Read).LastCode(ctx, store.LastCodeParams{UserID: userID, Purpose: purpose})
+	last, err := c.database.Queries().LastCode(ctx, store.LastCodeParams{UserID: userID, Purpose: purpose})
 	if err != nil || len(last) == 0 {
 		return store.EmailCode{}, false
 	}
@@ -259,9 +256,9 @@ func (c Codes) check(ctx context.Context, userID uuid.UUID, purpose int64, typed
 		return store.EmailCode{}, false
 	}
 	var counted int64
-	err = c.database.InTx(ctx, func(tx *sql.Tx) error {
+	err = c.database.InTx(ctx, func(q *store.Queries) error {
 		var err error
-		counted, err = store.New(tx).CountTry(ctx, store.CountTryParams{ID: code.ID, TriesAllowed: triesAllowed})
+		counted, err = q.CountTry(ctx, store.CountTryParams{ID: code.ID, TriesAllowed: triesAllowed})
 		return err
 	})
 	if err != nil || counted == 0 || credentials.Check(code.CodeHash, typed) == credentials.Wrong {

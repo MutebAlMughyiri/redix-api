@@ -108,7 +108,7 @@ func (u Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Calle
 		if refusal := RefusalOfDetails(name, mobile); refusal != "" {
 			return http.StatusBadRequest, refusal, nil
 		}
-		return RefusalOfEmail(r.Context(), store.New(u.database.Read), email, user.ID)
+		return RefusalOfEmail(r.Context(), u.database.Queries(), email, user.ID)
 	}, func(ctx context.Context, q *store.Queries, user store.User) (store.User, error) {
 		if err := q.SetDetails(ctx, store.SetDetailsParams{ID: user.ID, DisplayName: name, Mobile: mobile}); err != nil {
 			return user, err
@@ -141,7 +141,7 @@ func (u Routes) resetPassword(w http.ResponseWriter, r *http.Request, caller acc
 // such person; otherProject (403) unless the caller manages the users of every project they are in and they are not an admin.
 func (u Routes) changeUser(w http.ResponseWriter, r *http.Request, caller access.Caller, action history.Action,
 	refusalOf func(store.User) (int, string, error), apply func(context.Context, *store.Queries, store.User) (store.User, error)) {
-	read := store.New(u.database.Read)
+	read := u.database.Queries()
 	user, err := read.UserWithID(r.Context(), web.ID(r, "userId"))
 	if errors.Is(err, sql.ErrNoRows) {
 		problem.Status(w, r, http.StatusNotFound)
@@ -166,12 +166,12 @@ func (u Routes) changeUser(w http.ResponseWriter, r *http.Request, caller access
 		return
 	}
 	now := moment.Of(u.clock.Now())
-	err = u.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		changed, err := apply(r.Context(), store.New(tx), user)
+	err = u.database.InTx(r.Context(), func(q *store.Queries) error {
+		changed, err := apply(r.Context(), q, user)
 		if err != nil {
 			return err
 		}
-		return history.Write(r.Context(), tx, now, caller.UserID, action, Change(user, changed))
+		return history.Write(r.Context(), q, now, caller.UserID, action, Change(user, changed))
 	})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -200,7 +200,7 @@ func (u Routes) mayChange(ctx context.Context, read *store.Queries, caller acces
 
 // members is everyone active in the project, by name (ProjectUsersEndpoints.Members).
 func (u Routes) members(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	rows, err := store.New(u.database.Read).Members(r.Context(), web.ID(r, "projectId"))
+	rows, err := u.database.Queries().Members(r.Context(), web.ID(r, "projectId"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -215,7 +215,7 @@ func (u Routes) members(w http.ResponseWriter, r *http.Request, _ access.Caller)
 // list is everyone in the project, the inactive last, by name, each with what they hold here (ProjectUsersEndpoints.List).
 func (u Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	projectID := web.ID(r, "projectId")
-	read := store.New(u.database.Read)
+	read := u.database.Queries()
 	people, err := read.UsersInProject(r.Context(), projectID)
 	held, heldErr := read.UsersOfProject(r.Context(), projectID)
 	if err != nil || heldErr != nil {
@@ -265,7 +265,7 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 			}
 		}
 	}
-	read := store.New(u.database.Read)
+	read := u.database.Queries()
 	kept, err := read.KeptPartnerIDs(r.Context(), store.KeptPartnerIDsParams{ProjectID: projectID, Ids: partners})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -296,7 +296,7 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 	}
 	ticked := append([]access.Permission{access.ReadProject}, request.Permissions...)
 	err = u.write(r, caller, func(c change) error {
-		if err := Add(c.ctx, c.q, c.tx, user, c.actor, now); err != nil {
+		if err := Add(c.ctx, c.q, user, c.actor, now); err != nil {
 			return err
 		}
 		for i, permission := range ticked {
@@ -330,7 +330,7 @@ func (u Routes) addExisting(w http.ResponseWriter, r *http.Request, caller acces
 		return
 	}
 	projectID := web.ID(r, "projectId")
-	found, err := store.New(u.database.Read).NonAdminNamed(r.Context(), strings.TrimSpace(request.Username))
+	found, err := u.database.Queries().NonAdminNamed(r.Context(), strings.TrimSpace(request.Username))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -373,7 +373,7 @@ func (u Routes) take(w http.ResponseWriter, r *http.Request, caller access.Calle
 		if !ok || taking == access.ApproveProjects {
 			return http.StatusBadRequest, "invalidPermission", nil
 		}
-		read := store.New(u.database.Read)
+		read := u.database.Queries()
 		held, err := read.PermissionsOf(r.Context(), store.PermissionsOfParams{ProjectID: projectID, UserID: userID})
 		if err != nil {
 			return http.StatusInternalServerError, "", nil
@@ -416,7 +416,7 @@ func (u Routes) take(w http.ResponseWriter, r *http.Request, caller access.Calle
 func (u Routes) choose(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
 		partnerID := web.ID(r, "partnerId")
-		kept, err := store.New(u.database.Read).KeptPartnerIDs(r.Context(), store.KeptPartnerIDsParams{ProjectID: projectID, Ids: []uuid.UUID{partnerID}})
+		kept, err := u.database.Queries().KeptPartnerIDs(r.Context(), store.KeptPartnerIDsParams{ProjectID: projectID, Ids: []uuid.UUID{partnerID}})
 		if err != nil {
 			return http.StatusInternalServerError, "", nil
 		}
@@ -464,7 +464,7 @@ func (u Routes) setRoleName(w http.ResponseWriter, r *http.Request, caller acces
 // disable makes someone inactive in the project (#126): lastManager (409) when they are its only active manager of users.
 func (u Routes) disable(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		last, err := isTheLastManager(r.Context(), store.New(u.database.Read), projectID, userID)
+		last, err := isTheLastManager(r.Context(), u.database.Queries(), projectID, userID)
 		if err != nil {
 			return http.StatusInternalServerError, "", nil
 		}
@@ -486,7 +486,7 @@ func (u Routes) enable(w http.ResponseWriter, r *http.Request, caller access.Cal
 // none - or its change, recorded and answered with what they hold here.
 func (u Routes) member(w http.ResponseWriter, r *http.Request, caller access.Caller, decide func(projectID, userID uuid.UUID) (int, string, func(change) error)) {
 	projectID, userID := web.ID(r, "projectId"), web.ID(r, "userId")
-	held, err := store.New(u.database.Read).PermissionsOf(r.Context(), store.PermissionsOfParams{ProjectID: projectID, UserID: userID})
+	held, err := u.database.Queries().PermissionsOf(r.Context(), store.PermissionsOfParams{ProjectID: projectID, UserID: userID})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -514,8 +514,8 @@ func (u Routes) member(w http.ResponseWriter, r *http.Request, caller access.Cal
 // write runs apply in one transaction, as caller, now.
 func (u Routes) write(r *http.Request, caller access.Caller, apply func(change) error) error {
 	now := moment.Of(u.clock.Now())
-	return u.database.InTx(r.Context(), func(tx *sql.Tx) error {
-		return apply(change{ctx: r.Context(), q: store.New(tx), tx: tx, actor: caller.UserID, now: now})
+	return u.database.InTx(r.Context(), func(q *store.Queries) error {
+		return apply(change{ctx: r.Context(), q: q, actor: caller.UserID, now: now})
 	})
 }
 
@@ -527,7 +527,7 @@ func (u Routes) answerInProject(w http.ResponseWriter, r *http.Request, status i
 }
 
 func (u Routes) answer(w http.ResponseWriter, r *http.Request, status int, userID uuid.UUID, projects func(*store.Queries) ([]store.UserProject, error)) {
-	read := store.New(u.database.Read)
+	read := u.database.Queries()
 	user, err := read.UserWithID(r.Context(), userID)
 	rows, rowsErr := projects(read)
 	if err != nil || rowsErr != nil {

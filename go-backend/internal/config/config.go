@@ -6,14 +6,13 @@ import (
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 )
 
 // Map routes GET /config, open to everyone.
 func Map(router *web.Router, database db.DB) {
-	values := store.New(database.Read)
+	values := database.Queries()
 	router.Handle("GET", "/config", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := values.Values(r.Context())
 		if err != nil {

@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -73,22 +72,19 @@ func TestR13_TheReadPoolCannotWrite(t *testing.T) {
 func TestAC21_1_HistoryIsNeverChangedOrDeleted(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
-	err := db.InTx(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at)
-			VALUES ('0193a1b2-0000-7000-8000-000000000001', 'dev-admin', 'Dev', '', '', 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-16T10:00:00.0000000Z')`); err != nil {
-			return err
-		}
-		_, err := tx.Exec(`INSERT INTO history (at, project_id, user_id, action, table_name, record_id, before, after)
+	for _, setUp := range []string{
+		`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at)
+			VALUES ('0193a1b2-0000-7000-8000-000000000001', 'dev-admin', 'Dev', '', '', 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-16T10:00:00.0000000Z')`,
+		`INSERT INTO history (at, project_id, user_id, action, table_name, record_id, before, after)
 			VALUES ('2026-11-16T10:00:00.0000000Z', '00000000-0000-0000-0000-000000000000', '0193a1b2-0000-7000-8000-000000000001',
-			(SELECT name FROM lk_history_action ORDER BY id LIMIT 1), 'Users', '0193a1b2-0000-7000-8000-000000000001', '{}', '{}')`)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
+			(SELECT name FROM lk_history_action ORDER BY id LIMIT 1), 'Users', '0193a1b2-0000-7000-8000-000000000001', '{}', '{}')`,
+	} {
+		if err := db.Exec(ctx, setUp); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, change := range []string{"UPDATE history SET table_name = 'Accounts'", "DELETE FROM history"} {
-		err := db.InTx(ctx, func(tx *sql.Tx) error { _, err := tx.Exec(change); return err })
-		if err == nil || !strings.Contains(err.Error(), "append-only") {
+		if err := db.Exec(ctx, change); err == nil || !strings.Contains(err.Error(), "append-only") {
 			t.Errorf("%s: %v", change, err)
 		}
 	}

@@ -2,7 +2,6 @@ package users
 
 import (
 	"context"
-	"database/sql"
 	"slices"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
@@ -18,17 +17,16 @@ var capitalTicks = []access.Permission{access.SeeAllCapital, access.SeeChosenCap
 // roleNameMaxLength is the longest free-text role name (ProjectRoleName.MaxLength).
 const roleNameMaxLength = 50
 
-// change is one write to who is in a project: its queries and transaction, and who makes it and when, which every line it adds to History names.
+// change is one write to who is in a project: the queries of its transaction, and who makes it and when, which every line it adds to History names.
 type change struct {
 	ctx   context.Context
 	q     *store.Queries
-	tx    *sql.Tx
 	actor uuid.UUID
 	now   moment.Moment
 }
 
 func (c change) record(action history.Action, line history.Change) error {
-	return history.Write(c.ctx, c.tx, c.now, c.actor, action, line)
+	return history.Write(c.ctx, c.q, c.now, c.actor, action, line)
 }
 
 // addPermission ticks permission for userID in projectID.
@@ -206,8 +204,8 @@ func isTheLastManager(ctx context.Context, q *store.Queries, projectID, userID u
 
 // TickStarter gives whoever starts or registers a project every permission in it but SeeChosenCapital and RemoveApprovedEntries, each recorded as
 // theirs (ProjectsEndpoints.AddWithManager, ProjectPermission.OfWhoeverStarts). They count once the admin approves the project (BR-34).
-func TickStarter(ctx context.Context, q *store.Queries, tx *sql.Tx, projectID, managerID uuid.UUID, now moment.Moment) error {
-	c := change{ctx: ctx, q: q, tx: tx, actor: managerID, now: now}
+func TickStarter(ctx context.Context, q *store.Queries, projectID, managerID uuid.UUID, now moment.Moment) error {
+	c := change{ctx: ctx, q: q, actor: managerID, now: now}
 	for _, permission := range access.All {
 		if permission == access.ApproveProjects || permission == access.SeeChosenCapital || permission == access.RemoveApprovedEntries {
 			continue

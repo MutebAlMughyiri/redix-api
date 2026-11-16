@@ -122,7 +122,7 @@ type Book struct {
 
 // NewBook keeps the access read from database, forgetting it after every write committed to it.
 func NewBook(database db.DB) *Book {
-	book := &Book{read: store.New(database.Read), kept: map[uuid.UUID]Access{}}
+	book := &Book{read: database.Queries(), kept: map[uuid.UUID]Access{}}
 	database.AfterEveryWrite(book.forget)
 	return book
 }

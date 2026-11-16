@@ -3,7 +3,6 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
@@ -19,19 +18,18 @@ func SeedAdmin(ctx context.Context, database db.DB, username, password string, n
 	if username == "" {
 		return nil
 	}
-	return database.InTx(ctx, func(tx *sql.Tx) error {
-		users := store.New(tx)
-		if has, err := users.HasUsers(ctx); err != nil || has {
+	return database.InTx(ctx, func(q *store.Queries) error {
+		if has, err := q.HasUsers(ctx); err != nil || has {
 			return err
 		}
 		id := uuid.Must(uuid.NewV7())
-		err := users.AddUser(ctx, store.AddUserParams{
+		err := q.AddUser(ctx, store.AddUserParams{
 			ID: id, Username: username, DisplayName: username, PasswordHash: credentials.Hash(password),
 			MustChangePassword: true, LockedUntil: moment.Never, CreatedAt: now,
 		})
 		if err != nil {
 			return err
 		}
-		return users.AddSystemPermission(ctx, store.AddSystemPermissionParams{ID: uuid.Must(uuid.NewV7()), UserID: id, Permission: "ApproveProjects"})
+		return q.AddSystemPermission(ctx, store.AddSystemPermissionParams{ID: uuid.Must(uuid.NewV7()), UserID: id, Permission: "ApproveProjects"})
 	})
 }

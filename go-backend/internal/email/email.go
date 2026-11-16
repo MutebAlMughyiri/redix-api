@@ -35,7 +35,7 @@ func (f Folder) Deliver(_ context.Context, to, subject, body string) error {
 
 // Send writes the email whose words are subjectKey and bodyKey in language, with code in the body's {0}, and delivers it to to (EmailSender.SendAsync).
 func Send(ctx context.Context, database db.DB, sender Sender, to, language, subjectKey, bodyKey, code string) error {
-	rows, err := store.New(database.Read).WordsOf(ctx, store.WordsOfParams{Language: language, SubjectKey: subjectKey, BodyKey: bodyKey})
+	rows, err := database.Queries().WordsOf(ctx, store.WordsOfParams{Language: language, SubjectKey: subjectKey, BodyKey: bodyKey})
 	if err != nil {
 		return err
 	}

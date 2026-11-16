@@ -4,7 +4,6 @@ package testapi
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -83,8 +82,7 @@ func (a *API) Ask(method, path, body, token string) (int, any) {
 // Exec writes straight into the database, as a test sets up what it needs, as the .NET factory's seeds did.
 func (a *API) Exec(statement string, args ...any) {
 	a.t.Helper()
-	err := a.Database.InTx(context.Background(), func(tx *sql.Tx) error { _, err := tx.Exec(statement, args...); return err })
-	if err != nil {
+	if err := a.Database.Exec(context.Background(), statement, args...); err != nil {
 		a.t.Fatal(err)
 	}
 }

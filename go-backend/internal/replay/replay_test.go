@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -281,7 +280,7 @@ func (m mapping) into(text string) string {
 func seed(t *testing.T, database db.DB, names mapping, s step) {
 	t.Helper()
 	write := func(statement string, args ...any) {
-		if err := database.InTx(context.Background(), func(tx *sql.Tx) error { _, err := tx.Exec(statement, args...); return err }); err != nil {
+		if err := database.Exec(context.Background(), statement, args...); err != nil {
 			t.Fatalf("seed %s: %v", s.Kind, err)
 		}
 	}
@@ -331,18 +330,19 @@ func seed(t *testing.T, database db.DB, names mapping, s step) {
 		}
 		json.Unmarshal(s.Given, &given)
 		projectID := uuid.MustParse(names.into(given.ProjectID))
-		err := database.InTx(context.Background(), func(tx *sql.Tx) error {
-			var manager uuid.UUID
-			if err := tx.QueryRow("SELECT user_id FROM project_permissions WHERE project_id = ? ORDER BY id LIMIT 1", projectID).Scan(&manager); err != nil {
+		var manager uuid.UUID
+		err := database.Read.QueryRow("SELECT user_id FROM project_permissions WHERE project_id = ? ORDER BY id LIMIT 1", projectID).Scan(&manager)
+		if err != nil {
+			t.Fatalf("seed approve: %v", err)
+		}
+		err = database.InTx(context.Background(), func(q *store.Queries) error {
+			if err := q.SetProjectStatus(context.Background(), store.SetProjectStatusParams{ID: projectID}); err != nil {
 				return err
 			}
-			if _, err := tx.Exec("UPDATE projects SET status = 0 WHERE id = ?", projectID); err != nil {
+			if err := structure.Copy(context.Background(), q, projectID); err != nil {
 				return err
 			}
-			if err := structure.Copy(context.Background(), store.New(tx), projectID); err != nil {
-				return err
-			}
-			return suppliers.AddGeneralCash(context.Background(), store.New(tx), projectID, manager)
+			return suppliers.AddGeneralCash(context.Background(), q, projectID, manager)
 		})
 		if err != nil {
 			t.Fatalf("seed approve: %v", err)

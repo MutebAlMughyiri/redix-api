@@ -33,7 +33,7 @@ type Gate struct {
 
 // NewGate checks tokens with tokens, devices and access in database through book, and writes each refusal of a permission to log (#120 D6).
 func NewGate(tokens credentials.Tokens, database db.DB, book *Book, log *slog.Logger) *Gate {
-	return &Gate{tokens: tokens, read: store.New(database.Read), book: book, log: log}
+	return &Gate{tokens: tokens, read: database.Queries(), book: book, log: log}
 }
 
 // SignedIn lets through anyone signed in on an open device, a temporary password too: changing it is all such a session may do (MayChangePassword).

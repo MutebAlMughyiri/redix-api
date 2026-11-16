@@ -2,12 +2,12 @@ package history
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/google/uuid"
@@ -26,12 +26,14 @@ func TestUC069_ALineKeepsWhoDidWhatToWhichRecordWithTheValuesItChanged(t *testin
 	before, after := Changed(
 		map[string]any{"Name": "الصندوق", "UserId": user, "Opening": fixed.Number(0)},
 		map[string]any{"Name": "صندوق الموقع", "UserId": user, "Opening": fixed.Number(5000000)})
-	err = database.InTx(context.Background(), func(tx *sql.Tx) error {
-		if _, err := tx.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at)
-			VALUES ('` + user.String() + `', 'manager', 'Manager', '', '', 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-16T10:00:00.0000000Z')`); err != nil {
-			return err
-		}
-		return Write(context.Background(), tx, at, user, Update, Change{Table: "Accounts", RecordID: account, Before: before, After: after})
+	err = database.Exec(context.Background(), `INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password,
+		failed_sign_ins, locked_until, created_at)
+		VALUES ('`+user.String()+`', 'manager', 'Manager', '', '', 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-16T10:00:00.0000000Z')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = database.InTx(context.Background(), func(q *store.Queries) error {
+		return Write(context.Background(), q, at, user, Update, Change{Table: "Accounts", RecordID: account, Before: before, After: after})
 	})
 	if err != nil {
 		t.Fatal(err)

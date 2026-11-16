@@ -16,7 +16,7 @@ import (
 
 // Map routes GET /translations/{language}, open without sign-in because the sign-in screen needs its words.
 func Map(router *web.Router, database db.DB) {
-	words := store.New(database.Read)
+	words := database.Queries()
 	router.Handle("GET", "/translations/{language}", func(w http.ResponseWriter, r *http.Request) {
 		bundle(w, r, words)
 	})

@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"net/mail"
 	"regexp"
@@ -137,11 +136,11 @@ func New(ctx context.Context, read *store.Queries, displayName, username, mobile
 }
 
 // Add keeps a user New made, recorded as created by actor.
-func Add(ctx context.Context, q *store.Queries, tx *sql.Tx, user store.User, actor uuid.UUID, now moment.Moment) error {
+func Add(ctx context.Context, q *store.Queries, user store.User, actor uuid.UUID, now moment.Moment) error {
 	err := q.AddUser(ctx, store.AddUserParams{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile,
 		PasswordHash: user.PasswordHash, MustChangePassword: user.MustChangePassword, LockedUntil: user.LockedUntil, CreatedAt: user.CreatedAt, Email: user.Email})
 	if err != nil {
 		return err
 	}
-	return history.Write(ctx, tx, now, actor, history.Create, Created(user))
+	return history.Write(ctx, q, now, actor, history.Create, Created(user))
 }

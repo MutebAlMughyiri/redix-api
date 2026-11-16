@@ -7,6 +7,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 type DBTX interface {
@@ -20,12 +21,1018 @@ func New(db DBTX) *Queries {
 	return &Queries{db: db}
 }
 
+func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
+	q := Queries{db: db}
+	var err error
+	if q.activeCategoriesOfStmt, err = db.PrepareContext(ctx, activeCategoriesOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ActiveCategoriesOf: %w", err)
+	}
+	if q.activeItemsOfStmt, err = db.PrepareContext(ctx, activeItemsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ActiveItemsOf: %w", err)
+	}
+	if q.addCategoryStmt, err = db.PrepareContext(ctx, addCategory); err != nil {
+		return nil, fmt.Errorf("error preparing query AddCategory: %w", err)
+	}
+	if q.addChosenStmt, err = db.PrepareContext(ctx, addChosen); err != nil {
+		return nil, fmt.Errorf("error preparing query AddChosen: %w", err)
+	}
+	if q.addCodeStmt, err = db.PrepareContext(ctx, addCode); err != nil {
+		return nil, fmt.Errorf("error preparing query AddCode: %w", err)
+	}
+	if q.addDefaultColumnStmt, err = db.PrepareContext(ctx, addDefaultColumn); err != nil {
+		return nil, fmt.Errorf("error preparing query AddDefaultColumn: %w", err)
+	}
+	if q.addDeviceStmt, err = db.PrepareContext(ctx, addDevice); err != nil {
+		return nil, fmt.Errorf("error preparing query AddDevice: %w", err)
+	}
+	if q.addHistoryStmt, err = db.PrepareContext(ctx, addHistory); err != nil {
+		return nil, fmt.Errorf("error preparing query AddHistory: %w", err)
+	}
+	if q.addInactiveStmt, err = db.PrepareContext(ctx, addInactive); err != nil {
+		return nil, fmt.Errorf("error preparing query AddInactive: %w", err)
+	}
+	if q.addItemStmt, err = db.PrepareContext(ctx, addItem); err != nil {
+		return nil, fmt.Errorf("error preparing query AddItem: %w", err)
+	}
+	if q.addItemColumnStmt, err = db.PrepareContext(ctx, addItemColumn); err != nil {
+		return nil, fmt.Errorf("error preparing query AddItemColumn: %w", err)
+	}
+	if q.addNotificationStmt, err = db.PrepareContext(ctx, addNotification); err != nil {
+		return nil, fmt.Errorf("error preparing query AddNotification: %w", err)
+	}
+	if q.addPartnerStmt, err = db.PrepareContext(ctx, addPartner); err != nil {
+		return nil, fmt.Errorf("error preparing query AddPartner: %w", err)
+	}
+	if q.addPaymentMethodStmt, err = db.PrepareContext(ctx, addPaymentMethod); err != nil {
+		return nil, fmt.Errorf("error preparing query AddPaymentMethod: %w", err)
+	}
+	if q.addPermissionStmt, err = db.PrepareContext(ctx, addPermission); err != nil {
+		return nil, fmt.Errorf("error preparing query AddPermission: %w", err)
+	}
+	if q.addProjectStmt, err = db.PrepareContext(ctx, addProject); err != nil {
+		return nil, fmt.Errorf("error preparing query AddProject: %w", err)
+	}
+	if q.addRoleNameStmt, err = db.PrepareContext(ctx, addRoleName); err != nil {
+		return nil, fmt.Errorf("error preparing query AddRoleName: %w", err)
+	}
+	if q.addStructureSourceStmt, err = db.PrepareContext(ctx, addStructureSource); err != nil {
+		return nil, fmt.Errorf("error preparing query AddStructureSource: %w", err)
+	}
+	if q.addSubgroupStmt, err = db.PrepareContext(ctx, addSubgroup); err != nil {
+		return nil, fmt.Errorf("error preparing query AddSubgroup: %w", err)
+	}
+	if q.addSupplierStmt, err = db.PrepareContext(ctx, addSupplier); err != nil {
+		return nil, fmt.Errorf("error preparing query AddSupplier: %w", err)
+	}
+	if q.addSystemPermissionStmt, err = db.PrepareContext(ctx, addSystemPermission); err != nil {
+		return nil, fmt.Errorf("error preparing query AddSystemPermission: %w", err)
+	}
+	if q.addUnitStmt, err = db.PrepareContext(ctx, addUnit); err != nil {
+		return nil, fmt.Errorf("error preparing query AddUnit: %w", err)
+	}
+	if q.addUserStmt, err = db.PrepareContext(ctx, addUser); err != nil {
+		return nil, fmt.Errorf("error preparing query AddUser: %w", err)
+	}
+	if q.allProjectsStmt, err = db.PrepareContext(ctx, allProjects); err != nil {
+		return nil, fmt.Errorf("error preparing query AllProjects: %w", err)
+	}
+	if q.allUnitsStmt, err = db.PrepareContext(ctx, allUnits); err != nil {
+		return nil, fmt.Errorf("error preparing query AllUnits: %w", err)
+	}
+	if q.chosenOfStmt, err = db.PrepareContext(ctx, chosenOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ChosenOf: %w", err)
+	}
+	if q.chosenPartnersStmt, err = db.PrepareContext(ctx, chosenPartners); err != nil {
+		return nil, fmt.Errorf("error preparing query ChosenPartners: %w", err)
+	}
+	if q.countTryStmt, err = db.PrepareContext(ctx, countTry); err != nil {
+		return nil, fmt.Errorf("error preparing query CountTry: %w", err)
+	}
+	if q.defaultColumnsOfStmt, err = db.PrepareContext(ctx, defaultColumnsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query DefaultColumnsOf: %w", err)
+	}
+	if q.defaultProjectOfStmt, err = db.PrepareContext(ctx, defaultProjectOf); err != nil {
+		return nil, fmt.Errorf("error preparing query DefaultProjectOf: %w", err)
+	}
+	if q.deleteCodesStmt, err = db.PrepareContext(ctx, deleteCodes); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteCodes: %w", err)
+	}
+	if q.deleteEveryCodeStmt, err = db.PrepareContext(ctx, deleteEveryCode); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteEveryCode: %w", err)
+	}
+	if q.deviceIsOpenStmt, err = db.PrepareContext(ctx, deviceIsOpen); err != nil {
+		return nil, fmt.Errorf("error preparing query DeviceIsOpen: %w", err)
+	}
+	if q.deviceWithIDStmt, err = db.PrepareContext(ctx, deviceWithID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeviceWithID: %w", err)
+	}
+	if q.deviceWithRefreshTokenStmt, err = db.PrepareContext(ctx, deviceWithRefreshToken); err != nil {
+		return nil, fmt.Errorf("error preparing query DeviceWithRefreshToken: %w", err)
+	}
+	if q.emailTakenStmt, err = db.PrepareContext(ctx, emailTaken); err != nil {
+		return nil, fmt.Errorf("error preparing query EmailTaken: %w", err)
+	}
+	if q.hasEntriesWaitingStmt, err = db.PrepareContext(ctx, hasEntriesWaiting); err != nil {
+		return nil, fmt.Errorf("error preparing query HasEntriesWaiting: %w", err)
+	}
+	if q.hasUsersStmt, err = db.PrepareContext(ctx, hasUsers); err != nil {
+		return nil, fmt.Errorf("error preparing query HasUsers: %w", err)
+	}
+	if q.heldEverywhereStmt, err = db.PrepareContext(ctx, heldEverywhere); err != nil {
+		return nil, fmt.Errorf("error preparing query HeldEverywhere: %w", err)
+	}
+	if q.heldInProjectsStmt, err = db.PrepareContext(ctx, heldInProjects); err != nil {
+		return nil, fmt.Errorf("error preparing query HeldInProjects: %w", err)
+	}
+	if q.inactiveOfStmt, err = db.PrepareContext(ctx, inactiveOf); err != nil {
+		return nil, fmt.Errorf("error preparing query InactiveOf: %w", err)
+	}
+	if q.inactiveProjectsOfStmt, err = db.PrepareContext(ctx, inactiveProjectsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query InactiveProjectsOf: %w", err)
+	}
+	if q.isAdminStmt, err = db.PrepareContext(ctx, isAdmin); err != nil {
+		return nil, fmt.Errorf("error preparing query IsAdmin: %w", err)
+	}
+	if q.keptPartnerIDsStmt, err = db.PrepareContext(ctx, keptPartnerIDs); err != nil {
+		return nil, fmt.Errorf("error preparing query KeptPartnerIDs: %w", err)
+	}
+	if q.lastCodeStmt, err = db.PrepareContext(ctx, lastCode); err != nil {
+		return nil, fmt.Errorf("error preparing query LastCode: %w", err)
+	}
+	if q.managersOfStmt, err = db.PrepareContext(ctx, managersOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ManagersOf: %w", err)
+	}
+	if q.managersOfPendingStmt, err = db.PrepareContext(ctx, managersOfPending); err != nil {
+		return nil, fmt.Errorf("error preparing query ManagersOfPending: %w", err)
+	}
+	if q.membersStmt, err = db.PrepareContext(ctx, members); err != nil {
+		return nil, fmt.Errorf("error preparing query Members: %w", err)
+	}
+	if q.nonAdminNamedStmt, err = db.PrepareContext(ctx, nonAdminNamed); err != nil {
+		return nil, fmt.Errorf("error preparing query NonAdminNamed: %w", err)
+	}
+	if q.otherActiveManagersStmt, err = db.PrepareContext(ctx, otherActiveManagers); err != nil {
+		return nil, fmt.Errorf("error preparing query OtherActiveManagers: %w", err)
+	}
+	if q.paymentMethodsOfStmt, err = db.PrepareContext(ctx, paymentMethodsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query PaymentMethodsOf: %w", err)
+	}
+	if q.pendingProjectsStmt, err = db.PrepareContext(ctx, pendingProjects); err != nil {
+		return nil, fmt.Errorf("error preparing query PendingProjects: %w", err)
+	}
+	if q.permissionsOfStmt, err = db.PrepareContext(ctx, permissionsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query PermissionsOf: %w", err)
+	}
+	if q.projectIDsOfUserStmt, err = db.PrepareContext(ctx, projectIDsOfUser); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectIDsOfUser: %w", err)
+	}
+	if q.projectIsFinishedStmt, err = db.PrepareContext(ctx, projectIsFinished); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectIsFinished: %w", err)
+	}
+	if q.projectOfUserStmt, err = db.PrepareContext(ctx, projectOfUser); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectOfUser: %w", err)
+	}
+	if q.projectWithIDStmt, err = db.PrepareContext(ctx, projectWithID); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectWithID: %w", err)
+	}
+	if q.projectsHoldingEntriesStmt, err = db.PrepareContext(ctx, projectsHoldingEntries); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectsHoldingEntries: %w", err)
+	}
+	if q.projectsOfUserStmt, err = db.PrepareContext(ctx, projectsOfUser); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectsOfUser: %w", err)
+	}
+	if q.projectsOfUserWithRowsStmt, err = db.PrepareContext(ctx, projectsOfUserWithRows); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectsOfUserWithRows: %w", err)
+	}
+	if q.removeChosenStmt, err = db.PrepareContext(ctx, removeChosen); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveChosen: %w", err)
+	}
+	if q.removeDefaultProjectStmt, err = db.PrepareContext(ctx, removeDefaultProject); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveDefaultProject: %w", err)
+	}
+	if q.removeInactiveStmt, err = db.PrepareContext(ctx, removeInactive); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveInactive: %w", err)
+	}
+	if q.removePermissionStmt, err = db.PrepareContext(ctx, removePermission); err != nil {
+		return nil, fmt.Errorf("error preparing query RemovePermission: %w", err)
+	}
+	if q.removeRoleNameStmt, err = db.PrepareContext(ctx, removeRoleName); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveRoleName: %w", err)
+	}
+	if q.removeUnitStmt, err = db.PrepareContext(ctx, removeUnit); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveUnit: %w", err)
+	}
+	if q.renewDeviceStmt, err = db.PrepareContext(ctx, renewDevice); err != nil {
+		return nil, fmt.Errorf("error preparing query RenewDevice: %w", err)
+	}
+	if q.revokeDeviceStmt, err = db.PrepareContext(ctx, revokeDevice); err != nil {
+		return nil, fmt.Errorf("error preparing query RevokeDevice: %w", err)
+	}
+	if q.revokeEveryDeviceStmt, err = db.PrepareContext(ctx, revokeEveryDevice); err != nil {
+		return nil, fmt.Errorf("error preparing query RevokeEveryDevice: %w", err)
+	}
+	if q.revokeOtherDevicesStmt, err = db.PrepareContext(ctx, revokeOtherDevices); err != nil {
+		return nil, fmt.Errorf("error preparing query RevokeOtherDevices: %w", err)
+	}
+	if q.roleNameOfStmt, err = db.PrepareContext(ctx, roleNameOf); err != nil {
+		return nil, fmt.Errorf("error preparing query RoleNameOf: %w", err)
+	}
+	if q.roleNamesOfUserStmt, err = db.PrepareContext(ctx, roleNamesOfUser); err != nil {
+		return nil, fmt.Errorf("error preparing query RoleNamesOfUser: %w", err)
+	}
+	if q.saveUserStmt, err = db.PrepareContext(ctx, saveUser); err != nil {
+		return nil, fmt.Errorf("error preparing query SaveUser: %w", err)
+	}
+	if q.setDefaultProjectStmt, err = db.PrepareContext(ctx, setDefaultProject); err != nil {
+		return nil, fmt.Errorf("error preparing query SetDefaultProject: %w", err)
+	}
+	if q.setDetailsStmt, err = db.PrepareContext(ctx, setDetails); err != nil {
+		return nil, fmt.Errorf("error preparing query SetDetails: %w", err)
+	}
+	if q.setEmailStmt, err = db.PrepareContext(ctx, setEmail); err != nil {
+		return nil, fmt.Errorf("error preparing query SetEmail: %w", err)
+	}
+	if q.setPasswordStmt, err = db.PrepareContext(ctx, setPassword); err != nil {
+		return nil, fmt.Errorf("error preparing query SetPassword: %w", err)
+	}
+	if q.setProjectDescriptionStmt, err = db.PrepareContext(ctx, setProjectDescription); err != nil {
+		return nil, fmt.Errorf("error preparing query SetProjectDescription: %w", err)
+	}
+	if q.setProjectNameStmt, err = db.PrepareContext(ctx, setProjectName); err != nil {
+		return nil, fmt.Errorf("error preparing query SetProjectName: %w", err)
+	}
+	if q.setProjectStatusStmt, err = db.PrepareContext(ctx, setProjectStatus); err != nil {
+		return nil, fmt.Errorf("error preparing query SetProjectStatus: %w", err)
+	}
+	if q.setRoleNameStmt, err = db.PrepareContext(ctx, setRoleName); err != nil {
+		return nil, fmt.Errorf("error preparing query SetRoleName: %w", err)
+	}
+	if q.setUnitNameStmt, err = db.PrepareContext(ctx, setUnitName); err != nil {
+		return nil, fmt.Errorf("error preparing query SetUnitName: %w", err)
+	}
+	if q.shownColumnsOfStmt, err = db.PrepareContext(ctx, shownColumnsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query ShownColumnsOf: %w", err)
+	}
+	if q.spendCodeStmt, err = db.PrepareContext(ctx, spendCode); err != nil {
+		return nil, fmt.Errorf("error preparing query SpendCode: %w", err)
+	}
+	if q.structureSourceOfStmt, err = db.PrepareContext(ctx, structureSourceOf); err != nil {
+		return nil, fmt.Errorf("error preparing query StructureSourceOf: %w", err)
+	}
+	if q.subgroupsOfStmt, err = db.PrepareContext(ctx, subgroupsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query SubgroupsOf: %w", err)
+	}
+	if q.unitsOfStmt, err = db.PrepareContext(ctx, unitsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query UnitsOf: %w", err)
+	}
+	if q.userNamedStmt, err = db.PrepareContext(ctx, userNamed); err != nil {
+		return nil, fmt.Errorf("error preparing query UserNamed: %w", err)
+	}
+	if q.userWithEmailStmt, err = db.PrepareContext(ctx, userWithEmail); err != nil {
+		return nil, fmt.Errorf("error preparing query UserWithEmail: %w", err)
+	}
+	if q.userWithIDStmt, err = db.PrepareContext(ctx, userWithID); err != nil {
+		return nil, fmt.Errorf("error preparing query UserWithID: %w", err)
+	}
+	if q.usernameTakenStmt, err = db.PrepareContext(ctx, usernameTaken); err != nil {
+		return nil, fmt.Errorf("error preparing query UsernameTaken: %w", err)
+	}
+	if q.usersInProjectStmt, err = db.PrepareContext(ctx, usersInProject); err != nil {
+		return nil, fmt.Errorf("error preparing query UsersInProject: %w", err)
+	}
+	if q.usersOfProjectStmt, err = db.PrepareContext(ctx, usersOfProject); err != nil {
+		return nil, fmt.Errorf("error preparing query UsersOfProject: %w", err)
+	}
+	if q.valuesStmt, err = db.PrepareContext(ctx, values); err != nil {
+		return nil, fmt.Errorf("error preparing query Values: %w", err)
+	}
+	if q.wordsInStmt, err = db.PrepareContext(ctx, wordsIn); err != nil {
+		return nil, fmt.Errorf("error preparing query WordsIn: %w", err)
+	}
+	if q.wordsOfStmt, err = db.PrepareContext(ctx, wordsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query WordsOf: %w", err)
+	}
+	return &q, nil
+}
+
+func (q *Queries) Close() error {
+	var err error
+	if q.activeCategoriesOfStmt != nil {
+		if cerr := q.activeCategoriesOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing activeCategoriesOfStmt: %w", cerr)
+		}
+	}
+	if q.activeItemsOfStmt != nil {
+		if cerr := q.activeItemsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing activeItemsOfStmt: %w", cerr)
+		}
+	}
+	if q.addCategoryStmt != nil {
+		if cerr := q.addCategoryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addCategoryStmt: %w", cerr)
+		}
+	}
+	if q.addChosenStmt != nil {
+		if cerr := q.addChosenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addChosenStmt: %w", cerr)
+		}
+	}
+	if q.addCodeStmt != nil {
+		if cerr := q.addCodeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addCodeStmt: %w", cerr)
+		}
+	}
+	if q.addDefaultColumnStmt != nil {
+		if cerr := q.addDefaultColumnStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addDefaultColumnStmt: %w", cerr)
+		}
+	}
+	if q.addDeviceStmt != nil {
+		if cerr := q.addDeviceStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addDeviceStmt: %w", cerr)
+		}
+	}
+	if q.addHistoryStmt != nil {
+		if cerr := q.addHistoryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addHistoryStmt: %w", cerr)
+		}
+	}
+	if q.addInactiveStmt != nil {
+		if cerr := q.addInactiveStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addInactiveStmt: %w", cerr)
+		}
+	}
+	if q.addItemStmt != nil {
+		if cerr := q.addItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addItemStmt: %w", cerr)
+		}
+	}
+	if q.addItemColumnStmt != nil {
+		if cerr := q.addItemColumnStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addItemColumnStmt: %w", cerr)
+		}
+	}
+	if q.addNotificationStmt != nil {
+		if cerr := q.addNotificationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addNotificationStmt: %w", cerr)
+		}
+	}
+	if q.addPartnerStmt != nil {
+		if cerr := q.addPartnerStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addPartnerStmt: %w", cerr)
+		}
+	}
+	if q.addPaymentMethodStmt != nil {
+		if cerr := q.addPaymentMethodStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addPaymentMethodStmt: %w", cerr)
+		}
+	}
+	if q.addPermissionStmt != nil {
+		if cerr := q.addPermissionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addPermissionStmt: %w", cerr)
+		}
+	}
+	if q.addProjectStmt != nil {
+		if cerr := q.addProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addProjectStmt: %w", cerr)
+		}
+	}
+	if q.addRoleNameStmt != nil {
+		if cerr := q.addRoleNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addRoleNameStmt: %w", cerr)
+		}
+	}
+	if q.addStructureSourceStmt != nil {
+		if cerr := q.addStructureSourceStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addStructureSourceStmt: %w", cerr)
+		}
+	}
+	if q.addSubgroupStmt != nil {
+		if cerr := q.addSubgroupStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addSubgroupStmt: %w", cerr)
+		}
+	}
+	if q.addSupplierStmt != nil {
+		if cerr := q.addSupplierStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addSupplierStmt: %w", cerr)
+		}
+	}
+	if q.addSystemPermissionStmt != nil {
+		if cerr := q.addSystemPermissionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addSystemPermissionStmt: %w", cerr)
+		}
+	}
+	if q.addUnitStmt != nil {
+		if cerr := q.addUnitStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addUnitStmt: %w", cerr)
+		}
+	}
+	if q.addUserStmt != nil {
+		if cerr := q.addUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addUserStmt: %w", cerr)
+		}
+	}
+	if q.allProjectsStmt != nil {
+		if cerr := q.allProjectsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing allProjectsStmt: %w", cerr)
+		}
+	}
+	if q.allUnitsStmt != nil {
+		if cerr := q.allUnitsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing allUnitsStmt: %w", cerr)
+		}
+	}
+	if q.chosenOfStmt != nil {
+		if cerr := q.chosenOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing chosenOfStmt: %w", cerr)
+		}
+	}
+	if q.chosenPartnersStmt != nil {
+		if cerr := q.chosenPartnersStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing chosenPartnersStmt: %w", cerr)
+		}
+	}
+	if q.countTryStmt != nil {
+		if cerr := q.countTryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countTryStmt: %w", cerr)
+		}
+	}
+	if q.defaultColumnsOfStmt != nil {
+		if cerr := q.defaultColumnsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing defaultColumnsOfStmt: %w", cerr)
+		}
+	}
+	if q.defaultProjectOfStmt != nil {
+		if cerr := q.defaultProjectOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing defaultProjectOfStmt: %w", cerr)
+		}
+	}
+	if q.deleteCodesStmt != nil {
+		if cerr := q.deleteCodesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteCodesStmt: %w", cerr)
+		}
+	}
+	if q.deleteEveryCodeStmt != nil {
+		if cerr := q.deleteEveryCodeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteEveryCodeStmt: %w", cerr)
+		}
+	}
+	if q.deviceIsOpenStmt != nil {
+		if cerr := q.deviceIsOpenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deviceIsOpenStmt: %w", cerr)
+		}
+	}
+	if q.deviceWithIDStmt != nil {
+		if cerr := q.deviceWithIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deviceWithIDStmt: %w", cerr)
+		}
+	}
+	if q.deviceWithRefreshTokenStmt != nil {
+		if cerr := q.deviceWithRefreshTokenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deviceWithRefreshTokenStmt: %w", cerr)
+		}
+	}
+	if q.emailTakenStmt != nil {
+		if cerr := q.emailTakenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing emailTakenStmt: %w", cerr)
+		}
+	}
+	if q.hasEntriesWaitingStmt != nil {
+		if cerr := q.hasEntriesWaitingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing hasEntriesWaitingStmt: %w", cerr)
+		}
+	}
+	if q.hasUsersStmt != nil {
+		if cerr := q.hasUsersStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing hasUsersStmt: %w", cerr)
+		}
+	}
+	if q.heldEverywhereStmt != nil {
+		if cerr := q.heldEverywhereStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing heldEverywhereStmt: %w", cerr)
+		}
+	}
+	if q.heldInProjectsStmt != nil {
+		if cerr := q.heldInProjectsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing heldInProjectsStmt: %w", cerr)
+		}
+	}
+	if q.inactiveOfStmt != nil {
+		if cerr := q.inactiveOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing inactiveOfStmt: %w", cerr)
+		}
+	}
+	if q.inactiveProjectsOfStmt != nil {
+		if cerr := q.inactiveProjectsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing inactiveProjectsOfStmt: %w", cerr)
+		}
+	}
+	if q.isAdminStmt != nil {
+		if cerr := q.isAdminStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing isAdminStmt: %w", cerr)
+		}
+	}
+	if q.keptPartnerIDsStmt != nil {
+		if cerr := q.keptPartnerIDsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing keptPartnerIDsStmt: %w", cerr)
+		}
+	}
+	if q.lastCodeStmt != nil {
+		if cerr := q.lastCodeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing lastCodeStmt: %w", cerr)
+		}
+	}
+	if q.managersOfStmt != nil {
+		if cerr := q.managersOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing managersOfStmt: %w", cerr)
+		}
+	}
+	if q.managersOfPendingStmt != nil {
+		if cerr := q.managersOfPendingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing managersOfPendingStmt: %w", cerr)
+		}
+	}
+	if q.membersStmt != nil {
+		if cerr := q.membersStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing membersStmt: %w", cerr)
+		}
+	}
+	if q.nonAdminNamedStmt != nil {
+		if cerr := q.nonAdminNamedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nonAdminNamedStmt: %w", cerr)
+		}
+	}
+	if q.otherActiveManagersStmt != nil {
+		if cerr := q.otherActiveManagersStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing otherActiveManagersStmt: %w", cerr)
+		}
+	}
+	if q.paymentMethodsOfStmt != nil {
+		if cerr := q.paymentMethodsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing paymentMethodsOfStmt: %w", cerr)
+		}
+	}
+	if q.pendingProjectsStmt != nil {
+		if cerr := q.pendingProjectsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing pendingProjectsStmt: %w", cerr)
+		}
+	}
+	if q.permissionsOfStmt != nil {
+		if cerr := q.permissionsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing permissionsOfStmt: %w", cerr)
+		}
+	}
+	if q.projectIDsOfUserStmt != nil {
+		if cerr := q.projectIDsOfUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectIDsOfUserStmt: %w", cerr)
+		}
+	}
+	if q.projectIsFinishedStmt != nil {
+		if cerr := q.projectIsFinishedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectIsFinishedStmt: %w", cerr)
+		}
+	}
+	if q.projectOfUserStmt != nil {
+		if cerr := q.projectOfUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectOfUserStmt: %w", cerr)
+		}
+	}
+	if q.projectWithIDStmt != nil {
+		if cerr := q.projectWithIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectWithIDStmt: %w", cerr)
+		}
+	}
+	if q.projectsHoldingEntriesStmt != nil {
+		if cerr := q.projectsHoldingEntriesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectsHoldingEntriesStmt: %w", cerr)
+		}
+	}
+	if q.projectsOfUserStmt != nil {
+		if cerr := q.projectsOfUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectsOfUserStmt: %w", cerr)
+		}
+	}
+	if q.projectsOfUserWithRowsStmt != nil {
+		if cerr := q.projectsOfUserWithRowsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectsOfUserWithRowsStmt: %w", cerr)
+		}
+	}
+	if q.removeChosenStmt != nil {
+		if cerr := q.removeChosenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeChosenStmt: %w", cerr)
+		}
+	}
+	if q.removeDefaultProjectStmt != nil {
+		if cerr := q.removeDefaultProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeDefaultProjectStmt: %w", cerr)
+		}
+	}
+	if q.removeInactiveStmt != nil {
+		if cerr := q.removeInactiveStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeInactiveStmt: %w", cerr)
+		}
+	}
+	if q.removePermissionStmt != nil {
+		if cerr := q.removePermissionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removePermissionStmt: %w", cerr)
+		}
+	}
+	if q.removeRoleNameStmt != nil {
+		if cerr := q.removeRoleNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeRoleNameStmt: %w", cerr)
+		}
+	}
+	if q.removeUnitStmt != nil {
+		if cerr := q.removeUnitStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeUnitStmt: %w", cerr)
+		}
+	}
+	if q.renewDeviceStmt != nil {
+		if cerr := q.renewDeviceStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing renewDeviceStmt: %w", cerr)
+		}
+	}
+	if q.revokeDeviceStmt != nil {
+		if cerr := q.revokeDeviceStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing revokeDeviceStmt: %w", cerr)
+		}
+	}
+	if q.revokeEveryDeviceStmt != nil {
+		if cerr := q.revokeEveryDeviceStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing revokeEveryDeviceStmt: %w", cerr)
+		}
+	}
+	if q.revokeOtherDevicesStmt != nil {
+		if cerr := q.revokeOtherDevicesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing revokeOtherDevicesStmt: %w", cerr)
+		}
+	}
+	if q.roleNameOfStmt != nil {
+		if cerr := q.roleNameOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing roleNameOfStmt: %w", cerr)
+		}
+	}
+	if q.roleNamesOfUserStmt != nil {
+		if cerr := q.roleNamesOfUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing roleNamesOfUserStmt: %w", cerr)
+		}
+	}
+	if q.saveUserStmt != nil {
+		if cerr := q.saveUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing saveUserStmt: %w", cerr)
+		}
+	}
+	if q.setDefaultProjectStmt != nil {
+		if cerr := q.setDefaultProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setDefaultProjectStmt: %w", cerr)
+		}
+	}
+	if q.setDetailsStmt != nil {
+		if cerr := q.setDetailsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setDetailsStmt: %w", cerr)
+		}
+	}
+	if q.setEmailStmt != nil {
+		if cerr := q.setEmailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setEmailStmt: %w", cerr)
+		}
+	}
+	if q.setPasswordStmt != nil {
+		if cerr := q.setPasswordStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setPasswordStmt: %w", cerr)
+		}
+	}
+	if q.setProjectDescriptionStmt != nil {
+		if cerr := q.setProjectDescriptionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setProjectDescriptionStmt: %w", cerr)
+		}
+	}
+	if q.setProjectNameStmt != nil {
+		if cerr := q.setProjectNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setProjectNameStmt: %w", cerr)
+		}
+	}
+	if q.setProjectStatusStmt != nil {
+		if cerr := q.setProjectStatusStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setProjectStatusStmt: %w", cerr)
+		}
+	}
+	if q.setRoleNameStmt != nil {
+		if cerr := q.setRoleNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setRoleNameStmt: %w", cerr)
+		}
+	}
+	if q.setUnitNameStmt != nil {
+		if cerr := q.setUnitNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setUnitNameStmt: %w", cerr)
+		}
+	}
+	if q.shownColumnsOfStmt != nil {
+		if cerr := q.shownColumnsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing shownColumnsOfStmt: %w", cerr)
+		}
+	}
+	if q.spendCodeStmt != nil {
+		if cerr := q.spendCodeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing spendCodeStmt: %w", cerr)
+		}
+	}
+	if q.structureSourceOfStmt != nil {
+		if cerr := q.structureSourceOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing structureSourceOfStmt: %w", cerr)
+		}
+	}
+	if q.subgroupsOfStmt != nil {
+		if cerr := q.subgroupsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing subgroupsOfStmt: %w", cerr)
+		}
+	}
+	if q.unitsOfStmt != nil {
+		if cerr := q.unitsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing unitsOfStmt: %w", cerr)
+		}
+	}
+	if q.userNamedStmt != nil {
+		if cerr := q.userNamedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing userNamedStmt: %w", cerr)
+		}
+	}
+	if q.userWithEmailStmt != nil {
+		if cerr := q.userWithEmailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing userWithEmailStmt: %w", cerr)
+		}
+	}
+	if q.userWithIDStmt != nil {
+		if cerr := q.userWithIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing userWithIDStmt: %w", cerr)
+		}
+	}
+	if q.usernameTakenStmt != nil {
+		if cerr := q.usernameTakenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing usernameTakenStmt: %w", cerr)
+		}
+	}
+	if q.usersInProjectStmt != nil {
+		if cerr := q.usersInProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing usersInProjectStmt: %w", cerr)
+		}
+	}
+	if q.usersOfProjectStmt != nil {
+		if cerr := q.usersOfProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing usersOfProjectStmt: %w", cerr)
+		}
+	}
+	if q.valuesStmt != nil {
+		if cerr := q.valuesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing valuesStmt: %w", cerr)
+		}
+	}
+	if q.wordsInStmt != nil {
+		if cerr := q.wordsInStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing wordsInStmt: %w", cerr)
+		}
+	}
+	if q.wordsOfStmt != nil {
+		if cerr := q.wordsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing wordsOfStmt: %w", cerr)
+		}
+	}
+	return err
+}
+
+func (q *Queries) exec(ctx context.Context, stmt *sql.Stmt, query string, args ...interface{}) (sql.Result, error) {
+	switch {
+	case stmt != nil && q.tx != nil:
+		return q.tx.StmtContext(ctx, stmt).ExecContext(ctx, args...)
+	case stmt != nil:
+		return stmt.ExecContext(ctx, args...)
+	default:
+		return q.db.ExecContext(ctx, query, args...)
+	}
+}
+
+func (q *Queries) query(ctx context.Context, stmt *sql.Stmt, query string, args ...interface{}) (*sql.Rows, error) {
+	switch {
+	case stmt != nil && q.tx != nil:
+		return q.tx.StmtContext(ctx, stmt).QueryContext(ctx, args...)
+	case stmt != nil:
+		return stmt.QueryContext(ctx, args...)
+	default:
+		return q.db.QueryContext(ctx, query, args...)
+	}
+}
+
+func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, args ...interface{}) *sql.Row {
+	switch {
+	case stmt != nil && q.tx != nil:
+		return q.tx.StmtContext(ctx, stmt).QueryRowContext(ctx, args...)
+	case stmt != nil:
+		return stmt.QueryRowContext(ctx, args...)
+	default:
+		return q.db.QueryRowContext(ctx, query, args...)
+	}
+}
+
 type Queries struct {
-	db DBTX
+	db                         DBTX
+	tx                         *sql.Tx
+	activeCategoriesOfStmt     *sql.Stmt
+	activeItemsOfStmt          *sql.Stmt
+	addCategoryStmt            *sql.Stmt
+	addChosenStmt              *sql.Stmt
+	addCodeStmt                *sql.Stmt
+	addDefaultColumnStmt       *sql.Stmt
+	addDeviceStmt              *sql.Stmt
+	addHistoryStmt             *sql.Stmt
+	addInactiveStmt            *sql.Stmt
+	addItemStmt                *sql.Stmt
+	addItemColumnStmt          *sql.Stmt
+	addNotificationStmt        *sql.Stmt
+	addPartnerStmt             *sql.Stmt
+	addPaymentMethodStmt       *sql.Stmt
+	addPermissionStmt          *sql.Stmt
+	addProjectStmt             *sql.Stmt
+	addRoleNameStmt            *sql.Stmt
+	addStructureSourceStmt     *sql.Stmt
+	addSubgroupStmt            *sql.Stmt
+	addSupplierStmt            *sql.Stmt
+	addSystemPermissionStmt    *sql.Stmt
+	addUnitStmt                *sql.Stmt
+	addUserStmt                *sql.Stmt
+	allProjectsStmt            *sql.Stmt
+	allUnitsStmt               *sql.Stmt
+	chosenOfStmt               *sql.Stmt
+	chosenPartnersStmt         *sql.Stmt
+	countTryStmt               *sql.Stmt
+	defaultColumnsOfStmt       *sql.Stmt
+	defaultProjectOfStmt       *sql.Stmt
+	deleteCodesStmt            *sql.Stmt
+	deleteEveryCodeStmt        *sql.Stmt
+	deviceIsOpenStmt           *sql.Stmt
+	deviceWithIDStmt           *sql.Stmt
+	deviceWithRefreshTokenStmt *sql.Stmt
+	emailTakenStmt             *sql.Stmt
+	hasEntriesWaitingStmt      *sql.Stmt
+	hasUsersStmt               *sql.Stmt
+	heldEverywhereStmt         *sql.Stmt
+	heldInProjectsStmt         *sql.Stmt
+	inactiveOfStmt             *sql.Stmt
+	inactiveProjectsOfStmt     *sql.Stmt
+	isAdminStmt                *sql.Stmt
+	keptPartnerIDsStmt         *sql.Stmt
+	lastCodeStmt               *sql.Stmt
+	managersOfStmt             *sql.Stmt
+	managersOfPendingStmt      *sql.Stmt
+	membersStmt                *sql.Stmt
+	nonAdminNamedStmt          *sql.Stmt
+	otherActiveManagersStmt    *sql.Stmt
+	paymentMethodsOfStmt       *sql.Stmt
+	pendingProjectsStmt        *sql.Stmt
+	permissionsOfStmt          *sql.Stmt
+	projectIDsOfUserStmt       *sql.Stmt
+	projectIsFinishedStmt      *sql.Stmt
+	projectOfUserStmt          *sql.Stmt
+	projectWithIDStmt          *sql.Stmt
+	projectsHoldingEntriesStmt *sql.Stmt
+	projectsOfUserStmt         *sql.Stmt
+	projectsOfUserWithRowsStmt *sql.Stmt
+	removeChosenStmt           *sql.Stmt
+	removeDefaultProjectStmt   *sql.Stmt
+	removeInactiveStmt         *sql.Stmt
+	removePermissionStmt       *sql.Stmt
+	removeRoleNameStmt         *sql.Stmt
+	removeUnitStmt             *sql.Stmt
+	renewDeviceStmt            *sql.Stmt
+	revokeDeviceStmt           *sql.Stmt
+	revokeEveryDeviceStmt      *sql.Stmt
+	revokeOtherDevicesStmt     *sql.Stmt
+	roleNameOfStmt             *sql.Stmt
+	roleNamesOfUserStmt        *sql.Stmt
+	saveUserStmt               *sql.Stmt
+	setDefaultProjectStmt      *sql.Stmt
+	setDetailsStmt             *sql.Stmt
+	setEmailStmt               *sql.Stmt
+	setPasswordStmt            *sql.Stmt
+	setProjectDescriptionStmt  *sql.Stmt
+	setProjectNameStmt         *sql.Stmt
+	setProjectStatusStmt       *sql.Stmt
+	setRoleNameStmt            *sql.Stmt
+	setUnitNameStmt            *sql.Stmt
+	shownColumnsOfStmt         *sql.Stmt
+	spendCodeStmt              *sql.Stmt
+	structureSourceOfStmt      *sql.Stmt
+	subgroupsOfStmt            *sql.Stmt
+	unitsOfStmt                *sql.Stmt
+	userNamedStmt              *sql.Stmt
+	userWithEmailStmt          *sql.Stmt
+	userWithIDStmt             *sql.Stmt
+	usernameTakenStmt          *sql.Stmt
+	usersInProjectStmt         *sql.Stmt
+	usersOfProjectStmt         *sql.Stmt
+	valuesStmt                 *sql.Stmt
+	wordsInStmt                *sql.Stmt
+	wordsOfStmt                *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db: tx,
+		db:                         tx,
+		tx:                         tx,
+		activeCategoriesOfStmt:     q.activeCategoriesOfStmt,
+		activeItemsOfStmt:          q.activeItemsOfStmt,
+		addCategoryStmt:            q.addCategoryStmt,
+		addChosenStmt:              q.addChosenStmt,
+		addCodeStmt:                q.addCodeStmt,
+		addDefaultColumnStmt:       q.addDefaultColumnStmt,
+		addDeviceStmt:              q.addDeviceStmt,
+		addHistoryStmt:             q.addHistoryStmt,
+		addInactiveStmt:            q.addInactiveStmt,
+		addItemStmt:                q.addItemStmt,
+		addItemColumnStmt:          q.addItemColumnStmt,
+		addNotificationStmt:        q.addNotificationStmt,
+		addPartnerStmt:             q.addPartnerStmt,
+		addPaymentMethodStmt:       q.addPaymentMethodStmt,
+		addPermissionStmt:          q.addPermissionStmt,
+		addProjectStmt:             q.addProjectStmt,
+		addRoleNameStmt:            q.addRoleNameStmt,
+		addStructureSourceStmt:     q.addStructureSourceStmt,
+		addSubgroupStmt:            q.addSubgroupStmt,
+		addSupplierStmt:            q.addSupplierStmt,
+		addSystemPermissionStmt:    q.addSystemPermissionStmt,
+		addUnitStmt:                q.addUnitStmt,
+		addUserStmt:                q.addUserStmt,
+		allProjectsStmt:            q.allProjectsStmt,
+		allUnitsStmt:               q.allUnitsStmt,
+		chosenOfStmt:               q.chosenOfStmt,
+		chosenPartnersStmt:         q.chosenPartnersStmt,
+		countTryStmt:               q.countTryStmt,
+		defaultColumnsOfStmt:       q.defaultColumnsOfStmt,
+		defaultProjectOfStmt:       q.defaultProjectOfStmt,
+		deleteCodesStmt:            q.deleteCodesStmt,
+		deleteEveryCodeStmt:        q.deleteEveryCodeStmt,
+		deviceIsOpenStmt:           q.deviceIsOpenStmt,
+		deviceWithIDStmt:           q.deviceWithIDStmt,
+		deviceWithRefreshTokenStmt: q.deviceWithRefreshTokenStmt,
+		emailTakenStmt:             q.emailTakenStmt,
+		hasEntriesWaitingStmt:      q.hasEntriesWaitingStmt,
+		hasUsersStmt:               q.hasUsersStmt,
+		heldEverywhereStmt:         q.heldEverywhereStmt,
+		heldInProjectsStmt:         q.heldInProjectsStmt,
+		inactiveOfStmt:             q.inactiveOfStmt,
+		inactiveProjectsOfStmt:     q.inactiveProjectsOfStmt,
+		isAdminStmt:                q.isAdminStmt,
+		keptPartnerIDsStmt:         q.keptPartnerIDsStmt,
+		lastCodeStmt:               q.lastCodeStmt,
+		managersOfStmt:             q.managersOfStmt,
+		managersOfPendingStmt:      q.managersOfPendingStmt,
+		membersStmt:                q.membersStmt,
+		nonAdminNamedStmt:          q.nonAdminNamedStmt,
+		otherActiveManagersStmt:    q.otherActiveManagersStmt,
+		paymentMethodsOfStmt:       q.paymentMethodsOfStmt,
+		pendingProjectsStmt:        q.pendingProjectsStmt,
+		permissionsOfStmt:          q.permissionsOfStmt,
+		projectIDsOfUserStmt:       q.projectIDsOfUserStmt,
+		projectIsFinishedStmt:      q.projectIsFinishedStmt,
+		projectOfUserStmt:          q.projectOfUserStmt,
+		projectWithIDStmt:          q.projectWithIDStmt,
+		projectsHoldingEntriesStmt: q.projectsHoldingEntriesStmt,
+		projectsOfUserStmt:         q.projectsOfUserStmt,
+		projectsOfUserWithRowsStmt: q.projectsOfUserWithRowsStmt,
+		removeChosenStmt:           q.removeChosenStmt,
+		removeDefaultProjectStmt:   q.removeDefaultProjectStmt,
+		removeInactiveStmt:         q.removeInactiveStmt,
+		removePermissionStmt:       q.removePermissionStmt,
+		removeRoleNameStmt:         q.removeRoleNameStmt,
+		removeUnitStmt:             q.removeUnitStmt,
+		renewDeviceStmt:            q.renewDeviceStmt,
+		revokeDeviceStmt:           q.revokeDeviceStmt,
+		revokeEveryDeviceStmt:      q.revokeEveryDeviceStmt,
+		revokeOtherDevicesStmt:     q.revokeOtherDevicesStmt,
+		roleNameOfStmt:             q.roleNameOfStmt,
+		roleNamesOfUserStmt:        q.roleNamesOfUserStmt,
+		saveUserStmt:               q.saveUserStmt,
+		setDefaultProjectStmt:      q.setDefaultProjectStmt,
+		setDetailsStmt:             q.setDetailsStmt,
+		setEmailStmt:               q.setEmailStmt,
+		setPasswordStmt:            q.setPasswordStmt,
+		setProjectDescriptionStmt:  q.setProjectDescriptionStmt,
+		setProjectNameStmt:         q.setProjectNameStmt,
+		setProjectStatusStmt:       q.setProjectStatusStmt,
+		setRoleNameStmt:            q.setRoleNameStmt,
+		setUnitNameStmt:            q.setUnitNameStmt,
+		shownColumnsOfStmt:         q.shownColumnsOfStmt,
+		spendCodeStmt:              q.spendCodeStmt,
+		structureSourceOfStmt:      q.structureSourceOfStmt,
+		subgroupsOfStmt:            q.subgroupsOfStmt,
+		unitsOfStmt:                q.unitsOfStmt,
+		userNamedStmt:              q.userNamedStmt,
+		userWithEmailStmt:          q.userWithEmailStmt,
+		userWithIDStmt:             q.userWithIDStmt,
+		usernameTakenStmt:          q.usernameTakenStmt,
+		usersInProjectStmt:         q.usersInProjectStmt,
+		usersOfProjectStmt:         q.usersOfProjectStmt,
+		valuesStmt:                 q.valuesStmt,
+		wordsInStmt:                q.wordsInStmt,
+		wordsOfStmt:                q.wordsOfStmt,
 	}
 }
