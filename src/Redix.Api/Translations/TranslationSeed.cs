@@ -144,6 +144,7 @@ public static class TranslationSeed
         ("permissions.seeChosenCapital", "Chosen partners' capital", "رأس مال شركاء محددين"),
         ("permissions.seeChosenCapitalHint", "Sees only the capital of the partners ticked under it.", "يرى رأس مال الشركاء المؤشَّرين تحته فقط."),
         ("permissions.capitalGroup", "Capital", "رأس المال"),
+        ("permissions.reportsGroup", "Reports", "التقارير"),
         ("permissions.manageProject", "Manage the project", "إدارة المشروع"),
         ("permissions.manageProjectHint", "Its name, units and documents, and closing it.", "اسمه ووحداته ومستنداته، وإغلاقه."),
         ("permissions.manageStructure", "Shape the expense structure", "هيكل المصروفات"),

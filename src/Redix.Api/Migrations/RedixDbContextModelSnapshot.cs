@@ -5796,6 +5796,20 @@ namespace Redix.Api.Migrations
                         },
                         new
                         {
+                            Id = new Guid("fdd839bf-056a-c043-c979-55fcd24999b7"),
+                            Language = "en",
+                            TranslationKeyId = new Guid("10ace059-16e7-ff81-b77e-937c568a778a"),
+                            Value = "Reports"
+                        },
+                        new
+                        {
+                            Id = new Guid("44cfe90f-9273-f3e9-72e3-f9793157ce13"),
+                            Language = "ar",
+                            TranslationKeyId = new Guid("10ace059-16e7-ff81-b77e-937c568a778a"),
+                            Value = "التقارير"
+                        },
+                        new
+                        {
                             Id = new Guid("239cf61f-56bf-d755-6952-72a2077a6580"),
                             Language = "en",
                             TranslationKeyId = new Guid("e0f28ed6-aea3-7a16-7d90-1b2f8796700f"),
@@ -16137,6 +16151,12 @@ namespace Redix.Api.Migrations
                             Id = new Guid("e113ddf6-29dc-cbcc-8d08-6e6b221f4428"),
                             Description = "",
                             Key = "permissions.capitalGroup"
+                        },
+                        new
+                        {
+                            Id = new Guid("10ace059-16e7-ff81-b77e-937c568a778a"),
+                            Description = "",
+                            Key = "permissions.reportsGroup"
                         },
                         new
                         {
