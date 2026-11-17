@@ -63,7 +63,7 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 		}
 		return valueOr(lookup, "REDIX_"+key, fallback)
 	}
-	data := filepath.Join(localData(lookup), "Redix")
+	data := filepath.Join(localData(runtime.GOOS, lookup), "Redix")
 	databaseFile := "redix.db"
 	if _, isNamed := named[environment]; isNamed {
 		databaseFile = "Redix" + environment + ".db"
@@ -108,9 +108,10 @@ func valueOr(lookup func(string) (string, bool), key, fallback string) string {
 	return fallback
 }
 
-// localData is the folder .NET called LocalApplicationData: %LOCALAPPDATA% on Windows, $XDG_DATA_HOME or ~/.local/share elsewhere.
-func localData(lookup func(string) (string, bool)) string {
-	if runtime.GOOS == "windows" {
+// localData is the folder .NET called LocalApplicationData on the operating system goos: %LOCALAPPDATA% on Windows, $XDG_DATA_HOME or
+// ~/.local/share elsewhere.
+func localData(goos string, lookup func(string) (string, bool)) string {
+	if goos == "windows" {
 		return valueOr(lookup, "LOCALAPPDATA", ".")
 	}
 	if folder, ok := lookup("XDG_DATA_HOME"); ok {

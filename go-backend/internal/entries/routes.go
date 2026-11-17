@@ -1,6 +1,8 @@
 package entries
 
 import (
+	"database/sql"
+	"errors"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"net/http"
 	"slices"
@@ -286,7 +288,7 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 		Approved []uuid.UUID `json:"approved"`
 		Failed   []failure   `json:"failed"`
 	}{Approved: []uuid.UUID{}, Failed: []failure{}}
-	s.writer.Write(w, r, caller, func(c changes.Change) error {
+	done := s.writer.Write(w, r, caller, func(c changes.Change) error {
 		var named []uuid.UUID
 		for _, id := range typed.EntryIDs {
 			if !slices.Contains(named, id) {
@@ -296,8 +298,10 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 		for _, id := range named {
 			entry, err := c.Q.EntryOf(c.Ctx, store.EntryOfParams{ID: id, ProjectID: c.ProjectID})
 			switch {
-			case err != nil:
+			case errors.Is(err, sql.ErrNoRows):
 				view.Failed = append(view.Failed, failure{id, "unknownEntry"})
+			case err != nil:
+				return err
 			case entry.Status != pendingApproval:
 				view.Failed = append(view.Failed, failure{id, "entryNotPending"})
 			default:
@@ -309,7 +313,9 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 		}
 		return nil
 	})
-	web.JSON(w, r, http.StatusOK, view)
+	if done {
+		web.JSON(w, r, http.StatusOK, view)
+	}
 }
 
 // Approve approves entry, one waiting, as counting from approvedAt (ApprovalsEndpoints.ApproveAsync, BR-26, BR-43): its decision, its line, who

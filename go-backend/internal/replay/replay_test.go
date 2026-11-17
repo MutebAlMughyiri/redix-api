@@ -305,8 +305,16 @@ func replay(t *testing.T, steps []step, hosts []host) {
 			resolve()
 		case "request":
 			fake.Set(s.At)
+			if s.Status >= 200 && s.Status < 300 && strings.Contains(s.ContentType, "json") && firstWithABody(s) {
+				var broken *httptest.ResponseRecorder
+				historytest.Check(t, database, func() { broken = send(handlerOf(s), names, withBrokenBody(s)) })
+				if broken.Code != http.StatusBadRequest {
+					t.Errorf("step %d, %s %s%s: a body that is not JSON was answered %d, not 400", i, s.Method, s.Path, s.Query, broken.Code)
+					return
+				}
+			}
 			var got *httptest.ResponseRecorder
-			if s.Status != http.StatusInternalServerError && limitsOf(s).limitsNothing() && !slices.Contains(unswept, s.Method+" "+s.Path) && firstOfItsKind(s) {
+			if s.Status != http.StatusInternalServerError && limitsOf(s).limitsNothing() && !slices.Contains(unswept, s.Method+" "+s.Path) && firstOfItsKind(t, s) {
 				var answered bool
 				if got, answered = failEachCall(t, database, failure, emails, handlerOf(s), names, s, i); !answered {
 					return
@@ -378,21 +386,47 @@ var answeredOnFailure = map[string]int{"GET /health": http.StatusServiceUnavaila
 // is only logged, and its own tests fail it on purpose (AC-02.8).
 var unswept = []string{"POST /auth/forgot-password"}
 
+// withBody holds each route already sent once with a body that is not JSON, before the request it was recorded with: a route .NET answered
+// with success refuses such a body with 400 and changes nothing, as ASP.NET Core refused a body it could not read.
+var withBody = struct {
+	sync.Mutex
+	routes map[string]bool
+}{routes: map[string]bool{}}
+
+func firstWithABody(s step) bool {
+	route := s.Method + " " + pathPattern.ReplaceAllString(s.Path, "{id}")
+	withBody.Lock()
+	defer withBody.Unlock()
+	if withBody.routes[route] {
+		return false
+	}
+	withBody.routes[route] = true
+	return true
+}
+
+// withBrokenBody is s sent with a body that is not JSON.
+func withBrokenBody(s step) step {
+	s.Body = json.RawMessage(`"{"`)
+	return s
+}
+
 // swept holds each kind of request already sent with its database failing call by call, so each kind is swept once across the replay: its
-// method, its route, the status .NET answered, and the fields its body and query name.
+// method, its route, the status .NET answered, the fields its body and query name, and the class of .NET tests it was recorded in, since each
+// class takes a route down paths of its own.
 var swept = struct {
 	sync.Mutex
 	kinds map[string]bool
 }{kinds: map[string]bool{}}
 
-func firstOfItsKind(s step) bool {
+func firstOfItsKind(t *testing.T, s step) bool {
 	var text string
 	var fields map[string]json.RawMessage
 	json.Unmarshal(s.Body, &text)
 	json.Unmarshal([]byte(text), &fields)
 	query, _ := url.ParseQuery(strings.TrimPrefix(s.Query, "?"))
+	class, _, _ := strings.Cut(strings.TrimPrefix(t.Name(), "TestReplayDotNetsAnswers/"), ".")
 	kind := fmt.Sprint(s.Method, " ", pathPattern.ReplaceAllString(s.Path, "{id}"), " ", s.Status, " ", slices.Sorted(maps.Keys(fields)), " ",
-		slices.Sorted(maps.Keys(query)))
+		slices.Sorted(maps.Keys(query)), " ", class)
 	swept.Lock()
 	defer swept.Unlock()
 	if swept.kinds[kind] {
