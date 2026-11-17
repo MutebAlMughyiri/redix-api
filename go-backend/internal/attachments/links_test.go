@@ -33,3 +33,19 @@ func TestMuteb16Nov_ALinkOpensItsFileForSevenDaysAndAChangedOrForeignLinkOpensNo
 		t.Errorf("a link a week old opened %v", opened)
 	}
 }
+
+// A document's type comes from the API's own table, the same on every machine: what .NET answered on Windows, never what the server's
+// operating system would say (redix-api #145).
+func TestADocumentsTypeIsTheSameOnEveryMachine(t *testing.T) {
+	for name, want := range map[string]string{
+		"plan.zip":     "application/x-zip-compressed",
+		"drawing.dwg":  "application/octet-stream",
+		"CONTRACT.PDF": "application/pdf",
+		"offer.docx":   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"no-extension": "application/octet-stream",
+	} {
+		if got := typeNamedBy(name); got != want {
+			t.Errorf("%s reads %q, want %q", name, got, want)
+		}
+	}
+}

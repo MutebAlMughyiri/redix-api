@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -207,10 +206,32 @@ func Keep(c changes.Change, folder string, content []byte, fileName string, anyF
 		"UploadedByUserId": kept.UploadedByUserID, "UploadedAt": kept.UploadedAt})
 }
 
-// typeNamedBy is what a file is by its extension, so the phone knows which app opens it; application/octet-stream for one none names.
+// typesByExtension is what a document's file is by its extension, the types .NET's FileExtensionContentTypeProvider answered: one table in
+// the API, never the machine's own, so a file reads the same on Muteb's PC and on the Ubuntu server, where .zip would read application/zip
+// and .dwg image/vnd.dwg (redix-api #145).
+var typesByExtension = map[string]string{
+	".pdf":  "application/pdf",
+	".png":  "image/png",
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif":  "image/gif",
+	".webp": "image/webp",
+	".txt":  "text/plain",
+	".csv":  "text/csv",
+	".doc":  "application/msword",
+	".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	".xls":  "application/vnd.ms-excel",
+	".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	".ppt":  "application/vnd.ms-powerpoint",
+	".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+	".zip":  "application/x-zip-compressed",
+}
+
+// typeNamedBy is what a file is by its extension, so the phone knows which app opens it; application/octet-stream for one the table does not
+// name.
 func typeNamedBy(name string) string {
-	if byExtension := mime.TypeByExtension(strings.ToLower(filepath.Ext(name))); byExtension != "" {
-		return strings.SplitN(byExtension, ";", 2)[0]
+	if byExtension, named := typesByExtension[strings.ToLower(filepath.Ext(name))]; named {
+		return byExtension
 	}
 	return "application/octet-stream"
 }
