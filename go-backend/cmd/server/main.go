@@ -25,16 +25,16 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	if err := run(logger); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := run(ctx, logger, os.Args[1:]); err != nil {
 		logger.Error("the API stopped", "error", err)
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger) error {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
+// run serves the API until ctx ends, as systemd's stop ends it; with the argument migrate, it brings the database up to date and stops.
+func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	settings, err := environment.FromProcess()
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer database.Close()
-	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+	if len(args) > 0 && args[0] == "migrate" {
 		logger.Info("the database's schema is up to date", "path", settings.DatabasePath)
 		return nil
 	}
