@@ -6,10 +6,10 @@ package projectfile
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"strings"
 	"time"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 )
@@ -36,13 +36,14 @@ type fileReport struct {
 	Time   string `json:"time"`
 }
 
-// at is when the report was issued: its date and time read in Saudi Arabia's time; false when they are not a date and a time.
-func (r fileReport) at() (moment.Moment, bool) {
-	local, err := time.Parse("2006-01-02 15:04", r.Date+" "+r.Time)
+// at is when the report was issued: its date and time read in the zone of the project the file loads into (redix-app #107); false when they are not
+// a date and a time.
+func (r fileReport) at(zone string) (moment.Moment, bool) {
+	local, err := time.ParseInLocation("2006-01-02 15:04", r.Date+" "+r.Time, zones.Location(zone))
 	if err != nil || len(r.Date) != 10 || len(r.Time) != 5 {
 		return moment.Moment{}, false
 	}
-	return moment.Of(local.Add(-entries.SaudiOffset)), true
+	return moment.Of(local), true
 }
 
 // fileAccount is an account of the file by its name, and what it really held at the file's report (D11), as written.
@@ -152,7 +153,7 @@ func read(text []byte) (file, string) {
 	if json.Unmarshal(text, &read) != nil {
 		return file{}, "notAProjectFile"
 	}
-	if _, timed := read.Report.at(); read.Report.Number > 0 && !timed {
+	if _, timed := read.Report.at(zones.Riyadh); read.Report.Number > 0 && !timed {
 		return file{}, "notAProjectFile"
 	}
 	return read, ""

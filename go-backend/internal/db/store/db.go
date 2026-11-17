@@ -180,6 +180,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.chosenPartnersStmt, err = db.PrepareContext(ctx, chosenPartners); err != nil {
 		return nil, fmt.Errorf("error preparing query ChosenPartners: %w", err)
 	}
+	if q.chosenTimeZonesStmt, err = db.PrepareContext(ctx, chosenTimeZones); err != nil {
+		return nil, fmt.Errorf("error preparing query ChosenTimeZones: %w", err)
+	}
 	if q.columnsOfStmt, err = db.PrepareContext(ctx, columnsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query ColumnsOf: %w", err)
 	}
@@ -414,6 +417,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.projectOfUserStmt, err = db.PrepareContext(ctx, projectOfUser); err != nil {
 		return nil, fmt.Errorf("error preparing query ProjectOfUser: %w", err)
 	}
+	if q.projectTimeZoneStmt, err = db.PrepareContext(ctx, projectTimeZone); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectTimeZone: %w", err)
+	}
 	if q.projectWithIDStmt, err = db.PrepareContext(ctx, projectWithID); err != nil {
 		return nil, fmt.Errorf("error preparing query ProjectWithID: %w", err)
 	}
@@ -617,6 +623,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.setProjectStatusStmt, err = db.PrepareContext(ctx, setProjectStatus); err != nil {
 		return nil, fmt.Errorf("error preparing query SetProjectStatus: %w", err)
+	}
+	if q.setProjectTimeZoneStmt, err = db.PrepareContext(ctx, setProjectTimeZone); err != nil {
+		return nil, fmt.Errorf("error preparing query SetProjectTimeZone: %w", err)
 	}
 	if q.setRoleNameStmt, err = db.PrepareContext(ctx, setRoleName); err != nil {
 		return nil, fmt.Errorf("error preparing query SetRoleName: %w", err)
@@ -947,6 +956,11 @@ func (q *Queries) Close() error {
 	if q.chosenPartnersStmt != nil {
 		if cerr := q.chosenPartnersStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing chosenPartnersStmt: %w", cerr)
+		}
+	}
+	if q.chosenTimeZonesStmt != nil {
+		if cerr := q.chosenTimeZonesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing chosenTimeZonesStmt: %w", cerr)
 		}
 	}
 	if q.columnsOfStmt != nil {
@@ -1339,6 +1353,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing projectOfUserStmt: %w", cerr)
 		}
 	}
+	if q.projectTimeZoneStmt != nil {
+		if cerr := q.projectTimeZoneStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectTimeZoneStmt: %w", cerr)
+		}
+	}
 	if q.projectWithIDStmt != nil {
 		if cerr := q.projectWithIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing projectWithIDStmt: %w", cerr)
@@ -1679,6 +1698,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing setProjectStatusStmt: %w", cerr)
 		}
 	}
+	if q.setProjectTimeZoneStmt != nil {
+		if cerr := q.setProjectTimeZoneStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setProjectTimeZoneStmt: %w", cerr)
+		}
+	}
 	if q.setRoleNameStmt != nil {
 		if cerr := q.setRoleNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing setRoleNameStmt: %w", cerr)
@@ -1880,6 +1904,7 @@ type Queries struct {
 	categoryOfStmt                      *sql.Stmt
 	chosenOfStmt                        *sql.Stmt
 	chosenPartnersStmt                  *sql.Stmt
+	chosenTimeZonesStmt                 *sql.Stmt
 	columnsOfStmt                       *sql.Stmt
 	columnsOfItemStmt                   *sql.Stmt
 	contractDocumentsStmt               *sql.Stmt
@@ -1958,6 +1983,7 @@ type Queries struct {
 	projectIDsOfUserStmt                *sql.Stmt
 	projectIsFinishedStmt               *sql.Stmt
 	projectOfUserStmt                   *sql.Stmt
+	projectTimeZoneStmt                 *sql.Stmt
 	projectWithIDStmt                   *sql.Stmt
 	projectsHoldingEntriesStmt          *sql.Stmt
 	projectsOfUserStmt                  *sql.Stmt
@@ -2026,6 +2052,7 @@ type Queries struct {
 	setProjectDescriptionStmt           *sql.Stmt
 	setProjectNameStmt                  *sql.Stmt
 	setProjectStatusStmt                *sql.Stmt
+	setProjectTimeZoneStmt              *sql.Stmt
 	setRoleNameStmt                     *sql.Stmt
 	setUnitNameStmt                     *sql.Stmt
 	spendCodeStmt                       *sql.Stmt
@@ -2106,6 +2133,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		categoryOfStmt:                      q.categoryOfStmt,
 		chosenOfStmt:                        q.chosenOfStmt,
 		chosenPartnersStmt:                  q.chosenPartnersStmt,
+		chosenTimeZonesStmt:                 q.chosenTimeZonesStmt,
 		columnsOfStmt:                       q.columnsOfStmt,
 		columnsOfItemStmt:                   q.columnsOfItemStmt,
 		contractDocumentsStmt:               q.contractDocumentsStmt,
@@ -2184,6 +2212,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		projectIDsOfUserStmt:                q.projectIDsOfUserStmt,
 		projectIsFinishedStmt:               q.projectIsFinishedStmt,
 		projectOfUserStmt:                   q.projectOfUserStmt,
+		projectTimeZoneStmt:                 q.projectTimeZoneStmt,
 		projectWithIDStmt:                   q.projectWithIDStmt,
 		projectsHoldingEntriesStmt:          q.projectsHoldingEntriesStmt,
 		projectsOfUserStmt:                  q.projectsOfUserStmt,
@@ -2252,6 +2281,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		setProjectDescriptionStmt:           q.setProjectDescriptionStmt,
 		setProjectNameStmt:                  q.setProjectNameStmt,
 		setProjectStatusStmt:                q.setProjectStatusStmt,
+		setProjectTimeZoneStmt:              q.setProjectTimeZoneStmt,
 		setRoleNameStmt:                     q.setRoleNameStmt,
 		setUnitNameStmt:                     q.setUnitNameStmt,
 		spendCodeStmt:                       q.spendCodeStmt,

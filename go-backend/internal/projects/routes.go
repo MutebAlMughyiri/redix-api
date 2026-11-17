@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
@@ -46,6 +48,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, book *access.Boo
 	manage := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.ManageProject, handler) }
 	router.Handle("PUT", "/projects/{projectId:guid}", manage(p.rename))
 	router.Handle("PUT", "/projects/{projectId:guid}/description", manage(p.describe))
+	router.Handle("PUT", "/projects/{projectId:guid}/time-zone", manage(p.setTimeZone))
+	router.Handle("GET", "/time-zones", gate.Working(p.timeZones))
 	router.Handle("POST", "/projects/{projectId:guid}/units", manage(p.addUnit))
 	router.Handle("PUT", "/projects/{projectId:guid}/units/{unitId:guid}", manage(p.renameUnit))
 	router.Handle("DELETE", "/projects/{projectId:guid}/units/{unitId:guid}", manage(p.deleteUnit))
@@ -73,6 +77,8 @@ type projectView struct {
 	RoleName        string              `json:"roleName"`
 	IsInactive      bool                `json:"isInactive"`
 	HoldsEntries    bool                `json:"holdsEntries"`
+	TimeZone        string              `json:"timeZone"`
+	UTCOffset       int                 `json:"utcOffsetMinutes"`
 }
 
 // sight is what the person asking holds and is, which every view of a project reads.
@@ -81,6 +87,16 @@ type sight struct {
 	roleNames map[uuid.UUID]string
 	inactive  map[uuid.UUID]bool
 	holding   map[uuid.UUID]bool
+	zones     map[uuid.UUID]string
+	now       time.Time
+}
+
+// zoneOf is the zone the project is in: the one its manager chose, Riyadh for one that chose none (redix-app #107).
+func (s sight) zoneOf(projectID uuid.UUID) string {
+	if zone, chosen := s.zones[projectID]; chosen {
+		return zone
+	}
+	return zones.Riyadh
 }
 
 func (p Routes) sightOf(ctx context.Context, userID uuid.UUID) (sight, error) {
@@ -101,7 +117,15 @@ func (p Routes) sightOf(ctx context.Context, userID uuid.UUID) (sight, error) {
 	if err != nil {
 		return sight{}, err
 	}
-	s := sight{access: held, roleNames: map[uuid.UUID]string{}, inactive: map[uuid.UUID]bool{}, holding: map[uuid.UUID]bool{}}
+	chosen, err := read.ChosenTimeZones(ctx)
+	if err != nil {
+		return sight{}, err
+	}
+	s := sight{access: held, roleNames: map[uuid.UUID]string{}, inactive: map[uuid.UUID]bool{}, holding: map[uuid.UUID]bool{}, zones: map[uuid.UUID]string{},
+		now: p.clock.Now()}
+	for _, row := range chosen {
+		s.zones[row.ProjectID] = row.TimeZone
+	}
 	for _, row := range named {
 		s.roleNames[row.ProjectID] = row.RoleName
 	}
@@ -125,7 +149,7 @@ func (s sight) view(project store.Project, units []store.Unit) projectView {
 	}
 	return projectView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Status: statusNames[project.Status], RejectionReason: project.RejectionReason,
 		Description: project.Description, Units: views, Permissions: permissions, RoleName: s.roleNames[project.ID], IsInactive: s.inactive[project.ID],
-		HoldsEntries: s.holding[project.ID]}
+		HoldsEntries: s.holding[project.ID], TimeZone: s.zoneOf(project.ID), UTCOffset: zones.OffsetMinutes(s.zoneOf(project.ID), s.now)}
 }
 
 // list is the projects the person may read, and those they started or were made inactive in, the active first, the latest start first
@@ -402,6 +426,57 @@ func (p Routes) decide(w http.ResponseWriter, r *http.Request, caller access.Cal
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// setTimeZone puts the project in a zone of the list, the one its entries' today is counted in (redix-app #107, D1): unknownTimeZone (400) for one
+// not on it, projectFinished (409) in a finished project. A change is its own History line.
+func (p Routes) setTimeZone(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	var request struct {
+		TimeZone string `json:"timeZone"`
+	}
+	if !web.Read(w, r, &request) {
+		return
+	}
+	if !zones.Offered(request.TimeZone) {
+		problem.Refuse(w, r, http.StatusBadRequest, "unknownTimeZone")
+		return
+	}
+	done := changes.Writer{Database: p.database, Clock: p.clock}.Write(w, r, caller, func(c changes.Change) error {
+		project, err := changes.Found(c.Q.ProjectWithID(c.Ctx, c.ProjectID))
+		if err != nil {
+			return err
+		}
+		if project.Status == finished {
+			return changes.Refuse(http.StatusConflict, projectFinished)
+		}
+		before, err := zones.Of(c.Ctx, c.Q, c.ProjectID)
+		if err != nil || before == request.TimeZone {
+			return err
+		}
+		if err := c.Q.SetProjectTimeZone(c.Ctx, store.SetProjectTimeZoneParams{ProjectID: c.ProjectID, TimeZone: request.TimeZone}); err != nil {
+			return err
+		}
+		return c.Record(history.Update, "ProjectTimeZones", c.ProjectID, map[string]any{"TimeZone": before}, map[string]any{"TimeZone": request.TimeZone})
+	})
+	if done {
+		p.answer(w, r, http.StatusOK, web.ID(r, "projectId"), caller.UserID)
+	}
+}
+
+// zoneView is a zone a project may be in, as its picker shows it: the word of its city and how far it is ahead of UTC now.
+type zoneView struct {
+	Name      string `json:"name"`
+	WordKey   string `json:"wordKey"`
+	UTCOffset int    `json:"utcOffsetMinutes"`
+}
+
+// timeZones is the zones a project may be in (D3), Saudi Arabia first.
+func (p Routes) timeZones(w http.ResponseWriter, r *http.Request, _ access.Caller) {
+	now, views := p.clock.Now(), []zoneView{}
+	for _, zone := range zones.All {
+		views = append(views, zoneView{Name: zone.Name, WordKey: zone.WordKey, UTCOffset: zones.OffsetMinutes(zone.Name, now)})
+	}
+	web.JSON(w, r, http.StatusOK, views)
 }
 
 // nothingMore is a decision that keeps no rows beside the project's own.

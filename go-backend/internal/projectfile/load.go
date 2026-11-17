@@ -3,6 +3,7 @@ package projectfile
 import (
 	"encoding/json"
 	"errors"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 	"slices"
 	"strconv"
@@ -144,8 +145,12 @@ func (s Routes) load(w http.ResponseWriter, r *http.Request, caller access.Calle
 		if len(refused) > 0 {
 			return changes.RefuseOver(http.StatusBadRequest, "rowsRefused", "rows", refused)
 		}
+		zone, err := zones.Of(c.Ctx, c.Q, c.ProjectID)
+		if err != nil {
+			return err
+		}
 		approvedAt := c.Now
-		if at, _ := projectFile.Report.at(); projectFile.Report.Number > 0 {
+		if at, _ := projectFile.Report.at(zone); projectFile.Report.Number > 0 {
 			approvedAt = at
 		}
 		tables := map[uuid.UUID]bool{}
@@ -161,7 +166,7 @@ func (s Routes) load(w http.ResponseWriter, r *http.Request, caller access.Calle
 			}
 		}
 		if projectFile.Report.Number > 0 {
-			at, _ := projectFile.Report.at()
+			at, _ := projectFile.Report.at(zone)
 			if _, err := reports.Issue(c, projectFile.Report.Number, at); err != nil {
 				return err
 			}

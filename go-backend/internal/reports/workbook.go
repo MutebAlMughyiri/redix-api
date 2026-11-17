@@ -3,6 +3,7 @@ package reports
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 	"slices"
 	"strconv"
@@ -40,7 +41,7 @@ type waitingWords struct {
 }
 
 // periodicWorkbookOf is report as a workbook, each «المرفق» opening its entry's file by its link in fileLinks.
-func periodicWorkbookOf(report snapshot, fileLinks map[uuid.UUID]string, words waitingWords) ([]byte, error) {
+func periodicWorkbookOf(report snapshot, fileLinks map[uuid.UUID]string, words waitingWords, zone string) ([]byte, error) {
 	book := statement.NewBook(report.ProjectName+" · التقرير "+strconv.FormatInt(report.Number, 10), summaryName)
 	summary := book.AddSheet(summaryName, 21.5, 13.13, 5.25, 22, 15.5, 15.63)
 	named := map[string]int{}
@@ -56,7 +57,7 @@ func periodicWorkbookOf(report snapshot, fileLinks map[uuid.UUID]string, words w
 		sheets[item.ItemID] = book.Add(sheet)
 	}
 	book.Lists.AddTo(book)
-	fillSummary(summary, report, sheets, words)
+	fillSummary(summary, report, sheets, words, zone)
 	summary.Fit()
 	summary.Print(book.Footer)
 	return book.Bytes()
@@ -86,11 +87,11 @@ func inReadingOrder(report snapshot) []entries.ItemReport {
 // revenue items, رأس المال first as the structure orders it; the expense side every category of expense items. A category of one item points at
 // that item's sheet, one of more at its detail block (AC-46.10). A line holding only sale items is muted and left out of مجموع الايرادات بدون
 // البيع.
-func fillSummary(sheet *statement.Worksheet, report snapshot, sheets map[uuid.UUID]statement.Placed, words waitingWords) {
+func fillSummary(sheet *statement.Worksheet, report snapshot, sheets map[uuid.UUID]statement.Placed, words waitingWords, zone string) {
 	title := sheet.Range(1, 1, 1, 5).Merge()
 	title.First().Set(report.ProjectName)
 	title.Bold().Size(15).Centre()
-	issuedAt := report.IssuedAt.Add(entries.SaudiOffset)
+	issuedAt := report.IssuedAt.In(zones.Location(zone))
 	heading(sheet, 2, "رقم التقرير:").Centred(strconv.FormatInt(report.Number, 10)).Format("@")
 	heading(sheet, 3, "تاريخ التقرير:").Date(time.Date(issuedAt.Year(), issuedAt.Month(), issuedAt.Day(), 0, 0, 0, 0, time.UTC))
 	heading(sheet, 4, "وقت التقرير:").Centred(issuedAt.Format("03:04 PM"))
@@ -300,11 +301,12 @@ func (s Routes) periodicWorkbook(w http.ResponseWriter, r *http.Request, caller 
 	}
 	links, linksErr := s.links.OfEntries(r.Context(), read, projectID, ids, r)
 	words, wordsErr := s.waitingWords(r)
-	if err != nil || linksErr != nil || wordsErr != nil {
+	zone, zoneErr := zones.Of(r.Context(), read, projectID)
+	if err != nil || linksErr != nil || wordsErr != nil || zoneErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	file, err := periodicWorkbookOf(seen, links, words)
+	file, err := periodicWorkbookOf(seen, links, words, zone)
 	s.sendFile(w, r, file, excelType, fmt.Sprintf("report-%d.xlsx", report.Number), err)
 }
 

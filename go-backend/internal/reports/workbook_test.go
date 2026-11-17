@@ -2,6 +2,7 @@ package reports
 
 import (
 	"bytes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"math"
 	"slices"
 	"strconv"
@@ -149,7 +150,7 @@ func itemWorkbook(t *testing.T, report entries.ItemReport) opened {
 }
 
 func periodicWorkbook(t *testing.T, report snapshot) opened {
-	content, err := periodicWorkbookOf(report, nil, waitingWords{expenses: "قيود بانتظار الاعتماد", revenue: "ايرادات بانتظار الاعتماد"})
+	content, err := periodicWorkbookOf(report, nil, waitingWords{expenses: "قيود بانتظار الاعتماد", revenue: "ايرادات بانتظار الاعتماد"}, zones.Riyadh)
 	return open(t, content, err)
 }
 

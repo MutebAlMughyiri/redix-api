@@ -15,16 +15,19 @@
 | `POST /projects/{projectId}/units` | Adds a unit at the end of the project's list | `200` the project; `400` `invalidName`; `409` `projectFinished` or `unitNameTaken`; `403` without `ManageProject` in it |
 | `PUT /projects/{projectId}` with `{ name }` | Renames the project while it is open (BR-38) | `200` the project; `400` `invalidName`; `409` `projectFinished`; `403` without `ManageProject` in it |
 | `PUT /projects/{projectId}/description` with `{ description }` | Keeps the project's description while it is open, trimmed; empty clears it (redix-api 93) | `200` the project; `400` `invalidDescription` over 2,000 characters; `409` `projectFinished`; `403` without `ManageProject` in it |
+| `PUT /projects/{projectId}/time-zone` with `{ timeZone }` | Puts the project in a zone of the list, the one its entries' today is counted in (redix-app #107) | `200` the project; `400` `unknownTimeZone` for one not on the list; `409` `projectFinished`; `403` without `ManageProject` in it |
+| `GET /time-zones` | The zones a project may be in, Asia/Riyadh first, each with the word of its city and how far it is ahead of UTC now | `200` |
 | `PUT /projects/{projectId}/units/{unitId}` with `{ name }` | Renames a unit while the project is open (BR-38) | `200` the project; `400` `invalidName`; `409` `projectFinished`, `unitNameTaken` or `sharedUnit`; `404` outside the project; `403` as above |
 | `DELETE /projects/{projectId}/units/{unitId}` | Deletes a unit while the project is open: nothing spends against a unit, since expenses and contracts belong to the project (BR-38, redix-api #96) | `200` the project; `409` `projectFinished`; `404` outside the project |
 | `POST /projects/{projectId}/close` | Closes a finished project | `200` the project; `409` `projectFinished` when already closed, or `pendingEntries` while entries wait for approval; `403` without `ManageProject` in it |
 
-A project answers as `{ id, name, startDate, status, rejectionReason, description, units: [{ id, name }], permissions }`, with `status` `pendingApproval`, `rejected`, `active` or `finished`.
+A project answers as `{ id, name, startDate, status, rejectionReason, description, units: [{ id, name }], permissions, timeZone, utcOffsetMinutes }`, with `status` `pendingApproval`, `rejected`, `active` or `finished`.
 
 ## Rules and where they live
 
 | Rule | Code | Test |
 | --- | --- | --- |
+| A project is in Asia/Riyadh until its manager puts it in another zone of the list; its entries' today is counted there, every moment staying UTC; a change is a History line, written once (redix-app #107, D1, D3) | `projects.Routes.setTimeZone`, `zones.Of` | `projects_test.TestR4_107_AManagerPutsTheProjectInAZoneOfTheList`, `TestR4_107_OnlyAZoneOfTheListOnlyByItsManagerOnlyWhileOpen`, `TestR4_107_TheZonesOfferedComeWithTheirCityAndOffset` |
 | A project's description is kept for everyone in it, trimmed, and in the History table; an empty one clears it (redix-api 93) | `Project.Describe`, `ProjectsEndpoints.Describe` | `ProjectsTests.More_info_ADescriptionIsKeptForEveryoneInTheProjectAndInTheHistory`, `More_info_AnEmptyDescriptionClearsIt` |
 | A description has at most 2,000 characters, when written and when the project is made or registered | `Project.DescriptionMaxLength` | `ProjectsTests.More_info_ADescriptionOf2000CharactersIsKeptAndOneLongerIsRefused`, `More_info_AProjectMadeWithADescriptionTooLongIsNotMade`; `RegistrationTests.More_info_ARegistrationWithADescriptionTooLongCreatesNothing` |
 | Only `ManageProject` describes a project, and only while it is open (AC-04.1) | `Permission.ManageProject`, `Project.Describe` | `ProjectsTests.More_info_OnlyWhoeverManagesTheProjectDescribesIt`, `More_info_AFinishedProjectKeepsItsDescription` |

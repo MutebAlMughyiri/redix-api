@@ -3,6 +3,7 @@ package entries
 import (
 	"database/sql"
 	"errors"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 	"slices"
 
@@ -201,10 +202,11 @@ func refusal(c changes.Change, typed Request, t table, held access.Access, editi
 	}
 	if code == "" {
 		project, err := c.Q.ProjectWithID(c.Ctx, c.ProjectID)
-		if err != nil {
+		zone, zoneErr := zones.Of(c.Ctx, c.Q, c.ProjectID)
+		if err := errors.Join(err, zoneErr); err != nil {
 			return err
 		}
-		if !isAcceptableDate(typed.Date, project.StartDate, c.Now.Time) {
+		if !isAcceptableDate(typed.Date, project.StartDate, zone, c.Now.Time) {
 			code = "invalidDate"
 		}
 	}

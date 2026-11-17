@@ -4,6 +4,7 @@
 package entries
 
 import (
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -82,9 +83,6 @@ func fileRole(kind int64) int64 {
 // descriptionMaxLength is the longest description an entry keeps (Entry.DescriptionMaxLength).
 const descriptionMaxLength = 2000
 
-// SaudiOffset is Saudi Arabia's time, three hours ahead of UTC all year: the one owner of a project's day (Entry.SaudiOffset).
-const SaudiOffset = 3 * time.Hour
-
 // notApproved is the approved moment of an entry not approved yet (Entry.NotApproved).
 var notApproved = moment.Never
 
@@ -127,10 +125,9 @@ func fields(entry store.Entry) map[string]any {
 		"CreatedByUserId": entry.CreatedByUserID, "CreatedAt": entry.CreatedAt, "ApprovedAt": entry.ApprovedAt}
 }
 
-// isAcceptableDate says whether date is inside the project's period and not in the future, in Saudi Arabia (BR-12).
-func isAcceptableDate(date, projectStart moment.Date, now time.Time) bool {
-	today := now.UTC().Add(SaudiOffset)
-	return !date.Before(projectStart.Time) && !date.After(time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC))
+// isAcceptableDate says whether date is inside the project's period and not after its today in the project's zone (BR-12, redix-app #107).
+func isAcceptableDate(date, projectStart moment.Date, zone string, now time.Time) bool {
+	return !date.Before(projectStart.Time) && !date.After(zones.Today(zone, now))
 }
 
 func tooLong(text string, limit int) bool { return utf8.RuneCountInString(text) > limit }

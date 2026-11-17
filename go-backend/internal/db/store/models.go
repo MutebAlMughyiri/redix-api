@@ -251,6 +251,11 @@ type ProjectRoleName struct {
 	RoleName  string
 }
 
+type ProjectTimeZone struct {
+	ProjectID uuid.UUID
+	TimeZone  string
+}
+
 type PurchaseDetail struct {
 	EntryID    uuid.UUID
 	SupplierID uuid.UUID

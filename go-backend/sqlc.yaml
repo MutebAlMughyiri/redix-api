@@ -77,6 +77,7 @@ sql:
       - internal/documents/queries.sql
       - internal/reports/queries.sql
       - internal/notifications/queries.sql
+      - internal/zones/queries.sql
     gen:
       go:
         package: store

@@ -2,6 +2,7 @@ package reports
 
 import (
 	"bytes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"os"
 	"slices"
 	"strings"
@@ -49,7 +50,7 @@ func pagesOf(t *testing.T, document statement.Document) []string {
 func TestAC_45_1_ThePdfHasThePeriodicSummaryThenAPagePerItem(t *testing.T) {
 	capital := capitalOf(partnerMoney{"سالم", 500})
 	report := reportOf(capital, item("الرسوم", "الرسوم والفواتير", subgroup("", row(100, "R1"))), item("بلاط", "التشطيب", subgroup("", row(30, "B1"))))
-	pages := pagesOf(t, periodicDocumentOf(report, waitingWords{}))
+	pages := pagesOf(t, periodicDocumentOf(report, waitingWords{}, zones.Riyadh))
 	if len(pages) != 4 {
 		t.Errorf("the PDF has %d pages, want the summary and three items", len(pages))
 	}
@@ -60,7 +61,7 @@ func TestRow_130_EveryFigureOfTheWorkbooksItemSheetsRasAlMalAmongThemIsOnThePeri
 	tiles := item("بلاط", "التشطيب", subgroup("", row(1234.5, "B1"), newRow(70, "B2")), subgroup("الفلة الجنوبية", row(310, "B3")))
 	tiles.Contracts = []entries.ContractReport{payments("مؤسسة الدهان", 1000, false, row(400, ""), outsideRow(90))}
 	report := reportOf(capital, tiles)
-	pages := pagesOf(t, periodicDocumentOf(report, waitingWords{}))
+	pages := pagesOf(t, periodicDocumentOf(report, waitingWords{}, zones.Riyadh))
 	for index, sheetItem := range report.Items {
 		sheet := sheetOf(sheetItem, nil)
 		page := pages[index+1]
@@ -130,7 +131,7 @@ func TestAC_45_2_TheSummaryPageCarriesTheReportsFigures(t *testing.T) {
 	report.Accounts = []reportAccount{{Name: "حساب المؤسسة", Balance: countedOf(885)}}
 	report.AccountsTotal, report.PreviousExpenses, report.ExpensesDifference = countedOf(885), countedOf(15), countedOf(100)
 	report.PendingCount, report.PendingAmount = 2, countedOf(7.5)
-	document := periodicDocumentOf(report, waitingWords{expenses: "قيود بانتظار الاعتماد"})
+	document := periodicDocumentOf(report, waitingWords{expenses: "قيود بانتظار الاعتماد"}, zones.Riyadh)
 	pages := pagesOf(t, document)
 	for _, figure := range []string{"885.00", "15.00", "115.00", "100.00", "7.50"} {
 		if !strings.Contains(pages[0], figure) {

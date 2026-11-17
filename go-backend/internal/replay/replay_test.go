@@ -406,7 +406,9 @@ func wordsDotNetHad(net, got any) any {
 // addedSinceDotNet are the fields Go answers that .NET never had, each added by a feature built after it, so an answer recorded without one still
 // matches; each names why it is there.
 var addedSinceDotNet = map[string]string{
-	"accountIds": "the accounts a payment method pays from (redix-app #109)",
+	"accountIds":       "the accounts a payment method pays from (redix-app #109)",
+	"timeZone":         "the time zone a project is in (redix-app #107)",
+	"utcOffsetMinutes": "how far a project's zone is ahead of UTC now (redix-app #107)",
 }
 
 // withBody holds each route already sent once with a body that is not JSON, before the request it was recorded with: a route .NET answered

@@ -1304,6 +1304,34 @@ func (q *Queries) ChosenPartners(ctx context.Context, userID uuid.UUID) ([]Chose
 	return items, nil
 }
 
+const chosenTimeZones = `-- name: ChosenTimeZones :many
+SELECT project_id, time_zone FROM project_time_zones
+`
+
+// Every zone a project's manager chose, for the lists of projects.
+func (q *Queries) ChosenTimeZones(ctx context.Context) ([]ProjectTimeZone, error) {
+	rows, err := q.query(ctx, q.chosenTimeZonesStmt, chosenTimeZones)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProjectTimeZone
+	for rows.Next() {
+		var i ProjectTimeZone
+		if err := rows.Scan(&i.ProjectID, &i.TimeZone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const columnsOf = `-- name: ColumnsOf :many
 SELECT id, item_id, is_hidden, "key", name, data_type, is_core, is_required, show_in_reports, sort_order, choices FROM item_columns
 WHERE item_id IN (SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ?)
@@ -3638,6 +3666,18 @@ func (q *Queries) ProjectOfUser(ctx context.Context, arg ProjectOfUserParams) ([
 	return items, nil
 }
 
+const projectTimeZone = `-- name: ProjectTimeZone :one
+SELECT time_zone FROM project_time_zones WHERE project_id = ?1
+`
+
+// The zone a project's manager chose (redix-app #107); none for one still in Riyadh.
+func (q *Queries) ProjectTimeZone(ctx context.Context, projectID uuid.UUID) (string, error) {
+	row := q.queryRow(ctx, q.projectTimeZoneStmt, projectTimeZone, projectID)
+	var time_zone string
+	err := row.Scan(&time_zone)
+	return time_zone, err
+}
+
 const projectWithID = `-- name: ProjectWithID :one
 SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects WHERE id = ?1
 `
@@ -4837,6 +4877,21 @@ type SetProjectStatusParams struct {
 
 func (q *Queries) SetProjectStatus(ctx context.Context, arg SetProjectStatusParams) error {
 	_, err := q.exec(ctx, q.setProjectStatusStmt, setProjectStatus, arg.Status, arg.RejectionReason, arg.ID)
+	return err
+}
+
+const setProjectTimeZone = `-- name: SetProjectTimeZone :exec
+INSERT INTO project_time_zones (project_id, time_zone) VALUES (?1, ?2)
+ON CONFLICT (project_id) DO UPDATE SET time_zone = excluded.time_zone
+`
+
+type SetProjectTimeZoneParams struct {
+	ProjectID uuid.UUID
+	TimeZone  string
+}
+
+func (q *Queries) SetProjectTimeZone(ctx context.Context, arg SetProjectTimeZoneParams) error {
+	_, err := q.exec(ctx, q.setProjectTimeZoneStmt, setProjectTimeZone, arg.ProjectID, arg.TimeZone)
 	return err
 }
 

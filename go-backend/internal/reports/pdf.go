@@ -2,11 +2,11 @@ package reports
 
 import (
 	"fmt"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
@@ -19,8 +19,8 @@ import (
 const pdfType = "application/pdf"
 
 // periodicDocumentOf is the periodic report as a PDF's pages: the summary, then a page per item, رأس المال among them.
-func periodicDocumentOf(report snapshot, words waitingWords) statement.Document {
-	document := statement.Document{Pages: []statement.Page{summaryPage(report, words)}}
+func periodicDocumentOf(report snapshot, words waitingWords, zone string) statement.Document {
+	document := statement.Document{Pages: []statement.Page{summaryPage(report, words, zone)}}
 	for _, item := range report.Items {
 		document.Pages = append(document.Pages, statement.PdfPage(sheetOf(item, nil)))
 	}
@@ -29,8 +29,8 @@ func periodicDocumentOf(report snapshot, words waitingWords) statement.Document 
 
 // summaryPage is the report's summary as report 23 lays it out: the accounts, the expenses against the previous report's, the revenue, the expenses
 // by category, the surplus and the reconciliation, what waits, and each category's items that hold anything.
-func summaryPage(report snapshot, words waitingWords) statement.Page {
-	issuedAt := report.IssuedAt.Add(entries.SaudiOffset)
+func summaryPage(report snapshot, words waitingWords, zone string) statement.Page {
+	issuedAt := report.IssuedAt.In(zones.Location(zone))
 	page := statement.Page{Title: fmt.Sprintf("%s · تقرير رقم %d · %s", report.ProjectName, report.Number, issuedAt.Format("02.01.2006 15:04")), TitleSize: 14}
 	add := func(blocks ...statement.Block) { page.Blocks = append(page.Blocks, blocks...) }
 	add(statement.Heading("أرصدة الحسابات", 6))
@@ -101,11 +101,12 @@ func (s Routes) periodicPdf(w http.ResponseWriter, r *http.Request, caller acces
 		return
 	}
 	words, wordsErr := s.waitingWords(r)
-	if err != nil || wordsErr != nil {
+	zone, zoneErr := zones.Of(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
+	if err != nil || wordsErr != nil || zoneErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	file, err := s.typst.Pdf(periodicDocumentOf(forFilesOf(report, caller, web.ID(r, "projectId")), words))
+	file, err := s.typst.Pdf(periodicDocumentOf(forFilesOf(report, caller, web.ID(r, "projectId")), words, zone))
 	s.sendFile(w, r, file, pdfType, fmt.Sprintf("report-%d.pdf", report.Number), err)
 }
 
