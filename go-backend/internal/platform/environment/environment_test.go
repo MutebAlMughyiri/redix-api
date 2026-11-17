@@ -67,13 +67,27 @@ func TestR11_DevAndQaTakeWhatTheirSettingsFilesNamedEachWithItsOwnDatabaseAndASe
 	}
 }
 
-func TestR11_ProdListensBehindCaddyAndKeepsItsDataWhereTheDeployLaysItOut(t *testing.T) {
-	prod, err := Read(lookupIn(map[string]string{"REDIX_Environment": "Prod", "REDIX_Jwt__SigningKey": key, "REDIX_Prod_Admin__Username": "owner"}))
+// Prod answers HTTPS on the domain its settings name and keeps its data and certificate where deploy/setup.sh lays them out (#145 D1).
+func TestR11_ProdAnswersOnItsDomainAndKeepsItsDataWhereTheDeployLaysItOut(t *testing.T) {
+	prod, err := Read(lookupIn(map[string]string{
+		"REDIX_Environment": "Prod", "REDIX_Jwt__SigningKey": key, "REDIX_Prod_Admin__Username": "owner", "REDIX_Domain": "redix.example",
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prod.Urls != "http://127.0.0.1:5012" || prod.DatabasePath != "/var/lib/redix/redix.db" || prod.AttachmentsFolder != "/var/lib/redix/attachments" ||
-		prod.EmailFolder != "/var/lib/redix/emails" || prod.AdminUsername != "owner" || prod.RegistrationsPerHour != 5 {
+	if prod.Urls != "https://:443;http://:80" || prod.Domain != "redix.example" || prod.CertificatesFolder != "/var/lib/redix/certificates" || prod.DatabasePath != "/var/lib/redix/redix.db" ||
+		prod.AttachmentsFolder != "/var/lib/redix/attachments" || prod.EmailFolder != "/var/lib/redix/emails" || prod.AdminUsername != "owner" ||
+		prod.RegistrationsPerHour != 5 {
 		t.Errorf("Prod read %+v", prod)
+	}
+}
+
+// Dev and QA name no domain, so they answer plain HTTP on Urls, as on Muteb's PC today (#145 D1).
+func TestR11_DevAndQaNameNoDomain(t *testing.T) {
+	for _, name := range []string{"Dev", "QA"} {
+		settings, err := Read(lookupIn(map[string]string{"REDIX_Environment": name, "REDIX_Jwt__SigningKey": key}))
+		if err != nil || settings.Domain != "" {
+			t.Errorf("%s read the domain %q (%v)", name, settings.Domain, err)
+		}
 	}
 }

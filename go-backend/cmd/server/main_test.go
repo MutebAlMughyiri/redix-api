@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -14,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -118,7 +121,11 @@ func TestTheServerRefusesToStartOnWhatItCannotWorkWith(t *testing.T) {
 				t.Fatal(err)
 			}
 		},
-		"an address that is not one":  func(t *testing.T) { settings(t, "http://[::1") },
+		"an address that is not one": func(t *testing.T) { settings(t, "http://[::1") },
+		"a domain with one address": func(t *testing.T) {
+			settings(t, "https://"+freeAddress(t))
+			t.Setenv("REDIX_Domain", "redix.test")
+		},
 		"an address already listened": func(t *testing.T) { settings(t, "http://"+busy.Addr().String()) },
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -148,5 +155,127 @@ func TestTheServerExitsWithOneWhenItCannotStart(t *testing.T) {
 	var exit *exec.ExitError
 	if err := command.Run(); !errors.As(err, &exit) || exit.ExitCode() != 1 {
 		t.Fatalf("the server without a signing key ended with %v, not exit status 1", err)
+	}
+}
+
+// started runs the server with the settings the test set until the test ends, and waits until address answers.
+func started(t *testing.T, logger *slog.Logger, address string) {
+	t.Helper()
+	ctx, stop := context.WithCancel(context.Background())
+	stopped := make(chan error, 1)
+	go func() { stopped <- run(ctx, logger, nil) }()
+	t.Cleanup(func() {
+		stop()
+		if err := <-stopped; err != nil {
+			t.Errorf("the server stopped with %v", err)
+		}
+	})
+	for range 100 {
+		if connection, err := net.Dial("tcp", address); err == nil {
+			connection.Close()
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("nothing answered on %s", address)
+}
+
+// withDomain is the settings of a server answering HTTPS on its domain, redix.test, at httpsAddress, and plain HTTP at httpAddress, as Prod
+// answers on 443 and 80 (redix-api #145 D1).
+func withDomain(t *testing.T, httpsAddress, httpAddress string) {
+	t.Helper()
+	settings(t, "https://"+httpsAddress+";http://"+httpAddress)
+	t.Setenv("REDIX_Domain", "redix.test")
+	t.Setenv("REDIX_Certificates__Folder", t.TempDir())
+}
+
+// handshakeWith answers whether a TLS hello naming name gets a certificate from the server at address. A name the domain is not is refused there,
+// before Let's Encrypt is ever asked, so no test reaches the internet.
+func handshakeWith(address, name string) error {
+	connection, err := tls.Dial("tcp", address, &tls.Config{ServerName: name})
+	if err == nil {
+		connection.Close()
+	}
+	return err
+}
+
+// With a domain, the HTTP port sends every request to the same path over HTTPS, and the HTTPS port gives a certificate for the domain alone,
+// never for another name someone asks for (redix-api #145 D1, R16).
+func TestR16_WithADomainHttpGoesToHttpsAndNoOtherNameGetsACertificate(t *testing.T) {
+	httpsAddress, httpAddress := freeAddress(t), freeAddress(t)
+	withDomain(t, httpsAddress, httpAddress)
+	started(t, quiet, httpsAddress)
+
+	request, _ := http.NewRequest("GET", "http://"+httpAddress+"/health", nil)
+	request.Host = "redix.test"
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusFound || response.Header.Get("Location") != "https://redix.test/health" {
+		t.Errorf("HTTP answered %d, to %q", response.StatusCode, response.Header.Get("Location"))
+	}
+	if err := handshakeWith(httpsAddress, "elsewhere.test"); err == nil {
+		t.Error("a name that is not the domain got a certificate")
+	}
+}
+
+// log is what the server logs, written by its goroutines while the test reads it.
+type log struct {
+	mutex sync.Mutex
+	lines bytes.Buffer
+}
+
+func (l *log) Write(line []byte) (int, error) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	return l.lines.Write(line)
+}
+
+func (l *log) String() string {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	return l.lines.String()
+}
+
+// A busy HTTP port is logged and the API still answers on HTTPS, where autocert proves the domain too (redix-api #145 D1).
+func TestR16_ABusyHttpPortIsLoggedAndHttpsStillAnswers(t *testing.T) {
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer busy.Close()
+	httpsAddress := freeAddress(t)
+	withDomain(t, httpsAddress, busy.Addr().String())
+	var logged log
+	started(t, slog.New(slog.NewTextHandler(&logged, nil)), httpsAddress)
+
+	if err := handshakeWith(httpsAddress, "elsewhere.test"); err == nil {
+		t.Error("a name that is not the domain got a certificate")
+	}
+	for range 100 {
+		if strings.Contains(logged.String(), "the HTTP port stopped") {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Errorf("the busy HTTP port was not logged: %s", logged.String())
+}
+
+// No request's body passes 30 MB: a larger one is refused before any route keeps it, as Caddy refused it (redix-api #145 R17).
+func TestR17_ABodyOver30MBIsRefused(t *testing.T) {
+	address := freeAddress(t)
+	settings(t, "http://"+address)
+	started(t, quiet, address)
+
+	response, err := http.Post("http://"+address+"/auth/sign-in", "application/json", bytes.NewReader(make([]byte, maxBodyBytes+1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusBadRequest {
+		t.Errorf("a body of 30 MB and a byte answered %d", response.StatusCode)
 	}
 }

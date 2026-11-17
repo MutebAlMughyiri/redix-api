@@ -21,6 +21,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/server"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 func main() {
@@ -57,30 +58,67 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 		EmailCodesPerHour: settings.EmailCodesPerHour, RegistrationsPerHour: settings.RegistrationsPerHour, WebFolder: settings.WebFolder,
 		AttachmentsFolder: settings.AttachmentsFolder, TypstPath: settings.TypstPath, Log: logger,
 	})
+	return serve(ctx, logger, settings, problem.Traced(router))
+}
 
-	address, err := listenAddress(settings.Urls)
+// maxBodyBytes is the largest request body the API reads: the largest file a person may send is 25 MB (fileTooLarge), with room for its form
+// (redix-api #145, R17).
+const maxBodyBytes = 30 << 20
+
+// serve answers until ctx ends. With a domain, as Prod runs, it answers HTTPS on the first of Urls with the certificate Let's Encrypt gives the
+// domain, which autocert keeps in the certificates folder and renews, and on the second only proves the domain and sends every other request to
+// HTTPS (redix-api #145, D1); without one, as Dev and QA run, plain HTTP on the first. No request's body passes 30 MB (R17).
+func serve(ctx context.Context, logger *slog.Logger, settings environment.Settings, handler http.Handler) error {
+	addresses, err := listenAddresses(settings.Urls)
 	if err != nil {
 		return err
 	}
-	api := &http.Server{Addr: address, Handler: problem.Traced(router), ReadHeaderTimeout: 10 * time.Second}
+	api := &http.Server{Addr: addresses[0], Handler: http.MaxBytesHandler(handler, maxBodyBytes), ReadHeaderTimeout: 10 * time.Second}
+	logger.Info("the API is listening", "address", api.Addr, "domain", settings.Domain, "environment", settings.Environment, "database", settings.DatabasePath)
+	if settings.Domain == "" {
+		return until(ctx, api, api.ListenAndServe)
+	}
+	if len(addresses) < 2 {
+		return errors.New("with a domain, REDIX_Urls names the HTTPS address and then the HTTP one, as Prod's https://:443;http://:80")
+	}
+	certificates := &autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(settings.Domain),
+		Cache:      autocert.DirCache(settings.CertificatesFolder),
+	}
+	challenges := &http.Server{Addr: addresses[1], Handler: certificates.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
+	go func() {
+		if err := until(ctx, challenges, challenges.ListenAndServe); err != nil {
+			logger.Error("the HTTP port stopped; the domain is still proven over HTTPS", "error", err)
+		}
+	}()
+	api.TLSConfig = certificates.TLSConfig()
+	return until(ctx, api, func() error { return api.ListenAndServeTLS("", "") })
+}
+
+// until runs listen until ctx ends, then shuts server down within ten seconds; a server closed that way is no error.
+func until(ctx context.Context, server *http.Server, listen func() error) error {
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		api.Shutdown(shutdown)
+		server.Shutdown(shutdown)
 	}()
-	logger.Info("the API is listening", "address", address, "environment", settings.Environment, "database", settings.DatabasePath)
-	if err := api.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+	if err := listen(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
 }
 
-// listenAddress is the host and port of the first of urls, which lists them as .NET's Urls setting did: "http://0.0.0.0:5012;http://...".
-func listenAddress(urls string) (string, error) {
-	first, err := url.Parse(strings.Split(urls, ";")[0])
-	if err != nil {
-		return "", err
+// listenAddresses is the host and port of each of urls, which lists them as .NET's Urls setting did: "http://0.0.0.0:5012;http://...".
+func listenAddresses(urls string) ([]string, error) {
+	var addresses []string
+	for _, each := range strings.Split(urls, ";") {
+		parsed, err := url.Parse(each)
+		if err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, parsed.Host)
 	}
-	return first.Host, nil
+	return addresses, nil
 }

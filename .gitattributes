@@ -1,0 +1,2 @@
+# The server reads these files as written: bash and systemd refuse a line ending in CR, which a Windows checkout would add (redix-api #145).
+go-backend/deploy/** text eol=lf

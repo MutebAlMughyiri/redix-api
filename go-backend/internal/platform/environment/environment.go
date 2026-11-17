@@ -16,8 +16,13 @@ import (
 type Settings struct {
 	// Environment names the settings' environment, such as Dev or QA (REDIX_Environment).
 	Environment string
-	// Urls is where the API listens (Urls).
+	// Urls is where the API listens in plain HTTP when no domain is set, as Dev and QA run (Urls).
 	Urls string
+	// Domain is the name the API answers HTTPS on, with the certificate Let's Encrypt gives it; "" where it answers plain HTTP on Urls
+	// (Domain, redix-api #145 D1).
+	Domain string
+	// CertificatesFolder keeps the domain's certificate across restarts (Certificates__Folder, #145).
+	CertificatesFolder string
 	// DatabasePath is the SQLite file (Database__Path).
 	DatabasePath string
 	// SigningKey signs access tokens; at least 256 bits, kept base64 (Jwt__SigningKey).
@@ -40,14 +45,14 @@ type Settings struct {
 
 // named is what each environment's settings name that is not a secret, as appsettings.{Environment}.json did: where it listens, its admin's
 // username and, for Dev, which Patrol registers projects and asks codes from without end, the limits lifted. Dev and QA each keep their own
-// database file, Redix{Environment}.db, as each had its own database; Prod is the published server, listening behind Caddy and keeping its
-// database and files under /var/lib/redix, as deploy/ lays it out. Its secrets are the server's own, in /etc/redix/redix.env (deploy/prod.env.example).
+// database file, Redix{Environment}.db, as each had its own database; Prod is the published server, answering HTTPS on its domain itself
+// (#145 D1) and keeping its database, files and certificate under /var/lib/redix, as deploy/setup.sh lays it out. Its secrets are the server's own, in /etc/redix/redix.env (deploy/prod.env.example).
 // A variable set in the environment wins over all of it.
 var named = map[string]map[string]string{
 	"Dev": {"Urls": "http://127.0.0.1:5010", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000", "EmailCodes__PermitsPerHour": "100000"},
 	"QA":  {"Urls": "http://127.0.0.1:5012", "Admin__Username": "real-admin"},
-	"Prod": {"Urls": "http://127.0.0.1:5012", "Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
-		"Email__Folder": "/var/lib/redix/emails", "Email__Smtp": "127.0.0.1:25"},
+	"Prod": {"Urls": "https://:443;http://:80", "Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
+		"Email__Folder": "/var/lib/redix/emails", "Email__Smtp": "127.0.0.1:25", "Certificates__Folder": "/var/lib/redix/certificates"},
 }
 
 // Read is the settings in the environment variables lookup gives: an environment's own variable, then the shared one, then what its settings
@@ -83,6 +88,8 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 	return Settings{
 		Environment:          environment,
 		Urls:                 get("Urls", "http://0.0.0.0:5012"),
+		Domain:               get("Domain", ""),
+		CertificatesFolder:   get("Certificates__Folder", filepath.Join(data, "Certificates")),
 		DatabasePath:         get("Database__Path", filepath.Join(data, databaseFile)),
 		SigningKey:           key,
 		AdminUsername:        get("Admin__Username", ""),

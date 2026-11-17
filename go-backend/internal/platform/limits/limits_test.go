@@ -49,12 +49,14 @@ func TestN15_PastItsPermitsAnAddressIsAnsweredTooManyRequests(t *testing.T) {
 	}
 }
 
-func TestG14_BehindCaddyEachPersonIsTheAddressCaddySaw(t *testing.T) {
+// Each person is the address their connection came from; an X-Forwarded-For anyone may write is ignored, so no one passes the limit as
+// someone else (G14, #145 D1).
+func TestG14_EachPersonIsTheConnectionsAddressAndAForwardedOneIsIgnored(t *testing.T) {
 	for _, c := range []struct{ remote, forwarded, want string }{
-		{"127.0.0.1:41000", "198.51.100.4", "198.51.100.4"},
-		{"127.0.0.1:41000", "203.0.113.9, 198.51.100.4", "198.51.100.4"},
-		{"127.0.0.1:41000", "", "127.0.0.1"},
+		{"192.0.2.7:51000", "", "192.0.2.7"},
 		{"192.0.2.7:51000", "198.51.100.4", "192.0.2.7"},
+		{"127.0.0.1:41000", "198.51.100.4", "127.0.0.1"},
+		{"192.0.2.7", "", "192.0.2.7"},
 	} {
 		request := httptest.NewRequest("POST", "/projects/register", nil)
 		request.RemoteAddr = c.remote

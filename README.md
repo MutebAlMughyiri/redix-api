@@ -21,7 +21,7 @@ Each environment is a name, and the name alone picks the port, the database and 
 | --- | --- | --- | --- |
 | dev, automated runs | `REDIX_Environment=Dev` | http://127.0.0.1:5010 | `RedixDev.db` in `%LOCALAPPDATA%\Redix` |
 | qa, Muteb's own testing | `REDIX_Environment=QA` | http://127.0.0.1:5012 | `RedixQA.db` in `%LOCALAPPDATA%\Redix` |
-| Production | `REDIX_Environment=Prod`, from `deploy/` | 127.0.0.1:5012 behind Caddy | `/var/lib/redix/redix.db` |
+| Production | `REDIX_Environment=Prod`, by `deploy/setup.sh` | https://&lt;domain&gt;, on 443 | `/var/lib/redix/redix.db` |
 
 Secrets are environment variables prefixed `REDIX_`, never a file in the repo; an environment's own, prefixed `REDIX_{name}_` such as `REDIX_QA_Admin__Password`, win. The schema is brought up to date as the server starts. `GET /health` answers `Healthy` when the database is reachable. A `.db` file opens in GoLand's Database window as a SQLite data source.
 

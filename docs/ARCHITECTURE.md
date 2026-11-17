@@ -38,7 +38,7 @@ go-backend/
   internal/server/        every domain's routes on one router, and /health
   internal/testapi/       the one way a domain's tests ask the API
   internal/replay/        the .NET API's recorded tests, replayed against Go with every answer compared (testdata/golden)
-  deploy/                 Caddy, the systemd units, Litestream and rclone
+  deploy/                 the server setup script (setup.sh), the systemd units, Litestream and rclone
 docs/                     these pages
 ```
 
@@ -66,7 +66,7 @@ Every entry, whatever its table, is recorded by `entries.Record` through one rou
 | History is append-only (AC-21.1) | Triggers `history_is_append_only_update` and `_delete` |
 | The API sends codes, never words; the app shows the word for the code | `changes.Refuse`, `problem`, and the words in `translations` |
 | Enums travel as camelCase names, such as `active` | `web.Enum` |
-| Each environment is a name: `Dev` (automated runs, 127.0.0.1:5010, `RedixDev.db`), `QA` (Muteb's own testing, 127.0.0.1:5012, `RedixQA.db`) and `Prod` (the published server, behind Caddy, its data under `/var/lib/redix`) | `internal/platform/environment` |
+| Each environment is a name: `Dev` (automated runs, 127.0.0.1:5010, `RedixDev.db`), `QA` (Muteb's own testing, 127.0.0.1:5012, `RedixQA.db`) and `Prod` (the published server, answering HTTPS on its domain itself, its data under `/var/lib/redix`) | `internal/platform/environment` |
 | Secrets come from environment variables prefixed `REDIX_`, never a file in the repo: on Muteb's PC Windows user variables, on the server `/etc/redix/redix.env`. An environment's own, prefixed `REDIX_{name}_`, win over the shared ones: `REDIX_QA_Admin__Password` | `internal/platform/environment` |
 | Every email leaves through one sender, its words the translations' in the language the request asked in | `internal/email` |
 | A business value someone may change while the API runs is a row of `config_values` (UC-070), never a setting in a file | `internal/config` |

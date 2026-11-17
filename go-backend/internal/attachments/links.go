@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -81,14 +80,10 @@ func (l Links) signatureOf(payload string) []byte {
 	return mac.Sum(nil)
 }
 
-// schemeOf is the scheme the person reached the API on: behind Caddy, which speaks to the binary on this machine alone, the one Caddy saw.
+// schemeOf is the scheme the person reached the API on: https when the request came over TLS, as Prod answers on its domain (#145 D1).
 func schemeOf(r *http.Request) string {
 	if r.TLS != nil {
 		return "https"
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if ip := net.ParseIP(host); err == nil && ip != nil && ip.IsLoopback() && r.Header.Get("X-Forwarded-Proto") != "" {
-		return r.Header.Get("X-Forwarded-Proto")
 	}
 	return "http"
 }

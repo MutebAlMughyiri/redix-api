@@ -1,5 +1,6 @@
-# The REDIX API as a systemd service (redix-api #140, R22). Its settings are REDIX_ variables in /etc/redix/redix.env, as on Windows today;
-# the database, its WAL and the attachments live in /var/lib/redix, which Litestream and the attachments timer back up.
+# The REDIX API as a systemd service (redix-api #140 R22, #145). It answers HTTPS on 443 with the certificate it keeps itself, and on 80 only
+# to prove the domain to Let's Encrypt and send everyone else to HTTPS (D1); binding those two ports is the one privilege it holds. Its settings
+# are REDIX_ variables in /etc/redix/redix.env; the database, its WAL, the attachments and the certificate live in /var/lib/redix.
 [Unit]
 Description=REDIX API
 After=network-online.target
@@ -15,6 +16,8 @@ Restart=on-failure
 RestartSec=2
 StateDirectory=redix
 WorkingDirectory=/var/lib/redix
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true

@@ -5,7 +5,6 @@ package limits
 import (
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -65,16 +64,12 @@ func (w *Window) PerAddress(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// clientOf is the address a request came from (G14): its own, or behind Caddy - a request from this machine, the API listening there alone - the
-// last one Caddy put in X-Forwarded-For, the one it saw, so every person behind Caddy is not one address.
+// clientOf is the address a request came from (G14): the connection's own. The API answers the internet itself, with no proxy in front
+// (#145 D1), so a forwarded header is anyone's to write and is never read.
 func clientOf(r *http.Request) string {
 	address, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		address = r.RemoteAddr
-	}
-	forwarded := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
-	if ip := net.ParseIP(address); ip != nil && ip.IsLoopback() && strings.TrimSpace(forwarded[len(forwarded)-1]) != "" {
-		return strings.TrimSpace(forwarded[len(forwarded)-1])
+		return r.RemoteAddr
 	}
 	return address
 }
