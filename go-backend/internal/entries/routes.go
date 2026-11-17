@@ -63,8 +63,6 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", project+"/entries/{entryId:guid}/reject", gate.Changes(access.ApproveEntries, s.reject))
 }
 
-func (s Routes) now() moment.Moment { return moment.Of(s.clock.Now()) }
-
 // entry is the route's entry when it is the project's and not removed (Entry.OfProjectAsync, BR-33, redix-api #119): 404 otherwise.
 func (s Routes) entry(w http.ResponseWriter, r *http.Request) (store.Entry, bool) {
 	entry, err := changes.Found(s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")}))

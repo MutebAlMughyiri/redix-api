@@ -191,9 +191,24 @@ type stmt struct {
 func (s stmt) Close() error  { return s.inner.Close() }
 func (s stmt) NumInput() int { return s.inner.NumInput() }
 
-func (s stmt) Exec(args []driver.Value) (driver.Result, error) { return s.inner.Exec(args) }
+// Exec and Query are what driver.Stmt requires; database/sql calls ExecContext and QueryContext instead on a statement that has them, so these
+// only pass to those, never to the inner statement's deprecated forms.
+func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
+	return s.ExecContext(context.Background(), named(args))
+}
 
-func (s stmt) Query(args []driver.Value) (driver.Rows, error) { return s.inner.Query(args) }
+func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
+	return s.QueryContext(context.Background(), named(args))
+}
+
+// named is args as the Context forms take them, numbered from 1.
+func named(args []driver.Value) []driver.NamedValue {
+	values := make([]driver.NamedValue, len(args))
+	for index, value := range args {
+		values[index] = driver.NamedValue{Ordinal: index + 1, Value: value}
+	}
+	return values
+}
 
 func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	if err := s.failure.next(); err != nil {

@@ -697,7 +697,7 @@ func keepChanges(ctx context.Context, q *store.Queries, actor uuid.UUID, action 
 		delete(was, unit.ID)
 		switch {
 		case !existed:
-			if err := q.AddUnit(ctx, store.AddUnitParams{ID: unit.ID, ProjectID: unit.ProjectID, Name: unit.Name, SortOrder: unit.SortOrder}); err != nil {
+			if err := q.AddUnit(ctx, store.AddUnitParams(unit)); err != nil {
 				return err
 			}
 			if err := history.Write(ctx, q, now, actor, action, history.Change{Table: "Units", RecordID: unit.ID, ProjectID: unit.ProjectID, After: unitFields(unit)}); err != nil {
