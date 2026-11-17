@@ -87,6 +87,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addPaymentDetailsStmt, err = db.PrepareContext(ctx, addPaymentDetails); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPaymentDetails: %w", err)
 	}
+	if q.addPaymentMethodAccountStmt, err = db.PrepareContext(ctx, addPaymentMethodAccount); err != nil {
+		return nil, fmt.Errorf("error preparing query AddPaymentMethodAccount: %w", err)
+	}
 	if q.addPeriodicReportStmt, err = db.PrepareContext(ctx, addPeriodicReport); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPeriodicReport: %w", err)
 	}
@@ -339,6 +342,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.membersStmt, err = db.PrepareContext(ctx, members); err != nil {
 		return nil, fmt.Errorf("error preparing query Members: %w", err)
 	}
+	if q.methodPaysFromStmt, err = db.PrepareContext(ctx, methodPaysFrom); err != nil {
+		return nil, fmt.Errorf("error preparing query MethodPaysFrom: %w", err)
+	}
 	if q.nextEntryNumberStmt, err = db.PrepareContext(ctx, nextEntryNumber); err != nil {
 		return nil, fmt.Errorf("error preparing query NextEntryNumber: %w", err)
 	}
@@ -368,6 +374,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.paymentDetailsOfStmt, err = db.PrepareContext(ctx, paymentDetailsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PaymentDetailsOf: %w", err)
+	}
+	if q.paymentMethodAccountsOfStmt, err = db.PrepareContext(ctx, paymentMethodAccountsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query PaymentMethodAccountsOf: %w", err)
 	}
 	if q.paymentMethodOfStmt, err = db.PrepareContext(ctx, paymentMethodOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PaymentMethodOf: %w", err)
@@ -432,6 +441,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.removeAccountStmt, err = db.PrepareContext(ctx, removeAccount); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveAccount: %w", err)
 	}
+	if q.removeAccountFromPaymentMethodsStmt, err = db.PrepareContext(ctx, removeAccountFromPaymentMethods); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveAccountFromPaymentMethods: %w", err)
+	}
 	if q.removeCapitalDetailsStmt, err = db.PrepareContext(ctx, removeCapitalDetails); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveCapitalDetails: %w", err)
 	}
@@ -488,6 +500,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.removePaymentMethodStmt, err = db.PrepareContext(ctx, removePaymentMethod); err != nil {
 		return nil, fmt.Errorf("error preparing query RemovePaymentMethod: %w", err)
+	}
+	if q.removePaymentMethodAccountStmt, err = db.PrepareContext(ctx, removePaymentMethodAccount); err != nil {
+		return nil, fmt.Errorf("error preparing query RemovePaymentMethodAccount: %w", err)
+	}
+	if q.removePaymentMethodAccountsStmt, err = db.PrepareContext(ctx, removePaymentMethodAccounts); err != nil {
+		return nil, fmt.Errorf("error preparing query RemovePaymentMethodAccounts: %w", err)
 	}
 	if q.removePermissionStmt, err = db.PrepareContext(ctx, removePermission); err != nil {
 		return nil, fmt.Errorf("error preparing query RemovePermission: %w", err)
@@ -774,6 +792,11 @@ func (q *Queries) Close() error {
 	if q.addPaymentDetailsStmt != nil {
 		if cerr := q.addPaymentDetailsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addPaymentDetailsStmt: %w", cerr)
+		}
+	}
+	if q.addPaymentMethodAccountStmt != nil {
+		if cerr := q.addPaymentMethodAccountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addPaymentMethodAccountStmt: %w", cerr)
 		}
 	}
 	if q.addPeriodicReportStmt != nil {
@@ -1196,6 +1219,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing membersStmt: %w", cerr)
 		}
 	}
+	if q.methodPaysFromStmt != nil {
+		if cerr := q.methodPaysFromStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing methodPaysFromStmt: %w", cerr)
+		}
+	}
 	if q.nextEntryNumberStmt != nil {
 		if cerr := q.nextEntryNumberStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing nextEntryNumberStmt: %w", cerr)
@@ -1244,6 +1272,11 @@ func (q *Queries) Close() error {
 	if q.paymentDetailsOfStmt != nil {
 		if cerr := q.paymentDetailsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing paymentDetailsOfStmt: %w", cerr)
+		}
+	}
+	if q.paymentMethodAccountsOfStmt != nil {
+		if cerr := q.paymentMethodAccountsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing paymentMethodAccountsOfStmt: %w", cerr)
 		}
 	}
 	if q.paymentMethodOfStmt != nil {
@@ -1351,6 +1384,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing removeAccountStmt: %w", cerr)
 		}
 	}
+	if q.removeAccountFromPaymentMethodsStmt != nil {
+		if cerr := q.removeAccountFromPaymentMethodsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeAccountFromPaymentMethodsStmt: %w", cerr)
+		}
+	}
 	if q.removeCapitalDetailsStmt != nil {
 		if cerr := q.removeCapitalDetailsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removeCapitalDetailsStmt: %w", cerr)
@@ -1444,6 +1482,16 @@ func (q *Queries) Close() error {
 	if q.removePaymentMethodStmt != nil {
 		if cerr := q.removePaymentMethodStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removePaymentMethodStmt: %w", cerr)
+		}
+	}
+	if q.removePaymentMethodAccountStmt != nil {
+		if cerr := q.removePaymentMethodAccountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removePaymentMethodAccountStmt: %w", cerr)
+		}
+	}
+	if q.removePaymentMethodAccountsStmt != nil {
+		if cerr := q.removePaymentMethodAccountsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removePaymentMethodAccountsStmt: %w", cerr)
 		}
 	}
 	if q.removePermissionStmt != nil {
@@ -1778,441 +1826,453 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                            DBTX
-	tx                            *sql.Tx
-	accountMovementsStmt          *sql.Stmt
-	accountOfStmt                 *sql.Stmt
-	accountsOfStmt                *sql.Stmt
-	accountsUsedStmt              *sql.Stmt
-	activeSupplierExistsStmt      *sql.Stmt
-	addAttachmentStmt             *sql.Stmt
-	addCapitalDetailsStmt         *sql.Stmt
-	addChosenStmt                 *sql.Stmt
-	addCodeStmt                   *sql.Stmt
-	addContractDocumentStmt       *sql.Stmt
-	addDecisionStmt               *sql.Stmt
-	addDeviceStmt                 *sql.Stmt
-	addDocumentStmt               *sql.Stmt
-	addEntryFileStmt              *sql.Stmt
-	addExpenseDetailsStmt         *sql.Stmt
-	addHistoryStmt                *sql.Stmt
-	addInactiveStmt               *sql.Stmt
-	addNotificationStmt           *sql.Stmt
-	addNotificationEntryStmt      *sql.Stmt
-	addPartnerStmt                *sql.Stmt
-	addPaymentDetailsStmt         *sql.Stmt
-	addPeriodicReportStmt         *sql.Stmt
-	addPermissionStmt             *sql.Stmt
-	addProjectStmt                *sql.Stmt
-	addPurchaseDetailsStmt        *sql.Stmt
-	addReconciliationStmt         *sql.Stmt
-	addReconciliationBalanceStmt  *sql.Stmt
-	addRevenueDetailsStmt         *sql.Stmt
-	addRoleNameStmt               *sql.Stmt
-	addStructureSourceStmt        *sql.Stmt
-	addSystemPermissionStmt       *sql.Stmt
-	addTransferStmt               *sql.Stmt
-	addUnitStmt                   *sql.Stmt
-	addUserStmt                   *sql.Stmt
-	allProjectsStmt               *sql.Stmt
-	allUnitsStmt                  *sql.Stmt
-	approvedRevenueByItemTypeStmt *sql.Stmt
-	approvedTotalsByKindStmt      *sql.Stmt
-	arabicWordStmt                *sql.Stmt
-	attachmentExistsStmt          *sql.Stmt
-	attachmentOfStmt              *sql.Stmt
-	attachmentSentStmt            *sql.Stmt
-	attachmentWithIDStmt          *sql.Stmt
-	balancesOfStmt                *sql.Stmt
-	capitalDetailsOfStmt          *sql.Stmt
-	capitalItemExistsStmt         *sql.Stmt
-	capitalMovementsStmt          *sql.Stmt
-	categoriesOfStmt              *sql.Stmt
-	categoryOfStmt                *sql.Stmt
-	chosenOfStmt                  *sql.Stmt
-	chosenPartnersStmt            *sql.Stmt
-	columnsOfStmt                 *sql.Stmt
-	columnsOfItemStmt             *sql.Stmt
-	contractDocumentsStmt         *sql.Stmt
-	contractMoneyStmt             *sql.Stmt
-	contractOfStmt                *sql.Stmt
-	contractsOfStmt               *sql.Stmt
-	contractsOfItemStmt           *sql.Stmt
-	contractsWithPaymentsStmt     *sql.Stmt
-	countTryStmt                  *sql.Stmt
-	custodianOfStmt               *sql.Stmt
-	decisionsOfStmt               *sql.Stmt
-	defaultColumnsOfStmt          *sql.Stmt
-	defaultColumnsOfTypeStmt      *sql.Stmt
-	defaultItemOfStmt             *sql.Stmt
-	defaultProjectOfStmt          *sql.Stmt
-	deleteCodesStmt               *sql.Stmt
-	deleteEveryCodeStmt           *sql.Stmt
-	deviceIsOpenStmt              *sql.Stmt
-	deviceWithIDStmt              *sql.Stmt
-	deviceWithRefreshTokenStmt    *sql.Stmt
-	documentKeptStmt              *sql.Stmt
-	documentOfStmt                *sql.Stmt
-	documentsOfStmt               *sql.Stmt
-	documentsOfContractStmt       *sql.Stmt
-	emailTakenStmt                *sql.Stmt
-	entriesOfStmt                 *sql.Stmt
-	entryExistsStmt               *sql.Stmt
-	entryFilesOfStmt              *sql.Stmt
-	entryOfStmt                   *sql.Stmt
-	expenseDetailsOfStmt          *sql.Stmt
-	hasEntriesWaitingStmt         *sql.Stmt
-	hasUsersStmt                  *sql.Stmt
-	heldEverywhereStmt            *sql.Stmt
-	heldInProjectsStmt            *sql.Stmt
-	historyOfProjectStmt          *sql.Stmt
-	holdersOfStmt                 *sql.Stmt
-	inactiveOfStmt                *sql.Stmt
-	inactiveProjectsOfStmt        *sql.Stmt
-	invoicesOfStmt                *sql.Stmt
-	isAdminStmt                   *sql.Stmt
-	isMemberStmt                  *sql.Stmt
-	itemHasEntriesStmt            *sql.Stmt
-	itemOfStmt                    *sql.Stmt
-	itemTotalsOfStmt              *sql.Stmt
-	itemsOfStmt                   *sql.Stmt
-	itemsOfCategoryStmt           *sql.Stmt
-	keptPartnerIDsStmt            *sql.Stmt
-	lastCodeStmt                  *sql.Stmt
-	latestPeriodicReportStmt      *sql.Stmt
-	latestReconciliationStmt      *sql.Stmt
-	managersOfStmt                *sql.Stmt
-	managersOfPendingStmt         *sql.Stmt
-	markReadStmt                  *sql.Stmt
-	membersStmt                   *sql.Stmt
-	nextEntryNumberStmt           *sql.Stmt
-	nonAdminNamedStmt             *sql.Stmt
-	notificationsAboutStmt        *sql.Stmt
-	notificationsOfStmt           *sql.Stmt
-	offeredContractsStmt          *sql.Stmt
-	otherActiveManagersStmt       *sql.Stmt
-	partnerLoginsStmt             *sql.Stmt
-	partnersInItemStmt            *sql.Stmt
-	partnersOfStmt                *sql.Stmt
-	paymentDetailsOfStmt          *sql.Stmt
-	paymentMethodOfStmt           *sql.Stmt
-	paymentMethodUsedStmt         *sql.Stmt
-	paymentMethodsOfStmt          *sql.Stmt
-	pendingEntriesOfStmt          *sql.Stmt
-	pendingProjectsStmt           *sql.Stmt
-	periodicReportSnapshotStmt    *sql.Stmt
-	periodicReportsOfStmt         *sql.Stmt
-	permissionsOfStmt             *sql.Stmt
-	projectHoldsEntriesStmt       *sql.Stmt
-	projectIDsOfUserStmt          *sql.Stmt
-	projectIsFinishedStmt         *sql.Stmt
-	projectOfUserStmt             *sql.Stmt
-	projectWithIDStmt             *sql.Stmt
-	projectsHoldingEntriesStmt    *sql.Stmt
-	projectsOfUserStmt            *sql.Stmt
-	projectsOfUserWithRowsStmt    *sql.Stmt
-	purchaseDetailsOfStmt         *sql.Stmt
-	reconciliationBalancesOfStmt  *sql.Stmt
-	registerNamesStmt             *sql.Stmt
-	rejectionsOfStmt              *sql.Stmt
-	removeAccountStmt             *sql.Stmt
-	removeCapitalDetailsStmt      *sql.Stmt
-	removeChosenStmt              *sql.Stmt
-	removeCustodianStmt           *sql.Stmt
-	removeDecisionsStmt           *sql.Stmt
-	removeDefaultColumnStmt       *sql.Stmt
-	removeDefaultItemStmt         *sql.Stmt
-	removeDefaultProjectStmt      *sql.Stmt
-	removeDocumentStmt            *sql.Stmt
-	removeEntryStmt               *sql.Stmt
-	removeEntryFileStmt           *sql.Stmt
-	removeExpenseDetailsStmt      *sql.Stmt
-	removeInactiveStmt            *sql.Stmt
-	removeInvoiceStmt             *sql.Stmt
-	removeItemColumnStmt          *sql.Stmt
-	removeNotificationStmt        *sql.Stmt
-	removeNotificationEntryStmt   *sql.Stmt
-	removePartnerLoginStmt        *sql.Stmt
-	removePaymentDetailsStmt      *sql.Stmt
-	removePaymentMethodStmt       *sql.Stmt
-	removePermissionStmt          *sql.Stmt
-	removePurchaseDetailsStmt     *sql.Stmt
-	removeRevenueDetailsStmt      *sql.Stmt
-	removeRoleNameStmt            *sql.Stmt
-	removeSubgroupStmt            *sql.Stmt
-	removeUnitStmt                *sql.Stmt
-	renewDeviceStmt               *sql.Stmt
-	revenueDetailsOfStmt          *sql.Stmt
-	revokeDeviceStmt              *sql.Stmt
-	revokeEveryDeviceStmt         *sql.Stmt
-	revokeOtherDevicesStmt        *sql.Stmt
-	roleNameOfStmt                *sql.Stmt
-	roleNamesOfUserStmt           *sql.Stmt
-	saveAccountStmt               *sql.Stmt
-	saveCategoryStmt              *sql.Stmt
-	saveContractStmt              *sql.Stmt
-	saveCustodianStmt             *sql.Stmt
-	saveDefaultColumnStmt         *sql.Stmt
-	saveDefaultItemStmt           *sql.Stmt
-	saveEntryStmt                 *sql.Stmt
-	saveItemStmt                  *sql.Stmt
-	saveItemColumnStmt            *sql.Stmt
-	savePartnerStmt               *sql.Stmt
-	savePartnerLoginStmt          *sql.Stmt
-	savePaymentMethodStmt         *sql.Stmt
-	saveSubgroupStmt              *sql.Stmt
-	saveSupplierStmt              *sql.Stmt
-	saveUserStmt                  *sql.Stmt
-	setContractPlaceStmt          *sql.Stmt
-	setDefaultProjectStmt         *sql.Stmt
-	setDetailsStmt                *sql.Stmt
-	setEmailStmt                  *sql.Stmt
-	setPartnerPlaceStmt           *sql.Stmt
-	setPasswordStmt               *sql.Stmt
-	setProjectDescriptionStmt     *sql.Stmt
-	setProjectNameStmt            *sql.Stmt
-	setProjectStatusStmt          *sql.Stmt
-	setRoleNameStmt               *sql.Stmt
-	setUnitNameStmt               *sql.Stmt
-	spendCodeStmt                 *sql.Stmt
-	structureSourceOfStmt         *sql.Stmt
-	subgroupHasEntriesStmt        *sql.Stmt
-	subgroupsOfStmt               *sql.Stmt
-	subgroupsOfItemStmt           *sql.Stmt
-	supplierOfStmt                *sql.Stmt
-	suppliersOfStmt               *sql.Stmt
-	transfersOfStmt               *sql.Stmt
-	unitsOfStmt                   *sql.Stmt
-	userNamedStmt                 *sql.Stmt
-	userNamesStmt                 *sql.Stmt
-	userWithEmailStmt             *sql.Stmt
-	userWithIDStmt                *sql.Stmt
-	usernameTakenStmt             *sql.Stmt
-	usersInProjectStmt            *sql.Stmt
-	usersOfProjectStmt            *sql.Stmt
-	valuesStmt                    *sql.Stmt
-	waitingByKindStmt             *sql.Stmt
-	wordsInStmt                   *sql.Stmt
-	wordsOfStmt                   *sql.Stmt
+	db                                  DBTX
+	tx                                  *sql.Tx
+	accountMovementsStmt                *sql.Stmt
+	accountOfStmt                       *sql.Stmt
+	accountsOfStmt                      *sql.Stmt
+	accountsUsedStmt                    *sql.Stmt
+	activeSupplierExistsStmt            *sql.Stmt
+	addAttachmentStmt                   *sql.Stmt
+	addCapitalDetailsStmt               *sql.Stmt
+	addChosenStmt                       *sql.Stmt
+	addCodeStmt                         *sql.Stmt
+	addContractDocumentStmt             *sql.Stmt
+	addDecisionStmt                     *sql.Stmt
+	addDeviceStmt                       *sql.Stmt
+	addDocumentStmt                     *sql.Stmt
+	addEntryFileStmt                    *sql.Stmt
+	addExpenseDetailsStmt               *sql.Stmt
+	addHistoryStmt                      *sql.Stmt
+	addInactiveStmt                     *sql.Stmt
+	addNotificationStmt                 *sql.Stmt
+	addNotificationEntryStmt            *sql.Stmt
+	addPartnerStmt                      *sql.Stmt
+	addPaymentDetailsStmt               *sql.Stmt
+	addPaymentMethodAccountStmt         *sql.Stmt
+	addPeriodicReportStmt               *sql.Stmt
+	addPermissionStmt                   *sql.Stmt
+	addProjectStmt                      *sql.Stmt
+	addPurchaseDetailsStmt              *sql.Stmt
+	addReconciliationStmt               *sql.Stmt
+	addReconciliationBalanceStmt        *sql.Stmt
+	addRevenueDetailsStmt               *sql.Stmt
+	addRoleNameStmt                     *sql.Stmt
+	addStructureSourceStmt              *sql.Stmt
+	addSystemPermissionStmt             *sql.Stmt
+	addTransferStmt                     *sql.Stmt
+	addUnitStmt                         *sql.Stmt
+	addUserStmt                         *sql.Stmt
+	allProjectsStmt                     *sql.Stmt
+	allUnitsStmt                        *sql.Stmt
+	approvedRevenueByItemTypeStmt       *sql.Stmt
+	approvedTotalsByKindStmt            *sql.Stmt
+	arabicWordStmt                      *sql.Stmt
+	attachmentExistsStmt                *sql.Stmt
+	attachmentOfStmt                    *sql.Stmt
+	attachmentSentStmt                  *sql.Stmt
+	attachmentWithIDStmt                *sql.Stmt
+	balancesOfStmt                      *sql.Stmt
+	capitalDetailsOfStmt                *sql.Stmt
+	capitalItemExistsStmt               *sql.Stmt
+	capitalMovementsStmt                *sql.Stmt
+	categoriesOfStmt                    *sql.Stmt
+	categoryOfStmt                      *sql.Stmt
+	chosenOfStmt                        *sql.Stmt
+	chosenPartnersStmt                  *sql.Stmt
+	columnsOfStmt                       *sql.Stmt
+	columnsOfItemStmt                   *sql.Stmt
+	contractDocumentsStmt               *sql.Stmt
+	contractMoneyStmt                   *sql.Stmt
+	contractOfStmt                      *sql.Stmt
+	contractsOfStmt                     *sql.Stmt
+	contractsOfItemStmt                 *sql.Stmt
+	contractsWithPaymentsStmt           *sql.Stmt
+	countTryStmt                        *sql.Stmt
+	custodianOfStmt                     *sql.Stmt
+	decisionsOfStmt                     *sql.Stmt
+	defaultColumnsOfStmt                *sql.Stmt
+	defaultColumnsOfTypeStmt            *sql.Stmt
+	defaultItemOfStmt                   *sql.Stmt
+	defaultProjectOfStmt                *sql.Stmt
+	deleteCodesStmt                     *sql.Stmt
+	deleteEveryCodeStmt                 *sql.Stmt
+	deviceIsOpenStmt                    *sql.Stmt
+	deviceWithIDStmt                    *sql.Stmt
+	deviceWithRefreshTokenStmt          *sql.Stmt
+	documentKeptStmt                    *sql.Stmt
+	documentOfStmt                      *sql.Stmt
+	documentsOfStmt                     *sql.Stmt
+	documentsOfContractStmt             *sql.Stmt
+	emailTakenStmt                      *sql.Stmt
+	entriesOfStmt                       *sql.Stmt
+	entryExistsStmt                     *sql.Stmt
+	entryFilesOfStmt                    *sql.Stmt
+	entryOfStmt                         *sql.Stmt
+	expenseDetailsOfStmt                *sql.Stmt
+	hasEntriesWaitingStmt               *sql.Stmt
+	hasUsersStmt                        *sql.Stmt
+	heldEverywhereStmt                  *sql.Stmt
+	heldInProjectsStmt                  *sql.Stmt
+	historyOfProjectStmt                *sql.Stmt
+	holdersOfStmt                       *sql.Stmt
+	inactiveOfStmt                      *sql.Stmt
+	inactiveProjectsOfStmt              *sql.Stmt
+	invoicesOfStmt                      *sql.Stmt
+	isAdminStmt                         *sql.Stmt
+	isMemberStmt                        *sql.Stmt
+	itemHasEntriesStmt                  *sql.Stmt
+	itemOfStmt                          *sql.Stmt
+	itemTotalsOfStmt                    *sql.Stmt
+	itemsOfStmt                         *sql.Stmt
+	itemsOfCategoryStmt                 *sql.Stmt
+	keptPartnerIDsStmt                  *sql.Stmt
+	lastCodeStmt                        *sql.Stmt
+	latestPeriodicReportStmt            *sql.Stmt
+	latestReconciliationStmt            *sql.Stmt
+	managersOfStmt                      *sql.Stmt
+	managersOfPendingStmt               *sql.Stmt
+	markReadStmt                        *sql.Stmt
+	membersStmt                         *sql.Stmt
+	methodPaysFromStmt                  *sql.Stmt
+	nextEntryNumberStmt                 *sql.Stmt
+	nonAdminNamedStmt                   *sql.Stmt
+	notificationsAboutStmt              *sql.Stmt
+	notificationsOfStmt                 *sql.Stmt
+	offeredContractsStmt                *sql.Stmt
+	otherActiveManagersStmt             *sql.Stmt
+	partnerLoginsStmt                   *sql.Stmt
+	partnersInItemStmt                  *sql.Stmt
+	partnersOfStmt                      *sql.Stmt
+	paymentDetailsOfStmt                *sql.Stmt
+	paymentMethodAccountsOfStmt         *sql.Stmt
+	paymentMethodOfStmt                 *sql.Stmt
+	paymentMethodUsedStmt               *sql.Stmt
+	paymentMethodsOfStmt                *sql.Stmt
+	pendingEntriesOfStmt                *sql.Stmt
+	pendingProjectsStmt                 *sql.Stmt
+	periodicReportSnapshotStmt          *sql.Stmt
+	periodicReportsOfStmt               *sql.Stmt
+	permissionsOfStmt                   *sql.Stmt
+	projectHoldsEntriesStmt             *sql.Stmt
+	projectIDsOfUserStmt                *sql.Stmt
+	projectIsFinishedStmt               *sql.Stmt
+	projectOfUserStmt                   *sql.Stmt
+	projectWithIDStmt                   *sql.Stmt
+	projectsHoldingEntriesStmt          *sql.Stmt
+	projectsOfUserStmt                  *sql.Stmt
+	projectsOfUserWithRowsStmt          *sql.Stmt
+	purchaseDetailsOfStmt               *sql.Stmt
+	reconciliationBalancesOfStmt        *sql.Stmt
+	registerNamesStmt                   *sql.Stmt
+	rejectionsOfStmt                    *sql.Stmt
+	removeAccountStmt                   *sql.Stmt
+	removeAccountFromPaymentMethodsStmt *sql.Stmt
+	removeCapitalDetailsStmt            *sql.Stmt
+	removeChosenStmt                    *sql.Stmt
+	removeCustodianStmt                 *sql.Stmt
+	removeDecisionsStmt                 *sql.Stmt
+	removeDefaultColumnStmt             *sql.Stmt
+	removeDefaultItemStmt               *sql.Stmt
+	removeDefaultProjectStmt            *sql.Stmt
+	removeDocumentStmt                  *sql.Stmt
+	removeEntryStmt                     *sql.Stmt
+	removeEntryFileStmt                 *sql.Stmt
+	removeExpenseDetailsStmt            *sql.Stmt
+	removeInactiveStmt                  *sql.Stmt
+	removeInvoiceStmt                   *sql.Stmt
+	removeItemColumnStmt                *sql.Stmt
+	removeNotificationStmt              *sql.Stmt
+	removeNotificationEntryStmt         *sql.Stmt
+	removePartnerLoginStmt              *sql.Stmt
+	removePaymentDetailsStmt            *sql.Stmt
+	removePaymentMethodStmt             *sql.Stmt
+	removePaymentMethodAccountStmt      *sql.Stmt
+	removePaymentMethodAccountsStmt     *sql.Stmt
+	removePermissionStmt                *sql.Stmt
+	removePurchaseDetailsStmt           *sql.Stmt
+	removeRevenueDetailsStmt            *sql.Stmt
+	removeRoleNameStmt                  *sql.Stmt
+	removeSubgroupStmt                  *sql.Stmt
+	removeUnitStmt                      *sql.Stmt
+	renewDeviceStmt                     *sql.Stmt
+	revenueDetailsOfStmt                *sql.Stmt
+	revokeDeviceStmt                    *sql.Stmt
+	revokeEveryDeviceStmt               *sql.Stmt
+	revokeOtherDevicesStmt              *sql.Stmt
+	roleNameOfStmt                      *sql.Stmt
+	roleNamesOfUserStmt                 *sql.Stmt
+	saveAccountStmt                     *sql.Stmt
+	saveCategoryStmt                    *sql.Stmt
+	saveContractStmt                    *sql.Stmt
+	saveCustodianStmt                   *sql.Stmt
+	saveDefaultColumnStmt               *sql.Stmt
+	saveDefaultItemStmt                 *sql.Stmt
+	saveEntryStmt                       *sql.Stmt
+	saveItemStmt                        *sql.Stmt
+	saveItemColumnStmt                  *sql.Stmt
+	savePartnerStmt                     *sql.Stmt
+	savePartnerLoginStmt                *sql.Stmt
+	savePaymentMethodStmt               *sql.Stmt
+	saveSubgroupStmt                    *sql.Stmt
+	saveSupplierStmt                    *sql.Stmt
+	saveUserStmt                        *sql.Stmt
+	setContractPlaceStmt                *sql.Stmt
+	setDefaultProjectStmt               *sql.Stmt
+	setDetailsStmt                      *sql.Stmt
+	setEmailStmt                        *sql.Stmt
+	setPartnerPlaceStmt                 *sql.Stmt
+	setPasswordStmt                     *sql.Stmt
+	setProjectDescriptionStmt           *sql.Stmt
+	setProjectNameStmt                  *sql.Stmt
+	setProjectStatusStmt                *sql.Stmt
+	setRoleNameStmt                     *sql.Stmt
+	setUnitNameStmt                     *sql.Stmt
+	spendCodeStmt                       *sql.Stmt
+	structureSourceOfStmt               *sql.Stmt
+	subgroupHasEntriesStmt              *sql.Stmt
+	subgroupsOfStmt                     *sql.Stmt
+	subgroupsOfItemStmt                 *sql.Stmt
+	supplierOfStmt                      *sql.Stmt
+	suppliersOfStmt                     *sql.Stmt
+	transfersOfStmt                     *sql.Stmt
+	unitsOfStmt                         *sql.Stmt
+	userNamedStmt                       *sql.Stmt
+	userNamesStmt                       *sql.Stmt
+	userWithEmailStmt                   *sql.Stmt
+	userWithIDStmt                      *sql.Stmt
+	usernameTakenStmt                   *sql.Stmt
+	usersInProjectStmt                  *sql.Stmt
+	usersOfProjectStmt                  *sql.Stmt
+	valuesStmt                          *sql.Stmt
+	waitingByKindStmt                   *sql.Stmt
+	wordsInStmt                         *sql.Stmt
+	wordsOfStmt                         *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                            tx,
-		tx:                            tx,
-		accountMovementsStmt:          q.accountMovementsStmt,
-		accountOfStmt:                 q.accountOfStmt,
-		accountsOfStmt:                q.accountsOfStmt,
-		accountsUsedStmt:              q.accountsUsedStmt,
-		activeSupplierExistsStmt:      q.activeSupplierExistsStmt,
-		addAttachmentStmt:             q.addAttachmentStmt,
-		addCapitalDetailsStmt:         q.addCapitalDetailsStmt,
-		addChosenStmt:                 q.addChosenStmt,
-		addCodeStmt:                   q.addCodeStmt,
-		addContractDocumentStmt:       q.addContractDocumentStmt,
-		addDecisionStmt:               q.addDecisionStmt,
-		addDeviceStmt:                 q.addDeviceStmt,
-		addDocumentStmt:               q.addDocumentStmt,
-		addEntryFileStmt:              q.addEntryFileStmt,
-		addExpenseDetailsStmt:         q.addExpenseDetailsStmt,
-		addHistoryStmt:                q.addHistoryStmt,
-		addInactiveStmt:               q.addInactiveStmt,
-		addNotificationStmt:           q.addNotificationStmt,
-		addNotificationEntryStmt:      q.addNotificationEntryStmt,
-		addPartnerStmt:                q.addPartnerStmt,
-		addPaymentDetailsStmt:         q.addPaymentDetailsStmt,
-		addPeriodicReportStmt:         q.addPeriodicReportStmt,
-		addPermissionStmt:             q.addPermissionStmt,
-		addProjectStmt:                q.addProjectStmt,
-		addPurchaseDetailsStmt:        q.addPurchaseDetailsStmt,
-		addReconciliationStmt:         q.addReconciliationStmt,
-		addReconciliationBalanceStmt:  q.addReconciliationBalanceStmt,
-		addRevenueDetailsStmt:         q.addRevenueDetailsStmt,
-		addRoleNameStmt:               q.addRoleNameStmt,
-		addStructureSourceStmt:        q.addStructureSourceStmt,
-		addSystemPermissionStmt:       q.addSystemPermissionStmt,
-		addTransferStmt:               q.addTransferStmt,
-		addUnitStmt:                   q.addUnitStmt,
-		addUserStmt:                   q.addUserStmt,
-		allProjectsStmt:               q.allProjectsStmt,
-		allUnitsStmt:                  q.allUnitsStmt,
-		approvedRevenueByItemTypeStmt: q.approvedRevenueByItemTypeStmt,
-		approvedTotalsByKindStmt:      q.approvedTotalsByKindStmt,
-		arabicWordStmt:                q.arabicWordStmt,
-		attachmentExistsStmt:          q.attachmentExistsStmt,
-		attachmentOfStmt:              q.attachmentOfStmt,
-		attachmentSentStmt:            q.attachmentSentStmt,
-		attachmentWithIDStmt:          q.attachmentWithIDStmt,
-		balancesOfStmt:                q.balancesOfStmt,
-		capitalDetailsOfStmt:          q.capitalDetailsOfStmt,
-		capitalItemExistsStmt:         q.capitalItemExistsStmt,
-		capitalMovementsStmt:          q.capitalMovementsStmt,
-		categoriesOfStmt:              q.categoriesOfStmt,
-		categoryOfStmt:                q.categoryOfStmt,
-		chosenOfStmt:                  q.chosenOfStmt,
-		chosenPartnersStmt:            q.chosenPartnersStmt,
-		columnsOfStmt:                 q.columnsOfStmt,
-		columnsOfItemStmt:             q.columnsOfItemStmt,
-		contractDocumentsStmt:         q.contractDocumentsStmt,
-		contractMoneyStmt:             q.contractMoneyStmt,
-		contractOfStmt:                q.contractOfStmt,
-		contractsOfStmt:               q.contractsOfStmt,
-		contractsOfItemStmt:           q.contractsOfItemStmt,
-		contractsWithPaymentsStmt:     q.contractsWithPaymentsStmt,
-		countTryStmt:                  q.countTryStmt,
-		custodianOfStmt:               q.custodianOfStmt,
-		decisionsOfStmt:               q.decisionsOfStmt,
-		defaultColumnsOfStmt:          q.defaultColumnsOfStmt,
-		defaultColumnsOfTypeStmt:      q.defaultColumnsOfTypeStmt,
-		defaultItemOfStmt:             q.defaultItemOfStmt,
-		defaultProjectOfStmt:          q.defaultProjectOfStmt,
-		deleteCodesStmt:               q.deleteCodesStmt,
-		deleteEveryCodeStmt:           q.deleteEveryCodeStmt,
-		deviceIsOpenStmt:              q.deviceIsOpenStmt,
-		deviceWithIDStmt:              q.deviceWithIDStmt,
-		deviceWithRefreshTokenStmt:    q.deviceWithRefreshTokenStmt,
-		documentKeptStmt:              q.documentKeptStmt,
-		documentOfStmt:                q.documentOfStmt,
-		documentsOfStmt:               q.documentsOfStmt,
-		documentsOfContractStmt:       q.documentsOfContractStmt,
-		emailTakenStmt:                q.emailTakenStmt,
-		entriesOfStmt:                 q.entriesOfStmt,
-		entryExistsStmt:               q.entryExistsStmt,
-		entryFilesOfStmt:              q.entryFilesOfStmt,
-		entryOfStmt:                   q.entryOfStmt,
-		expenseDetailsOfStmt:          q.expenseDetailsOfStmt,
-		hasEntriesWaitingStmt:         q.hasEntriesWaitingStmt,
-		hasUsersStmt:                  q.hasUsersStmt,
-		heldEverywhereStmt:            q.heldEverywhereStmt,
-		heldInProjectsStmt:            q.heldInProjectsStmt,
-		historyOfProjectStmt:          q.historyOfProjectStmt,
-		holdersOfStmt:                 q.holdersOfStmt,
-		inactiveOfStmt:                q.inactiveOfStmt,
-		inactiveProjectsOfStmt:        q.inactiveProjectsOfStmt,
-		invoicesOfStmt:                q.invoicesOfStmt,
-		isAdminStmt:                   q.isAdminStmt,
-		isMemberStmt:                  q.isMemberStmt,
-		itemHasEntriesStmt:            q.itemHasEntriesStmt,
-		itemOfStmt:                    q.itemOfStmt,
-		itemTotalsOfStmt:              q.itemTotalsOfStmt,
-		itemsOfStmt:                   q.itemsOfStmt,
-		itemsOfCategoryStmt:           q.itemsOfCategoryStmt,
-		keptPartnerIDsStmt:            q.keptPartnerIDsStmt,
-		lastCodeStmt:                  q.lastCodeStmt,
-		latestPeriodicReportStmt:      q.latestPeriodicReportStmt,
-		latestReconciliationStmt:      q.latestReconciliationStmt,
-		managersOfStmt:                q.managersOfStmt,
-		managersOfPendingStmt:         q.managersOfPendingStmt,
-		markReadStmt:                  q.markReadStmt,
-		membersStmt:                   q.membersStmt,
-		nextEntryNumberStmt:           q.nextEntryNumberStmt,
-		nonAdminNamedStmt:             q.nonAdminNamedStmt,
-		notificationsAboutStmt:        q.notificationsAboutStmt,
-		notificationsOfStmt:           q.notificationsOfStmt,
-		offeredContractsStmt:          q.offeredContractsStmt,
-		otherActiveManagersStmt:       q.otherActiveManagersStmt,
-		partnerLoginsStmt:             q.partnerLoginsStmt,
-		partnersInItemStmt:            q.partnersInItemStmt,
-		partnersOfStmt:                q.partnersOfStmt,
-		paymentDetailsOfStmt:          q.paymentDetailsOfStmt,
-		paymentMethodOfStmt:           q.paymentMethodOfStmt,
-		paymentMethodUsedStmt:         q.paymentMethodUsedStmt,
-		paymentMethodsOfStmt:          q.paymentMethodsOfStmt,
-		pendingEntriesOfStmt:          q.pendingEntriesOfStmt,
-		pendingProjectsStmt:           q.pendingProjectsStmt,
-		periodicReportSnapshotStmt:    q.periodicReportSnapshotStmt,
-		periodicReportsOfStmt:         q.periodicReportsOfStmt,
-		permissionsOfStmt:             q.permissionsOfStmt,
-		projectHoldsEntriesStmt:       q.projectHoldsEntriesStmt,
-		projectIDsOfUserStmt:          q.projectIDsOfUserStmt,
-		projectIsFinishedStmt:         q.projectIsFinishedStmt,
-		projectOfUserStmt:             q.projectOfUserStmt,
-		projectWithIDStmt:             q.projectWithIDStmt,
-		projectsHoldingEntriesStmt:    q.projectsHoldingEntriesStmt,
-		projectsOfUserStmt:            q.projectsOfUserStmt,
-		projectsOfUserWithRowsStmt:    q.projectsOfUserWithRowsStmt,
-		purchaseDetailsOfStmt:         q.purchaseDetailsOfStmt,
-		reconciliationBalancesOfStmt:  q.reconciliationBalancesOfStmt,
-		registerNamesStmt:             q.registerNamesStmt,
-		rejectionsOfStmt:              q.rejectionsOfStmt,
-		removeAccountStmt:             q.removeAccountStmt,
-		removeCapitalDetailsStmt:      q.removeCapitalDetailsStmt,
-		removeChosenStmt:              q.removeChosenStmt,
-		removeCustodianStmt:           q.removeCustodianStmt,
-		removeDecisionsStmt:           q.removeDecisionsStmt,
-		removeDefaultColumnStmt:       q.removeDefaultColumnStmt,
-		removeDefaultItemStmt:         q.removeDefaultItemStmt,
-		removeDefaultProjectStmt:      q.removeDefaultProjectStmt,
-		removeDocumentStmt:            q.removeDocumentStmt,
-		removeEntryStmt:               q.removeEntryStmt,
-		removeEntryFileStmt:           q.removeEntryFileStmt,
-		removeExpenseDetailsStmt:      q.removeExpenseDetailsStmt,
-		removeInactiveStmt:            q.removeInactiveStmt,
-		removeInvoiceStmt:             q.removeInvoiceStmt,
-		removeItemColumnStmt:          q.removeItemColumnStmt,
-		removeNotificationStmt:        q.removeNotificationStmt,
-		removeNotificationEntryStmt:   q.removeNotificationEntryStmt,
-		removePartnerLoginStmt:        q.removePartnerLoginStmt,
-		removePaymentDetailsStmt:      q.removePaymentDetailsStmt,
-		removePaymentMethodStmt:       q.removePaymentMethodStmt,
-		removePermissionStmt:          q.removePermissionStmt,
-		removePurchaseDetailsStmt:     q.removePurchaseDetailsStmt,
-		removeRevenueDetailsStmt:      q.removeRevenueDetailsStmt,
-		removeRoleNameStmt:            q.removeRoleNameStmt,
-		removeSubgroupStmt:            q.removeSubgroupStmt,
-		removeUnitStmt:                q.removeUnitStmt,
-		renewDeviceStmt:               q.renewDeviceStmt,
-		revenueDetailsOfStmt:          q.revenueDetailsOfStmt,
-		revokeDeviceStmt:              q.revokeDeviceStmt,
-		revokeEveryDeviceStmt:         q.revokeEveryDeviceStmt,
-		revokeOtherDevicesStmt:        q.revokeOtherDevicesStmt,
-		roleNameOfStmt:                q.roleNameOfStmt,
-		roleNamesOfUserStmt:           q.roleNamesOfUserStmt,
-		saveAccountStmt:               q.saveAccountStmt,
-		saveCategoryStmt:              q.saveCategoryStmt,
-		saveContractStmt:              q.saveContractStmt,
-		saveCustodianStmt:             q.saveCustodianStmt,
-		saveDefaultColumnStmt:         q.saveDefaultColumnStmt,
-		saveDefaultItemStmt:           q.saveDefaultItemStmt,
-		saveEntryStmt:                 q.saveEntryStmt,
-		saveItemStmt:                  q.saveItemStmt,
-		saveItemColumnStmt:            q.saveItemColumnStmt,
-		savePartnerStmt:               q.savePartnerStmt,
-		savePartnerLoginStmt:          q.savePartnerLoginStmt,
-		savePaymentMethodStmt:         q.savePaymentMethodStmt,
-		saveSubgroupStmt:              q.saveSubgroupStmt,
-		saveSupplierStmt:              q.saveSupplierStmt,
-		saveUserStmt:                  q.saveUserStmt,
-		setContractPlaceStmt:          q.setContractPlaceStmt,
-		setDefaultProjectStmt:         q.setDefaultProjectStmt,
-		setDetailsStmt:                q.setDetailsStmt,
-		setEmailStmt:                  q.setEmailStmt,
-		setPartnerPlaceStmt:           q.setPartnerPlaceStmt,
-		setPasswordStmt:               q.setPasswordStmt,
-		setProjectDescriptionStmt:     q.setProjectDescriptionStmt,
-		setProjectNameStmt:            q.setProjectNameStmt,
-		setProjectStatusStmt:          q.setProjectStatusStmt,
-		setRoleNameStmt:               q.setRoleNameStmt,
-		setUnitNameStmt:               q.setUnitNameStmt,
-		spendCodeStmt:                 q.spendCodeStmt,
-		structureSourceOfStmt:         q.structureSourceOfStmt,
-		subgroupHasEntriesStmt:        q.subgroupHasEntriesStmt,
-		subgroupsOfStmt:               q.subgroupsOfStmt,
-		subgroupsOfItemStmt:           q.subgroupsOfItemStmt,
-		supplierOfStmt:                q.supplierOfStmt,
-		suppliersOfStmt:               q.suppliersOfStmt,
-		transfersOfStmt:               q.transfersOfStmt,
-		unitsOfStmt:                   q.unitsOfStmt,
-		userNamedStmt:                 q.userNamedStmt,
-		userNamesStmt:                 q.userNamesStmt,
-		userWithEmailStmt:             q.userWithEmailStmt,
-		userWithIDStmt:                q.userWithIDStmt,
-		usernameTakenStmt:             q.usernameTakenStmt,
-		usersInProjectStmt:            q.usersInProjectStmt,
-		usersOfProjectStmt:            q.usersOfProjectStmt,
-		valuesStmt:                    q.valuesStmt,
-		waitingByKindStmt:             q.waitingByKindStmt,
-		wordsInStmt:                   q.wordsInStmt,
-		wordsOfStmt:                   q.wordsOfStmt,
+		db:                                  tx,
+		tx:                                  tx,
+		accountMovementsStmt:                q.accountMovementsStmt,
+		accountOfStmt:                       q.accountOfStmt,
+		accountsOfStmt:                      q.accountsOfStmt,
+		accountsUsedStmt:                    q.accountsUsedStmt,
+		activeSupplierExistsStmt:            q.activeSupplierExistsStmt,
+		addAttachmentStmt:                   q.addAttachmentStmt,
+		addCapitalDetailsStmt:               q.addCapitalDetailsStmt,
+		addChosenStmt:                       q.addChosenStmt,
+		addCodeStmt:                         q.addCodeStmt,
+		addContractDocumentStmt:             q.addContractDocumentStmt,
+		addDecisionStmt:                     q.addDecisionStmt,
+		addDeviceStmt:                       q.addDeviceStmt,
+		addDocumentStmt:                     q.addDocumentStmt,
+		addEntryFileStmt:                    q.addEntryFileStmt,
+		addExpenseDetailsStmt:               q.addExpenseDetailsStmt,
+		addHistoryStmt:                      q.addHistoryStmt,
+		addInactiveStmt:                     q.addInactiveStmt,
+		addNotificationStmt:                 q.addNotificationStmt,
+		addNotificationEntryStmt:            q.addNotificationEntryStmt,
+		addPartnerStmt:                      q.addPartnerStmt,
+		addPaymentDetailsStmt:               q.addPaymentDetailsStmt,
+		addPaymentMethodAccountStmt:         q.addPaymentMethodAccountStmt,
+		addPeriodicReportStmt:               q.addPeriodicReportStmt,
+		addPermissionStmt:                   q.addPermissionStmt,
+		addProjectStmt:                      q.addProjectStmt,
+		addPurchaseDetailsStmt:              q.addPurchaseDetailsStmt,
+		addReconciliationStmt:               q.addReconciliationStmt,
+		addReconciliationBalanceStmt:        q.addReconciliationBalanceStmt,
+		addRevenueDetailsStmt:               q.addRevenueDetailsStmt,
+		addRoleNameStmt:                     q.addRoleNameStmt,
+		addStructureSourceStmt:              q.addStructureSourceStmt,
+		addSystemPermissionStmt:             q.addSystemPermissionStmt,
+		addTransferStmt:                     q.addTransferStmt,
+		addUnitStmt:                         q.addUnitStmt,
+		addUserStmt:                         q.addUserStmt,
+		allProjectsStmt:                     q.allProjectsStmt,
+		allUnitsStmt:                        q.allUnitsStmt,
+		approvedRevenueByItemTypeStmt:       q.approvedRevenueByItemTypeStmt,
+		approvedTotalsByKindStmt:            q.approvedTotalsByKindStmt,
+		arabicWordStmt:                      q.arabicWordStmt,
+		attachmentExistsStmt:                q.attachmentExistsStmt,
+		attachmentOfStmt:                    q.attachmentOfStmt,
+		attachmentSentStmt:                  q.attachmentSentStmt,
+		attachmentWithIDStmt:                q.attachmentWithIDStmt,
+		balancesOfStmt:                      q.balancesOfStmt,
+		capitalDetailsOfStmt:                q.capitalDetailsOfStmt,
+		capitalItemExistsStmt:               q.capitalItemExistsStmt,
+		capitalMovementsStmt:                q.capitalMovementsStmt,
+		categoriesOfStmt:                    q.categoriesOfStmt,
+		categoryOfStmt:                      q.categoryOfStmt,
+		chosenOfStmt:                        q.chosenOfStmt,
+		chosenPartnersStmt:                  q.chosenPartnersStmt,
+		columnsOfStmt:                       q.columnsOfStmt,
+		columnsOfItemStmt:                   q.columnsOfItemStmt,
+		contractDocumentsStmt:               q.contractDocumentsStmt,
+		contractMoneyStmt:                   q.contractMoneyStmt,
+		contractOfStmt:                      q.contractOfStmt,
+		contractsOfStmt:                     q.contractsOfStmt,
+		contractsOfItemStmt:                 q.contractsOfItemStmt,
+		contractsWithPaymentsStmt:           q.contractsWithPaymentsStmt,
+		countTryStmt:                        q.countTryStmt,
+		custodianOfStmt:                     q.custodianOfStmt,
+		decisionsOfStmt:                     q.decisionsOfStmt,
+		defaultColumnsOfStmt:                q.defaultColumnsOfStmt,
+		defaultColumnsOfTypeStmt:            q.defaultColumnsOfTypeStmt,
+		defaultItemOfStmt:                   q.defaultItemOfStmt,
+		defaultProjectOfStmt:                q.defaultProjectOfStmt,
+		deleteCodesStmt:                     q.deleteCodesStmt,
+		deleteEveryCodeStmt:                 q.deleteEveryCodeStmt,
+		deviceIsOpenStmt:                    q.deviceIsOpenStmt,
+		deviceWithIDStmt:                    q.deviceWithIDStmt,
+		deviceWithRefreshTokenStmt:          q.deviceWithRefreshTokenStmt,
+		documentKeptStmt:                    q.documentKeptStmt,
+		documentOfStmt:                      q.documentOfStmt,
+		documentsOfStmt:                     q.documentsOfStmt,
+		documentsOfContractStmt:             q.documentsOfContractStmt,
+		emailTakenStmt:                      q.emailTakenStmt,
+		entriesOfStmt:                       q.entriesOfStmt,
+		entryExistsStmt:                     q.entryExistsStmt,
+		entryFilesOfStmt:                    q.entryFilesOfStmt,
+		entryOfStmt:                         q.entryOfStmt,
+		expenseDetailsOfStmt:                q.expenseDetailsOfStmt,
+		hasEntriesWaitingStmt:               q.hasEntriesWaitingStmt,
+		hasUsersStmt:                        q.hasUsersStmt,
+		heldEverywhereStmt:                  q.heldEverywhereStmt,
+		heldInProjectsStmt:                  q.heldInProjectsStmt,
+		historyOfProjectStmt:                q.historyOfProjectStmt,
+		holdersOfStmt:                       q.holdersOfStmt,
+		inactiveOfStmt:                      q.inactiveOfStmt,
+		inactiveProjectsOfStmt:              q.inactiveProjectsOfStmt,
+		invoicesOfStmt:                      q.invoicesOfStmt,
+		isAdminStmt:                         q.isAdminStmt,
+		isMemberStmt:                        q.isMemberStmt,
+		itemHasEntriesStmt:                  q.itemHasEntriesStmt,
+		itemOfStmt:                          q.itemOfStmt,
+		itemTotalsOfStmt:                    q.itemTotalsOfStmt,
+		itemsOfStmt:                         q.itemsOfStmt,
+		itemsOfCategoryStmt:                 q.itemsOfCategoryStmt,
+		keptPartnerIDsStmt:                  q.keptPartnerIDsStmt,
+		lastCodeStmt:                        q.lastCodeStmt,
+		latestPeriodicReportStmt:            q.latestPeriodicReportStmt,
+		latestReconciliationStmt:            q.latestReconciliationStmt,
+		managersOfStmt:                      q.managersOfStmt,
+		managersOfPendingStmt:               q.managersOfPendingStmt,
+		markReadStmt:                        q.markReadStmt,
+		membersStmt:                         q.membersStmt,
+		methodPaysFromStmt:                  q.methodPaysFromStmt,
+		nextEntryNumberStmt:                 q.nextEntryNumberStmt,
+		nonAdminNamedStmt:                   q.nonAdminNamedStmt,
+		notificationsAboutStmt:              q.notificationsAboutStmt,
+		notificationsOfStmt:                 q.notificationsOfStmt,
+		offeredContractsStmt:                q.offeredContractsStmt,
+		otherActiveManagersStmt:             q.otherActiveManagersStmt,
+		partnerLoginsStmt:                   q.partnerLoginsStmt,
+		partnersInItemStmt:                  q.partnersInItemStmt,
+		partnersOfStmt:                      q.partnersOfStmt,
+		paymentDetailsOfStmt:                q.paymentDetailsOfStmt,
+		paymentMethodAccountsOfStmt:         q.paymentMethodAccountsOfStmt,
+		paymentMethodOfStmt:                 q.paymentMethodOfStmt,
+		paymentMethodUsedStmt:               q.paymentMethodUsedStmt,
+		paymentMethodsOfStmt:                q.paymentMethodsOfStmt,
+		pendingEntriesOfStmt:                q.pendingEntriesOfStmt,
+		pendingProjectsStmt:                 q.pendingProjectsStmt,
+		periodicReportSnapshotStmt:          q.periodicReportSnapshotStmt,
+		periodicReportsOfStmt:               q.periodicReportsOfStmt,
+		permissionsOfStmt:                   q.permissionsOfStmt,
+		projectHoldsEntriesStmt:             q.projectHoldsEntriesStmt,
+		projectIDsOfUserStmt:                q.projectIDsOfUserStmt,
+		projectIsFinishedStmt:               q.projectIsFinishedStmt,
+		projectOfUserStmt:                   q.projectOfUserStmt,
+		projectWithIDStmt:                   q.projectWithIDStmt,
+		projectsHoldingEntriesStmt:          q.projectsHoldingEntriesStmt,
+		projectsOfUserStmt:                  q.projectsOfUserStmt,
+		projectsOfUserWithRowsStmt:          q.projectsOfUserWithRowsStmt,
+		purchaseDetailsOfStmt:               q.purchaseDetailsOfStmt,
+		reconciliationBalancesOfStmt:        q.reconciliationBalancesOfStmt,
+		registerNamesStmt:                   q.registerNamesStmt,
+		rejectionsOfStmt:                    q.rejectionsOfStmt,
+		removeAccountStmt:                   q.removeAccountStmt,
+		removeAccountFromPaymentMethodsStmt: q.removeAccountFromPaymentMethodsStmt,
+		removeCapitalDetailsStmt:            q.removeCapitalDetailsStmt,
+		removeChosenStmt:                    q.removeChosenStmt,
+		removeCustodianStmt:                 q.removeCustodianStmt,
+		removeDecisionsStmt:                 q.removeDecisionsStmt,
+		removeDefaultColumnStmt:             q.removeDefaultColumnStmt,
+		removeDefaultItemStmt:               q.removeDefaultItemStmt,
+		removeDefaultProjectStmt:            q.removeDefaultProjectStmt,
+		removeDocumentStmt:                  q.removeDocumentStmt,
+		removeEntryStmt:                     q.removeEntryStmt,
+		removeEntryFileStmt:                 q.removeEntryFileStmt,
+		removeExpenseDetailsStmt:            q.removeExpenseDetailsStmt,
+		removeInactiveStmt:                  q.removeInactiveStmt,
+		removeInvoiceStmt:                   q.removeInvoiceStmt,
+		removeItemColumnStmt:                q.removeItemColumnStmt,
+		removeNotificationStmt:              q.removeNotificationStmt,
+		removeNotificationEntryStmt:         q.removeNotificationEntryStmt,
+		removePartnerLoginStmt:              q.removePartnerLoginStmt,
+		removePaymentDetailsStmt:            q.removePaymentDetailsStmt,
+		removePaymentMethodStmt:             q.removePaymentMethodStmt,
+		removePaymentMethodAccountStmt:      q.removePaymentMethodAccountStmt,
+		removePaymentMethodAccountsStmt:     q.removePaymentMethodAccountsStmt,
+		removePermissionStmt:                q.removePermissionStmt,
+		removePurchaseDetailsStmt:           q.removePurchaseDetailsStmt,
+		removeRevenueDetailsStmt:            q.removeRevenueDetailsStmt,
+		removeRoleNameStmt:                  q.removeRoleNameStmt,
+		removeSubgroupStmt:                  q.removeSubgroupStmt,
+		removeUnitStmt:                      q.removeUnitStmt,
+		renewDeviceStmt:                     q.renewDeviceStmt,
+		revenueDetailsOfStmt:                q.revenueDetailsOfStmt,
+		revokeDeviceStmt:                    q.revokeDeviceStmt,
+		revokeEveryDeviceStmt:               q.revokeEveryDeviceStmt,
+		revokeOtherDevicesStmt:              q.revokeOtherDevicesStmt,
+		roleNameOfStmt:                      q.roleNameOfStmt,
+		roleNamesOfUserStmt:                 q.roleNamesOfUserStmt,
+		saveAccountStmt:                     q.saveAccountStmt,
+		saveCategoryStmt:                    q.saveCategoryStmt,
+		saveContractStmt:                    q.saveContractStmt,
+		saveCustodianStmt:                   q.saveCustodianStmt,
+		saveDefaultColumnStmt:               q.saveDefaultColumnStmt,
+		saveDefaultItemStmt:                 q.saveDefaultItemStmt,
+		saveEntryStmt:                       q.saveEntryStmt,
+		saveItemStmt:                        q.saveItemStmt,
+		saveItemColumnStmt:                  q.saveItemColumnStmt,
+		savePartnerStmt:                     q.savePartnerStmt,
+		savePartnerLoginStmt:                q.savePartnerLoginStmt,
+		savePaymentMethodStmt:               q.savePaymentMethodStmt,
+		saveSubgroupStmt:                    q.saveSubgroupStmt,
+		saveSupplierStmt:                    q.saveSupplierStmt,
+		saveUserStmt:                        q.saveUserStmt,
+		setContractPlaceStmt:                q.setContractPlaceStmt,
+		setDefaultProjectStmt:               q.setDefaultProjectStmt,
+		setDetailsStmt:                      q.setDetailsStmt,
+		setEmailStmt:                        q.setEmailStmt,
+		setPartnerPlaceStmt:                 q.setPartnerPlaceStmt,
+		setPasswordStmt:                     q.setPasswordStmt,
+		setProjectDescriptionStmt:           q.setProjectDescriptionStmt,
+		setProjectNameStmt:                  q.setProjectNameStmt,
+		setProjectStatusStmt:                q.setProjectStatusStmt,
+		setRoleNameStmt:                     q.setRoleNameStmt,
+		setUnitNameStmt:                     q.setUnitNameStmt,
+		spendCodeStmt:                       q.spendCodeStmt,
+		structureSourceOfStmt:               q.structureSourceOfStmt,
+		subgroupHasEntriesStmt:              q.subgroupHasEntriesStmt,
+		subgroupsOfStmt:                     q.subgroupsOfStmt,
+		subgroupsOfItemStmt:                 q.subgroupsOfItemStmt,
+		supplierOfStmt:                      q.supplierOfStmt,
+		suppliersOfStmt:                     q.suppliersOfStmt,
+		transfersOfStmt:                     q.transfersOfStmt,
+		unitsOfStmt:                         q.unitsOfStmt,
+		userNamedStmt:                       q.userNamedStmt,
+		userNamesStmt:                       q.userNamesStmt,
+		userWithEmailStmt:                   q.userWithEmailStmt,
+		userWithIDStmt:                      q.userWithIDStmt,
+		usernameTakenStmt:                   q.usernameTakenStmt,
+		usersInProjectStmt:                  q.usersInProjectStmt,
+		usersOfProjectStmt:                  q.usersOfProjectStmt,
+		valuesStmt:                          q.valuesStmt,
+		waitingByKindStmt:                   q.waitingByKindStmt,
+		wordsInStmt:                         q.wordsInStmt,
+		wordsOfStmt:                         q.wordsOfStmt,
 	}
 }

@@ -15,3 +15,29 @@ ON CONFLICT (id) DO UPDATE SET name = excluded.name, sort_order = excluded.sort_
 
 -- name: RemovePaymentMethod :exec
 DELETE FROM payment_methods WHERE id = ?;
+
+-- name: PaymentMethodAccountsOf :many
+-- The accounts each payment method of the project pays from (redix-app #109).
+SELECT payment_method_accounts.payment_method_id, payment_method_accounts.account_id FROM payment_method_accounts
+JOIN payment_methods ON payment_methods.id = payment_method_accounts.payment_method_id
+WHERE payment_methods.project_id = sqlc.arg(project_id) ORDER BY payment_method_accounts.payment_method_id, payment_method_accounts.account_id;
+
+-- name: AddPaymentMethodAccount :exec
+INSERT INTO payment_method_accounts (payment_method_id, account_id) VALUES (sqlc.arg(payment_method_id), sqlc.arg(account_id));
+
+-- name: RemovePaymentMethodAccount :exec
+DELETE FROM payment_method_accounts WHERE payment_method_id = sqlc.arg(payment_method_id) AND account_id = sqlc.arg(account_id);
+
+-- name: RemovePaymentMethodAccounts :exec
+-- Every account a payment method pays from, as the method is deleted.
+DELETE FROM payment_method_accounts WHERE payment_method_id = sqlc.arg(payment_method_id);
+
+-- name: RemoveAccountFromPaymentMethods :exec
+-- An account from every payment method paying from it, as the account is deleted.
+DELETE FROM payment_method_accounts WHERE account_id = sqlc.arg(account_id);
+
+-- name: MethodPaysFrom :one
+-- Whether the payment method pays from the account (redix-app #109, R5).
+SELECT EXISTS (
+    SELECT 1 FROM payment_method_accounts WHERE payment_method_id = sqlc.arg(payment_method_id) AND account_id = sqlc.arg(account_id)
+) AS is_paid_from;

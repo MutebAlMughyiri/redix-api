@@ -10,16 +10,18 @@
 
 The seeded template project holds three payment methods: شبكة, تحويل and كاش. FR-40 named a fourth, سداد, which went on 7 November 2026 (redix-api #96, D25). When a project is approved it takes its own copy of them, always from the template: what registration chooses is where the categories and items come from, and it says so on the form. So one project's change touches no other (BR-33).
 
+Each method pays from the accounts its dialog ticks (redix-app #109): a method kept before that change, or added naming none, pays from every account of its project, and an account added later is paid from by every method of its project, until someone unticks it (D1b, Muteb 17 Nov 2026). Add entry asks the method first and offers only the accounts it pays from.
+
 A project has no VAT rate of its own any more. REDIX stores no VAT: the VAT statement's workbook works it out of each total at the rate in the config row `vatRatePercent` (UC-070, redix-api #96, D4, D18).
 
 ## Endpoints
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `GET /projects/{projectId}/payment-methods` | `ReadProject` | `200` every method in order, disabled ones too, as `{ id, name, isActive }` |
+| `GET /projects/{projectId}/payment-methods` | `ReadProject` | `200` every method in order, disabled ones too, as `{ id, name, isActive, accountIds }` |
 | `GET /projects/{projectId}/payment-methods/offered` | `ReadProject` | `200` what an entry may choose: the active ones |
-| `POST /projects/{projectId}/payment-methods` with `{ name }` | `ManageSettings` | `200`; `400` `invalidName` |
-| `PUT /projects/{projectId}/payment-methods/{id}` with `{ name }` | `ManageSettings` | `200`; `400` `invalidName`; `404` |
+| `POST /projects/{projectId}/payment-methods` with `{ name, accountIds }` | `ManageSettings` | `200`; `400` `invalidName`, `paysFromNothing` for an empty list, `unknownAccount` for an account the project does not hold. With no `accountIds` it pays from every account |
+| `PUT /projects/{projectId}/payment-methods/{id}` with `{ name, accountIds }` | `ManageSettings` | `200`; `400` `invalidName`, `paysFromNothing`, `unknownAccount`; `404`. With no `accountIds` what it pays from stays |
 | `POST /projects/{projectId}/payment-methods/{id}/disable` | `ManageSettings` | `200`; `404` |
 | `POST /projects/{projectId}/payment-methods/{id}/enable` | `ManageSettings` | `200`; `404` |
 | `DELETE /projects/{projectId}/payment-methods/{id}` | `ManageSettings` | `200`; `409` `paymentMethodUsed` when an expense was paid with it; `404` |
@@ -31,6 +33,7 @@ Every change also answers `409` `projectFinished` in a finished project.
 | Table | Holds |
 | --- | --- |
 | `PaymentMethods` | Each project's methods, and the template's seed |
+| `payment_method_accounts` | The accounts each method pays from, one row a pair (redix-app #109) |
 
 ## Rules and where they live
 
@@ -49,6 +52,9 @@ Every change also answers `409` `projectFinished` in a finished project.
 | Everyone with access reads; only Finance changes | `Permission.ManageSettings` | `PaymentMethodsTests.EveryoneWithAccessReadsMethodsAndOnlyFinanceChangesThem` |
 | A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `PaymentMethodsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 | A method added after a delete goes last, and no two methods share a place | `PaymentMethodsEndpoints.AddAsync` | `PaymentMethodsTests.AMethodAddedAfterADeleteGoesLastAndNoTwoMethodsShareAPlace` |
+| A method pays from the accounts its dialog ticks, and a change to them is the method's History line (redix-app #109 R3) | `settings.setPaysFrom` | `settings_test.TestR3_AMethodPaysFromTheAccountsItsDialogTicks` |
+| A method naming no accounts pays from every one, and an account added later is paid from by every method (R4, D1b); a deleted account or method takes its links with it | `settings.AddPaymentMethod`, `settings.TickOnEveryMethod`, `accounts.Routes.delete` | `settings_test.TestR4_D1b_EveryMethodPaysFromEveryAccountUntilOneIsUnticked` |
+| A method pays from at least one of the project's accounts (R10) | `settings.setPaysFrom` | `settings_test.TestR10_AMethodPaysFromAtLeastOneOfTheProjectsAccounts` |
 
 ## Left to later use cases
 

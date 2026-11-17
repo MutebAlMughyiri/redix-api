@@ -19,6 +19,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/settings"
 	"github.com/google/uuid"
 )
 
@@ -165,6 +166,9 @@ func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller
 				return err
 			}
 		}
+		if err := settings.TickOnEveryMethod(c, account.ID); err != nil {
+			return err
+		}
 		return c.Record(history.Create, "Accounts", account.ID, nil, accountFields(account))
 	})
 }
@@ -263,6 +267,9 @@ func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Cal
 			return changes.Refuse(http.StatusConflict, "accountInUse")
 		}
 		if err := c.Q.RemoveCustodian(c.Ctx, account.ID); err != nil {
+			return err
+		}
+		if err := c.Q.RemoveAccountFromPaymentMethods(c.Ctx, account.ID); err != nil {
 			return err
 		}
 		if err := c.Q.RemoveAccount(c.Ctx, account.ID); err != nil {

@@ -505,6 +505,20 @@ func (q *Queries) AddPaymentDetails(ctx context.Context, arg AddPaymentDetailsPa
 	return err
 }
 
+const addPaymentMethodAccount = `-- name: AddPaymentMethodAccount :exec
+INSERT INTO payment_method_accounts (payment_method_id, account_id) VALUES (?1, ?2)
+`
+
+type AddPaymentMethodAccountParams struct {
+	PaymentMethodID uuid.UUID
+	AccountID       uuid.UUID
+}
+
+func (q *Queries) AddPaymentMethodAccount(ctx context.Context, arg AddPaymentMethodAccountParams) error {
+	_, err := q.exec(ctx, q.addPaymentMethodAccountStmt, addPaymentMethodAccount, arg.PaymentMethodID, arg.AccountID)
+	return err
+}
+
 const addPeriodicReport = `-- name: AddPeriodicReport :exec
 INSERT INTO periodic_reports (id, project_id, number, issued_at, issued_by_user_id, expenses_total, snapshot) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
@@ -2905,6 +2919,25 @@ func (q *Queries) Members(ctx context.Context, projectID uuid.UUID) ([]MembersRo
 	return items, nil
 }
 
+const methodPaysFrom = `-- name: MethodPaysFrom :one
+SELECT EXISTS (
+    SELECT 1 FROM payment_method_accounts WHERE payment_method_id = ?1 AND account_id = ?2
+) AS is_paid_from
+`
+
+type MethodPaysFromParams struct {
+	PaymentMethodID uuid.UUID
+	AccountID       uuid.UUID
+}
+
+// Whether the payment method pays from the account (redix-app #109, R5).
+func (q *Queries) MethodPaysFrom(ctx context.Context, arg MethodPaysFromParams) (bool, error) {
+	row := q.queryRow(ctx, q.methodPaysFromStmt, methodPaysFrom, arg.PaymentMethodID, arg.AccountID)
+	var is_paid_from bool
+	err := row.Scan(&is_paid_from)
+	return is_paid_from, err
+}
+
 const nextEntryNumber = `-- name: NextEntryNumber :one
 UPDATE projects SET last_entry_number = last_entry_number + 1 WHERE id = ? RETURNING last_entry_number
 `
@@ -3223,6 +3256,36 @@ func (q *Queries) PaymentDetailsOf(ctx context.Context, projectID uuid.UUID) ([]
 	for rows.Next() {
 		var i ContractorPaymentDetail
 		if err := rows.Scan(&i.EntryID, &i.ContractID, &i.IsOutsideContract); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const paymentMethodAccountsOf = `-- name: PaymentMethodAccountsOf :many
+SELECT payment_method_accounts.payment_method_id, payment_method_accounts.account_id FROM payment_method_accounts
+JOIN payment_methods ON payment_methods.id = payment_method_accounts.payment_method_id
+WHERE payment_methods.project_id = ?1 ORDER BY payment_method_accounts.payment_method_id, payment_method_accounts.account_id
+`
+
+// The accounts each payment method of the project pays from (redix-app #109).
+func (q *Queries) PaymentMethodAccountsOf(ctx context.Context, projectID uuid.UUID) ([]PaymentMethodAccount, error) {
+	rows, err := q.query(ctx, q.paymentMethodAccountsOfStmt, paymentMethodAccountsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMethodAccount
+	for rows.Next() {
+		var i PaymentMethodAccount
+		if err := rows.Scan(&i.PaymentMethodID, &i.AccountID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -3822,6 +3885,16 @@ func (q *Queries) RemoveAccount(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const removeAccountFromPaymentMethods = `-- name: RemoveAccountFromPaymentMethods :exec
+DELETE FROM payment_method_accounts WHERE account_id = ?1
+`
+
+// An account from every payment method paying from it, as the account is deleted.
+func (q *Queries) RemoveAccountFromPaymentMethods(ctx context.Context, accountID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeAccountFromPaymentMethodsStmt, removeAccountFromPaymentMethods, accountID)
+	return err
+}
+
 const removeCapitalDetails = `-- name: RemoveCapitalDetails :exec
 DELETE FROM capital_movement_details WHERE entry_id = ?
 `
@@ -3995,6 +4068,30 @@ DELETE FROM payment_methods WHERE id = ?
 
 func (q *Queries) RemovePaymentMethod(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removePaymentMethodStmt, removePaymentMethod, id)
+	return err
+}
+
+const removePaymentMethodAccount = `-- name: RemovePaymentMethodAccount :exec
+DELETE FROM payment_method_accounts WHERE payment_method_id = ?1 AND account_id = ?2
+`
+
+type RemovePaymentMethodAccountParams struct {
+	PaymentMethodID uuid.UUID
+	AccountID       uuid.UUID
+}
+
+func (q *Queries) RemovePaymentMethodAccount(ctx context.Context, arg RemovePaymentMethodAccountParams) error {
+	_, err := q.exec(ctx, q.removePaymentMethodAccountStmt, removePaymentMethodAccount, arg.PaymentMethodID, arg.AccountID)
+	return err
+}
+
+const removePaymentMethodAccounts = `-- name: RemovePaymentMethodAccounts :exec
+DELETE FROM payment_method_accounts WHERE payment_method_id = ?1
+`
+
+// Every account a payment method pays from, as the method is deleted.
+func (q *Queries) RemovePaymentMethodAccounts(ctx context.Context, paymentMethodID uuid.UUID) error {
+	_, err := q.exec(ctx, q.removePaymentMethodAccountsStmt, removePaymentMethodAccounts, paymentMethodID)
 	return err
 }
 

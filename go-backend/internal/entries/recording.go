@@ -249,6 +249,15 @@ func refusalOfPayment(c changes.Change, typed Request, t table, held access.Acce
 	}) {
 		return "accountNotOffered", nil
 	}
+	if !t.isRevenue() {
+		paysFrom, err := c.Q.MethodPaysFrom(c.Ctx, store.MethodPaysFromParams{PaymentMethodID: typed.PaymentMethodID, AccountID: typed.AccountID})
+		if err != nil {
+			return "", err
+		}
+		if !paysFrom {
+			return "accountNotForMethod", nil
+		}
+	}
 	if typed.AttachmentID == uuid.Nil {
 		return "", nil
 	}

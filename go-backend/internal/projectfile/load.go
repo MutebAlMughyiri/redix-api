@@ -236,7 +236,7 @@ func registersOf(c changes.Change, projectFile file, refused *[]refusal) (regist
 			*refused = append(*refused, refusal{Owner: ownerPaymentMethod, Code: naming.Invalid, Value: name})
 			continue
 		}
-		if known.paymentMethods[name], err = settings.AddPaymentMethod(c, name); err != nil {
+		if known.paymentMethods[name], err = settings.AddPaymentMethod(c, name, settings.EveryAccount); err != nil {
 			return known, err
 		}
 	}

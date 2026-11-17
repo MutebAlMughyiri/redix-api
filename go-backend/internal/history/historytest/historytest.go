@@ -29,18 +29,20 @@ type owner struct {
 	column string
 }
 
-// recordedWithTheirOwner are the tables whose rows .NET recorded, as they were added or removed, only through the line of the record owning them:
+// recordedWithTheirOwner are the tables whose rows .NET recorded, as they were added or removed, only through the line of a record owning them:
 // the units and partners a project is started with, under its RegisterProject line (Project.New, PartnersEndpoints.DeclaredWith), and an account's
 // custodian, under the account's line (AccountsEndpoints.Add, Delete); and what each account held at a reconciliation, under its line
-// (ReconciliationsEndpoints.EnterAsync). A row of one added or removed passes when the same write recorded its owner;
-// a row changed still needs its own line.
-var recordedWithTheirOwner = map[string]owner{
-	"units":                   {"Projects", "project_id"},
-	"partners":                {"Projects", "project_id"},
-	"account_custodians":      {"Accounts", "account_id"},
-	"reconciliation_balances": {"Reconciliations", "reconciliation_id"},
-	"entry_decisions":         {"Entries", "entry_id"},
-	"partner_users":           {"Partners", "partner_id"},
+// (ReconciliationsEndpoints.EnterAsync); and which accounts a payment method pays from, under the line of the method or of the account added or
+// removed with them, or the method's own line when what it pays from changes (redix-app #109). A row of one added or removed passes when the same
+// write recorded one of its owners; a row changed still needs its own line.
+var recordedWithTheirOwner = map[string][]owner{
+	"units":                   {{"Projects", "project_id"}},
+	"partners":                {{"Projects", "project_id"}},
+	"account_custodians":      {{"Accounts", "account_id"}},
+	"reconciliation_balances": {{"Reconciliations", "reconciliation_id"}},
+	"entry_decisions":         {{"Entries", "entry_id"}},
+	"partner_users":           {{"Partners", "partner_id"}},
+	"payment_method_accounts": {{"PaymentMethods", "payment_method_id"}, {"Accounts", "account_id"}},
 }
 
 // counters are the columns that move with no History line of their own: a project's last entry number, which each entry's own line carries
@@ -83,20 +85,28 @@ func Check(t testing.TB, database db.DB, write func()) {
 		for _, id := range changed(before[table], after) {
 			was, existed := before[table][id]
 			now, kept := after[id]
-			owned, hasOwner := recordedWithTheirOwner[table]
-			withItsOwner := hasOwner && (!existed && lines[owned.table+" "+now.values[owned.column]] || !kept && lines[owned.table+" "+was.values[owned.column]])
+			withItsOwner := false
+			for _, owned := range recordedWithTheirOwner[table] {
+				withItsOwner = withItsOwner || !existed && lines[owned.table+" "+now.values[owned.column]] || !kept && lines[owned.table+" "+was.values[owned.column]]
+			}
 			copied := copiedOnApproval[table] && !existed && approved
-			if !lines[historyName(table)+" "+id] && !withItsOwner && !copied {
+			record := now.record
+			if !kept {
+				record = was.record
+			}
+			if !lines[historyName(table)+" "+record] && !withItsOwner && !copied {
 				t.Errorf("History net: %s %s changed with no History line", table, id)
 			}
 		}
 	}
 }
 
-// row is one row as the net compares it: the text of all its values, and each value by its column.
+// row is one row as the net compares it: the text of all its values, each value by its column, and the record its own History line names - the
+// first column of its key, as .NET named a link's line by the row it links from.
 type row struct {
 	text   string
 	values map[string]string
+	record string
 }
 
 func keptTables(t testing.TB, database db.DB) []string {
@@ -117,15 +127,19 @@ func keptTables(t testing.TB, database db.DB) []string {
 	return tables
 }
 
-// rowsOf is every row of table by its first column, its id, as the text of all its values.
+// rowsOf is every row of table by its primary key - its id, or the pair of ids a link table is keyed by - as the text of all its values.
 func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 	t.Helper()
+	key := keyOf(t, database, table)
 	rows, err := database.Read.Query("SELECT * FROM " + table)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer rows.Close()
 	columns, _ := rows.Columns()
+	if len(key) == 0 {
+		key = columns[:1]
+	}
 	kept := map[string]row{}
 	for rows.Next() {
 		values := make([]any, len(columns))
@@ -141,9 +155,31 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 				read.text += fmt.Sprint(values[i]) + "|"
 			}
 		}
-		kept[fmt.Sprint(values[0])] = read
+		parts := make([]string, 0, len(key))
+		for _, column := range key {
+			parts = append(parts, read.values[column])
+		}
+		read.record = parts[0]
+		kept[strings.Join(parts, " ")] = read
 	}
 	return kept
+}
+
+// keyOf is the columns of table's primary key, in their order.
+func keyOf(t testing.TB, database db.DB, table string) []string {
+	t.Helper()
+	rows, err := database.Read.Query("SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk", table)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var key []string
+	for rows.Next() {
+		var column string
+		rows.Scan(&column)
+		key = append(key, column)
+	}
+	return key
 }
 
 func changed(before, after map[string]row) []string {

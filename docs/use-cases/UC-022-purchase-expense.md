@@ -37,6 +37,7 @@ Tests are in `ExpensesTests` and `SimpleExpenseTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
+| redix-app #109 R5: an expense goes only through an account its payment method pays from, otherwise `accountNotForMethod` (400), checked after `accountNotOffered` | `entries.refusalOfPayment` | `settings_test.TestR5_AnExpenseGoesOnlyThroughAnAccountItsMethodPaysFrom` |
 | AC-1: an expense is sent with its item, supplier, date, total, account and method, and no file | `ExpensesEndpoints.SaveAsync` | `SimpleExpenseTests.AC_1_AnExpenseIsSentWithItsItemSupplierDateTotalAccountAndMethodAndNoFile` |
 | D10: an expense is its total on its one date | `ExpensesEndpoints.SaveAsync` | `ExpensesTests.D10_AnExpenseIsItsTotalOnItsOneDate` |
 | D11: a new expense writes no invoice row, and a draft with no file is sent later with none | `ExpensesEndpoints.SaveAsync` | `SimpleExpenseTests.D11_ANewExpenseWritesNoInvoiceRow`, `D11_ADraftWithNoFileIsSentLaterWithNoFile` |

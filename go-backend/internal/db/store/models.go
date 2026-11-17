@@ -221,6 +221,11 @@ type PaymentMethod struct {
 	IsActive  bool
 }
 
+type PaymentMethodAccount struct {
+	PaymentMethodID uuid.UUID
+	AccountID       uuid.UUID
+}
+
 type Project struct {
 	ID              uuid.UUID
 	Name            string

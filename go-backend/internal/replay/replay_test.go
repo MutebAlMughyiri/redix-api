@@ -386,6 +386,29 @@ var answeredOnFailure = map[string]int{"GET /health": http.StatusServiceUnavaila
 // is only logged, and its own tests fail it on purpose (AC-02.8).
 var unswept = []string{"POST /auth/forgot-password"}
 
+// wordsDotNetHad is Go's bundle of words without those added since .NET, which every feature built after it adds (redix-app #109's among them):
+// each word .NET had is still compared.
+func wordsDotNetHad(net, got any) any {
+	netWords, _ := net.(map[string]any)
+	goWords, isBundle := got.(map[string]any)
+	if !isBundle {
+		return got
+	}
+	kept := map[string]any{}
+	for key, value := range goWords {
+		if _, had := netWords[key]; had {
+			kept[key] = value
+		}
+	}
+	return kept
+}
+
+// addedSinceDotNet are the fields Go answers that .NET never had, each added by a feature built after it, so an answer recorded without one still
+// matches; each names why it is there.
+var addedSinceDotNet = map[string]string{
+	"accountIds": "the accounts a payment method pays from (redix-app #109)",
+}
+
 // withBody holds each route already sent once with a body that is not JSON, before the request it was recorded with: a route .NET answered
 // with success refuses such a body with 400 and changes nothing, as ASP.NET Core refused a body it could not read.
 var withBody = struct {
@@ -609,6 +632,9 @@ func sameBody(names mapping, netType string, s step, got *httptest.ResponseRecor
 	}
 	netJSON, goJSON := decode(answer), decode(got.Body.String())
 	route := s.Method + " " + pathPattern.ReplaceAllString(s.Path, "{id}")
+	if strings.HasPrefix(route, "GET /translations/") {
+		goJSON = wordsDotNetHad(netJSON, goJSON)
+	}
 	if everyones[route] || tiedByChance[route] {
 		return sameItems(names, netJSON, goJSON, tiedByChance[route])
 	}
@@ -705,7 +731,7 @@ func same(names mapping, path, key string, net, got any) []string {
 			differences = append(differences, same(names, path+"."+name, name, net[name], got[goName])...)
 		}
 		for name := range got {
-			if !matched[name] {
+			if _, added := addedSinceDotNet[name]; !matched[name] && !added {
 				differences = append(differences, fmt.Sprintf("%s.%s: not in .NET's answer", path, name))
 			}
 		}
