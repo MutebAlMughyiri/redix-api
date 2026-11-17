@@ -31,7 +31,7 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 | `REDIX_Web__Folder` | The web front end's files; empty for none | |
 | `REDIX_Jwt__SigningKey` | The tokens' key, base64 | required |
 | `REDIX_Admin__Username`, `REDIX_Admin__Password` | The first user, made on an empty database | |
-| `REDIX_Email__ConnectionString`, `REDIX_Email__From` | The email sender; empty writes emails to `REDIX_Email__Folder` | |
+| `REDIX_Email__Smtp`, `REDIX_Email__From` | The mail server every email is handed to, as host:port, and the address it comes from; Prod hands it to Postfix on the same machine (#127, #145). With none, each email is written to `REDIX_Email__Folder` | Prod: `127.0.0.1:25` |
 | `REDIX_Registration__PermitsPerHour`, `REDIX_EmailCodes__PermitsPerHour` | The two limits | 5 |
 | `REDIX_Typst__Path` | The typst binary that makes the report PDFs; the tests read it too | `typst` on the path |
 

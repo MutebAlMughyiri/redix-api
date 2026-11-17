@@ -30,9 +30,9 @@ type Settings struct {
 	AttachmentsFolder string
 	// TypstPath is the typst binary that makes the report PDFs (Typst__Path, #140 D2); typst on the path by default.
 	TypstPath string
-	// EmailConnectionString and EmailFrom send email through Azure Communication Services; empty until set (Email__ConnectionString, Email__From).
-	EmailConnectionString, EmailFrom string
-	// EmailFolder keeps each email instead of sending it while no connection string is set (Email__Folder).
+	// EmailSmtp is the mail server every email is handed to, as host:port, and EmailFrom the address it comes from (Email__Smtp, Email__From).
+	EmailSmtp, EmailFrom string
+	// EmailFolder keeps each email instead of sending it where no mail server is named (Email__Folder).
 	EmailFolder string
 	// WebFolder holds the web front end's files, served for every path that is not a route; "" while there is no front end (Web__Folder, R18).
 	WebFolder string
@@ -47,7 +47,7 @@ var named = map[string]map[string]string{
 	"Dev": {"Urls": "http://127.0.0.1:5010", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000", "EmailCodes__PermitsPerHour": "100000"},
 	"QA":  {"Urls": "http://127.0.0.1:5012", "Admin__Username": "real-admin"},
 	"Prod": {"Urls": "http://127.0.0.1:5012", "Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
-		"Email__Folder": "/var/lib/redix/emails"},
+		"Email__Folder": "/var/lib/redix/emails", "Email__Smtp": "127.0.0.1:25"},
 }
 
 // Read is the settings in the environment variables lookup gives: an environment's own variable, then the shared one, then what its settings
@@ -81,20 +81,20 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 		return Settings{}, fmt.Errorf("REDIX_EmailCodes__PermitsPerHour: %w", err)
 	}
 	return Settings{
-		Environment:           environment,
-		Urls:                  get("Urls", "http://0.0.0.0:5012"),
-		DatabasePath:          get("Database__Path", filepath.Join(data, databaseFile)),
-		SigningKey:            key,
-		AdminUsername:         get("Admin__Username", ""),
-		AdminPassword:         get("Admin__Password", ""),
-		RegistrationsPerHour:  registrations,
-		EmailCodesPerHour:     emailCodes,
-		AttachmentsFolder:     get("Attachments__Folder", filepath.Join(data, "Attachments")),
-		TypstPath:             get("Typst__Path", "typst"),
-		EmailConnectionString: get("Email__ConnectionString", ""),
-		EmailFrom:             get("Email__From", ""),
-		EmailFolder:           get("Email__Folder", filepath.Join(data, "Emails")),
-		WebFolder:             get("Web__Folder", ""),
+		Environment:          environment,
+		Urls:                 get("Urls", "http://0.0.0.0:5012"),
+		DatabasePath:         get("Database__Path", filepath.Join(data, databaseFile)),
+		SigningKey:           key,
+		AdminUsername:        get("Admin__Username", ""),
+		AdminPassword:        get("Admin__Password", ""),
+		RegistrationsPerHour: registrations,
+		EmailCodesPerHour:    emailCodes,
+		AttachmentsFolder:    get("Attachments__Folder", filepath.Join(data, "Attachments")),
+		TypstPath:            get("Typst__Path", "typst"),
+		EmailSmtp:            get("Email__Smtp", ""),
+		EmailFrom:            get("Email__From", ""),
+		EmailFolder:          get("Email__Folder", filepath.Join(data, "Emails")),
+		WebFolder:            get("Web__Folder", ""),
 	}, nil
 }
 

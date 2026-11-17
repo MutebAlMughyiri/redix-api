@@ -4,10 +4,14 @@ package email
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"mime"
+	"net/smtp"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
@@ -19,7 +23,35 @@ type Sender interface {
 	Deliver(ctx context.Context, to, subject, body string) error
 }
 
-// Folder keeps each email as a text file instead of sending it, while Azure Communication Services is not set up (FolderEmailSender).
+// SenderOf is the sender the settings name: the mail server at smtpAddress when one is named, otherwise the folder, as on Muteb's PC.
+func SenderOf(smtpAddress, from, folder string) Sender {
+	if smtpAddress != "" {
+		return Smtp{Address: smtpAddress, From: from}
+	}
+	return Folder{Path: folder}
+}
+
+// Smtp hands each email to the mail server at Address, from From: on the published server, Postfix on that same machine, which sends it on
+// (Muteb, 17 Nov 2026, redix-api #127 and #145). It listens there alone, so it asks for no password and offers no TLS.
+type Smtp struct {
+	Address, From string
+}
+
+// Deliver sends the email as UTF-8 text, its subject encoded so an Arabic one arrives whole.
+func (s Smtp) Deliver(_ context.Context, to, subject, body string) error {
+	encoded := base64.StdEncoding.EncodeToString([]byte(body))
+	var lines []string
+	for len(encoded) > 76 {
+		lines, encoded = append(lines, encoded[:76]), encoded[76:]
+	}
+	lines = append(lines, encoded)
+	message := "From: " + s.From + "\r\nTo: " + to + "\r\nSubject: " + mime.QEncoding.Encode("utf-8", subject) + "\r\nDate: " +
+		time.Now().UTC().Format(time.RFC1123Z) + "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n" +
+		"Content-Transfer-Encoding: base64\r\n\r\n" + strings.Join(lines, "\r\n") + "\r\n"
+	return smtp.SendMail(s.Address, nil, s.From, []string{to}, []byte(message))
+}
+
+// Folder keeps each email as a text file instead of sending it, where no mail server is named (FolderEmailSender).
 type Folder struct {
 	Path string
 }

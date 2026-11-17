@@ -53,7 +53,7 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	router := server.Routes(server.Parts{
-		Database: database, Clock: now, SigningKey: settings.SigningKey, Sender: email.Folder{Path: settings.EmailFolder},
+		Database: database, Clock: now, SigningKey: settings.SigningKey, Sender: email.SenderOf(settings.EmailSmtp, settings.EmailFrom, settings.EmailFolder),
 		EmailCodesPerHour: settings.EmailCodesPerHour, RegistrationsPerHour: settings.RegistrationsPerHour, WebFolder: settings.WebFolder,
 		AttachmentsFolder: settings.AttachmentsFolder, TypstPath: settings.TypstPath, Log: logger,
 	})
