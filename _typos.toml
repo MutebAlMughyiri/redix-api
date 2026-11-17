@@ -1,0 +1,25 @@
+# The spelling check CI runs (redix-api #125, R4 and R7). A word here is right as written; a real typo is fixed, never added.
+[files]
+extend-exclude = [
+  "go-backend/internal/replay/testdata/",
+  "go-backend/internal/db/store/",
+  "go.sum",
+]
+
+[default.extend-words]
+# The Testin project, named in the skills brought from it.
+Testin = "Testin"
+testin = "testin"
+# Possessives in test names, where an identifier cannot hold an apostrophe: an entry's, another's.
+Entrys = "Entrys"
+Anothers = "Anothers"
+# The SMTP command.
+HELO = "HELO"
+# Muteb's own words, quoted as he typed them.
+poin = "poin"
+reciept = "reciept"
+writen = "writen"
+redundent = "redundent"
+simle = "simle"
+toogle = "toogle"
+differrent = "differrent"
