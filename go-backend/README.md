@@ -64,8 +64,12 @@ On a 1 GB Linux server:
 To restore: `litestream restore -o /var/lib/redix/redix.db /var/lib/redix/redix.db`, then `rclone copy backup:<bucket>/attachments
 /var/lib/redix/attachments`, then start the service.
 
-## Where it stands (16 Nov 2026)
+## Where it stands (17 Nov 2026)
 
-Every one of the API's 147 routes is on Go, and 758 of .NET's recorded tests replay against them, every answer matching - each workbook cell by
-cell, its values and formulas. The one test that waits checks .NET's Swagger page, which Go does not serve. Then P3, the data moved from SQL
-Server; P4, the phone's Patrol tests against Go; P5, the rehearsal on a 1 GB server; and P6, the switch.
+| Phase | State |
+| --- | --- |
+| P2, the routes | All 147 on Go. 852 of .NET's recorded tests replay against them, every answer matching - each workbook cell by cell, each write a test made straight into the database repeated in SQLite. 39 are ported by hand: SQL Server's own migrations and lookup tables, tests reading its database or racing it, one opening a link .NET's own key signed. One waits: .NET's Swagger page, which Go will generate itself (#142) |
+| P3, the data | `migrate-data` proven on a copy of RedixQA: 59 tables equal, the figures equal, and Go signed in qa's admin and read the project and both issued reports |
+| P4, the phone | The Patrol tests run against Go as Dev (`REDIX_Environment=Dev`) |
+| P5, the rehearsal | Waits for the cloud server |
+| P6, the switch | Muteb's |
