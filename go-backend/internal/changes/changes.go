@@ -94,6 +94,34 @@ func Found[T any](row T, err error) (T, error) {
 	return row, err
 }
 
+// Unknown is a lookup's err, with a row that is not there refused as code (400): a request naming something the project does not hold. Any other
+// failure stays the failure it is, so a failing database answers 500, never a refusal.
+func Unknown(err error, code string) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return Refuse(http.StatusBadRequest, code)
+	}
+	return err
+}
+
+// Answered answers err - a refusal with its status and code, NotFound 404, any other failure 500 - and says whether there was one to answer.
+// Every route answers a failure through it, so a failing database is never told as a row that is not there.
+func Answered(rw http.ResponseWriter, r *http.Request, err error) bool {
+	var refused Refusal
+	switch {
+	case err == nil:
+		return false
+	case errors.As(err, &refused) && refused.Code == "":
+		problem.Status(rw, r, refused.Status)
+	case errors.As(err, &refused) && refused.Name != "":
+		problem.RefuseOver(rw, r, refused.Status, refused.Code, refused.Name, refused.Detail)
+	case errors.As(err, &refused):
+		problem.Refuse(rw, r, refused.Status, refused.Code)
+	default:
+		problem.Status(rw, r, http.StatusInternalServerError)
+	}
+	return true
+}
+
 // Writer runs the changes of a domain's routes.
 type Writer struct {
 	Database db.DB
@@ -108,20 +136,7 @@ func (w Writer) Write(rw http.ResponseWriter, r *http.Request, caller access.Cal
 		c.Q = q
 		return work(c)
 	})
-	var refused Refusal
-	switch {
-	case err == nil:
-		return true
-	case errors.As(err, &refused) && refused.Code == "":
-		problem.Status(rw, r, refused.Status)
-	case errors.As(err, &refused) && refused.Name != "":
-		problem.RefuseOver(rw, r, refused.Status, refused.Code, refused.Name, refused.Detail)
-	case errors.As(err, &refused):
-		problem.Refuse(rw, r, refused.Status, refused.Code)
-	default:
-		problem.Status(rw, r, http.StatusInternalServerError)
-	}
-	return false
+	return !Answered(rw, r, err)
 }
 
 // Done runs work as Write does and answers 200 with no body once it is done.

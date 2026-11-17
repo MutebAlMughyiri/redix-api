@@ -1,6 +1,8 @@
 package entries
 
 import (
+	"database/sql"
+	"errors"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"net/http"
 	"slices"
@@ -125,6 +127,9 @@ func (purchaseForm) refusal(c changes.Change, r Request, held access.Access) (st
 		return "", nil
 	}
 	supplier, err := c.Q.SupplierOf(c.Ctx, store.SupplierOfParams{ID: r.SupplierID, ProjectID: c.ProjectID})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
 	offered := err == nil && supplier.IsActive && (supplier.Status == 0 || supplier.CreatedByUserID == c.Actor || held.Holds(c.ProjectID, access.ManageSettings))
 	if offered {
 		return "", nil
@@ -425,9 +430,8 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 		place int64
 	}
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	item, err := c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID})
-	if err != nil {
-		problem.Status(w, r, http.StatusNotFound)
+	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
+	if changes.Answered(w, r, err) {
 		return
 	}
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)

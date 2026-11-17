@@ -80,7 +80,11 @@ func (c Codes) forgotPassword(w http.ResponseWriter, r *http.Request) {
 	http.NewResponseController(w).Flush()
 	ctx := context.WithoutCancel(r.Context())
 	user, found, err := c.accountOf(ctx, request.Login)
-	if err != nil || !found || user.Email == "" {
+	if err != nil {
+		c.log.Error("a reset code was not sent", "error", err)
+		return
+	}
+	if !found || user.Email == "" {
 		return
 	}
 	code, err := c.make(ctx, user.ID, resetPassword, user.Email)
@@ -109,7 +113,11 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	code, ok := c.check(r.Context(), user.ID, resetPassword, strings.TrimSpace(request.Code), now)
+	code, ok, err := c.check(r.Context(), user.ID, resetPassword, strings.TrimSpace(request.Code), now)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	if !ok {
 		problem.Refuse(w, r, http.StatusBadRequest, "codeWrong")
 		return
@@ -174,7 +182,11 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	code, ok := c.check(r.Context(), user.ID, confirmEmail, strings.TrimSpace(request.Code), now)
+	code, ok, err := c.check(r.Context(), user.ID, confirmEmail, strings.TrimSpace(request.Code), now)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	if !ok {
 		problem.Refuse(w, r, http.StatusBadRequest, "codeWrong")
 		return
@@ -245,15 +257,15 @@ func (c Codes) make(ctx context.Context, userID uuid.UUID, purpose int64, addres
 }
 
 // check is the user's latest code for purpose when typed is it, unused, unexpired and with a try left; each check counts a try, right or wrong
-// (EmailCode.CheckAsync).
-func (c Codes) check(ctx context.Context, userID uuid.UUID, purpose int64, typed string, now moment.Moment) (store.EmailCode, bool) {
+// (EmailCode.CheckAsync). A database that fails is its error, never a wrong code.
+func (c Codes) check(ctx context.Context, userID uuid.UUID, purpose int64, typed string, now moment.Moment) (store.EmailCode, bool, error) {
 	last, err := c.database.Queries().LastCode(ctx, store.LastCodeParams{UserID: userID, Purpose: purpose})
 	if err != nil || len(last) == 0 {
-		return store.EmailCode{}, false
+		return store.EmailCode{}, false, err
 	}
 	code := last[0]
 	if !code.UsedAt.Equal(moment.Never.Time) || !code.ExpiresAt.After(now.Time) || code.Tries >= triesAllowed {
-		return store.EmailCode{}, false
+		return store.EmailCode{}, false, nil
 	}
 	var counted int64
 	err = c.database.InTx(ctx, func(q *store.Queries) error {
@@ -262,7 +274,7 @@ func (c Codes) check(ctx context.Context, userID uuid.UUID, purpose int64, typed
 		return err
 	})
 	if err != nil || counted == 0 || credentials.Check(code.CodeHash, typed) == credentials.Wrong {
-		return store.EmailCode{}, false
+		return store.EmailCode{}, false, err
 	}
-	return code, true
+	return code, true, nil
 }

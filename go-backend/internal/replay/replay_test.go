@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"math"
 	"mime"
 	"net/http"
@@ -35,6 +36,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/dbtest"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/historytest"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
@@ -210,6 +212,20 @@ func (k *kept) Deliver(_ context.Context, to, subject, body string) error {
 	return nil
 }
 
+// count is how many emails were sent.
+func (k *kept) count() int {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return len(k.sent)
+}
+
+// keepFirst forgets every email after the first n, as a request that failed sent them.
+func (k *kept) keepFirst(n int) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.sent = k.sent[:n]
+}
+
 // nthTo is the body of the nth email sent to address, counting from 0, or "" while Go has not sent it yet.
 func (k *kept) nthTo(address string, n int) string {
 	k.mu.Lock()
@@ -235,27 +251,26 @@ type sentCode struct {
 var code = regexp.MustCompile(`\d{6}`)
 
 func replay(t *testing.T, steps []step, hosts []host) {
-	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "redix.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer database.Close()
+	database, failure := dbtest.Open(t, filepath.Join(t.TempDir(), "redix.db"))
 	fake := clock.NewFake(steps[0].At)
 	if err := auth.SeedAdmin(context.Background(), database, adminUsername, adminPassword, moment.Of(steps[0].At)); err != nil {
 		t.Fatal(err)
 	}
 	emails, files := &kept{}, filepath.Join(t.TempDir(), "attachments")
 	handlers := map[int]http.Handler{}
+	limitsOf := func(s step) host {
+		for _, known := range hosts {
+			if known.file == s.file && known.id == s.Host {
+				return known
+			}
+		}
+		return unlimited
+	}
 	handlerOf := func(s step) http.Handler {
 		if handler, built := handlers[s.Host]; built {
 			return handler
 		}
-		limits := host{emailCodes: 100000, registrations: 100000}
-		for _, known := range hosts {
-			if known.file == s.file && known.id == s.Host {
-				limits = known
-			}
-		}
+		limits := limitsOf(s)
 		handlers[s.Host] = problem.Traced(server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: []byte("replay-key-for-go-backend-only-32"),
 			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, AttachmentsFolder: files, TypstPath: typstPath(), Log: quiet}))
 		return handlers[s.Host]
@@ -291,7 +306,14 @@ func replay(t *testing.T, steps []step, hosts []host) {
 		case "request":
 			fake.Set(s.At)
 			var got *httptest.ResponseRecorder
-			historytest.Check(t, database, func() { got = send(handlerOf(s), names, s) })
+			if s.Status != http.StatusInternalServerError && limitsOf(s).limitsNothing() && !slices.Contains(unswept, s.Method+" "+s.Path) && firstOfItsKind(s) {
+				var answered bool
+				if got, answered = failEachCall(t, database, failure, emails, handlerOf(s), names, s, i); !answered {
+					return
+				}
+			} else {
+				historytest.Check(t, database, func() { got = send(handlerOf(s), names, s) })
+			}
 			resolve()
 			if s.Status == http.StatusInternalServerError {
 				// .NET crashed here (#76 row 263): Go may answer 400 or 404, never crash too.
@@ -308,6 +330,76 @@ func replay(t *testing.T, steps []step, hosts []host) {
 			}
 		}
 	}
+}
+
+// unlimited is a host that limits neither registrations nor emailed codes, as every test's host is unless it is about those limits.
+var unlimited = host{emailCodes: 100000, registrations: 100000}
+
+// limitsNothing is whether h limits neither registrations nor emailed codes, so sending to it again uses up nothing a later step counts on.
+func (h host) limitsNothing() bool {
+	return h.emailCodes == unlimited.emailCodes && h.registrations == unlimited.registrations
+}
+
+// failEachCall sends s again and again, the database failing its first call, then its second, and so on, each before anything commits, and wants
+// a 500 every time, with nothing changed and no email kept; the first sending in which no call failed is the step's own answer (redix-api #141
+// D1). False once it has reported a failure Go answered otherwise.
+func failEachCall(t *testing.T, database db.DB, failure *dbtest.Failure, emails *kept, handler http.Handler, names mapping, s step, i int) (*httptest.ResponseRecorder, bool) {
+	t.Helper()
+	sent := emails.count()
+	for n := int64(1); ; n++ {
+		var got *httptest.ResponseRecorder
+		var failed bool
+		historytest.Check(t, database, func() {
+			failure.BeforeCommit(n)
+			got = send(handler, names, s)
+			failed = failure.Failed()
+			failure.At(0)
+		})
+		if !failed {
+			return got, true
+		}
+		emails.keepFirst(sent)
+		want, named := answeredOnFailure[s.Method+" "+s.Path]
+		if !named {
+			want = http.StatusInternalServerError
+		}
+		if got.Code != want {
+			t.Errorf("step %d, %s %s%s: the database failed at its call %d, and Go answered %d %s", i, s.Method, s.Path, s.Query, n, got.Code, got.Body.String())
+			return nil, false
+		}
+	}
+}
+
+// answeredOnFailure is what a route answers to a failing database where that is not 500: /health says the database is down.
+var answeredOnFailure = map[string]int{"GET /health": http.StatusServiceUnavailable}
+
+// unswept are the routes never sent with their database failing: asking for a reset code spends one of the login's few asks an hour before it
+// reads the database, so each failing attempt would spend an ask a later step counts on; it answers before it looks the login up, so a failure
+// is only logged, and its own tests fail it on purpose (AC-02.8).
+var unswept = []string{"POST /auth/forgot-password"}
+
+// swept holds each kind of request already sent with its database failing call by call, so each kind is swept once across the replay: its
+// method, its route, the status .NET answered, and the fields its body and query name.
+var swept = struct {
+	sync.Mutex
+	kinds map[string]bool
+}{kinds: map[string]bool{}}
+
+func firstOfItsKind(s step) bool {
+	var text string
+	var fields map[string]json.RawMessage
+	json.Unmarshal(s.Body, &text)
+	json.Unmarshal([]byte(text), &fields)
+	query, _ := url.ParseQuery(strings.TrimPrefix(s.Query, "?"))
+	kind := fmt.Sprint(s.Method, " ", pathPattern.ReplaceAllString(s.Path, "{id}"), " ", s.Status, " ", slices.Sorted(maps.Keys(fields)), " ",
+		slices.Sorted(maps.Keys(query)))
+	swept.Lock()
+	defer swept.Unlock()
+	if swept.kinds[kind] {
+		return false
+	}
+	swept.kinds[kind] = true
+	return true
 }
 
 // mapping is .NET's value of an id, token, ETag or emailed code, to Go's.

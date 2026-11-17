@@ -1,6 +1,8 @@
 package entries
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"slices"
 
@@ -29,7 +31,12 @@ func (s Routes) record(w http.ResponseWriter, r *http.Request, caller access.Cal
 		return
 	}
 	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	if earlier, err := read.EntryOf(r.Context(), store.EntryOfParams{ID: typed.ID, ProjectID: projectID}); err == nil && earlier.CreatedByUserID == caller.UserID {
+	earlier, err := read.EntryOf(r.Context(), store.EntryOfParams{ID: typed.ID, ProjectID: projectID})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	if err == nil && earlier.CreatedByUserID == caller.UserID {
 		web.JSON(w, r, http.StatusOK, statusView{ID: earlier.ID, Number: earlier.Number, Status: statusOf(earlier.Status)})
 		return
 	}
@@ -246,7 +253,10 @@ func refusalOfPayment(c changes.Change, typed Request, t table, held access.Acce
 		return "", nil
 	}
 	if _, err := c.Q.AttachmentOf(c.Ctx, store.AttachmentOfParams{ID: typed.AttachmentID, ProjectID: c.ProjectID}); err != nil {
-		return "unknownAttachment", nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return "unknownAttachment", nil
+		}
+		return "", err
 	}
 	return "", nil
 }

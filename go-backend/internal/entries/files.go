@@ -72,7 +72,7 @@ func (s Routes) attach(w http.ResponseWriter, r *http.Request, caller access.Cal
 	}
 	attached := s.writer.Write(w, r, caller, func(c changes.Change) error {
 		if _, err := c.Q.AttachmentOf(c.Ctx, store.AttachmentOfParams{ID: typed.AttachmentID, ProjectID: c.ProjectID}); err != nil {
-			return changes.Refuse(http.StatusBadRequest, "unknownAttachment")
+			return changes.Unknown(err, "unknownAttachment")
 		}
 		onAnother, err := fileOnAnotherEntry(c, typed.AttachmentID, uuid.Nil)
 		if err != nil {

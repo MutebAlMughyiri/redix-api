@@ -171,9 +171,8 @@ func (s Routes) itemFile(isPdf bool) access.Handler {
 
 func (s Routes) sendItemFile(w http.ResponseWriter, r *http.Request, caller access.Caller, isPdf bool) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	item, err := c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID})
-	if err != nil {
-		problem.Status(w, r, http.StatusNotFound)
+	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
+	if changes.Answered(w, r, err) {
 		return
 	}
 	report, err := entries.ItemReportOf(c, item, func(partnerID uuid.UUID) bool { return caller.Access.SeesCapitalOf(c.ProjectID, partnerID) })
@@ -185,12 +184,11 @@ func (s Routes) sendItemFile(w http.ResponseWriter, r *http.Request, caller acce
 func (s Routes) contractFile(isPdf bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 		c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-		report, found, err := entries.ContractReportOf(c, web.ID(r, "contractId"))
-		if err == nil && !found {
-			problem.Status(w, r, http.StatusNotFound)
+		report, err := entries.ContractReportOf(c, web.ID(r, "contractId"))
+		if changes.Answered(w, r, err) {
 			return
 		}
-		s.sendReport(w, r, c, report, "contract", isPdf, err)
+		s.sendReport(w, r, c, report, "contract", isPdf, nil)
 	}
 }
 

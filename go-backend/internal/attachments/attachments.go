@@ -85,8 +85,7 @@ func (s Routes) readByLink(w http.ResponseWriter, r *http.Request) {
 
 // send sends the attachment's file under its own name; 404 when it was not found, or its file is not kept.
 func (s Routes) send(w http.ResponseWriter, r *http.Request, attachment store.Attachment, err error) {
-	if err != nil {
-		problem.Status(w, r, http.StatusNotFound)
+	if _, err := changes.Found(attachment, err); changes.Answered(w, r, err) {
 		return
 	}
 	content, err := os.ReadFile(filepath.Join(s.folder, filepath.FromSlash(attachment.StoragePath)))

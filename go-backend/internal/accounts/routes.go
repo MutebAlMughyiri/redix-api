@@ -171,12 +171,8 @@ func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller
 
 // account is the route's account: 404 for one the project does not hold.
 func (s Routes) account(w http.ResponseWriter, r *http.Request) (store.Account, bool) {
-	account, err := s.database.Queries().AccountOf(r.Context(), store.AccountOfParams{ID: web.ID(r, "accountId"), ProjectID: web.ID(r, "projectId")})
-	if _, missing := changes.Found(account, err); missing != nil {
-		problem.Status(w, r, http.StatusNotFound)
-		return account, false
-	}
-	return account, true
+	account, err := changes.Found(s.database.Queries().AccountOf(r.Context(), store.AccountOfParams{ID: web.ID(r, "accountId"), ProjectID: web.ID(r, "projectId")}))
+	return account, !changes.Answered(w, r, err)
 }
 
 // edit changes an account's name and who holds it; its type never changes. It answers as add does; each change is in History as .NET's
@@ -293,8 +289,8 @@ func (s Routes) transfer(w http.ResponseWriter, r *http.Request, caller access.C
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
 		from, err := c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: request.FromAccountID, ProjectID: c.ProjectID})
 		to, toErr := c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: request.ToAccountID, ProjectID: c.ProjectID})
-		if err != nil || toErr != nil {
-			return changes.Refuse(http.StatusBadRequest, "unknownAccount")
+		if err := changes.Unknown(errors.Join(err, toErr), "unknownAccount"); err != nil {
+			return err
 		}
 		balances, err := Balances(c.Ctx, c.Q, c.ProjectID)
 		if err != nil {

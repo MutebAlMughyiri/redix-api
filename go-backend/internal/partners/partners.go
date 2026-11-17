@@ -406,8 +406,10 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 	}
 	read, projectID, partnerID := s.database.Queries(), web.ID(r, "projectId"), web.ID(r, "partnerId")
 	partners, err := read.PartnersOf(r.Context(), projectID)
-	if err != nil || !caller.Access.SeesCapitalOf(projectID, partnerID) || !slices.ContainsFunc(partners, func(partner store.Partner) bool { return partner.ID == partnerID }) {
-		problem.Status(w, r, http.StatusNotFound)
+	if err == nil && (!caller.Access.SeesCapitalOf(projectID, partnerID) || !slices.ContainsFunc(partners, func(partner store.Partner) bool { return partner.ID == partnerID })) {
+		err = changes.NotFound
+	}
+	if changes.Answered(w, r, err) {
 		return
 	}
 	movements, err := read.CapitalMovements(r.Context(), projectID)

@@ -88,7 +88,8 @@ func (g *Gate) Changes(permission Permission, next Handler) http.HandlerFunc {
 }
 
 // caller is the session the request's bearer token speaks for, on a device still open, with its access; otherwise it answers 401 with a Bearer
-// challenge, naming an invalid token when one was sent.
+// challenge, naming an invalid token when one was sent. A database that cannot say whether the device is open answers 500, never 401: the app
+// signs its person out on a 401, and a failing database must not.
 func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 	scheme, token, sent := strings.Cut(r.Header.Get("Authorization"), " ")
 	if !sent || !strings.EqualFold(scheme, "Bearer") || token == "" {
@@ -97,9 +98,12 @@ func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 	}
 	session, err := g.tokens.Check(token)
 	if err == nil {
-		var open bool
-		open, err = g.read.DeviceIsOpen(r.Context(), store.DeviceIsOpenParams{DeviceID: session.DeviceID, UserID: session.UserID})
-		if err == nil && !open {
+		open, readErr := g.read.DeviceIsOpen(r.Context(), store.DeviceIsOpenParams{DeviceID: session.DeviceID, UserID: session.UserID})
+		if readErr != nil {
+			problem.Status(w, r, http.StatusInternalServerError)
+			return Caller{}, false
+		}
+		if !open {
 			err = credentials.ErrNotValid
 		}
 	}

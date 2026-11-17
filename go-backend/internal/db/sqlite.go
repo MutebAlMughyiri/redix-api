@@ -43,8 +43,12 @@ type afterCommit struct {
 }
 
 // Open opens the database file at path, brings its schema up to date and returns its pools.
-func Open(ctx context.Context, path string) (DB, error) {
-	write, err := sql.Open("sqlite", "file:"+path+"?"+pragmas+"&_txlock=immediate")
+func Open(ctx context.Context, path string) (DB, error) { return OpenWith(ctx, "sqlite", path) }
+
+// OpenWith is Open through the database/sql driver registered as driverName: SQLite's own for the server, and for tests the failing one that
+// wraps it (dbtest). Both pools go through the one driver, so once the write pool's opens, the read pool's does too.
+func OpenWith(ctx context.Context, driverName, path string) (DB, error) {
+	write, err := sql.Open(driverName, "file:"+path+"?"+pragmas+"&_txlock=immediate")
 	if err != nil {
 		return DB{}, err
 	}
@@ -53,11 +57,7 @@ func Open(ctx context.Context, path string) (DB, error) {
 		write.Close()
 		return DB{}, fmt.Errorf("migrating %s: %w", path, err)
 	}
-	read, err := sql.Open("sqlite", "file:"+path+"?mode=ro&"+pragmas)
-	if err != nil {
-		write.Close()
-		return DB{}, err
-	}
+	read, _ := sql.Open(driverName, "file:"+path+"?mode=ro&"+pragmas)
 	read.SetMaxOpenConns(readers)
 	reads, err := store.Prepare(ctx, read)
 	if err != nil {

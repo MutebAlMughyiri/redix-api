@@ -162,7 +162,7 @@ func refusalOf(c changes.Change, supplierID uuid.UUID, typed Request) error {
 		return changes.Refuse(http.StatusBadRequest, "invalidMobile")
 	case typed.DefaultItemID != uuid.Nil:
 		if _, err := c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: typed.DefaultItemID, ProjectID: c.ProjectID}); err != nil {
-			return changes.Refuse(http.StatusBadRequest, "unknownItem")
+			return changes.Unknown(err, "unknownItem")
 		}
 	}
 	if vatNumber == "" {

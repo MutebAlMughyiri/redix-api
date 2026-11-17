@@ -65,12 +65,11 @@ func (s Routes) now() moment.Moment { return moment.Of(s.clock.Now()) }
 
 // entry is the route's entry when it is the project's and not removed (Entry.OfProjectAsync, BR-33, redix-api #119): 404 otherwise.
 func (s Routes) entry(w http.ResponseWriter, r *http.Request) (store.Entry, bool) {
-	entry, err := s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")})
-	if err != nil || entry.Status == removed {
-		problem.Status(w, r, http.StatusNotFound)
-		return entry, false
+	entry, err := changes.Found(s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")}))
+	if err == nil && entry.Status == removed {
+		err = changes.NotFound
 	}
-	return entry, true
+	return entry, !changes.Answered(w, r, err)
 }
 
 // submit sends a draft or a rejected entry for approval and answers it (UC-028): notYourEntry (403) for one the caller may not handle (BR-42);
@@ -260,9 +259,11 @@ func setStatus(c changes.Change, entry store.Entry, status int64, action history
 
 // restore brings back an approved entry removed softly, approved again with all it held (redix-api #119): 404 for one not removed.
 func (s Routes) restore(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	entry, err := s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")})
-	if err != nil || entry.Status != removed {
-		problem.Status(w, r, http.StatusNotFound)
+	entry, err := changes.Found(s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")}))
+	if err == nil && entry.Status != removed {
+		err = changes.NotFound
+	}
+	if changes.Answered(w, r, err) {
 		return
 	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error { return setStatus(c, entry, approved, history.Restore) })
@@ -490,11 +491,9 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 }
 
 func (s Routes) answer(w http.ResponseWriter, r *http.Request, views any, err error) {
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if !changes.Answered(w, r, err) {
+		web.JSON(w, r, http.StatusOK, views)
 	}
-	web.JSON(w, r, http.StatusOK, views)
 }
 
 // read is one entry of the project with what its kind has (EntriesEndpoints.Read): 404 for one the caller may not see (BR-31), or none.

@@ -10,7 +10,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/google/uuid"
@@ -337,9 +336,8 @@ func signedFor(entry store.Entry) fixed.Total {
 // (BR-31), its total the whole capital; 404 for an item of another project.
 func (s Routes) itemReportRoute(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	item, err := c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID})
-	if err != nil {
-		problem.Status(w, r, http.StatusNotFound)
+	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
+	if changes.Answered(w, r, err) {
 		return
 	}
 	report, err := ItemReportOf(c, item, func(partnerID uuid.UUID) bool { return caller.Access.SeesCapitalOf(c.ProjectID, partnerID) })
@@ -350,24 +348,20 @@ func (s Routes) itemReportRoute(w http.ResponseWriter, r *http.Request, caller a
 // contract's table alone; 404 for a contract of another project.
 func (s Routes) contractReportRoute(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	report, found, err := ContractReportOf(c, web.ID(r, "contractId"))
-	if err == nil && !found {
-		problem.Status(w, r, http.StatusNotFound)
-		return
-	}
+	report, err := ContractReportOf(c, web.ID(r, "contractId"))
 	s.answer(w, r, report, err)
 }
 
 // ContractReportOf is the report of the contract contractID (ItemReportEndpoints.OfContractAsync), for its screen and its files: its item's report
-// holding that contract's table alone; not found for a contract of another project.
-func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, bool, error) {
-	contract, err := c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: contractID, ProjectID: c.ProjectID})
+// holding that contract's table alone; NotFound for a contract of another project.
+func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, error) {
+	contract, err := changes.Found(c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: contractID, ProjectID: c.ProjectID}))
 	if err != nil {
-		return ItemReport{}, false, nil
+		return ItemReport{}, err
 	}
-	item, err := c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: contract.ItemID, ProjectID: c.ProjectID})
+	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: contract.ItemID, ProjectID: c.ProjectID}))
 	if err != nil {
-		return ItemReport{}, false, nil
+		return ItemReport{}, err
 	}
 	report, err := ItemReportOf(c, item, func(uuid.UUID) bool { return false })
 	report.Subgroups = []TableReport{}
@@ -378,7 +372,7 @@ func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, bool,
 		}
 	}
 	report.Contracts = kept
-	return report, true, err
+	return report, err
 }
 
 // WithTablesOf is the same report holding only the tables shows keeps, the partners' of رأس المال a reader may see; its total stays the whole (BR-31).
