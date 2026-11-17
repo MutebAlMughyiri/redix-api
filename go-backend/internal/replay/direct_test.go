@@ -1,11 +1,13 @@
 package replay
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -37,13 +39,13 @@ func replayable(name string, steps []step) bool {
 // applyDirect writes s's rows into the replay's database as the test wrote them into .NET's, each .NET id among them made Go's.
 func applyDirect(t *testing.T, database db.DB, names mapping, s step) {
 	t.Helper()
-	sources, err := db.Sources()
+	sources, err := sourcesOf("../db/migrations/00001_schema.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = database.Load(context.Background(), func(tx *sql.Tx) error {
 		for _, row := range s.Rows {
-			at := slices.IndexFunc(sources, func(source db.Source) bool { return source.Schema+"."+source.Name == row.Table })
+			at := slices.IndexFunc(sources, func(source source) bool { return source.Schema+"."+source.Name == row.Table })
 			if at < 0 {
 				return fmt.Errorf("%s has no table", row.Table)
 			}
@@ -274,4 +276,35 @@ func valueOf(names mapping, raw json.RawMessage) (any, error) {
 		return typed.Float64()
 	}
 	return value, nil
+}
+
+// source is a table of the schema and the SQL Server table .NET kept it in, schema and name (redix-api #140 R19): what a row .NET's tests wrote
+// is found by.
+type source struct {
+	Table, Schema, Name string
+}
+
+// sourcesOf is every table of the schema at path with the SQL Server table it was generated from, read from the line naming it above each
+// CREATE TABLE.
+func sourcesOf(path string) ([]source, error) {
+	schema, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var sources []source
+	named := ""
+	lines := bufio.NewScanner(strings.NewReader(string(schema)))
+	for lines.Scan() {
+		line := lines.Text()
+		if name, isSource := strings.CutPrefix(line, "-- "); isSource && strings.Count(name, ".") == 1 && !strings.Contains(name, " ") {
+			named = name
+			continue
+		}
+		if table, isTable := strings.CutPrefix(line, "CREATE TABLE "); isTable && named != "" {
+			schemaName, name, _ := strings.Cut(named, ".")
+			sources = append(sources, source{Table: strings.TrimSuffix(table, " ("), Schema: schemaName, Name: name})
+		}
+		named = ""
+	}
+	return sources, lines.Err()
 }

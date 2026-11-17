@@ -7,7 +7,6 @@ One Go program and one SQLite file, on one small Linux server (redix-api #140). 
 ```
 go-backend/
   cmd/server/             the API: reads its settings, brings the database up to date, serves the routes and the web front end's files
-  cmd/migrate-data/       the one-time copy of a SQL Server database into a SQLite file, the day an environment moves to Go
   internal/db/            the SQLite file: one writer and four readers, the migrations (goose), and the one way to write, InTx
   internal/db/store/      the code sqlc generates from every domain's queries.sql, each query prepared once as the server starts
   internal/changes/       what every change inside a project shares: one transaction, the refusal it rolls back with, a History line for every row

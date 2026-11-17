@@ -15,7 +15,6 @@ of the .NET API, at its old paths and again under `/api/v1` (redix-api #140).
 | `internal/statement` | The statement workbook every report file shares, written with excelize, and the report PDFs' pages, laid out by a Typst template with the Arabic font embedded |
 | `internal/platform` | What the domains share: the router, problem answers, tokens and passwords, money and moments as .NET wrote them |
 | `internal/replay` | The .NET API's recorded tests replayed against Go, every answer compared (`testdata/golden`); kept as they were recorded since .NET's removal |
-| `cmd/migrate-data` | The one-time copy of the data from SQL Server, the day of the switch (P3, P6) |
 | `deploy/` | Caddy, the systemd units, Litestream |
 
 ## Settings
@@ -44,7 +43,6 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 | `make sqlc` | Generates the store, with two guards: query files stay ASCII, and no `sqlc.arg` is left unreplaced (G15) |
 | `make build` | The Linux binary, `bin/redix-server` |
 | `make migrate` | Brings the database up to date and stops |
-| `bin/migrate-data -from "sqlserver://localhost?database=RedixQA&TrustServerCertificate=true" -to redix.db` | Copies every row from SQL Server into a new SQLite file, once, in one transaction; it keeps nothing unless every table's count and the figures fingerprint (each project's entries by kind, status and account) are equal on both sides (R21, R34). Windows sign-in when the address names no user |
 
 Every row a change adds, changes or removes has its History line; a test that writes through the API runs under the History net
 (`internal/history/historytest`), which fails on any row changed with no line.
