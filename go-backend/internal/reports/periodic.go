@@ -86,7 +86,7 @@ func latestOf(c changes.Change) (store.LatestPeriodicReportRow, error) {
 // its date, and the expenses' difference starts from the previous report's (BR-09, BR-26). Every item with a total has its report, the expenses'
 // first, then the revenue's.
 func snapshotOf(c changes.Change, number int64, at moment.Moment, previous fixed.Total) (snapshot, error) {
-	project, err := c.Q.ProjectWithID(c.Ctx, c.ProjectID)
+	project, err := changes.Found(c.Q.ProjectWithID(c.Ctx, c.ProjectID))
 	figures, figuresErr := accounts.FiguresOf(c.Ctx, c.Q, c.ProjectID)
 	capital, lines, capitalErr := partners.Capital(c.Ctx, c.Q, c.ProjectID, func(uuid.UUID) bool { return true })
 	expenses, revenue, categoriesErr := categoriesOf(c.Ctx, c.Q, c.ProjectID)

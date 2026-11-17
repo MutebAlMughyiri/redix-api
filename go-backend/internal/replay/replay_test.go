@@ -172,9 +172,9 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 		steps := tests[name]
 		switch {
 		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "request" && s.Status == http.StatusInternalServerError }):
-			// .NET crashed here; what the route should answer waits for Muteb's review once every route is on Go (redix-api #76 row 263).
+			// .NET crashed on some of its requests: the rest are compared, and what Go answers to those waits for Muteb's review (redix-api #76
+			// rows 263, 264).
 			underReview++
-			continue
 		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name):
 			byHand++
 			continue
@@ -192,7 +192,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 	}
 	t.Logf("%d tests replayed against .NET's answers; %d wait for routes not yet on Go; %d are ported by hand - about SQL Server itself, reading its "+
 		"database or racing it; "+
-		"%d crashed on .NET and wait for review (#76 row 263)", replayed, waiting, byHand, underReview)
+		"%d of them with requests .NET crashed on, which wait for review (#76 row 263)", replayed, waiting, byHand, underReview)
 }
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -293,6 +293,15 @@ func replay(t *testing.T, steps []step, hosts []host) {
 			var got *httptest.ResponseRecorder
 			historytest.Check(t, database, func() { got = send(handlerOf(s), names, s) })
 			resolve()
+			if s.Status == http.StatusInternalServerError {
+				// .NET crashed here (#76 row 263): Go may answer 400 or 404, never crash too.
+				if got.Code == http.StatusInternalServerError {
+					t.Errorf("step %d, %s %s%s: Go crashed where .NET did (#76 row 263)", i, s.Method, s.Path, s.Query)
+					return
+				}
+				t.Logf("review (#76 row 263): %s %s%s - .NET crashed, Go answered %d", s.Method, pathPattern.ReplaceAllString(s.Path, "{id}"), s.Query, got.Code)
+				continue
+			}
 			if differences := compare(names, s, got); len(differences) > 0 {
 				t.Errorf("step %d, %s %s%s:\n  %s", i, s.Method, s.Path, s.Query, strings.Join(differences, "\n  "))
 				return

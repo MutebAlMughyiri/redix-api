@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
@@ -652,8 +653,15 @@ func keepChanges(ctx context.Context, q *store.Queries, actor uuid.UUID, action 
 func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
 	err := p.database.InTx(r.Context(), func(q *store.Queries) error {
+		if _, err := changes.Found(q.ProjectWithID(r.Context(), projectID)); err != nil {
+			return err
+		}
 		return q.SetDefaultProject(r.Context(), store.SetDefaultProjectParams{UserID: caller.UserID, ProjectID: projectID})
 	})
+	if errors.Is(err, changes.NotFound) {
+		problem.Status(w, r, http.StatusNotFound)
+		return
+	}
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return

@@ -111,15 +111,10 @@ func (s Routes) periodicPdf(w http.ResponseWriter, r *http.Request, caller acces
 
 // contractsPdf is the contracts report as a PDF.
 func (s Routes) contractsPdf(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	project, err := read.ProjectWithID(r.Context(), projectID)
-	list, listErr := contracts.List(r.Context(), read, projectID)
-	if err != nil || listErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if name, list, found := s.contractsOf(w, r); found {
+		file, err := s.typst.Pdf(contractsDocumentOf(name, list))
+		s.sendFile(w, r, file, pdfType, "contracts.pdf", err)
 	}
-	file, err := s.typst.Pdf(contractsDocumentOf(project.Name, list))
-	s.sendFile(w, r, file, pdfType, "contracts.pdf", err)
 }
 
 // waitingWords are the labels of what waits, from the translations.

@@ -165,17 +165,21 @@ func JSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 }
 
 // Read decodes the request's JSON body into request, a struct whose every field is required unless tagged omitzero, as .NET bound a request record
-// with RespectRequiredConstructorParameters and RespectNullableAnnotations, its init properties with defaults being the optional ones: a body that is
-// not JSON answers 415, a missing or null required field and a value of the wrong type answer 400; names match whatever their case, and fields the
-// struct does not have are ignored.
+// with RespectRequiredConstructorParameters and RespectNullableAnnotations, its init properties with defaults being the optional ones: no body at all
+// answers 400 before its type is looked at, as ASP.NET Core answered a missing body; a body that is not JSON answers 415; a missing or null required
+// field and a value of the wrong type answer 400; names match whatever their case, and fields the struct does not have are ignored.
 func Read(w http.ResponseWriter, r *http.Request, request any) bool {
+	body, err := io.ReadAll(r.Body)
+	if err != nil || len(body) == 0 {
+		problem.Status(w, r, http.StatusBadRequest)
+		return false
+	}
 	if mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mediaType != "application/json" {
 		problem.Status(w, r, http.StatusUnsupportedMediaType)
 		return false
 	}
-	body, err := io.ReadAll(r.Body)
 	var sent map[string]json.RawMessage
-	if err != nil || json.Unmarshal(body, &sent) != nil || !hasEvery(sent, request) || json.Unmarshal(body, request) != nil {
+	if json.Unmarshal(body, &sent) != nil || !hasEvery(sent, request) || json.Unmarshal(body, request) != nil {
 		problem.Status(w, r, http.StatusBadRequest)
 		return false
 	}

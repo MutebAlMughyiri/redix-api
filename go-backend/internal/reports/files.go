@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"strconv"
@@ -213,15 +214,27 @@ func (s Routes) sendReport(w http.ResponseWriter, r *http.Request, c changes.Cha
 
 // contractsWorkbook is the contracts report as a workbook.
 func (s Routes) contractsWorkbook(w http.ResponseWriter, r *http.Request, _ access.Caller) {
+	if name, list, found := s.contractsOf(w, r); found {
+		file, err := contractsWorkbookOf(name, list)
+		s.sendFile(w, r, file, excelType, "contracts.xlsx", err)
+	}
+}
+
+// contractsOf is the project's name and its contracts, which the contracts report shows; false once it has answered 404 for a project that does not
+// exist, or 500.
+func (s Routes) contractsOf(w http.ResponseWriter, r *http.Request) (string, []contracts.View, bool) {
 	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	project, err := read.ProjectWithID(r.Context(), projectID)
+	project, err := changes.Found(read.ProjectWithID(r.Context(), projectID))
+	if errors.Is(err, changes.NotFound) {
+		problem.Status(w, r, http.StatusNotFound)
+		return "", nil, false
+	}
 	list, listErr := contracts.List(r.Context(), read, projectID)
 	if err != nil || listErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return "", nil, false
 	}
-	file, err := contractsWorkbookOf(project.Name, list)
-	s.sendFile(w, r, file, excelType, "contracts.xlsx", err)
+	return project.Name, list, true
 }
 
 // sendFile sends file as an attachment named name, as ASP.NET Core's Results.File did.
