@@ -36,9 +36,9 @@ Ask each of every file in the diff, in this order.
 
 In this order.
 
-1. `dotnet build`: zero warnings. A warning is fixed, never suppressed.
-2. `dotnet test`: the whole suite, and never two suites at once (they share one SQL Server).
-3. A migration: `dotnet ef migrations add <WhatItAdds>`, one step a change, merged into one before a release is published. The qa database is backed up before it is migrated.
+1. `gofmt -l` lists nothing and `go vet ./...` is clean, from `go-backend/`. A finding is fixed, never silenced.
+2. `make test`: the whole suite, the replay of the .NET API's recorded answers among them; `make cover` before a push, which fails below the coverage floor (redix-api #141).
+3. A migration: a new numbered file in `internal/db/migrations`, named for what it adds; `make sqlc` when a query changes. The qa database is backed up before it is migrated.
 4. When the app sees the change: deploy to qa (on Muteb's PC, `C:\Users\mtb\REDIX\.night\qa97.ps1`, which backs up first) and run the app's Patrol classes that reach it (redix-app's `redix-review`).
 
 ## Reporting it

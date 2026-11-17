@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/Redix.Api/Redix.Api.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/Redix.Api.Tests/Redix.Api.Tests.csproj" />
-  </Folder>
-</Solution>

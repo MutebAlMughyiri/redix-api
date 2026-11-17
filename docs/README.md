@@ -8,7 +8,7 @@ The server of REDIX (Real Estate Development Intelligence): it keeps every proje
 | [Database](database.md) | See every table, its columns and keys, what each points at, the lookup tables and their values, and the diagrams of how the tables relate |
 | [Decisions](decisions.md) | Know why things are as they are |
 | [Use cases](#use-cases) | Know what each part does, who may use it, and where each rule lives in the code |
-| Swagger, at `/swagger` outside production | Call an endpoint: its purpose, request, response and errors come from the code's doc comments |
+| The OpenAPI document | Not on Go yet: generated from the Go code, it waits in redix-api #142 |
 
 The business behind every page is the [BRS](https://claude.ai/artifact/JJPc1nSe6ekignSgXUpYB4) (private link), and what to build next is in this repo's issues.
 

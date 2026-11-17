@@ -9,7 +9,7 @@ description: Every class, method, property, variable, column, route, enum value,
 
 ## The one owner of the words
 
-The glossary is the redix-app issue **"Translations: English terms and their Arabic"** (redix-app #21). Its **In code** column is the name a term has in C#, in Dart, in the API's fields, in the tables and in enum values. A term is agreed there before it becomes a word in `TranslationSeed` or a name in code. This skill does not repeat the list; read the issue.
+The glossary is the redix-app issue **"Translations: English terms and their Arabic"** (redix-app #21). Its **In code** column is the name a term has in Go, in Dart, in the API's fields, in the tables and in enum values. A term is agreed there before it becomes a word in `TranslationSeed` or a name in code. This skill does not repeat the list; read the issue.
 
 ## The rule
 
@@ -25,7 +25,7 @@ The glossary is the redix-app issue **"Translations: English terms and their Ara
 
 Measured 12 November 2026: no `var` or typed local or field in `src/` is named `acc`, `proj`, `amt`, `qty`, `tx`, `msg`, `btn`, `req`, `res`, `ctx`, `cfg`, `idx`, `val`, `tmp` or `str`.
 
-**What may stay short:** C#'s and ASP.NET Core's own idioms (`e` in a catch, `i` in a loop, `db` for the `RedixDbContext` as EF Core's documentation writes it, `app` and `builder` in `Program.cs`).
+**What may stay short:** Go's own idioms (`err`, `i` in a loop, `w` and `r` in a handler, `ctx`, `q` for the queries, `t` in a test).
 
 ## Every sentence to Muteb too
 
@@ -40,4 +40,4 @@ A table, a column, a route, a JSON field or a word key is renamed only on purpos
 1. Which glossary term is this? Write its **In code** name in full.
 2. Would a contributor who has never read this file know what the name holds?
 3. Does the name repeat the type (`Dto`, `Data`, `Model`, `List`) instead of saying the business word?
-4. Is it shortened? Then it is a C# idiom, or it is spelled out.
+4. Is it shortened? Then it is a Go idiom, or it is spelled out.

@@ -11,17 +11,17 @@ A class earns its name by doing one job. The failure this catches is not a bad c
 
 ## How the API already splits a feature
 
-The `Entries/` folder is the shape to copy; each class says its job in one sentence:
+The `internal/entries` package is the shape to copy; each file says its job in one sentence:
 
-| Class | Its job |
+| File | Its job |
 | --- | --- |
-| `EntriesEndpoints` | Maps the routes and answers them: who may call, what comes back |
-| `EntryChanges` | Changes an entry and writes its History: remove, restore (redix-api #119) |
-| `EntryTable` | Turns a request into an entry's row |
-| `PurchaseTable` | A purchase's own rules: its amount, what it refuses (`AmountOf`, `RefusalOfTyped`) |
-| `Partners.PartnerSight` | Who may see a partner's money (BR-31), asked by every list |
+| `routes.go` | Maps the routes and answers them: who may call, what comes back |
+| `recording.go` | Records and changes an entry, writing its History: `Record`, remove, restore (redix-api #119) |
+| `tables.go` | The tables an entry is recorded on, and what each kind of table checks |
+| `facts.go` | What a list of entries shows of each, read at once: the one owner of joining an entry to its names |
+| `access.Access.SeesCapitalOf` | Who may see a partner's money (BR-31), asked by every list |
 
-When `EntriesEndpoints` grows a calculation, or `EntryChanges` grows a query a report needs, the class has taken a second job.
+When `routes.go` grows a calculation, or `recording.go` grows a query a report needs, the file has taken a second job.
 
 ## The rule
 
