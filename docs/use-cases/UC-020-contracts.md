@@ -33,30 +33,32 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 
 ## Rules and where they live
 
-| Rule | Code | Test in `ContractsTests` |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/ContractsTests.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| Finance adds a contract with its contractor, item and value (FR-07) | `ContractsEndpoints.AddAsync` | `FinanceAddsAContractWithItsContractorItemAndValue` |
+| Finance adds a contract with its contractor, item and value (FR-07) | `contracts.Routes.add` | `FinanceAddsAContractWithItsContractorItemAndValue` |
 | A new contract has its whole value remaining | `ContractMoney` | `ANewContractHasItsWholeValueRemaining` |
-| The remaining is the value less what was paid inside (AC-07.1, BR-04) | `Contract.RemainingAfter` | `TheRemainingIsTheValueLessWhatWasPaidInsideTheContract` |
-| A payment beyond the value leaves a negative remaining, with an alert (AC-07.1) | `Contract.IsOverrunBy` | `APaymentBeyondTheValueLeavesANegativeRemainingWithAnAlert` |
-| An open-value contract adds up, with no remaining and no alert (AC-07.2) | `Contract.RemainingAfter`, `IsOverrunBy` | `AnOpenValueContractAddsUpWithNoRemainingAndNoAlert` |
-| An open-value contract keeps no value | `Contract.SetTerms` | `AnOpenValueContractKeepsNoValue` |
-| A value is above zero, with at most two decimals (NFR-04) | `Contract.RefusalOf`, `Money` | `AValueIsAboveZeroWithAtMostTwoDecimals` |
-| A unit price and a quantity are not below zero, with at most two decimals | `Contract.RefusalOf`, `Money` | `AUnitPriceAndAQuantityAreNotBelowZeroWithAtMostTwoDecimals` |
-| Notes have at most 1000 characters | `Contract.RefusalOf` | `NotesHaveAtMost1000Characters` |
-| The contractor is an active supplier of the project (BR-15, BR-33) | `ContractsEndpoints.RefusalOfPartiesAsync` | `TheContractorIsAnActiveSupplierOfTheProject` |
-| The item takes contractor payments (the issue's precondition) | `Category.ItemsOfferedFor` | `TheItemTakesContractorPayments`, `ADisabledItemTakesNoNewContract` |
-| An amendment changes the terms and keeps the contractor | `ContractsEndpoints.Amend` | `AnAmendmentChangesTheTermsAndKeepsTheContractor`, `AnAmendmentCanMakeAContractOpenValue`, `AnAmendmentAnswersAsAddingDoes` |
-| A contract answers its parties, and whether any payment names it | `ContractView`, `ContractsEndpoints.List` | `AContractAnswersItsPartiesAndThatItHasNoPayments` |
-| A contract's contractor and item change while it has no payments, in the History table, old and new; new ones answer as adding does | `ContractsEndpoints.Amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheHistoryShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
-| Any payment, even a draft or a rejected one, holds them, and a refusal changes nothing; the terms can still change | `ContractsEndpoints.Amend` | `AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing`, `AContractWithAPaymentStillChangesItsTerms` |
+| The remaining is the value less what was paid inside (AC-07.1, BR-04) | `contracts.Remaining` | `TheRemainingIsTheValueLessWhatWasPaidInsideTheContract` |
+| A payment beyond the value leaves a negative remaining, with an alert (AC-07.1) | `contracts.Overrun` | `APaymentBeyondTheValueLeavesANegativeRemainingWithAnAlert` |
+| An open-value contract adds up, with no remaining and no alert (AC-07.2) | `contracts.Remaining`, `IsOverrunBy` | `AnOpenValueContractAddsUpWithNoRemainingAndNoAlert` |
+| An open-value contract keeps no value | `contracts.Terms.into` | `AnOpenValueContractKeepsNoValue` |
+| A value is above zero, with at most two decimals (NFR-04) | `contracts.Terms.refusal`, `Money` | `AValueIsAboveZeroWithAtMostTwoDecimals` |
+| A unit price and a quantity are not below zero, with at most two decimals | `contracts.Terms.refusal`, `Money` | `AUnitPriceAndAQuantityAreNotBelowZeroWithAtMostTwoDecimals` |
+| Notes have at most 1000 characters | `contracts.Terms.refusal` | `NotesHaveAtMost1000Characters` |
+| The contractor is an active supplier of the project (BR-15, BR-33) | `contracts.refusalOfParties` | `TheContractorIsAnActiveSupplierOfTheProject` |
+| The item takes contractor payments (the issue's precondition) | `structure.Offers` | `TheItemTakesContractorPayments`, `ADisabledItemTakesNoNewContract` |
+| An amendment changes the terms and keeps the contractor | `contracts.Routes.amend` | `AnAmendmentChangesTheTermsAndKeepsTheContractor`, `AnAmendmentCanMakeAContractOpenValue`, `AnAmendmentAnswersAsAddingDoes` |
+| A contract answers its parties, and whether any payment names it | `ContractView`, `contracts.Routes.list` | `AContractAnswersItsPartiesAndThatItHasNoPayments` |
+| A contract's contractor and item change while it has no payments, in the History table, old and new; new ones answer as adding does | `contracts.Routes.amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheHistoryShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
+| Any payment, even a draft or a rejected one, holds them, and a refusal changes nothing; the terms can still change | `contracts.Routes.amend` | `AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing`, `AContractWithAPaymentStillChangesItsTerms` |
 | Every change of a contract is in the History table | `ContractsEndpoints` | `EveryChangeOfAContractIsInTheHistory` |
 | Disabled, it stays on the list, never deleted | No delete route | `ADisabledContractStaysOnTheListAndCanBeEnabled` |
-| Contracts show in the order added | `ContractsEndpoints.List` | `ContractsShowInTheOrderTheyWereAdded` |
-| Everyone with access reads them; only Finance changes them (BR-31) | `Permission.ReadProject`, `ManageSettings` | `EveryoneWithAccessReadsContractsAndOnlyFinanceChangesThem` |
-| One project's contracts are never another's (BR-33) | `Contract.ProjectId`, `ContractsEndpoints` | `OneProjectsContractsAreNeverAnothers` |
-| A copied project starts with no contracts (AC-05.2) | `ProjectStructure.ApproveAsync` copies only structure | `ACopiedProjectStartsWithNoContracts` |
-| A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+| Contracts show in the order added | `contracts.Routes.list` | `ContractsShowInTheOrderTheyWereAdded` |
+| Everyone with access reads them; only Finance changes them (BR-31) | `access.ReadProject`, `ManageSettings` | `EveryoneWithAccessReadsContractsAndOnlyFinanceChangesThem` |
+| One project's contracts are never another's (BR-33) | `access.Gate.Needs`, `ContractsEndpoints` | `OneProjectsContractsAreNeverAnothers` |
+| A copied project starts with no contracts (AC-05.2) | `structure.Copy` copies only structure | `ACopiedProjectStartsWithNoContracts` |
+| A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 
 ## Left to later use cases
 

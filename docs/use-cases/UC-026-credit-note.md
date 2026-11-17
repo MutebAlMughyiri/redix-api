@@ -24,14 +24,14 @@ Tests are in `CreditNoteTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| AC-14.2, D4: a credit note is a negative total of its own that takes from the item | `EntryTable.AmountOf` | `AC_14_2_D4_ACreditNoteIsANegativeTotalOfItsOwnThatTakesFromTheItem` |
-| «نوع القيد» is a core list of the purchase template, «شراء» (+) and «مرتجع» (−) (redix-api #129) | `StructureSeed.PurchaseColumns` | `R129_APurchasesNawAlQaydIsAListOfShiraPlusAndMurtajaMinus` |
-| The sign of the choice taken decides the total's direction; no choice counts it as typed; a choice not of the list is refused (redix-api #129) | `EntryTable.SignOf`, `Column.SignedChoiceOf`, `Column.Accepts` | `R129_TheSignOfTheChoiceDecidesTheTotalsDirectionAndNoChoiceCountsItAsTyped`, `R129_AChoiceNotOfTheListIsRefused` |
+| AC-14.2, D4: a credit note is a negative total of its own that takes from the item | `entries.amountOf` | `AC_14_2_D4_ACreditNoteIsANegativeTotalOfItsOwnThatTakesFromTheItem` |
+| «نوع القيد» is a core list of the purchase template, «شراء» (+) and «مرتجع» (−) (redix-api #129) | `db/migrations/00004_template.sql` | `R129_APurchasesNawAlQaydIsAListOfShiraPlusAndMurtajaMinus` |
+| The sign of the choice taken decides the total's direction; no choice counts it as typed; a choice not of the list is refused (redix-api #129) | `entries.table.sign`, `structure.column.signed`, `structure.Accepts` | `R129_TheSignOfTheChoiceDecidesTheTotalsDirectionAndNoChoiceCountsItAsTyped`, `R129_AChoiceNotOfTheListIsRefused` |
 | Every purchase kept negative before the list became «مرتجع», every other «شراء», each figure as it was (redix-api #129, R6) | Migration `EntryTypeAndMovementTypeLists` | `MigrationStepsTests.R129_EntryTypeAndMovementTypeLists_EveryEntryKeepsItsFigureAndTakesTheChoiceItsSignSays` |
-| D4: a credit note needs no bill and is held to no bill's total | `EntryTable.RefusalOfTyped` | `D4_ACreditNoteNeedsNoBillAndIsNotHeldToWhatAnyBillCounted` |
-| D4: a credit note is approved alone, wherever its bill stands | `ApprovalsEndpoints.Approve` | `D4_ACreditNoteIsApprovedAloneWhereverItsBillStands` |
+| D4: a credit note needs no bill and is held to no bill's total | `entries.refusalOfTyped` | `D4_ACreditNoteNeedsNoBillAndIsNotHeldToWhatAnyBillCounted` |
+| D4: a credit note is approved alone, wherever its bill stands | `entries.Routes.approve` | `D4_ACreditNoteIsApprovedAloneWhereverItsBillStands` |
 | D4: what a credit note could return is no longer asked | No route | `D4_WhatACreditNoteCouldReturnIsNoLongerAsked` |
-| A credit note is typed as a plain amount | `EntryTable.RefusalOfTyped` | `ACreditNoteIsTypedAsAPlainAmount` |
+| A credit note is typed as a plain amount | `entries.refusalOfTyped` | `ACreditNoteIsTypedAsAPlainAmount` |
 | AC-14.1: a deduction of 136 reduces the item total and says why in its description | `EntryRecording` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndSaysWhyInItsNotes` |
 | AC-04.1: a finished project records no credit note | `ProjectChanges` | `AFinishedProjectRecordsNoCreditNote` |
 

@@ -45,14 +45,16 @@ After making its change and before `SaveChanges`, the endpoint calls `db.AddHist
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A sign-in is recorded with the user and the time | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheHistoryWithTheUserAndTheTime` |
-| A refused sign-in is recorded against the user whose name was typed, and never what was typed | `AuthEndpoints.CheckPassword` | `AuthTests.AWrongPasswordIsInTheHistoryAgainstTheUserAndNeverSaysWhatWasTyped`, `AuthTests.TryingWhileLockedIsAFailedSignIn`, `AuthTests.R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs` |
-| The wrong password that locks the account is recorded as a lockout, at sign-in or at a password change | `AuthEndpoints.CheckPassword` | `AuthTests.TheWrongPasswordThatLocksTheAccountIsRecordedAsALockout`, `ChangePasswordTests.AWrongCurrentPasswordIsRefusedAndCountsTowardTheLockout` |
-| An unknown username records nothing, because there is nobody to record it against | `AuthEndpoints.SignIn` | `AuthTests.AnUnknownUsernameRecordsNothing` |
-| A password change is recorded with the values before and after, never the password's hash | `AuthEndpoints.ChangePassword`, `User.PasswordHash` (`[NotInHistory]`) | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
-| A record is built from the values the save changes | `HistoryRecord.Of` | Both tests above |
+| A sign-in is recorded with the user and the time | `auth.Sessions.signIn` | `AuthTests.ASignInIsInTheHistoryWithTheUserAndTheTime` |
+| A refused sign-in is recorded against the user whose name was typed, and never what was typed | `auth.saveAttempt` | `AuthTests.AWrongPasswordIsInTheHistoryAgainstTheUserAndNeverSaysWhatWasTyped`, `AuthTests.TryingWhileLockedIsAFailedSignIn`, `AuthTests.R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs` |
+| The wrong password that locks the account is recorded as a lockout, at sign-in or at a password change | `auth.saveAttempt` | `AuthTests.TheWrongPasswordThatLocksTheAccountIsRecordedAsALockout`, `ChangePasswordTests.AWrongCurrentPasswordIsRefusedAndCountsTowardTheLockout` |
+| An unknown username records nothing, because there is nobody to record it against | `auth.Sessions.signIn` | `AuthTests.AnUnknownUsernameRecordsNothing` |
+| A password change is recorded with the values before and after, never the password's hash | `auth.Sessions.changePassword` | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
+| A record is built from the values the save changes | `accounts.custodianFields` | Both tests above |
 | No record can be changed or deleted, through the API or any query (AC-21.1) | The database trigger `HistoryIsAppendOnly`, created by the `History` migration | `HistoryTests.NoRecordOfTheTrailCanBeChangedOrDeletedByAnyone` |
 
 ## Left to later use cases

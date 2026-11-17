@@ -44,42 +44,44 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A new item inherits the default columns of its type (FR-38) | `Item.New` | `ColumnsTests.ANewItemInheritsTheDefaultColumnsOfItsType` |
-| A template item is copied with the columns of its type | `Item.CopyFor` | `ColumnsTests.ATemplateItemIsCopiedWithTheColumnsOfItsType` |
+| A new item inherits the default columns of its type (FR-38) | `structure.change.addTemplateColumns` | `ColumnsTests.ANewItemInheritsTheDefaultColumnsOfItsType` |
+| A template item is copied with the columns of its type | `structure.copyCategories` | `ColumnsTests.ATemplateItemIsCopiedWithTheColumnsOfItsType` |
 | The core columns of a purchase are the five left of BR-20: date, supplier, total, account and file, the bill number left with D2 (findings row 150); «نوع القيد», which decides the total's sign; and «الوصف» (redix-api #129) | `StructureSeed` | `ColumnsTests.TheCoreColumnsOfAPurchaseAreTheFiveLeftOfBr20AndNawAlQaydWhichDecidesItsSign` |
-| Every template holds «الوصف» and none «ملاحظات» or «الصنف»; each column is named with the approved workbook's word (redix-api #129 D1) | `StructureSeed.Description` | `ColumnsTests.R129_D1_NoTemplateHoldsTheNotesOrTheProductAndEveryOneHoldsTheDescription`, `R129_EachColumnIsNamedWithTheApprovedWorkbooksWord` |
-| An item of both types holds the purchase columns, with what only a contractor payment has after the column it follows | `StructureSeed.BothColumns` | `ColumnsTests.AnItemOfBothTypesHoldsThePurchaseColumnsWithWhatOnlyAContractorPaymentHasAfterWhatItFollows` |
+| Every template holds «الوصف» and none «ملاحظات» or «الصنف»; each column is named with the approved workbook's word (redix-api #129 D1) | `db/migrations/00004_template.sql` | `ColumnsTests.R129_D1_NoTemplateHoldsTheNotesOrTheProductAndEveryOneHoldsTheDescription`, `R129_EachColumnIsNamedWithTheApprovedWorkbooksWord` |
+| An item of both types holds the purchase columns, with what only a contractor payment has after the column it follows | `db/migrations/00004_template.sql` | `ColumnsTests.AnItemOfBothTypesHoldsThePurchaseColumnsWithWhatOnlyAContractorPaymentHasAfterWhatItFollows` |
 | Each template holds its columns in the order of the approved workbook, and a purchase's prints the supplier, the account, the method and the file (redix-api #129) | `StructureSeed` | `ColumnsTests.R129_EachTemplateHoldsItsColumnsInTheOrderOfTheApprovedWorkbook`, `R129_ThePurchaseTemplatePrintsTheSupplierTheAccountTheMethodAndTheFileButNotTheNotes` |
-| A person adds no column to a revenue item; رأس المال asks «نوع الحركة» from its template (FR-38, redix-api #129) | `ColumnsEndpoints.AddToItem`, `StructureSeed.CapitalColumns` | `ColumnsTests.R129_APersonStillAddsNoColumnToARevenueItem`, `R129_RasAlMalAsksNawAlHarakaWhoseChoicesPutInAndTakeOut` |
-| A payment is asked nothing only a purchase has, the supplier among it, and a purchase nothing only a payment has; the tables Add entry offers name the columns each asks (FR-38, redix-api #129, R3) | `StructureSeed.IsAsked`, `EntryTable.Columns`, `EntryTableView.ColumnKeys` | `ContractorPaymentsTests.R129_R3_APaymentIsAskedNothingOnlyAPurchaseHasAndAPurchaseNothingOnlyAPaymentHas`, `R129_AUnitPriceRequiredOfThePurchasesIsNotAskedOfAPaymentOnTheSameItem` |
+| A person adds no column to a revenue item; رأس المال asks «نوع الحركة» from its template (FR-38, redix-api #129) | `structure.Routes.addToItem`, `structure.change.template` | `ColumnsTests.R129_APersonStillAddsNoColumnToARevenueItem`, `R129_RasAlMalAsksNawAlHarakaWhoseChoicesPutInAndTakeOut` |
+| A payment is asked nothing only a purchase has, the supplier among it, and a purchase nothing only a payment has; the tables Add entry offers name the columns each asks (FR-38, redix-api #129, R3) | `entries.asksOf`, `entries.AskedColumns` | `ContractorPaymentsTests.R129_R3_APaymentIsAskedNothingOnlyAPurchaseHasAndAPurchaseNothingOnlyAPaymentHas`, `R129_AUnitPriceRequiredOfThePurchasesIsNotAskedOfAPaymentOnTheSameItem` |
 | Every item and every project's template took the new columns, and the old ones follow the approved order and print as it does, a person's own after them (redix-api #129, R6) | Migration `EntryTypeAndMovementTypeLists` | `MigrationStepsTests.R129_EntryTypeAndMovementTypeLists_EveryEntryKeepsItsFigureAndTakesTheChoiceItsSignSays` |
-| A column added to one item is asked in that item only (AC-41.1) | `ColumnsEndpoints.AddToItem` | `ColumnsTests.AColumnAddedToOneItemIsAskedInThatItemOnly` |
-| A column needs a name of 1 to 100 characters | `Column.CheckNew`, `Column.Edit` | `ColumnsTests.AColumnNeedsANameOfAtMost100Characters` |
-| A list a person added gains choices; those it has stay, in their order, because entries hold them; a new choice has the limit of a name; the template's reach items only when applied (BR-21) | `Column.Edit`, `ColumnsEndpoints.EditOfItem`, `EditOfTemplate` | `ColumnsTests.APickListGainsChoicesAndKeepsItsOwnInTheirOrder`, `AnEditThatGivesNoNewChoiceChangesNoChoice`, `ANewChoiceIsWithinTheLimitOfAName`, `OnlyAPickListAPersonAddedGainsChoices`, `AnEntryCanHoldTheChoiceAListGained`, `AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied` |
-| A pick list needs a choice; another type keeps none | `Column.CheckNew`, `DefaultColumn.New` | `ColumnsTests.APickListNeedsAChoice`, `APickListKeepsItsChoicesAndAnotherTypeNone` |
-| A list's choices live in its definition, each with its own id and an optional sign, + or − (redix-api #129) | `ColumnChoice`, `Column.ChoicesOf` | `ColumnsTests.R129_AListsChoicesEachHaveAnIdAndASignOfTheirOwn` |
-| An item holds at most one list whose choices give a sign, so the amount's direction has one answer (redix-api #129) | `ColumnsEndpoints.HasTwoSignedLists` | `ColumnsTests.R129_AnItemTakesOneListWhoseChoicesGiveASignSoTheAmountsDirectionHasOneAnswer` |
-| An entry keeps the id of the choice chosen, and a choice's name is refused (redix-api #129, R5) | `Column.Accepts`, `Column.ChoiceOf` | `ColumnsTests.R129_R5_AnEntryKeepsTheIdOfTheChoiceChosenAndIsRefusedItsName`, `ExpensesTests.FR_41_AValueThatFitsItsColumnIsKept` |
+| A column added to one item is asked in that item only (AC-41.1) | `structure.Routes.addToItem` | `ColumnsTests.AColumnAddedToOneItemIsAskedInThatItemOnly` |
+| A column needs a name of 1 to 100 characters | `structure.columnRequest.refusalOfNew`, `structure.column.edited` | `ColumnsTests.AColumnNeedsANameOfAtMost100Characters` |
+| A list a person added gains choices; those it has stay, in their order, because entries hold them; a new choice has the limit of a name; the template's reach items only when applied (BR-21) | `structure.column.edited`, `structure.Routes.editOfItem`, `EditOfTemplate` | `ColumnsTests.APickListGainsChoicesAndKeepsItsOwnInTheirOrder`, `AnEditThatGivesNoNewChoiceChangesNoChoice`, `ANewChoiceIsWithinTheLimitOfAName`, `OnlyAPickListAPersonAddedGainsChoices`, `AnEntryCanHoldTheChoiceAListGained`, `AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied` |
+| A pick list needs a choice; another type keeps none | `structure.columnRequest.refusalOfNew`, `structure.columnRequest.newColumn` | `ColumnsTests.APickListNeedsAChoice`, `APickListKeepsItsChoicesAndAnotherTypeNone` |
+| A list's choices live in its definition, each with its own id and an optional sign, + or − (redix-api #129) | `ColumnChoice`, `structure.choicesOf` | `ColumnsTests.R129_AListsChoicesEachHaveAnIdAndASignOfTheirOwn` |
+| An item holds at most one list whose choices give a sign, so the amount's direction has one answer (redix-api #129) | `structure.hasTwoSignedLists` | `ColumnsTests.R129_AnItemTakesOneListWhoseChoicesGiveASignSoTheAmountsDirectionHasOneAnswer` |
+| An entry keeps the id of the choice chosen, and a choice's name is refused (redix-api #129, R5) | `structure.Accepts`, `structure.column.choiceOf` | `ColumnsTests.R129_R5_AnEntryKeepsTheIdOfTheChoiceChosenAndIsRefusedItsName`, `ExpensesTests.FR_41_AValueThatFitsItsColumnIsKept` |
 | Every choice kept before got an id and no sign, and every value naming one holds its id (redix-api #129) | Migration `ListChoicesWithSigns` | `MigrationStepsTests.R129_ListChoicesWithSigns_EveryChoiceGetsAnIdAndNoSignAndEveryValueNamingOneHoldsItsId` |
-| A person chooses among five types | `Column.CheckNew` | `ColumnsTests.APersonCannotAddAFileColumn` |
-| A core column is renamed and reordered (BR-20) | `Column.Edit`, `ProjectStructure.PutInOrder` | `ColumnsTests.ACoreColumnIsRenamedAndReordered` |
-| A core column changes nothing but its name (BR-20) | `Column.Edit` | `ColumnsTests.ACoreColumnChangesNothingButItsName` |
-| Any other column changes what entry asks and what prints | `Column.Edit` | `ColumnsTests.AColumnThatIsNotCoreChangesWhatEntryAsksAndWhatPrints` |
-| A core column is never deleted, on an item or in the template (AC-41.2) | `ItemColumn.Hide`, `ColumnsEndpoints.DeleteOfTemplate` | `ColumnsTests.ACoreColumnIsNeverDeleted` |
-| Deleting hides the column and keeps its row, so its values stay (AC-41.2, BR-21) | `ItemColumn.Hide` | `ColumnsTests.ADeletedColumnLeavesEntryAndItsRowStays`, `ANonCoreColumnOfTheTemplateIsDeletedOnAnItem`, `ADeletedColumnCanBeDeletedOrChangedNoMore` |
-| A type never changes (AC-41.3, BR-21) | `Column.DataType`; no request carries it | `ColumnsTests.ATypeNeverChanges` |
-| An order names every visible column exactly once | `ProjectStructure.PutInOrder` | `ColumnsTests.AnOrderMustNameEveryVisibleColumnExactlyOnce` |
+| A person chooses among five types | `structure.columnRequest.refusalOfNew` | `ColumnsTests.APersonCannotAddAFileColumn` |
+| A core column is renamed and reordered (BR-20) | `structure.column.edited`, `structure.inOrder` | `ColumnsTests.ACoreColumnIsRenamedAndReordered` |
+| A core column changes nothing but its name (BR-20) | `structure.column.edited` | `ColumnsTests.ACoreColumnChangesNothingButItsName` |
+| Any other column changes what entry asks and what prints | `structure.column.edited` | `ColumnsTests.AColumnThatIsNotCoreChangesWhatEntryAsksAndWhatPrints` |
+| A core column is never deleted, on an item or in the template (AC-41.2) | `structure.change.hide`, `structure.Routes.deleteOfTemplate` | `ColumnsTests.ACoreColumnIsNeverDeleted` |
+| Deleting hides the column and keeps its row, so its values stay (AC-41.2, BR-21) | `structure.change.hide` | `ColumnsTests.ADeletedColumnLeavesEntryAndItsRowStays`, `ANonCoreColumnOfTheTemplateIsDeletedOnAnItem`, `ADeletedColumnCanBeDeletedOrChangedNoMore` |
+| A type never changes (AC-41.3, BR-21) | `structure.column.edited`; no request carries it | `ColumnsTests.ATypeNeverChanges` |
+| An order names every visible column exactly once | `structure.inOrder` | `ColumnsTests.AnOrderMustNameEveryVisibleColumnExactlyOnce` |
 | A template change leaves existing items alone unless applied (AC-41.3) | `ColumnsEndpoints` | `ColumnsTests.ATemplateChangeLeavesExistingItemsAloneUnlessApplied` |
-| A new item starts from the template as it is now | `CategoriesEndpoints.AddItemAsync` | `ColumnsTests.ANewItemStartsFromTheTemplateAsItIsNow` |
-| "Apply to all items" reaches every item of that type, disabled ones too, and no other | `ColumnsEndpoints.AddToTemplate`, `EditOfTemplate`, `DeleteOfTemplate` | `ColumnsTests.AColumnAppliedToAllReachesEveryItemOfThatTypeAndNoOther`, `ARenameAppliedToAllReachesEveryItemOfThatType`, `ADeleteAppliedToAllHidesItOnEveryItemOfThatType` |
-| An order applied to all keeps what only that item has after the rest | `ColumnsEndpoints.ReorderOfTemplate` | `ColumnsTests.AnOrderAppliedToAllKeepsWhatOnlyThatItemHasAfterTheRest` |
-| One project's template changes no other (BR-33) | `DefaultColumn.ProjectId` | `ColumnsTests.OneProjectsTemplateChangesNoOtherProject` |
-| A project copied from an earlier one takes its columns, without what it deleted (AC-05.2) | `ProjectStructure.ApproveAsync`, `Item.CopyFor` | `ColumnsTests.AnEarlierProjectsColumnsAreCopiedWithoutWhatItDeleted` |
-| Everyone with access reads; only Finance changes | `Permission.ManageStructure` | `ColumnsTests.EveryoneWithAccessReadsColumnsAndOnlyFinanceChangesThem` |
-| One project's route never reaches another's columns (BR-33) | `ProjectStructure.ItemOfAsync`, `ColumnsEndpoints.TemplateOf` | `ColumnsTests.ARouteOfOneProjectNeverReachesAnothersColumns` |
-| A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `ColumnsTests.AFinishedProjectRefusesColumnChangesAndStaysReadable` |
+| A new item starts from the template as it is now | `structure.Routes.addItem` | `ColumnsTests.ANewItemStartsFromTheTemplateAsItIsNow` |
+| "Apply to all items" reaches every item of that type, disabled ones too, and no other | `structure.Routes.addToTemplate`, `EditOfTemplate`, `DeleteOfTemplate` | `ColumnsTests.AColumnAppliedToAllReachesEveryItemOfThatTypeAndNoOther`, `ARenameAppliedToAllReachesEveryItemOfThatType`, `ADeleteAppliedToAllHidesItOnEveryItemOfThatType` |
+| An order applied to all keeps what only that item has after the rest | `structure.Routes.reorderOfTemplate` | `ColumnsTests.AnOrderAppliedToAllKeepsWhatOnlyThatItemHasAfterTheRest` |
+| One project's template changes no other (BR-33) | `access.Gate.Needs` | `ColumnsTests.OneProjectsTemplateChangesNoOtherProject` |
+| A project copied from an earlier one takes its columns, without what it deleted (AC-05.2) | `structure.Copy`, `structure.copyCategories` | `ColumnsTests.AnEarlierProjectsColumnsAreCopiedWithoutWhatItDeleted` |
+| Everyone with access reads; only Finance changes | `access.ManageStructure` | `ColumnsTests.EveryoneWithAccessReadsColumnsAndOnlyFinanceChangesThem` |
+| One project's route never reaches another's columns (BR-33) | `structure.change.item`, `structure.change.template` | `ColumnsTests.ARouteOfOneProjectNeverReachesAnothersColumns` |
+| A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `ColumnsTests.AFinishedProjectRefusesColumnChangesAndStaysReadable` |
 
 ## Left to later use cases
 

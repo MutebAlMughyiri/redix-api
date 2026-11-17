@@ -23,17 +23,19 @@ A session answers `defaultProjectId`, the project sign-in opens; empty when ther
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A default project is kept for the next session, which opens it (AC-37.1) | `ProjectsEndpoints.SetDefault`, `Session.OfAsync` | `ProjectsTests.AC_37_1_ADefaultProjectIsKeptForTheNextSessionWhichOpensIt` |
-| A default without access is not offered (AC-37.2) | `Session.OfAsync` | `ProjectsTests.ADefaultWithoutAccessIsNotOffered` |
-| A default he is inactive in is skipped, not cleared, and comes back when he is active again (AC-37.2, redix-api #126) | `Session.OfAsync`, `UserAccess.OfAsync` | `InactiveMembersTests.AC_37_2_ADefaultProjectHeIsInactiveInIsSkippedNotClearedAndComesBackWhenHeIsActiveAgain` |
-| A project without access cannot be the default (BR-33) | `Permission.ReadProject` | `ProjectsTests.AProjectWithoutAccessCannotBeTheDefault` |
-| A project waiting for approval cannot be the default | `Permission.ReadProject` | `ProjectsTests.AWaitingProjectCannotBeTheDefault` |
-| A finished project can be the default | `Permission.ReadProject` | `ProjectsTests.AFinishedProjectCanBeTheDefault` |
-| A new default replaces the old, one row per user, the user being its key (findings row 216) | The key, `ProjectsEndpoints.SetDefault` | `ProjectsTests.ANewDefaultReplacesTheOld`, `R216_ADefaultProjectIsARowKeyedByItsUserSoANewDefaultChangesThatRow`, `R216_TheDatabaseRefusesASecondDefaultProjectForOneUserByItsKey`, `MigrationStepsTests.R216_UserDefaultProjectsKeyedByUser_EveryDefaultStaysKeyedByItsUserAndItsOwnIdGoes` |
-| Removing the default leaves none, so sign-in shows the list | `ProjectsEndpoints.RemoveDefault` | `ProjectsTests.RemovingTheDefaultLeavesNoneSoSignInShowsTheList` |
-| One user's default changes nothing for another | `UserDefaultProject.UserId` | `ProjectsTests.ADefaultIsOneUsersAlone` |
+| A default project is kept for the next session, which opens it (AC-37.1) | `projects.Routes.setDefault`, `auth.Sessions.answer` | `ProjectsTests.AC_37_1_ADefaultProjectIsKeptForTheNextSessionWhichOpensIt` |
+| A default without access is not offered (AC-37.2) | `auth.Sessions.answer` | `ProjectsTests.ADefaultWithoutAccessIsNotOffered` |
+| A default he is inactive in is skipped, not cleared, and comes back when he is active again (AC-37.2, redix-api #126) | `auth.Sessions.answer`, `access.Book.Of` | `InactiveMembersTests.AC_37_2_ADefaultProjectHeIsInactiveInIsSkippedNotClearedAndComesBackWhenHeIsActiveAgain` |
+| A project without access cannot be the default (BR-33) | `access.ReadProject` | `ProjectsTests.AProjectWithoutAccessCannotBeTheDefault` |
+| A project waiting for approval cannot be the default | `access.ReadProject` | `ProjectsTests.AWaitingProjectCannotBeTheDefault` |
+| A finished project can be the default | `access.ReadProject` | `ProjectsTests.AFinishedProjectCanBeTheDefault` |
+| A new default replaces the old, one row per user, the user being its key (findings row 216) | The key, `projects.Routes.setDefault` | `ProjectsTests.ANewDefaultReplacesTheOld`, `R216_ADefaultProjectIsARowKeyedByItsUserSoANewDefaultChangesThatRow`, `R216_TheDatabaseRefusesASecondDefaultProjectForOneUserByItsKey`, `MigrationStepsTests.R216_UserDefaultProjectsKeyedByUser_EveryDefaultStaysKeyedByItsUserAndItsOwnIdGoes` |
+| Removing the default leaves none, so sign-in shows the list | `projects.Routes.removeDefault` | `ProjectsTests.RemovingTheDefaultLeavesNoneSoSignInShowsTheList` |
+| One user's default changes nothing for another | `projects.Routes.setDefault` | `ProjectsTests.ADefaultIsOneUsersAlone` |
 
 ## My email in Settings
 
@@ -46,12 +48,14 @@ Settings › «بريدي» changes the signed-in person's own email (redix-api 
 
 A session answers `email`, which Settings shows; empty while none is set. The codes are kept in `EmailCodes` (UC-002).
 
-| Rule | Code | Test |
+Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A new address holds only once its code is entered, and the old one until then (AC-10.4) | `MyEmailEndpoints.Ask`, `Confirm`, `EmailCode` | `MyEmailTests.AC_10_4_ANewAddressHoldsOnlyOnceItsCodeIsEnteredAndTheOldOneUntilThen`, `AC_10_4_AWrongCodeLeavesTheOldAddress` |
-| A new address holding ends the reset code sent to the old one; asking a code for a new address ends none while the old one holds (redix-api #127) | `MyEmailEndpoints.Confirm`, `User.ChangeEmailAsync`, `EmailCode.EndEveryOneOfAsync` | `MyEmailTests.R127_ANewAddressHoldingEndsTheResetCodeSentToTheOldOne`, `R127_ACodeAskedForANewAddressEndsNoResetCodeWhileTheOldAddressHolds` |
-| A code of another purpose, or none asked for, confirms nothing | `EmailCode.CheckAsync` | `MyEmailTests.AC_10_4_AResetCodeConfirmsNoAddressAndNoCodeConfirmsNothing` |
-| The new address is well formed and no other account holds it, when asked and when confirmed (R9) | `User.RefusalOfEmailAsync` | `MyEmailTests.R9_AnAddressAnotherAccountHoldsOrOneNotWellFormedIsRefusedAndNothingIsSent`, `R9_AnAddressAnotherAccountTookBeforeItsCodeWasEnteredIsRefused` |
+| A new address holds only once its code is entered, and the old one until then (AC-10.4) | `auth.Codes.askToConfirm`, `Confirm`, `EmailCode` | `MyEmailTests.AC_10_4_ANewAddressHoldsOnlyOnceItsCodeIsEnteredAndTheOldOneUntilThen`, `AC_10_4_AWrongCodeLeavesTheOldAddress` |
+| A new address holding ends the reset code sent to the old one; asking a code for a new address ends none while the old one holds (redix-api #127) | `auth.Codes.confirm`, `users.ChangeEmail` | `MyEmailTests.R127_ANewAddressHoldingEndsTheResetCodeSentToTheOldOne`, `R127_ACodeAskedForANewAddressEndsNoResetCodeWhileTheOldAddressHolds` |
+| A code of another purpose, or none asked for, confirms nothing | `auth.Codes.check` | `MyEmailTests.AC_10_4_AResetCodeConfirmsNoAddressAndNoCodeConfirmsNothing` |
+| The new address is well formed and no other account holds it, when asked and when confirmed (R9) | `users.RefusalOfEmail` | `MyEmailTests.R9_AnAddressAnotherAccountHoldsOrOneNotWellFormedIsRefusedAndNothingIsSent`, `R9_AnAddressAnotherAccountTookBeforeItsCodeWasEnteredIsRefused` |
 | The admin sets his email here and then resets his password with it (D6, R10) | `MyEmailEndpoints`, `PasswordResetEndpoints` | `MyEmailTests.D6_R10_TheAdminSetsHisEmailInSettingsAndThenResetsWithIt` |
-| The confirmation is in the language the phone asked in (AC-02.10) | `EmailSender.SendAsync` | `MyEmailTests.AC_02_10_TheConfirmationIsInTheLanguageThePhoneAskedIn` |
-| A confirmed address is in the History table, by the person, with the old and the new (UC-005) | `MyEmailEndpoints.Confirm` | `MyEmailTests.AConfirmedAddressIsInTheHistoryByThePersonWithTheOldAndTheNew` |
+| The confirmation is in the language the phone asked in (AC-02.10) | `email.Send` | `MyEmailTests.AC_02_10_TheConfirmationIsInTheLanguageThePhoneAskedIn` |
+| A confirmed address is in the History table, by the person, with the old and the new (UC-005) | `auth.Codes.confirm` | `MyEmailTests.AConfirmedAddressIsInTheHistoryByThePersonWithTheOldAndTheNew` |

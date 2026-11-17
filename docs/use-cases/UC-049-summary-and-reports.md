@@ -17,11 +17,13 @@
 
 **Completion is computed, not typed** (Muteb, 7 November 2026): `ProjectFigures.CompletionPercent` is the approved expenses as a percentage of revenue, to two decimals. It is 0 while nothing came in, and passes 100 once expenses pass revenue. UC-063 first had it typed by whoever holds `ManageProject`; cost is the approved expenses; everyone sees both.
 
-| Rule | Code | Test |
+Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| AC-34.1: an approval shows at once in the surplus, the pending and the categories | `SummaryEndpoints.Summary`, `ItemTotals` | `SummaryTests.AC_34_1_AnApprovalShowsAtOnceInTheSurplusThePendingAndTheCategories` |
-| The summary carries the reconciliation difference once there is one | `SummaryEndpoints.Summary` | `SummaryTests.TheSummaryCarriesTheReconciliationDifferenceOnceThereIsOne` |
-| UC-063: completion is expenses as a percentage of revenue; everyone sees it and the cost, and nobody types it | `ProjectFigures.CompletionPercent`, `SummaryEndpoints.Summary` | `SummaryTests.UC_063_CompletionIsExpensesAsAPercentageOfRevenue`, `UC_063_EveryoneSeesTheCompletionAndTheCostAndNobodyTypesIt` |
-| AC-30.1: an item's subgroups and contract payments add up to its total | `ItemReportEndpoints.OfAsync` | `SummaryTests.AC_30_1_AnItemsSubgroupsAndContractPaymentsAddUpToItsTotal` |
-| An item of another project is not found (BR-33) | `ItemReportEndpoints.Report` | `SummaryTests.AnItemOfAnotherProjectIsNotFound` |
-| An item's own columns print when they show in reports (FR-41, row 60) | `ItemReportEndpoints.OfAsync` | `SummaryTests.AnItemsOwnColumnsPrintWhenTheyShowInReports` |
+| AC-34.1: an approval shows at once in the surplus, the pending and the categories | `reports.Routes.summary`, `ItemTotals` | `SummaryTests.AC_34_1_AnApprovalShowsAtOnceInTheSurplusThePendingAndTheCategories` |
+| The summary carries the reconciliation difference once there is one | `reports.Routes.summary` | `SummaryTests.TheSummaryCarriesTheReconciliationDifferenceOnceThereIsOne` |
+| UC-063: completion is expenses as a percentage of revenue; everyone sees it and the cost, and nobody types it | `reports.Routes.summary` | `SummaryTests.UC_063_CompletionIsExpensesAsAPercentageOfRevenue`, `UC_063_EveryoneSeesTheCompletionAndTheCostAndNobodyTypesIt` |
+| AC-30.1: an item's subgroups and contract payments add up to its total | `entries.ItemReportOf` | `SummaryTests.AC_30_1_AnItemsSubgroupsAndContractPaymentsAddUpToItsTotal` |
+| An item of another project is not found (BR-33) | `entries.Routes.itemReportRoute` | `SummaryTests.AnItemOfAnotherProjectIsNotFound` |
+| An item's own columns print when they show in reports (FR-41, row 60) | `entries.ItemReportOf` | `SummaryTests.AnItemsOwnColumnsPrintWhenTheyShowInReports` |

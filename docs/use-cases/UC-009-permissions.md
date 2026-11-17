@@ -72,22 +72,24 @@ The migration `ReportPermissions` (redix-api #131 D3) gave `SeeReports` to every
 
 ## Rules and where they are proven
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | The admin holds approving projects from the first start | `AdminSeed` | `PermissionsTests.TheAdminHoldsApprovingProjectsFromTheFirstStart` |
 | A change in the database counts at the next request | `UserAccess` | `PermissionsTests.ANewRowGivesAPermissionAtTheNextRequest` |
-| A project someone is inactive in gives him nothing, so every route of it refuses him (redix-api #126) | `UserAccess.OfAsync` | `InactiveMembersTests.R5_EveryRouteOfAProjectHeIsInactiveInRefusesHimAsForAProjectHeIsNotIn` |
-| A permission held everywhere reaches every project | `UserAccess.In` | `PermissionsTests.APermissionHeldEverywhereReachesEveryProjectAndAnUnknownOneIsNotFound` |
-| The database refuses an unknown permission, and the admin's in a project (BR-32) | `RedixDbContext` | `PermissionsTests.TheDatabaseRefusesAPermissionTheCodeDoesNotKnowAndTheAdminsInAProject` |
-| redix-api #106: the two capital ticks exclude each other, choosing a partner gives `SeeChosenCapital`, taking it forgets the partners, and whoever registers a project sees all | `ProjectUsersEndpoints.Give`, `Choose`, `CapitalSight` | `PartnersTests.UC_106_SeeAllAndChosenCapitalExcludeEachOtherAndARegistrantSeesAll`, `UC_106_ChoosingAPartnerGivesChosenCapitalAndTakesSeeAllAndTakingChosenCapitalForgetsThePartners`, `UC_106_APersonIsCreatedWithChosenPartnersButNotWithBothCapitalTicksNorAnotherProjectsPartner`, `UC_106_ChoosingAPartnerOfAnotherProjectOrForSomeoneOutsideIsNotFound`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInItSeeingAllCapitalRatherThanChosenPartners` |
+| A project someone is inactive in gives him nothing, so every route of it refuses him (redix-api #126) | `access.Book.Of` | `InactiveMembersTests.R5_EveryRouteOfAProjectHeIsInactiveInRefusesHimAsForAProjectHeIsNotIn` |
+| A permission held everywhere reaches every project | `access.Access.In` | `PermissionsTests.APermissionHeldEverywhereReachesEveryProjectAndAnUnknownOneIsNotFound` |
+| The database refuses an unknown permission, and the admin's in a project (BR-32) | The `CHECK` on `project_permissions.permission`, `db/migrations/00001_schema.sql` | `PermissionsTests.TheDatabaseRefusesAPermissionTheCodeDoesNotKnowAndTheAdminsInAProject` |
+| redix-api #106: the two capital ticks exclude each other, choosing a partner gives `SeeChosenCapital`, taking it forgets the partners, and whoever registers a project sees all | `users.Routes.give`, `Choose`, `CapitalSight` | `PartnersTests.UC_106_SeeAllAndChosenCapitalExcludeEachOtherAndARegistrantSeesAll`, `UC_106_ChoosingAPartnerGivesChosenCapitalAndTakesSeeAllAndTakingChosenCapitalForgetsThePartners`, `UC_106_APersonIsCreatedWithChosenPartnersButNotWithBothCapitalTicksNorAnotherProjectsPartner`, `UC_106_ChoosingAPartnerOfAnotherProjectOrForSomeoneOutsideIsNotFound`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInItSeeingAllCapitalRatherThanChosenPartners` |
 | Every route that changes something names a policy | The routes | `PermissionsTests.EveryChangingRouteNamesAPolicy` |
 | Every route of a project names a permission | The routes | `PermissionsTests.EveryRouteOfAProjectNamesAPermission` |
 | Every route refuses whoever lacks its permission and opens once it is held | `PermissionHandler` | `PermissionsTests.EveryRouteRefusesWhoeverLacksItsPermissionAndOpensOnceItIsTicked` |
 | Another project answers 403 (AC-36.1) | `PermissionHandler` | `ProjectsTests.AnotherProjectIsForbidden` |
-| What a user may do follows what is ticked in each project (AC-36.2) | `UserAccess.In` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
+| What a user may do follows what is ticked in each project (AC-36.2) | `access.Access.In` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
 | Field and Reader cannot change a project (AC-03.1) | `PermissionHandler` | `ProjectsTests.FieldAndReaderCannotChangeAProject` |
 | No session answers 401 (AC-N08) | `PermissionHandler` | `ProjectsTests.ASessionlessRequestIsUnauthorized` |
-| Whoever registers a project holds all 16 in it (BR-29) | `ProjectsEndpoints.AddWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInIt` |
+| Whoever registers a project holds all 16 in it (BR-29) | `projects.addWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInIt` |
 | Deleting is its own permission | `EntriesEndpoints` | `EntryChangesTests.DeletingIsItsOwnPermission` |
 | redix-api #131 D3: the upgrade gives `SeeReports` to everyone in a project, and `GenerateReports` to whoever moved money or saw all capital | The migration `ReportPermissions` | `MigrationStepsTests.R131_D3_ReportPermissions_WhoeverReadsAProjectSeesItsReportsAndWhoeverMovedMoneyOrSawAllCapitalGeneratesThem` |
 

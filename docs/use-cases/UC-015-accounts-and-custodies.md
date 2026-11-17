@@ -39,28 +39,30 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A bank account is added with its opening balance | `AccountsEndpoints.Add` | `AccountsTests.FinanceAddsABankAccountWithItsOpeningBalance` |
-| A cash custody is held by someone in the project | `AccountsEndpoints.Add`, `Account.HandTo` | `AccountsTests.FinanceAddsACashCustodyHeldBySomeoneInTheProject` |
-| A bank account may have a custodian | `Account.RefusalOf` | `AccountsTests.ABankAccountMayHaveACustodian` |
-| An overdrawn account may open below zero | `Account.RefusalOf` | `AccountsTests.AnOverdrawnAccountMayOpenBelowZero` |
-| A cash custody needs a custodian, on adding and on editing | `Account.RefusalOf` | `AccountsTests.ACashCustodyNeedsACustodian`, `AnEditCannotLeaveACashCustodyWithNobody` |
-| A custodian must be in the project (BR-33) | `AccountsEndpoints.RefusalOfAsync`, `ProjectUsersEndpoints.IsMemberAsync` | `AccountsTests.ACustodianMustBeInTheProject` |
-| An account needs a name of 1 to 100 characters | `Account.RefusalOf` | `AccountsTests.AnAccountNeedsANameOfAtMost100Characters` |
-| An opening balance has two decimals (NFR-04) and a limit | `Account.RefusalOf` | `AccountsTests.AnOpeningBalanceHasTwoDecimalsAndALimit` |
-| An edit changes the name, the opening balance and the custodian; the type never changes | `AccountsEndpoints.Edit`, `Account.HandTo` | `AccountsTests.AnEditChangesTheNameTheOpeningBalanceAndTheCustodian`, `AnEditCanLeaveABankAccountWithNobody` |
-| A changed opening balance is in the History table, old and new | `AccountsEndpoints.Edit`, `RedixDbContext.AddHistory` | `AccountsTests.AChangedOpeningBalanceIsInTheHistoryOldAndNew` |
-| An opening balance cannot change once any entry names the account, drafts included; its name still can | `AccountsEndpoints.Edit` | `AccountsTests.AnOpeningBalanceCannotChangeOnceTheAccountHasAnEntry`, `AnAccountWithAnEntryStillChangesItsName` |
-| A disabled account leaves entry and stays on the list (BR-15) | `Account.IsOfferedTo` | `AccountsTests.ADisabledAccountLeavesEntryAndStaysOnTheList`, `EnablingBringsAnAccountBackIntoEntry` |
-| Banks come first, then in the order added | `AccountsEndpoints.ViewsAsync` | `AccountsTests.BanksComeFirstThenInTheOrderTheyWereAdded` |
-| A custodian sees their custody and every other account, and changes none (AC-22.1, BR-31) | `AccountView.IsMine`, `Permission.ManageSettings` | `AccountsTests.ACustodianSeesTheirCustodyAndEveryOtherAccountWithoutChangingThem` |
-| Field is offered only what they hold, and only while it is active (open question 4) | `Account.IsOfferedTo` | `AccountsTests.FieldIsOfferedOnlyTheAccountsTheyHold`, `FieldHoldingNothingIsOfferedNothing`, `FieldIsNotOfferedADisabledAccountTheyHold` |
-| Finance is offered every active account | `Permission.ChargeAnyAccount` | `AccountsTests.FinanceIsOfferedEveryActiveAccount`, `FieldIsOfferedOnlyTheAccountsTheyHold` |
-| One project's accounts are never another's (BR-33) | `Account.ProjectId`, `AccountsEndpoints` | `AccountsTests.OneProjectsAccountsAreNeverAnothers` |
-| A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `AccountsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
-| Everyone with access reads; only Finance changes | `Permission.ManageSettings` | `AccountsTests.EveryoneWithAccessReadsAccountsAndOnlyFinanceChangesThem` |
-| The people to choose among are the active ones, once each, with nothing but a name | `ProjectUsersEndpoints.Members` | `AccountsTests.TheMembersListNamesEachActivePersonOnceWithNothingElse`, `EveryoneWithAccessReadsTheMembersAndNobodyElse` |
+| A bank account is added with its opening balance | `accounts.Routes.add` | `AccountsTests.FinanceAddsABankAccountWithItsOpeningBalance` |
+| A cash custody is held by someone in the project | `accounts.Routes.add`, `accounts.handTo` | `AccountsTests.FinanceAddsACashCustodyHeldBySomeoneInTheProject` |
+| A bank account may have a custodian | `accounts.Routes.refused` | `AccountsTests.ABankAccountMayHaveACustodian` |
+| An overdrawn account may open below zero | `accounts.Routes.refused` | `AccountsTests.AnOverdrawnAccountMayOpenBelowZero` |
+| A cash custody needs a custodian, on adding and on editing | `accounts.Routes.refused` | `AccountsTests.ACashCustodyNeedsACustodian`, `AnEditCannotLeaveACashCustodyWithNobody` |
+| A custodian must be in the project (BR-33) | `accounts.Routes.refused`, `users.Routes.member` | `AccountsTests.ACustodianMustBeInTheProject` |
+| An account needs a name of 1 to 100 characters | `accounts.Routes.refused` | `AccountsTests.AnAccountNeedsANameOfAtMost100Characters` |
+| An opening balance has two decimals (NFR-04) and a limit | `accounts.Routes.refused` | `AccountsTests.AnOpeningBalanceHasTwoDecimalsAndALimit` |
+| An edit changes the name, the opening balance and the custodian; the type never changes | `accounts.Routes.edit`, `accounts.handTo` | `AccountsTests.AnEditChangesTheNameTheOpeningBalanceAndTheCustodian`, `AnEditCanLeaveABankAccountWithNobody` |
+| A changed opening balance is in the History table, old and new | `accounts.Routes.edit`, `history.Write` | `AccountsTests.AChangedOpeningBalanceIsInTheHistoryOldAndNew` |
+| An opening balance cannot change once any entry names the account, drafts included; its name still can | `accounts.Routes.edit` | `AccountsTests.AnOpeningBalanceCannotChangeOnceTheAccountHasAnEntry`, `AnAccountWithAnEntryStillChangesItsName` |
+| A disabled account leaves entry and stays on the list (BR-15) | `accounts.Routes.list` | `AccountsTests.ADisabledAccountLeavesEntryAndStaysOnTheList`, `EnablingBringsAnAccountBackIntoEntry` |
+| Banks come first, then in the order added | `accounts.Routes.list` | `AccountsTests.BanksComeFirstThenInTheOrderTheyWereAdded` |
+| A custodian sees their custody and every other account, and changes none (AC-22.1, BR-31) | `accounts.Routes.list`, `access.ManageSettings` | `AccountsTests.ACustodianSeesTheirCustodyAndEveryOtherAccountWithoutChangingThem` |
+| Field is offered only what they hold, and only while it is active (open question 4) | `accounts.Routes.list` | `AccountsTests.FieldIsOfferedOnlyTheAccountsTheyHold`, `FieldHoldingNothingIsOfferedNothing`, `FieldIsNotOfferedADisabledAccountTheyHold` |
+| Finance is offered every active account | `access.ChargeAnyAccount` | `AccountsTests.FinanceIsOfferedEveryActiveAccount`, `FieldIsOfferedOnlyTheAccountsTheyHold` |
+| One project's accounts are never another's (BR-33) | `access.Gate.Needs`, `AccountsEndpoints` | `AccountsTests.OneProjectsAccountsAreNeverAnothers` |
+| A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AccountsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+| Everyone with access reads; only Finance changes | `access.ManageSettings` | `AccountsTests.EveryoneWithAccessReadsAccountsAndOnlyFinanceChangesThem` |
+| The people to choose among are the active ones, once each, with nothing but a name | `users.Routes.members` | `AccountsTests.TheMembersListNamesEachActivePersonOnceWithNothingElse`, `EveryoneWithAccessReadsTheMembersAndNobodyElse` |
 
 ## Left to later use cases
 

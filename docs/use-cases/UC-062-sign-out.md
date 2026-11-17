@@ -14,8 +14,10 @@
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A sign-out ends this device's tokens, and only this device's | `AuthEndpoints.SignOut`, `SessionPolicies.CheckSessionIsOpen` | `AuthTests.ASignOutEndsThisDeviceOnly` |
-| A sign-out is in the History table | `AuthEndpoints.SignOut` | `AuthTests.ASignOutIsInTheHistory` |
-| Signing out needs a session | `SessionPolicies.MayChangePassword` | `AuthTests.SigningOutNeedsASession` |
+| A sign-out ends this device's tokens, and only this device's | `auth.Sessions.signOut`, `access.Gate.SignedIn` | `AuthTests.ASignOutEndsThisDeviceOnly` |
+| A sign-out is in the History table | `auth.Sessions.signOut` | `AuthTests.ASignOutIsInTheHistory` |
+| Signing out needs a session | `access.Gate.Working` | `AuthTests.SigningOutNeedsASession` |

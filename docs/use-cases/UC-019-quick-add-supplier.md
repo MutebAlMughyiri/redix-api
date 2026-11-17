@@ -25,18 +25,20 @@ No new table: it uses `Suppliers.Status` and `Suppliers.CreatedByUserId`. Field 
 
 ## Rules and where they live
 
-| Rule | Code | Test in `SuppliersTests` |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/SuppliersTests.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| What Field adds waits for approval, and shows so (AC-44.1) | `SuppliersEndpoints.AddAsync` | `WhatFieldAddsWaitsForApproval` |
-| What Finance adds is approved at once | `SuppliersEndpoints.AddAsync` | `FinanceAddsASupplierWithAllItsDetails` |
-| What Field adds is validated as any supplier (BR-16) | `SuppliersEndpoints.RefusalOfAsync` | `WhatFieldAddsIsValidatedAsAnySupplier` |
-| A number already in the register is refused, naming its supplier (BR-19) | `SuppliersEndpoints.RefusalOfAsync` | `AVatNumberAlreadyInTheRegisterIsRefusedToFieldNamingItsSupplier` |
+| What Field adds waits for approval, and shows so (AC-44.1) | `suppliers.Add` | `WhatFieldAddsWaitsForApproval` |
+| What Finance adds is approved at once | `suppliers.Add` | `FinanceAddsASupplierWithAllItsDetails` |
+| What Field adds is validated as any supplier (BR-16) | `suppliers.refusalOf` | `WhatFieldAddsIsValidatedAsAnySupplier` |
+| A number already in the register is refused, naming its supplier (BR-19) | `suppliers.refusalOf` | `AVatNumberAlreadyInTheRegisterIsRefusedToFieldNamingItsSupplier` |
 | A pending supplier already holds its number | The same | `APendingSupplierAlreadyHoldsItsVatNumber` |
-| A pending supplier is offered to who added it and to Finance only (step 3) | `Supplier.OfferedTo` | `APendingSupplierIsOfferedToWhoAddedItAndToFinanceOnly` |
-| Everyone with access sees it in the register, marked (BR-31) | `SuppliersEndpoints.List` | `EveryoneWithAccessSeesAPendingSupplierInTheRegister` |
-| Only Finance and Field add suppliers | `Permission.AddSupplier` | `OnlyFinanceAndFieldAddSuppliers` |
-| Field changes nothing else | `Permission.ManageSettings` | `OnlyFinanceChangesSuppliers` |
-| A finished project refuses it (AC-04.1) | `ProjectChanges.MapProjectChanges` | `AFinishedProjectRefusesWhatFieldAdds` |
+| A pending supplier is offered to who added it and to Finance only (step 3) | `suppliers.Routes.search` | `APendingSupplierIsOfferedToWhoAddedItAndToFinanceOnly` |
+| Everyone with access sees it in the register, marked (BR-31) | `suppliers.Routes.list` | `EveryoneWithAccessSeesAPendingSupplierInTheRegister` |
+| Only Finance and Field add suppliers | `access.AddSupplier` | `OnlyFinanceAndFieldAddSuppliers` |
+| Field changes nothing else | `access.ManageSettings` | `OnlyFinanceChangesSuppliers` |
+| A finished project refuses it (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesWhatFieldAdds` |
 
 ## Left to later use cases
 

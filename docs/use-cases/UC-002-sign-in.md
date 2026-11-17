@@ -27,36 +27,38 @@ The two routes of a forgotten password are open without a session too, and share
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A password is stored only as its hash (NFR-09) | `User.SetPassword`, ASP.NET Core's `PasswordHasher` | `AuthTests.TheRightPasswordOpensASessionWithA15MinuteAccessToken` |
-| The right password opens a session with a 15-minute access token (FR-01, AC-01.1) | `AuthEndpoints.SignIn`, `AccessTokens` | `AuthTests.TheRightPasswordOpensASessionWithA15MinuteAccessToken` |
-| A wrong password and an unknown username get the same answer (AC-01.2) | `AuthEndpoints.SignIn`, `User.SignIn` | `AuthTests.AWrongPasswordAndAnUnknownUsernameGetTheSameAnswer` |
-| Five wrong passwords in a row lock the account for 15 minutes (AC-01.2) | `User.SignIn` | `AuthTests.FiveWrongPasswordsInARowLockTheAccountFor15Minutes` |
-| The right password clears the count of wrong ones | `User.SignIn` | `AuthTests.TheRightPasswordClearsTheCountOfWrongOnes` |
-| Someone inactive in every project signs in and renews as anyone does, to his project list, and a wrong password says what it says to anyone (redix-api #126, D3, R10) | `User.SignIn`, `AuthEndpoints.Refresh` | `AuthTests.R126_D3_SomeoneInactiveInEveryProjectSignsInAndRenewsAsAnyoneDoes`, `R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs` |
-| An access token works for 15 minutes, by the server's clock | `AccessTokens.ValidationParameters` | `AuthTests.AnAccessTokenWorksFor15MinutesByTheServersClock` |
-| A session says when its access token expires, at sign-in and at each renewal, and the token is refused from then on (redix-api #126, R6) | `AccessTokens.Create`, `Session.OfAsync` | `AuthTests.R126_R6_ASessionSaysWhenItsAccessTokenExpiresAtSignInAndAtEachRenewal`, `R126_R6_AnAccessTokenIsRefusedOnceTheMomentItsSessionNamedHasPassed` |
-| A refresh replaces the refresh token; the old one stops working | `Device.RenewRefreshToken` | `AuthTests.ARefreshReplacesTheRefreshToken` |
-| A refresh token unused for 12 hours expires (NFR-09) | `Device.CanRefresh` | `AuthTests.ASessionUsedWithin12HoursStaysOpenAndOneUnusedFor12HoursEnds` |
-| Only the refresh token's hash is stored | `Device.HashOf` | Enforced by the model |
+| A password is stored only as its hash (NFR-09) | `credentials.Hash`, ASP.NET Core's `PasswordHasher` | `AuthTests.TheRightPasswordOpensASessionWithA15MinuteAccessToken` |
+| The right password opens a session with a 15-minute access token (FR-01, AC-01.1) | `auth.Sessions.signIn`, `AccessTokens` | `AuthTests.TheRightPasswordOpensASessionWithA15MinuteAccessToken` |
+| A wrong password and an unknown username get the same answer (AC-01.2) | `auth.Sessions.signIn`, `auth.attempt` | `AuthTests.AWrongPasswordAndAnUnknownUsernameGetTheSameAnswer` |
+| Five wrong passwords in a row lock the account for 15 minutes (AC-01.2) | `auth.attempt` | `AuthTests.FiveWrongPasswordsInARowLockTheAccountFor15Minutes` |
+| The right password clears the count of wrong ones | `auth.attempt` | `AuthTests.TheRightPasswordClearsTheCountOfWrongOnes` |
+| Someone inactive in every project signs in and renews as anyone does, to his project list, and a wrong password says what it says to anyone (redix-api #126, D3, R10) | `auth.attempt`, `auth.Sessions.refresh` | `AuthTests.R126_D3_SomeoneInactiveInEveryProjectSignsInAndRenewsAsAnyoneDoes`, `R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs` |
+| An access token works for 15 minutes, by the server's clock | `credentials.Tokens.Check` | `AuthTests.AnAccessTokenWorksFor15MinutesByTheServersClock` |
+| A session says when its access token expires, at sign-in and at each renewal, and the token is refused from then on (redix-api #126, R6) | `credentials.Tokens.Create`, `auth.Sessions.answer` | `AuthTests.R126_R6_ASessionSaysWhenItsAccessTokenExpiresAtSignInAndAtEachRenewal`, `R126_R6_AnAccessTokenIsRefusedOnceTheMomentItsSessionNamedHasPassed` |
+| A refresh replaces the refresh token; the old one stops working | `auth.renew` | `AuthTests.ARefreshReplacesTheRefreshToken` |
+| A refresh token unused for 12 hours expires (NFR-09) | `auth.canRefresh` | `AuthTests.ASessionUsedWithin12HoursStaysOpenAndOneUnusedFor12HoursEnds` |
+| Only the refresh token's hash is stored | `auth.hashOf` | Enforced by the model |
 | The first user is the admin, from configuration, and must change the password (BR-29) | `AdminSeed`, run by EF Core's seeding | `AuthTests.TheFirstUserIsTheAdminFromConfigurationAndMustChangeThePassword` |
-| The seed waits while a migration is still to apply, so a rollback to before the `Users` table succeeds quietly | `AdminSeed.Seed`, `AdminSeed.SeedAsync` | `AdminSeedTests.AMigrationThatStopsBeforeTheUsersTableSeedsNothingAndSucceeds_AsARollbackDoes` |
-| A sign-in is in the History table with the user and the time (UC-005) | `AuthEndpoints.SignIn` | `AuthTests.ASignInIsInTheHistoryWithTheUserAndTheTime` |
-| Every session says what its user holds everywhere (UC-009) | `Session.OfAsync` | `AuthTests.ASessionSaysWhatItsUserHoldsEverywhere` |
-| «نسيت كلمة المرور؟» with a username or an email sends a six-digit code to the account's email; the code and a new password reset it (AC-02.6, D5) | `PasswordResetEndpoints.ForgotPassword`, `ResetWithCode`, `EmailCode.MakeAsync` | `PasswordResetTests.AC_02_6_ACodeToTheAccountsEmailAndANewPasswordResetItAndTheOldOneNoLongerSignsIn`, `AC_02_6_D5_TheEmailNamesTheAccountAsTheUsernameDoesWhateverItsCase`, `AC_02_6_AWrongCodeResetsNothing` |
+| The seed waits while a migration is still to apply, so a rollback to before the `Users` table succeeds quietly | `auth.SeedAdmin` | `AdminSeedTests.AMigrationThatStopsBeforeTheUsersTableSeedsNothingAndSucceeds_AsARollbackDoes` |
+| A sign-in is in the History table with the user and the time (UC-005) | `auth.Sessions.signIn` | `AuthTests.ASignInIsInTheHistoryWithTheUserAndTheTime` |
+| Every session says what its user holds everywhere (UC-009) | `auth.Sessions.answer` | `AuthTests.ASessionSaysWhatItsUserHoldsEverywhere` |
+| «نسيت كلمة المرور؟» with a username or an email sends a six-digit code to the account's email; the code and a new password reset it (AC-02.6, D5) | `auth.Codes.forgotPassword`, `ResetWithCode`, `auth.Codes.make` | `PasswordResetTests.AC_02_6_ACodeToTheAccountsEmailAndANewPasswordResetItAndTheOldOneNoLongerSignsIn`, `AC_02_6_D5_TheEmailNamesTheAccountAsTheUsernameDoesWhateverItsCase`, `AC_02_6_AWrongCodeResetsNothing` |
 | The admin resets the same way, with the email set in Settings (R10, D6) | `PasswordResetEndpoints` | `PasswordResetTests.R10_D6_TheAdminResetsTheSameWay` |
-| Asking answers the same whether or not the account or its email exists, and sends nothing then (AC-02.7, R5) | `PasswordResetEndpoints.ForgotPassword`, `ResetWithCode` | `PasswordResetTests.AC_02_7_R5_AnUnknownAccountOrOneWithNoEmailGetsTheSameAnswerAsAKnownOneAndNothingIsSent`, `EmailSenderTests.R5_D2_AnAzureSenderNotSetUpThrowsNothingSoTheAnswerStaysAsItWas` |
-| The answer leaves before the code is made and sent, so how long it takes says nothing of the account (AC-02.7, R5) | `PasswordResetEndpoints.ForgotPassword`, `SendCodeAsync`, after the answer through ASP.NET Core's `HttpResponse.OnCompleted` | `PasswordResetTests.AC_02_7_R5_TheAnswerLeavesBeforeTheCodeIsSentSoHowLongItTakesSaysNothing` |
-| A code works once, within 15 minutes, for 5 tries, and a new code ends the earlier one (AC-02.8, D3) | `EmailCode.CheckAsync`, `MakeAsync`, `Spend` | `PasswordResetTests.AC_02_8_ACodeWorksOnce`, `AC_02_8_ACodeWorksWithin15MinutesAndNotAfter`, `AC_02_8_FiveWrongCodesEndItSoTheRightOneIsRefusedAfterThemButNotWithATryLeft`, `AC_02_8_D3_ANewCodeEndsTheEarlierOne` |
-| Asking too often is refused for a while, per caller (AC-02.8, D4) | `EmailCode.AskingLimit`, ASP.NET Core's rate limiter in `Program.cs` | `PasswordResetTests.AC_02_8_D4_AskingTooOftenIsRefusedForAWhileAndAskingWithinTheLimitIsNot` |
-| One login typed too often is refused for a while, whatever its case, an unknown one as an account's, and the refused ask sends nothing; another login is not (AC-02.8, D4, R5) | `PasswordResetEndpoints.ForgotPassword`, `EmailCode.AsksPerLoginAnHour`, the keyed `PartitionedRateLimiter` in `Program.cs` | `PasswordResetTests.AC_02_8_D4_OneLoginTypedTooOftenIsRefusedWhateverItsCaseAndAnotherLoginIsNot`, `AC_02_8_D4_R5_AnAccountsLoginIsLimitedAsAnUnknownOneIsAndTheRefusedAskSendsNothing` |
-| Only the code's hash is kept (the rule) | `EmailCode.MakeAsync`, ASP.NET Core's `PasswordHasher` | `PasswordResetTests.R127_OnlyTheCodesHashIsKept` |
-| A reset ends every session, unlocks the account and asks for no other change; a wrong code ends nothing (AC-02.9, R7) | `User.ResetPasswordAsync`, the one reset a manager's uses too | `PasswordResetTests.AC_02_9_R7_AResetEndsEverySessionUnlocksTheAccountAndAsksForNoOtherChange`, `AC_02_9_AWrongCodeEndsNoSession` |
-| A new password holds `PasswordPolicy`, and a refused one leaves the code unspent | `PasswordResetEndpoints.ResetWithCode` | `PasswordResetTests.AWeakNewPasswordIsRefusedAndTheCodeStaysUnspent` |
-| The email is in the language the phone asked in, Arabic for any other (AC-02.10, R8) | `UseRequestLocalization`, `EmailSender.SendAsync` | `PasswordResetTests.AC_02_10_R8_TheEmailIsInTheLanguageThePhoneAskedInAndArabicForAnyOther`, `EmailSenderTests.R8_AC_02_10_AnEmailsSubjectAndBodyAreTheTranslationsWordsInTheLanguageAskedWithItsCode` |
+| Asking answers the same whether or not the account or its email exists, and sends nothing then (AC-02.7, R5) | `auth.Codes.forgotPassword`, `ResetWithCode` | `PasswordResetTests.AC_02_7_R5_AnUnknownAccountOrOneWithNoEmailGetsTheSameAnswerAsAKnownOneAndNothingIsSent`, `EmailSenderTests.R5_D2_AnAzureSenderNotSetUpThrowsNothingSoTheAnswerStaysAsItWas` |
+| The answer leaves before the code is made and sent, so how long it takes says nothing of the account (AC-02.7, R5) | `auth.Codes.forgotPassword`, `SendCodeAsync`, after the answer through ASP.NET Core's | `PasswordResetTests.AC_02_7_R5_TheAnswerLeavesBeforeTheCodeIsSentSoHowLongItTakesSaysNothing` |
+| A code works once, within 15 minutes, for 5 tries, and a new code ends the earlier one (AC-02.8, D3) | `auth.Codes.check`, `MakeAsync`, `Spend` | `PasswordResetTests.AC_02_8_ACodeWorksOnce`, `AC_02_8_ACodeWorksWithin15MinutesAndNotAfter`, `AC_02_8_FiveWrongCodesEndItSoTheRightOneIsRefusedAfterThemButNotWithATryLeft`, `AC_02_8_D3_ANewCodeEndsTheEarlierOne` |
+| Asking too often is refused for a while, per caller (AC-02.8, D4) | `limits.PerHour`, ASP.NET Core's rate limiter in `Program.cs` | `PasswordResetTests.AC_02_8_D4_AskingTooOftenIsRefusedForAWhileAndAskingWithinTheLimitIsNot` |
+| One login typed too often is refused for a while, whatever its case, an unknown one as an account's, and the refused ask sends nothing; another login is not (AC-02.8, D4, R5) | `auth.Codes.forgotPassword`, `limits.PerHour`, the keyed `PartitionedRateLimiter` in `Program.cs` | `PasswordResetTests.AC_02_8_D4_OneLoginTypedTooOftenIsRefusedWhateverItsCaseAndAnotherLoginIsNot`, `AC_02_8_D4_R5_AnAccountsLoginIsLimitedAsAnUnknownOneIsAndTheRefusedAskSendsNothing` |
+| Only the code's hash is kept (the rule) | `auth.Codes.make`, ASP.NET Core's `PasswordHasher` | `PasswordResetTests.R127_OnlyTheCodesHashIsKept` |
+| A reset ends every session, unlocks the account and asks for no other change; a wrong code ends nothing (AC-02.9, R7) | `users.ResetPassword`, the one reset a manager's uses too | `PasswordResetTests.AC_02_9_R7_AResetEndsEverySessionUnlocksTheAccountAndAsksForNoOtherChange`, `AC_02_9_AWrongCodeEndsNoSession` |
+| A new password holds `PasswordPolicy`, and a refused one leaves the code unspent | `auth.Codes.resetWithCode` | `PasswordResetTests.AWeakNewPasswordIsRefusedAndTheCodeStaysUnspent` |
+| The email is in the language the phone asked in, Arabic for any other (AC-02.10, R8) | `UseRequestLocalization`, `email.Send` | `PasswordResetTests.AC_02_10_R8_TheEmailIsInTheLanguageThePhoneAskedInAndArabicForAnyOther`, `EmailSenderTests.R8_AC_02_10_AnEmailsSubjectAndBodyAreTheTranslationsWordsInTheLanguageAskedWithItsCode` |
 | Development keeps each email in a folder and sends nothing (D7) | `FolderEmailSender` | `EmailSenderTests.R127_D7_DevelopmentKeepsEachEmailAsAFileInItsFolderAndSendsNothing` |
-| A reset by code is in the History table, by the person, never the password's hash (UC-005) | `PasswordResetEndpoints.ResetWithCode` | `PasswordResetTests.AResetIsInTheHistoryByThePersonWithNoPasswordHash` |
+| A reset by code is in the History table, by the person, never the password's hash (UC-005) | `auth.Codes.resetWithCode` | `PasswordResetTests.AResetIsInTheHistoryByThePersonWithNoPasswordHash` |
 
 ## Left to later use cases
 

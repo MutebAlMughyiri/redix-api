@@ -24,21 +24,23 @@ No new table. An index on `Suppliers (ProjectId, Name)` serves the order. `Suppl
 
 ## Rules and where they live
 
-| Rule | Code | Test in `SuppliersTests` |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/SuppliersTests.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| Three letters of the name find the supplier (AC-43.1) | `SuppliersEndpoints.Search` | `ThreeLettersOfTheNameFindTheSupplier` |
-| A search treats أ إ آ with ا, ة with ه, ى with ي, ؤ with و, ئ with ي alike and ignores tashkeel, both ways; an answer shows the name as it was typed | `ArabicSpelling.Normalize`, `Supplier.NormalizedName`, `SuppliersEndpoints.Search` | `ASearchTreatsArabicSpellingVariantsAlikeAndIgnoresTashkeel`, `ArabicSpellingKeepsOneFormOfEachLetterAndNoTashkeel`, `AnAnswerShowsTheNameAsItWasTyped` |
-| A rename moves what a search finds; tashkeel counts for nothing toward the three letters | `Supplier.Name`, `SuppliersEndpoints.Search` | `ARenamedSupplierIsFoundByItsNewNameAndNoLongerByItsOldOne`, `TashkeelCountsForNothingTowardTheThreeLettersASearchNeeds` |
-| The migration fills the normalized name of rows saved before it, by the same rule | `ArabicSpelling.SqlOf`, the `SupplierNormalizedName` migration | `TheMigrationFillsTheNormalizedNameOfSuppliersSavedBeforeIt` |
-| Part of the VAT number finds the supplier (AC-43.1) | `SuppliersEndpoints.Search` | `PartOfTheVatNumberFindsTheSupplier` |
-| Fewer than three letters narrow nothing down | `Supplier.SearchMinLength` | `FewerThanThreeLettersNarrowNothingDown` |
-| With no text, the suppliers on offer, by name | `SuppliersEndpoints.Search` | `NoTextOffersTheSuppliersByName` |
+| Three letters of the name find the supplier (AC-43.1) | `suppliers.Routes.search` | `ThreeLettersOfTheNameFindTheSupplier` |
+| A search treats أ إ آ with ا, ة with ه, ى with ي, ؤ with و, ئ with ي alike and ignores tashkeel, both ways; an answer shows the name as it was typed | `spelling.Normalize`, `suppliers.Routes.search` | `ASearchTreatsArabicSpellingVariantsAlikeAndIgnoresTashkeel`, `ArabicSpellingKeepsOneFormOfEachLetterAndNoTashkeel`, `AnAnswerShowsTheNameAsItWasTyped` |
+| A rename moves what a search finds; tashkeel counts for nothing toward the three letters | `suppliers.save`, `suppliers.Routes.search` | `ARenamedSupplierIsFoundByItsNewNameAndNoLongerByItsOldOne`, `TashkeelCountsForNothingTowardTheThreeLettersASearchNeeds` |
+| The migration fills the normalized name of rows saved before it, by the same rule | `spelling.Normalize`, the `SupplierNormalizedName` migration | `TheMigrationFillsTheNormalizedNameOfSuppliersSavedBeforeIt` |
+| Part of the VAT number finds the supplier (AC-43.1) | `suppliers.Routes.search` | `PartOfTheVatNumberFindsTheSupplier` |
+| Fewer than three letters narrow nothing down | `suppliers.Routes.search` | `FewerThanThreeLettersNarrowNothingDown` |
+| With no text, the suppliers on offer, by name | `suppliers.Routes.search` | `NoTextOffersTheSuppliersByName` |
 | An exact VAT number finds its supplier alone (FR-43) | The index that holds a number to one supplier | `AnExactVatNumberFindsItsSupplierAlone` |
-| A number nobody holds finds nothing, so the app can offer a quick add (FR-43) | `SuppliersEndpoints.Search` | `AVatNumberNoSupplierHoldsFindsNothing` |
-| A disabled supplier is not offered (BR-15) | `SuppliersEndpoints.Search` | `ADisabledSupplierIsNotOffered` |
-| An answer holds at most 20 suppliers, within a second (AC-43.1) | `Supplier.SearchLimit`, the index in `RedixDbContext` | `ASearchAnswersAtMost20SuppliersWithinASecond` |
-| Everyone with access searches (BR-31) | `Permission.ReadProject` | `EveryoneWithAccessSearches` |
-| A search never reaches another project (BR-33) | `SuppliersEndpoints.Search` | `ASearchNeverReachesAnotherProject` |
+| A number nobody holds finds nothing, so the app can offer a quick add (FR-43) | `suppliers.Routes.search` | `AVatNumberNoSupplierHoldsFindsNothing` |
+| A disabled supplier is not offered (BR-15) | `suppliers.Routes.search` | `ADisabledSupplierIsNotOffered` |
+| An answer holds at most 20 suppliers, within a second (AC-43.1) | `suppliers.Routes.search`, the index `ix_suppliers_project_id_name` | `ASearchAnswersAtMost20SuppliersWithinASecond` |
+| Everyone with access searches (BR-31) | `access.ReadProject` | `EveryoneWithAccessSearches` |
+| A search never reaches another project (BR-33) | `suppliers.Routes.search` | `ASearchNeverReachesAnotherProject` |
 
 ## Left to later use cases
 

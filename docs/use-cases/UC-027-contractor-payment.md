@@ -37,18 +37,18 @@ Tests are in `ContractorPaymentsTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| R11: a payment goes under its item's general subgroup, even when the item has named ones | `ContractTable.DetailsOf` | `R11_APaymentGoesUnderItsItemsGeneralSubgroupEvenWhenTheItemHasNamedOnes`, `ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup` |
-| AC-07.1: a real 30,000 leaves 4,000, and 5,000 more is saved with an alert and (1,000) | `ContractMoney`, `Contract.RemainingAfter`, `IsOverrunBy` | `AC_07_1_ThePaymentsOfA34000ContractLeaveItsRemainingAndOneMoreOverrunsItWithAnAlertAndIsSaved` |
+| R11: a payment goes under its item's general subgroup, even when the item has named ones | `reports.detailsOf` | `R11_APaymentGoesUnderItsItemsGeneralSubgroupEvenWhenTheItemHasNamedOnes`, `ThePaymentTakesItsItemAndUnitFromTheContractInTheItemsGeneralSubgroup` |
+| AC-07.1: a real 30,000 leaves 4,000, and 5,000 more is saved with an alert and (1,000) | `ContractMoney`, `contracts.Remaining`, `IsOverrunBy` | `AC_07_1_ThePaymentsOfA34000ContractLeaveItsRemainingAndOneMoreOverrunsItWithAnAlertAndIsSaved` |
 | AC-07.2: an open-value contract only adds up | `Contract` | `AC_07_2_AnOpenValueContractAddsUpWithNoRemainingAndNoAlert` |
 | BR-10: only an approved payment is paid; a pending one waits beside it | `ContractMoney` | `BR_10_OnlyAnApprovedPaymentIsPaidAndAPendingOneWaitsBesideIt`, `ADraftAndARejectedPaymentCountForNothing` |
-| The alert counts what waits | `ContractTable.AnswerOfAsync` | `TheAlertWhileEnteringCountsWhatWaitsSoTwoPendingPaymentsCannotOverrunUnseen` |
+| The alert counts what waits | `entries.contractForm.answer` | `TheAlertWhileEnteringCountsWhatWaitsSoTwoPendingPaymentsCannotOverrunUnseen` |
 | AC-13.1: outside the contract it enters the item total and leaves the remaining | `ContractMoney` | `AC_13_1_APaymentOutsideTheContractEntersTheItemTotalAndLeavesTheRemainingAlone` |
-| AC-14.1: a deduction of 136 reduces the item total and the paid | `Entries.Amount` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndThePaidOnTheContract` |
-| D14: a deduction says why in its notes | `EntryRequest.RefusalOfCommon` | `D14_ADeductionSaysWhyInItsNotes` |
-| D16: a payment is sent with no receipt, and writes no invoice row | `EntryRecording.Record` | `D16_APaymentIsSentWithNoReceipt`, `D16_APaymentWritesNoInvoiceRow` |
+| AC-14.1: a deduction of 136 reduces the item total and the paid | `entries.amountOf` | `AC_14_1_ADeductionOf136ReducesTheItemTotalAndThePaidOnTheContract` |
+| D14: a deduction says why in its notes | `entries.refusal` | `D14_ADeductionSaysWhyInItsNotes` |
+| D16: a payment is sent with no receipt, and writes no invoice row | `entries.Routes.record` | `D16_APaymentIsSentWithNoReceipt`, `D16_APaymentWritesNoInvoiceRow` |
 | A receipt is linked as a receipt; a file already on an entry is refused | `EntryRecording` | `TheReceiptIsLinkedAsAReceiptAndAFileAlreadyOnAnEntryIsRefused` |
-| AC-38.1: an item that takes no contractor payments | `ProjectStructure.OfferedItemAsync` | `AC_38_1_AContractWhoseItemIsDisabledTakesNoPayment` |
-| Open question 4: only what the user may charge | `EntryRecording.RefusalOfAsync` | `OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther` |
+| AC-38.1: an item that takes no contractor payments | `structure.Offers` | `AC_38_1_AContractWhoseItemIsDisabledTakesNoPayment` |
+| Open question 4: only what the user may charge | `entries.refusal` | `OpenQuestion4_FieldChargesAnAccountTheyHoldAndNoOther` |
 | FR-41: its columns, and never a purchase's | `EntryAnswers` | `FR_41_ARequiredCustomColumnIsAskedOfAPaymentWhenSending`, `FR_41_WhatOnlyAPurchaseHoldsIsNeverAskedOfAPayment` |
 | What was typed; a disabled contract; a finished project; the History table; an id sent twice | `EntryRecording`, `ProjectChanges` | `WhatWasTypedIsRefusedWhenItCannotBeKept`, `ADisabledContractOrOneOfAnotherProjectIsRefused`, `AnEmptyIdIsRefused`, `AC_04_1_AFinishedProjectRecordsNoPayment`, `FR_21_APaymentIsInTheHistory`, `AC_16_3_APaymentSentAgainLandsOnce` |
-| Editing a waiting payment counts it once, keeps the contract's other waiting payments, and answers 200 | `ContractMoney.OfProjectAsync` (`leftOut`), `ContractTable.AnswerOfAsync` | `ContractorPaymentsTests.EditingAWaitingPaymentCountsItOnceKeepsTheOthersAndAnswersOk` |
+| Editing a waiting payment counts it once, keeps the contract's other waiting payments, and answers 200 | `contracts.MoneyOf` (`leftOut`), `entries.contractForm.answer` | `ContractorPaymentsTests.EditingAWaitingPaymentCountsItOnceKeepsTheOthersAndAnswersOk` |

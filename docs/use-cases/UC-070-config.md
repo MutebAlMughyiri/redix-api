@@ -25,7 +25,9 @@ UPDATE ConfigValues SET Value = '15' WHERE [Key] = 'requestTimeoutSeconds';
 
 ## Rules and where they are proven
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| The app reads the values before anyone signs in | `ConfigEndpoints.Read` | `ConfigTests.UC_070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn` |
-| A value changed in the database is read at the next request | `ConfigEndpoints.Read` | `ConfigTests.UC_070_AValueChangedInTheDatabaseIsReadAtTheNextRequest` |
+| The app reads the values before anyone signs in | `config.Map` | `ConfigTests.UC_070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn` |
+| A value changed in the database is read at the next request | `config.Map` | `ConfigTests.UC_070_AValueChangedInTheDatabaseIsReadAtTheNextRequest` |

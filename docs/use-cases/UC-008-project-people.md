@@ -24,22 +24,24 @@ A user's answer has `projects: [{ projectId, permissions, roleName, partnerIds, 
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A user sees only their projects (AC-36.1) | `ProjectsEndpoints.List` | `ProjectsTests.AUserSeesOnlyTheirProjects` |
-| Adding a person needs a well-formed email no other account holds, whatever its case, and a refusal creates nothing (AC-07.8, D1, R9) | `User.RefusalOfEmailAsync`, `ProjectUsersEndpoints.Create`, the unique index on `Users.Email` | `ProjectUsersTests.AC_07_8_AddingAPersonKeepsTheEmailTheManagerTyped`, `AC_07_8_D1_AddingAPersonNeedsAWellFormedEmailAndCreatesNothingWithout`, `AC_07_8_R9_AnEmailAnotherAccountHoldsIsRefusedWhateverItsCase` |
-| The email is checked after the other fields, in the order the form shows them, so an empty form names the username first | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AC_07_8_AnEmptyFormNamesTheUsernameFirstAndTheEmailOnlyAfterTheOtherFields_AsTheFormOrdersThem` |
-| Each project carries what the user holds in it (AC-36.2) | `ProjectsEndpoints.List` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
-| A manager sees only their project's people, and none of those people's other projects (BR-33) | `ProjectUsersEndpoints.List` | `ProjectUsersTests.AManagerSeesOnlyTheirProjectsPeopleAndNoneOfTheirOtherProjects` |
-| A new login holds what was ticked and `ReadProject`, never the admin's permission | `ProjectUsersEndpoints.Create` | `ProjectUsersTests.AManagerCreatesALoginHoldingWhatWasTickedAndSeeingTheProjectWhoMustChangeThePassword`, `ANewLoginCannotBeGivenTheAdminsPermission` |
-| An existing user is added by their exact username, and an unknown one says so | `ProjectUsersEndpoints.AddExisting` | `ProjectUsersTests.AnExistingUserIsAddedByUsernameSeeingTheProject`, `AnUnknownUsernameSaysSo` |
-| A tick gives one permission, once; unticking takes it | The unique index, `ProjectUsersEndpoints.Give`, `Take` | `ProjectUsersTests.TickingGivesOnePermissionAndUntickingTakesOne` |
-| Unticking `ReadProject` takes them out of the project | `ProjectUsersEndpoints.Take` | `ProjectUsersTests.UntickingSeeTheProjectTakesThemOutOfTheProject` |
-| A tick, an untick, a chosen partner, its unchoosing or a role name sent twice at the same moment answers as done for both, keeping one row or none (findings row 190); any other refusal, a change to a row no longer there included, is still refused | `RedixDbContext.SaveOnceAsync`, `ProjectUsersEndpoints.Give`, `Take`, `Choose`, `Unchoose`, `SetRoleName` | `ProjectUsersTests.Row190_ManyTicksOfOnePermissionAtTheSameMomentAllAnswerAsSavedAndKeepOneRow`, `Row190_ManyUnticksOfOnePermissionAtTheSameMomentAllAnswerAsDoneAndLeaveNoRow`, `Row190_ManyFirstRoleNamesAtTheSameMomentAllAnswerAsSavedAndKeepOneRow`, `Row190_ASaveRefusedForAnythingButTheSameRowTwiceIsStillRefused`, `Row190_AChangeToARowNoLongerThereIsStillRefused`; `PartnersTests.Row190_ManyUnchoosesOfOnePartnerAtTheSameMomentAllAnswerAsDoneAndLeaveItUnchosen` |
-| The admin's permission, or an unknown name, is refused | `ProjectPermission.TryOf` | `ProjectUsersTests.TheAdminsPermissionOrAnUnknownNameIsRefused` |
+| A user sees only their projects (AC-36.1) | `projects.Routes.list` | `ProjectsTests.AUserSeesOnlyTheirProjects` |
+| Adding a person needs a well-formed email no other account holds, whatever its case, and a refusal creates nothing (AC-07.8, D1, R9) | `users.RefusalOfEmail`, `users.Routes.create`, the unique index on | `ProjectUsersTests.AC_07_8_AddingAPersonKeepsTheEmailTheManagerTyped`, `AC_07_8_D1_AddingAPersonNeedsAWellFormedEmailAndCreatesNothingWithout`, `AC_07_8_R9_AnEmailAnotherAccountHoldsIsRefusedWhateverItsCase` |
+| The email is checked after the other fields, in the order the form shows them, so an empty form names the username first | `users.Routes.create` | `ProjectUsersTests.AC_07_8_AnEmptyFormNamesTheUsernameFirstAndTheEmailOnlyAfterTheOtherFields_AsTheFormOrdersThem` |
+| Each project carries what the user holds in it (AC-36.2) | `projects.Routes.list` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
+| A manager sees only their project's people, and none of those people's other projects (BR-33) | `users.Routes.list` | `ProjectUsersTests.AManagerSeesOnlyTheirProjectsPeopleAndNoneOfTheirOtherProjects` |
+| A new login holds what was ticked and `ReadProject`, never the admin's permission | `users.Routes.create` | `ProjectUsersTests.AManagerCreatesALoginHoldingWhatWasTickedAndSeeingTheProjectWhoMustChangeThePassword`, `ANewLoginCannotBeGivenTheAdminsPermission` |
+| An existing user is added by their exact username, and an unknown one says so | `users.Routes.addExisting` | `ProjectUsersTests.AnExistingUserIsAddedByUsernameSeeingTheProject`, `AnUnknownUsernameSaysSo` |
+| A tick gives one permission, once; unticking takes it | The unique index, `users.Routes.give`, `Take` | `ProjectUsersTests.TickingGivesOnePermissionAndUntickingTakesOne` |
+| Unticking `ReadProject` takes them out of the project | `users.Routes.take` | `ProjectUsersTests.UntickingSeeTheProjectTakesThemOutOfTheProject` |
+| A tick, an untick, a chosen partner, its unchoosing or a role name sent twice at the same moment answers as done for both, keeping one row or none (findings row 190); any other refusal, a change to a row no longer there included, is still refused | `changes.Change.Save`, `users.Routes.give`, `Take`, `Choose`, `Unchoose`, `SetRoleName` | `ProjectUsersTests.Row190_ManyTicksOfOnePermissionAtTheSameMomentAllAnswerAsSavedAndKeepOneRow`, `Row190_ManyUnticksOfOnePermissionAtTheSameMomentAllAnswerAsDoneAndLeaveNoRow`, `Row190_ManyFirstRoleNamesAtTheSameMomentAllAnswerAsSavedAndKeepOneRow`, `Row190_ASaveRefusedForAnythingButTheSameRowTwiceIsStillRefused`, `Row190_AChangeToARowNoLongerThereIsStillRefused`; `PartnersTests.Row190_ManyUnchoosesOfOnePartnerAtTheSameMomentAllAnswerAsDoneAndLeaveItUnchosen` |
+| The admin's permission, or an unknown name, is refused | `access.Permission.UnmarshalJSON` | `ProjectUsersTests.TheAdminsPermissionOrAnUnknownNameIsRefused` |
 | A project keeps at least one active person managing its users (BR-29); someone inactive there does not count (redix-api #126) | `ProjectManagers` | `ProjectUsersTests.TheLastWhoManagesUsersCannotLoseIt`, `WithASecondManagerTheFirstCanLeave`, `BR_29_AManagerInactiveInTheProjectDoesNotCountAsTheOneWhoStays` |
-| The people of a project are listed those active there first, by name | `ProjectUsersEndpoints.List` | `ProjectUsersTests.R126_ThePeopleOfAProjectAreListedThoseActiveThereFirstByName` |
-| Every permission ticked or unticked is in the History table | `db.AddHistory` | `ProjectUsersTests.EveryPermissionChangeIsInTheHistory` |
+| The people of a project are listed those active there first, by name | `users.Routes.list` | `ProjectUsersTests.R126_ThePeopleOfAProjectAreListedThoseActiveThereFirstByName` |
+| Every permission ticked or unticked is in the History table | `history.Write` | `ProjectUsersTests.EveryPermissionChangeIsInTheHistory` |
 
 ## Left to later use cases
 

@@ -24,14 +24,16 @@ Sign-in, renewal and a password change answer `usesBiometrics` too. A new sign-i
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A phone with it on never times out | `Device.CanRefresh` | `AuthTests.AnUnusedPhoneWithBiometricsNeverTimesOut` |
-| Turning it off brings back the 12 hours, from that moment | `AuthEndpoints.SetBiometrics` | `AuthTests.TurningBiometricsOffBringsBackThe12Hours` |
-| Sign-out and a changed password still end the session | `Device.CanRefresh`, `AuthEndpoints.Refresh` | `AuthTests.BiometricsDoNotOutliveARevokedPhone` |
-| It belongs to one phone | `Device.UsesBiometrics` | `AuthTests.BiometricsBelongToOnePhone` |
+| A phone with it on never times out | `auth.canRefresh` | `AuthTests.AnUnusedPhoneWithBiometricsNeverTimesOut` |
+| Turning it off brings back the 12 hours, from that moment | `auth.Sessions.setBiometrics` | `AuthTests.TurningBiometricsOffBringsBackThe12Hours` |
+| Sign-out and a changed password still end the session | `auth.canRefresh`, `auth.Sessions.refresh` | `AuthTests.BiometricsDoNotOutliveARevokedPhone` |
+| It belongs to one phone | `auth.Sessions.setBiometrics` | `AuthTests.BiometricsBelongToOnePhone` |
 | A new sign-in starts with it off | `Device` | `AuthTests.ANewSignInStartsWithBiometricsOff` |
-| Every session answer says whether it is on | `Session.OfAsync` | `AuthTests.TurningBiometricsOnIsAnswered` |
-| Changing the password keeps it on this phone | `AuthEndpoints.ChangePassword` | `AuthTests.ChangingThePasswordKeepsBiometricsOnThisPhone` |
-| A temporary password cannot turn it on | `SessionPolicies.Working` | `AuthTests.ATemporaryPasswordCannotTurnBiometricsOn` |
-| Turning it on and off is in the History table | `AuthEndpoints.SetBiometrics` | `AuthTests.TurningBiometricsOnAndOffIsInHistory` |
+| Every session answer says whether it is on | `auth.Sessions.answer` | `AuthTests.TurningBiometricsOnIsAnswered` |
+| Changing the password keeps it on this phone | `auth.Sessions.changePassword` | `AuthTests.ChangingThePasswordKeepsBiometricsOnThisPhone` |
+| A temporary password cannot turn it on | `access.Gate.Working` | `AuthTests.ATemporaryPasswordCannotTurnBiometricsOn` |
+| Turning it on and off is in the History table | `auth.Sessions.setBiometrics` | `AuthTests.TurningBiometricsOnAndOffIsInHistory` |

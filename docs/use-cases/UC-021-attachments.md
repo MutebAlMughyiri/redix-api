@@ -33,15 +33,15 @@ A contract's documents join here (UC-020 step 3): adding or amending a contract 
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| An image or a PDF is kept with its name, type, size and hash (FR-09) | `Attachment.Of` | `AttachmentsTests.APictureOrAPdfIsKeptWithItsNameTypeSizeAndHash` |
-| A file that is not an image or a PDF is refused | `Attachment.RefusalOf` | `AFileThatIsNotAPictureOrAPdfIsRefused`, `WhatAFileIsComesFromItsBytesNotFromWhatTheSenderSays` |
-| A picture is under 1 MB (NFR-06) | `Attachment.RefusalOf` | `APictureOf1MbOrMoreIsRefusedAndOneJustBelowIsKept`; `APdfOf1MbOrMoreIsKept` |
-| Files live outside the database, and come back unchanged | `AttachmentOptions.PathOf`, `AttachmentsEndpoints.Read` | `TheFileIsKeptOutsideTheDatabaseAndServedBackUnchanged` |
-| A typed name never reaches the disk | `Attachment.Of` | `ANameTheSenderChoseNeverReachesThePathOfTheFile` |
-| Only people with access to the project read a file (BR-33) | The `ReadProject` policy, `AttachmentsEndpoints.Read` | `SomeoneWithNoAccessToTheProjectCannotReadOrKeepAFile`, `AFileOfAnotherProjectIsNotFoundEvenForSomeoneInBoth`, `WithoutASessionNoFileIsServed` |
+| An image or a PDF is kept with its name, type, size and hash (FR-09) | `attachments.Keep` | `AttachmentsTests.APictureOrAPdfIsKeptWithItsNameTypeSizeAndHash` |
+| A file that is not an image or a PDF is refused | `attachments.Keep` | `AFileThatIsNotAPictureOrAPdfIsRefused`, `WhatAFileIsComesFromItsBytesNotFromWhatTheSenderSays` |
+| A picture is under 1 MB (NFR-06) | `attachments.Keep` | `APictureOf1MbOrMoreIsRefusedAndOneJustBelowIsKept`; `APdfOf1MbOrMoreIsKept` |
+| Files live outside the database, and come back unchanged | `attachments.Keep`, `attachments.Routes.read` | `TheFileIsKeptOutsideTheDatabaseAndServedBackUnchanged` |
+| A typed name never reaches the disk | `attachments.Keep` | `ANameTheSenderChoseNeverReachesThePathOfTheFile` |
+| Only people with access to the project read a file (BR-33) | The `ReadProject` policy, `attachments.Routes.read` | `SomeoneWithNoAccessToTheProjectCannotReadOrKeepAFile`, `AFileOfAnotherProjectIsNotFoundEvenForSomeoneInBoth`, `WithoutASessionNoFileIsServed` |
 | Field and Finance keep files; Reader and Project manager only read them | `ProjectPermission` rows | `FieldAndFinanceKeepFiles`, `WhoHoldsNoAttachFilesCannotKeepAFileButReadsIt` |
 | A finished project keeps no new file and still serves its own (AC-04.1) | `MapProjectChanges` | `AFinishedProjectKeepsNoNewFileAndStillServesItsOwn` |
-| Keeping a file, and linking it to a contract, is in the History table with which file | `db.AddHistory` | `KeepingAFileIsInTheHistory`, `LinkingADocumentToAContractIsInTheHistoryWithWhichOne` |
+| Keeping a file, and linking it to a contract, is in the History table with which file | `history.Write` | `KeepingAFileIsInTheHistory`, `LinkingADocumentToAContractIsInTheHistoryWithWhichOne` |
 | A contract carries its documents, each staying once attached, and only files of its project | `ContractsEndpoints` | `AContractCarriesItsDocumentFromWhenItIsAdded`, `AnAmendmentAddsADocumentAndKeepsThoseAlreadyCarried`, `ADocumentOfAnotherProjectIsRefusedOnAContract` |
 
 ## Not proved here

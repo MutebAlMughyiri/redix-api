@@ -22,22 +22,24 @@
 
 **Revenue items (UC-068, FR-28, FR-38).** Revenue is recorded on items, as expenses are: an item of type `Sale`, `VatRefund` or `OtherRevenue` (`RevenueDetails.ItemId`, `SubgroupId`). The type lives only on the item. The template and every project hold three revenue categories of one item each: استرجاع ضرائب, إيرادات أخرى, and فلوس البيع المودعة بالحساب holding البيع.
 
-| Rule | Code | Test |
+Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | D23: a refund is plain revenue that raises revenue and surplus | `RevenueTable` | `RevenueTests.D23_ARefundIsPlainRevenueThatRaisesRevenueAndSurplus` |
-| UC-026: a credit note and a reversal take away from the statement what their bills counted | `VatStatement.OfAsync` | `RevenueTests.UC_026_ACreditNoteAndAReversalTakeAwayFromTheStatementWhatTheirBillsCounted` |
+| UC-026: a credit note and a reversal take away from the statement what their bills counted | `entries.VatQuarters` | `RevenueTests.UC_026_ACreditNoteAndAReversalTakeAwayFromTheStatementWhatTheirBillsCounted` |
 | Other revenue reaches its account; a revenue entry has no period since findings row 149 | `RevenueTable`, `AccountMoney` | `RevenueTests.OtherRevenueReachesItsAccount` |
 | Only whoever moves money records revenue | `MapProjectChanges(MoveMoney)` | `RevenueTests.OnlyWhoeverMovesMoneyRecordsRevenue` |
-| FR-28: revenue goes on a revenue item's table, and an entry on an expense table is an expense (redix-api #110) | `EntryTable.OfferedAsync` | `RevenueTests.FR_28_RevenueGoesOnARevenueItemAndAnExpenseTablesEntryIsAnExpense` |
-| AC-46.7: the summary keeps revenue categories apart from expense ones | `SummaryEndpoints.Summary` | `RevenueTests.AC_46_7_TheSummaryKeepsRevenueCategoriesApartFromExpenseOnes` |
-| BR-06, AC-46.7: the summary's revenue side is its revenue categories, رأس المال first as the structure orders it (redix-api #109), adding up to the revenue for every reader, as the periodic report's does | `SummaryEndpoints.OfAsync`, `ItemTotals` | `RevenueTests.BR_06_TheSummaryGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue` |
-| Removing an approved sale takes it out of the revenue | `EntriesEndpoints.Delete` | `RevenueTests.App_119_RemovingASaleTakesItOutOfTheRevenue` |
-| The entries list holds revenue and partners' money with their status; a partner's money shows only to whoever sees all capital, or to that partner (BR-31) | `EntriesEndpoints.RowsAsync` | `RevenueTests.OneList_TheEntriesListHoldsRevenueAndPartnersMoneyWithTheirStatus`, `BR_31_InTheEntriesListAPartnerSeesTheirOwnMoneyAndNoOneElses` |
-| redix-app #83: an entry on the list carries its description, the account it was paid from or reached and, for an expense, its payment method, which the app's shared text holds | `EntryRowView`, `EntryFacts.AccountNameOf`, `PaymentMethodNameOf` | `EntryChangesTests.UC_083_AnEntryOnTheListCarriesItsNotesAccountAndPaymentMethodForItsSharedText` |
-| A waiting revenue or partner entry is deleted with everything it holds | `EntryChanges.RemoveDetailsAsync` | `RevenueTests.OneList_AWaitingRevenueOrPartnerEntryIsDeletedWithEverythingItHolds` |
-| The revenue list and the sales invoice are gone | `EntryRecording.MapEntryRecording` | `RevenueTests.NoRevenueList_TheRevenueListAndTheSalesInvoiceAreGone` |
-| AC-32.1, D19: the statement lists approved purchases with their supplier and what was bought | `VatStatement.OfAsync` | `RevenueTests.AC_32_1_D19_TheStatementListsApprovedPurchasesWithTheirSupplierAndWhatWasBought` |
-| AC-32.2: a custom period across quarters has a section per quarter | `VatStatement.OfAsync` | `RevenueTests.AC_32_2_ACustomPeriodAcrossQuartersHasASectionPerQuarter`, `APeriodEndingBeforeItStartsIsRefused` |
-| Revenue takes its item as the table list offers it: an item of a disabled category answers `unknownItem` | `ProjectStructure.OfferedItemAsync` | `RevenueTests.RevenueOnAnItemOfADisabledCategoryIsRefusedAsTheTableListHidesIt` |
+| FR-28: revenue goes on a revenue item's table, and an entry on an expense table is an expense (redix-api #110) | `entries.offered` | `RevenueTests.FR_28_RevenueGoesOnARevenueItemAndAnExpenseTablesEntryIsAnExpense` |
+| AC-46.7: the summary keeps revenue categories apart from expense ones | `reports.Routes.summary` | `RevenueTests.AC_46_7_TheSummaryKeepsRevenueCategoriesApartFromExpenseOnes` |
+| BR-06, AC-46.7: the summary's revenue side is its revenue categories, رأس المال first as the structure orders it (redix-api #109), adding up to the revenue for every reader, as the periodic report's does | `reports.Routes.summary`, `ItemTotals` | `RevenueTests.BR_06_TheSummaryGivesEveryReaderTheCapitalSoTheRevenueSideAddsUpToTheRevenue` |
+| Removing an approved sale takes it out of the revenue | `entries.Routes.delete` | `RevenueTests.App_119_RemovingASaleTakesItOutOfTheRevenue` |
+| The entries list holds revenue and partners' money with their status; a partner's money shows only to whoever sees all capital, or to that partner (BR-31) | `entries.Routes.rows` | `RevenueTests.OneList_TheEntriesListHoldsRevenueAndPartnersMoneyWithTheirStatus`, `BR_31_InTheEntriesListAPartnerSeesTheirOwnMoneyAndNoOneElses` |
+| redix-app #83: an entry on the list carries its description, the account it was paid from or reached and, for an expense, its payment method, which the app's shared text holds | `EntryRowView`, `entries.facts.row`, `PaymentMethodNameOf` | `EntryChangesTests.UC_083_AnEntryOnTheListCarriesItsNotesAccountAndPaymentMethodForItsSharedText` |
+| A waiting revenue or partner entry is deleted with everything it holds | `entries.removeRows` | `RevenueTests.OneList_AWaitingRevenueOrPartnerEntryIsDeletedWithEverythingItHolds` |
+| The revenue list and the sales invoice are gone | `entries.Map` | `RevenueTests.NoRevenueList_TheRevenueListAndTheSalesInvoiceAreGone` |
+| AC-32.1, D19: the statement lists approved purchases with their supplier and what was bought | `entries.VatQuarters` | `RevenueTests.AC_32_1_D19_TheStatementListsApprovedPurchasesWithTheirSupplierAndWhatWasBought` |
+| AC-32.2: a custom period across quarters has a section per quarter | `entries.VatQuarters` | `RevenueTests.AC_32_2_ACustomPeriodAcrossQuartersHasASectionPerQuarter`, `APeriodEndingBeforeItStartsIsRefused` |
+| Revenue takes its item as the table list offers it: an item of a disabled category answers `unknownItem` | `structure.Offers` | `RevenueTests.RevenueOnAnItemOfADisabledCategoryIsRefusedAsTheTableListHidesIt` |
 
 The workbook's formula and its rate are proved in `ReportFilesTests` (UC-053).

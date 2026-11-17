@@ -23,12 +23,14 @@
 
 ## Rules and where they live
 
-| Rule | Code | Test |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/<Class>.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| Money is `decimal(19,4)` (BR-13) | `RedixDbContext.ConfigureConventions` | Enforced by the model; checked in the migration |
-| Every table has a required rowversion | `RedixDbContext.OnModelCreating` | Checked in the migration |
+| Money is `decimal(19,4)` (BR-13) | `fixed.Number` | Enforced by the model; checked in the migration |
+| Every table has a required rowversion. **Retired with SQL Server (redix-api #140 N5):** SQLite writes one transaction at a time, so no row needs a version | - | - |
 | `/health` checks the database | `Program.cs`, `AddDbContextCheck` | `HealthTests.HealthAnswersAgainstMigratedDatabase` |
-| A bundle holds every word of its language | `TranslationsEndpoint.GetBundle` | `TranslationsTests.BundleHoldsEveryWordOfTheLanguage` |
-| An unchanged bundle answers `304` | `TranslationsEndpoint.GetBundle` | `TranslationsTests.UnchangedBundleAnswersNotModified` |
-| Another language answers `404` | `TranslationsEndpoint.GetBundle` | `TranslationsTests.UnknownLanguageIsNotFound` |
+| A bundle holds every word of its language | `translations.bundle` | `TranslationsTests.BundleHoldsEveryWordOfTheLanguage` |
+| An unchanged bundle answers `304` | `translations.bundle` | `TranslationsTests.UnchangedBundleAnswersNotModified` |
+| Another language answers `404` | `translations.bundle` | `TranslationsTests.UnknownLanguageIsNotFound` |
 | Swagger only outside Production | `Program.cs` | `SwaggerTests.SwaggerIsServedOutsideProductionOnly` |

@@ -36,30 +36,32 @@ Anything but `name` may be left out. Every change also answers `409` `projectFin
 
 ## Rules and where they live
 
-| Rule | Code | Test in `SuppliersTests` |
+Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/SuppliersTests.<name>`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| Finance adds a supplier with its name, VAT number, mobile and default item (FR-06) | `SuppliersEndpoints.AddAsync` | `FinanceAddsASupplierWithAllItsDetails` |
-| BR-16: a VAT number is empty or at most 20 digits; more, or anything but digits, is refused (Muteb, 7 Nov 2026) | `Supplier.IsValidVatNumber` | `SuppliersTests.BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused` |
-| A number another supplier holds is refused, naming that supplier (AC-06.1) | `SuppliersEndpoints.RefusalOfAsync` | `AVatNumberAnotherSupplierHoldsIsRefusedNamingThatSupplier`, `AnEditToANumberAnotherSupplierHoldsIsRefused` |
-| A disabled supplier still holds its number | `SuppliersEndpoints.RefusalOfAsync` | `ADisabledSupplierStillHoldsItsVatNumber` |
-| The database holds a number to one supplier in a project | The index in `RedixDbContext` | `TheDatabaseHoldsAVatNumberToOneSupplierInAProject` |
-| One number may be in two projects (BR-33) | The index in `RedixDbContext` | `OneVatNumberMayBeInTwoProjects` |
-| BR-16: a VAT number is none, or any number of at most 20 digits; anything else is refused | `Supplier.IsValidVatNumber` | `BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused`, `BR_16_ASupplierWithNoVatNumberIsSavedWithNone` |
-| Any number of suppliers may have no number | The index in `RedixDbContext` | `AnyNumberOfSuppliersMayHaveNoVatNumber` |
-| An edit changes a supplier and leaves it its own number | `SuppliersEndpoints.Edit` | `AnEditChangesASupplierAndLeavesItItsOwnNumber` |
-| An edit can take the default item and the number away | `Supplier.DefaultTo`, `SupplierRequest.VatNumberKept` | `AnEditCanTakeTheDefaultItemAndTheVatNumberAway` |
-| A name has 1 to 100 characters, a mobile at most 20, in ASCII digits with a leading `+` at most | `Supplier.RefusalOf`, `User.IsAcceptableMobile` | `ASupplierNeedsANameOfAtMost100Characters`, `AMobileMayHaveAtMost20Characters`, `ASuppliersMobileIsDigitsOnAddAndOnEdit` |
-| A default item must be in the project (BR-33) | `ProjectStructure.ItemOfAsync` | `ADefaultItemMustBeInTheProject` |
-| Disabled, it stays in the register, never deleted (BR-15) | No delete route; `SuppliersEndpoints.Disable` | `ADisabledSupplierStaysInTheRegisterAndCanBeEnabled` |
-| The register lists suppliers by name | `SuppliersEndpoints.List` | `TheRegisterListsSuppliersByName` |
-| An approved project starts with the general cash supplier | `ProjectStructure.ApproveAsync`, `Supplier.GeneralCashSupplier` | `AnApprovedProjectStartsWithTheGeneralCashSupplier` |
-| The general cash supplier can be renamed and never disabled, by a flag set at approval, so another supplier with its name can | `Supplier.IsGeneralCash`, `SuppliersEndpoints.SetActiveAsync` | `TheGeneralCashSupplierCannotBeDisabled`, `TheGeneralCashSupplierCanBeRenamedAndStaysTheGeneralOne`, `ASupplierNamedLikeTheGeneralOneCanBeDisabled` |
+| Finance adds a supplier with its name, VAT number, mobile and default item (FR-06) | `suppliers.Add` | `FinanceAddsASupplierWithAllItsDetails` |
+| BR-16: a VAT number is empty or at most 20 digits; more, or anything but digits, is refused (Muteb, 7 Nov 2026) | `suppliers.refusalOf` | `SuppliersTests.BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused` |
+| A number another supplier holds is refused, naming that supplier (AC-06.1) | `suppliers.refusalOf` | `AVatNumberAnotherSupplierHoldsIsRefusedNamingThatSupplier`, `AnEditToANumberAnotherSupplierHoldsIsRefused` |
+| A disabled supplier still holds its number | `suppliers.refusalOf` | `ADisabledSupplierStillHoldsItsVatNumber` |
+| The database holds a number to one supplier in a project | The unique index `ix_suppliers_project_id_vat_number` | `TheDatabaseHoldsAVatNumberToOneSupplierInAProject` |
+| One number may be in two projects (BR-33) | The unique index `ix_suppliers_project_id_vat_number`, per project | `OneVatNumberMayBeInTwoProjects` |
+| BR-16: a VAT number is none, or any number of at most 20 digits; anything else is refused | `suppliers.refusalOf` | `BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused`, `BR_16_ASupplierWithNoVatNumberIsSavedWithNone` |
+| Any number of suppliers may have no number | The unique index `ix_suppliers_project_id_vat_number`, which skips an empty number | `AnyNumberOfSuppliersMayHaveNoVatNumber` |
+| An edit changes a supplier and leaves it its own number | `suppliers.Routes.edit` | `AnEditChangesASupplierAndLeavesItItsOwnNumber` |
+| An edit can take the default item and the number away | `suppliers.defaultTo`, `suppliers.typedInto` | `AnEditCanTakeTheDefaultItemAndTheVatNumberAway` |
+| A name has 1 to 100 characters, a mobile at most 20, in ASCII digits with a leading `+` at most | `suppliers.refusalOf`, `users.IsAcceptableMobile` | `ASupplierNeedsANameOfAtMost100Characters`, `AMobileMayHaveAtMost20Characters`, `ASuppliersMobileIsDigitsOnAddAndOnEdit` |
+| A default item must be in the project (BR-33) | `structure.change.item` | `ADefaultItemMustBeInTheProject` |
+| Disabled, it stays in the register, never deleted (BR-15) | No delete route; `suppliers.Routes.activate` | `ADisabledSupplierStaysInTheRegisterAndCanBeEnabled` |
+| The register lists suppliers by name | `suppliers.Routes.list` | `TheRegisterListsSuppliersByName` |
+| An approved project starts with the general cash supplier | `structure.Copy`, `suppliers.AddGeneralCash` | `AnApprovedProjectStartsWithTheGeneralCashSupplier` |
+| The general cash supplier can be renamed and never disabled, by a flag set at approval, so another supplier with its name can | `suppliers.AddGeneralCash`, `suppliers.Routes.activate` | `TheGeneralCashSupplierCannotBeDisabled`, `TheGeneralCashSupplierCanBeRenamedAndStaysTheGeneralOne`, `ASupplierNamedLikeTheGeneralOneCanBeDisabled` |
 | The migration marks the row the approval named, in a project approved before it | The `GeneralCashSupplierFlag` migration | `TheMigrationMarksTheRowTheApprovalNamedInAProjectApprovedBeforeIt` |
-| A copied project starts with only that one (AC-05.2) | `ProjectStructure.ApproveAsync` | `ACopiedProjectStartsWithOnlyTheGeneralCashSupplier` |
-| Everyone with access reads the register (BR-31) | `Permission.ReadProject` | `EveryoneWithAccessReadsTheRegister` |
-| Only Finance changes suppliers | `Permission.ManageSettings` | `OnlyFinanceChangesSuppliers` |
-| One project's suppliers are never another's (BR-33) | `Supplier.ProjectId`, `SuppliersEndpoints` | `OneProjectsSuppliersAreNeverAnothers` |
-| A finished project refuses every change and stays readable (AC-04.1) | `ProjectChanges.MapProjectChanges` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
+| A copied project starts with only that one (AC-05.2) | `structure.Copy` | `ACopiedProjectStartsWithOnlyTheGeneralCashSupplier` |
+| Everyone with access reads the register (BR-31) | `access.ReadProject` | `EveryoneWithAccessReadsTheRegister` |
+| Only Finance changes suppliers | `access.ManageSettings` | `OnlyFinanceChangesSuppliers` |
+| One project's suppliers are never another's (BR-33) | `access.Gate.Needs`, `SuppliersEndpoints` | `OneProjectsSuppliersAreNeverAnothers` |
+| A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 
 ## Left to later use cases
 

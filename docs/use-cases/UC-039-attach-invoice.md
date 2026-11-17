@@ -15,17 +15,19 @@
 
 An entry can take a file when it pays something, so no deduction or credit note, and was not removed (redix-api #119), whatever its kind and whether it has files already (D1, D5); `EntryFileEndpoints.AttachableBy` answers it, with `EntryChanges.MayHandle`, for the list and for the attach alike (D2, findings row 198). The file is what the entry's table names its file (`EntryTable.FileRole`, D5): an invoice for a purchase, a receipt for a contractor payment, a bank receipt for a partner's money, anything else for revenue, and anything else for a table the project no longer offers; the app names each by its word, `entries.fileInvoice`, `entries.fileReceipt`, `entries.fileBankReceipt` and `entries.fileOther`, which the migration `EntryFileRoleWords` carries. Attaching puts only the file on it and writes it in the History table (redix-api #96, D15): its figures and its status stay as they were, an approved one included, and nobody is asked again.
 
-| Rule | Code | Test |
+Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| AC-46.10c, D5: every kind that pays something is listed, with or without a file | `EntryFileEndpoints.AttachableBy`, `EntriesEndpoints.List` | `EntryFileTests.AC_46_10c_D5_EveryKindThatPaysSomethingIsListedWithOrWithoutAFile` |
-| A deduction, a credit note and a removed entry are not listed and cannot take one | `EntryFileEndpoints.AttachableBy` | `EntryFileTests.AC_46_10c_ADeductionACreditNoteAndARemovedEntryAreNotListedAndCannotTakeOne` |
-| AC-46.10f, R7, R8: a person lists and attaches to their own; with `ManageAnyEntry` others' too, never their drafts; the list and the attach agree | `EntryChanges.MayHandle`, `EntryFileEndpoints.Attach` | `EntryFileTests.AC_46_10f_FieldListsAndAttachesToTheirOwnAlone`, `AC_46_10f_WhoeverManagesAnyEntryListsAndAttachesToOthersButNeverToTheirDrafts` |
-| AC-49.2, D6: the QR code's match alone is answered, for the pin over the list | `EntryFileEndpoints.Attachable` | `EntryFileTests.AC_49_2_D6_TheQrCodesMatchAloneIsAnsweredForThePinOverTheList` |
-| AC-46.10a, R10, D15: a file goes on an approved entry, its figures stay, and a History line is written | `EntryFileEndpoints.Attach` | `EntryFileTests.AC_46_10a_R10_AFileGoesOnAnApprovedEntryItsFiguresStayAndAHistoryLineIsWritten` |
-| AC-46.10e, R5, D1: an entry with a file is listed, and keeps both after the attach | `EntryFileEndpoints.AttachableBy`, `Attach` | `EntryFileTests.AC_46_10e_R5_AnEntryWithAFileIsListedAndKeepsBothFilesAfterTheAttach` |
-| AC-46.10g, R9: the entry's own route carries every file it holds, the oldest first, each with its role, name, type and date | `EntriesEndpoints.ViewOfAsync`, `EntryAttachmentView` | `EntryFileTests.AC_46_10g_R9_TheEntrysPageCarriesEveryFileItHoldsTheOldestFirstEachWithItsRoleNameTypeAndDate` |
-| AC-46.10g: an entry with no file carries none, and none of another entry's | `EntriesEndpoints.ViewOfAsync` | `EntryFileTests.AC_46_10g_AnEntryWithNoFileCarriesNoneAndNoOtherEntrysFile` |
-| D5: each file takes its table's role | `EntryFileEndpoints.FileRoleOfAsync`, `EntryTable.FileRole` | `EntryFileTests.D5_EachFileTakesItsTablesRole` |
-| D15: every entry keeps its status, and nobody is asked again | `EntryFileEndpoints.Attach` | `EntryFileTests.AWaitingEntryStaysWaitingAndADraftStaysADraft`, `D15_AnApprovedEntryStaysApprovedAndNobodyIsAskedAgain` |
-| G1, BR-22: a file already on an entry is refused, the same entry too | `EntryRecording.IsFileOnAnEntryAsync` | `EntryFileTests.G1_BR_22_AFileAlreadyOnAnEntryIsRefused` |
-| A file of no such attachment is refused | `EntryFileEndpoints.Attach` | `EntryFileTests.AFileOfNoSuchAttachmentIsRefused` |
+| AC-46.10c, D5: every kind that pays something is listed, with or without a file | `entries.attachableBy`, `entries.Routes.list` | `EntryFileTests.AC_46_10c_D5_EveryKindThatPaysSomethingIsListedWithOrWithoutAFile` |
+| A deduction, a credit note and a removed entry are not listed and cannot take one | `entries.attachableBy` | `EntryFileTests.AC_46_10c_ADeductionACreditNoteAndARemovedEntryAreNotListedAndCannotTakeOne` |
+| AC-46.10f, R7, R8: a person lists and attaches to their own; with `ManageAnyEntry` others' too, never their drafts; the list and the attach agree | `entries.mayHandle`, `entries.Routes.attach` | `EntryFileTests.AC_46_10f_FieldListsAndAttachesToTheirOwnAlone`, `AC_46_10f_WhoeverManagesAnyEntryListsAndAttachesToOthersButNeverToTheirDrafts` |
+| AC-49.2, D6: the QR code's match alone is answered, for the pin over the list | `entries.Routes.attachable` | `EntryFileTests.AC_49_2_D6_TheQrCodesMatchAloneIsAnsweredForThePinOverTheList` |
+| AC-46.10a, R10, D15: a file goes on an approved entry, its figures stay, and a History line is written | `entries.Routes.attach` | `EntryFileTests.AC_46_10a_R10_AFileGoesOnAnApprovedEntryItsFiguresStayAndAHistoryLineIsWritten` |
+| AC-46.10e, R5, D1: an entry with a file is listed, and keeps both after the attach | `entries.attachableBy`, `Attach` | `EntryFileTests.AC_46_10e_R5_AnEntryWithAFileIsListedAndKeepsBothFilesAfterTheAttach` |
+| AC-46.10g, R9: the entry's own route carries every file it holds, the oldest first, each with its role, name, type and date | `entries.facts.view`, `EntryAttachmentView` | `EntryFileTests.AC_46_10g_R9_TheEntrysPageCarriesEveryFileItHoldsTheOldestFirstEachWithItsRoleNameTypeAndDate` |
+| AC-46.10g: an entry with no file carries none, and none of another entry's | `entries.facts.view` | `EntryFileTests.AC_46_10g_AnEntryWithNoFileCarriesNoneAndNoOtherEntrysFile` |
+| D5: each file takes its table's role | `entries.fileRole` | `EntryFileTests.D5_EachFileTakesItsTablesRole` |
+| D15: every entry keeps its status, and nobody is asked again | `entries.Routes.attach` | `EntryFileTests.AWaitingEntryStaysWaitingAndADraftStaysADraft`, `D15_AnApprovedEntryStaysApprovedAndNobodyIsAskedAgain` |
+| G1, BR-22: a file already on an entry is refused, the same entry too | `entries.fileOnAnotherEntry` | `EntryFileTests.G1_BR_22_AFileAlreadyOnAnEntryIsRefused` |
+| A file of no such attachment is refused | `entries.Routes.attach` | `EntryFileTests.AFileOfNoSuchAttachmentIsRefused` |

@@ -18,10 +18,12 @@ Its group is a free name of at most 100 letters, empty for none. It only groups 
 
 These answers were decided with Muteb on 7 November 2026 (redix-api 92 "Documents in place of المخططات: add one with a name and its file"), replacing the blueprints: no unit, any file type, an optional group; many documents per group, with no version history; a removed one leaves only the list, since no file is ever deleted (NFR-11).
 
-| Rule | Code | Test |
+Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
+
+| Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| The manager keeps documents; everyone reads them, those in no group first, then by group | `DocumentsEndpoints.Add`, `List` | `DocumentsTests.UC_064_TheManagerKeepsDocumentsAndEveryoneReadsThemUngroupedFirstThenByGroup` |
-| A document is any file, named by its extension, while an invoice stays a picture or a PDF | `Attachment.RefusalOf`, `FileKinds` | `DocumentsTests.ADocumentIsAnyFileNamedByItsExtensionWhileAnInvoiceStaysAPictureOrAPdf` |
-| A document needs a name, a group of 100 letters at most, a file of 25 MB at most, and is kept once | `DocumentsEndpoints.Add` | `DocumentsTests.ADocumentNeedsANameAGroupOf100LettersAtMostAFileOf25MbAtMostAndIsKeptOnce` |
-| Findings row 137: a document's request may hold as much as a form may (128 MB), not the server's 28 MB, so a file over 25 MB is answered `fileTooLarge` rather than cut off | `DocumentsEndpoints.MapDocuments` | `DocumentsTests.Findings137_ADocumentsRequestMayHoldAsMuchAsAFormSoAFileOver25MbIsAnsweredRatherThanCutOff` |
-| A removed document leaves the list; its file stays | `DocumentsEndpoints.Remove` | `DocumentsTests.ARemovedDocumentLeavesTheListButItsFileStays` |
+| The manager keeps documents; everyone reads them, those in no group first, then by group | `documents.Routes.add`, `List` | `DocumentsTests.UC_064_TheManagerKeepsDocumentsAndEveryoneReadsThemUngroupedFirstThenByGroup` |
+| A document is any file, named by its extension, while an invoice stays a picture or a PDF | `attachments.Keep`, `FileKinds` | `DocumentsTests.ADocumentIsAnyFileNamedByItsExtensionWhileAnInvoiceStaysAPictureOrAPdf` |
+| A document needs a name, a group of 100 letters at most, a file of 25 MB at most, and is kept once | `documents.Routes.add` | `DocumentsTests.ADocumentNeedsANameAGroupOf100LettersAtMostAFileOf25MbAtMostAndIsKeptOnce` |
+| Findings row 137: a document's request may hold as much as a form may (128 MB), not the server's 28 MB, so a file over 25 MB is answered `fileTooLarge` rather than cut off | `documents.Map` | `DocumentsTests.Findings137_ADocumentsRequestMayHoldAsMuchAsAFormSoAFileOver25MbIsAnsweredRatherThanCutOff` |
+| A removed document leaves the list; its file stays | `documents.Routes.remove` | `DocumentsTests.ARemovedDocumentLeavesTheListButItsFileStays` |
