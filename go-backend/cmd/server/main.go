@@ -4,7 +4,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -65,9 +67,10 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 // (redix-api #145, R17).
 const maxBodyBytes = 30 << 20
 
-// serve answers until ctx ends. With a domain, as Prod runs, it answers HTTPS on the first of Urls with the certificate Let's Encrypt gives the
-// domain, which autocert keeps in the certificates folder and renews, and on the second only proves the domain and sends every other request to
-// HTTPS (redix-api #145, D1); without one, as Dev and QA run, plain HTTP on the first. No request's body passes 30 MB (R17).
+// serve answers until ctx ends. With a domain, as Prod runs, it answers HTTPS on the first of Urls, 8443, with the certificate Let's Encrypt
+// gives the domain, which autocert keeps in the certificates folder and renews, and on the second, 80, proves the domain and sends every other
+// request to HTTPS (redix-api #145, D1, R21: 443 is the web front end's). Let's Encrypt checks a domain over HTTPS on 443 alone, so the server
+// does not start without its HTTP port. Without a domain, as Dev and QA run, plain HTTP on the first. No request's body passes 30 MB (R17).
 func serve(ctx context.Context, logger *slog.Logger, settings environment.Settings, handler http.Handler) error {
 	addresses, err := listenAddresses(settings.Urls)
 	if err != nil {
@@ -79,19 +82,19 @@ func serve(ctx context.Context, logger *slog.Logger, settings environment.Settin
 		return until(ctx, api, api.ListenAndServe)
 	}
 	if len(addresses) < 2 {
-		return errors.New("with a domain, REDIX_Urls names the HTTPS address and then the HTTP one, as Prod's https://:443;http://:80")
+		return errors.New("with a domain, REDIX_Urls names the HTTPS address and then the HTTP one, as Prod's https://:8443;http://:80")
 	}
 	certificates := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(settings.Domain),
 		Cache:      autocert.DirCache(settings.CertificatesFolder),
 	}
-	challenges := &http.Server{Addr: addresses[1], Handler: certificates.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		if err := until(ctx, challenges, challenges.ListenAndServe); err != nil {
-			logger.Error("the HTTP port stopped; the domain is still proven over HTTPS", "error", err)
-		}
-	}()
+	httpPort, err := net.Listen("tcp", addresses[1])
+	if err != nil {
+		return fmt.Errorf("the HTTP port proves the domain to Let's Encrypt: %w", err)
+	}
+	challenges := &http.Server{Handler: certificates.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
+	go until(ctx, challenges, func() error { return challenges.Serve(httpPort) })
 	api.TLSConfig = certificates.TLSConfig()
 	return until(ctx, api, func() error { return api.ListenAndServeTLS("", "") })
 }

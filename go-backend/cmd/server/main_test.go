@@ -16,7 +16,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -126,6 +125,9 @@ func TestTheServerRefusesToStartOnWhatItCannotWorkWith(t *testing.T) {
 			settings(t, "https://"+freeAddress(t))
 			t.Setenv("REDIX_Domain", "redix.test")
 		},
+		"a domain whose HTTP port is taken, so it could never be proven": func(t *testing.T) {
+			withDomain(t, freeAddress(t), busy.Addr().String())
+		},
 		"an address already listened": func(t *testing.T) { settings(t, "http://"+busy.Addr().String()) },
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -181,7 +183,7 @@ func started(t *testing.T, logger *slog.Logger, address string) {
 }
 
 // withDomain is the settings of a server answering HTTPS on its domain, redix.test, at httpsAddress, and plain HTTP at httpAddress, as Prod
-// answers on 443 and 80 (redix-api #145 D1).
+// answers on 8443 and 80 (redix-api #145 D1, R21).
 func withDomain(t *testing.T, httpsAddress, httpAddress string) {
 	t.Helper()
 	settings(t, "https://"+httpsAddress+";http://"+httpAddress)
@@ -220,48 +222,6 @@ func TestR16_WithADomainHttpGoesToHttpsAndNoOtherNameGetsACertificate(t *testing
 	if err := handshakeWith(httpsAddress, "elsewhere.test"); err == nil {
 		t.Error("a name that is not the domain got a certificate")
 	}
-}
-
-// log is what the server logs, written by its goroutines while the test reads it.
-type log struct {
-	mutex sync.Mutex
-	lines bytes.Buffer
-}
-
-func (l *log) Write(line []byte) (int, error) {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-	return l.lines.Write(line)
-}
-
-func (l *log) String() string {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-	return l.lines.String()
-}
-
-// A busy HTTP port is logged and the API still answers on HTTPS, where autocert proves the domain too (redix-api #145 D1).
-func TestR16_ABusyHttpPortIsLoggedAndHttpsStillAnswers(t *testing.T) {
-	busy, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer busy.Close()
-	httpsAddress := freeAddress(t)
-	withDomain(t, httpsAddress, busy.Addr().String())
-	var logged log
-	started(t, slog.New(slog.NewTextHandler(&logged, nil)), httpsAddress)
-
-	if err := handshakeWith(httpsAddress, "elsewhere.test"); err == nil {
-		t.Error("a name that is not the domain got a certificate")
-	}
-	for range 100 {
-		if strings.Contains(logged.String(), "the HTTP port stopped") {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Errorf("the busy HTTP port was not logged: %s", logged.String())
 }
 
 // No request's body passes 30 MB: a larger one is refused before any route keeps it, as Caddy refused it (redix-api #145 R17).

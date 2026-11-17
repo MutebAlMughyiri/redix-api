@@ -71,10 +71,10 @@ EOF
 sshd -t
 systemctl try-reload-or-restart ssh
 
-say "5. The firewall lets in SSH, HTTP and HTTPS only (R7)"
+say "5. The firewall lets in SSH, HTTP and the API's HTTPS only (R7, R21: 443 opens with the web front end)"
 ufw allow 22/tcp
 ufw allow 80/tcp
-ufw allow 443/tcp
+ufw allow 8443/tcp
 ufw --force enable
 
 say "6. Typst $typst_version and Litestream $litestream_version, checked against their pinned SHA-256 (R9)"
@@ -149,7 +149,7 @@ say "11. What runs now (R10: no request is sent to the API)"
 for service in redix litestream redix-attachments.timer postfix opendkim; do
   printf '%-26s %s\n' "$service" "$(systemctl is-active "$service")"
 done
-echo | timeout 20 openssl s_client -connect "$REDIX_Domain:443" -servername "$REDIX_Domain" 2>/dev/null \
+echo | timeout 20 openssl s_client -connect "$REDIX_Domain:8443" -servername "$REDIX_Domain" 2>/dev/null \
   | openssl x509 -noout -issuer -enddate 2>/dev/null || echo "HTTPS: no certificate yet - is the domain's A record $REDIX_Domain -> this server?"
 if timeout 5 bash -c 'exec 3<>/dev/tcp/gmail-smtp-in.l.google.com/25' 2>/dev/null; then
   echo "Port 25 out: open, mail goes straight to the receiving servers"

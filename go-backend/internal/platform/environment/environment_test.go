@@ -75,7 +75,7 @@ func TestR11_ProdAnswersOnItsDomainAndKeepsItsDataWhereTheDeployLaysItOut(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prod.Urls != "https://:443;http://:80" || prod.Domain != "redix.example" || prod.CertificatesFolder != "/var/lib/redix/certificates" || prod.DatabasePath != "/var/lib/redix/redix.db" ||
+	if prod.Urls != "https://:8443;http://:80" || prod.Domain != "redix.example" || prod.CertificatesFolder != "/var/lib/redix/certificates" || prod.DatabasePath != "/var/lib/redix/redix.db" ||
 		prod.AttachmentsFolder != "/var/lib/redix/attachments" || prod.EmailFolder != "/var/lib/redix/emails" || prod.AdminUsername != "owner" ||
 		prod.RegistrationsPerHour != 5 {
 		t.Errorf("Prod read %+v", prod)

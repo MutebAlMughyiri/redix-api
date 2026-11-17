@@ -1,5 +1,5 @@
-# The REDIX API as a systemd service (redix-api #140 R22, #145). It answers HTTPS on 443 with the certificate it keeps itself, and on 80 only
-# to prove the domain to Let's Encrypt and send everyone else to HTTPS (D1); binding those two ports is the one privilege it holds. Its settings
+# The REDIX API as a systemd service (redix-api #140 R22, #145). It answers HTTPS on 8443 with the certificate it keeps itself, and on 80 only
+# to prove the domain to Let's Encrypt and send everyone else to HTTPS (D1); binding port 80 is the one privilege it holds. Its settings
 # are REDIX_ variables in /etc/redix/redix.env; the database, its WAL, the attachments and the certificate live in /var/lib/redix.
 [Unit]
 Description=REDIX API

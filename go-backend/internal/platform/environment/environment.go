@@ -51,7 +51,7 @@ type Settings struct {
 var named = map[string]map[string]string{
 	"Dev": {"Urls": "http://127.0.0.1:5010", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000", "EmailCodes__PermitsPerHour": "100000"},
 	"QA":  {"Urls": "http://127.0.0.1:5012", "Admin__Username": "real-admin"},
-	"Prod": {"Urls": "https://:443;http://:80", "Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
+	"Prod": {"Urls": "https://:8443;http://:80", "Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
 		"Email__Folder": "/var/lib/redix/emails", "Email__Smtp": "127.0.0.1:25", "Certificates__Folder": "/var/lib/redix/certificates"},
 }
 
