@@ -37,7 +37,7 @@ for file in redix.env backup.env; do
   sed -i 's/\r$//' "$here/$file"
 done
 set -a; . "$here/redix.env"; . "$here/backup.env"; set +a
-for key in REDIX_Jwt__SigningKey REDIX_Prod_Admin__Username REDIX_Prod_Admin__Password REDIX_Domain REDIX_Email__From \
+for key in REDIX_Urls REDIX_Jwt__SigningKey REDIX_Prod_Admin__Username REDIX_Prod_Admin__Password REDIX_Domain REDIX_Email__From \
            REDIX_BACKUP_BUCKET REDIX_BACKUP_ENDPOINT AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
   [[ -n ${!key:-} ]] || stop "$key is empty in redix.env or backup.env"
 done
@@ -71,11 +71,15 @@ EOF
 sshd -t
 systemctl try-reload-or-restart ssh
 
-say "5. The firewall lets in SSH, HTTP and the API's HTTPS only (R7, R21: 443 opens with the web front end)"
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 8443/tcp
+say "5. The firewall lets in SSH and the ports REDIX_Urls names, and closes any other it had opened (R7, R21)"
+open="22/tcp"
+for url in ${REDIX_Urls//;/ }; do open+=" ${url##*:}/tcp"; done
+for rule in $(ufw show added | awk '$1 == "ufw" && $2 == "allow" {print $3}'); do
+  [[ " $open " == *" $rule "* ]] || ufw delete allow "$rule"
+done
+for rule in $open; do ufw allow "$rule"; done
 ufw --force enable
+https_url=${REDIX_Urls%%;*}
 
 say "6. Typst $typst_version and Litestream $litestream_version, checked against their pinned SHA-256 (R9)"
 download=$(mktemp -d)
@@ -149,7 +153,7 @@ say "11. What runs now (R10: no request is sent to the API)"
 for service in redix litestream redix-attachments.timer postfix opendkim; do
   printf '%-26s %s\n' "$service" "$(systemctl is-active "$service")"
 done
-echo | timeout 20 openssl s_client -connect "$REDIX_Domain:8443" -servername "$REDIX_Domain" 2>/dev/null \
+echo | timeout 20 openssl s_client -connect "$REDIX_Domain:${https_url##*:}" -servername "$REDIX_Domain" 2>/dev/null \
   | openssl x509 -noout -issuer -enddate 2>/dev/null || echo "HTTPS: no certificate yet - is the domain's A record $REDIX_Domain -> this server?"
 if timeout 5 bash -c 'exec 3<>/dev/tcp/gmail-smtp-in.l.google.com/25' 2>/dev/null; then
   echo "Port 25 out: open, mail goes straight to the receiving servers"

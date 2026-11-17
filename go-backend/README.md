@@ -24,7 +24,7 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 | Variable | What | Default |
 | --- | --- | --- |
 | `REDIX_Environment` | Which environment's settings: `Dev` takes port 5010, the admin `dev-admin`, no asking limits and `RedixDev.db`; `QA` port 5012, the admin `real-admin` and `RedixQA.db`, as their `appsettings` files named; `Prod`, the published server, HTTPS on its domain on 8443 and 80 (443 is the web front end's) and its data under `/var/lib/redix`, its secrets in `deploy/prod.env.example`; a variable set wins | `Production` |
-| `REDIX_Urls` | Where the API listens: with no domain, plain HTTP on the first; with one, HTTPS on the first and HTTP on the second, which only proves the domain and sends everyone to HTTPS | `http://0.0.0.0:5012`; Prod: `https://:8443;http://:80` |
+| `REDIX_Urls` | Where the API listens: with no domain, plain HTTP on the first; with one, HTTPS on the first and HTTP on the second, which only proves the domain and sends everyone to HTTPS | `http://0.0.0.0:5012`; Prod: `https://:8443;http://:80`, set in `/etc/redix/redix.env`, where `setup.sh` reads the firewall's ports too |
 | `REDIX_Domain` | The name the API answers HTTPS on, with the certificate Let's Encrypt gives it; empty for plain HTTP (#145) | |
 | `REDIX_Certificates__Folder` | Where the domain's certificate is kept | `Redix/Certificates`; Prod: `/var/lib/redix/certificates` |
 | `REDIX_Database__Path` | The SQLite file | `Redix/redix.db` in local application data |

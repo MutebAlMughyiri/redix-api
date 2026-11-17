@@ -46,12 +46,13 @@ type Settings struct {
 // named is what each environment's settings name that is not a secret, as appsettings.{Environment}.json did: where it listens, its admin's
 // username and, for Dev, which Patrol registers projects and asks codes from without end, the limits lifted. Dev and QA each keep their own
 // database file, Redix{Environment}.db, as each had its own database; Prod is the published server, answering HTTPS on its domain itself
-// (#145 D1) and keeping its database, files and certificate under /var/lib/redix, as deploy/setup.sh lays it out. Its secrets are the server's own, in /etc/redix/redix.env (deploy/prod.env.example).
+// (#145 D1) and keeping its database, files and certificate under /var/lib/redix, as deploy/setup.sh lays it out; its ports are its server's own,
+// REDIX_Urls in /etc/redix/redix.env, where the firewall reads them too. Its secrets are the server's own, in /etc/redix/redix.env (deploy/prod.env.example).
 // A variable set in the environment wins over all of it.
 var named = map[string]map[string]string{
 	"Dev": {"Urls": "http://127.0.0.1:5010", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000", "EmailCodes__PermitsPerHour": "100000"},
 	"QA":  {"Urls": "http://127.0.0.1:5012", "Admin__Username": "real-admin"},
-	"Prod": {"Urls": "https://:8443;http://:80", "Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
+	"Prod": {"Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
 		"Email__Folder": "/var/lib/redix/emails", "Email__Smtp": "127.0.0.1:25", "Certificates__Folder": "/var/lib/redix/certificates"},
 }
 

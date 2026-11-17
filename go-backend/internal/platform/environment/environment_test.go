@@ -71,6 +71,7 @@ func TestR11_DevAndQaTakeWhatTheirSettingsFilesNamedEachWithItsOwnDatabaseAndASe
 func TestR11_ProdAnswersOnItsDomainAndKeepsItsDataWhereTheDeployLaysItOut(t *testing.T) {
 	prod, err := Read(lookupIn(map[string]string{
 		"REDIX_Environment": "Prod", "REDIX_Jwt__SigningKey": key, "REDIX_Prod_Admin__Username": "owner", "REDIX_Domain": "redix.example",
+		"REDIX_Urls": "https://:8443;http://:80",
 	}))
 	if err != nil {
 		t.Fatal(err)
