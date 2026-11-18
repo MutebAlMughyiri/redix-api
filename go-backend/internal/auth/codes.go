@@ -60,6 +60,7 @@ func MapCodes(router *web.Router, gate *access.Gate, database db.DB, clock clock
 	c := Codes{database: database, clock: clock, sender: sender, perLogin: limits.PerHour(asksPerLoginAnHour, clock), log: log}
 	router.Handle("POST", "/auth/forgot-password", perAddress.PerAddress(c.forgotPassword))
 	router.Handle("POST", "/auth/reset-with-code", c.resetWithCode)
+	// Sends a six-digit code to the new address, in the language asked; the email changes only once the code confirms it (UC-010).
 	router.Handle("POST", "/me/email", gate.Working(func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 		perAddress.PerAddress(func(w http.ResponseWriter, r *http.Request) { c.askToConfirm(w, r, caller) })(w, r)
 	}))

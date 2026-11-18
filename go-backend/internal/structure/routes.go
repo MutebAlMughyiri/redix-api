@@ -239,6 +239,7 @@ func (s Routes) changeCategory(w http.ResponseWriter, r *http.Request, caller ac
 	})
 }
 
+// renameCategory renames a category, refusing a name the naming rule refuses as invalidName (UC-012).
 func (s Routes) renameCategory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	if name, ok := changes.Named(w, r); ok {
 		s.changeCategory(w, r, caller, func(category *store.Category) { category.Name = name })
@@ -389,6 +390,7 @@ func (s Routes) changeItem(w http.ResponseWriter, r *http.Request, caller access
 	})
 }
 
+// renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012).
 func (s Routes) renameItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	if name, ok := changes.Named(w, r); ok {
 		s.changeItem(w, r, caller, func(item *store.Item) { item.Name = name })
@@ -675,6 +677,7 @@ func (c change) subgroup(r *http.Request) (store.Subgroup, error) {
 	return store.Subgroup{}, changes.NotFound
 }
 
+// renameSubgroup renames a subgroup other than General, refusing a name the naming rule refuses as invalidName (UC-012).
 func (s Routes) renameSubgroup(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	name, ok := changes.Named(w, r)
 	if !ok {

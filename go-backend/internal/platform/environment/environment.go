@@ -44,6 +44,9 @@ type Settings struct {
 	EmailSmtp, EmailFrom string
 	// EmailFolder keeps each email instead of sending it where no mail server is named (Email__Folder).
 	EmailFolder string
+	// Documented says whether the API serves its OpenAPI document and Swagger UI: in Dev and QA, never in Prod or an environment no settings
+	// name, since the document lists every route to anyone who asks (redix-api #142 R4).
+	Documented bool
 	// WebFolder holds the web front end's files, served for every path that is not a route; "" while there is no front end (Web__Folder, R18).
 	WebFolder string
 }
@@ -98,6 +101,7 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 		Domain:               get("Domain", ""),
 		CertificatesFolder:   get("Certificates__Folder", filepath.Join(data, "Certificates")),
 		DatabasePath:         databasePath,
+		Documented:           environment == "Dev" || environment == "QA",
 		IncidentsPath:        get("Incidents__Path", filepath.Join(filepath.Dir(databasePath), "incidents.db")),
 		SigningKey:           key,
 		AdminUsername:        get("Admin__Username", ""),

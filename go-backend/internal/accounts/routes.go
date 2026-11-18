@@ -399,6 +399,7 @@ func LatestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed 
 	return view, errors.Join(err, movedErr)
 }
 
+// latest is the project's latest reconciliation: the surplus, the latest balances and their difference (UC-040).
 func (s Routes) latest(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	view, err := LatestOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), nil)
 	if err != nil {

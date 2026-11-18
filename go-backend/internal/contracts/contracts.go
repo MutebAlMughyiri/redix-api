@@ -150,6 +150,7 @@ func List(ctx context.Context, q *store.Queries, projectID uuid.UUID) ([]View, e
 	return views, nil
 }
 
+// list is the project's contracts in the order added, disabled ones included, each with what it paid and what remains (UC-020).
 func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	views, err := List(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
 	if err != nil {

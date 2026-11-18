@@ -60,6 +60,7 @@ type notificationView struct {
 
 // Map routes what the signed-in person was told, for them alone (UC-036, FR-20).
 func Map(router *web.Router, gate *access.Gate, database db.DB) {
+	// What the caller was told, the latest 100, newest first, about projects they still have (UC-036).
 	router.Handle("GET", "/notifications", gate.Working(func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 		rows, err := database.Queries().NotificationsOf(r.Context(), caller.UserID)
 		if err != nil {
@@ -72,6 +73,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB) {
 		}
 		web.JSON(w, r, http.StatusOK, views)
 	}))
+	// Marks one of the caller's notifications as seen (UC-036).
 	router.Handle("POST", "/notifications/{id:guid}/read", gate.Working(func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 		var marked int64
 		err := database.InTx(r.Context(), func(q *store.Queries) error {

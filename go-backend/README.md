@@ -43,6 +43,7 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 | --- | --- |
 | `make test` | Every test, the replay of .NET's answers among them (about seven minutes) |
 | `make cover` | The same, failing below the coverage floor (redix-api #141) |
+| `go generate ./internal/apidoc` | Writes the OpenAPI document from the code (`cmd/openapi`), after any change to a route, what it reads, answers or refuses; `make test` fails until it is rewritten. Dev and QA serve it at `/openapi/v1.json`, with Swagger UI at `/swagger` (#142) |
 | `make sqlc` | Generates the store, with two guards: query files stay ASCII, and no `sqlc.arg` is left unreplaced (G15) |
 | `make build` | The Linux binary, `bin/redix-server` |
 | `make migrate` | Brings the database up to date and stops |

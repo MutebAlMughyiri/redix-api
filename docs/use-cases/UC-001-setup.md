@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `GET /health` | Answers `Healthy` when the API runs and reaches the database | No |
 | `GET /translations/{language}` | Every word of `ar` or `en` in one bundle, with an ETag; `304` while unchanged, `404` for another language | No: the sign-in screen needs its words |
-| `GET /swagger`, `GET /openapi/v1.json` | The endpoint reference. **Waits for redix-api #142:** the Go API serves neither yet | No; not served in Production |
+| `GET /swagger`, `GET /openapi/v1.json` | Swagger UI on the OpenAPI document of every route, generated from the Go code: its path, what it reads, what it answers with each status, the codes it refuses with, the permission it needs (#142) | No; served in Dev and QA only, never Prod |
 | `GET /privacy`, `GET /terms` | The privacy policy and the terms of use, one copy each, in Arabic and English (redix-api #143) | No: the stores link to them, and a person reads them before registering |
 
 ## Tables
@@ -34,7 +34,10 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A bundle holds every word of its language | `translations.bundle` | `TranslationsTests.BundleHoldsEveryWordOfTheLanguage` |
 | An unchanged bundle answers `304` | `translations.bundle` | `TranslationsTests.UnchangedBundleAnswersNotModified` |
 | Another language answers `404` | `translations.bundle` | `TranslationsTests.UnknownLanguageIsNotFound` |
-| Swagger only outside Production. **Waits for redix-api #142:** the Go API serves no Swagger yet, so nothing enforces or proves it | - | - |
+| Swagger UI and the OpenAPI document are served in Dev and QA only, never Prod or an environment no settings name (#142 R4) | `environment.Read` (`Documented`), `server.Routes` | `TestR4_OnlyDevAndQaServeTheAPIDocument`, `TestR2_SwaggerUIShowsTheOpenAPIDocumentOfEveryRoute` |
+| The document describes every route from its code: the doc comment over its `Handle` call or on its handler, the permission of its gate, what `web.Read` reads, what `web.JSON` answers with each status, the codes `problem.Refuse` and `changes.Refuse` refuse with (#142 R1, Q1, Q4) | `cmd/openapi` (`go generate ./internal/apidoc`) | `TestR1_ARouteSaysWhatItReadsAnswersRefusesAndNeeds` |
+| A route with no description, or a document the code has moved past, fails the build (#142 R3) | `cmd/openapi` | `TestR1_R3_TheKeptDocumentIsWhatTheCodeSaysAndEveryRouteIsDescribed` |
+| Fields are named as the API answers them, camelCase, and an enum is the list of its names (#142 R5) | `cmd/openapi` | `TestR5_FieldsAreCamelCaseAndAnEnumIsItsNames` |
 | The privacy policy and the terms are served to anyone, in every environment, in Arabic and English (#143 R3, R4, Q6) | `legal.Map` | `TestQ6_ThePrivacyPolicyAndTheTermsAreServedToAnyoneInArabicAndEnglish` |
 | Every Go and SQL file opens with Tech Details' copyright notice, word for word; a file a tool writes and marks so is the tool's (#143 R1, R6) | `.idea/copyright/` for new files | `TestR6_EveryGoAndSqlFileOpensWithTheNoticeWordForWord` |
 | Every error answer carries a code, a bare status's too: `notFound`, `unexpected`, ... (#150 R1, R7) | `problem.Status` | `TestN16_R7_ABareNotFoundIsProblemDetailsAsUseStatusCodePagesWroteItWithItsCode`, `TestR1_R3_D1_ARefusalAnswersItsCodeAndIsKeptWithItsTraceRouteAndWhoAsked` |

@@ -86,6 +86,15 @@ func TestR11_ProdAnswersOnItsDomainAndKeepsItsDataWhereTheDeployLaysItOut(t *tes
 	}
 }
 
+func TestR4_OnlyDevAndQaServeTheAPIDocument(t *testing.T) {
+	for environment, documented := range map[string]bool{"Dev": true, "QA": true, "Prod": false, "Production": false, "Staging": false} {
+		settings, err := Read(lookupIn(map[string]string{"REDIX_Environment": environment, "REDIX_Jwt__SigningKey": key}))
+		if err != nil || settings.Documented != documented {
+			t.Errorf("%s documented %v (%v), want %v", environment, settings.Documented, err, documented)
+		}
+	}
+}
+
 // Dev and QA name no domain, so they answer plain HTTP on Urls, as on Muteb's PC today (#145 D1).
 func TestR11_DevAndQaNameNoDomain(t *testing.T) {
 	for _, name := range []string{"Dev", "QA"} {

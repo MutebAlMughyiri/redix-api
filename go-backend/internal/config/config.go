@@ -16,6 +16,7 @@ import (
 // Map routes GET /config, open to everyone.
 func Map(router *web.Router, database db.DB) {
 	values := database.Queries()
+	// Every configuration value by its key, for anyone, so none is a secret (UC-070).
 	router.Handle("GET", "/config", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := values.Values(r.Context())
 		if err != nil {

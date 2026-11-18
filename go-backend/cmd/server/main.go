@@ -62,7 +62,7 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	router := server.Routes(server.Parts{
 		Database: database, Clock: now, SigningKey: settings.SigningKey, Sender: email.SenderOf(settings.EmailSmtp, settings.EmailFrom, settings.EmailFolder),
 		EmailCodesPerHour: settings.EmailCodesPerHour, RegistrationsPerHour: settings.RegistrationsPerHour, WebFolder: settings.WebFolder,
-		AttachmentsFolder: settings.AttachmentsFolder, TypstPath: settings.TypstPath, Log: logger,
+		AttachmentsFolder: settings.AttachmentsFolder, TypstPath: settings.TypstPath, Documented: settings.Documented, Log: logger,
 	})
 	failures, err := incidents.Open(settings.IncidentsPath)
 	if err != nil {

@@ -26,6 +26,7 @@ type syncView struct {
 // Map routes the sync, for whoever reads the project. Each list is read through routes itself, as the app reads it, so every list has the one
 // owner its own route is.
 func Map(router *web.Router, gate *access.Gate) {
+	// A stamp, and every list changed since the stamp the app sent, by the address the app reads it at (UC-030).
 	router.Handle("GET", "/projects/{projectId:guid}/sync", gate.Needs(access.ReadProject, func(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 		project := "/projects/" + web.ID(r, "projectId").String()
 		lists := map[string]json.RawMessage{}

@@ -7,6 +7,7 @@ One Go program and one SQLite file, on one small Linux server (redix-api #140). 
 ```
 go-backend/
   cmd/server/             the API: reads its settings, brings the database up to date, serves the routes and the web front end's files
+  cmd/openapi/            writes internal/apidoc/openapi.json from the code, read by Go's own type checker; its test fails when they differ
   internal/db/            the SQLite file: one writer and four readers, the migrations (goose), and the one way to write, InTx
   internal/db/store/      the code sqlc generates from every domain's queries.sql, each query prepared once as the server starts
   internal/changes/       what every change inside a project shares: one transaction, the refusal it rolls back with, a History line for every row
@@ -32,6 +33,7 @@ go-backend/
   internal/history/       the History table, and historytest, the net every test request runs under
   internal/translations/  the words the app shows, by language, with an ETag
   internal/legal/         the privacy policy and the terms, served at /privacy and /terms, and the copyright notice every source file opens with
+  internal/apidoc/        the OpenAPI document and Swagger UI on it, at /openapi/v1.json and /swagger, in Dev and QA only
   internal/incidents/     one log line per request, every failure kept 90 days in incidents.db with its trace id, a panic answered 500
   internal/email/         the one sender of every email: into a folder today (redix-api #127)
   internal/naming/        what a name may be

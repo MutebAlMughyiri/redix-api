@@ -11,6 +11,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/apidoc"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
@@ -47,7 +48,9 @@ type Parts struct {
 	EmailCodesPerHour int
 	// RegistrationsPerHour is how often one address may register a project an hour (REDIX_Registration__PermitsPerHour).
 	RegistrationsPerHour int
-	WebFolder            string
+	// Documented serves the OpenAPI document and Swagger UI, as Dev and QA do (redix-api #142 R4).
+	Documented bool
+	WebFolder  string
 	// AttachmentsFolder keeps the files people send (REDIX_Attachments__Folder, NFR-10).
 	AttachmentsFolder string
 	// TypstPath is the typst binary that makes the report PDFs (REDIX_Typst__Path, #140 D2).
@@ -64,6 +67,7 @@ func Routes(parts Parts) *web.Router {
 	gate := access.NewGate(tokens, database, book, parts.Log)
 
 	router := web.NewRouter(parts.WebFolder)
+	// Healthy while the API runs and reaches its database, otherwise 503 Unhealthy (UC-001).
 	router.Handle("GET", "/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		if database.Read.PingContext(r.Context()) != nil {
@@ -75,6 +79,9 @@ func Routes(parts Parts) *web.Router {
 	})
 	translations.Map(router, database)
 	legal.Map(router)
+	if parts.Documented {
+		apidoc.Map(router)
+	}
 	config.Map(router, database)
 	auth.MapSessions(router, gate, database, tokens, book, now)
 	auth.MapCodes(router, gate, database, now, parts.Sender, limits.PerHour(parts.EmailCodesPerHour, now), parts.Log)

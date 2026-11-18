@@ -56,7 +56,7 @@ func New(t *testing.T) *API {
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	routes := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: 100000,
 		AttachmentsFolder: filepath.Join(t.TempDir(), "attachments"), TypstPath: typstPath(),
-		RegistrationsPerHour: 100000, Log: quiet})
+		RegistrationsPerHour: 100000, Documented: true, Log: quiet})
 	failures, err := incidents.Open(filepath.Join(t.TempDir(), "incidents.db"))
 	if err != nil {
 		t.Fatal(err)

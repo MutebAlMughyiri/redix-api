@@ -468,6 +468,7 @@ func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entr
 	return views, nil
 }
 
+// mine is where the caller's own entries stand, newest first (UC-030).
 func (s Routes) mine(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	views, err := s.rows(r, caller, func(entry store.Entry) bool { return entry.CreatedByUserID == caller.UserID })
 	s.answer(w, r, views, err)

@@ -20,6 +20,7 @@ import (
 // Map routes GET /translations/{language}, open without sign-in because the sign-in screen needs its words.
 func Map(router *web.Router, database db.DB) {
 	words := database.Queries()
+	// Every word of a language in one bundle with its ETag, for anyone (UC-001).
 	router.Handle("GET", "/translations/{language}", func(w http.ResponseWriter, r *http.Request) {
 		bundle(w, r, words)
 	})
