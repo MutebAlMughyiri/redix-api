@@ -4,10 +4,13 @@
 package entries
 
 import (
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/google/uuid"
 )
 
@@ -68,22 +71,28 @@ func TestR4_EveryThingNamesItsRecordFromHistorysOwnValues(t *testing.T) {
 	}
 }
 
-// UC-069 R2 (D4): a file kept shows nowhere on its own, and a part shows only when its owner wrote nothing in the same request.
+// UC-069 R2 (D4): a file kept shows nowhere on its own, and a part shows only when its owner wrote nothing in the same request; a line written
+// before History kept the request's trace id belongs with the lines of its moment and its person (D3).
 func TestR2_AFileNeverShowsAloneAndAPartOnlyWithoutItsOwner(t *testing.T) {
+	sara, ali := uuid.New(), uuid.New()
+	first, second := moment.Of(time.Date(2026, 11, 5, 23, 7, 21, 993673700, time.UTC)), moment.Of(time.Date(2026, 11, 5, 23, 7, 22, 205843400, time.UTC))
 	rows := []store.History{
 		{ID: 1, TableName: "Attachments", TraceID: "a"},
 		{ID: 2, TableName: "Entries", TraceID: "b"},
 		{ID: 3, TableName: "ExpenseDetails", TraceID: "b"},
 		{ID: 4, TableName: "EntryAttachments", TraceID: "c"},
 		{ID: 5, TableName: "Units", TraceID: ""},
-		{ID: 6, TableName: "Units", TraceID: ""},
-		{ID: 7, TableName: "Users", TraceID: "d"},
+		{ID: 6, TableName: "Users", TraceID: "d"},
+		{ID: 7, TableName: "Entries", At: first, UserID: sara},
+		{ID: 8, TableName: "ExpenseDetails", At: first, UserID: sara},
+		{ID: 9, TableName: "ExpenseDetails", At: second, UserID: sara},
+		{ID: 10, TableName: "ExpenseDetails", At: first, UserID: ali},
 	}
 	var kept []int64
 	for _, row := range shown(rows) {
 		kept = append(kept, row.ID)
 	}
-	if len(kept) != 4 || kept[0] != 2 || kept[1] != 4 || kept[2] != 5 || kept[3] != 6 {
-		t.Errorf("the lines that stand for an action: %v, want [2 4 5 6]", kept)
+	if want := []int64{2, 4, 5, 7, 9, 10}; !slices.Equal(kept, want) {
+		t.Errorf("the lines that stand for an action: %v, want %v", kept, want)
 	}
 }

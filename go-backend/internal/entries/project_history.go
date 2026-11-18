@@ -308,10 +308,11 @@ func (s sight) managingUsers(values) bool {
 
 func (s sight) reports(values) bool { return s.caller.Access.Holds(s.projectID, access.SeeReports) }
 
-// requestOf is the request that wrote row: its trace id, or the line alone for one written before History kept it (D3).
+// requestOf is the request that wrote row: its trace id; for a line written before History kept one (D3), the moment and the person, which one
+// request's lines share and the next request's never do, a moment being kept to the ten-millionth of a second.
 func requestOf(row store.History) string {
 	if row.TraceID == "" {
-		return "line " + strconv.FormatInt(row.ID, 10)
+		return row.At.String() + " " + row.UserID.String()
 	}
 	return row.TraceID
 }
