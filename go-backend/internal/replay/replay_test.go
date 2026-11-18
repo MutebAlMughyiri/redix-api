@@ -169,7 +169,8 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 	}
 	defer discovery.Close()
 	routes := server.Routes(server.Parts{Database: discovery, Clock: clock.System{}, SigningKey: []byte("k"), Log: quiet})
-	var replayed, byHand, waiting, underReview int
+	var byHand, waiting, underReview int
+	var replayed []string
 	for _, name := range order {
 		steps := tests[name]
 		switch {
@@ -186,15 +187,18 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			waiting++
 			continue
 		}
-		replayed++
+		replayed = append(replayed, name)
+	}
+	swept := sweptSteps(replayed, tests, hosts)
+	for _, name := range replayed {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			replay(t, steps, hosts)
+			replay(t, tests[name], hosts, swept[name])
 		})
 	}
 	t.Logf("%d tests replayed against .NET's answers; %d wait for routes not yet on Go; %d are ported by hand - about SQL Server itself, reading its "+
 		"database or racing it; "+
-		"%d of them with requests .NET crashed on, which wait for review (#76 row 263)", replayed, waiting, byHand, underReview)
+		"%d of them with requests .NET crashed on, which wait for review (#76 row 263)", len(replayed), waiting, byHand, underReview)
 }
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -250,7 +254,43 @@ type sentCode struct {
 
 var code = regexp.MustCompile(`\d{6}`)
 
-func replay(t *testing.T, steps []step, hosts []host) {
+// sweptSteps names, for each test, the steps sent with their database failing call by call: each kind of request once across the replay, at
+// its first step among the tests replayed, in the recordings' order. Chosen before any test runs, the same steps are swept on every run,
+// whatever order the parallel tests reach them in, so the same failure paths are reached and the coverage holds still (#76 row 269).
+func sweptSteps(order []string, tests map[string][]step, hosts []host) map[string]map[int]bool {
+	kinds, swept := map[string]bool{}, map[string]map[int]bool{}
+	for _, name := range order {
+		class, _, _ := strings.Cut(name, ".")
+		for i, s := range tests[name] {
+			if s.Step != "request" || s.Status == http.StatusInternalServerError || !limitsOf(hosts, s).limitsNothing() ||
+				slices.Contains(unswept, s.Method+" "+s.Path) {
+				continue
+			}
+			kind := kindOf(class, s)
+			if kinds[kind] {
+				continue
+			}
+			kinds[kind] = true
+			if swept[name] == nil {
+				swept[name] = map[int]bool{}
+			}
+			swept[name][i] = true
+		}
+	}
+	return swept
+}
+
+// limitsOf is the host s was recorded on, which says how often it let a caller register or ask for a code; unlimited for any other.
+func limitsOf(hosts []host, s step) host {
+	for _, known := range hosts {
+		if known.file == s.file && known.id == s.Host {
+			return known
+		}
+	}
+	return unlimited
+}
+
+func replay(t *testing.T, steps []step, hosts []host, swept map[int]bool) {
 	database, failure := dbtest.Open(t, filepath.Join(t.TempDir(), "redix.db"))
 	fake := clock.NewFake(steps[0].At)
 	if err := auth.SeedAdmin(context.Background(), database, adminUsername, adminPassword, moment.Of(steps[0].At)); err != nil {
@@ -258,19 +298,11 @@ func replay(t *testing.T, steps []step, hosts []host) {
 	}
 	emails, files := &kept{}, filepath.Join(t.TempDir(), "attachments")
 	handlers := map[int]http.Handler{}
-	limitsOf := func(s step) host {
-		for _, known := range hosts {
-			if known.file == s.file && known.id == s.Host {
-				return known
-			}
-		}
-		return unlimited
-	}
 	handlerOf := func(s step) http.Handler {
 		if handler, built := handlers[s.Host]; built {
 			return handler
 		}
-		limits := limitsOf(s)
+		limits := limitsOf(hosts, s)
 		handlers[s.Host] = problem.Traced(server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: []byte("replay-key-for-go-backend-only-32"),
 			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, AttachmentsFolder: files, TypstPath: typstPath(), Log: quiet}))
 		return handlers[s.Host]
@@ -314,7 +346,7 @@ func replay(t *testing.T, steps []step, hosts []host) {
 				}
 			}
 			var got *httptest.ResponseRecorder
-			if s.Status != http.StatusInternalServerError && limitsOf(s).limitsNothing() && !slices.Contains(unswept, s.Method+" "+s.Path) && firstOfItsKind(t, s) {
+			if swept[i] {
 				var answered bool
 				if got, answered = failEachCall(t, database, failure, emails, handlerOf(s), names, s, i); !answered {
 					return
@@ -435,30 +467,16 @@ func withBrokenBody(s step) step {
 	return s
 }
 
-// swept holds each kind of request already sent with its database failing call by call, so each kind is swept once across the replay: its
-// method, its route, the status .NET answered, the fields its body and query name, and the class of .NET tests it was recorded in, since each
-// class takes a route down paths of its own.
-var swept = struct {
-	sync.Mutex
-	kinds map[string]bool
-}{kinds: map[string]bool{}}
-
-func firstOfItsKind(t *testing.T, s step) bool {
+// kindOf is what makes two requests the same kind, to be swept once across the replay: the method, the route, the status .NET answered, the
+// fields its body and query name, and the class of .NET tests it was recorded in, since each class takes a route down paths of its own.
+func kindOf(class string, s step) string {
 	var text string
 	var fields map[string]json.RawMessage
 	json.Unmarshal(s.Body, &text)
 	json.Unmarshal([]byte(text), &fields)
 	query, _ := url.ParseQuery(strings.TrimPrefix(s.Query, "?"))
-	class, _, _ := strings.Cut(strings.TrimPrefix(t.Name(), "TestReplayDotNetsAnswers/"), ".")
-	kind := fmt.Sprint(s.Method, " ", pathPattern.ReplaceAllString(s.Path, "{id}"), " ", s.Status, " ", slices.Sorted(maps.Keys(fields)), " ",
+	return fmt.Sprint(s.Method, " ", pathPattern.ReplaceAllString(s.Path, "{id}"), " ", s.Status, " ", slices.Sorted(maps.Keys(fields)), " ",
 		slices.Sorted(maps.Keys(query)), " ", class)
-	swept.Lock()
-	defer swept.Unlock()
-	if swept.kinds[kind] {
-		return false
-	}
-	swept.kinds[kind] = true
-	return true
 }
 
 // mapping is .NET's value of an id, token, ETag or emailed code, to Go's.
