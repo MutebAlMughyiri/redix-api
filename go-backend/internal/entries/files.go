@@ -57,8 +57,8 @@ type attachInvoiceRequest struct {
 }
 
 // attach puts the file on the entry beside any it has, as its kind's file (D5), and changes nothing else (D15): notYourEntry (403) for one the
-// caller may not handle (BR-42), entryNotAttachable (409) for a deduction, a credit note or a removed entry, unknownAttachment (400), and
-// invoiceAlreadyAttached (409) for a file already on an entry (BR-22).
+// caller may not handle (BR-42), entryNotAttachable (409) for a deduction or a credit note, unknownAttachment (400), and invoiceAlreadyAttached
+// (409) for a file already on an entry (BR-22). A removed entry is not found (404), as on every route of an entry (redix-api #119).
 func (s Routes) attach(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var typed attachInvoiceRequest
 	if !web.Read(w, r, &typed) {

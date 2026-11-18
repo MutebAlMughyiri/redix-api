@@ -7254,7 +7254,7 @@
     },
     "/projects/{projectId}/entries/{entryId}/invoice": {
       "post": {
-        "description": "attach puts the file on the entry beside any it has, as its kind's file (D5), and changes nothing else (D15): notYourEntry (403) for one the caller may not handle (BR-42), entryNotAttachable (409) for a deduction, a credit note or a removed entry, unknownAttachment (400), and invoiceAlreadyAttached (409) for a file already on an entry (BR-22).\n\nAccess: needs the RecordEntries permission.",
+        "description": "attach puts the file on the entry beside any it has, as its kind's file (D5), and changes nothing else (D15): notYourEntry (403) for one the caller may not handle (BR-42), entryNotAttachable (409) for a deduction or a credit note, unknownAttachment (400), and invoiceAlreadyAttached (409) for a file already on an entry (BR-22). A removed entry is not found (404), as on every route of an entry (redix-api #119).\n\nAccess: needs the RecordEntries permission.",
         "parameters": [
           {
             "in": "path",
@@ -7337,7 +7337,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "attach puts the file on the entry beside any it has, as its kind's file (D5), and changes nothing else (D15): notYourEntry (403) for one the caller may not handle (BR-42), entryNotAttachable (409) for a deduction, a credit note or a removed entry, unknownAttachment (400), and invoiceAlreadyAttached (409) for a file already on an entry (BR-22).",
+        "summary": "attach puts the file on the entry beside any it has, as its kind's file (D5), and changes nothing else (D15): notYourEntry (403) for one the caller may not handle (BR-42), entryNotAttachable (409) for a deduction or a credit note, unknownAttachment (400), and invoiceAlreadyAttached (409) for a file already on an entry (BR-22).",
         "tags": [
           "entries"
         ]

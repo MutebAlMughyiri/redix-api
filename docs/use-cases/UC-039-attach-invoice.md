@@ -20,7 +20,7 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | AC-46.10c, D5: every kind that pays something is listed, with or without a file | `entries.attachableBy`, `entries.Routes.list` | `EntryFileTests.AC_46_10c_D5_EveryKindThatPaysSomethingIsListedWithOrWithoutAFile` |
-| A deduction, a credit note and a removed entry are not listed and cannot take one | `entries.attachableBy` | `EntryFileTests.AC_46_10c_ADeductionACreditNoteAndARemovedEntryAreNotListedAndCannotTakeOne` |
+| A deduction, a credit note and a removed entry are not listed and cannot take one: the first two refused as entryNotAttachable, a removed one not found, as on every route of an entry (redix-api #119) | `entries.attachableBy`, `entries.Routes.entry` | `EntryFileTests.AC_46_10c_ADeductionACreditNoteAndARemovedEntryAreNotListedAndCannotTakeOne` |
 | AC-46.10f, R7, R8: a person lists and attaches to their own; with `ManageAnyEntry` others' too, never their drafts; the list and the attach agree | `entries.mayHandle`, `entries.Routes.attach` | `EntryFileTests.AC_46_10f_FieldListsAndAttachesToTheirOwnAlone`, `AC_46_10f_WhoeverManagesAnyEntryListsAndAttachesToOthersButNeverToTheirDrafts` |
 | AC-49.2, D6: the QR code's match alone is answered, for the pin over the list | `entries.Routes.attachable` | `EntryFileTests.AC_49_2_D6_TheQrCodesMatchAloneIsAnsweredForThePinOverTheList` |
 | AC-46.10a, R10, D15: a file goes on an approved entry, its figures stay, and a History line is written | `entries.Routes.attach` | `EntryFileTests.AC_46_10a_R10_AFileGoesOnAnApprovedEntryItsFiguresStayAndAHistoryLineIsWritten` |
