@@ -141,7 +141,6 @@ func (s Routes) search(w http.ResponseWriter, r *http.Request, caller access.Cal
 	web.JSON(w, r, http.StatusOK, views)
 }
 
-// Request is a supplier as the app sends it (SupplierRequest).
 // Request is a supplier as a person types it (SupplierRequest).
 type Request struct {
 	Name          string    `json:"name"`
