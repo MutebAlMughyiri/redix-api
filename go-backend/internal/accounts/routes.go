@@ -144,14 +144,17 @@ func accountFields(row store.Account) map[string]any {
 // HistoryRecord.Of left the key out.
 func custodianFields(userID uuid.UUID) map[string]any { return map[string]any{"UserId": userID} }
 
+// addAccountRequest is the body POST /projects/{projectId}/accounts (UC-015) reads.
+type addAccountRequest struct {
+	Name        string      `json:"name"`
+	Type        AccountType `json:"type"`
+	CustodianID uuid.UUID   `json:"custodianId,omitzero"`
+}
+
 // add adds an account, which holds nothing until an entry or a transfer moves money into it; its custodian is recorded under its line, as .NET
 // recorded it.
 func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Name        string      `json:"name"`
-		Type        AccountType `json:"type"`
-		CustodianID uuid.UUID   `json:"custodianId,omitzero"`
-	}
+	var request addAccountRequest
 	if !web.Read(w, r, &request) || s.refused(w, r, request.Name, int64(request.Type), request.CustodianID) {
 		return
 	}
@@ -179,13 +182,16 @@ func (s Routes) account(w http.ResponseWriter, r *http.Request) (store.Account, 
 	return account, !changes.Answered(w, r, err)
 }
 
+// editAccountRequest is the body PUT /projects/{projectId}/accounts/{accountId} reads (UC-015).
+type editAccountRequest struct {
+	Name        string    `json:"name"`
+	CustodianID uuid.UUID `json:"custodianId,omitzero"`
+}
+
 // edit changes an account's name and who holds it; its type never changes. It answers as add does; each change is in History as .NET's
 // AddHistoryOfChanges wrote it, the custodian's under an update whatever became of its row.
 func (s Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Name        string    `json:"name"`
-		CustodianID uuid.UUID `json:"custodianId,omitzero"`
-	}
+	var request editAccountRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -279,17 +285,20 @@ func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Cal
 	})
 }
 
+// transferRequest is the body POST /projects/{projectId}/transfers reads (FR-23).
+type transferRequest struct {
+	FromAccountID uuid.UUID    `json:"fromAccountId"`
+	ToAccountID   uuid.UUID    `json:"toAccountId"`
+	Amount        fixed.Number `json:"amount"`
+	Date          moment.Date  `json:"date"`
+	Notes         string       `json:"notes"`
+}
+
 // transfer moves an amount from one account of the project to another (FR-23), which counts at once in both balances: unknownAccount for an
 // account not in the project, then sameAccount, accountDisabled, invalidAmount for none or more than two decimals, invalidNotes past 1,000
 // characters, insufficientBalance for more than the first account holds (400).
 func (s Routes) transfer(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		FromAccountID uuid.UUID    `json:"fromAccountId"`
-		ToAccountID   uuid.UUID    `json:"toAccountId"`
-		Amount        fixed.Number `json:"amount"`
-		Date          moment.Date  `json:"date"`
-		Notes         string       `json:"notes"`
-	}
+	var request transferRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -440,11 +449,14 @@ func Enter(c changes.Change, balances []Actual) error {
 	return c.Record(history.Create, "Reconciliations", check.ID, nil, map[string]any{"ProjectId": check.ProjectID, "At": check.At, "UserId": check.UserID})
 }
 
+// reconciliationRequest is the body POST /projects/{projectId}/reconciliations reads (UC-040).
+type reconciliationRequest struct {
+	Balances []Actual `json:"balances"`
+}
+
 // enter keeps a check as Enter does, and answers the accounts against the books, each balance as it was typed.
 func (s Routes) enter(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Balances []Actual `json:"balances"`
-	}
+	var request reconciliationRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
