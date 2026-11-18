@@ -41,7 +41,7 @@ Each use case adds its own actions; entries, users and attachments join the Hist
 
 ## How a use case records an action
 
-After making its change and before `SaveChanges`, the endpoint calls `db.AddHistory(record, action, userId, at)`. The record is built from EF Core's change tracker, so the values come from the change itself, and it is saved by the same `SaveChanges`, so the change and its record are kept or lost together. A property marked `[NotInHistory]` never enters the History table.
+Inside the write that makes its change, the endpoint records it with `changes.Change.Record`, which calls `history.Write` on the same transaction: the values are the ones the change set, and the change and its record are kept or lost together. Only the values the endpoint passes enter the History table, so a password hash never does.
 
 ## Rules and where they live
 

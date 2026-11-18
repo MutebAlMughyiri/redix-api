@@ -16,7 +16,7 @@
 
 | Step | Code |
 | --- | --- |
-| The access token is checked by ASP.NET Core's JWT bearer authentication, with the same key, issuer and audience it was signed with | `AccessTokens.ValidationParameters` |
+| The access token is checked with the same key, issuer and audience it was signed with, and only between its start and its end, with no leeway | `credentials.Tokens.Check` |
 | The token's device must still be open, so a revoked device is refused at the next request; someone inactive in a project keeps his session, and that project's routes refuse him (redix-api #126) | `SessionPolicies.CheckSessionIsOpen` |
 | Every endpoint not marked open falls under the `Working` policy: signed in, with no temporary password left to change | `SessionPolicies.Working`, the fallback policy |
 | Changing the password is the one endpoint a temporary-password session may reach | `SessionPolicies.MayChangePassword` |

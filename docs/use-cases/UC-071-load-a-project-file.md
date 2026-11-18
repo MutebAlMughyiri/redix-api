@@ -16,7 +16,7 @@ A refusal under `rows` says where it is, by the file's names: `category`, `item`
 
 ## How it loads
 
-One EF Core transaction holds everything; a refusal anywhere returns before it commits, so nothing is saved (D3). The load holds no rule of its own: each part goes to the owner that takes it by hand.
+One write, `changes.Writer.Write`, holds everything in one transaction; a refusal anywhere returns before it commits, so nothing is saved (D3). The load holds no rule of its own: each part goes to the owner that takes it by hand.
 
 | Part | Owner | When the project lacks it |
 | --- | --- | --- |

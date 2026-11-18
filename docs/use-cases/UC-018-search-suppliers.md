@@ -20,7 +20,7 @@ The list is by name for now. "Most used first" (AC-43.1) needs to know which sup
 
 ## Tables
 
-No new table. An index on `Suppliers (ProjectId, Name)` serves the order. `Suppliers.NormalizedName`, kept beside the name and filled when it is saved, is what a search compares, because no SQL Server collation treats Arabic spelling variants alike.
+No new table. An index on `suppliers (project_id, name)` serves the order. `suppliers.normalized_name`, kept beside the name and filled when it is saved, is what a search compares, because no collation treats Arabic spelling variants alike.
 
 ## Rules and where they live
 

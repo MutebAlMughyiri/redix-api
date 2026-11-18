@@ -2,7 +2,7 @@
 
 # UC-001: Set up the environment and base code
 
-**What it is for:** the base every later use case builds on: a running API on SQL Server, a health check, Swagger outside production, and the words the app shows.
+**What it is for:** the base every later use case builds on: a running API on SQLite, a health check, Swagger outside production, and the words the app shows.
 **Who uses it:** everyone, before sign-in. Nothing here needs a permission.
 **Issue:** redix-api #20
 
@@ -29,7 +29,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | --- | --- | --- |
 | Money is `decimal(19,4)` (BR-13) | `fixed.Number` | Enforced by the model; checked in the migration |
 | Every table has a required rowversion. **Retired with SQL Server (redix-api #140 N5):** SQLite writes one transaction at a time, so no row needs a version | - | - |
-| `/health` checks the database | `Program.cs`, `AddDbContextCheck` | `HealthTests.HealthAnswersAgainstMigratedDatabase` |
+| `/health` checks the database | `server.Routes`: `/health` pings the database | `HealthTests.HealthAnswersAgainstMigratedDatabase` |
 | A bundle holds every word of its language | `translations.bundle` | `TranslationsTests.BundleHoldsEveryWordOfTheLanguage` |
 | An unchanged bundle answers `304` | `translations.bundle` | `TranslationsTests.UnchangedBundleAnswersNotModified` |
 | Another language answers `404` | `translations.bundle` | `TranslationsTests.UnknownLanguageIsNotFound` |

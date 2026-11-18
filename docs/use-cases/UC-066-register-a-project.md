@@ -35,5 +35,5 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A rejection says why | `projects.Routes.reject` | `RegistrationTests.ARejectionSaysWhy` |
 | A project is decided once | `projects.Routes.approve`, `projects.Routes.reject` | `RegistrationTests.AProjectIsDecidedOnce` |
 | A project manager cannot take over the admin | `users.Routes.mayChange`, `users.Routes.addExisting` | `ProjectUsersTests.AManagerCannotTakeOverTheAdmin` |
-| Too many tries from one address are refused | The rate limiter in `Program.cs` | `RegistrationTests.TooManyTriesAreRefused` |
+| Too many tries from one address are refused | `limits.PerHour`, `Window.PerAddress` | `RegistrationTests.TooManyTriesAreRefused` |
 | Every registration and decision is in the History table | `history.Write` | `RegistrationTests.EveryDecisionIsInTheHistory` |
