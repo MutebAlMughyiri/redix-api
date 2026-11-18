@@ -14,6 +14,12 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 )
 
+// syncView is what GET /projects/{projectId}/sync answers (UC-030).
+type syncView struct {
+	Stamp string                     `json:"stamp"`
+	Lists map[string]json.RawMessage `json:"lists"`
+}
+
 // Map routes the sync, for whoever reads the project. Each list is read through routes itself, as the app reads it, so every list has the one
 // owner its own route is.
 func Map(router *web.Router, gate *access.Gate) {
@@ -61,10 +67,7 @@ func Map(router *web.Router, gate *access.Gate) {
 		if r.URL.Query().Get("since") == stamp {
 			lists = map[string]json.RawMessage{}
 		}
-		web.JSON(w, r, http.StatusOK, struct {
-			Stamp string                     `json:"stamp"`
-			Lists map[string]json.RawMessage `json:"lists"`
-		}{stamp, lists})
+		web.JSON(w, r, http.StatusOK, syncView{stamp, lists})
 	}))
 }
 
