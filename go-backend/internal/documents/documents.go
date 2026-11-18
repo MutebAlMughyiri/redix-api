@@ -42,25 +42,27 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("DELETE", documents+"/{documentId:guid}", gate.Changes(access.ManageProject, s.remove))
 }
 
+// documentView is part of what GET /projects/{projectId}/documents answers (UC-064).
+type documentView struct {
+	ID           uuid.UUID     `json:"id"`
+	Name         string        `json:"name"`
+	Group        string        `json:"group"`
+	AttachmentID uuid.UUID     `json:"attachmentId"`
+	FileName     string        `json:"fileName"`
+	ContentType  string        `json:"contentType"`
+	UploadedAt   moment.Moment `json:"uploadedAt"`
+}
+
 // list is the project's documents: those in no group first, then each group in order, newest first within each.
 func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	type view struct {
-		ID           uuid.UUID     `json:"id"`
-		Name         string        `json:"name"`
-		Group        string        `json:"group"`
-		AttachmentID uuid.UUID     `json:"attachmentId"`
-		FileName     string        `json:"fileName"`
-		ContentType  string        `json:"contentType"`
-		UploadedAt   moment.Moment `json:"uploadedAt"`
-	}
 	rows, err := s.database.Queries().DocumentsOf(r.Context(), web.ID(r, "projectId"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []view{}
+	views := []documentView{}
 	for _, row := range rows {
-		views = append(views, view{ID: row.ID, Name: row.Name, Group: row.GroupName, AttachmentID: row.AttachmentID, FileName: row.FileName, ContentType: row.ContentType,
+		views = append(views, documentView{ID: row.ID, Name: row.Name, Group: row.GroupName, AttachmentID: row.AttachmentID, FileName: row.FileName, ContentType: row.ContentType,
 			UploadedAt: row.UploadedAt})
 	}
 	web.JSON(w, r, http.StatusOK, views)
