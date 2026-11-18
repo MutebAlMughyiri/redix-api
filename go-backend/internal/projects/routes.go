@@ -267,16 +267,19 @@ func addWithManager(ctx context.Context, q *store.Queries, project store.Project
 	return users.TickStarter(ctx, q, project.ID, managerID, now)
 }
 
+// registerProjectRequest is the body POST /projects/register (UC-066) reads.
+type registerProjectRequest struct {
+	startRequest
+	DisplayName string `json:"displayName"`
+	Username    string `json:"username"`
+	Mobile      string `json:"mobile"`
+	Password    string `json:"password"`
+}
+
 // register lets someone with no account register a project and become its manager (UC-066): the project's refusals as create's, then the new
 // user's; 201 with the project as its manager sees it.
 func (p Routes) register(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		startRequest
-		DisplayName string `json:"displayName"`
-		Username    string `json:"username"`
-		Mobile      string `json:"mobile"`
-		Password    string `json:"password"`
-	}
+	var request registerProjectRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -368,12 +371,15 @@ func (p Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 	})
 }
 
+// rejectProjectRequest is the body POST /projects/{projectId}/reject (UC-066) reads.
+type rejectProjectRequest struct {
+	Reason string `json:"reason"`
+}
+
 // reject refuses a registered project, saying why, which its manager sees (AC-52.2): 404 for no such project, notPending (409) for one decided
 // already, invalidReason (400) for a reason empty or over 500 characters.
 func (p Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Reason string `json:"reason"`
-	}
+	var request rejectProjectRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -428,12 +434,15 @@ func (p Routes) decide(w http.ResponseWriter, r *http.Request, caller access.Cal
 	w.WriteHeader(http.StatusOK)
 }
 
+// timeZoneRequest is the body PUT /projects/{projectId}/time-zone (UC-006) reads.
+type timeZoneRequest struct {
+	TimeZone string `json:"timeZone"`
+}
+
 // setTimeZone puts the project in a zone of the list, the one its entries' today is counted in (redix-app #107, D1): unknownTimeZone (400) for one
 // not on it, projectFinished (409) in a finished project. A change is its own History line.
 func (p Routes) setTimeZone(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		TimeZone string `json:"timeZone"`
-	}
+	var request timeZoneRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -482,11 +491,14 @@ func (p Routes) timeZones(w http.ResponseWriter, r *http.Request, _ access.Calle
 // nothingMore is a decision that keeps no rows beside the project's own.
 func nothingMore(context.Context, *store.Queries) error { return nil }
 
+// renameProjectRequest is the body PUT /projects/{projectId} (UC-006) reads.
+type renameProjectRequest struct {
+	Name string `json:"name"`
+}
+
 // rename renames the project.
 func (p Routes) rename(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Name string `json:"name"`
-	}
+	var request renameProjectRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -500,11 +512,14 @@ func (p Routes) rename(w http.ResponseWriter, r *http.Request, caller access.Cal
 	})
 }
 
+// describeProjectRequest is the body PUT /projects/{projectId}/description (UC-006) reads.
+type describeProjectRequest struct {
+	Description string `json:"description"`
+}
+
 // describe gives the project its description, up to 2,000 characters.
 func (p Routes) describe(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Description string `json:"description"`
-	}
+	var request describeProjectRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -518,11 +533,14 @@ func (p Routes) describe(w http.ResponseWriter, r *http.Request, caller access.C
 	})
 }
 
+// addUnitRequest is the body POST /projects/{projectId}/units (UC-006) reads.
+type addUnitRequest struct {
+	Name string `json:"name"`
+}
+
 // addUnit adds a unit after the last: invalidName (400) or unitNameTaken (409).
 func (p Routes) addUnit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Name string `json:"name"`
-	}
+	var request addUnitRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -543,11 +561,14 @@ func (p Routes) addUnit(w http.ResponseWriter, r *http.Request, caller access.Ca
 	})
 }
 
+// renameUnitRequest is the body PUT /projects/{projectId}/units/{unitId} (UC-006) reads.
+type renameUnitRequest struct {
+	Name string `json:"name"`
+}
+
 // renameUnit renames one of the project's units: 404 for one it does not have, invalidName (400) or unitNameTaken (409).
 func (p Routes) renameUnit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Name string `json:"name"`
-	}
+	var request renameUnitRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -724,6 +745,12 @@ func keepChanges(ctx context.Context, q *store.Queries, actor uuid.UUID, action 
 	return nil
 }
 
+// defaultProjectView is what POST /projects/{projectId}/default and DELETE /projects/default answer (UC-010): the project sign-in opens straight
+// into, "" for none.
+type defaultProjectView struct {
+	DefaultProjectID string `json:"defaultProjectId"`
+}
+
 // setDefault makes the project the one sign-in opens straight into (AC-37.1).
 func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
@@ -741,7 +768,7 @@ func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	web.JSON(w, r, http.StatusOK, map[string]string{"defaultProjectId": projectID.String()})
+	web.JSON(w, r, http.StatusOK, defaultProjectView{projectID.String()})
 }
 
 // removeDefault lets sign-in open the project list again.
@@ -751,7 +778,7 @@ func (p Routes) removeDefault(w http.ResponseWriter, r *http.Request, caller acc
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	web.JSON(w, r, http.StatusOK, map[string]string{"defaultProjectId": ""})
+	web.JSON(w, r, http.StatusOK, defaultProjectView{})
 }
 
 // answer is the project as userID sees it (ProjectsEndpoints.ViewOfAsync).
