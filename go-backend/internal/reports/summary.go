@@ -135,6 +135,19 @@ func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID) ([
 	return side(false), side(true), nil
 }
 
+// summaryView is what GET /projects/{projectId}/summary answers (UC-049).
+type summaryView struct {
+	Revenue                  fixed.Total         `json:"revenue"`
+	Expenses                 fixed.Total         `json:"expenses"`
+	Surplus                  fixed.Total         `json:"surplus"`
+	WasReconciled            bool                `json:"wasReconciled"`
+	ReconciliationDifference fixed.Total         `json:"reconciliationDifference"`
+	Waiting                  Waiting             `json:"waiting"`
+	CompletionPercent        fixed.Written       `json:"completionPercent"`
+	Categories               []categoryTotalView `json:"categories"`
+	RevenueCategories        []categoryTotalView `json:"revenueCategories"`
+}
+
 // summary is revenue, expenses, the surplus, the reconciliation difference, what waits, each category's total with its items' - the capital among
 // the revenue (redix-api #109) - and the completion (UC-049, UC-063), read on every request so an approval shows at once (AC-34.1).
 func (s Routes) summary(w http.ResponseWriter, r *http.Request, _ access.Caller) {
@@ -147,16 +160,6 @@ func (s Routes) summary(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	web.JSON(w, r, http.StatusOK, struct {
-		Revenue                  fixed.Total         `json:"revenue"`
-		Expenses                 fixed.Total         `json:"expenses"`
-		Surplus                  fixed.Total         `json:"surplus"`
-		WasReconciled            bool                `json:"wasReconciled"`
-		ReconciliationDifference fixed.Total         `json:"reconciliationDifference"`
-		Waiting                  Waiting             `json:"waiting"`
-		CompletionPercent        fixed.Written       `json:"completionPercent"`
-		Categories               []categoryTotalView `json:"categories"`
-		RevenueCategories        []categoryTotalView `json:"revenueCategories"`
-	}{figures.Revenue(), figures.Expenses, figures.Surplus(), !at.IsZero(), difference, waiting,
+	web.JSON(w, r, http.StatusOK, summaryView{figures.Revenue(), figures.Expenses, figures.Surplus(), !at.IsZero(), difference, waiting,
 		fixed.Percent(figures.Expenses.Number(), figures.Revenue().Number(), 2, false), expenses, revenue})
 }

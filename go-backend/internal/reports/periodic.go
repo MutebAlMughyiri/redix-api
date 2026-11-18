@@ -188,15 +188,18 @@ func (s Routes) periodicReports(w http.ResponseWriter, r *http.Request, _ access
 	s.answer(w, r, issued, err)
 }
 
+// nextPeriodicReportView is what GET /projects/{projectId}/periodic-reports/next answers (UC-053).
+type nextPeriodicReportView struct {
+	Number  int64   `json:"number"`
+	Waiting Waiting `json:"waiting"`
+}
+
 // nextPeriodicReport is the number the next report takes, and what waits for approval, which it shows as two lines (UC-053 step 2).
 func (s Routes) nextPeriodicReport(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
 	latest, err := latestOf(c)
 	waiting, waitingErr := WaitingOf(c.Ctx, c.Q, c.ProjectID)
-	s.answer(w, r, struct {
-		Number  int64   `json:"number"`
-		Waiting Waiting `json:"waiting"`
-	}{latest.Number + 1, waiting}, errors.Join(err, waitingErr))
+	s.answer(w, r, nextPeriodicReportView{latest.Number + 1, waiting}, errors.Join(err, waitingErr))
 }
 
 // periodicReport is a report as it was issued: every partner for whoever sees all capital, otherwise the total and only the lines of the partners
