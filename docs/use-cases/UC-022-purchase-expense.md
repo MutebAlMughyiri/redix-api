@@ -51,10 +51,10 @@ Tests are in `ExpensesTests` and `SimpleExpenseTests`.
 | BR-19: a supplier named is from the register, never free text | `suppliers.Routes.search` | `ExpensesTests.BR_19_ASupplierNotInTheRegisterIsRefused`, `ADisabledSupplierIsRefused`, `FR_44_FieldUsesTheirOwnPendingSupplierAndNotAnothers` |
 | Open question 4: Field charges only what they hold; `ChargeAnyAccount` lets Finance charge any active account | `accounts.Routes.list` | `ExpensesTests.OpenQuestion4_FieldChargesAnAccountTheyAreACustodianOf`, `OpenQuestion4_FieldCannotChargeAnAccountTheyAreNotACustodianOf`, `ChargeAnyAccountLetsFinanceChargeAnyActiveAccountAndNotADisabledOne` |
 | AC-38.1: only an item that takes purchases | `structure.Offers` | `ExpensesTests.AC_38_1_AnItemThatTakesNoPurchasesOrIsDisabledOrOfAnotherProjectIsRefused` |
-| AC-40.1: a disabled payment method is refused | `ExpensesEndpoints` | `ExpensesTests.AC_40_1_ADisabledPaymentMethodIsRefused` |
+| AC-40.1: a disabled payment method is refused | `entries.refusalOfPayment` | `ExpensesTests.AC_40_1_ADisabledPaymentMethodIsRefused` |
 | FR-41, AC-41.1: a required column is asked when sending, of its own item only, and only what its kind of entry is asked | `entries.AskedColumns` | `ExpensesTests.AC_41_1_ARequiredCustomColumnIsAskedOnlyOfItsItemWhenSending`, `ADraftCanWaitForARequiredColumn`, `FR_41_ABuiltInColumnMadeRequiredIsAskedWhenSending` |
 | FR-41: values are stored with the entry, and must fit their column | `entries.Record`, `structure.Accepts` | `ExpensesTests.FR_41_CustomValuesAreStoredWithTheEntryAndAnEmptyOneIsNoValue`, `FR_41_AValueThatDoesNotFitItsColumnIsRefusedNamingIt`, `FR_41_AValueThatFitsItsColumnIsKept`, `AValueForAColumnTheItemDoesNotAskIsRefused` |
-| BR-21: a deleted column is no longer asked | `ExpensesEndpoints` | `ExpensesTests.BR_21_ADeletedColumnIsNoLongerAsked` |
+| BR-21: a deleted column is no longer asked | `entries.AskedColumns` | `ExpensesTests.BR_21_ADeletedColumnIsNoLongerAsked` |
 | A file, when there is one, is linked to its entry as its invoice | `entries.Routes.save` | `ExpensesTests.TheFileOfAnInvoiceIsLinkedToItsEntryAsItsInvoice` |
 | BR-22: one file is on one expense | `EntryAttachments` | `SimpleExpenseTests.BR_22_TheSameFileOnASecondExpenseIsRefused`, `BR_22_TheSameFileSentAgainIsTheSameFileAndIsRefused`, `AFileKeptAndOnNoEntryIsFreeToUse` |
 | BR-33: nothing of another project | Each check | `ExpensesTests.BR_33_AFileOfAnotherProjectIsRefusedOnAnEntry`, `BR_33_AnAccountOfAnotherProjectIsRefused`, `BR_33_SomeoneOutsideTheProjectCannotRecordInIt` |

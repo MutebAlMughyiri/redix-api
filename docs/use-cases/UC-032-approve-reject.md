@@ -23,7 +23,7 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | An entry of another project is unknown here (BR-33) | `entries.Routes.approve` | `ApprovalsTests.AnEntryOfAnotherProjectIsUnknownHere` |
 | AC-19.1: a rejection needs a reason, and returns to its author with it | `entries.Routes.reject`, `entries.Routes.mine` | `ApprovalsTests.AC_19_1_ARejectionNeedsAReasonAndReturnsTheEntryToItsAuthorWithIt` |
 | A rejected entry is sent again, and counts only once approved | `entries.Routes.submit` | `ApprovalsTests.ARejectedEntryIsSentAgainAndCountsOnlyOnceApproved` |
-| What is decided cannot be decided again | `ApprovalsEndpoints` | `ApprovalsTests.WhatIsAlreadyDecidedCannotBeDecidedAgain` |
+| What is decided cannot be decided again | `entries.Routes.approve`, `entries.Routes.reject` | `ApprovalsTests.WhatIsAlreadyDecidedCannotBeDecidedAgain` |
 | AC-44.1: approving the first expense on a pending supplier approves it too, and rejecting leaves it | `entries.Routes.approve` | `ApprovalsTests.AC_44_1_ApprovingTheFirstExpenseOnAPendingSupplierApprovesItToo`, `AC_44_1_RejectingItLeavesTheSupplierPending` |
 | A credit note waits for its invoice, or goes with it. **Retired by redix-api #119:** a credit note is a plain minus row naming no bill, approved on its own (BR-18) | - | - |
 | Each step is recorded, with who and why | the `entry_decisions` table, `history.Write` | `ApprovalsTests.EachSendingAndDecisionIsRecordedWithWhoAndWhy` |

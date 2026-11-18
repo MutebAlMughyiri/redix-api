@@ -20,15 +20,15 @@ One write, `changes.Writer.Write`, holds everything in one transaction; a refusa
 
 | Part | Owner | When the project lacks it |
 | --- | --- | --- |
-| A supplier, a payment method of the file's lists | `SuppliersEndpoints.AddAsync` (approved, since the manager keeps the settings), `PaymentMethodsEndpoints.AddAsync` | Added (D6) |
-| A category, an item | `CategoriesEndpoints.AddCategoryAsync`, `AddItemAsync`; found by name, an item within its category | Added at the end (D5, D13) |
-| A purchase or revenue table | `CategoriesEndpoints.AddSubgroupAsync`; the item's own name is its general table | Added (D5) |
-| A contract's payments | `ContractsEndpoints.AddAsync`; its contractor is the table's name after «دفعات », a supplier added when missing, its value `contractAmount`, an open value when empty | Added (D6) |
-| A partner | `PartnersEndpoints.AddAsync`, with no login | Added (D6) |
+| A supplier, a payment method of the file's lists | `suppliers.Add` (approved, since the manager keeps the settings), `settings.AddPaymentMethod` | Added (D6) |
+| A category, an item | `structure.AddCategory`, `structure.AddItem`; found by name, an item within its category | Added at the end (D5, D13) |
+| A purchase or revenue table | `structure.AddSubgroup`; the item's own name is its general table | Added (D5) |
+| A contract's payments | `contracts.Add`; its contractor is the table's name after «دفعات », a supplier added when missing, its value `contractAmount`, an open value when empty | Added (D6) |
+| A partner | `partners.Add`, with no login | Added (D6) |
 | An account | Found by name; the file carries no type or custodian | Refused, `accountNotInProject` (D6) |
-| A row | `EntryRecording.RecordAsync`, telling no decider, then `ApprovalsEndpoints.ApproveAsync` in the caller's name; it counts as approved from the file's report time, while its History lines keep the moment of the load (D7, D12). The rows are recorded by their date, then in the file's order, so each takes its «رقم القيد» in the calendar's order (redix-api #128 D6) | — |
-| The actual balances | `ReconciliationsEndpoints.EnterAsync`: one reconciliation, a difference staying visible (D8) | — |
-| The report | `PeriodicReportsEndpoints.IssueAsync` with the file's number and time; none for a file with none (D9) | A number the project issued already is `reportAlreadyIssued`, found before anything is saved |
+| A row | `entries.Record`, telling no decider, then `entries.Approve` in the caller's name; it counts as approved from the file's report time, while its History lines keep the moment of the load (D7, D12). The rows are recorded by their date, then in the file's order, so each takes its «رقم القيد» in the calendar's order (redix-api #128 D6) | — |
+| The actual balances | `accounts.Enter`: one reconciliation, a difference staying visible (D8) | — |
+| The report | `reports.Issue` with the file's number and time; none for a file with none (D9) | A number the project issued already is `reportAlreadyIssued`, found before anything is saved |
 
 Structure is added, never renamed or removed (D5). A table the caller is not offered is listed once, as `unknownTable`; its rows are not read.
 

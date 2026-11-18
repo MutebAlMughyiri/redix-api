@@ -59,7 +59,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A custodian sees their custody and every other account, and changes none (AC-22.1, BR-31) | `accounts.Routes.list`, `access.ManageSettings` | `AccountsTests.ACustodianSeesTheirCustodyAndEveryOtherAccountWithoutChangingThem` |
 | Field is offered only what they hold, and only while it is active (open question 4) | `accounts.Routes.list` | `AccountsTests.FieldIsOfferedOnlyTheAccountsTheyHold`, `FieldHoldingNothingIsOfferedNothing`, `FieldIsNotOfferedADisabledAccountTheyHold` |
 | Finance is offered every active account | `access.ChargeAnyAccount` | `AccountsTests.FinanceIsOfferedEveryActiveAccount`, `FieldIsOfferedOnlyTheAccountsTheyHold` |
-| One project's accounts are never another's (BR-33) | `access.Gate.Needs`, `AccountsEndpoints` | `AccountsTests.OneProjectsAccountsAreNeverAnothers` |
+| One project's accounts are never another's (BR-33) | `access.Gate.Needs`, `accounts.Routes.account` | `AccountsTests.OneProjectsAccountsAreNeverAnothers` |
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AccountsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 | Everyone with access reads; only Finance changes | `access.ManageSettings` | `AccountsTests.EveryoneWithAccessReadsAccountsAndOnlyFinanceChangesThem` |
 | The people to choose among are the active ones, once each, with nothing but a name | `users.Routes.members` | `AccountsTests.TheMembersListNamesEachActivePersonOnceWithNothingElse`, `EveryoneWithAccessReadsTheMembersAndNobodyElse` |

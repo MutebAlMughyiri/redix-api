@@ -60,7 +60,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A copied project starts with only that one (AC-05.2) | `structure.Copy` | `ACopiedProjectStartsWithOnlyTheGeneralCashSupplier` |
 | Everyone with access reads the register (BR-31) | `access.ReadProject` | `EveryoneWithAccessReadsTheRegister` |
 | Only Finance changes suppliers | `access.ManageSettings` | `OnlyFinanceChangesSuppliers` |
-| One project's suppliers are never another's (BR-33) | `access.Gate.Needs`, `SuppliersEndpoints` | `OneProjectsSuppliersAreNeverAnothers` |
+| One project's suppliers are never another's (BR-33) | `access.Gate.Needs`, the `SupplierOf` query, by id and project | `OneProjectsSuppliersAreNeverAnothers` |
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 
 ## Left to later use cases

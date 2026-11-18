@@ -52,11 +52,11 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A contract answers its parties, and whether any payment names it | `ContractView`, `contracts.Routes.list` | `AContractAnswersItsPartiesAndThatItHasNoPayments` |
 | A contract's contractor and item change while it has no payments, in the History table, old and new; new ones answer as adding does | `contracts.Routes.amend`, `AmendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheHistoryShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
 | Any payment, even a draft or a rejected one, holds them, and a refusal changes nothing; the terms can still change | `contracts.Routes.amend` | `AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing`, `AContractWithAPaymentStillChangesItsTerms` |
-| Every change of a contract is in the History table | `ContractsEndpoints` | `EveryChangeOfAContractIsInTheHistory` |
+| Every change of a contract is in the History table | `contracts.keep` | `EveryChangeOfAContractIsInTheHistory` |
 | Disabled, it stays on the list, never deleted | No delete route | `ADisabledContractStaysOnTheListAndCanBeEnabled` |
 | Contracts show in the order added | `contracts.Routes.list` | `ContractsShowInTheOrderTheyWereAdded` |
 | Everyone with access reads them; only Finance changes them (BR-31) | `access.ReadProject`, `ManageSettings` | `EveryoneWithAccessReadsContractsAndOnlyFinanceChangesThem` |
-| One project's contracts are never another's (BR-33) | `access.Gate.Needs`, `ContractsEndpoints` | `OneProjectsContractsAreNeverAnothers` |
+| One project's contracts are never another's (BR-33) | `access.Gate.Needs`, the `ContractOf` query, by id and project | `OneProjectsContractsAreNeverAnothers` |
 | A copied project starts with no contracts (AC-05.2) | `structure.Copy` copies only structure | `ACopiedProjectStartsWithNoContracts` |
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 

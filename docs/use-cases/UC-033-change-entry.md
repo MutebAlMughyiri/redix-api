@@ -37,9 +37,9 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | D1: a removed entry is not removed, changed or noted again | `entries.Routes.entry` | `RemoveApprovedEntryTests.D1_ARemovedEntryIsNotRemovedChangedOrNotedAgain` |
 | D1: a removed entry leaves the summary, its account and its item | BR-10, approved entries only | `RemoveApprovedEntryTests.D1_ARemovedEntryLeavesTheSummaryItsAccountAndItsItem` |
 | D1: a removed payment leaves what its contract paid | `ContractMoney` | `RemoveApprovedEntryTests.D1_ARemovedPaymentLeavesWhatItsContractPaid` |
-| D1: a removed movement leaves its partner's capital and no longer holds the partner | `partners.balances`, `PartnersEndpoints` | `RemoveApprovedEntryTests.D1_ARemovedMovementLeavesItsPartnersCapitalAndNoLongerHoldsThePartner` |
+| D1: a removed movement leaves its partner's capital and no longer holds the partner | `partners.balances`, `partners.deletable` | `RemoveApprovedEntryTests.D1_ARemovedMovementLeavesItsPartnersCapitalAndNoLongerHoldsThePartner` |
 | D1: the histories leave the removed entry's approval | `ApprovalHistory`, `AccountHistory` | `RemoveApprovedEntryTests.D1_TheHistoriesLeaveTheRemovedEntrysApproval` |
-| D1: a removed entry is not offered to take an invoice | `EntryFileEndpoints` | `EntryFileTests.App_119_ARemovedEntryIsNotOffered` |
+| D1: a removed entry is not offered to take an invoice | `entries.attachableBy` | `EntryFileTests.App_119_ARemovedEntryIsNotOffered` |
 | D2: a report issued before keeps the removed entry, and the next shows the difference | BR-26 | `RemoveApprovedEntryTests.D2_AReportIssuedBeforeKeepsTheRemovedEntryAndTheNextShowsTheDifference` |
 | D3: nothing is reversed any more | No route | `RemoveApprovedEntryTests.D3_NothingIsReversedAnyMore` |
 | D5: an entry reversed before reads as an ordinary approved entry | `AccountHistory`, `PartnerHistory` | `RemoveApprovedEntryTests.D5_AnEntryReversedBeforeReadsAsAnOrdinaryApprovedEntry` |

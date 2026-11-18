@@ -73,7 +73,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Deleting hides the column and keeps its row, so its values stay (AC-41.2, BR-21) | `structure.change.hide` | `ColumnsTests.ADeletedColumnLeavesEntryAndItsRowStays`, `ANonCoreColumnOfTheTemplateIsDeletedOnAnItem`, `ADeletedColumnCanBeDeletedOrChangedNoMore` |
 | A type never changes (AC-41.3, BR-21) | `structure.column.edited`; no request carries it | `ColumnsTests.ATypeNeverChanges` |
 | An order names every visible column exactly once | `structure.inOrder` | `ColumnsTests.AnOrderMustNameEveryVisibleColumnExactlyOnce` |
-| A template change leaves existing items alone unless applied (AC-41.3) | `ColumnsEndpoints` | `ColumnsTests.ATemplateChangeLeavesExistingItemsAloneUnlessApplied` |
+| A template change leaves existing items alone unless applied (AC-41.3) | `structure.Routes.editOfTemplate` | `ColumnsTests.ATemplateChangeLeavesExistingItemsAloneUnlessApplied` |
 | A new item starts from the template as it is now | `structure.Routes.addItem` | `ColumnsTests.ANewItemStartsFromTheTemplateAsItIsNow` |
 | "Apply to all items" reaches every item of that type, disabled ones too, and no other | `structure.Routes.addToTemplate`, `EditOfTemplate`, `DeleteOfTemplate` | `ColumnsTests.AColumnAppliedToAllReachesEveryItemOfThatTypeAndNoOther`, `ARenameAppliedToAllReachesEveryItemOfThatType`, `ADeleteAppliedToAllHidesItOnEveryItemOfThatType` |
 | An order applied to all keeps what only that item has after the rest | `structure.Routes.reorderOfTemplate` | `ColumnsTests.AnOrderAppliedToAllKeepsWhatOnlyThatItemHasAfterTheRest` |

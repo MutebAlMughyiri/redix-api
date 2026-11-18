@@ -42,7 +42,7 @@ A contract's documents join here (UC-020 step 3): adding or amending a contract 
 | Field and Finance keep files; Reader and Project manager only read them | `ProjectPermission` rows | `FieldAndFinanceKeepFiles`, `WhoHoldsNoAttachFilesCannotKeepAFileButReadsIt` |
 | A finished project keeps no new file and still serves its own (AC-04.1) | `MapProjectChanges` | `AFinishedProjectKeepsNoNewFileAndStillServesItsOwn` |
 | Keeping a file, and linking it to a contract, is in the History table with which file | `history.Write` | `KeepingAFileIsInTheHistory`, `LinkingADocumentToAContractIsInTheHistoryWithWhichOne` |
-| A contract carries its documents, each staying once attached, and only files of its project | `ContractsEndpoints` | `AContractCarriesItsDocumentFromWhenItIsAdded`, `AnAmendmentAddsADocumentAndKeepsThoseAlreadyCarried`, `ADocumentOfAnotherProjectIsRefusedOnAContract` |
+| A contract carries its documents, each staying once attached, and only files of its project | `contracts.refusalOfDocuments`, `contracts.keep` | `AContractCarriesItsDocumentFromWhenItIsAdded`, `AnAmendmentAddsADocumentAndKeepsThoseAlreadyCarried`, `ADocumentOfAnotherProjectIsRefusedOnAContract` |
 
 ## Not proved here
 

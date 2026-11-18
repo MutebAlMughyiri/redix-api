@@ -10,7 +10,7 @@
 
 One route answers both what was typed and what a QR code read. A VAT number has one holder in a project, so an exact number can only find that supplier, and an empty list is how the app learns that nobody holds it, to offer a quick add.
 
-The list is by name for now. "Most used first" (AC-43.1) needs to know which supplier each expense used, and nothing records that until UC-022 "Record a purchase expense". The order lives in one place, `SuppliersEndpoints.Search`.
+The list is by name for now. "Most used first" (AC-43.1) needs to know which supplier each expense used, and nothing records that until UC-022 "Record a purchase expense". The order lives in one place, `suppliers.Routes.search`.
 
 ## Endpoints
 

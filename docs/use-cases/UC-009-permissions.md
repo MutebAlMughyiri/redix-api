@@ -90,7 +90,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Field and Reader cannot change a project (AC-03.1) | `PermissionHandler` | `ProjectsTests.FieldAndReaderCannotChangeAProject` |
 | No session answers 401 (AC-N08) | `PermissionHandler` | `ProjectsTests.ASessionlessRequestIsUnauthorized` |
 | Whoever registers a project holds all 16 in it (BR-29) | `projects.addWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInIt` |
-| Deleting is its own permission | `EntriesEndpoints` | `EntryChangesTests.DeletingIsItsOwnPermission` |
+| Deleting is its own permission | `entries.Routes.delete` | `EntryChangesTests.DeletingIsItsOwnPermission` |
 | redix-api #131 D3: the upgrade gives `SeeReports` to everyone in a project, and `GenerateReports` to whoever moved money or saw all capital | The migration `ReportPermissions` | `MigrationStepsTests.R131_D3_ReportPermissions_WhoeverReadsAProjectSeesItsReportsAndWhoeverMovedMoneyOrSawAllCapitalGeneratesThem` |
 
 ## Left to later use cases
