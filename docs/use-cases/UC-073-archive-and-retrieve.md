@@ -37,7 +37,7 @@ One JSON file. The app names it «{project} - أرشيف {yyyy-MM-dd HH.mm}.json
 | --- | --- | --- |
 | The project's own | `units`, `categories`, `items`, `subgroups`, `item_columns`, `default_columns`, `accounts`, `account_custodians`, `payment_methods`, `payment_method_accounts`, `suppliers`, `supplier_default_items`, `partners`, `partner_users`, `chosen_partners`, `contracts`, `attachments`, `contract_attachments`, `documents`, `entries`, `expense_details`, `purchase_details`, `revenue_details`, `contractor_payment_details`, `capital_movement_details`, `invoices`, `entry_attachments`, `entry_decisions`, `transfers`, `reconciliations`, `reconciliation_balances`, `notifications`, `notification_entries`: 33 | Replaced, each row as it was |
 | What happened | `history`, `periodic_reports` | Stay: History is never deleted (AC-21.1), an issued report is on paper |
-| The project and who belongs | `projects` with its entry counter, `project_time_zones`, `project_structure_sources`, `project_permissions`, `project_role_names`, `inactive_members` | Stay: a removed member is never let back in, the person retrieving keeps their access, no entry number is given twice |
+| The project and who belongs | `projects` with its entry counter, `project_time_zones`, `project_structure_sources`, `project_permissions`, `project_role_names`, `inactive_members`, `permission_requests` | Stay: a removed member is never let back in, the person retrieving keeps their access, no entry number is given twice |
 | Shared | `users`, `devices`, `email_codes`, `system_permissions`, `user_default_projects`, `config_values`, `translation_keys`, `translations`, `goose_db_version`, `sqlite_sequence`, the lookups | Never in an archive |
 
 ## How it retrieves
@@ -54,7 +54,7 @@ One JSON file. The app names it «{project} - أرشيف {yyyy-MM-dd HH.mm}.json
 
 | Rule | Where | Proven by |
 | --- | --- | --- |
-| AC-73.1: an archive is one JSON file of every row of the project's 41 tables as stored, a bill or a PDF as its attachment's row; taking it writes an Archive line in the taker's name | `archive.Routes.archive` | `TestAC73_1_AnArchiveHoldsEveryRowOfTheProjectAndNamesItsFilesAndWhoTookIt` |
+| AC-73.1: an archive is one JSON file of every row of the project's 42 tables as stored, a bill or a PDF as its attachment's row; taking it writes an Archive line in the taker's name | `archive.Routes.archive` | `TestAC73_1_AnArchiveHoldsEveryRowOfTheProjectAndNamesItsFilesAndWhoTookIt` |
 | AC-73.2: a preview answers when and by whom the archive was taken and seven counts now and after, and changes nothing | `archive.Routes.retrieve` | `TestAC73_2_APreviewCountsNowAndAfterAndChangesNothing` |
 | AC-73.3, AC-73.4, AC-73.9: a retrieve makes the 33 tables the archive's again, and keeps History, the issued reports, the entry counter and the members; «سجل المشروع» says it was retrieved | `archive.override`, `archive.tables` | `TestAC73_9_RetrievedTheProjectIsItsArchiveAgainWhileHistoryReportsAndMembersStay` |
 | AC-73.5: a file that is no archive, of a newer release, or naming a person the server lacks is refused, and nothing is saved | `archive.opened`, `archive.broughtUp`, `archive.override` | `TestAC73_5_AnArchiveThatCannotRetrieveIsRefusedAndNothingIsSaved` |

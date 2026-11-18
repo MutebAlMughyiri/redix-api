@@ -96,6 +96,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addPermissionStmt, err = db.PrepareContext(ctx, addPermission); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPermission: %w", err)
 	}
+	if q.addPermissionRequestStmt, err = db.PrepareContext(ctx, addPermissionRequest); err != nil {
+		return nil, fmt.Errorf("error preparing query AddPermissionRequest: %w", err)
+	}
 	if q.addProjectStmt, err = db.PrepareContext(ctx, addProject); err != nil {
 		return nil, fmt.Errorf("error preparing query AddProject: %w", err)
 	}
@@ -212,6 +215,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.custodianOfStmt, err = db.PrepareContext(ctx, custodianOf); err != nil {
 		return nil, fmt.Errorf("error preparing query CustodianOf: %w", err)
+	}
+	if q.decidePermissionRequestStmt, err = db.PrepareContext(ctx, decidePermissionRequest); err != nil {
+		return nil, fmt.Errorf("error preparing query DecidePermissionRequest: %w", err)
 	}
 	if q.decisionsOfStmt, err = db.PrepareContext(ctx, decisionsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query DecisionsOf: %w", err)
@@ -333,6 +339,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.latestPeriodicReportStmt, err = db.PrepareContext(ctx, latestPeriodicReport); err != nil {
 		return nil, fmt.Errorf("error preparing query LatestPeriodicReport: %w", err)
 	}
+	if q.latestPermissionRequestOfStmt, err = db.PrepareContext(ctx, latestPermissionRequestOf); err != nil {
+		return nil, fmt.Errorf("error preparing query LatestPermissionRequestOf: %w", err)
+	}
 	if q.latestReconciliationStmt, err = db.PrepareContext(ctx, latestReconciliation); err != nil {
 		return nil, fmt.Errorf("error preparing query LatestReconciliation: %w", err)
 	}
@@ -404,6 +413,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.periodicReportsOfStmt, err = db.PrepareContext(ctx, periodicReportsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PeriodicReportsOf: %w", err)
+	}
+	if q.permissionRequestWithIDStmt, err = db.PrepareContext(ctx, permissionRequestWithID); err != nil {
+		return nil, fmt.Errorf("error preparing query PermissionRequestWithID: %w", err)
 	}
 	if q.permissionsOfStmt, err = db.PrepareContext(ctx, permissionsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query PermissionsOf: %w", err)
@@ -518,6 +530,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.removePermissionStmt, err = db.PrepareContext(ctx, removePermission); err != nil {
 		return nil, fmt.Errorf("error preparing query RemovePermission: %w", err)
+	}
+	if q.removePermissionRequestStmt, err = db.PrepareContext(ctx, removePermissionRequest); err != nil {
+		return nil, fmt.Errorf("error preparing query RemovePermissionRequest: %w", err)
 	}
 	if q.removePurchaseDetailsStmt, err = db.PrepareContext(ctx, removePurchaseDetails); err != nil {
 		return nil, fmt.Errorf("error preparing query RemovePurchaseDetails: %w", err)
@@ -690,6 +705,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.waitingByKindStmt, err = db.PrepareContext(ctx, waitingByKind); err != nil {
 		return nil, fmt.Errorf("error preparing query WaitingByKind: %w", err)
 	}
+	if q.waitingPermissionRequestOfStmt, err = db.PrepareContext(ctx, waitingPermissionRequestOf); err != nil {
+		return nil, fmt.Errorf("error preparing query WaitingPermissionRequestOf: %w", err)
+	}
+	if q.waitingPermissionRequestsStmt, err = db.PrepareContext(ctx, waitingPermissionRequests); err != nil {
+		return nil, fmt.Errorf("error preparing query WaitingPermissionRequests: %w", err)
+	}
 	if q.wordsInStmt, err = db.PrepareContext(ctx, wordsIn); err != nil {
 		return nil, fmt.Errorf("error preparing query WordsIn: %w", err)
 	}
@@ -819,6 +840,11 @@ func (q *Queries) Close() error {
 	if q.addPermissionStmt != nil {
 		if cerr := q.addPermissionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addPermissionStmt: %w", cerr)
+		}
+	}
+	if q.addPermissionRequestStmt != nil {
+		if cerr := q.addPermissionRequestStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addPermissionRequestStmt: %w", cerr)
 		}
 	}
 	if q.addProjectStmt != nil {
@@ -1014,6 +1040,11 @@ func (q *Queries) Close() error {
 	if q.custodianOfStmt != nil {
 		if cerr := q.custodianOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing custodianOfStmt: %w", cerr)
+		}
+	}
+	if q.decidePermissionRequestStmt != nil {
+		if cerr := q.decidePermissionRequestStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing decidePermissionRequestStmt: %w", cerr)
 		}
 	}
 	if q.decisionsOfStmt != nil {
@@ -1216,6 +1247,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing latestPeriodicReportStmt: %w", cerr)
 		}
 	}
+	if q.latestPermissionRequestOfStmt != nil {
+		if cerr := q.latestPermissionRequestOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing latestPermissionRequestOfStmt: %w", cerr)
+		}
+	}
 	if q.latestReconciliationStmt != nil {
 		if cerr := q.latestReconciliationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing latestReconciliationStmt: %w", cerr)
@@ -1334,6 +1370,11 @@ func (q *Queries) Close() error {
 	if q.periodicReportsOfStmt != nil {
 		if cerr := q.periodicReportsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing periodicReportsOfStmt: %w", cerr)
+		}
+	}
+	if q.permissionRequestWithIDStmt != nil {
+		if cerr := q.permissionRequestWithIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing permissionRequestWithIDStmt: %w", cerr)
 		}
 	}
 	if q.permissionsOfStmt != nil {
@@ -1524,6 +1565,11 @@ func (q *Queries) Close() error {
 	if q.removePermissionStmt != nil {
 		if cerr := q.removePermissionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removePermissionStmt: %w", cerr)
+		}
+	}
+	if q.removePermissionRequestStmt != nil {
+		if cerr := q.removePermissionRequestStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removePermissionRequestStmt: %w", cerr)
 		}
 	}
 	if q.removePurchaseDetailsStmt != nil {
@@ -1811,6 +1857,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing waitingByKindStmt: %w", cerr)
 		}
 	}
+	if q.waitingPermissionRequestOfStmt != nil {
+		if cerr := q.waitingPermissionRequestOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing waitingPermissionRequestOfStmt: %w", cerr)
+		}
+	}
+	if q.waitingPermissionRequestsStmt != nil {
+		if cerr := q.waitingPermissionRequestsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing waitingPermissionRequestsStmt: %w", cerr)
+		}
+	}
 	if q.wordsInStmt != nil {
 		if cerr := q.wordsInStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing wordsInStmt: %w", cerr)
@@ -1884,6 +1940,7 @@ type Queries struct {
 	addPaymentMethodAccountStmt         *sql.Stmt
 	addPeriodicReportStmt               *sql.Stmt
 	addPermissionStmt                   *sql.Stmt
+	addPermissionRequestStmt            *sql.Stmt
 	addProjectStmt                      *sql.Stmt
 	addPurchaseDetailsStmt              *sql.Stmt
 	addReconciliationStmt               *sql.Stmt
@@ -1923,6 +1980,7 @@ type Queries struct {
 	contractsWithPaymentsStmt           *sql.Stmt
 	countTryStmt                        *sql.Stmt
 	custodianOfStmt                     *sql.Stmt
+	decidePermissionRequestStmt         *sql.Stmt
 	decisionsOfStmt                     *sql.Stmt
 	defaultColumnsOfStmt                *sql.Stmt
 	defaultColumnsOfTypeStmt            *sql.Stmt
@@ -1963,6 +2021,7 @@ type Queries struct {
 	keptPartnerIDsStmt                  *sql.Stmt
 	lastCodeStmt                        *sql.Stmt
 	latestPeriodicReportStmt            *sql.Stmt
+	latestPermissionRequestOfStmt       *sql.Stmt
 	latestReconciliationStmt            *sql.Stmt
 	managersOfStmt                      *sql.Stmt
 	managersOfPendingStmt               *sql.Stmt
@@ -1987,6 +2046,7 @@ type Queries struct {
 	pendingProjectsStmt                 *sql.Stmt
 	periodicReportSnapshotStmt          *sql.Stmt
 	periodicReportsOfStmt               *sql.Stmt
+	permissionRequestWithIDStmt         *sql.Stmt
 	permissionsOfStmt                   *sql.Stmt
 	projectHoldsEntriesStmt             *sql.Stmt
 	projectIDsOfUserStmt                *sql.Stmt
@@ -2025,6 +2085,7 @@ type Queries struct {
 	removePaymentMethodAccountStmt      *sql.Stmt
 	removePaymentMethodAccountsStmt     *sql.Stmt
 	removePermissionStmt                *sql.Stmt
+	removePermissionRequestStmt         *sql.Stmt
 	removePurchaseDetailsStmt           *sql.Stmt
 	removeRevenueDetailsStmt            *sql.Stmt
 	removeRoleNameStmt                  *sql.Stmt
@@ -2082,6 +2143,8 @@ type Queries struct {
 	usersOfProjectStmt                  *sql.Stmt
 	valuesStmt                          *sql.Stmt
 	waitingByKindStmt                   *sql.Stmt
+	waitingPermissionRequestOfStmt      *sql.Stmt
+	waitingPermissionRequestsStmt       *sql.Stmt
 	wordsInStmt                         *sql.Stmt
 	wordsOfStmt                         *sql.Stmt
 }
@@ -2114,6 +2177,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addPaymentMethodAccountStmt:         q.addPaymentMethodAccountStmt,
 		addPeriodicReportStmt:               q.addPeriodicReportStmt,
 		addPermissionStmt:                   q.addPermissionStmt,
+		addPermissionRequestStmt:            q.addPermissionRequestStmt,
 		addProjectStmt:                      q.addProjectStmt,
 		addPurchaseDetailsStmt:              q.addPurchaseDetailsStmt,
 		addReconciliationStmt:               q.addReconciliationStmt,
@@ -2153,6 +2217,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		contractsWithPaymentsStmt:           q.contractsWithPaymentsStmt,
 		countTryStmt:                        q.countTryStmt,
 		custodianOfStmt:                     q.custodianOfStmt,
+		decidePermissionRequestStmt:         q.decidePermissionRequestStmt,
 		decisionsOfStmt:                     q.decisionsOfStmt,
 		defaultColumnsOfStmt:                q.defaultColumnsOfStmt,
 		defaultColumnsOfTypeStmt:            q.defaultColumnsOfTypeStmt,
@@ -2193,6 +2258,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		keptPartnerIDsStmt:                  q.keptPartnerIDsStmt,
 		lastCodeStmt:                        q.lastCodeStmt,
 		latestPeriodicReportStmt:            q.latestPeriodicReportStmt,
+		latestPermissionRequestOfStmt:       q.latestPermissionRequestOfStmt,
 		latestReconciliationStmt:            q.latestReconciliationStmt,
 		managersOfStmt:                      q.managersOfStmt,
 		managersOfPendingStmt:               q.managersOfPendingStmt,
@@ -2217,6 +2283,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		pendingProjectsStmt:                 q.pendingProjectsStmt,
 		periodicReportSnapshotStmt:          q.periodicReportSnapshotStmt,
 		periodicReportsOfStmt:               q.periodicReportsOfStmt,
+		permissionRequestWithIDStmt:         q.permissionRequestWithIDStmt,
 		permissionsOfStmt:                   q.permissionsOfStmt,
 		projectHoldsEntriesStmt:             q.projectHoldsEntriesStmt,
 		projectIDsOfUserStmt:                q.projectIDsOfUserStmt,
@@ -2255,6 +2322,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		removePaymentMethodAccountStmt:      q.removePaymentMethodAccountStmt,
 		removePaymentMethodAccountsStmt:     q.removePaymentMethodAccountsStmt,
 		removePermissionStmt:                q.removePermissionStmt,
+		removePermissionRequestStmt:         q.removePermissionRequestStmt,
 		removePurchaseDetailsStmt:           q.removePurchaseDetailsStmt,
 		removeRevenueDetailsStmt:            q.removeRevenueDetailsStmt,
 		removeRoleNameStmt:                  q.removeRoleNameStmt,
@@ -2312,6 +2380,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		usersOfProjectStmt:                  q.usersOfProjectStmt,
 		valuesStmt:                          q.valuesStmt,
 		waitingByKindStmt:                   q.waitingByKindStmt,
+		waitingPermissionRequestOfStmt:      q.waitingPermissionRequestOfStmt,
+		waitingPermissionRequestsStmt:       q.waitingPermissionRequestsStmt,
 		wordsInStmt:                         q.wordsInStmt,
 		wordsOfStmt:                         q.wordsOfStmt,
 	}

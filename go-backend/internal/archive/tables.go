@@ -40,6 +40,7 @@ var tables = []table{
 	{name: "project_permissions", scope: ofProject},
 	{name: "project_role_names", scope: ofProject},
 	{name: "inactive_members", scope: ofProject},
+	{name: "permission_requests", scope: ofProject},
 	{name: "units", scope: ofProject, retrieved: true},
 	{name: "categories", scope: ofProject, retrieved: true},
 	{name: "items", scope: "category_id IN (SELECT id FROM categories WHERE project_id = :project)", retrieved: true},

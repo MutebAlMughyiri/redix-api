@@ -94,3 +94,28 @@ INSERT INTO inactive_members (id, project_id, user_id) VALUES (?, ?, ?);
 
 -- name: RemoveInactive :exec
 DELETE FROM inactive_members WHERE id = sqlc.arg(id);
+
+-- name: AddPermissionRequest :exec
+INSERT INTO permission_requests (id, project_id, user_id, gives, takes, reason, asked_at, status, rejection_reason)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: WaitingPermissionRequestOf :many
+SELECT * FROM permission_requests WHERE project_id = ? AND user_id = ? AND status = 0;
+
+-- name: LatestPermissionRequestOf :many
+SELECT * FROM permission_requests WHERE project_id = ? AND user_id = ? ORDER BY asked_at DESC LIMIT 1;
+
+-- name: RemovePermissionRequest :exec
+DELETE FROM permission_requests WHERE id = ?;
+
+-- name: WaitingPermissionRequests :many
+SELECT sqlc.embed(permission_requests), users.display_name
+FROM permission_requests JOIN users ON users.id = permission_requests.user_id
+WHERE permission_requests.project_id = ? AND permission_requests.status = 0
+ORDER BY permission_requests.asked_at;
+
+-- name: PermissionRequestWithID :one
+SELECT * FROM permission_requests WHERE id = ?;
+
+-- name: DecidePermissionRequest :exec
+UPDATE permission_requests SET status = ?, rejection_reason = ? WHERE id = ?;

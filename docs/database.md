@@ -70,6 +70,7 @@ One per enum the database stores, named `lk_{enum}`: `id` is the member's number
 | [lk_entry_status](#lk_entry_status) | INTEGER | `entries.status` |
 | [lk_history_action](#lk_history_action) | INTEGER | `history.action` |
 | [lk_item_type](#lk_item_type) | INTEGER | `default_columns.item_type`, `items.type` |
+| [lk_permission_request_status](#lk_permission_request_status) | INTEGER | `permission_requests.status` |
 | [lk_notification_kind](#lk_notification_kind) | INTEGER | `notifications.kind` |
 | [lk_project_status](#lk_project_status) | INTEGER | `projects.status` |
 | [lk_supplier_status](#lk_supplier_status) | INTEGER | `suppliers.status` |
@@ -190,6 +191,17 @@ One per enum the database stores, named `lk_{enum}`: `id` is the member's number
 | 2 | EntryRejected | The author's entry was rejected. |
 | 3 | ProjectApproved | The admin let the manager's project in. |
 | 4 | ProjectRejected | The admin refused the manager's project. |
+| 5 | PermissionRequested | Someone asked to change their permissions; told to whoever manages the project's users (redix-api #112). |
+| 6 | PermissionRequestApproved | The person's permission request was approved (redix-api #112). |
+| 7 | PermissionRequestRejected | The person's permission request was refused, with its reason (redix-api #112). |
+
+### lk_permission_request_status
+
+| id | name | Meaning |
+| --- | --- | --- |
+| 0 | Waiting | Asked, not decided; one per person per project. |
+| 1 | Approved | Applied as ticking is. |
+| 2 | Rejected | Refused, with its reason. |
 
 ### lk_project_status
 
@@ -435,6 +447,26 @@ Unique: `project_id, user_id, permission`.
 Other indexes: `user_id`.
 
 Check `CK_ProjectPermissions_Permission`: `(([permission]='generate_reports' OR [permission]='see_reports' OR [permission]='move_money' OR [permission]='approve_entries' OR [permission]='attach_files' OR [permission]='remove_approved_entries' OR [permission]='delete_entries' OR [permission]='manage_any_entry' OR [permission]='record_entries' OR [permission]='charge_any_account' OR [permission]='add_supplier' OR [permission]='manage_settings' OR [permission]='manage_structure' OR [permission]='manage_project' OR [permission]='see_chosen_capital' OR [permission]='see_all_capital' OR [permission]='read_project' OR [permission]='manage_users' OR [permission]='approve_projects') AND [permission]<>'approve_projects')`.
+
+### permission_requests
+
+A person's request to change their own permissions in a project, and its decision (redix-api #112).
+
+| Column | Type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| id | TEXT (UUID) | not null | PK |  |
+| project_id | TEXT (UUID) | not null | FK | `projects.id` |
+| user_id | TEXT (UUID) | not null | FK | `users.id`, who asked |
+| gives | TEXT (JSON) | not null |  | the permissions asked for, by name |
+| takes | TEXT (JSON) | not null |  | the permissions asked to give up, by name |
+| reason | TEXT (at most 500) | not null |  | why |
+| asked_at | TEXT (moment) | not null |  |  |
+| status | INTEGER | not null | FK | `lk_permission_request_status.id` |
+| rejection_reason | TEXT (at most 500) | not null |  | why it was refused; empty otherwise |
+
+Unique: `project_id, user_id` where `status` is 0, one waiting request each.
+
+Other indexes: `project_id, status`; `user_id`; `status`.
 
 ### project_role_names
 

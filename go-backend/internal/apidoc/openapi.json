@@ -1844,7 +1844,10 @@
               "entryApproved",
               "entryRejected",
               "projectApproved",
-              "projectRejected"
+              "projectRejected",
+              "permissionRequested",
+              "permissionRequestApproved",
+              "permissionRequestRejected"
             ],
             "type": "string"
           },
@@ -3298,6 +3301,29 @@
         ],
         "type": "object"
       },
+      "users.askRequest": {
+        "properties": {
+          "gives": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "takes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
       "users.createUserRequest": {
         "properties": {
           "displayName": {
@@ -3408,6 +3434,74 @@
           "permissions",
           "projectId",
           "roleName"
+        ],
+        "type": "object"
+      },
+      "users.rejectRequest": {
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "users.requestView": {
+        "properties": {
+          "askedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "gives": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "rejectionReason": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "waiting",
+              "approved",
+              "rejected"
+            ],
+            "type": "string"
+          },
+          "takes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "askedAt",
+          "displayName",
+          "gives",
+          "id",
+          "reason",
+          "rejectionReason",
+          "status",
+          "takes",
+          "userId"
         ],
         "type": "object"
       },
@@ -9829,6 +9923,337 @@
         ]
       }
     },
+    "/projects/{projectId}/permission-requests": {
+      "get": {
+        "description": "waitingRequests is every request waiting in the project, oldest first, each with who asked (R3).\n\nAccess: needs the ManageUsers permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/users.requestView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "waitingRequests is every request waiting in the project, oldest first, each with who asked (R3).",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "description": "ask keeps the person's request, replacing the one waiting (D3), and tells whoever manages the project's users (R6). It asks only for what changes something (R10): nothingAsked for nothing, invalidPermission for a name no project permission has or for ReadProject, being in the project; alreadyHeld for a permission to give they hold, notHeld for one to take they lack; reasonRequired without a reason (R8).\n\nAccess: needs the ReadProject permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/users.askRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/users.requestView"
+                }
+              }
+            },
+            "description": "Created."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: nothingAsked."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "ask keeps the person's request, replacing the one waiting (D3), and tells whoever manages the project's users (R6).",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/projects/{projectId}/permission-requests/mine": {
+      "delete": {
+        "description": "withdraw takes back the person's waiting request: 404 for none.\n\nAccess: needs the ReadProject permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "withdraw takes back the person's waiting request: 404 for none.",
+        "tags": [
+          "users"
+        ]
+      },
+      "get": {
+        "description": "myRequest is the person's latest request in the project, waiting or decided, as a list of one; empty when they never asked (#112 R1).\n\nAccess: needs the ReadProject permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/users.requestView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "myRequest is the person's latest request in the project, waiting or decided, as a list of one; empty when they never asked (#112 R1).",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/projects/{projectId}/permission-requests/{requestId}/approve": {
+      "post": {
+        "description": "approve applies a waiting request through the path ticking takes, so the last manager keeps managing (R4, BR-29: lastManager, 409); what no longer changes anything is left (R11). The person is told (R6). 404 for no request waiting in the project.\n\nAccess: needs the ManageUsers permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: lastManager."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "approve applies a waiting request through the path ticking takes, so the last manager keeps managing (R4, BR-29: lastManager, 409); what no longer changes anything is left (R11).",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/projects/{projectId}/permission-requests/{requestId}/reject": {
+      "post": {
+        "description": "reject refuses a waiting request with its reason (R8), changing no permission; the person is told (R6).\n\nAccess: needs the ManageUsers permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/users.rejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidReason, reasonRequired."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "reject refuses a waiting request with its reason (R8), changing no permission; the person is told (R6).",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/projects/{projectId}/project-file": {
       "post": {
         "description": "load loads a project file into an approved project that holds no entry yet (FR-53, D4). A file that is not a project file answers notAProjectFile, a newer one newerVersion (AC-53.9), and a project holding an entry projectHasEntries (409, AC-53.3), each before anything changes. Then its missing categories, items, tables, contracts, partners, suppliers and payment methods are added (D5, D6, D13), every row is recorded through Add entry's own checks and approved in the caller's name (D7, AC-53.4), counting from the file's report time (D12), what each account really held becomes one reconciliation (D8, AC-53.8), and the file's report is issued with its number and time (D9, AC-53.7); a number the project already issued is reportAlreadyIssued. Any refusal, a row's or a part's, answers rowsRefused with every one of them under rows, and nothing is saved (D3, D14, AC-53.5).\n\nAccess: needs the ManageProjectFiles permission.",
@@ -11914,6 +12339,16 @@
               }
             },
             "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: lastManager."
           },
           "default": {
             "content": {

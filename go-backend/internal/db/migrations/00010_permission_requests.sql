@@ -1,0 +1,148 @@
+-- +goose Up
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
+-- redix-api #112: a person asks, from صلاحياتي, for permissions given and taken away in a project, with a reason; whoever manages its users
+-- approves it, applying it as ticking does, or rejects it with a reason. One waits per person per project (D3).
+CREATE TABLE lk_permission_request_status (
+    id INTEGER NOT NULL,
+    name TEXT CHECK (length(name) <= 30) NOT NULL,
+    PRIMARY KEY (id)
+) STRICT;
+CREATE UNIQUE INDEX ak_lk_permission_request_status_name ON lk_permission_request_status (name);
+INSERT INTO lk_permission_request_status (id, name) VALUES (0, 'Waiting'), (1, 'Approved'), (2, 'Rejected');
+
+CREATE TABLE permission_requests (
+    id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    gives TEXT CHECK (json_valid(gives)) NOT NULL,
+    takes TEXT CHECK (json_valid(takes)) NOT NULL,
+    reason TEXT CHECK (length(reason) <= 500) NOT NULL,
+    asked_at TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    rejection_reason TEXT CHECK (length(rejection_reason) <= 500) NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (project_id) REFERENCES projects (id),
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    FOREIGN KEY (status) REFERENCES lk_permission_request_status (id)
+) STRICT;
+CREATE UNIQUE INDEX ix_permission_requests_project_id_user_id_waiting ON permission_requests (project_id, user_id) WHERE status = 0;
+CREATE INDEX ix_permission_requests_project_id_status ON permission_requests (project_id, status);
+CREATE INDEX ix_permission_requests_user_id ON permission_requests (user_id);
+CREATE INDEX ix_permission_requests_status ON permission_requests (status);
+
+-- Who is told what (R6): the managers of a new request, the person of the answer.
+INSERT INTO lk_notification_kind (id, name) VALUES (5, 'PermissionRequested'), (6, 'PermissionRequestApproved'), (7, 'PermissionRequestRejected');
+
+INSERT INTO translation_keys (id, key, description) VALUES
+    ('499917fb-b713-4233-b60e-fca1d473d7e1', 'permissionRequests.ask', ''),
+    ('59f6d19b-7a11-4788-bdc5-dc195183fd6f', 'permissionRequests.title', ''),
+    ('9d73a515-d15e-4990-a4a3-926e1993d836', 'permissionRequests.hint', ''),
+    ('7f5f399e-26f6-4581-a40b-28bdd8461932', 'permissionRequests.reason', ''),
+    ('e84ecffe-af68-4e46-8c06-84e8e4247caa', 'permissionRequests.send', ''),
+    ('ba2a8b11-7e20-4ced-9e44-07a741addc47', 'permissionRequests.sent', ''),
+    ('18516ef2-436b-4e02-9e76-7c8c2ba380fd', 'permissionRequests.waiting', ''),
+    ('11c4c041-f39a-4629-a1b9-8d3415440ba3', 'permissionRequests.approved', ''),
+    ('0cd1fe76-0e21-49be-ab50-bb32c49b6216', 'permissionRequests.rejected', ''),
+    ('79d23b47-b9ad-4db1-913c-07fce46cb302', 'permissionRequests.gives', ''),
+    ('4ea51bfc-1a46-428d-97c3-c2e3f3841582', 'permissionRequests.takes', ''),
+    ('9e29d54f-96f1-4521-a5da-e33e9a261e7f', 'permissionRequests.withdraw', ''),
+    ('d8c10b79-819e-46ca-8fae-0cb1bc91a5a5', 'permissionRequests.withdrawn', ''),
+    ('92137c30-a728-44ac-a5a7-e8729f87bd02', 'permissionRequests.listTitle', ''),
+    ('9be3ebbb-ece5-45af-9fea-2153c9ec9f5e', 'permissionRequests.empty', ''),
+    ('13bd55b8-ca68-4f35-842d-04d7753b7071', 'permissionRequests.loadFailed', ''),
+    ('981c0232-7d00-490e-87ba-37e5a757e99b', 'permissionRequests.approve', ''),
+    ('ff29704d-c5ea-4fac-8f50-269e73e86896', 'permissionRequests.reject', ''),
+    ('30c0e1c1-35d9-4543-867b-05c104fc19a8', 'permissionRequests.rejectTitle', ''),
+    ('930df9c2-ef0b-45b0-8cc9-2416620d5473', 'permissionRequests.rejectReason', ''),
+    ('82769646-7634-4cf7-ac26-e579e26efd8a', 'permissionRequests.approvedDone', ''),
+    ('b498f960-d6b8-4da0-95b5-f6894642ec4e', 'permissionRequests.rejectedDone', ''),
+    ('13a6c75b-cc51-4347-93dd-ec73ba7eccb8', 'permissionRequests.nothingAsked', ''),
+    ('e06c3b7a-e2c3-4582-83b4-b1365d7edd87', 'permissionRequests.invalidPermission', ''),
+    ('f3a62133-b913-4dcc-a668-4c5d63367386', 'permissionRequests.alreadyHeld', ''),
+    ('2f594b07-6d78-486b-8bb3-6217c52a0bea', 'permissionRequests.notHeld', ''),
+    ('00de5a99-35c2-4363-8b1b-8d8da7d7501c', 'permissionRequests.reasonRequired', ''),
+    ('cf631da5-9630-463b-92ce-8ed04a7dff2f', 'permissionRequests.invalidReason', ''),
+    ('e75f19cf-c90e-4b10-952d-39e9849c1fab', 'permissionRequests.lastManager', ''),
+    ('621d47aa-f784-46ae-8e85-a9a72b7cced6', 'permissionRequests.noConnection', ''),
+    ('1ebf0919-074a-42c2-b85f-ccb7f5b65d29', 'permissionRequests.refused', ''),
+    ('39d5cb75-9dab-4912-8c11-6a26accbbe3d', 'permissionRequests.projectFinished', ''),
+    ('534784d8-62e2-443e-8352-73eb877323fd', 'notifications.permissionRequested', ''),
+    ('6ebd19fe-f57e-4320-acfb-1718586e9ac6', 'notifications.permissionRequestApproved', ''),
+    ('30479890-de95-4ffd-9240-5f97b3dd3f90', 'notifications.permissionRequestRejected', ''),
+    ('86de4e83-0b31-4e38-8a60-54669deb6335', 'history.thing.permissionRequest', '');
+
+INSERT INTO translations (id, translation_key_id, language, value) VALUES
+    ('b92467bb-d598-4ce3-a0c1-f8c791719710', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.ask'), 'ar', 'طلب تغيير'),
+    ('e76315c4-9024-47a7-acd7-f94d796cb867', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.ask'), 'en', 'Ask for a change'),
+    ('694e7bca-97a0-4112-89df-cc7d2f28a5ad', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.title'), 'ar', 'طلب تغيير صلاحياتي'),
+    ('9a8ff4c0-03a4-4f56-85fb-bf0c33959ce2', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.title'), 'en', 'Ask to change my permissions'),
+    ('d627a5ea-508c-4525-9a61-c4d487f8e346', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.hint'), 'ar', 'علّم ما تطلب إضافته وأزل علامة ما تطلب إزالته، ثم أرسل الطلب مع سببه. لا يتغير شيء حتى يوافق مدير المستخدمين.'),
+    ('389a51be-1442-46a1-9309-acfd4269c4cb', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.hint'), 'en', 'Tick what you ask for and untick what you ask to give up, then send the request with its reason. Nothing changes until whoever manages the users approves it.'),
+    ('7b3446e9-9b22-47fa-92b2-6c3e987c81e8', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.reason'), 'ar', 'السبب'),
+    ('768acd57-b5c1-4f4d-8b21-812611d26dbb', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.reason'), 'en', 'Reason'),
+    ('c891351f-17cc-488f-99eb-7eeeb2092a7e', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.send'), 'ar', 'إرسال الطلب'),
+    ('f0500fe1-16d7-45bc-b22e-ae05cacd0d6c', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.send'), 'en', 'Send the request'),
+    ('3fbe3be8-cc58-4607-a8c1-64a82ea2dac4', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.sent'), 'ar', 'أُرسل طلبك إلى مدير المستخدمين'),
+    ('b2e0f101-6408-448c-b564-13a0c71e84ff', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.sent'), 'en', 'Your request was sent to whoever manages the users'),
+    ('39df41af-1577-4063-8f65-d6ffa19f36af', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.waiting'), 'ar', 'طلبك بانتظار الموافقة'),
+    ('bdf4454b-b8a8-4c62-b8e0-69cde017d989', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.waiting'), 'en', 'Your request is waiting for approval'),
+    ('08645b8c-313d-48b3-8005-5b7433302b61', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.approved'), 'ar', 'اعتُمد طلبك'),
+    ('ff8048ab-e151-4c74-8d68-9ff489ffcaee', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.approved'), 'en', 'Your request was approved'),
+    ('aceb6886-d59a-4bca-a2cc-c5980bf0b516', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejected'), 'ar', 'رُفض طلبك: {0}'),
+    ('5f64941d-9263-43e9-8672-a42a73f42748', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejected'), 'en', 'Your request was refused: {0}'),
+    ('0af1d67c-de6c-489f-970f-2a8e05e2dab4', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.gives'), 'ar', 'يُضاف: {0}'),
+    ('19c40fb1-0aae-44aa-a4d2-717d40cdfe83', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.gives'), 'en', 'To add: {0}'),
+    ('c1246f17-f642-4adf-9a5c-2e09c8e0d6e8', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.takes'), 'ar', 'يُزال: {0}'),
+    ('7b55d49a-f0e6-4f03-b28f-739d9e9f614b', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.takes'), 'en', 'To remove: {0}'),
+    ('b5906b63-b4b8-4ab8-8c65-b10c5dc2a04b', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.withdraw'), 'ar', 'سحب الطلب'),
+    ('8ea43ba0-bb5b-4d67-8a61-40dd46cfe41d', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.withdraw'), 'en', 'Withdraw the request'),
+    ('6e5b7908-3de4-4ea2-a39f-40a51a6ba81f', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.withdrawn'), 'ar', 'سُحب طلبك'),
+    ('5a6ec621-a639-4278-bcd6-14523d78fe7f', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.withdrawn'), 'en', 'Your request was withdrawn'),
+    ('a0daae79-b0c3-4403-b05c-655386b945b3', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.listTitle'), 'ar', 'طلبات الصلاحيات'),
+    ('c4542099-bbf6-450b-971b-9d4014b95f80', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.listTitle'), 'en', 'Permission requests'),
+    ('34438311-79a4-4b04-b8aa-c80f21c3fb0e', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.empty'), 'ar', 'لا طلب بانتظار الموافقة'),
+    ('b69ba423-206a-430d-8fbf-45dbad39973c', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.empty'), 'en', 'No request is waiting'),
+    ('20e06f51-f456-4884-8d87-2f85324774b2', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.loadFailed'), 'ar', 'تعذّر تحميل الطلبات'),
+    ('5f626bee-bf52-4f1a-89a0-4fbff33f971f', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.loadFailed'), 'en', 'The requests could not be loaded'),
+    ('f6952497-0514-46e4-a53c-fcd168483a74', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.approve'), 'ar', 'موافقة'),
+    ('d246b4f9-baa7-4cb0-9a29-cd30205416c9', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.approve'), 'en', 'Approve'),
+    ('1af55a5a-b237-4aa9-a0cf-3f1ff6a36a89', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.reject'), 'ar', 'رفض'),
+    ('ac609498-5179-4486-a5ee-2d334d1cd89e', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.reject'), 'en', 'Refuse'),
+    ('0286d03a-cf32-4603-a321-299749f2fbe7', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejectTitle'), 'ar', 'رفض طلب {0}'),
+    ('bd75cff7-3e4e-41f0-bf9c-c84ffb791878', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejectTitle'), 'en', 'Refuse {0}''s request'),
+    ('bb27d4bf-ae75-4832-908e-0868f6fc3a0b', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejectReason'), 'ar', 'سبب الرفض'),
+    ('62ab5c18-1804-4256-a9ee-d17a1b952ea5', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejectReason'), 'en', 'Why it is refused'),
+    ('da98a6bf-cd26-4116-9994-8c11ab9be9f6', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.approvedDone'), 'ar', 'اعتُمد طلب {0}'),
+    ('675724cd-432c-4cb1-a79c-eb11cd23caa2', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.approvedDone'), 'en', '{0}''s request was approved'),
+    ('9215aa53-be1b-4049-a1cc-53fe90176778', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejectedDone'), 'ar', 'رُفض طلب {0}'),
+    ('4b309ab2-af85-4521-afc8-7289d6efa4cc', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.rejectedDone'), 'en', '{0}''s request was refused'),
+    ('3bf47cc7-f5be-4adb-9d06-e1f8628d1f57', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.nothingAsked'), 'ar', 'لم تطلب تغيير شيء'),
+    ('2d34e7be-22e9-468b-ae42-baa2cbe2abfe', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.nothingAsked'), 'en', 'You asked to change nothing'),
+    ('31481ac7-0449-4c27-be62-ed453242bc38', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.invalidPermission'), 'ar', 'هذه الصلاحية لا تُطلب'),
+    ('c6f49e32-b10f-4ff4-ad6d-8fb0146f54c1', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.invalidPermission'), 'en', 'This permission cannot be asked for'),
+    ('823920f6-1b4e-4cde-8b42-3c8dbd4b0f4b', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.alreadyHeld'), 'ar', 'تطلب صلاحية تملكها'),
+    ('11cd864a-1cf9-43cd-816a-1916431f23fb', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.alreadyHeld'), 'en', 'You ask for a permission you hold'),
+    ('72f80969-5cb4-4b0a-b909-a2912ca43591', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.notHeld'), 'ar', 'تطلب إزالة صلاحية لا تملكها'),
+    ('6fd3c359-dc6f-411c-adc5-8be85e70f1cf', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.notHeld'), 'en', 'You ask to give up a permission you don''t hold'),
+    ('af96d351-b8aa-43ce-bfa9-08c9ff3bedfe', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.reasonRequired'), 'ar', 'اذكر السبب'),
+    ('c0c4bb11-a980-4f5a-bf15-91c2a1710540', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.reasonRequired'), 'en', 'Say why'),
+    ('f6a26bd0-a771-4905-915d-567032a316fb', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.invalidReason'), 'ar', 'السبب أطول من 500 حرف'),
+    ('9b68fedf-c312-49e7-a784-f59d45a4b159', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.invalidReason'), 'en', 'The reason is longer than 500 letters'),
+    ('4706a2e5-7a14-462e-bb2c-f8903ab876b7', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.lastManager'), 'ar', 'لا يُزال آخر من يدير المستخدمين في المشروع'),
+    ('f32df71a-3b46-49be-8497-aed3accf9b46', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.lastManager'), 'en', 'The last person managing the users cannot lose it'),
+    ('603f319b-d1b0-4082-bb0d-c8168c40e7ed', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.noConnection'), 'ar', 'لا اتصال بالخادم'),
+    ('94e3e86c-77fd-454c-a9b3-148a3c31a70a', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.noConnection'), 'en', 'No connection to the server'),
+    ('d942e532-f356-40e8-9a3d-4d468db7b7bc', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.refused'), 'ar', 'رُفض الطلب'),
+    ('ef051559-75d0-468d-82ad-55e88a401ec6', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.refused'), 'en', 'The request was refused'),
+    ('7b1c2291-2434-44db-b7a3-254171e9dd38', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.projectFinished'), 'ar', 'المشروع منتهٍ فلا يتغير'),
+    ('9f65946b-2936-4390-9f84-8fd823704bd2', (SELECT id FROM translation_keys WHERE key = 'permissionRequests.projectFinished'), 'en', 'The project is finished, so nothing changes'),
+    ('0a592211-bf84-4807-804b-eaeb137eb2a1', (SELECT id FROM translation_keys WHERE key = 'notifications.permissionRequested'), 'ar', 'طلب تغيير صلاحيات بانتظار موافقتك'),
+    ('c0e865de-46da-425b-8aff-14b2bc4c756e', (SELECT id FROM translation_keys WHERE key = 'notifications.permissionRequested'), 'en', 'A permission request waits for your approval'),
+    ('a92e62a7-190d-472f-bc74-81c0ce4b3d10', (SELECT id FROM translation_keys WHERE key = 'notifications.permissionRequestApproved'), 'ar', 'اعتُمد طلب تغيير صلاحياتك'),
+    ('d80469a7-5f62-4708-85d3-b56696a7b2d9', (SELECT id FROM translation_keys WHERE key = 'notifications.permissionRequestApproved'), 'en', 'Your permission request was approved'),
+    ('3087ad56-408c-40f6-bba0-00feaf0a1444', (SELECT id FROM translation_keys WHERE key = 'notifications.permissionRequestRejected'), 'ar', 'رُفض طلب تغيير صلاحياتك'),
+    ('853a7c06-b407-4365-a835-fe4945ffede1', (SELECT id FROM translation_keys WHERE key = 'notifications.permissionRequestRejected'), 'en', 'Your permission request was refused'),
+    ('1cc7a176-9a47-4441-8a96-fc4dca1e5d83', (SELECT id FROM translation_keys WHERE key = 'history.thing.permissionRequest'), 'ar', 'طلب الصلاحيات'),
+    ('cd1db155-642c-4cbc-bedf-66c15f0559f6', (SELECT id FROM translation_keys WHERE key = 'history.thing.permissionRequest'), 'en', 'permission request');

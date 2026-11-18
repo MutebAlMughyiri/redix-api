@@ -27,6 +27,11 @@ const (
 	EntryRejected
 	ProjectApproved
 	ProjectRejected
+	// PermissionRequested tells whoever manages a project's users of a request waiting; PermissionRequestApproved and PermissionRequestRejected
+	// tell the person who asked (redix-api #112 R6).
+	PermissionRequested
+	PermissionRequestApproved
+	PermissionRequestRejected
 )
 
 // TellManagers tells everyone who manages the users of projectID what the admin decided, at at (NotificationsEndpoints.TellManagersAsync).
@@ -43,7 +48,8 @@ func TellManagers(ctx context.Context, q *store.Queries, projectID uuid.UUID, ki
 	return nil
 }
 
-var kinds = web.Enum{"entrySubmitted", "entryApproved", "entryRejected", "projectApproved", "projectRejected"}
+var kinds = web.Enum{"entrySubmitted", "entryApproved", "entryRejected", "projectApproved", "projectRejected", "permissionRequested",
+	"permissionRequestApproved", "permissionRequestRejected"}
 
 func (k Kind) MarshalJSON() ([]byte, error) { return kinds.Write(int64(k)) }
 

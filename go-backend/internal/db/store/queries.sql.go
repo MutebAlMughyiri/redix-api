@@ -575,6 +575,38 @@ func (q *Queries) AddPermission(ctx context.Context, arg AddPermissionParams) er
 	return err
 }
 
+const addPermissionRequest = `-- name: AddPermissionRequest :exec
+INSERT INTO permission_requests (id, project_id, user_id, gives, takes, reason, asked_at, status, rejection_reason)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type AddPermissionRequestParams struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	UserID          uuid.UUID
+	Gives           string
+	Takes           string
+	Reason          string
+	AskedAt         moment.Moment
+	Status          int64
+	RejectionReason string
+}
+
+func (q *Queries) AddPermissionRequest(ctx context.Context, arg AddPermissionRequestParams) error {
+	_, err := q.exec(ctx, q.addPermissionRequestStmt, addPermissionRequest,
+		arg.ID,
+		arg.ProjectID,
+		arg.UserID,
+		arg.Gives,
+		arg.Takes,
+		arg.Reason,
+		arg.AskedAt,
+		arg.Status,
+		arg.RejectionReason,
+	)
+	return err
+}
+
 const addProject = `-- name: AddProject :exec
 INSERT INTO projects (id, name, start_date, status, rejection_reason, description, is_template, last_entry_number) VALUES (?, ?, ?, ?, '', ?, 0, 0)
 `
@@ -1715,6 +1747,21 @@ func (q *Queries) CustodianOf(ctx context.Context, accountID uuid.UUID) ([]Accou
 		return nil, err
 	}
 	return items, nil
+}
+
+const decidePermissionRequest = `-- name: DecidePermissionRequest :exec
+UPDATE permission_requests SET status = ?, rejection_reason = ? WHERE id = ?
+`
+
+type DecidePermissionRequestParams struct {
+	Status          int64
+	RejectionReason string
+	ID              uuid.UUID
+}
+
+func (q *Queries) DecidePermissionRequest(ctx context.Context, arg DecidePermissionRequestParams) error {
+	_, err := q.exec(ctx, q.decidePermissionRequestStmt, decidePermissionRequest, arg.Status, arg.RejectionReason, arg.ID)
+	return err
 }
 
 const decisionsOf = `-- name: DecisionsOf :many
@@ -2858,6 +2905,48 @@ func (q *Queries) LatestPeriodicReport(ctx context.Context, projectID uuid.UUID)
 	return items, nil
 }
 
+const latestPermissionRequestOf = `-- name: LatestPermissionRequestOf :many
+SELECT id, project_id, user_id, gives, takes, reason, asked_at, status, rejection_reason FROM permission_requests WHERE project_id = ? AND user_id = ? ORDER BY asked_at DESC LIMIT 1
+`
+
+type LatestPermissionRequestOfParams struct {
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) LatestPermissionRequestOf(ctx context.Context, arg LatestPermissionRequestOfParams) ([]PermissionRequest, error) {
+	rows, err := q.query(ctx, q.latestPermissionRequestOfStmt, latestPermissionRequestOf, arg.ProjectID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionRequest
+	for rows.Next() {
+		var i PermissionRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Gives,
+			&i.Takes,
+			&i.Reason,
+			&i.AskedAt,
+			&i.Status,
+			&i.RejectionReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const latestReconciliation = `-- name: LatestReconciliation :many
 SELECT id, project_id, at, user_id FROM reconciliations WHERE project_id = ? ORDER BY at DESC, id DESC LIMIT 1
 `
@@ -3613,6 +3702,27 @@ func (q *Queries) PeriodicReportsOf(ctx context.Context, projectID uuid.UUID) ([
 	return items, nil
 }
 
+const permissionRequestWithID = `-- name: PermissionRequestWithID :one
+SELECT id, project_id, user_id, gives, takes, reason, asked_at, status, rejection_reason FROM permission_requests WHERE id = ?
+`
+
+func (q *Queries) PermissionRequestWithID(ctx context.Context, id uuid.UUID) (PermissionRequest, error) {
+	row := q.queryRow(ctx, q.permissionRequestWithIDStmt, permissionRequestWithID, id)
+	var i PermissionRequest
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.UserID,
+		&i.Gives,
+		&i.Takes,
+		&i.Reason,
+		&i.AskedAt,
+		&i.Status,
+		&i.RejectionReason,
+	)
+	return i, err
+}
+
 const permissionsOf = `-- name: PermissionsOf :many
 SELECT id, project_id, user_id, permission FROM project_permissions WHERE project_id = ?1 AND user_id = ?2
 `
@@ -4228,6 +4338,15 @@ DELETE FROM project_permissions WHERE id = ?1
 
 func (q *Queries) RemovePermission(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removePermissionStmt, removePermission, id)
+	return err
+}
+
+const removePermissionRequest = `-- name: RemovePermissionRequest :exec
+DELETE FROM permission_requests WHERE id = ?
+`
+
+func (q *Queries) RemovePermissionRequest(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removePermissionRequestStmt, removePermissionRequest, id)
 	return err
 }
 
@@ -5551,6 +5670,94 @@ func (q *Queries) WaitingByKind(ctx context.Context, projectID uuid.UUID) ([]Wai
 	for rows.Next() {
 		var i WaitingByKindRow
 		if err := rows.Scan(&i.Kind, &i.Entries, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const waitingPermissionRequestOf = `-- name: WaitingPermissionRequestOf :many
+SELECT id, project_id, user_id, gives, takes, reason, asked_at, status, rejection_reason FROM permission_requests WHERE project_id = ? AND user_id = ? AND status = 0
+`
+
+type WaitingPermissionRequestOfParams struct {
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) WaitingPermissionRequestOf(ctx context.Context, arg WaitingPermissionRequestOfParams) ([]PermissionRequest, error) {
+	rows, err := q.query(ctx, q.waitingPermissionRequestOfStmt, waitingPermissionRequestOf, arg.ProjectID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionRequest
+	for rows.Next() {
+		var i PermissionRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Gives,
+			&i.Takes,
+			&i.Reason,
+			&i.AskedAt,
+			&i.Status,
+			&i.RejectionReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const waitingPermissionRequests = `-- name: WaitingPermissionRequests :many
+SELECT permission_requests.id, permission_requests.project_id, permission_requests.user_id, permission_requests.gives, permission_requests.takes, permission_requests.reason, permission_requests.asked_at, permission_requests.status, permission_requests.rejection_reason, users.display_name
+FROM permission_requests JOIN users ON users.id = permission_requests.user_id
+WHERE permission_requests.project_id = ? AND permission_requests.status = 0
+ORDER BY permission_requests.asked_at
+`
+
+type WaitingPermissionRequestsRow struct {
+	PermissionRequest PermissionRequest
+	DisplayName       string
+}
+
+func (q *Queries) WaitingPermissionRequests(ctx context.Context, projectID uuid.UUID) ([]WaitingPermissionRequestsRow, error) {
+	rows, err := q.query(ctx, q.waitingPermissionRequestsStmt, waitingPermissionRequests, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WaitingPermissionRequestsRow
+	for rows.Next() {
+		var i WaitingPermissionRequestsRow
+		if err := rows.Scan(
+			&i.PermissionRequest.ID,
+			&i.PermissionRequest.ProjectID,
+			&i.PermissionRequest.UserID,
+			&i.PermissionRequest.Gives,
+			&i.PermissionRequest.Takes,
+			&i.PermissionRequest.Reason,
+			&i.PermissionRequest.AskedAt,
+			&i.PermissionRequest.Status,
+			&i.PermissionRequest.RejectionReason,
+			&i.DisplayName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

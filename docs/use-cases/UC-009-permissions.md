@@ -95,6 +95,28 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Deleting is its own permission | `entries.Routes.delete` | `EntryChangesTests.DeletingIsItsOwnPermission` |
 | redix-api #131 D3: the upgrade gives `SeeReports` to everyone in a project, and `GenerateReports` to whoever moved money or saw all capital | .NET's migration `ReportPermissions` | `MigrationStepsTests.R131_D3_ReportPermissions_WhoeverReadsAProjectSeesItsReportsAndWhoeverMovedMoneyOrSawAllCapitalGeneratesThem` |
 
+## Asking for a change (redix-api #112)
+
+From صلاحياتي a person asks for permissions given and taken away in the project, with a reason; nothing changes until whoever holds `ManageUsers` there approves it, through the same path ticking takes, so the last manager keeps managing (BR-29). One request waits per person per project: a new one replaces it. The managers are told of a new request under the bell, the person of the answer; a rejection carries its reason. Every request, replacement, withdrawal and decision is a History line on `PermissionRequests`.
+
+| Endpoint | Needs | Answers |
+| --- | --- | --- |
+| `GET /projects/{projectId}/permission-requests/mine` | `ReadProject` | `200` the person's latest request, waiting or decided, as a list of one; empty when they never asked |
+| `POST /projects/{projectId}/permission-requests` `{ gives, takes, reason }` | `ReadProject` | `201` the request, replacing the waiting one; `400` `nothingAsked`, `invalidPermission` (unknown, `ApproveProjects`, or `ReadProject`), `alreadyHeld`, `notHeld`, `reasonRequired`, `invalidReason` (past 500 letters) |
+| `DELETE /projects/{projectId}/permission-requests/mine` | `ReadProject` | `200`, the waiting request withdrawn; `404` for none |
+| `GET /projects/{projectId}/permission-requests` | `ManageUsers` | `200` every waiting request, oldest first, each with `displayName` |
+| `POST /projects/{projectId}/permission-requests/{requestId}/approve` | `ManageUsers` | `200`: what still changes something is applied as ticking does; `409` `lastManager`; `404` for no waiting request in the project |
+| `POST /projects/{projectId}/permission-requests/{requestId}/reject` `{ reason }` | `ManageUsers` | `200`; `400` `reasonRequired`, `invalidReason`; `404` |
+
+| Rule | Proven by |
+| --- | --- |
+| #112 R1, R2, R5, R6: asking changes nothing, the managers are told, and the request waits on their list with the person's name | `users.TestR112_APersonAsksAndNothingChangesUntilAManagerDecides` |
+| #112 R4, R6, R11: an approved request is applied as ticking is, what changes nothing is left, and the person is told | `users.TestR112_AnApprovedRequestIsAppliedAsTickingIsAndThePersonIsTold` |
+| #112 R8: a rejection needs its reason, changes nothing, and the person reads it | `users.TestR112_ARejectionCarriesItsReasonAndChangesNothing` |
+| #112 R7: a new request replaces the waiting one, and one is withdrawn | `users.TestR112_ANewRequestReplacesTheWaitingOneAndOneIsWithdrawn` |
+| #112 R10: a request asks only for what changes something, with a reason | `users.TestR112_ARequestAsksOnlyForWhatChangesSomething` |
+| #112 R4, BR-29: the last manager keeps managing users whatever they ask | `users.TestR112_TheLastManagerKeepsManagingUsersWhateverTheyAsk` |
+
 ## Left to later use cases
 
 The OWASP MASVS review in AC-N08 comes before release.

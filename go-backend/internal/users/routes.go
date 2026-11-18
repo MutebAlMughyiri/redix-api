@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
@@ -35,6 +36,7 @@ type Routes struct {
 // the project; and the project's users routes for whoever manages its users.
 func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
 	u := Routes{database: database, clock: clock}
+	u.mapRequests(router, gate)
 	router.Handle("PUT", "/users/{userId:guid}", gate.Working(u.edit))
 	router.Handle("POST", "/users/{userId:guid}/reset-password", gate.Working(u.resetPassword))
 	router.Handle("GET", "/projects/{projectId:guid}/members", gate.Needs(access.ReadProject, u.members))
@@ -388,41 +390,7 @@ func (u Routes) take(w http.ResponseWriter, r *http.Request, caller access.Calle
 		if !ok || taking == access.ApproveProjects {
 			return http.StatusBadRequest, "invalidPermission", nil
 		}
-		read := u.database.Queries()
-		held, err := read.PermissionsOf(r.Context(), store.PermissionsOfParams{ProjectID: projectID, UserID: userID})
-		if err != nil {
-			return http.StatusInternalServerError, "", nil
-		}
-		taken := slices.DeleteFunc(held, func(row store.ProjectPermission) bool {
-			return taking != access.ReadProject && row.Permission != string(taking)
-		})
-		if slices.ContainsFunc(taken, func(row store.ProjectPermission) bool { return row.Permission == string(access.ManageUsers) }) {
-			if last, err := isTheLastManager(r.Context(), read, projectID, userID); err != nil || last {
-				if err != nil {
-					return http.StatusInternalServerError, "", nil
-				}
-				return http.StatusConflict, "lastManager", nil
-			}
-		}
-		return 0, "", func(c change) error {
-			for _, row := range taken {
-				if err := c.removePermission(row); err != nil {
-					return err
-				}
-			}
-			if slices.ContainsFunc(taken, func(row store.ProjectPermission) bool { return row.Permission == string(access.SeeChosenCapital) }) {
-				if err := c.clearChosen(projectID, userID, uuid.Nil); err != nil {
-					return err
-				}
-			}
-			if taking != access.ReadProject {
-				return nil
-			}
-			if err := c.nameRole(projectID, userID, ""); err != nil {
-				return err
-			}
-			return c.endInactive(projectID, userID, history.RemoveProject)
-		}
+		return 0, "", func(c change) error { return c.take(projectID, userID, taking) }
 	})
 }
 
@@ -522,11 +490,9 @@ func (u Routes) member(w http.ResponseWriter, r *http.Request, caller access.Cal
 		problem.Status(w, r, status)
 		return
 	}
-	if err := u.write(r, caller, apply); err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if !changes.Answered(w, r, u.write(r, caller, apply)) {
+		u.answerInProject(w, r, http.StatusOK, projectID, userID)
 	}
-	u.answerInProject(w, r, http.StatusOK, projectID, userID)
 }
 
 // write runs apply in one transaction, as caller, now.

@@ -35,7 +35,7 @@ var actions = web.Enum{"created", "changed", "deleted", "disabled", "enabled", "
 // What a line of the project history says it was done to (D5).
 var thingNames = web.Enum{"entry", "invoice", "file", "account", "custody", "transfer", "reconciliation", "paymentMethod", "partner", "partnerLogin", "supplier",
 	"contract", "contractDocument", "category", "item", "subgroup", "column", "defaultColumn", "project", "unit", "timeZone", "document",
-	"periodicReport", "permission", "person", "roleName", "partnerSight"}
+	"periodicReport", "permission", "person", "roleName", "partnerSight", "permissionRequest"}
 
 // What a line of one's own history says happened to one's login (R6).
 var loginKinds = web.Enum{"signIn", "signOut", "signInFailed", "locked", "passwordChanged", "passwordReset", "biometricsOn", "biometricsOff",
@@ -104,6 +104,8 @@ var things = map[string]thing{
 	"InactiveMembers":    {name: "person", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: person},
 	"ProjectRoleNames":   {name: "roleName", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: roleName},
 	"ChosenPartners":     {name: "partnerSight", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: partnerSight},
+	"PermissionRequests": {name: "permissionRequest", area: "people", saidAs: map[string]string{"Create": "sent"}, seen: sight.managingUsers,
+		describe: person},
 }
 
 // values is everything History knows of one record: each value its lines kept, the newest winning, so a deleted record keeps its name (R4).

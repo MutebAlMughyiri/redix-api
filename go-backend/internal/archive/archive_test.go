@@ -5,6 +5,7 @@ package archive_test
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -246,11 +247,12 @@ func TestAC73_1_AnArchiveHoldsEveryRowOfTheProjectAndNamesItsFilesAndWhoTookIt(t
 	archived := answered.Body.Bytes()
 	described := describedIn(t, archived)
 	project, by := described["project"].(map[string]any), described["archivedBy"].(map[string]any)
-	if described["format"] != "redix.archive" || described["version"] != json.Number("1") || described["release"] != json.Number("9") ||
+	release, _ := a.Database.Release(context.Background())
+	if described["format"] != "redix.archive" || described["version"] != json.Number("1") || described["release"] != json.Number(fmt.Sprint(release)) ||
 		project["id"] != a.id || project["name"] != "مشروع الاختبار" || by["name"] != "محمد" || described["archivedAt"] != "2026-11-18T10:00:00Z" {
 		t.Errorf("the archive: %v", described)
 	}
-	if tables := described["tables"].(map[string]any); len(tables) != 41 {
+	if tables := described["tables"].(map[string]any); len(tables) != archive.Archived() || len(tables) < 42 {
 		t.Errorf("%d tables", len(tables))
 	}
 	if !slices.Equal(rowsIn(described)["entries"], a.rowsNow()["entries"]) || len(rowsIn(described)["entries"]) == 0 {

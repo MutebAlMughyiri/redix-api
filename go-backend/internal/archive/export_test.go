@@ -10,6 +10,9 @@ func Placed(name string) bool {
 	return listed || isShared
 }
 
+// Archived is how many tables an archive holds.
+func Archived() int { return len(tables) }
+
 // Retrieved is the name and the scope of each table a retrieve replaces, for the tests to read them back (AC-73.9).
 func Retrieved() [][2]string {
 	var replaced [][2]string

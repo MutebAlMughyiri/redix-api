@@ -4,10 +4,13 @@
 package users
 
 import (
+	"cmp"
 	"context"
+	"net/http"
 	"slices"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -79,6 +82,41 @@ func (c change) give(projectID, userID uuid.UUID, given access.Permission) error
 		return c.clearChosen(projectID, userID, uuid.Nil)
 	}
 	return nil
+}
+
+// take removes taking from userID in projectID; taking ReadProject takes them out of it, with every permission, their role name and their being
+// inactive. lastManager (409) when it would leave the project with no active manager of its users (BR-29, ProjectUsersEndpoints.TakeAsync). One
+// they do not hold changes nothing.
+func (c change) take(projectID, userID uuid.UUID, taking access.Permission) error {
+	held, err := c.q.PermissionsOf(c.ctx, store.PermissionsOfParams{ProjectID: projectID, UserID: userID})
+	if err != nil {
+		return err
+	}
+	taken := slices.DeleteFunc(held, func(row store.ProjectPermission) bool {
+		return taking != access.ReadProject && row.Permission != string(taking)
+	})
+	if slices.ContainsFunc(taken, func(row store.ProjectPermission) bool { return row.Permission == string(access.ManageUsers) }) {
+		if last, err := isTheLastManager(c.ctx, c.q, projectID, userID); err != nil || last {
+			return cmp.Or(err, changes.Refuse(http.StatusConflict, "lastManager"))
+		}
+	}
+	for _, row := range taken {
+		if err := c.removePermission(row); err != nil {
+			return err
+		}
+	}
+	if slices.ContainsFunc(taken, func(row store.ProjectPermission) bool { return row.Permission == string(access.SeeChosenCapital) }) {
+		if err := c.clearChosen(projectID, userID, uuid.Nil); err != nil {
+			return err
+		}
+	}
+	if taking != access.ReadProject {
+		return nil
+	}
+	if err := c.nameRole(projectID, userID, ""); err != nil {
+		return err
+	}
+	return c.endInactive(projectID, userID, history.RemoveProject)
 }
 
 // choose shows partnerID's capital to userID (CapitalSight.Choose).

@@ -227,6 +227,18 @@ type PaymentMethodAccount struct {
 	AccountID       uuid.UUID
 }
 
+type PermissionRequest struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	UserID          uuid.UUID
+	Gives           string
+	Takes           string
+	Reason          string
+	AskedAt         moment.Moment
+	Status          int64
+	RejectionReason string
+}
+
 type Project struct {
 	ID              uuid.UUID
 	Name            string
