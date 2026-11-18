@@ -238,13 +238,11 @@ func (s Routes) contractsOf(w http.ResponseWriter, r *http.Request) (string, []c
 	return project.Name, list, true
 }
 
-// sendFile sends file as an attachment named name, as ASP.NET Core's Results.File did.
+// sendFile sends file as an attachment named name through web.SendFile, the one way the API hands a file it makes (redix-api #76 row 274).
 func (s Routes) sendFile(w http.ResponseWriter, r *http.Request, file []byte, contentType, name string, err error) {
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", "attachment; filename="+name+"; filename*=UTF-8''"+name)
-	w.Write(file)
+	web.SendFile(w, contentType, name, file)
 }
