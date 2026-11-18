@@ -123,8 +123,8 @@ func TestR5_EveryRequestWritesOneLogLineAndASuccessIsNoIncident(t *testing.T) {
 
 func TestR10_AnAnswerKeepsTheTraceIdOfTheAppsTraceparent(t *testing.T) {
 	a := newAPI(t)
-	answer := a.send("/health", "traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
-	if trace := answer.Header().Get("X-Trace-Id"); !strings.HasPrefix(trace, "00-4bf92f3577b34da6a3ce929d0e0e4736-") || trace == "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" {
+	answer := a.send("/health", "traceparent", "00-11111111111111111111111111111111-2222222222222222-01")
+	if trace := answer.Header().Get("X-Trace-Id"); !strings.HasPrefix(trace, "00-11111111111111111111111111111111-") || trace == "00-11111111111111111111111111111111-2222222222222222-01" {
 		t.Errorf("trace %q", trace)
 	}
 	if trace := a.send("/health", "traceparent", "not a trace").Header().Get("X-Trace-Id"); len(trace) != 55 {
