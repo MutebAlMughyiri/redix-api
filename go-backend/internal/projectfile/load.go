@@ -41,10 +41,11 @@ type Routes struct {
 	writer   changes.Writer
 }
 
-// Map routes the load of a project file, for the manager who created the project, who holds ManageProject (D1).
+// Map routes the load of a project file, for whoever holds ManageProjectFiles, «ملفات المشروع», which every ManageProject holder was given (D1;
+// redix-api #130 D2).
 func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
 	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}}
-	router.Handle("POST", "/projects/{projectId:guid}/project-file", gate.Changes(access.ManageProject, s.load))
+	router.Handle("POST", "/projects/{projectId:guid}/project-file", gate.Changes(access.ManageProjectFiles, s.load))
 }
 
 // owner is whose rule refused a part of a project file, which says whose words the app shows for its code (ProjectFileOwner, D14).

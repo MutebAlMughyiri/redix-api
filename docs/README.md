@@ -61,5 +61,6 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
 | [UC-069](use-cases/UC-069-history.md) | Read the history: «سجل المشروع» of every action in a project, one line per request, and «سجلي» of one's own login | Whoever holds `SeeProjectHistory`; everyone for «سجلي» |
 | [UC-070](use-cases/UC-070-config.md) | Keep configurable values in one table, starting with how long the app waits for an answer | The app, before sign-in |
-| [UC-071](use-cases/UC-071-load-a-project-file.md) | Load a project's JSON file: its structure, entries, actual balances and last report | The manager who created the project |
+| [UC-071](use-cases/UC-071-load-a-project-file.md) | Load a project's JSON file: its structure, entries, actual balances and last report | Whoever holds `ManageProjectFiles` |
+| [UC-073](use-cases/UC-073-archive-and-retrieve.md) | Archive a project to one file, every row with its files, and retrieve it over the project | Whoever holds `ManageProjectFiles` |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

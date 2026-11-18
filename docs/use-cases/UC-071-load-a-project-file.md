@@ -3,14 +3,14 @@
 # UC-071: Load a project file
 
 **What it is for:** bringing a project that lived in Excel into REDIX in one step (FR-53, BR-43): its manager picks the project's JSON file, and REDIX adds the tables it names, records and approves every row through the same rules as Add entry, enters the actual balances and issues the file's report. One refused row, and nothing is saved.
-**Who uses it:** the manager who created the project, who holds `ManageProject` (D1), into an approved project that holds no entry yet (D4).
+**Who uses it:** whoever holds `ManageProjectFiles` («ملفات المشروع»), which every `ManageProject` holder was given by migration 00009 (D1; UC-073 D2), into an approved project that holds no entry yet (D4).
 **Issue:** redix-api #132 "Load a project's JSON file into REDIX: its structure, entries, actual balances and last report"; the file's shape is redix-api #130's.
 
 ## Endpoint
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `POST /projects/{projectId}/project-file` with the file as a form's `file`, as every file the app sends, so its upload waits as long as a file may (UC-070) | `ManageProject` (D1) | `200` `{ entries, tables, report }`: how many entries were recorded and approved, in how many tables, and the report issued, 0 for none; `400` `notAProjectFile` or `newerVersion`, nothing read (AC-53.9); `409` `projectHasEntries` (AC-53.3); `400` `rowsRefused` with every refusal under `rows`, nothing saved (AC-53.5); `403` without `ManageProject` (AC-53.2); `409` `projectFinished` |
+| `POST /projects/{projectId}/project-file` with the file as a form's `file`, as every file the app sends, so its upload waits as long as a file may (UC-070) | `ManageProjectFiles` (D1) | `200` `{ entries, tables, report }`: how many entries were recorded and approved, in how many tables, and the report issued, 0 for none; `400` `notAProjectFile` or `newerVersion`, nothing read (AC-53.9); `409` `projectHasEntries` (AC-53.3); `400` `rowsRefused` with every refusal under `rows`, nothing saved (AC-53.5); `403` without `ManageProjectFiles` (AC-53.2); `409` `projectFinished` |
 
 A refusal under `rows` says where it is, by the file's names: `category`, `item`, `table`, and `row`, the row's place in its table counted from 1, as the sheet's «#» counts it, 0 for the part itself; then `owner`, whose rule refused it, which says whose words the app shows (D14): `entry` for Add entry's codes (`expenses.*`), `structure` for a category, an item or a subgroup (`categories.*`), `contract`, `partner`, `supplier`, `paymentMethod`, `reconciliation`, or `file` for the load's own, `accountNotInProject`, `attachmentNotInFile`, `unknownChoice` and `reportAlreadyIssued` (`projects.loadFile.*`); then `code`, and the `columnKey`, `value` and `column` a code names. `GET /projects` says of each project `holdsEntries`, from the same query the route refuses with, so the app grays its button (D15).
 
@@ -71,7 +71,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | AC-53.7, AC-53.8, D9: the file's report is issued with its number and time, the next follows it, and its actual balances are the latest reconciliation | `projectfile.Routes.load`, `reports.Issue`, `accounts.Enter` | `ProjectFileTests.AC_53_7_AC_53_8_D9_TheFilesReportIsIssuedWithItsNumberAndTimeAndItsActualBalancesAreTheLatestReconciliation` |
 | D2, D9: a file with no report, no accounts and no rows loads its structure alone and issues nothing | `projectfile.Routes.load` | `ProjectFileTests.D9_D2_AFileWithNoReportNoAccountsAndNoRowsLoadsItsStructureAloneAndIssuesNothing` |
 | D12, G7: no loaded entry shows as new, while one approved after the load does | `entries.Routes.approve` | `ProjectFileTests.D12_G7_NoLoadedEntryShowsAsNewWhileOneApprovedAfterTheLoadDoes` |
-| AC-53.2: without `ManageProject` the route answers 403 and nothing is saved | `projectfile.Map` | `ProjectFileTests.AC_53_2_WithoutManageProjectTheRouteAnswers403AndNothingIsSaved` |
+| AC-53.2: without `ManageProjectFiles` the route answers 403 and nothing is saved | `projectfile.Map` | `ProjectFileTests.AC_53_2_WithoutManageProjectTheRouteAnswers403AndNothingIsSaved`, `archive.TestAC73_8_WithoutManageProjectFilesNoRouteOfTheProjectsFilesAnswers` |
 | AC-53.3, D15: a project holding an entry says so, and refuses the file with `projectHasEntries` | `projectfile.Routes.load`, `projects.sight.view` | `ProjectFileTests.AC_53_3_D15_AProjectHoldingAnEntrySaysSoAndRefusesTheFileWithProjectHasEntries` |
 | AC-53.4, AC-53.5, G3: a row Add entry refuses keeps its code, every refused row is listed with its table and place, a file named in a row is `attachmentNotInFile`, and nothing is saved | `projectfile.Routes.load`, `entries.Routes.record` | `ProjectFileTests.AC_53_4_AC_53_5_G3_ARowAddEntryRefusesKeepsItsCodeEveryRefusedRowIsListedAndNothingIsSaved` |
 | G4: an option the file's lists do not hold, or a choice the table's list does not have, is `unknownChoice`, naming the value and the column | `projectfile.Routes.load` | `ProjectFileTests.G4_AnOptionTheFilesListsDoNotHoldOrAChoiceTheTablesListDoesNotHaveIsAnUnknownChoiceNamingItsColumn` |

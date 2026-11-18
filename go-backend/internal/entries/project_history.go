@@ -30,7 +30,7 @@ var areas = web.Enum{"entries", "accounts", "partners", "suppliers", "structure"
 
 // What a line of the project history says was done (D5).
 var actions = web.Enum{"created", "changed", "deleted", "disabled", "enabled", "drafted", "sent", "approved", "rejected", "restored", "registered",
-	"closed", "attached", "given", "taken", "issued"}
+	"closed", "attached", "given", "taken", "issued", "archived", "retrieved"}
 
 // What a line of the project history says it was done to (D5).
 var thingNames = web.Enum{"entry", "invoice", "file", "account", "custody", "transfer", "reconciliation", "paymentMethod", "partner", "partnerLogin", "supplier",
@@ -48,7 +48,7 @@ func one(enum web.Enum, name string) named { return named{int64(slices.Index(enu
 var actionOf = map[string]string{"Create": "created", "Update": "changed", "Delete": "deleted", "Disable": "disabled", "Enable": "enabled",
 	"Submit": "sent", "Approve": "approved", "Reject": "rejected", "Restore": "restored", "Reverse": "approved", "RegisterProject": "registered",
 	"ApproveProject": "approved", "RejectProject": "rejected", "CloseProject": "closed", "Attach": "attached", "AssignProject": "given",
-	"RemoveProject": "taken"}
+	"RemoveProject": "taken", "Archive": "archived", "Retrieve": "retrieved"}
 
 // thing is what a History table's record is in the project history: what a line calls it and the kind it is filtered under; the tables whose
 // line stands for its line when the same request wrote one (R2); what its actions are said as where actionOf does not say them so; who may
@@ -400,6 +400,9 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 		}
 		if row.Action == "Reject" {
 			said.about = reasonOf(decisions, row.RecordID, row.At)
+		}
+		if row.Action == "Retrieve" {
+			said.about = valuesIn(row.After).text("ArchivedAt")
 		}
 		return projectLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Area: one(areas, kind.area), Action: one(actions, action),
 			Thing: one(thingNames, kind.name), Name: said.name, About: said.about, NameWas: said.nameWas, From: said.from, To: said.to, Amount: said.amount}

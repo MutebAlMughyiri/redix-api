@@ -168,6 +168,14 @@ func isGone(s step) bool {
 	return s.Status == http.StatusNotFound || s.Status == http.StatusMethodNotAllowed
 }
 
+// upgradedWith is what an upgrade gave whoever held a permission, so a permission .NET gave is given with it: migration 00009 gave
+// ManageProjectFiles to every ManageProject holder, which the load needed until then (UC-073 D2).
+var upgradedWith = map[access.Permission][]access.Permission{access.ManageProject: {access.ManageProjectFiles}}
+
+// neededSinceDotNet are the routes whose permission changed since .NET, with the one they need now: a step that ticked .NET's permission alone
+// is refused where .NET answered, and is not compared; the route's own tests prove its permission (UC-073 D2).
+var neededSinceDotNet = map[string]access.Permission{"POST /projects/{id}/project-file": access.ManageProjectFiles}
+
 // seeds is what a replay can put straight into the database, as the factory's helpers did.
 var seeds = []string{"user", "give", "inactive", "approve"}
 
@@ -375,6 +383,9 @@ func replay(t *testing.T, steps []step, hosts []host, swept map[int]bool) {
 				t.Logf("review (#76 row 263): %s %s%s - .NET crashed, Go answered %d", s.Method, pathPattern.ReplaceAllString(s.Path, "{id}"), s.Query, got.Code)
 				continue
 			}
+			if _, changed := neededSinceDotNet[s.Method+" "+pathPattern.ReplaceAllString(s.Path, "{id}")]; changed && got.Code == http.StatusForbidden && s.Status != http.StatusForbidden {
+				continue
+			}
 			if differences := compare(names, s, got); len(differences) > 0 {
 				t.Errorf("step %d, %s %s%s:\n  %s", i, s.Method, s.Path, s.Query, strings.Join(differences, "\n  "))
 				return
@@ -458,7 +469,8 @@ var addedSinceDotNet = map[string]string{
 // retiredSinceDotNet are the names .NET answered that Go no longer does, each retired by a feature built after it, so an answer recorded with one
 // still matches; each names why it went.
 var retiredSinceDotNet = map[string]string{
-	"history.mine": "«ما قمت به», which the person chip's «أنا» replaced in every history (UC-069 D6)",
+	"history.mine":            "«ما قمت به», which the person chip's «أنا» replaced in every history (UC-069 D6)",
+	"projects.exportSettings": "«تصدير إعدادات المشروع», the grayed button «أرشفة المشروع» replaced (UC-073 D10)",
 }
 
 // withBody holds each route already sent once with a body that is not JSON, before the request it was recorded with: a route .NET answered
@@ -548,10 +560,12 @@ func seed(t *testing.T, database db.DB, names mapping, s step) {
 		}
 		json.Unmarshal(s.Given, &given)
 		for _, number := range given.Permissions {
-			write(`INSERT INTO project_permissions (id, project_id, user_id, permission) SELECT ?, ?, ?, ? WHERE NOT EXISTS
-				(SELECT 1 FROM project_permissions WHERE project_id = ? AND user_id = ? AND permission = ?)`,
-				uuid.NewString(), names.into(given.ProjectID), names.into(given.UserID), string(access.All[number]),
-				names.into(given.ProjectID), names.into(given.UserID), string(access.All[number]))
+			for _, permission := range append([]access.Permission{access.All[number]}, upgradedWith[access.All[number]]...) {
+				write(`INSERT INTO project_permissions (id, project_id, user_id, permission) SELECT ?, ?, ?, ? WHERE NOT EXISTS
+					(SELECT 1 FROM project_permissions WHERE project_id = ? AND user_id = ? AND permission = ?)`,
+					uuid.NewString(), names.into(given.ProjectID), names.into(given.UserID), string(permission),
+					names.into(given.ProjectID), names.into(given.UserID), string(permission))
+			}
 		}
 	case "inactive":
 		var given struct {
@@ -732,8 +746,8 @@ func decode(text string) any {
 var sets = map[string]bool{"permissions": true}
 
 // addedSinceDotNetTo are the names Go's sets hold that .NET's never did, each added by a feature built after it, so a set recorded without one
-// still matches: whoever starts a project holds SeeProjectHistory (UC-069 D1, D7).
-var addedSinceDotNetTo = map[string][]string{"permissions": {"seeProjectHistory"}}
+// still matches: whoever starts a project holds SeeProjectHistory (UC-069 D1, D7) and ManageProjectFiles (UC-073 D2).
+var addedSinceDotNetTo = map[string][]string{"permissions": {"seeProjectHistory", "manageProjectFiles"}}
 
 func sorted(items []any) []any {
 	kept := slices.Clone(items)

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/dbtest"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/historytest"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/incidents"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
@@ -33,7 +34,8 @@ import (
 // signingKey signs the tests' tokens.
 var signingKey = []byte("test-key-for-go-backend-only-32b")
 
-// API is the API on a fresh database, standing at 10:00 UTC on 16 Nov 2026 until a test moves its clock.
+// API is the API on a fresh database, standing at 10:00 UTC on 16 Nov 2026 until a test moves its clock; its database fails a call only when
+// SendFailing arms it.
 type API struct {
 	t        *testing.T
 	Database db.DB
@@ -41,16 +43,13 @@ type API struct {
 	Emails   *Emails
 	handler  http.Handler
 	tokens   credentials.Tokens
+	failure  *dbtest.Failure
 }
 
 // New is the API on a fresh database of t's own.
 func New(t *testing.T) *API {
 	t.Helper()
-	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "redix.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database, failure := dbtest.Open(t, filepath.Join(t.TempDir(), "redix.db"))
 	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
 	emails := &Emails{}
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -63,11 +62,19 @@ func New(t *testing.T) *API {
 	}
 	t.Cleanup(func() { failures.Close() })
 	handler := problem.Traced(incidents.Recorded(routes, failures, quiet, fake))
-	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: handler, tokens: credentials.NewTokens(signingKey, fake)}
+	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: handler, tokens: credentials.NewTokens(signingKey, fake), failure: failure}
 }
 
 // Send asks method on path with body as JSON, and headers as name and value pairs, under the History net.
 func (a *API) Send(method, path, body string, headers ...string) *httptest.ResponseRecorder {
+	a.t.Helper()
+	answered, _ := a.SendFailing(0, method, path, body, headers...)
+	return answered
+}
+
+// SendFailing is Send with the database failing its nth call of the request, unless a write commits first, and whether that call came: as the
+// replay fails each call of a step, so every branch answering a failed database runs (redix-api #141 D1). 0 fails none.
+func (a *API) SendFailing(n int64, method, path, body string, headers ...string) (*httptest.ResponseRecorder, bool) {
 	a.t.Helper()
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
@@ -75,8 +82,14 @@ func (a *API) Send(method, path, body string, headers ...string) *httptest.Respo
 		request.Header.Set(headers[i], headers[i+1])
 	}
 	recorder := httptest.NewRecorder()
-	historytest.Check(a.t, a.Database, func() { a.handler.ServeHTTP(recorder, request) })
-	return recorder
+	failed := false
+	historytest.Check(a.t, a.Database, func() {
+		a.failure.BeforeCommit(n)
+		a.handler.ServeHTTP(recorder, request)
+		failed = a.failure.Failed()
+		a.failure.At(0)
+	})
+	return recorder, failed
 }
 
 // Ask is Send as token - none when "" - with the status and the JSON answer.

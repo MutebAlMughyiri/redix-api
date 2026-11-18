@@ -74,15 +74,55 @@ func OpenWith(ctx context.Context, driverName, path string) (DB, error) {
 }
 
 func migrate(ctx context.Context, write *sql.DB) error {
-	scripts, err := fs.Sub(migrations, "migrations")
-	if err != nil {
-		return err
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, write, scripts)
+	provider, err := migrationsOn(write)
 	if err != nil {
 		return err
 	}
 	_, err = provider.Up(ctx)
+	return err
+}
+
+// migrationsOn is the server's migrations, to run on database.
+func migrationsOn(database *sql.DB) (*goose.Provider, error) {
+	scripts, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		return nil, err
+	}
+	return goose.NewProvider(goose.DialectSQLite3, database, scripts)
+}
+
+// Release is the migration the database stands at, which an archive keeps as the release it was taken on (UC-073 AC-73.1).
+func (db DB) Release(ctx context.Context) (int64, error) {
+	var release int64
+	err := db.Read.QueryRowContext(ctx, "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version WHERE is_applied").Scan(&release)
+	return release, err
+}
+
+// Scratch is a database in memory made by the server's own migrations up to a release, checking no foreign key, so one project's rows go in
+// without the people and lookups they name; Up brings it, rows and all, to the server's release (UC-073 D7). It holds one connection, the
+// database itself.
+type Scratch struct {
+	*sql.DB
+	migrations *goose.Provider
+}
+
+// OpenScratch is a Scratch at release.
+func OpenScratch(ctx context.Context, release int64) (Scratch, error) {
+	memory, _ := sql.Open("sqlite", ":memory:")
+	memory.SetMaxOpenConns(1)
+	provider, err := migrationsOn(memory)
+	if err == nil {
+		_, err = provider.UpTo(ctx, release)
+	}
+	if err != nil {
+		return Scratch{}, errors.Join(err, memory.Close())
+	}
+	return Scratch{DB: memory, migrations: provider}, nil
+}
+
+// Up runs the migrations the scratch has not run yet.
+func (s Scratch) Up(ctx context.Context) error {
+	_, err := s.migrations.Up(ctx)
 	return err
 }
 
@@ -102,6 +142,12 @@ func (db DB) Exec(ctx context.Context, statement string, args ...any) error {
 		_, err := tx.ExecContext(ctx, statement, args...)
 		return err
 	})
+}
+
+// InSQL runs change in one IMMEDIATE transaction as InTx does, handing it the transaction itself beside the named queries, for statements no
+// named query can hold: a retrieve's, whose tables and columns come from the schema (UC-073 AC-73.3).
+func (db DB) InSQL(ctx context.Context, change func(*sql.Tx, *store.Queries) error) error {
+	return db.inTx(ctx, func(tx *sql.Tx) error { return change(tx, db.writes.WithTx(tx)) })
 }
 
 func (db DB) inTx(ctx context.Context, change func(*sql.Tx) error) error {

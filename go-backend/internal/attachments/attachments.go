@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,20 +94,7 @@ func (s Routes) send(w http.ResponseWriter, r *http.Request, attachment store.At
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
-	w.Header().Set("Content-Type", attachment.ContentType)
-	w.Header().Set("Content-Disposition", "attachment; filename="+asciiName(attachment.FileName)+"; filename*=UTF-8''"+url.PathEscape(attachment.FileName))
-	w.WriteHeader(http.StatusOK)
-	w.Write(content)
-}
-
-// asciiName is a file's name as the plain filename of a Content-Disposition carries it: what is not ASCII as underscores.
-func asciiName(name string) string {
-	return strings.Map(func(letter rune) rune {
-		if letter > 0x7E || letter < 0x20 {
-			return '_'
-		}
-		return letter
-	}, name)
+	web.SendFile(w, attachment.ContentType, attachment.FileName, content)
 }
 
 // view is an attachment as the app shows it (AttachmentView).

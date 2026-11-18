@@ -222,6 +222,34 @@
         ],
         "type": "object"
       },
+      "archive.retrieval": {
+        "properties": {
+          "after": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "archivedBy": {
+            "type": "string"
+          },
+          "now": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "after",
+          "archivedAt"
+        ],
+        "type": "object"
+      },
       "attachments.view": {
         "properties": {
           "contentType": {
@@ -5052,6 +5080,41 @@
         ]
       }
     },
+    "/projects/{projectId}/archive/json": {
+      "get": {
+        "description": "archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 41 tables, read in one snapshot; a History line, Archive, names who took it (R15).\n\nAccess: needs the ManageProjectFiles permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 41 tables, read in one snapshot; a History line, Archive, names who took it (R15).",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
     "/projects/{projectId}/attachments": {
       "post": {
         "description": "upload keeps a file, and answers it: an entry's, or with anyFile a document's, refused as Keep says (400). The same file from the same person answers the one already kept (200), so a retried upload keeps it once (UC-029); a new one answers 201.\n\nAccess: needs the AttachFiles permission.",
@@ -9768,7 +9831,7 @@
     },
     "/projects/{projectId}/project-file": {
       "post": {
-        "description": "load loads a project file into an approved project that holds no entry yet (FR-53, D4). A file that is not a project file answers notAProjectFile, a newer one newerVersion (AC-53.9), and a project holding an entry projectHasEntries (409, AC-53.3), each before anything changes. Then its missing categories, items, tables, contracts, partners, suppliers and payment methods are added (D5, D6, D13), every row is recorded through Add entry's own checks and approved in the caller's name (D7, AC-53.4), counting from the file's report time (D12), what each account really held becomes one reconciliation (D8, AC-53.8), and the file's report is issued with its number and time (D9, AC-53.7); a number the project already issued is reportAlreadyIssued. Any refusal, a row's or a part's, answers rowsRefused with every one of them under rows, and nothing is saved (D3, D14, AC-53.5).\n\nAccess: needs the ManageProject permission.",
+        "description": "load loads a project file into an approved project that holds no entry yet (FR-53, D4). A file that is not a project file answers notAProjectFile, a newer one newerVersion (AC-53.9), and a project holding an entry projectHasEntries (409, AC-53.3), each before anything changes. Then its missing categories, items, tables, contracts, partners, suppliers and payment methods are added (D5, D6, D13), every row is recorded through Add entry's own checks and approved in the caller's name (D7, AC-53.4), counting from the file's report time (D12), what each account really held becomes one reconciliation (D8, AC-53.8), and the file's report is issued with its number and time (D9, AC-53.7); a number the project already issued is reportAlreadyIssued. Any refusal, a row's or a part's, answers rowsRefused with every one of them under rows, and nothing is saved (D3, D14, AC-53.5).\n\nAccess: needs the ManageProjectFiles permission.",
         "parameters": [
           {
             "in": "path",
@@ -10476,6 +10539,91 @@
         "summary": "itemFile is an item's report as a PDF, or as a workbook; رأس المال's holds only the partners the caller may see, its total the whole capital (BR-31).",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/projects/{projectId}/retrieve": {
+      "post": {
+        "description": "retrieve makes the project's own rows its archive's (AC-73.3): every retrieved table emptied of the project's rows and filled with the archive's, each row as it was, in one transaction, with one History line, Retrieve. A bill's or a PDF's row names its file in the storage, which a retrieve never touches. ?preview=true says what it would do and changes nothing (AC-73.2). An archive of another project or of a newer release, or naming what this server lacks, is refused, and nothing is saved (AC-73.5).\n\nAccess: needs the ManageProjectFiles permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "preview",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/archive.retrieval"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: newerArchive, notAnArchive."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: archiveDoesNotFit, archiveOfAnotherProject."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "retrieve makes the project's own rows its archive's (AC-73.3): every retrieved table emptied of the project's rows and filled with the archive's, each row as it was, in one transaction, with one History line, Retrieve.",
+        "tags": [
+          "archive"
         ]
       }
     },

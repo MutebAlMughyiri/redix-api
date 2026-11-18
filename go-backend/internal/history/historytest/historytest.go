@@ -71,7 +71,7 @@ func Check(t testing.TB, database db.DB, write func()) {
 
 	write()
 
-	lines, approved := map[string]bool{}, false
+	lines, approved, retrieved := map[string]bool{}, false, false
 	found, err := database.Read.Query("SELECT table_name, record_id, action FROM history WHERE id > ?", lastLine)
 	if err != nil {
 		t.Fatal(err)
@@ -81,6 +81,9 @@ func Check(t testing.TB, database db.DB, write func()) {
 		found.Scan(&table, &record, &action)
 		lines[table+" "+record] = true
 		approved = approved || (table == "Projects" && action == "ApproveProject")
+		// A retrieve puts back thousands of rows under one Retrieve line on the project: the archive it puts back is each row's record, so a row
+		// added, changed or removed passes when the same write recorded one (UC-073 D9).
+		retrieved = retrieved || (table == "Projects" && action == "Retrieve")
 	}
 	found.Close()
 	for _, table := range tables {
@@ -97,7 +100,7 @@ func Check(t testing.TB, database db.DB, write func()) {
 			if !kept {
 				record = was.record
 			}
-			if !lines[historyName(table)+" "+record] && !withItsOwner && !copied {
+			if !lines[historyName(table)+" "+record] && !withItsOwner && !copied && !retrieved {
 				t.Errorf("History net: %s %s changed with no History line", table, id)
 			}
 		}

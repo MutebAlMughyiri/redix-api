@@ -45,7 +45,7 @@ A request often writes several History lines: an expense its entry, its details 
 | InactiveMembers, ProjectRoleNames, ChosenPartners | `person`, `roleName`, `partnerSight` | `people` | ProjectPermissions | `ManageUsers` |
 | Users | - | - | Never in a project's history: «سجلي» reads them | The person whose login it is |
 
-An entry's Create is said as `drafted`; every other action as `actionOf` says it: `created`, `changed`, `deleted`, `disabled`, `enabled`, `sent`, `approved` (an entry's, a project's, and an old reversal's), `rejected`, `restored`, `registered`, `closed`, `attached`, `given`, `taken`.
+An entry's Create is said as `drafted`; every other action as `actionOf` says it: `created`, `changed`, `deleted`, `disabled`, `enabled`, `sent`, `approved` (an entry's, a project's, and an old reversal's), `rejected`, `restored`, `registered`, `closed`, `attached`, `given`, `taken`, and a project's `archived` and `retrieved`, the archive's moment under `about` (UC-073).
 
 ## Rules and where they live
 

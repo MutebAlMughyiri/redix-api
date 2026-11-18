@@ -63,7 +63,8 @@ func TestR2_EveryTableIsAThingOfTheProjectHistoryOrSaysWhyNot(t *testing.T) {
 
 // UC-069 D7: History keeps a permission as its place in access.All, so a new one goes last and every older line keeps naming its own.
 func TestR7_ANewPermissionTakesNoOlderPermissionsNumber(t *testing.T) {
-	if access.GenerateReports.Number() != 18 || access.SeeProjectHistory.Number() != len(access.All)-1 {
-		t.Errorf("GenerateReports is %d, SeeProjectHistory %d of %d", access.GenerateReports.Number(), access.SeeProjectHistory.Number(), len(access.All))
+	if access.GenerateReports.Number() != 18 || access.SeeProjectHistory.Number() != 19 || access.ManageProjectFiles.Number() != len(access.All)-1 {
+		t.Errorf("GenerateReports is %d, SeeProjectHistory %d, ManageProjectFiles %d of %d", access.GenerateReports.Number(), access.SeeProjectHistory.Number(),
+			access.ManageProjectFiles.Number(), len(access.All))
 	}
 }

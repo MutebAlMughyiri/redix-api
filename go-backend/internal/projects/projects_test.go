@@ -59,8 +59,8 @@ func TestUC004_StartingAProjectMakesItsStarterItsManagerWaitingForTheAdmin(t *te
 			t.Errorf("%s not in %s", want, body)
 		}
 	}
-	if got := a.Count("SELECT count(*) FROM project_permissions WHERE user_id = ?", starter); got != 17 {
-		t.Errorf("the starter holds %d permissions, want 17, SeeProjectHistory among them (UC-069 D7)", got)
+	if got := a.Count("SELECT count(*) FROM project_permissions WHERE user_id = ?", starter); got != 18 {
+		t.Errorf("the starter holds %d permissions, want 18, SeeProjectHistory and ManageProjectFiles among them (UC-069 D7, redix-api #130 D8)", got)
 	}
 	if got := a.Count("SELECT count(*) FROM partners"); got != 1 {
 		t.Errorf("partners: %d", got)
@@ -117,7 +117,7 @@ func TestUC004_TheListHoldsWhatTheyMayReadAndWhatTheyStarted(t *testing.T) {
 	if len(listed) != 2 || testapi.Field(listed[0], "id") != approved || testapi.Field(listed[1], "id") != pending {
 		t.Fatalf("the active first: %v", answer)
 	}
-	if permissions := testapi.Field(listed[0], "permissions").([]any); len(permissions) != 17 {
+	if permissions := testapi.Field(listed[0], "permissions").([]any); len(permissions) != 18 {
 		t.Errorf("in the approved project: %v", permissions)
 	}
 	_, other := a.person("other", false)
@@ -228,7 +228,7 @@ func TestBR34_ApprovingCopiesTheTemplateTellsTheManagerAndOpensThePermissions(t 
 		t.Errorf("the manager was told %d times", got)
 	}
 	_, listed := a.Ask("GET", "/projects", "", token)
-	if testapi.Field(listed.([]any)[0], "status") != "active" || len(testapi.Field(listed.([]any)[0], "permissions").([]any)) != 17 {
+	if testapi.Field(listed.([]any)[0], "status") != "active" || len(testapi.Field(listed.([]any)[0], "permissions").([]any)) != 18 {
 		t.Errorf("after approval: %v", listed)
 	}
 	if code, answer := a.Ask("POST", "/projects/"+project+"/approve", ``, admin); code != 409 || testapi.Field(answer, "code") != "notPending" {

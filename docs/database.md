@@ -166,6 +166,8 @@ One per enum the database stores, named `lk_{enum}`: `id` is the member's number
 | 22 | Delete | A unit, a document, an account nothing named or an entry was deleted (redix-api #96, redix-app #89), or an approved entry removed softly (redix-api #119). |
 | 23 | Restore | An approved entry removed softly was brought back, the undo of its removal (redix-api #119). |
 | 24 | Reverse | An entry approved at once as the opposite of another, written by reversing before it went (redix-api #119, D5). Nothing writes it now; it stays because History rows never change (AC-21.1), and the histories read it as the approval of an ordinary entry. |
+| 25 | Archive | A project's archive was taken, by whom (UC-073 R15). |
+| 26 | Retrieve | A project was retrieved from an archive: one line standing for every row it put back, naming when the archive was taken (UC-073 D9). |
 
 ### lk_item_type
 
@@ -207,7 +209,7 @@ One per enum the database stores, named `lk_{enum}`: `id` is the member's number
 
 ### Not a lookup table yet: Permission
 
-`project_permissions.permission` and `system_permissions.permission` store a permission by name, which a CHECK holds to the names below; `project_permissions` was rebuilt by migration 00008 when `SeeProjectHistory` joined, since SQLite cannot change a CHECK in place. In Go, `access.All` holds them, a new one last, since History keeps a permission as its place there. They have no lookup table, because redix-api #120 replaces them with a true/false column per permission. Their names:
+`project_permissions.permission` and `system_permissions.permission` store a permission by name, which a CHECK holds to the names below; `project_permissions` was rebuilt by migrations 00008 and 00009 when `SeeProjectHistory` and `ManageProjectFiles` joined, since SQLite cannot change a CHECK in place. In Go, `access.All` holds them, a new one last, since History keeps a permission as its place there. They have no lookup table, because redix-api #120 replaces them with a true/false column per permission. Their names:
 
 | Name | Meaning |
 | --- | --- |
@@ -231,6 +233,7 @@ One per enum the database stores, named `lk_{enum}`: `id` is the member's number
 | SeeReports | «يرى التقارير»: opens one project's reports, the periodic report, an item's report, a contract's and the VAT statement (redix-api #131). |
 | GenerateReports | «يُصدر التقارير»: issues one project's next periodic report and takes every report's Excel and PDF, whose capital shows only the partners its holder may see (redix-api #131, BR-31). |
 | SeeProjectHistory | «يرى سجل المشروع»: reads one project's history, every action in it, each line only for whoever may see its record (UC-069). |
+| ManageProjectFiles | «ملفات المشروع»: takes one project's archive and retrieves one over it, and loads a project file (UC-073, UC-071); migration 00009 gave it to every ManageProject holder. |
 
 ### lk_time_zone
 

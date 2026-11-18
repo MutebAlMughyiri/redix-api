@@ -46,6 +46,9 @@ const (
 	Delete            Action = "Delete"
 	Restore           Action = "Restore"
 	Reverse           Action = "Reverse"
+	// Archive and Retrieve are a project archived and retrieved from an archive, one line each on the project (UC-073 D9).
+	Archive  Action = "Archive"
+	Retrieve Action = "Retrieve"
 )
 
 // Change is what one action did to one record: its table and id as .NET named them ("Users"), its project (uuid.Nil for none), and the values it

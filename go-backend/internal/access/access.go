@@ -44,13 +44,14 @@ const (
 	SeeReports            Permission = "SeeReports"
 	GenerateReports       Permission = "GenerateReports"
 	SeeProjectHistory     Permission = "SeeProjectHistory"
+	ManageProjectFiles    Permission = "ManageProjectFiles"
 )
 
 // All is every permission in the order .NET's enum gave them, then those added since: History keeps one as its place here (its number), so a
-// new one goes last (SeeProjectHistory, UC-069). A list of them is ordered so.
+// new one goes last (SeeProjectHistory, UC-069; ManageProjectFiles, redix-api #130). A list of them is ordered so.
 var All = []Permission{ApproveProjects, ManageUsers, ReadProject, SeeAllCapital, SeeChosenCapital, ManageProject, ManageStructure, ManageSettings, AddSupplier,
 	ChargeAnyAccount, RecordEntries, ManageAnyEntry, DeleteEntries, RemoveApprovedEntries, AttachFiles, ApproveEntries, MoveMoney, SeeReports, GenerateReports,
-	SeeProjectHistory}
+	SeeProjectHistory, ManageProjectFiles}
 
 // Number is the permission's place in All, as History keeps it.
 func (p Permission) Number() int { return slices.Index(All, p) }
