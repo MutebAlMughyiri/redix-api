@@ -44,6 +44,17 @@ var kinds = web.Enum{"entrySubmitted", "entryApproved", "entryRejected", "projec
 
 func (k Kind) MarshalJSON() ([]byte, error) { return kinds.Write(int64(k)) }
 
+// notificationView is part of what GET /notifications answers (UC-036).
+type notificationView struct {
+	ID          uuid.UUID     `json:"id"`
+	Kind        Kind          `json:"kind"`
+	ProjectID   uuid.UUID     `json:"projectId"`
+	ProjectName string        `json:"projectName"`
+	EntryID     uuid.UUID     `json:"entryId"`
+	At          moment.Moment `json:"at"`
+	IsRead      bool          `json:"isRead"`
+}
+
 // Map routes what the signed-in person was told, for them alone (UC-036, FR-20).
 func Map(router *web.Router, gate *access.Gate, database db.DB) {
 	router.Handle("GET", "/notifications", gate.Working(func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
@@ -52,18 +63,9 @@ func Map(router *web.Router, gate *access.Gate, database db.DB) {
 			problem.Status(w, r, http.StatusInternalServerError)
 			return
 		}
-		type view struct {
-			ID          uuid.UUID     `json:"id"`
-			Kind        Kind          `json:"kind"`
-			ProjectID   uuid.UUID     `json:"projectId"`
-			ProjectName string        `json:"projectName"`
-			EntryID     uuid.UUID     `json:"entryId"`
-			At          moment.Moment `json:"at"`
-			IsRead      bool          `json:"isRead"`
-		}
-		views := []view{}
+		views := []notificationView{}
 		for _, row := range rows {
-			views = append(views, view{ID: row.ID, Kind: Kind(row.Kind), ProjectID: row.ProjectID, ProjectName: row.ProjectName, EntryID: row.EntryID, At: row.At, IsRead: row.IsRead})
+			views = append(views, notificationView{ID: row.ID, Kind: Kind(row.Kind), ProjectID: row.ProjectID, ProjectName: row.ProjectName, EntryID: row.EntryID, At: row.At, IsRead: row.IsRead})
 		}
 		web.JSON(w, r, http.StatusOK, views)
 	}))
