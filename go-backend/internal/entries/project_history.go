@@ -5,6 +5,7 @@ package entries
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"net/http"
 	"slices"
@@ -35,7 +36,7 @@ var actions = web.Enum{"created", "changed", "deleted", "disabled", "enabled", "
 // What a line of the project history says it was done to (D5).
 var thingNames = web.Enum{"entry", "invoice", "file", "account", "custody", "transfer", "reconciliation", "paymentMethod", "partner", "partnerLogin", "supplier",
 	"contract", "contractDocument", "category", "item", "subgroup", "column", "defaultColumn", "project", "unit", "timeZone", "document",
-	"periodicReport", "permission", "person", "roleName", "partnerSight", "permissionRequest"}
+	"periodicReport", "permission", "person", "roleName", "partnerSight", "permissionRequest", "tableSight"}
 
 // What a line of one's own history says happened to one's login (R6).
 var loginKinds = web.Enum{"signIn", "signOut", "signInFailed", "locked", "passwordChanged", "passwordReset", "biometricsOn", "biometricsOff",
@@ -104,6 +105,8 @@ var things = map[string]thing{
 	"InactiveMembers":    {name: "person", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: person},
 	"ProjectRoleNames":   {name: "roleName", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: roleName},
 	"ChosenPartners":     {name: "partnerSight", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: partnerSight},
+	"UnseenGroups":       {name: "tableSight", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: tableSight},
+	"UnseenContracts":    {name: "tableSight", area: "people", owners: []string{"ProjectPermissions"}, seen: sight.managingUsers, describe: tableSight},
 	"PermissionRequests": {name: "permissionRequest", area: "people", saidAs: map[string]string{"Create": "sent"}, seen: sight.managingUsers,
 		describe: person},
 }
@@ -279,6 +282,13 @@ func roleName(d *described, record values, known knowledge) {
 
 func partnerSight(d *described, record values, known knowledge) {
 	d.name, d.about = known.nameOf("Partners", record.id("PartnerId")), known.people[record.id("UserId")]
+}
+
+// tableSight names the table a sight line is of, a group by its name and a contract by its contractor's, and the person (#106).
+func tableSight(d *described, record values, known knowledge) {
+	table := record.id("TableId")
+	d.name = cmp.Or(known.nameOf("Subgroups", table), known.nameOf("Suppliers", known.of("Contracts", table).id("SupplierId")))
+	d.about = known.people[record.id("UserId")]
 }
 
 // sight is what the caller may see in the project (R3): the entries the entries screens show them, and their permissions.

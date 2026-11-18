@@ -129,6 +129,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addUnitStmt, err = db.PrepareContext(ctx, addUnit); err != nil {
 		return nil, fmt.Errorf("error preparing query AddUnit: %w", err)
 	}
+	if q.addUnseenContractStmt, err = db.PrepareContext(ctx, addUnseenContract); err != nil {
+		return nil, fmt.Errorf("error preparing query AddUnseenContract: %w", err)
+	}
+	if q.addUnseenGroupStmt, err = db.PrepareContext(ctx, addUnseenGroup); err != nil {
+		return nil, fmt.Errorf("error preparing query AddUnseenGroup: %w", err)
+	}
 	if q.addUserStmt, err = db.PrepareContext(ctx, addUser); err != nil {
 		return nil, fmt.Errorf("error preparing query AddUser: %w", err)
 	}
@@ -194,6 +200,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.contractDocumentsStmt, err = db.PrepareContext(ctx, contractDocuments); err != nil {
 		return nil, fmt.Errorf("error preparing query ContractDocuments: %w", err)
+	}
+	if q.contractInProjectStmt, err = db.PrepareContext(ctx, contractInProject); err != nil {
+		return nil, fmt.Errorf("error preparing query ContractInProject: %w", err)
 	}
 	if q.contractMoneyStmt, err = db.PrepareContext(ctx, contractMoney); err != nil {
 		return nil, fmt.Errorf("error preparing query ContractMoney: %w", err)
@@ -273,11 +282,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.entryFilesOfStmt, err = db.PrepareContext(ctx, entryFilesOf); err != nil {
 		return nil, fmt.Errorf("error preparing query EntryFilesOf: %w", err)
 	}
+	if q.entryHiddenFromStmt, err = db.PrepareContext(ctx, entryHiddenFrom); err != nil {
+		return nil, fmt.Errorf("error preparing query EntryHiddenFrom: %w", err)
+	}
 	if q.entryOfStmt, err = db.PrepareContext(ctx, entryOf); err != nil {
 		return nil, fmt.Errorf("error preparing query EntryOf: %w", err)
 	}
+	if q.entryTablesOfStmt, err = db.PrepareContext(ctx, entryTablesOf); err != nil {
+		return nil, fmt.Errorf("error preparing query EntryTablesOf: %w", err)
+	}
 	if q.expenseDetailsOfStmt, err = db.PrepareContext(ctx, expenseDetailsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query ExpenseDetailsOf: %w", err)
+	}
+	if q.groupInProjectStmt, err = db.PrepareContext(ctx, groupInProject); err != nil {
+		return nil, fmt.Errorf("error preparing query GroupInProject: %w", err)
 	}
 	if q.hasEntriesWaitingStmt, err = db.PrepareContext(ctx, hasEntriesWaiting); err != nil {
 		return nil, fmt.Errorf("error preparing query HasEntriesWaiting: %w", err)
@@ -549,6 +567,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.removeUnitStmt, err = db.PrepareContext(ctx, removeUnit); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveUnit: %w", err)
 	}
+	if q.removeUnseenContractStmt, err = db.PrepareContext(ctx, removeUnseenContract); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveUnseenContract: %w", err)
+	}
+	if q.removeUnseenGroupStmt, err = db.PrepareContext(ctx, removeUnseenGroup); err != nil {
+		return nil, fmt.Errorf("error preparing query RemoveUnseenGroup: %w", err)
+	}
 	if q.renewDeviceStmt, err = db.PrepareContext(ctx, renewDevice); err != nil {
 		return nil, fmt.Errorf("error preparing query RenewDevice: %w", err)
 	}
@@ -672,11 +696,23 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.suppliersOfStmt, err = db.PrepareContext(ctx, suppliersOf); err != nil {
 		return nil, fmt.Errorf("error preparing query SuppliersOf: %w", err)
 	}
+	if q.tableOfEntryStmt, err = db.PrepareContext(ctx, tableOfEntry); err != nil {
+		return nil, fmt.Errorf("error preparing query TableOfEntry: %w", err)
+	}
 	if q.transfersOfStmt, err = db.PrepareContext(ctx, transfersOf); err != nil {
 		return nil, fmt.Errorf("error preparing query TransfersOf: %w", err)
 	}
 	if q.unitsOfStmt, err = db.PrepareContext(ctx, unitsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query UnitsOf: %w", err)
+	}
+	if q.unseenContractOfStmt, err = db.PrepareContext(ctx, unseenContractOf); err != nil {
+		return nil, fmt.Errorf("error preparing query UnseenContractOf: %w", err)
+	}
+	if q.unseenGroupOfStmt, err = db.PrepareContext(ctx, unseenGroupOf); err != nil {
+		return nil, fmt.Errorf("error preparing query UnseenGroupOf: %w", err)
+	}
+	if q.unseenTablesStmt, err = db.PrepareContext(ctx, unseenTables); err != nil {
+		return nil, fmt.Errorf("error preparing query UnseenTables: %w", err)
 	}
 	if q.userNamedStmt, err = db.PrepareContext(ctx, userNamed); err != nil {
 		return nil, fmt.Errorf("error preparing query UserNamed: %w", err)
@@ -897,6 +933,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addUnitStmt: %w", cerr)
 		}
 	}
+	if q.addUnseenContractStmt != nil {
+		if cerr := q.addUnseenContractStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addUnseenContractStmt: %w", cerr)
+		}
+	}
+	if q.addUnseenGroupStmt != nil {
+		if cerr := q.addUnseenGroupStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addUnseenGroupStmt: %w", cerr)
+		}
+	}
 	if q.addUserStmt != nil {
 		if cerr := q.addUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addUserStmt: %w", cerr)
@@ -1005,6 +1051,11 @@ func (q *Queries) Close() error {
 	if q.contractDocumentsStmt != nil {
 		if cerr := q.contractDocumentsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing contractDocumentsStmt: %w", cerr)
+		}
+	}
+	if q.contractInProjectStmt != nil {
+		if cerr := q.contractInProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing contractInProjectStmt: %w", cerr)
 		}
 	}
 	if q.contractMoneyStmt != nil {
@@ -1137,14 +1188,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing entryFilesOfStmt: %w", cerr)
 		}
 	}
+	if q.entryHiddenFromStmt != nil {
+		if cerr := q.entryHiddenFromStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing entryHiddenFromStmt: %w", cerr)
+		}
+	}
 	if q.entryOfStmt != nil {
 		if cerr := q.entryOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing entryOfStmt: %w", cerr)
 		}
 	}
+	if q.entryTablesOfStmt != nil {
+		if cerr := q.entryTablesOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing entryTablesOfStmt: %w", cerr)
+		}
+	}
 	if q.expenseDetailsOfStmt != nil {
 		if cerr := q.expenseDetailsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing expenseDetailsOfStmt: %w", cerr)
+		}
+	}
+	if q.groupInProjectStmt != nil {
+		if cerr := q.groupInProjectStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing groupInProjectStmt: %w", cerr)
 		}
 	}
 	if q.hasEntriesWaitingStmt != nil {
@@ -1597,6 +1663,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing removeUnitStmt: %w", cerr)
 		}
 	}
+	if q.removeUnseenContractStmt != nil {
+		if cerr := q.removeUnseenContractStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeUnseenContractStmt: %w", cerr)
+		}
+	}
+	if q.removeUnseenGroupStmt != nil {
+		if cerr := q.removeUnseenGroupStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing removeUnseenGroupStmt: %w", cerr)
+		}
+	}
 	if q.renewDeviceStmt != nil {
 		if cerr := q.renewDeviceStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing renewDeviceStmt: %w", cerr)
@@ -1802,6 +1878,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing suppliersOfStmt: %w", cerr)
 		}
 	}
+	if q.tableOfEntryStmt != nil {
+		if cerr := q.tableOfEntryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing tableOfEntryStmt: %w", cerr)
+		}
+	}
 	if q.transfersOfStmt != nil {
 		if cerr := q.transfersOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing transfersOfStmt: %w", cerr)
@@ -1810,6 +1891,21 @@ func (q *Queries) Close() error {
 	if q.unitsOfStmt != nil {
 		if cerr := q.unitsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing unitsOfStmt: %w", cerr)
+		}
+	}
+	if q.unseenContractOfStmt != nil {
+		if cerr := q.unseenContractOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing unseenContractOfStmt: %w", cerr)
+		}
+	}
+	if q.unseenGroupOfStmt != nil {
+		if cerr := q.unseenGroupOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing unseenGroupOfStmt: %w", cerr)
+		}
+	}
+	if q.unseenTablesStmt != nil {
+		if cerr := q.unseenTablesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing unseenTablesStmt: %w", cerr)
 		}
 	}
 	if q.userNamedStmt != nil {
@@ -1951,6 +2047,8 @@ type Queries struct {
 	addSystemPermissionStmt             *sql.Stmt
 	addTransferStmt                     *sql.Stmt
 	addUnitStmt                         *sql.Stmt
+	addUnseenContractStmt               *sql.Stmt
+	addUnseenGroupStmt                  *sql.Stmt
 	addUserStmt                         *sql.Stmt
 	allProjectsStmt                     *sql.Stmt
 	allUnitsStmt                        *sql.Stmt
@@ -1973,6 +2071,7 @@ type Queries struct {
 	columnsOfStmt                       *sql.Stmt
 	columnsOfItemStmt                   *sql.Stmt
 	contractDocumentsStmt               *sql.Stmt
+	contractInProjectStmt               *sql.Stmt
 	contractMoneyStmt                   *sql.Stmt
 	contractOfStmt                      *sql.Stmt
 	contractsOfStmt                     *sql.Stmt
@@ -1999,8 +2098,11 @@ type Queries struct {
 	entriesOfStmt                       *sql.Stmt
 	entryExistsStmt                     *sql.Stmt
 	entryFilesOfStmt                    *sql.Stmt
+	entryHiddenFromStmt                 *sql.Stmt
 	entryOfStmt                         *sql.Stmt
+	entryTablesOfStmt                   *sql.Stmt
 	expenseDetailsOfStmt                *sql.Stmt
+	groupInProjectStmt                  *sql.Stmt
 	hasEntriesWaitingStmt               *sql.Stmt
 	hasUsersStmt                        *sql.Stmt
 	heldEverywhereStmt                  *sql.Stmt
@@ -2091,6 +2193,8 @@ type Queries struct {
 	removeRoleNameStmt                  *sql.Stmt
 	removeSubgroupStmt                  *sql.Stmt
 	removeUnitStmt                      *sql.Stmt
+	removeUnseenContractStmt            *sql.Stmt
+	removeUnseenGroupStmt               *sql.Stmt
 	renewDeviceStmt                     *sql.Stmt
 	revenueDetailsOfStmt                *sql.Stmt
 	revokeDeviceStmt                    *sql.Stmt
@@ -2132,8 +2236,12 @@ type Queries struct {
 	subgroupsOfItemStmt                 *sql.Stmt
 	supplierOfStmt                      *sql.Stmt
 	suppliersOfStmt                     *sql.Stmt
+	tableOfEntryStmt                    *sql.Stmt
 	transfersOfStmt                     *sql.Stmt
 	unitsOfStmt                         *sql.Stmt
+	unseenContractOfStmt                *sql.Stmt
+	unseenGroupOfStmt                   *sql.Stmt
+	unseenTablesStmt                    *sql.Stmt
 	userNamedStmt                       *sql.Stmt
 	userNamesStmt                       *sql.Stmt
 	userWithEmailStmt                   *sql.Stmt
@@ -2188,6 +2296,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addSystemPermissionStmt:             q.addSystemPermissionStmt,
 		addTransferStmt:                     q.addTransferStmt,
 		addUnitStmt:                         q.addUnitStmt,
+		addUnseenContractStmt:               q.addUnseenContractStmt,
+		addUnseenGroupStmt:                  q.addUnseenGroupStmt,
 		addUserStmt:                         q.addUserStmt,
 		allProjectsStmt:                     q.allProjectsStmt,
 		allUnitsStmt:                        q.allUnitsStmt,
@@ -2210,6 +2320,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		columnsOfStmt:                       q.columnsOfStmt,
 		columnsOfItemStmt:                   q.columnsOfItemStmt,
 		contractDocumentsStmt:               q.contractDocumentsStmt,
+		contractInProjectStmt:               q.contractInProjectStmt,
 		contractMoneyStmt:                   q.contractMoneyStmt,
 		contractOfStmt:                      q.contractOfStmt,
 		contractsOfStmt:                     q.contractsOfStmt,
@@ -2236,8 +2347,11 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		entriesOfStmt:                       q.entriesOfStmt,
 		entryExistsStmt:                     q.entryExistsStmt,
 		entryFilesOfStmt:                    q.entryFilesOfStmt,
+		entryHiddenFromStmt:                 q.entryHiddenFromStmt,
 		entryOfStmt:                         q.entryOfStmt,
+		entryTablesOfStmt:                   q.entryTablesOfStmt,
 		expenseDetailsOfStmt:                q.expenseDetailsOfStmt,
+		groupInProjectStmt:                  q.groupInProjectStmt,
 		hasEntriesWaitingStmt:               q.hasEntriesWaitingStmt,
 		hasUsersStmt:                        q.hasUsersStmt,
 		heldEverywhereStmt:                  q.heldEverywhereStmt,
@@ -2328,6 +2442,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		removeRoleNameStmt:                  q.removeRoleNameStmt,
 		removeSubgroupStmt:                  q.removeSubgroupStmt,
 		removeUnitStmt:                      q.removeUnitStmt,
+		removeUnseenContractStmt:            q.removeUnseenContractStmt,
+		removeUnseenGroupStmt:               q.removeUnseenGroupStmt,
 		renewDeviceStmt:                     q.renewDeviceStmt,
 		revenueDetailsOfStmt:                q.revenueDetailsOfStmt,
 		revokeDeviceStmt:                    q.revokeDeviceStmt,
@@ -2369,8 +2485,12 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		subgroupsOfItemStmt:                 q.subgroupsOfItemStmt,
 		supplierOfStmt:                      q.supplierOfStmt,
 		suppliersOfStmt:                     q.suppliersOfStmt,
+		tableOfEntryStmt:                    q.tableOfEntryStmt,
 		transfersOfStmt:                     q.transfersOfStmt,
 		unitsOfStmt:                         q.unitsOfStmt,
+		unseenContractOfStmt:                q.unseenContractOfStmt,
+		unseenGroupOfStmt:                   q.unseenGroupOfStmt,
+		unseenTablesStmt:                    q.unseenTablesStmt,
 		userNamedStmt:                       q.userNamedStmt,
 		userNamesStmt:                       q.userNamesStmt,
 		userWithEmailStmt:                   q.userWithEmailStmt,

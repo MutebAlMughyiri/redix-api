@@ -69,7 +69,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("DELETE", project+"/accounts/{accountId:guid}", keeps(s.delete))
 	router.Handle("POST", project+"/transfers", gate.Changes(access.MoveMoney, s.transfer))
 	router.Handle("GET", project+"/reconciliations/latest", gate.Needs(access.ReadProject, s.latest))
-	router.Handle("POST", project+"/reconciliations", gate.Changes(access.MoveMoney, s.enter))
+	router.Handle("POST", project+"/reconciliations", gate.Changes(access.MoveMoney, access.Whole(s.enter)))
 }
 
 // accountView is an account as the app shows it (AccountView).
@@ -91,7 +91,7 @@ func (s Routes) list(offeredOnly bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 		read, projectID := s.database.Queries(), web.ID(r, "projectId")
 		accounts, err := read.AccountsOf(r.Context(), projectID)
-		balances, balancesErr := Balances(r.Context(), read, projectID)
+		balances, balancesErr := Balances(r.Context(), read, projectID, caller.Access.Unseen(projectID))
 		used, usedErr := read.AccountsUsed(r.Context(), projectID)
 		if err != nil || balancesErr != nil || usedErr != nil {
 			problem.Status(w, r, http.StatusInternalServerError)
@@ -311,7 +311,7 @@ func (s Routes) transfer(w http.ResponseWriter, r *http.Request, caller access.C
 		if err := changes.Unknown(errors.Join(err, toErr), "unknownAccount"); err != nil {
 			return err
 		}
-		balances, err := Balances(c.Ctx, c.Q, c.ProjectID)
+		balances, err := Balances(c.Ctx, c.Q, c.ProjectID, access.Everything)
 		if err != nil {
 			return err
 		}
@@ -381,12 +381,12 @@ func LatestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed 
 			view.ActualTotal = view.ActualTotal.Plus(actual[row.AccountID])
 		}
 	}
-	figures, err := FiguresOf(ctx, q, projectID)
+	figures, err := FiguresOf(ctx, q, projectID, access.Everything)
 	if err != nil {
 		return view, err
 	}
 	accounts, err := q.AccountsOf(ctx, projectID)
-	moved, movedErr := Balances(ctx, q, projectID)
+	moved, movedErr := Balances(ctx, q, projectID, access.Everything)
 	for _, account := range accounts {
 		held, checked := actual[account.ID]
 		if account.IsActive || checked {

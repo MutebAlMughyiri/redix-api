@@ -64,7 +64,7 @@ func (s Routes) attach(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	entry, found := s.entry(w, r)
+	entry, found := s.entry(w, r, caller)
 	if !found {
 		return
 	}

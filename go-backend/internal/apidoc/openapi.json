@@ -2141,6 +2141,13 @@
             },
             "type": "array"
           },
+          "unseenTables": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "utcOffsetMinutes": {
             "type": "integer"
           }
@@ -2158,6 +2165,7 @@
           "status",
           "timeZone",
           "units",
+          "unseenTables",
           "utcOffsetMinutes"
         ],
         "type": "object"
@@ -3354,6 +3362,13 @@
           "temporaryPassword": {
             "type": "string"
           },
+          "unseenTableIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "username": {
             "type": "string"
           }
@@ -3426,6 +3441,13 @@
           },
           "roleName": {
             "type": "string"
+          },
+          "unseenTables": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -3433,7 +3455,8 @@
           "partnerIds",
           "permissions",
           "projectId",
-          "roleName"
+          "roleName",
+          "unseenTables"
         ],
         "type": "object"
       },
@@ -11404,6 +11427,51 @@
         ]
       }
     },
+    "/projects/{projectId}/tables": {
+      "get": {
+        "description": "sightTables is the project's tables as «الجداول» ticks them (#106 R4, D8, D9): every group and contract by category and item, in the order of the report, each item's in the order its sheet prints them, finished ones included; one the caller does not see is listed only to someone who manages the people, who can then tick it back (G2). A partner is the capital ticks' (R14).\n\nAccess: needs the ReadProject permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/entries.offeredCategory"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "sightTables is the project's tables as «الجداول» ticks them (#106 R4, D8, D9): every group and contract by category and item, in the order of the report, each item's in the order its sheet prints them, finished ones included; one the caller does not see is listed only to someone who manages the people, who can then tick it back (G2).",
+        "tags": [
+          "entries"
+        ]
+      }
+    },
     "/projects/{projectId}/time-zone": {
       "put": {
         "description": "setTimeZone puts the project in a zone of the list, the one its entries' today is counted in (redix-app #107, D1): unknownTimeZone (400) for one not on it, projectFinished (409) in a finished project. A change is its own History line.\n\nAccess: needs the ManageProject permission.",
@@ -11859,7 +11927,7 @@
                 }
               }
             },
-            "description": "Refused: invalidPermission, invalidRoleName, unknownPartner."
+            "description": "Refused: invalidPermission, invalidRoleName, unknownPartner, unknownTable."
           },
           "default": {
             "content": {
@@ -12412,6 +12480,144 @@
           }
         },
         "summary": "setRoleName gives someone in the project a free-text role name, \"\" taking it away (Muteb, 9 Nov 2026): invalidRoleName (400) past 50 characters.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/projects/{projectId}/users/{userId}/tables/{tableId}": {
+      "delete": {
+        "description": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.\n\nAccess: needs the ManageUsers permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tableId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/users.userView"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "description": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.\n\nAccess: needs the ManageUsers permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tableId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/users.userView"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.",
         "tags": [
           "users"
         ]

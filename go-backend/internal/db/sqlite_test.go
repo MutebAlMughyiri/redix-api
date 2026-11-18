@@ -31,11 +31,11 @@ func count(t *testing.T, db DB, query string) int {
 
 func TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger(t *testing.T) {
 	db := open(t)
-	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'goose_db_version'"); got != 64 {
-		t.Errorf("tables: %d, want 64", got)
+	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'goose_db_version'"); got != 66 {
+		t.Errorf("tables: %d, want 66", got)
 	}
-	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND sql IS NOT NULL"); got != 109 {
-		t.Errorf("indexes: %d, want 109", got)
+	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND sql IS NOT NULL"); got != 115 {
+		t.Errorf("indexes: %d, want 115", got)
 	}
 	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'goose_db_version' AND sql NOT LIKE '%) STRICT'"); got != 0 {
 		t.Errorf("tables not STRICT: %d", got)
@@ -44,8 +44,8 @@ func TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger(t *testing.T) {
 
 func TestR31_ANewDatabaseStartsWithItsWordsAndLookups(t *testing.T) {
 	db := open(t)
-	if got := count(t, db, "SELECT count(*) FROM translations"); got != 1966 {
-		t.Errorf("words: %d, want 1966", got)
+	if got := count(t, db, "SELECT count(*) FROM translations"); got != 1978 {
+		t.Errorf("words: %d, want 1978", got)
 	}
 	if got := count(t, db, "SELECT count(*) FROM lk_entry_kind"); got != 5 {
 		t.Errorf("entry kinds: %d, want 5", got)

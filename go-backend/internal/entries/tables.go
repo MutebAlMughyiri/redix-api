@@ -315,7 +315,8 @@ func offered(c changes.Change, held access.Access) ([]table, error) {
 			tables = append(tables, tablesOf(category, item, subgroups, columns, offeredContracts, partners, records, moves)...)
 		}
 	}
-	return tables, nil
+	// A table unticked for the person is never offered: Add entry's picker and recording both read here (#106 R10).
+	return slices.DeleteFunc(tables, func(t table) bool { return !held.Sees(c.ProjectID, t.id) }), nil
 }
 
 func tablesOf(category store.Category, item store.Item, subgroups []store.Subgroup, columns []store.ItemColumn, offeredContracts []store.OfferedContractsRow,
@@ -496,9 +497,66 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 			views = append(views, itemTableView{ID: partner.ID, Kind: named{partnerTable, tableKinds}, Name: partner.Name, place: partner.SortOrder})
 		}
 	}
+	views = slices.DeleteFunc(views, func(view itemTableView) bool { return !caller.Access.Sees(c.ProjectID, view.ID) })
 	slices.SortStableFunc(views, func(a, b itemTableView) int { return int(a.place - b.place) })
 	for i := range views {
 		views[i].Count = counts[views[i].ID]
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// sightTables is the project's tables as «الجداول» ticks them (#106 R4, D8, D9): every group and contract by category and item, in the order of the
+// report, each item's in the order its sheet prints them, finished ones included; one the caller does not see is listed only to someone who manages
+// the people, who can then tick it back (G2). A partner is the capital ticks' (R14).
+func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	q, ctx, projectID := s.database.Queries(), r.Context(), web.ID(r, "projectId")
+	categories, err := q.CategoriesOf(ctx, projectID)
+	items, itemsErr := q.ItemsOf(ctx, projectID)
+	subgroups, subgroupsErr := q.SubgroupsOf(ctx, projectID)
+	contracts, contractsErr := q.ContractsOf(ctx, projectID)
+	if errors.Join(err, itemsErr, subgroupsErr, contractsErr) != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	listed := func(id uuid.UUID) bool {
+		return caller.Access.Sees(projectID, id) || caller.Access.Holds(projectID, access.ManageUsers)
+	}
+	views := []offeredCategory{}
+	for _, category := range categories {
+		view := offeredCategory{ID: category.ID, Name: category.Name, Items: []offeredItem{}}
+		for _, item := range items {
+			if item.CategoryID != category.ID || item.Type == int64(structure.Capital) {
+				continue
+			}
+			var placed []itemTableView
+			for _, subgroup := range subgroups {
+				if subgroup.ItemID == item.ID {
+					kind, name := subgroupTable, subgroup.Name
+					if subgroup.Name == "" {
+						kind, name = generalTable, item.Name
+					}
+					placed = append(placed, itemTableView{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
+				}
+			}
+			for _, contract := range contracts {
+				if contract.ItemID == item.ID {
+					placed = append(placed, itemTableView{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
+				}
+			}
+			slices.SortStableFunc(placed, func(a, b itemTableView) int { return int(a.place - b.place) })
+			shown := offeredItem{ID: item.ID, Name: item.Name, Tables: []offeredTable{}, IsRevenue: structure.ItemType(item.Type).IsRevenue()}
+			for _, table := range placed {
+				if listed(table.ID) {
+					shown.Tables = append(shown.Tables, offeredTable{ID: table.ID, Kind: table.Kind, Name: table.Name, ColumnKeys: []string{}})
+				}
+			}
+			if len(shown.Tables) > 0 {
+				view.Items = append(view.Items, shown)
+			}
+		}
+		if len(view.Items) > 0 {
+			views = append(views, view)
+		}
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }

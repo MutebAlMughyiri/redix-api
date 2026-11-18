@@ -47,6 +47,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/permissions/{permission}", manage(u.give))
 	router.Handle("DELETE", "/projects/{projectId:guid}/users/{userId:guid}/permissions/{permission}", manage(u.take))
 	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/partners/{partnerId:guid}", manage(u.choose))
+	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/tables/{tableId:guid}", manage(u.seeTable(true)))
+	router.Handle("DELETE", "/projects/{projectId:guid}/users/{userId:guid}/tables/{tableId:guid}", manage(u.seeTable(false)))
 	router.Handle("DELETE", "/projects/{projectId:guid}/users/{userId:guid}/partners/{partnerId:guid}", manage(u.unchoose))
 	router.Handle("PUT", "/projects/{projectId:guid}/users/{userId:guid}/role-name", manage(u.setRoleName))
 	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/disable", manage(u.disable))
@@ -60,6 +62,8 @@ type projectView struct {
 	RoleName    string              `json:"roleName"`
 	PartnerIDs  []uuid.UUID         `json:"partnerIds"`
 	IsInactive  bool                `json:"isInactive"`
+	// UnseenTables are the tables unticked for the person: the groups and contracts they do not see (#106).
+	UnseenTables []uuid.UUID `json:"unseenTables"`
 }
 
 // userView is a person and what they hold in their projects (UserView).
@@ -93,7 +97,10 @@ func viewOf(user store.User, rows []store.UserProject) userView {
 		slices.SortFunc(permissions, func(a, b access.Permission) int { return a.Number() - b.Number() })
 		partners := []uuid.UUID{}
 		json.Unmarshal([]byte(row.PartnerIds), &partners)
-		projects = append(projects, projectView{ProjectID: row.ProjectID, Permissions: permissions, RoleName: row.RoleName, PartnerIDs: partners, IsInactive: row.IsInactive})
+		unseen := []uuid.UUID{}
+		json.Unmarshal([]byte(row.UnseenTables), &unseen)
+		projects = append(projects, projectView{ProjectID: row.ProjectID, Permissions: permissions, RoleName: row.RoleName, PartnerIDs: partners,
+			IsInactive: row.IsInactive, UnseenTables: unseen})
 	}
 	return userView{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword, Projects: projects}
 }
@@ -251,6 +258,7 @@ type createUserRequest struct {
 	Permissions       []access.Permission `json:"permissions,omitzero"`
 	RoleName          string              `json:"roleName,omitzero"`
 	PartnerIDs        []uuid.UUID         `json:"partnerIds,omitzero"`
+	UnseenTableIDs    []uuid.UUID         `json:"unseenTableIds,omitzero"`
 }
 
 // create adds a new person to the project with a temporary password, ReadProject and the permissions ticked, the partners chosen and a role name
@@ -289,6 +297,17 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 		problem.Refuse(w, r, http.StatusBadRequest, "unknownPartner")
 		return
 	}
+	for _, tableID := range request.UnseenTableIDs {
+		known, err := isTable(r.Context(), read, projectID, tableID)
+		switch {
+		case err != nil:
+			problem.Status(w, r, http.StatusInternalServerError)
+			return
+		case !known:
+			problem.Refuse(w, r, http.StatusBadRequest, "unknownTable")
+			return
+		}
+	}
 	now := moment.Of(u.clock.Now())
 	user, status, refusal, err := New(r.Context(), read, request.DisplayName, request.Username, request.Mobile, request.TemporaryPassword, true, now)
 	if err != nil {
@@ -322,6 +341,11 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 		}
 		for _, partnerID := range partners {
 			if err := c.choose(projectID, user.ID, partnerID); err != nil {
+				return err
+			}
+		}
+		for _, tableID := range request.UnseenTableIDs {
+			if err := c.unsee(projectID, user.ID, tableID); err != nil {
 				return err
 			}
 		}
@@ -392,6 +416,26 @@ func (u Routes) take(w http.ResponseWriter, r *http.Request, caller access.Calle
 		}
 		return 0, "", func(c change) error { return c.take(projectID, userID, taking) }
 	})
+}
+
+// seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them
+// (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.
+func (u Routes) seeTable(sees bool) access.Handler {
+	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+		u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
+			tableID := web.ID(r, "tableId")
+			known, err := isTable(r.Context(), u.database.Queries(), projectID, tableID)
+			switch {
+			case err != nil:
+				return http.StatusInternalServerError, "", nil
+			case !known:
+				return http.StatusNotFound, "", nil
+			case sees:
+				return 0, "", func(c change) error { return c.see(projectID, userID, tableID) }
+			}
+			return 0, "", func(c change) error { return c.unsee(projectID, userID, tableID) }
+		})
+	}
 }
 
 // choose shows a partner's capital to someone in the project, ticking SeeChosenCapital: 404 when they are not in it or the partner is not one of

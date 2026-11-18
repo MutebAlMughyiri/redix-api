@@ -1092,6 +1092,38 @@ Unique: `project_id, user_id`.
 
 Other indexes: `user_id`.
 
+### unseen_groups
+
+The groups each person does not see in each project, unticked by a manager (redix-api #106): what is kept is what is not seen, so a group added later is seen by everyone.
+
+| Column | Type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| id | TEXT (UUID) | not null | PK |  |
+| project_id | TEXT (UUID) | not null | FK | `projects.id` |
+| user_id | TEXT (UUID) | not null | FK | `users.id` |
+| subgroup_id | TEXT (UUID) | not null | FK | `subgroups.id`, deleted with it |
+
+Unique: `project_id, user_id, subgroup_id`.
+
+Other indexes: `subgroup_id`; `user_id`.
+
+### unseen_contracts
+
+The contracts each person does not see in each project, as `unseen_groups` keeps the groups (redix-api #106).
+
+| Column | Type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| id | TEXT (UUID) | not null | PK |  |
+| project_id | TEXT (UUID) | not null | FK | `projects.id` |
+| user_id | TEXT (UUID) | not null | FK | `users.id` |
+| contract_id | TEXT (UUID) | not null | FK | `contracts.id`, deleted with it |
+
+Unique: `project_id, user_id, contract_id`.
+
+Other indexes: `contract_id`; `user_id`.
+
+The view `entry_tables` names each entry's table, the one owner every sum reads: a contractor's payment is its contract's, any other expense or revenue its group's; a capital movement has none (redix-api #106 G1).
+
 ### chosen_partners
 
 Which partners each person sees in each project, beside seeing them all (BR-31, redix-api #106).

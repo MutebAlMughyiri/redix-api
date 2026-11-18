@@ -90,6 +90,19 @@ func (g *Gate) Changes(permission Permission, next Handler) http.HandlerFunc {
 	})
 }
 
+// Whole lets next answer only someone who sees every table of the route's {projectId}: the periodic report, its files, the contracts' and VAT
+// statements and the actual-balances check are one document for everyone (#106 R7, R12, BRS BR-26); 403 for anyone narrowed.
+func Whole(next Handler) Handler {
+	return func(w http.ResponseWriter, r *http.Request, caller Caller) {
+		projectID, _ := uuid.Parse(r.PathValue("projectId"))
+		if !caller.Access.SeesEveryTable(projectID) {
+			problem.Status(w, r, http.StatusForbidden)
+			return
+		}
+		next(w, r, caller)
+	}
+}
+
 // caller is the session the request's bearer token speaks for, on a device still open, with its access; otherwise it answers 401 with a Bearer
 // challenge, naming an invalid token when one was sent. A database that cannot say whether the device is open answers 500, never 401: the app
 // signs its person out on a 401, and a failing database must not. Who asked, and in which project, go on the request's Facts for its log line and

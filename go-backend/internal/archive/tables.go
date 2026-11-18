@@ -57,6 +57,8 @@ var tables = []table{
 	{name: "partner_users", scope: ofProject, retrieved: true},
 	{name: "chosen_partners", scope: ofProject, retrieved: true},
 	{name: "contracts", scope: ofProject, retrieved: true},
+	{name: "unseen_groups", scope: ofProject, retrieved: true},
+	{name: "unseen_contracts", scope: ofProject, retrieved: true},
 	{name: "attachments", scope: ofProject, retrieved: true},
 	{name: "contract_attachments", scope: "contract_id IN (SELECT id FROM contracts WHERE project_id = :project)", retrieved: true},
 	{name: "documents", scope: ofProject, retrieved: true},

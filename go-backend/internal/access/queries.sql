@@ -23,3 +23,9 @@ SELECT EXISTS (SELECT 1 FROM devices WHERE id = sqlc.arg(device_id) AND user_id 
 -- name: ProjectIsFinished :one
 -- Whether a project is finished, and so read-only (AC-04.1).
 SELECT EXISTS (SELECT 1 FROM projects WHERE id = sqlc.arg(project_id) AND status = 1) AS is_finished;
+
+-- name: UnseenTables :many
+-- The tables unticked for a person, in each project: the groups and the contracts they do not see (#106).
+SELECT unseen_groups.project_id, unseen_groups.subgroup_id AS table_id FROM unseen_groups WHERE unseen_groups.user_id = sqlc.arg(user_id)
+UNION ALL
+SELECT unseen_contracts.project_id, unseen_contracts.contract_id AS table_id FROM unseen_contracts WHERE unseen_contracts.user_id = sqlc.arg(user_id);

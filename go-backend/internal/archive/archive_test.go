@@ -252,7 +252,7 @@ func TestAC73_1_AnArchiveHoldsEveryRowOfTheProjectAndNamesItsFilesAndWhoTookIt(t
 		project["id"] != a.id || project["name"] != "مشروع الاختبار" || by["name"] != "محمد" || described["archivedAt"] != "2026-11-18T10:00:00Z" {
 		t.Errorf("the archive: %v", described)
 	}
-	if tables := described["tables"].(map[string]any); len(tables) != archive.Archived() || len(tables) < 42 {
+	if tables := described["tables"].(map[string]any); len(tables) != archive.Archived() || len(tables) < 44 {
 		t.Errorf("%d tables", len(tables))
 	}
 	if !slices.Equal(rowsIn(described)["entries"], a.rowsNow()["entries"]) || len(rowsIn(described)["entries"]) == 0 {

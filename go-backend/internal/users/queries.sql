@@ -119,3 +119,28 @@ SELECT * FROM permission_requests WHERE id = ?;
 
 -- name: DecidePermissionRequest :exec
 UPDATE permission_requests SET status = ?, rejection_reason = ? WHERE id = ?;
+
+-- name: GroupInProject :many
+SELECT subgroups.id FROM subgroups JOIN items ON items.id = subgroups.item_id JOIN categories ON categories.id = items.category_id
+WHERE subgroups.id = sqlc.arg(table_id) AND categories.project_id = sqlc.arg(project_id);
+
+-- name: ContractInProject :many
+SELECT id FROM contracts WHERE id = sqlc.arg(table_id) AND project_id = sqlc.arg(project_id);
+
+-- name: UnseenGroupOf :many
+SELECT * FROM unseen_groups WHERE project_id = ? AND user_id = ? AND subgroup_id = ?;
+
+-- name: UnseenContractOf :many
+SELECT * FROM unseen_contracts WHERE project_id = ? AND user_id = ? AND contract_id = ?;
+
+-- name: AddUnseenGroup :exec
+INSERT INTO unseen_groups (id, project_id, user_id, subgroup_id) VALUES (?, ?, ?, ?);
+
+-- name: AddUnseenContract :exec
+INSERT INTO unseen_contracts (id, project_id, user_id, contract_id) VALUES (?, ?, ?, ?);
+
+-- name: RemoveUnseenGroup :exec
+DELETE FROM unseen_groups WHERE id = ?;
+
+-- name: RemoveUnseenContract :exec
+DELETE FROM unseen_contracts WHERE id = ?;

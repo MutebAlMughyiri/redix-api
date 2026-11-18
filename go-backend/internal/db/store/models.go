@@ -145,6 +145,11 @@ type EntryDecision struct {
 	Reason  string
 }
 
+type EntryTable struct {
+	EntryID uuid.UUID
+	TableID uuid.UUID
+}
+
 type ExpenseDetail struct {
 	EntryID         uuid.UUID
 	ItemID          uuid.UUID
@@ -337,6 +342,20 @@ type Unit struct {
 	SortOrder int64
 }
 
+type UnseenContract struct {
+	ID         uuid.UUID
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
+	ContractID uuid.UUID
+}
+
+type UnseenGroup struct {
+	ID         uuid.UUID
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
+	SubgroupID uuid.UUID
+}
+
 type User struct {
 	ID                 uuid.UUID
 	Username           string
@@ -351,11 +370,12 @@ type User struct {
 }
 
 type UserProject struct {
-	UserID      uuid.UUID
-	ProjectID   uuid.UUID
-	ProjectName string
-	Permissions string
-	RoleName    string
-	PartnerIds  string
-	IsInactive  bool
+	UserID       uuid.UUID
+	ProjectID    uuid.UUID
+	ProjectName  string
+	Permissions  string
+	RoleName     string
+	PartnerIds   string
+	IsInactive   bool
+	UnseenTables string
 }

@@ -35,6 +35,8 @@ overrides:
         go_type: "string"
       - column: "user_projects.partner_ids"
         go_type: "string"
+      - column: "user_projects.unseen_tables"
+        go_type: "string"
       - column: "users.must_change_password"
         go_type: "bool"
       - column: "*.show_in_reports"

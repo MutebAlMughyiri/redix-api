@@ -32,8 +32,9 @@ const (
 
 // Balances is what each account of the project that anything moved holds (AccountMoney, redix-app #89): what its approved entries moved by their
 // kind's sign (BR-10), plus what transfers brought in, less what they took out. An account nothing moved is not among them, and holds nothing.
-func Balances(ctx context.Context, q *store.Queries, projectID uuid.UUID) (map[uuid.UUID]fixed.Total, error) {
-	rows, err := q.AccountMovements(ctx, projectID)
+// The entries of the tables in unseen, a JSON list, are left out: what someone narrowed sees (#106 D6); access.Everything leaves nothing out.
+func Balances(ctx context.Context, q *store.Queries, projectID uuid.UUID, unseen string) (map[uuid.UUID]fixed.Total, error) {
+	rows, err := q.AccountMovements(ctx, store.AccountMovementsParams{ProjectID: projectID, Unseen: unseen})
 	balances := map[uuid.UUID]fixed.Total{}
 	for _, row := range rows {
 		balances[row.AccountID] = fixed.Counted(fixed.Number(row.Total))
@@ -61,13 +62,13 @@ func (f Figures) Surplus() fixed.Total { return f.Revenue().Minus(f.Expenses) }
 // SurplusWithoutSales is the surplus as the statement reckons it, without sales (BR-07).
 func (f Figures) SurplusWithoutSales() fixed.Total { return f.RevenueWithoutSales().Minus(f.Expenses) }
 
-// FiguresOf is the project's figures now.
-func FiguresOf(ctx context.Context, q *store.Queries, projectID uuid.UUID) (Figures, error) {
-	kinds, err := q.ApprovedTotalsByKind(ctx, projectID)
+// FiguresOf is the project's figures now, but the entries of the tables in unseen (#106 R6); access.Everything leaves nothing out.
+func FiguresOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, unseen string) (Figures, error) {
+	kinds, err := q.ApprovedTotalsByKind(ctx, store.ApprovedTotalsByKindParams{ProjectID: projectID, Unseen: unseen})
 	if err != nil {
 		return Figures{}, err
 	}
-	types, err := q.ApprovedRevenueByItemType(ctx, projectID)
+	types, err := q.ApprovedRevenueByItemType(ctx, store.ApprovedRevenueByItemTypeParams{ProjectID: projectID, Unseen: unseen})
 	byKind, byType := map[int64]fixed.Total{}, map[int64]fixed.Total{}
 	for _, row := range kinds {
 		byKind[row.Kind] = fixed.Counted(fixed.Number(row.Total))

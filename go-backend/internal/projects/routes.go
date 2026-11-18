@@ -82,6 +82,8 @@ type projectView struct {
 	HoldsEntries    bool                `json:"holdsEntries"`
 	TimeZone        string              `json:"timeZone"`
 	UTCOffset       int                 `json:"utcOffsetMinutes"`
+	// UnseenTables are the tables unticked for the person, the groups and contracts they do not see (#106 D9).
+	UnseenTables []uuid.UUID `json:"unseenTables"`
 }
 
 // sight is what the person asking holds and is, which every view of a project reads.
@@ -152,7 +154,8 @@ func (s sight) view(project store.Project, units []store.Unit) projectView {
 	}
 	return projectView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Status: statusNames[project.Status], RejectionReason: project.RejectionReason,
 		Description: project.Description, Units: views, Permissions: permissions, RoleName: s.roleNames[project.ID], IsInactive: s.inactive[project.ID],
-		HoldsEntries: s.holding[project.ID], TimeZone: s.zoneOf(project.ID), UTCOffset: zones.OffsetMinutes(s.zoneOf(project.ID), s.now)}
+		HoldsEntries: s.holding[project.ID], TimeZone: s.zoneOf(project.ID), UTCOffset: zones.OffsetMinutes(s.zoneOf(project.ID), s.now),
+		UnseenTables: s.access.UnseenIn(project.ID)}
 }
 
 // list is the projects the person may read, and those they started or were made inactive in, the active first, the latest start first

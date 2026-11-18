@@ -119,6 +119,75 @@ func (c change) take(projectID, userID uuid.UUID, taking access.Permission) erro
 	return c.endInactive(projectID, userID, history.RemoveProject)
 }
 
+// unsee unticks tableID, a group or a contract of projectID, for userID: they no longer see its entries nor count them (#106); one already
+// unticked stays so.
+func (c change) unsee(projectID, userID, tableID uuid.UUID) error {
+	groups, err := c.q.GroupInProject(c.ctx, store.GroupInProjectParams{TableID: tableID, ProjectID: projectID})
+	if err != nil {
+		return err
+	}
+	id := uuid.Must(uuid.NewV7())
+	fields := map[string]any{"ProjectId": projectID, "UserId": userID, "TableId": tableID}
+	if len(groups) > 0 {
+		held, err := c.q.UnseenGroupOf(c.ctx, store.UnseenGroupOfParams{ProjectID: projectID, UserID: userID, SubgroupID: tableID})
+		if err != nil || len(held) > 0 {
+			return err
+		}
+		if err := c.q.AddUnseenGroup(c.ctx, store.AddUnseenGroupParams{ID: id, ProjectID: projectID, UserID: userID, SubgroupID: tableID}); err != nil {
+			return err
+		}
+		return c.record(history.RemoveProject, history.Change{Table: "UnseenGroups", RecordID: id, ProjectID: projectID, After: fields})
+	}
+	held, err := c.q.UnseenContractOf(c.ctx, store.UnseenContractOfParams{ProjectID: projectID, UserID: userID, ContractID: tableID})
+	if err != nil || len(held) > 0 {
+		return err
+	}
+	if err := c.q.AddUnseenContract(c.ctx, store.AddUnseenContractParams{ID: id, ProjectID: projectID, UserID: userID, ContractID: tableID}); err != nil {
+		return err
+	}
+	return c.record(history.RemoveProject, history.Change{Table: "UnseenContracts", RecordID: id, ProjectID: projectID, After: fields})
+}
+
+// see ticks tableID for userID again in projectID, as every table is until unticked (#106 D1).
+func (c change) see(projectID, userID, tableID uuid.UUID) error {
+	fields := map[string]any{"ProjectId": projectID, "UserId": userID, "TableId": tableID}
+	groups, err := c.q.UnseenGroupOf(c.ctx, store.UnseenGroupOfParams{ProjectID: projectID, UserID: userID, SubgroupID: tableID})
+	if err != nil {
+		return err
+	}
+	for _, row := range groups {
+		if err := c.q.RemoveUnseenGroup(c.ctx, row.ID); err != nil {
+			return err
+		}
+		if err := c.record(history.AssignProject, history.Change{Table: "UnseenGroups", RecordID: row.ID, ProjectID: projectID, Before: fields}); err != nil {
+			return err
+		}
+	}
+	contracts, err := c.q.UnseenContractOf(c.ctx, store.UnseenContractOfParams{ProjectID: projectID, UserID: userID, ContractID: tableID})
+	if err != nil {
+		return err
+	}
+	for _, row := range contracts {
+		if err := c.q.RemoveUnseenContract(c.ctx, row.ID); err != nil {
+			return err
+		}
+		if err := c.record(history.AssignProject, history.Change{Table: "UnseenContracts", RecordID: row.ID, ProjectID: projectID, Before: fields}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// isTable says whether tableID is a group or a contract of projectID.
+func isTable(ctx context.Context, q *store.Queries, projectID, tableID uuid.UUID) (bool, error) {
+	groups, err := q.GroupInProject(ctx, store.GroupInProjectParams{TableID: tableID, ProjectID: projectID})
+	if err != nil || len(groups) > 0 {
+		return len(groups) > 0, err
+	}
+	contracts, err := q.ContractInProject(ctx, store.ContractInProjectParams{TableID: tableID, ProjectID: projectID})
+	return len(contracts) > 0, err
+}
+
 // choose shows partnerID's capital to userID (CapitalSight.Choose).
 func (c change) choose(projectID, userID, partnerID uuid.UUID) error {
 	row := store.ChosenPartner{ID: uuid.Must(uuid.NewV7()), ProjectID: projectID, UserID: userID, PartnerID: partnerID}

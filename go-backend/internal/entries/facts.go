@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
@@ -36,6 +37,8 @@ type facts struct {
 	authors        map[uuid.UUID]string
 	balances       map[uuid.UUID]fixed.Total
 	waitingOut     map[uuid.UUID]fixed.Total
+	// tables is each entry's table, its contract or its group, from the view entry_tables (#106 G1); a capital movement has none.
+	tables map[uuid.UUID]uuid.UUID
 }
 
 // factsOf reads the facts of the project's entries; entries are those whose waiting money the facts count.
@@ -44,7 +47,15 @@ func factsOf(c changes.Change, entries []store.Entry) (facts, error) {
 	f := facts{expenses: map[uuid.UUID]store.ExpenseDetail{}, purchases: map[uuid.UUID]store.PurchaseDetail{}, payments: map[uuid.UUID]store.ContractorPaymentDetail{},
 		revenues: map[uuid.UUID]store.RevenueDetail{}, capital: map[uuid.UUID]uuid.UUID{}, invoices: map[uuid.UUID]string{}, files: map[uuid.UUID][]store.EntryFilesOfRow{},
 		partners: map[uuid.UUID]string{}, items: map[uuid.UUID]string{}, accounts: map[uuid.UUID]string{}, paymentMethods: map[uuid.UUID]string{},
-		suppliers: map[uuid.UUID]store.SuppliersOfRow{}, contractors: map[uuid.UUID]uuid.UUID{}, authors: map[uuid.UUID]string{}, waitingOut: map[uuid.UUID]fixed.Total{}}
+		suppliers: map[uuid.UUID]store.SuppliersOfRow{}, contractors: map[uuid.UUID]uuid.UUID{}, authors: map[uuid.UUID]string{}, waitingOut: map[uuid.UUID]fixed.Total{},
+		tables: map[uuid.UUID]uuid.UUID{}}
+	tables, err := q.EntryTablesOf(ctx, projectID)
+	if err != nil {
+		return f, err
+	}
+	for _, row := range tables {
+		f.tables[row.EntryID] = row.TableID
+	}
 	expenses, err := q.ExpenseDetailsOf(ctx, projectID)
 	if err != nil {
 		return f, err
@@ -143,12 +154,12 @@ func factsOf(c changes.Change, entries []store.Entry) (facts, error) {
 	for _, row := range names {
 		f.authors[row.ID] = row.DisplayName
 	}
-	if f.balances, err = accounts.Balances(ctx, q, projectID); err != nil {
+	if f.balances, err = accounts.Balances(ctx, q, projectID, c.Access.Unseen(projectID)); err != nil {
 		return f, err
 	}
 	waiting, err := q.PendingEntriesOf(ctx, projectID)
 	for _, entry := range waiting {
-		if moved := signed(entry.Kind, fixed.Counted(entry.Amount)); moved.Number() < 0 {
+		if moved := signed(entry.Kind, fixed.Counted(entry.Amount)); moved.Number() < 0 && f.tableSeen(c.Access, projectID, entry.ID) {
 			f.waitingOut[entry.AccountID] = f.waitingOut[entry.AccountID].Minus(moved)
 		}
 	}
@@ -393,4 +404,11 @@ func contains(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// tableSeen says whether held sees entryID's table in projectID: always for an entry with none, a capital movement, whose partner the capital ticks
+// decide (#106 R14).
+func (f facts) tableSeen(held access.Access, projectID, entryID uuid.UUID) bool {
+	table, has := f.tables[entryID]
+	return !has || held.Sees(projectID, table)
 }

@@ -18,10 +18,16 @@ const accountMovements = `-- name: AccountMovements :many
 SELECT moved.account_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
     SELECT entries.account_id, CASE WHEN entries.kind IN (2, 4) THEN entries.amount ELSE -entries.amount END AS amount
     FROM entries WHERE entries.project_id = ?1 AND entries.status = 2
+        AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(?2)))
     UNION ALL SELECT transfers.to_account_id, transfers.amount FROM transfers WHERE transfers.project_id = ?1
     UNION ALL SELECT transfers.from_account_id, -transfers.amount FROM transfers WHERE transfers.project_id = ?1
 ) AS moved GROUP BY moved.account_id
 `
+
+type AccountMovementsParams struct {
+	ProjectID uuid.UUID
+	Unseen    interface{}
+}
 
 type AccountMovementsRow struct {
 	AccountID uuid.UUID
@@ -29,9 +35,10 @@ type AccountMovementsRow struct {
 }
 
 // What each account of the project that anything moved holds (AccountMoney): its approved entries by their kind's sign (BR-10) - capital in and
-// revenue bring money in, the rest take it out - plus the transfers it received, less those it sent.
-func (q *Queries) AccountMovements(ctx context.Context, projectID uuid.UUID) ([]AccountMovementsRow, error) {
-	rows, err := q.query(ctx, q.accountMovementsStmt, accountMovements, projectID)
+// revenue bring money in, the rest take it out - plus the transfers it received, less those it sent. The entries of the tables in unseen, a JSON
+// list, are left out, for someone who does not see them (#106 D6).
+func (q *Queries) AccountMovements(ctx context.Context, arg AccountMovementsParams) ([]AccountMovementsRow, error) {
+	rows, err := q.query(ctx, q.accountMovementsStmt, accountMovements, arg.ProjectID, arg.Unseen)
 	if err != nil {
 		return nil, err
 	}
@@ -798,6 +805,48 @@ func (q *Queries) AddUnit(ctx context.Context, arg AddUnitParams) error {
 	return err
 }
 
+const addUnseenContract = `-- name: AddUnseenContract :exec
+INSERT INTO unseen_contracts (id, project_id, user_id, contract_id) VALUES (?, ?, ?, ?)
+`
+
+type AddUnseenContractParams struct {
+	ID         uuid.UUID
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
+	ContractID uuid.UUID
+}
+
+func (q *Queries) AddUnseenContract(ctx context.Context, arg AddUnseenContractParams) error {
+	_, err := q.exec(ctx, q.addUnseenContractStmt, addUnseenContract,
+		arg.ID,
+		arg.ProjectID,
+		arg.UserID,
+		arg.ContractID,
+	)
+	return err
+}
+
+const addUnseenGroup = `-- name: AddUnseenGroup :exec
+INSERT INTO unseen_groups (id, project_id, user_id, subgroup_id) VALUES (?, ?, ?, ?)
+`
+
+type AddUnseenGroupParams struct {
+	ID         uuid.UUID
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
+	SubgroupID uuid.UUID
+}
+
+func (q *Queries) AddUnseenGroup(ctx context.Context, arg AddUnseenGroupParams) error {
+	_, err := q.exec(ctx, q.addUnseenGroupStmt, addUnseenGroup,
+		arg.ID,
+		arg.ProjectID,
+		arg.UserID,
+		arg.SubgroupID,
+	)
+	return err
+}
+
 const addUser = `-- name: AddUser :exec
 INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -905,16 +954,22 @@ func (q *Queries) AllUnits(ctx context.Context) ([]Unit, error) {
 const approvedRevenueByItemType = `-- name: ApprovedRevenueByItemType :many
 SELECT items.type, CAST(SUM(entries.amount) AS INTEGER) AS total
 FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id JOIN items ON items.id = revenue_details.item_id
-WHERE entries.project_id = ? AND entries.status = 2 GROUP BY items.type
+WHERE entries.project_id = ?1 AND entries.status = 2 AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(?2)))
+GROUP BY items.type
 `
+
+type ApprovedRevenueByItemTypeParams struct {
+	ProjectID uuid.UUID
+	Unseen    interface{}
+}
 
 type ApprovedRevenueByItemTypeRow struct {
 	Type  int64
 	Total int64
 }
 
-func (q *Queries) ApprovedRevenueByItemType(ctx context.Context, projectID uuid.UUID) ([]ApprovedRevenueByItemTypeRow, error) {
-	rows, err := q.query(ctx, q.approvedRevenueByItemTypeStmt, approvedRevenueByItemType, projectID)
+func (q *Queries) ApprovedRevenueByItemType(ctx context.Context, arg ApprovedRevenueByItemTypeParams) ([]ApprovedRevenueByItemTypeRow, error) {
+	rows, err := q.query(ctx, q.approvedRevenueByItemTypeStmt, approvedRevenueByItemType, arg.ProjectID, arg.Unseen)
 	if err != nil {
 		return nil, err
 	}
@@ -938,16 +993,22 @@ func (q *Queries) ApprovedRevenueByItemType(ctx context.Context, projectID uuid.
 
 const approvedTotalsByKind = `-- name: ApprovedTotalsByKind :many
 SELECT entries.kind, CAST(SUM(entries.amount) AS INTEGER) AS total FROM entries
-WHERE entries.project_id = ? AND entries.status = 2 GROUP BY entries.kind
+WHERE entries.project_id = ?1 AND entries.status = 2 AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(?2))) GROUP BY entries.kind
 `
+
+type ApprovedTotalsByKindParams struct {
+	ProjectID uuid.UUID
+	Unseen    interface{}
+}
 
 type ApprovedTotalsByKindRow struct {
 	Kind  int64
 	Total int64
 }
 
-func (q *Queries) ApprovedTotalsByKind(ctx context.Context, projectID uuid.UUID) ([]ApprovedTotalsByKindRow, error) {
-	rows, err := q.query(ctx, q.approvedTotalsByKindStmt, approvedTotalsByKind, projectID)
+// What the approved entries came to by kind, but those of the tables in unseen (#106).
+func (q *Queries) ApprovedTotalsByKind(ctx context.Context, arg ApprovedTotalsByKindParams) ([]ApprovedTotalsByKindRow, error) {
+	rows, err := q.query(ctx, q.approvedTotalsByKindStmt, approvedTotalsByKind, arg.ProjectID, arg.Unseen)
 	if err != nil {
 		return nil, err
 	}
@@ -1491,6 +1552,38 @@ func (q *Queries) ContractDocuments(ctx context.Context, projectID uuid.UUID) ([
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const contractInProject = `-- name: ContractInProject :many
+SELECT id FROM contracts WHERE id = ?1 AND project_id = ?2
+`
+
+type ContractInProjectParams struct {
+	TableID   uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) ContractInProject(ctx context.Context, arg ContractInProjectParams) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.contractInProjectStmt, contractInProject, arg.TableID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2250,6 +2343,28 @@ func (q *Queries) EntryFilesOf(ctx context.Context, projectID uuid.UUID) ([]Entr
 	return items, nil
 }
 
+const entryHiddenFrom = `-- name: EntryHiddenFrom :one
+SELECT EXISTS (SELECT 1 FROM entry_tables WHERE entry_tables.entry_id = ?1 AND entry_tables.table_id IN (
+    SELECT unseen_groups.subgroup_id FROM unseen_groups WHERE unseen_groups.user_id = ?2 AND unseen_groups.project_id = ?3
+    UNION ALL
+    SELECT unseen_contracts.contract_id FROM unseen_contracts
+    WHERE unseen_contracts.user_id = ?2 AND unseen_contracts.project_id = ?3)) AS hidden
+`
+
+type EntryHiddenFromParams struct {
+	EntryID   uuid.UUID
+	UserID    uuid.UUID
+	ProjectID uuid.UUID
+}
+
+// Whether the entry's table is unticked for the person, so they are not told of it (#106 R11).
+func (q *Queries) EntryHiddenFrom(ctx context.Context, arg EntryHiddenFromParams) (bool, error) {
+	row := q.queryRow(ctx, q.entryHiddenFromStmt, entryHiddenFrom, arg.EntryID, arg.UserID, arg.ProjectID)
+	var hidden bool
+	err := row.Scan(&hidden)
+	return hidden, err
+}
+
 const entryOf = `-- name: EntryOf :one
 
 SELECT id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number FROM entries WHERE id = ?1 AND project_id = ?2
@@ -2283,6 +2398,35 @@ func (q *Queries) EntryOf(ctx context.Context, arg EntryOfParams) (Entry, error)
 	return i, err
 }
 
+const entryTablesOf = `-- name: EntryTablesOf :many
+SELECT entry_tables.entry_id, entry_tables.table_id FROM entry_tables JOIN entries ON entries.id = entry_tables.entry_id
+WHERE entries.project_id = ?1
+`
+
+// Each entry's table in the project: its contract for a contractor's payment, its group otherwise (#106 G1).
+func (q *Queries) EntryTablesOf(ctx context.Context, projectID uuid.UUID) ([]EntryTable, error) {
+	rows, err := q.query(ctx, q.entryTablesOfStmt, entryTablesOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EntryTable
+	for rows.Next() {
+		var i EntryTable
+		if err := rows.Scan(&i.EntryID, &i.TableID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const expenseDetailsOf = `-- name: ExpenseDetailsOf :many
 SELECT expense_details.entry_id, expense_details.item_id, expense_details.subgroup_id, expense_details.payment_method_id FROM expense_details JOIN entries ON entries.id = expense_details.entry_id WHERE entries.project_id = ?
 `
@@ -2305,6 +2449,39 @@ func (q *Queries) ExpenseDetailsOf(ctx context.Context, projectID uuid.UUID) ([]
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const groupInProject = `-- name: GroupInProject :many
+SELECT subgroups.id FROM subgroups JOIN items ON items.id = subgroups.item_id JOIN categories ON categories.id = items.category_id
+WHERE subgroups.id = ?1 AND categories.project_id = ?2
+`
+
+type GroupInProjectParams struct {
+	TableID   uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) GroupInProject(ctx context.Context, arg GroupInProjectParams) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.groupInProjectStmt, groupInProject, arg.TableID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2674,9 +2851,9 @@ func (q *Queries) ItemOf(ctx context.Context, arg ItemOfParams) (Item, error) {
 const itemTotalsOf = `-- name: ItemTotalsOf :many
 SELECT moved.item_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
     SELECT expense_details.item_id, entries.amount FROM expense_details JOIN entries ON entries.id = expense_details.entry_id
-    WHERE entries.project_id = ?1 AND entries.status = 2
+    WHERE entries.project_id = ?1 AND entries.status = 2 AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(?2)))
     UNION ALL SELECT revenue_details.item_id, entries.amount FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id
-    WHERE entries.project_id = ?1 AND entries.status = 2
+    WHERE entries.project_id = ?1 AND entries.status = 2 AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(?2)))
     UNION ALL SELECT items.id, CASE WHEN entries.kind = 3 THEN -entries.amount ELSE entries.amount END
     FROM capital_movement_details JOIN entries ON entries.id = capital_movement_details.entry_id
         JOIN categories ON categories.project_id = entries.project_id JOIN items ON items.category_id = categories.id AND items.type = 6
@@ -2684,15 +2861,20 @@ SELECT moved.item_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
 ) AS moved GROUP BY moved.item_id
 `
 
+type ItemTotalsOfParams struct {
+	ProjectID uuid.UUID
+	Unseen    interface{}
+}
+
 type ItemTotalsOfRow struct {
 	ItemID uuid.UUID
 	Total  int64
 }
 
 // What each item of the project came to (ItemTotals, BR-02, BR-05): an expense item's approved expenses, a revenue item's approved revenue, the
-// capital item what the partners put in less what they took out.
-func (q *Queries) ItemTotalsOf(ctx context.Context, projectID uuid.UUID) ([]ItemTotalsOfRow, error) {
-	rows, err := q.query(ctx, q.itemTotalsOfStmt, itemTotalsOf, projectID)
+// capital item what the partners put in less what they took out. The entries of the tables in unseen, a JSON list, are left out (#106).
+func (q *Queries) ItemTotalsOf(ctx context.Context, arg ItemTotalsOfParams) ([]ItemTotalsOfRow, error) {
+	rows, err := q.query(ctx, q.itemTotalsOfStmt, itemTotalsOf, arg.ProjectID, arg.Unseen)
 	if err != nil {
 		return nil, err
 	}
@@ -3815,7 +3997,7 @@ func (q *Queries) ProjectIsFinished(ctx context.Context, projectID uuid.UUID) (b
 }
 
 const projectOfUser = `-- name: ProjectOfUser :many
-SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive FROM user_projects WHERE project_id = ?1 AND user_id = ?2
+SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive, unseen_tables FROM user_projects WHERE project_id = ?1 AND user_id = ?2
 `
 
 type ProjectOfUserParams struct {
@@ -3840,6 +4022,7 @@ func (q *Queries) ProjectOfUser(ctx context.Context, arg ProjectOfUserParams) ([
 			&i.RoleName,
 			&i.PartnerIds,
 			&i.IsInactive,
+			&i.UnseenTables,
 		); err != nil {
 			return nil, err
 		}
@@ -3922,7 +4105,7 @@ func (q *Queries) ProjectsHoldingEntries(ctx context.Context) ([]uuid.UUID, erro
 
 const projectsOfUser = `-- name: ProjectsOfUser :many
 
-SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive FROM user_projects WHERE user_id = ?1 ORDER BY project_name COLLATE names
+SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive, unseen_tables FROM user_projects WHERE user_id = ?1 ORDER BY project_name COLLATE names
 `
 
 // Copyright 2026 Tech Details. All rights reserved.
@@ -3945,6 +4128,7 @@ func (q *Queries) ProjectsOfUser(ctx context.Context, userID uuid.UUID) ([]UserP
 			&i.RoleName,
 			&i.PartnerIds,
 			&i.IsInactive,
+			&i.UnseenTables,
 		); err != nil {
 			return nil, err
 		}
@@ -4392,6 +4576,24 @@ DELETE FROM units WHERE id = ?1
 
 func (q *Queries) RemoveUnit(ctx context.Context, id uuid.UUID) error {
 	_, err := q.exec(ctx, q.removeUnitStmt, removeUnit, id)
+	return err
+}
+
+const removeUnseenContract = `-- name: RemoveUnseenContract :exec
+DELETE FROM unseen_contracts WHERE id = ?
+`
+
+func (q *Queries) RemoveUnseenContract(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeUnseenContractStmt, removeUnseenContract, id)
+	return err
+}
+
+const removeUnseenGroup = `-- name: RemoveUnseenGroup :exec
+DELETE FROM unseen_groups WHERE id = ?
+`
+
+func (q *Queries) RemoveUnseenGroup(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.removeUnseenGroupStmt, removeUnseenGroup, id)
 	return err
 }
 
@@ -5353,6 +5555,34 @@ func (q *Queries) SuppliersOf(ctx context.Context, arg SuppliersOfParams) ([]Sup
 	return items, nil
 }
 
+const tableOfEntry = `-- name: TableOfEntry :many
+SELECT table_id FROM entry_tables WHERE entry_id = ?1
+`
+
+// An entry's table, none for a capital movement (#106).
+func (q *Queries) TableOfEntry(ctx context.Context, entryID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.tableOfEntryStmt, tableOfEntry, entryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var table_id uuid.UUID
+		if err := rows.Scan(&table_id); err != nil {
+			return nil, err
+		}
+		items = append(items, table_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const transfersOf = `-- name: TransfersOf :many
 SELECT id, project_id, from_account_id, to_account_id, amount, date, notes, created_by_user_id, created_at FROM transfers WHERE project_id = ?
 `
@@ -5409,6 +5639,117 @@ func (q *Queries) UnitsOf(ctx context.Context, projectID uuid.UUID) ([]Unit, err
 			&i.Name,
 			&i.SortOrder,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unseenContractOf = `-- name: UnseenContractOf :many
+SELECT id, project_id, user_id, contract_id FROM unseen_contracts WHERE project_id = ? AND user_id = ? AND contract_id = ?
+`
+
+type UnseenContractOfParams struct {
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
+	ContractID uuid.UUID
+}
+
+func (q *Queries) UnseenContractOf(ctx context.Context, arg UnseenContractOfParams) ([]UnseenContract, error) {
+	rows, err := q.query(ctx, q.unseenContractOfStmt, unseenContractOf, arg.ProjectID, arg.UserID, arg.ContractID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UnseenContract
+	for rows.Next() {
+		var i UnseenContract
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.UserID,
+			&i.ContractID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unseenGroupOf = `-- name: UnseenGroupOf :many
+SELECT id, project_id, user_id, subgroup_id FROM unseen_groups WHERE project_id = ? AND user_id = ? AND subgroup_id = ?
+`
+
+type UnseenGroupOfParams struct {
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
+	SubgroupID uuid.UUID
+}
+
+func (q *Queries) UnseenGroupOf(ctx context.Context, arg UnseenGroupOfParams) ([]UnseenGroup, error) {
+	rows, err := q.query(ctx, q.unseenGroupOfStmt, unseenGroupOf, arg.ProjectID, arg.UserID, arg.SubgroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UnseenGroup
+	for rows.Next() {
+		var i UnseenGroup
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.UserID,
+			&i.SubgroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unseenTables = `-- name: UnseenTables :many
+SELECT unseen_groups.project_id, unseen_groups.subgroup_id AS table_id FROM unseen_groups WHERE unseen_groups.user_id = ?1
+UNION ALL
+SELECT unseen_contracts.project_id, unseen_contracts.contract_id AS table_id FROM unseen_contracts WHERE unseen_contracts.user_id = ?1
+`
+
+type UnseenTablesRow struct {
+	ProjectID uuid.UUID
+	TableID   uuid.UUID
+}
+
+// The tables unticked for a person, in each project: the groups and the contracts they do not see (#106).
+func (q *Queries) UnseenTables(ctx context.Context, userID uuid.UUID) ([]UnseenTablesRow, error) {
+	rows, err := q.query(ctx, q.unseenTablesStmt, unseenTables, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UnseenTablesRow
+	for rows.Next() {
+		var i UnseenTablesRow
+		if err := rows.Scan(&i.ProjectID, &i.TableID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -5575,7 +5916,7 @@ func (q *Queries) UsersInProject(ctx context.Context, projectID uuid.UUID) ([]Us
 }
 
 const usersOfProject = `-- name: UsersOfProject :many
-SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive FROM user_projects WHERE project_id = ?1
+SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive, unseen_tables FROM user_projects WHERE project_id = ?1
 `
 
 // Every user in a project, each with this project only.
@@ -5596,6 +5937,7 @@ func (q *Queries) UsersOfProject(ctx context.Context, projectID uuid.UUID) ([]Us
 			&i.RoleName,
 			&i.PartnerIds,
 			&i.IsInactive,
+			&i.UnseenTables,
 		); err != nil {
 			return nil, err
 		}
@@ -5648,8 +5990,16 @@ func (q *Queries) Values(ctx context.Context) ([]ValuesRow, error) {
 
 const waitingByKind = `-- name: WaitingByKind :many
 
-SELECT kind, count(*) AS entries, CAST(SUM(amount) AS INTEGER) AS total FROM entries WHERE project_id = ? AND status = 1 GROUP BY kind
+SELECT kind, count(*) AS entries, CAST(SUM(amount) AS INTEGER) AS total FROM entries
+WHERE project_id = ?1 AND status = 1
+    AND id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(?2)))
+GROUP BY kind
 `
+
+type WaitingByKindParams struct {
+	ProjectID uuid.UUID
+	Unseen    interface{}
+}
 
 type WaitingByKindRow struct {
 	Kind    int64
@@ -5659,9 +6009,9 @@ type WaitingByKindRow struct {
 
 // Copyright 2026 Tech Details. All rights reserved.
 // Use of this file is governed by the LICENSE file at the root of this repository.
-// What waits for approval in the project, by kind: how many and how much.
-func (q *Queries) WaitingByKind(ctx context.Context, projectID uuid.UUID) ([]WaitingByKindRow, error) {
-	rows, err := q.query(ctx, q.waitingByKindStmt, waitingByKind, projectID)
+// What waits for approval in the project, by kind: how many and how much; the entries of the tables in unseen, a JSON list, are left out (#106).
+func (q *Queries) WaitingByKind(ctx context.Context, arg WaitingByKindParams) ([]WaitingByKindRow, error) {
+	rows, err := q.query(ctx, q.waitingByKindStmt, waitingByKind, arg.ProjectID, arg.Unseen)
 	if err != nil {
 		return nil, err
 	}

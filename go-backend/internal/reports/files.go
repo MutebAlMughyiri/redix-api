@@ -173,7 +173,7 @@ func (s Routes) itemFile(isPdf bool) access.Handler {
 }
 
 func (s Routes) sendItemFile(w http.ResponseWriter, r *http.Request, caller access.Caller, isPdf bool) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
+	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
 	if changes.Answered(w, r, err) {
 		return
@@ -185,8 +185,8 @@ func (s Routes) sendItemFile(w http.ResponseWriter, r *http.Request, caller acce
 // contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); 404 for a contract of
 // another project.
 func (s Routes) contractFile(isPdf bool) access.Handler {
-	return func(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-		c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
+	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+		c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 		report, err := entries.ContractReportOf(c, web.ID(r, "contractId"))
 		if changes.Answered(w, r, err) {
 			return

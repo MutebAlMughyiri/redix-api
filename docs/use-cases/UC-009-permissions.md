@@ -117,6 +117,36 @@ From صلاحياتي a person asks for permissions given and taken away in the 
 | #112 R10: a request asks only for what changes something, with a reason | `users.TestR112_ARequestAsksOnlyForWhatChangesSomething` |
 | #112 R4, BR-29: the last manager keeps managing users whatever they ask | `users.TestR112_TheLastManagerKeepsManagingUsersWhateverTheyAsk` |
 
+## Which tables one sees (redix-api #106)
+
+A manager unticks, for one person in one project, the tables they may not see: an item's groups, its general one among them, and its contracts. Everyone sees every table until unticked, a table added later included (D1, R5, R8). An entry's table is its contract when it is a contractor's payment, otherwise its item's group, as the view `entry_tables` says; a partner's capital stays with the capital ticks (R14). One owner answers whether a person sees a table, `access.Access.Sees`, and every reader of entries asks it.
+
+| What | For someone unticked from a table |
+| --- | --- |
+| «القيود», the entry's page, search, waiting for approval, the approval history, «سجل المشروع» | Its entries are not there; one opened, approved, edited or removed by id answers `404` (R9) |
+| Add entry's tables, an item's tables | It is not offered; recording into it answers `400` `unknownTable` (R10) |
+| The summary, an account's balance, what waits, an item's or a contract's report and their files | Only the entries of the tables one sees count, so the figures add up (R6, D6) |
+| The periodic report, its files, the contracts' statement and the VAT statement | One document for everyone: `403` for anyone unticked from any table (R7, R12) |
+| An entry sent for approval | Nobody is told of an entry whose table they do not see (R11) |
+
+| Route | Needs | Answers |
+| --- | --- | --- |
+| `GET /projects/{projectId}/tables` | `ReadProject` | `200` the tables as «الجداول» ticks them, by category and item in the order of the report, finished contracts included: those the caller sees, and to whoever holds `ManageUsers` every one, so a manager unticked from one can tick it back (G2) |
+| `POST /projects/{projectId}/users/{userId}/tables/{tableId}`, and `DELETE` on the same path | `ManageUsers` | `200` ticks the table for the person again, or unticks it; `404` for a table neither a group nor a contract of the project, or someone not in it |
+
+`POST /projects/{projectId}/users` takes `unseenTableIds`, the tables the new person starts unticked from, `400` `unknownTable` for one not the project's; the users list and `GET /projects` give each person's `unseenTables`. Every tick is a line of «سجل المشروع», «رؤية الجدول» taken or given (R13). An archive carries the ticks, and a retrieve puts them back with the groups and contracts they name, as it does the chosen partners (UC-073).
+
+| Rule | Proven by |
+| --- | --- |
+| #106 R5, R6, R9: an unticked table's entries are neither listed nor found, and nothing changes before anything is unticked | `entries.TestR106_R5_R6_R9_AnUntickedTablesEntriesAreNeitherListedNorFound` |
+| #106 R6, D6: the summary, the balances and the item report count only the tables one sees | `entries.TestR106_R6_TheSummaryTheBalancesAndTheItemReportCountOnlyTheSeenTables` |
+| #106 R7, R12: the periodic report, its files, the contracts' and the VAT statement are for whoever sees every table | `entries.TestR106_R7_R12_TheWholeDocumentsAreForWhoeverSeesEveryTable` |
+| #106 R6, R8, R10, D1: a table is offered until unticked, recording into it is then refused, and ticking it brings it back | `entries.TestR106_R8_R10_ATableIsOfferedUntilUntickedAndATickBringsItBack` |
+| #106 R11: only those who see an entry's table are told of it | `entries.TestR106_R11_OnlyThoseWhoSeeAnEntrysTableAreToldOfIt` |
+| #106 R3, R13: a new person starts unticked from what the form left unticked, and every tick is a History line | `entries.TestR106_R3_R13_ANewPersonStartsUntickedAndEveryChangeIsAHistoryLine` |
+| #106 R4, D9, G2: the tables list holds every table for a manager and the seen ones for anyone else | `entries.TestR106_D9_G2_TheTablesListHoldsEveryTableForAManagerAndTheSeenOnesForAnyoneElse` |
+| #106: every route the sight reaches answers a failing database | `entries.TestR106_EveryRouteTheSightReachesAnswersAFailingDatabase` |
+
 ## Left to later use cases
 
 The OWASP MASVS review in AC-N08 comes before release.

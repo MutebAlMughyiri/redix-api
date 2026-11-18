@@ -464,6 +464,7 @@ var addedSinceDotNet = map[string]string{
 	"timeZone":         "the time zone a project is in (redix-app #107)",
 	"utcOffsetMinutes": "how far a project's zone is ahead of UTC now (redix-app #107)",
 	"code":             "the code every error answer carries, a bare status's too (redix-api #150 R1, R7)",
+	"unseenTables":     "the tables unticked for a person, which they do not see (redix-api #106)",
 }
 
 // retiredSinceDotNet are the names .NET answered that Go no longer does, each retired by a feature built after it, so an answer recorded with one

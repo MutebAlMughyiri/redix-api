@@ -32,10 +32,12 @@ SELECT EXISTS (SELECT 1 FROM project_permissions WHERE project_id = sqlc.arg(pro
 
 -- name: AccountMovements :many
 -- What each account of the project that anything moved holds (AccountMoney): its approved entries by their kind's sign (BR-10) - capital in and
--- revenue bring money in, the rest take it out - plus the transfers it received, less those it sent.
+-- revenue bring money in, the rest take it out - plus the transfers it received, less those it sent. The entries of the tables in unseen, a JSON
+-- list, are left out, for someone who does not see them (#106 D6).
 SELECT moved.account_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
     SELECT entries.account_id, CASE WHEN entries.kind IN (2, 4) THEN entries.amount ELSE -entries.amount END AS amount
     FROM entries WHERE entries.project_id = sqlc.arg(project_id) AND entries.status = 2
+        AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(sqlc.arg(unseen))))
     UNION ALL SELECT transfers.to_account_id, transfers.amount FROM transfers WHERE transfers.project_id = sqlc.arg(project_id)
     UNION ALL SELECT transfers.from_account_id, -transfers.amount FROM transfers WHERE transfers.project_id = sqlc.arg(project_id)
 ) AS moved GROUP BY moved.account_id;
@@ -49,13 +51,15 @@ UNION SELECT transfers.from_account_id FROM transfers WHERE transfers.project_id
 UNION SELECT transfers.to_account_id FROM transfers WHERE transfers.project_id = sqlc.arg(project_id);
 
 -- name: ApprovedTotalsByKind :many
+-- What the approved entries came to by kind, but those of the tables in unseen (#106).
 SELECT entries.kind, CAST(SUM(entries.amount) AS INTEGER) AS total FROM entries
-WHERE entries.project_id = ? AND entries.status = 2 GROUP BY entries.kind;
+WHERE entries.project_id = sqlc.arg(project_id) AND entries.status = 2 AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(sqlc.arg(unseen)))) GROUP BY entries.kind;
 
 -- name: ApprovedRevenueByItemType :many
 SELECT items.type, CAST(SUM(entries.amount) AS INTEGER) AS total
 FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id JOIN items ON items.id = revenue_details.item_id
-WHERE entries.project_id = ? AND entries.status = 2 GROUP BY items.type;
+WHERE entries.project_id = sqlc.arg(project_id) AND entries.status = 2 AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(sqlc.arg(unseen))))
+GROUP BY items.type;
 
 -- name: AddTransfer :exec
 INSERT INTO transfers (id, project_id, from_account_id, to_account_id, amount, date, notes, created_by_user_id, created_at)

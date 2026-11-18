@@ -4,6 +4,7 @@
 package entries
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
@@ -44,6 +45,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	reads := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.ReadProject, handler) }
 	router.Handle("GET", project+"/entry-tables", reads(s.entryTables))
 	router.Handle("GET", project+"/items/{itemId:guid}/tables", reads(s.itemTables))
+	router.Handle("GET", project+"/tables", reads(s.sightTables))
 	router.Handle("GET", project+"/entries/attachable", gate.Needs(access.RecordEntries, s.attachable))
 	router.Handle("POST", project+"/entries/{entryId:guid}/invoice", gate.Changes(access.RecordEntries, s.attach))
 	router.Handle("GET", project+"/reports/items/{itemId:guid}", gate.Needs(access.SeeReports, s.itemReportRoute))
@@ -68,19 +70,32 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", project+"/entries/{entryId:guid}/reject", gate.Changes(access.ApproveEntries, s.reject))
 }
 
-// entry is the route's entry when it is the project's and not removed (Entry.OfProjectAsync, BR-33, redix-api #119): 404 otherwise.
-func (s Routes) entry(w http.ResponseWriter, r *http.Request) (store.Entry, bool) {
+// entry is the route's entry when it is the project's, not removed and of a table caller sees (Entry.OfProjectAsync, BR-33, redix-api #119,
+// #106 R9): 404 otherwise.
+func (s Routes) entry(w http.ResponseWriter, r *http.Request, caller access.Caller) (store.Entry, bool) {
 	entry, err := changes.Found(s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")}))
 	if err == nil && entry.Status == removed {
 		err = changes.NotFound
 	}
+	if err == nil {
+		err = seen(r.Context(), s.database.Queries(), caller.Access, entry)
+	}
 	return entry, !changes.Answered(w, r, err)
+}
+
+// seen is NotFound for an entry of a table held does not see (#106 R9); an entry with no table, a capital movement, is the capital ticks'.
+func seen(ctx context.Context, q *store.Queries, held access.Access, entry store.Entry) error {
+	tables, err := q.TableOfEntry(ctx, entry.ID)
+	if err == nil && slices.ContainsFunc(tables, func(table uuid.UUID) bool { return !held.Sees(entry.ProjectID, table) }) {
+		return changes.NotFound
+	}
+	return err
 }
 
 // submit sends a draft or a rejected entry for approval and answers it (UC-028): notYourEntry (403) for one the caller may not handle (BR-42);
 // entryNotSubmittable (409) for one already sent; entryIncomplete (400) with every required column left empty under missing (FR-41).
 func (s Routes) submit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	entry, found := s.entry(w, r)
+	entry, found := s.entry(w, r, caller)
 	if !found {
 		return
 	}
@@ -173,7 +188,7 @@ func (s Routes) describe(w http.ResponseWriter, r *http.Request, caller access.C
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	entry, found := s.entry(w, r)
+	entry, found := s.entry(w, r, caller)
 	if !found {
 		return
 	}
@@ -200,7 +215,7 @@ func (s Routes) describe(w http.ResponseWriter, r *http.Request, caller access.C
 // delete deletes an entry (UC-033): one never approved goes with all it holds, for whoever deletes entries, with the refusals of a change; an
 // approved one is removed softly for whoever removes approved entries (redix-api #119). Without the permission the entry asks for, 403.
 func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	entry, found := s.entry(w, r)
+	entry, found := s.entry(w, r, caller)
 	if !found {
 		return
 	}
@@ -271,6 +286,9 @@ func (s Routes) restore(w http.ResponseWriter, r *http.Request, caller access.Ca
 	if err == nil && entry.Status != removed {
 		err = changes.NotFound
 	}
+	if err == nil {
+		err = seen(r.Context(), s.database.Queries(), caller.Access, entry)
+	}
 	if changes.Answered(w, r, err) {
 		return
 	}
@@ -311,8 +329,11 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 		}
 		for _, id := range named {
 			entry, err := c.Q.EntryOf(c.Ctx, store.EntryOfParams{ID: id, ProjectID: c.ProjectID})
+			if err == nil {
+				err = seen(c.Ctx, c.Q, caller.Access, entry)
+			}
 			switch {
-			case errors.Is(err, sql.ErrNoRows):
+			case errors.Is(err, sql.ErrNoRows) || errors.Is(err, changes.NotFound):
 				view.Failed = append(view.Failed, approvalFailure{id, "unknownEntry"})
 			case err != nil:
 				return err
@@ -389,7 +410,7 @@ func (s Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	entry, found := s.entry(w, r)
+	entry, found := s.entry(w, r, caller)
 	if !found {
 		return
 	}
@@ -419,6 +440,7 @@ func (s Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Cal
 // seenBy is the project's entries caller may see, newest first, never a removed one (EntriesEndpoints.SeenByAsync): a draft only for who entered it
 // (BR-42), and a partner's money only for whoever sees that partner (BR-31).
 func (s Routes) seenBy(c changes.Change, caller access.Caller) ([]store.Entry, facts, error) {
+	c.Access = caller.Access
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
 	if err != nil {
 		return nil, facts{}, err
@@ -434,7 +456,8 @@ func (s Routes) seenBy(c changes.Change, caller access.Caller) ([]store.Entry, f
 	var seen []store.Entry
 	for _, entry := range all {
 		partner, isCapital := known.capital[entry.ID]
-		if (entry.Status != draft || entry.CreatedByUserID == caller.UserID) && (seesAll || !isCapital || slices.Contains(chosen, partner)) {
+		if (entry.Status != draft || entry.CreatedByUserID == caller.UserID) && (seesAll || !isCapital || slices.Contains(chosen, partner)) &&
+			known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
 			seen = append(seen, entry)
 		}
 	}
@@ -552,8 +575,8 @@ func (s Routes) answerView(w http.ResponseWriter, r *http.Request, entryID uuid.
 }
 
 // pending is what waits for a decision in the project, oldest first, each with its file when it has one (AC-18.1).
-func (s Routes) pending(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
+func (s Routes) pending(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 	waiting, err := c.Q.PendingEntriesOf(c.Ctx, c.ProjectID)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -566,7 +589,9 @@ func (s Routes) pending(w http.ResponseWriter, r *http.Request, _ access.Caller)
 	}
 	views := []pendingView{}
 	for _, entry := range waiting {
-		views = append(views, known.pending(entry))
+		if known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
+			views = append(views, known.pending(entry))
+		}
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }

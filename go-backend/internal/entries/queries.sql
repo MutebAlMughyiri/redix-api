@@ -163,3 +163,20 @@ SELECT 'supplier' AS register, suppliers.name, 0 AS place FROM suppliers WHERE s
 UNION ALL SELECT 'account', accounts.name, 0 FROM accounts WHERE accounts.project_id = sqlc.arg(project_id)
 UNION ALL SELECT 'paymentMethod', payment_methods.name, payment_methods.sort_order FROM payment_methods WHERE payment_methods.project_id = sqlc.arg(project_id)
 ORDER BY 1, 3, 2 COLLATE names;
+
+-- name: EntryTablesOf :many
+-- Each entry's table in the project: its contract for a contractor's payment, its group otherwise (#106 G1).
+SELECT entry_tables.entry_id, entry_tables.table_id FROM entry_tables JOIN entries ON entries.id = entry_tables.entry_id
+WHERE entries.project_id = sqlc.arg(project_id);
+
+-- name: TableOfEntry :many
+-- An entry's table, none for a capital movement (#106).
+SELECT table_id FROM entry_tables WHERE entry_id = sqlc.arg(entry_id);
+
+-- name: EntryHiddenFrom :one
+-- Whether the entry's table is unticked for the person, so they are not told of it (#106 R11).
+SELECT EXISTS (SELECT 1 FROM entry_tables WHERE entry_tables.entry_id = sqlc.arg(entry_id) AND entry_tables.table_id IN (
+    SELECT unseen_groups.subgroup_id FROM unseen_groups WHERE unseen_groups.user_id = sqlc.arg(user_id) AND unseen_groups.project_id = sqlc.arg(project_id)
+    UNION ALL
+    SELECT unseen_contracts.contract_id FROM unseen_contracts
+    WHERE unseen_contracts.user_id = sqlc.arg(user_id) AND unseen_contracts.project_id = sqlc.arg(project_id))) AS hidden;

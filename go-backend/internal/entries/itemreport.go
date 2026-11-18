@@ -193,7 +193,8 @@ func (g registers) valuesOf(columns []store.ItemColumn, entry store.Entry, known
 }
 
 // ItemReportOf is the report of the item, from what is approved, in date order, what was approved since the latest periodic report marked new
-// (BR-26); of a capital item's partners only those shows keeps have their table, its total staying the whole capital (BR-31).
+// (BR-26); of a capital item's partners only those shows keeps have their table, its total staying the whole capital (BR-31). Only the tables
+// c.Access sees are in it, and only their entries count (#106 R6).
 func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool) (ItemReport, error) {
 	q, ctx, projectID := c.Q, c.Ctx, c.ProjectID
 	all, err := q.EntriesOf(ctx, projectID)
@@ -204,6 +205,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	if err != nil {
 		return ItemReport{}, err
 	}
+	all = slices.DeleteFunc(all, func(entry store.Entry) bool { return !known.tableSeen(c.Access, projectID, entry.ID) })
 	latest, err := q.LatestPeriodicReport(ctx, projectID)
 	if err != nil {
 		return ItemReport{}, err
@@ -324,6 +326,8 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		}
 	}
 	report.ShowsEveryTable = shown == len(partners)
+	report.Subgroups = slices.DeleteFunc(report.Subgroups, func(table TableReport) bool { return !c.Access.Sees(projectID, table.ID) })
+	report.Contracts = slices.DeleteFunc(report.Contracts, func(contract ContractReport) bool { return !c.Access.Sees(projectID, contract.ID) })
 	return report, nil
 }
 
@@ -338,7 +342,7 @@ func signedFor(entry store.Entry) fixed.Total {
 // itemReportRoute is the report of an item of the project (ItemReportEndpoints.Report): a capital item shows the caller only the partners they see
 // (BR-31), its total the whole capital; 404 for an item of another project.
 func (s Routes) itemReportRoute(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
+	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
 	if changes.Answered(w, r, err) {
 		return
@@ -349,16 +353,19 @@ func (s Routes) itemReportRoute(w http.ResponseWriter, r *http.Request, caller a
 
 // contractReportRoute is the report of one contract, as the Contracts screen opens it (Muteb, 12 Nov 2026): its item's report holding that
 // contract's table alone; 404 for a contract of another project.
-func (s Routes) contractReportRoute(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
+func (s Routes) contractReportRoute(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 	report, err := ContractReportOf(c, web.ID(r, "contractId"))
 	s.answer(w, r, report, err)
 }
 
 // ContractReportOf is the report of the contract contractID (ItemReportEndpoints.OfContractAsync), for its screen and its files: its item's report
-// holding that contract's table alone; NotFound for a contract of another project.
+// holding that contract's table alone; NotFound for a contract of another project, or one c.Access does not see (#106 R9).
 func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, error) {
 	contract, err := changes.Found(c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: contractID, ProjectID: c.ProjectID}))
+	if err == nil && !c.Access.Sees(c.ProjectID, contractID) {
+		err = changes.NotFound
+	}
 	if err != nil {
 		return ItemReport{}, err
 	}

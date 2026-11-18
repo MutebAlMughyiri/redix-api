@@ -41,19 +41,19 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	const reports = project + "/periodic-reports"
 	files := func(handler access.Handler) http.HandlerFunc { return gate.Needs(access.GenerateReports, handler) }
 	router.Handle("GET", "/projects/{projectId:guid}/summary", gate.Needs(access.ReadProject, s.summary))
-	router.Handle("GET", reports, gate.Needs(access.SeeReports, s.periodicReports))
-	router.Handle("GET", reports+"/next", gate.Needs(access.SeeReports, s.nextPeriodicReport))
-	router.Handle("GET", reports+"/{number:int}", gate.Needs(access.SeeReports, s.periodicReport))
-	router.Handle("POST", reports, gate.Changes(access.GenerateReports, s.issue))
-	router.Handle("GET", reports+"/{number:int}/xlsx", files(s.periodicWorkbook))
-	router.Handle("GET", reports+"/{number:int}/pdf", files(s.periodicPdf))
+	router.Handle("GET", reports, gate.Needs(access.SeeReports, access.Whole(s.periodicReports)))
+	router.Handle("GET", reports+"/next", gate.Needs(access.SeeReports, access.Whole(s.nextPeriodicReport)))
+	router.Handle("GET", reports+"/{number:int}", gate.Needs(access.SeeReports, access.Whole(s.periodicReport)))
+	router.Handle("POST", reports, gate.Changes(access.GenerateReports, access.Whole(s.issue)))
+	router.Handle("GET", reports+"/{number:int}/xlsx", files(access.Whole(s.periodicWorkbook)))
+	router.Handle("GET", reports+"/{number:int}/pdf", files(access.Whole(s.periodicPdf)))
 	router.Handle("GET", project+"/reports/items/{itemId:guid}/xlsx", files(s.itemFile(false)))
 	router.Handle("GET", project+"/reports/items/{itemId:guid}/pdf", files(s.itemFile(true)))
 	router.Handle("GET", project+"/reports/contracts/{contractId:guid}/xlsx", files(s.contractFile(false)))
 	router.Handle("GET", project+"/reports/contracts/{contractId:guid}/pdf", files(s.contractFile(true)))
-	router.Handle("GET", project+"/reports/contracts/xlsx", files(s.contractsWorkbook))
-	router.Handle("GET", project+"/reports/contracts/pdf", files(s.contractsPdf))
-	router.Handle("GET", project+"/vat-statement/xlsx", files(s.vatWorkbook))
+	router.Handle("GET", project+"/reports/contracts/xlsx", files(access.Whole(s.contractsWorkbook)))
+	router.Handle("GET", project+"/reports/contracts/pdf", files(access.Whole(s.contractsPdf)))
+	router.Handle("GET", project+"/vat-statement/xlsx", files(access.Whole(s.vatWorkbook)))
 }
 
 // Waiting is what waits for approval, as two figures (WaitingFigures, findings row 147): expenses, which lower the surplus once approved, and
@@ -65,9 +65,10 @@ type Waiting struct {
 	RevenueAmount  fixed.Total `json:"revenueAmount"`
 }
 
-// WaitingOf is what waits in the project now; the one owner of "what waits" for the summary and the periodic report.
-func WaitingOf(ctx context.Context, q *store.Queries, projectID uuid.UUID) (Waiting, error) {
-	rows, err := q.WaitingByKind(ctx, projectID)
+// WaitingOf is what waits in the project now, but the entries of the tables in unseen (#106 R6); the one owner of "what waits" for the summary
+// and the periodic report.
+func WaitingOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, unseen string) (Waiting, error) {
+	rows, err := q.WaitingByKind(ctx, store.WaitingByKindParams{ProjectID: projectID, Unseen: unseen})
 	var waiting Waiting
 	for _, row := range rows {
 		amount := fixed.Counted(fixed.Number(row.Total))
@@ -86,9 +87,10 @@ func WaitingOf(ctx context.Context, q *store.Queries, projectID uuid.UUID) (Wait
 	return waiting, err
 }
 
-// ItemTotals is what each item of the project came to (ItemTotals, BR-02, BR-05); an item with nothing is not among them, and comes to nothing.
-func ItemTotals(ctx context.Context, q *store.Queries, projectID uuid.UUID) (map[uuid.UUID]fixed.Total, error) {
-	rows, err := q.ItemTotalsOf(ctx, projectID)
+// ItemTotals is what each item of the project came to (ItemTotals, BR-02, BR-05), but the entries of the tables in unseen (#106 R6); an item with
+// nothing is not among them, and comes to nothing.
+func ItemTotals(ctx context.Context, q *store.Queries, projectID uuid.UUID, unseen string) (map[uuid.UUID]fixed.Total, error) {
+	rows, err := q.ItemTotalsOf(ctx, store.ItemTotalsOfParams{ProjectID: projectID, Unseen: unseen})
 	totals := map[uuid.UUID]fixed.Total{}
 	for _, row := range rows {
 		totals[row.ItemID] = fixed.Counted(fixed.Number(row.Total))
@@ -112,8 +114,8 @@ type categoryTotalView struct {
 
 // categoriesOf is each category's total with its items', the expenses' side and the revenue's, the capital among the revenue (redix-api #109): the
 // one owner of the categories the summary and a periodic report show.
-func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID) ([]categoryTotalView, []categoryTotalView, error) {
-	totals, err := ItemTotals(ctx, q, projectID)
+func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, unseen string) ([]categoryTotalView, []categoryTotalView, error) {
+	totals, err := ItemTotals(ctx, q, projectID, unseen)
 	categories, categoriesErr := q.CategoriesOf(ctx, projectID)
 	items, itemsErr := q.ItemsOf(ctx, projectID)
 	if err := errors.Join(err, categoriesErr, itemsErr); err != nil {
@@ -153,12 +155,13 @@ type summaryView struct {
 
 // summary is revenue, expenses, the surplus, the reconciliation difference, what waits, each category's total with its items' - the capital among
 // the revenue (redix-api #109) - and the completion (UC-049, UC-063), read on every request so an approval shows at once (AC-34.1).
-func (s Routes) summary(w http.ResponseWriter, r *http.Request, _ access.Caller) {
+func (s Routes) summary(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	figures, err := accounts.FiguresOf(r.Context(), read, projectID)
+	unseen := caller.Access.Unseen(projectID)
+	figures, err := accounts.FiguresOf(r.Context(), read, projectID, unseen)
 	at, difference, reconciledErr := accounts.Reconciled(r.Context(), read, projectID)
-	waiting, waitingErr := WaitingOf(r.Context(), read, projectID)
-	expenses, revenue, categoriesErr := categoriesOf(r.Context(), read, projectID)
+	waiting, waitingErr := WaitingOf(r.Context(), read, projectID, unseen)
+	expenses, revenue, categoriesErr := categoriesOf(r.Context(), read, projectID, unseen)
 	if errors.Join(err, reconciledErr, waitingErr, categoriesErr) != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return

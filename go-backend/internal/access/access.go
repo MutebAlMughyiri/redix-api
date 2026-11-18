@@ -87,12 +87,37 @@ func (p *Permission) UnmarshalJSON(data []byte) error {
 // MarshalJSON writes the permission as the API's enums are written, camelCase: "approveProjects".
 func (p Permission) MarshalJSON() ([]byte, error) { return json.Marshal(web.Camel(string(p))) }
 
-// Access is what one person holds: everywhere, in each project, and the partners chosen for them (UserAccess). Nothing in it changes once read.
+// Access is what one person holds: everywhere, in each project, the partners chosen for them (UserAccess), and the tables unticked for them
+// (#106). Nothing in it changes once read.
 type Access struct {
 	everywhere []Permission
 	byProject  map[uuid.UUID][]Permission
 	chosen     map[uuid.UUID][]uuid.UUID
+	unseen     map[uuid.UUID][]uuid.UUID
 }
+
+// Sees says whether the person sees tableID, an item's group or a contract, in projectID: every table but those unticked for them (#106 D1, R8).
+func (a Access) Sees(projectID, tableID uuid.UUID) bool {
+	return !slices.Contains(a.unseen[projectID], tableID)
+}
+
+// SeesEveryTable says whether nothing is unticked for the person in projectID, so the periodic report, its files and the VAT statement are theirs
+// (#106 R7, R12).
+func (a Access) SeesEveryTable(projectID uuid.UUID) bool { return len(a.unseen[projectID]) == 0 }
+
+// UnseenIn is the tables unticked for the person in projectID, which صلاحياتي shows unticked (#106 D9).
+func (a Access) UnseenIn(projectID uuid.UUID) []uuid.UUID {
+	return append([]uuid.UUID{}, a.unseen[projectID]...)
+}
+
+// Unseen is the tables unticked for the person in projectID as the JSON list the sums leave out: [] when they see every table (#106 R6, D6).
+func (a Access) Unseen(projectID uuid.UUID) string {
+	listed, _ := json.Marshal(a.UnseenIn(projectID))
+	return string(listed)
+}
+
+// Everything is the JSON list leaving nothing out, for a figure that is everyone's: the periodic report and its files (#106 R7).
+const Everything = "[]"
 
 // Holds says whether the person holds permission in projectID, or everywhere: a permission counts only in the project it was ticked in, so one project
 // never opens another (BR-33).
@@ -182,7 +207,14 @@ func (b *Book) readOf(ctx context.Context, userID uuid.UUID) (Access, error) {
 	if err != nil {
 		return Access{}, err
 	}
-	access := Access{byProject: map[uuid.UUID][]Permission{}, chosen: map[uuid.UUID][]uuid.UUID{}}
+	unseen, err := b.read.UnseenTables(ctx, userID)
+	if err != nil {
+		return Access{}, err
+	}
+	access := Access{byProject: map[uuid.UUID][]Permission{}, chosen: map[uuid.UUID][]uuid.UUID{}, unseen: map[uuid.UUID][]uuid.UUID{}}
+	for _, row := range unseen {
+		access.unseen[row.ProjectID] = append(access.unseen[row.ProjectID], row.TableID)
+	}
 	for _, permission := range everywhere {
 		access.everywhere = append(access.everywhere, Permission(permission))
 	}

@@ -74,7 +74,7 @@ func (s Routes) change(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	existing, found := s.entry(w, r)
+	existing, found := s.entry(w, r, caller)
 	if !found {
 		return
 	}
@@ -341,8 +341,8 @@ func fileOnAnotherEntry(c changes.Change, attachmentID, editing uuid.UUID) (bool
 	}), err
 }
 
-// add keeps a new entry under its project's next number (FR-54), with its line - sent, or created - its decision and the deciders told when sent,
-// and each of its rows with its line (EntryRecording.AddAsync).
+// add keeps a new entry under its project's next number (FR-54), with its line - sent, or created - each of its rows with its line, and when sent
+// its decision and the deciders told, once its rows say its table (EntryRecording.AddAsync, #106 R11).
 func add(c changes.Change, entry store.Entry, typed Request, t table, tellDeciders bool) error {
 	number, err := c.Q.NextEntryNumber(c.Ctx, c.ProjectID)
 	if err != nil {
@@ -360,12 +360,10 @@ func add(c changes.Change, entry store.Entry, typed Request, t table, tellDecide
 	if err := c.Record(action, "Entries", entry.ID, nil, fields(entry)); err != nil {
 		return err
 	}
-	if sent {
-		if err := sendOff(c, entry, tellDeciders); err != nil {
-			return err
-		}
+	if err := keepRows(c, typed, entry, t); err != nil || !sent {
+		return err
 	}
-	return keepRows(c, typed, entry, t)
+	return sendOff(c, entry, tellDeciders)
 }
 
 // keepRows writes what the entry's table adds to it, and its own file.
@@ -403,8 +401,13 @@ func sendOff(c changes.Change, entry store.Entry, tellDeciders bool) error {
 	return nil
 }
 
-// tell tells userID kind about entry, which tapping it opens (NotificationsEndpoints.About).
+// tell tells userID kind about entry, which tapping it opens (NotificationsEndpoints.About); nobody is told of an entry whose table they do not see
+// (#106 R11).
 func tell(c changes.Change, entry store.Entry, userID uuid.UUID, kind notifications.Kind) error {
+	hidden, err := c.Q.EntryHiddenFrom(c.Ctx, store.EntryHiddenFromParams{EntryID: entry.ID, UserID: userID, ProjectID: entry.ProjectID})
+	if err != nil || hidden {
+		return err
+	}
 	id := uuid.Must(uuid.NewV7())
 	if err := c.Q.AddNotification(c.Ctx, store.AddNotificationParams{ID: id, UserID: userID, ProjectID: entry.ProjectID, Kind: int64(kind), At: c.Now}); err != nil {
 		return err
@@ -440,12 +443,10 @@ func replace(c changes.Change, existing, edited store.Entry, typed Request, t ta
 	if err := c.Record(action, "Entries", after.ID, was, is); err != nil {
 		return after, err
 	}
-	if sending {
-		if err := sendOff(c, after, true); err != nil {
-			return after, err
-		}
+	if err := keepRows(c, typed, after, t); err != nil || !sending {
+		return after, err
 	}
-	return after, keepRows(c, typed, after, t)
+	return after, sendOff(c, after, true)
 }
 
 // filesOf is the entry's files, the oldest first.

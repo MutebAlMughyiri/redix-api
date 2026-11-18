@@ -303,7 +303,7 @@ func (l approvalLine) holds(text string) bool {
 // approvalHistory is a page of the project's approval history (ApprovalHistory, Muteb 12 Nov 2026): every entry approved or rejected, by whom and
 // when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.
 func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
+	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 	chosen, chosenErr := kinds.Parse(r.URL.Query().Get("kind"))
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
 	known, factsErr := factsOf(c, all)
@@ -315,7 +315,7 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 	}
 	entryOf := map[uuid.UUID]store.Entry{}
 	for _, entry := range all {
-		if chosenErr != nil || entry.Kind == chosen {
+		if (chosenErr != nil || entry.Kind == chosen) && known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
 			entryOf[entry.ID] = entry
 		}
 	}

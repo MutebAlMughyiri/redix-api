@@ -90,11 +90,11 @@ func latestOf(c changes.Change) (store.LatestPeriodicReportRow, error) {
 // first, then the revenue's.
 func snapshotOf(c changes.Change, number int64, at moment.Moment, previous fixed.Total) (snapshot, error) {
 	project, err := changes.Found(c.Q.ProjectWithID(c.Ctx, c.ProjectID))
-	figures, figuresErr := accounts.FiguresOf(c.Ctx, c.Q, c.ProjectID)
+	figures, figuresErr := accounts.FiguresOf(c.Ctx, c.Q, c.ProjectID, access.Everything)
 	capital, lines, capitalErr := partners.Capital(c.Ctx, c.Q, c.ProjectID, func(uuid.UUID) bool { return true })
-	expenses, revenue, categoriesErr := categoriesOf(c.Ctx, c.Q, c.ProjectID)
+	expenses, revenue, categoriesErr := categoriesOf(c.Ctx, c.Q, c.ProjectID, access.Everything)
 	reconciliation, reconciliationErr := accounts.LatestOf(c.Ctx, c.Q, c.ProjectID, nil)
-	waiting, waitingErr := WaitingOf(c.Ctx, c.Q, c.ProjectID)
+	waiting, waitingErr := WaitingOf(c.Ctx, c.Q, c.ProjectID, access.Everything)
 	if err := errors.Join(err, figuresErr, capitalErr, categoriesErr, reconciliationErr, waitingErr); err != nil {
 		return snapshot{}, err
 	}
@@ -201,7 +201,7 @@ type nextPeriodicReportView struct {
 func (s Routes) nextPeriodicReport(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
 	latest, err := latestOf(c)
-	waiting, waitingErr := WaitingOf(c.Ctx, c.Q, c.ProjectID)
+	waiting, waitingErr := WaitingOf(c.Ctx, c.Q, c.ProjectID, access.Everything)
 	s.answer(w, r, nextPeriodicReportView{latest.Number + 1, waiting}, errors.Join(err, waitingErr))
 }
 
