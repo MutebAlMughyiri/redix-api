@@ -249,13 +249,16 @@ func (s Routes) activateCategory(active bool) access.Handler {
 	}
 }
 
+// addItemRequest is the body POST /projects/{projectId}/categories/{categoryId}/items (UC-012) reads.
+type addItemRequest struct {
+	Name string   `json:"name"`
+	Type ItemType `json:"type"`
+}
+
 // addItem adds an item of its type at the end of a category, with its general group and the default columns of its type (FR-05, FR-38): 404 for
 // a category the project does not hold, capitalItemExists (409) for a second capital item (BR-31); 201 with it.
 func (s Routes) addItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Name string   `json:"name"`
-		Type ItemType `json:"type"`
-	}
+	var request addItemRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -396,11 +399,14 @@ func (s Routes) activateItem(active bool) access.Handler {
 	}
 }
 
+// tablePercentagesRequest is the body PUT /projects/{projectId}/items/{itemId}/table-percentages (UC-012) reads.
+type tablePercentagesRequest struct {
+	IsOn bool `json:"isOn"`
+}
+
 // setTablePercentages sets whether the item's sheet calculates each table's percentage of the whole (AC-46.9).
 func (s Routes) setTablePercentages(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		IsOn bool `json:"isOn"`
-	}
+	var request tablePercentagesRequest
 	if web.Read(w, r, &request) {
 		s.changeItem(w, r, caller, func(item *store.Item) { item.ShowsTablePercentages = request.IsOn })
 	}
@@ -470,14 +476,17 @@ func Offers(ctx context.Context, q *store.Queries, projectID, itemID uuid.UUID, 
 	return err == nil && category.IsActive && item.IsActive && ItemType(item.Type).OfferedFor(kind), err
 }
 
+// itemTypeRequest is the body PUT /projects/{projectId}/items/{itemId}/type (UC-012) reads.
+type itemTypeRequest struct {
+	Type ItemType `json:"type"`
+}
+
 // changeItemType changes what an item is for (FR-38): while no entry names it, or itemHasEntries, and no contract, or itemHasContract - though an
 // item of purchases or of contractor payments may always become both (Muteb, 7 Nov 2026); never an item whose tables are partners,
 // itemHasPartners; never a second capital item, capitalItemExists. Its built-in columns become the project's default columns of the new type, and
 // the columns a person added stay, after them.
 func (s Routes) changeItemType(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Type ItemType `json:"type"`
-	}
+	var request itemTypeRequest
 	if !web.Read(w, r, &request) {
 		return
 	}

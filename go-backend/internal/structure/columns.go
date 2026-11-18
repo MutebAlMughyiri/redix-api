@@ -247,6 +247,12 @@ func (c change) columnsOfType(itemType ItemType) (map[uuid.UUID][]store.ItemColu
 	return byItem, err
 }
 
+// addTemplateColumnRequest is the body POST /projects/{projectId}/default-columns/{itemType} (UC-013) reads.
+type addTemplateColumnRequest struct {
+	columnRequest
+	ApplyToAllItems bool `json:"applyToAllItems"`
+}
+
 // addToTemplate adds a column to the default template, so new items of this type start with it, and to every existing one with applyToAllItems
 // (AC-41.3); refused as on an item.
 func (s Routes) addToTemplate(w http.ResponseWriter, r *http.Request, caller access.Caller) {
@@ -254,10 +260,7 @@ func (s Routes) addToTemplate(w http.ResponseWriter, r *http.Request, caller acc
 	if !ok {
 		return
 	}
-	var request struct {
-		columnRequest
-		ApplyToAllItems bool `json:"applyToAllItems"`
-	}
+	var request addTemplateColumnRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -302,6 +305,12 @@ func (s Routes) addToTemplate(w http.ResponseWriter, r *http.Request, caller acc
 	})
 }
 
+// reorderTemplateColumnsRequest is the body POST /projects/{projectId}/default-columns/{itemType}/reorder (UC-013) reads.
+type reorderTemplateColumnsRequest struct {
+	reorderRequest
+	ApplyToAllItems bool `json:"applyToAllItems"`
+}
+
 // reorderOfTemplate puts the default template in the order given, and with applyToAllItems every existing item of this type follows it, what only
 // that item has after the rest (AC-41.3): invalidOrder (400) for a list that is not exactly its columns.
 func (s Routes) reorderOfTemplate(w http.ResponseWriter, r *http.Request, caller access.Caller) {
@@ -309,10 +318,7 @@ func (s Routes) reorderOfTemplate(w http.ResponseWriter, r *http.Request, caller
 	if !ok {
 		return
 	}
-	var request struct {
-		reorderRequest
-		ApplyToAllItems bool `json:"applyToAllItems"`
-	}
+	var request reorderTemplateColumnsRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -391,6 +397,12 @@ func (c change) templateColumn(r *http.Request, itemType ItemType) (store.Defaul
 	return template[at], template, nil
 }
 
+// editTemplateColumnRequest is the body PUT /projects/{projectId}/default-columns/{itemType}/{columnId} (UC-013) reads.
+type editTemplateColumnRequest struct {
+	editRequest
+	ApplyToAllItems bool `json:"applyToAllItems"`
+}
+
 // editOfTemplate changes a column of the default template, and with applyToAllItems the same column on every existing item of this type
 // (AC-41.3); refused as on an item.
 func (s Routes) editOfTemplate(w http.ResponseWriter, r *http.Request, caller access.Caller) {
@@ -398,10 +410,7 @@ func (s Routes) editOfTemplate(w http.ResponseWriter, r *http.Request, caller ac
 	if !ok {
 		return
 	}
-	var request struct {
-		editRequest
-		ApplyToAllItems bool `json:"applyToAllItems"`
-	}
+	var request editTemplateColumnRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
