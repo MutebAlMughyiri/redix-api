@@ -93,13 +93,16 @@ func viewOf(user store.User, rows []store.UserProject) userView {
 	return userView{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword, Projects: projects}
 }
 
+// editUserRequest is the body PUT /users/{userId} (UC-007) reads.
+type editUserRequest struct {
+	DisplayName string `json:"displayName"`
+	Mobile      string `json:"mobile"`
+	Email       string `json:"email"`
+}
+
 // edit changes a person's name, mobile and email (UC-007): invalidName, invalidMobile, emailInvalid (400) or emailTaken (409).
 func (u Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		DisplayName string `json:"displayName"`
-		Mobile      string `json:"mobile"`
-		Email       string `json:"email"`
-	}
+	var request editUserRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -118,12 +121,15 @@ func (u Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Calle
 	})
 }
 
+// resetPasswordRequest is the body POST /users/{userId}/reset-password (UC-007) reads.
+type resetPasswordRequest struct {
+	TemporaryPassword string `json:"temporaryPassword"`
+}
+
 // resetPassword gives a person a temporary password they must change at their next sign-in, signing out every device of theirs (UC-007):
 // weakPassword (400) when it does not keep the policy.
 func (u Routes) resetPassword(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		TemporaryPassword string `json:"temporaryPassword"`
-	}
+	var request resetPasswordRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -230,19 +236,22 @@ func (u Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	web.JSON(w, r, http.StatusOK, views)
 }
 
+// createUserRequest is the body POST /projects/{projectId}/users (UC-008) reads.
+type createUserRequest struct {
+	DisplayName       string              `json:"displayName"`
+	Username          string              `json:"username"`
+	Mobile            string              `json:"mobile"`
+	Email             string              `json:"email"`
+	TemporaryPassword string              `json:"temporaryPassword"`
+	Permissions       []access.Permission `json:"permissions,omitzero"`
+	RoleName          string              `json:"roleName,omitzero"`
+	PartnerIDs        []uuid.UUID         `json:"partnerIds,omitzero"`
+}
+
 // create adds a new person to the project with a temporary password, ReadProject and the permissions ticked, the partners chosen and a role name
 // (FR-02): invalidRoleName, invalidPermission, unknownPartner, the details' and the email's refusals, or usernameTaken (409); 201 with them.
 func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		DisplayName       string              `json:"displayName"`
-		Username          string              `json:"username"`
-		Mobile            string              `json:"mobile"`
-		Email             string              `json:"email"`
-		TemporaryPassword string              `json:"temporaryPassword"`
-		Permissions       []access.Permission `json:"permissions,omitzero"`
-		RoleName          string              `json:"roleName,omitzero"`
-		PartnerIDs        []uuid.UUID         `json:"partnerIds,omitzero"`
-	}
+	var request createUserRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -321,11 +330,14 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 	u.answerInProject(w, r, http.StatusCreated, projectID, user.ID)
 }
 
+// addExistingUserRequest is the body POST /projects/{projectId}/users/existing (UC-008) reads.
+type addExistingUserRequest struct {
+	Username string `json:"username"`
+}
+
 // addExisting adds a person already in REDIX, by username, to the project with ReadProject: unknownUser (404) for nobody of that name, or an admin.
 func (u Routes) addExisting(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Username string `json:"username"`
-	}
+	var request addExistingUserRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -444,11 +456,14 @@ func (u Routes) unchoose(w http.ResponseWriter, r *http.Request, caller access.C
 	})
 }
 
+// roleNameRequest is the body PUT /projects/{projectId}/users/{userId}/role-name (UC-008) reads.
+type roleNameRequest struct {
+	RoleName string `json:"roleName"`
+}
+
 // setRoleName gives someone in the project a free-text role name, "" taking it away (Muteb, 9 Nov 2026): invalidRoleName (400) past 50 characters.
 func (u Routes) setRoleName(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		RoleName string `json:"roleName"`
-	}
+	var request roleNameRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
