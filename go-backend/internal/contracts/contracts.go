@@ -261,13 +261,16 @@ func keep(c changes.Change, action history.Action, before, after store.Contract,
 	return nil
 }
 
+// addContractRequest is the body POST /projects/{projectId}/contracts (UC-020) reads.
+type addContractRequest struct {
+	SupplierID uuid.UUID `json:"supplierId"`
+	ItemID     uuid.UUID `json:"itemId"`
+	Terms
+}
+
 // add adds a contract last among its item's tables, refused as refusalOfParties, Terms.refusal and refusalOfDocuments say (400).
 func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		SupplierID uuid.UUID `json:"supplierId"`
-		ItemID     uuid.UUID `json:"itemId"`
-		Terms
-	}
+	var request addContractRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -298,14 +301,17 @@ func Add(c changes.Change, supplierID, itemID uuid.UUID, terms Terms) (uuid.UUID
 	return contract.ID, keep(c, history.Create, store.Contract{}, contract, terms.AttachmentIDs)
 }
 
+// amendContractRequest is the body PUT /projects/{projectId}/contracts/{contractId} reads (UC-020).
+type amendContractRequest struct {
+	Terms
+	SupplierID uuid.UUID `json:"supplierId,omitzero"`
+	ItemID     uuid.UUID `json:"itemId,omitzero"`
+}
+
 // amend amends a contract's Terms and adds to its documents, and changes its contractor or item while no payment names it, or answers
 // contractHasPayments (409); refused as add is.
 func (s Routes) amend(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Terms
-		SupplierID uuid.UUID `json:"supplierId,omitzero"`
-		ItemID     uuid.UUID `json:"itemId,omitzero"`
-	}
+	var request amendContractRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
