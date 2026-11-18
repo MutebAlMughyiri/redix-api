@@ -21,6 +21,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/incidents"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/environment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -63,7 +64,12 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 		EmailCodesPerHour: settings.EmailCodesPerHour, RegistrationsPerHour: settings.RegistrationsPerHour, WebFolder: settings.WebFolder,
 		AttachmentsFolder: settings.AttachmentsFolder, TypstPath: settings.TypstPath, Log: logger,
 	})
-	return serve(ctx, logger, settings, problem.Traced(router))
+	failures, err := incidents.Open(settings.IncidentsPath)
+	if err != nil {
+		return err
+	}
+	defer failures.Close()
+	return serve(ctx, logger, settings, problem.Traced(incidents.Recorded(router, failures, logger, now)))
 }
 
 // maxBodyBytes is the largest request body the API reads: the largest file a person may send is 25 MB (fileTooLarge), with room for its form

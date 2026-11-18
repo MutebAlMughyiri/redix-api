@@ -37,3 +37,10 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Swagger only outside Production. **Waits for redix-api #142:** the Go API serves no Swagger yet, so nothing enforces or proves it | - | - |
 | The privacy policy and the terms are served to anyone, in every environment, in Arabic and English (#143 R3, R4, Q6) | `legal.Map` | `TestQ6_ThePrivacyPolicyAndTheTermsAreServedToAnyoneInArabicAndEnglish` |
 | Every Go and SQL file opens with Tech Details' copyright notice, word for word; a file a tool writes and marks so is the tool's (#143 R1, R6) | `.idea/copyright/` for new files | `TestR6_EveryGoAndSqlFileOpensWithTheNoticeWordForWord` |
+| Every error answer carries a code, a bare status's too: `notFound`, `unexpected`, ... (#150 R1, R7) | `problem.Status` | `TestN16_R7_ABareNotFoundIsProblemDetailsAsUseStatusCodePagesWroteItWithItsCode`, `TestR1_R3_D1_ARefusalAnswersItsCodeAndIsKeptWithItsTraceRouteAndWhoAsked` |
+| Every answer carries its trace id as `X-Trace-Id`, a problem's in its body too; the app's own `traceparent` keeps its trace id (#150 R2, R10) | `problem.Traced` | `TestR10_AnAnswerKeepsTheTraceIdOfTheAppsTraceparent` |
+| Every request writes one log line: method, route with its ids named `{id}`, status, code, time taken, user, project, trace id (#150 R5) | `incidents.Recorded` | `TestR5_EveryRequestWritesOneLogLineAndASuccessIsNoIncident` |
+| Every answer of 400 or more is kept in `incidents.db`, refusals included, with its trace id, route, code and who asked; never a password, code or file (#150 R3, R11, D1) | `incidents.Recorded` | `TestR1_R3_D1_ARefusalAnswersItsCodeAndIsKeptWithItsTraceRouteAndWhoAsked` |
+| A panic is answered 500 with its code and trace id, and kept with its stack (#150 R6) | `incidents.Recorded` | `TestR6_APanicAnswers500WithItsCodeAndTraceIdAndIsKeptWithItsStack` |
+| An incident the file cannot take is still in the log (#150 R8) | `incidents.Recorded` | `TestR8_AnIncidentTheFileCannotTakeIsStillInTheLog` |
+| An incident is kept 90 days (#150 R12) | `incidents.Store` | `TestR12_AnIncidentPastNinetyDaysGoesWhenTheNextIsKept` |

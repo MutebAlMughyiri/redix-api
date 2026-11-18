@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"regexp"
 )
 
 // standard is the type link and title ASP.NET Core gives each status it knows (ProblemDetailsDefaults), checked against every problem the .NET API
@@ -46,9 +47,30 @@ func RefuseOver(w http.ResponseWriter, r *http.Request, status int, code, name s
 	write(w, r, status, field{"code", code}, field{name, detail})
 }
 
-// Status answers with a bare status, as an empty 404 became problem details through UseStatusCodePages.
+// Status answers with a status and the code that names it (redix-api #150 R1, R7), as an empty 404 became problem details through
+// UseStatusCodePages.
 func Status(w http.ResponseWriter, r *http.Request, status int) {
-	write(w, r, status)
+	write(w, r, status, field{"code", codeOf(status)})
+}
+
+// statusCodes name the statuses answered with no reason of their own (#150 R7), so every error answer carries a code.
+var statusCodes = map[int]string{
+	http.StatusBadRequest:           "badRequest",
+	http.StatusUnauthorized:         "signInRequired",
+	http.StatusForbidden:            "forbidden",
+	http.StatusNotFound:             "notFound",
+	http.StatusUnsupportedMediaType: "unsupportedMediaType",
+	http.StatusTooManyRequests:      "tooManyRequests",
+	http.StatusInternalServerError:  "unexpected",
+	http.StatusServiceUnavailable:   "unavailable",
+}
+
+// codeOf is the code a bare status is answered with; "failed" for one no route answers today.
+func codeOf(status int) string {
+	if code, named := statusCodes[status]; named {
+		return code
+	}
+	return "failed"
 }
 
 type field struct {
@@ -67,6 +89,11 @@ func write(w http.ResponseWriter, r *http.Request, status int, extensions ...fie
 	}
 	fields = append(fields, field{"status", status})
 	fields = append(fields, extensions...)
+	for _, f := range extensions {
+		if f.name == "code" {
+			FactsOf(r.Context()).Code, _ = f.value.(string)
+		}
+	}
 	fields = append(fields, field{"traceId", TraceOf(r.Context())})
 
 	var body bytes.Buffer
@@ -92,14 +119,43 @@ func write(w http.ResponseWriter, r *http.Request, status int, extensions ...fie
 
 type traceKey struct{}
 
-// Traced gives every request a W3C trace id, which a problem answer carries as traceId and the logs name.
+type factsKey struct{}
+
+// Facts is what a request turned out to be, which its log line and, when it fails, its incident keep (redix-api #150): the code it was answered
+// with, which write records, and who asked, which the gate records.
+type Facts struct {
+	Code      string
+	UserID    string
+	ProjectID string
+}
+
+// FactsOf is the request's Facts, which Traced gave it; outside Traced, one nothing reads.
+func FactsOf(ctx context.Context) *Facts {
+	if facts, kept := ctx.Value(factsKey{}).(*Facts); kept {
+		return facts
+	}
+	return &Facts{}
+}
+
+// sentTrace is a W3C traceparent header as the app sends it, whose trace id the answer keeps (#150 R10).
+var sentTrace = regexp.MustCompile(`^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$`)
+
+// Traced gives every request a W3C trace id, which every answer carries as its X-Trace-Id header and a problem answer as traceId, and the logs
+// and incidents name (#150 R2, R10): the trace id of the request's own traceparent when it sends one, so the app's log and the API's join, or a
+// new one. It also gives the request its empty Facts.
 func Traced(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		trace, span := make([]byte, 16), make([]byte, 8)
 		rand.Read(trace)
 		rand.Read(span)
-		id := "00-" + hex.EncodeToString(trace) + "-" + hex.EncodeToString(span) + "-00"
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), traceKey{}, id)))
+		traceID := hex.EncodeToString(trace)
+		if sent := sentTrace.FindStringSubmatch(r.Header.Get("traceparent")); sent != nil && sent[1] != "00000000000000000000000000000000" {
+			traceID = sent[1]
+		}
+		id := "00-" + traceID + "-" + hex.EncodeToString(span) + "-00"
+		w.Header().Set("X-Trace-Id", id)
+		ctx := context.WithValue(context.WithValue(r.Context(), traceKey{}, id), factsKey{}, &Facts{})
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

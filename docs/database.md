@@ -22,6 +22,28 @@ Every table, column, key and relation of the REDIX database on SQLite, as Go's m
 
 49 tables hold the business, 13 are lookup tables, and `goose_db_version` is goose's list of the migrations applied.
 
+## Incidents, a file of their own
+
+Every answer of 400 or more is kept in `incidents.db`, a SQLite file beside the database (`REDIX_Incidents__Path`), not in it (redix-api #150): a
+failing database must not lose the incident about it, and the replay that fails the database call by call must not count its writes. The API
+makes its one table when it opens the file, and lets an incident go after 90 days. Never a password, a code or a file's content.
+
+| Column | Type | Null | Key | Points at |
+| --- | --- | --- | --- | --- |
+| id | INTEGER | not null | PK | Numbered by SQLite in the order written |
+| at | TEXT (a UTC moment) | not null |  |  |
+| trace_id | TEXT (at most 55) | not null |  | The answer's `X-Trace-Id` and `traceId` |
+| method | TEXT (at most 10) | not null |  |  |
+| route | TEXT (at most 300) | not null |  | The path, each id named `{id}`; never the query |
+| status | INTEGER | not null |  |  |
+| code | TEXT (at most 60) | not null |  | The answer's code |
+| user_id | TEXT (UUID, at most 36) | not null |  | Who asked, `''` before a sign-in; no key, so an incident is never refused |
+| project_id | TEXT (UUID, at most 36) | not null |  | The route's project, `''` for none |
+| duration_ms | INTEGER | not null |  |  |
+| stack | TEXT (at most 20000) | not null |  | A panic's stack, `''` otherwise |
+
+Other indexes: `at`; `trace_id`.
+
 ## Core and project tables
 
 One SQLite file holds both sides (N9). A table whose rows belong to one project, by a `project_id` of its own or through the row it hangs from, is a project's table; every other table is REDIX's core. Each table's side is written over its `CREATE TABLE` in the migrations (`-- project.Accounts`, `-- dbo.Users`), as SQL Server's `project` and `dbo` schemas held them (redix-api #123), so that in release 2 the project tables can move to each project's own database.

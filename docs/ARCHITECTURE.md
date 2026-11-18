@@ -32,6 +32,7 @@ go-backend/
   internal/history/       the History table, and historytest, the net every test request runs under
   internal/translations/  the words the app shows, by language, with an ETag
   internal/legal/         the privacy policy and the terms, served at /privacy and /terms, and the copyright notice every source file opens with
+  internal/incidents/     one log line per request, every failure kept 90 days in incidents.db with its trace id, a panic answered 500
   internal/email/         the one sender of every email: into a folder today (redix-api #127)
   internal/naming/        what a name may be
   internal/platform/      what every domain shares: the router (web), problem answers (problem), tokens and passwords (credentials),

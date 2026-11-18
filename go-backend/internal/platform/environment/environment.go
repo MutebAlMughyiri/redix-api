@@ -28,6 +28,8 @@ type Settings struct {
 	CertificatesFolder string
 	// DatabasePath is the SQLite file (Database__Path).
 	DatabasePath string
+	// IncidentsPath is the SQLite file of the requests that failed, beside the database unless set (Incidents__Path, redix-api #150).
+	IncidentsPath string
 	// SigningKey signs access tokens; at least 256 bits, kept base64 (Jwt__SigningKey).
 	SigningKey []byte
 	// AdminUsername and AdminPassword make the first admin when there is none (Admin__Username, Admin__Password).
@@ -89,12 +91,14 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 	if err != nil {
 		return Settings{}, fmt.Errorf("REDIX_EmailCodes__PermitsPerHour: %w", err)
 	}
+	databasePath := get("Database__Path", filepath.Join(data, databaseFile))
 	return Settings{
 		Environment:          environment,
 		Urls:                 get("Urls", "http://0.0.0.0:5012"),
 		Domain:               get("Domain", ""),
 		CertificatesFolder:   get("Certificates__Folder", filepath.Join(data, "Certificates")),
-		DatabasePath:         get("Database__Path", filepath.Join(data, databaseFile)),
+		DatabasePath:         databasePath,
+		IncidentsPath:        get("Incidents__Path", filepath.Join(filepath.Dir(databasePath), "incidents.db")),
 		SigningKey:           key,
 		AdminUsername:        get("Admin__Username", ""),
 		AdminPassword:        get("Admin__Password", ""),

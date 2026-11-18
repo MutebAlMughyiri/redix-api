@@ -22,6 +22,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history/historytest"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/incidents"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -52,10 +53,17 @@ func New(t *testing.T) *API {
 	t.Cleanup(func() { database.Close() })
 	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
 	emails := &Emails{}
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	routes := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: 100000,
 		AttachmentsFolder: filepath.Join(t.TempDir(), "attachments"), TypstPath: typstPath(),
-		RegistrationsPerHour: 100000, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
-	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: problem.Traced(routes), tokens: credentials.NewTokens(signingKey, fake)}
+		RegistrationsPerHour: 100000, Log: quiet})
+	failures, err := incidents.Open(filepath.Join(t.TempDir(), "incidents.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { failures.Close() })
+	handler := problem.Traced(incidents.Recorded(routes, failures, quiet, fake))
+	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: handler, tokens: credentials.NewTokens(signingKey, fake)}
 }
 
 // Send asks method on path with body as JSON, and headers as name and value pairs, under the History net.

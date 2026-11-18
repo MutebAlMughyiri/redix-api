@@ -14,7 +14,7 @@ import (
 
 // foundations are the packages under internal whose own tests drive a piece of the platform directly - a middleware, the router, the net, the
 // replay of .NET's answers - rather than asking the API as a domain's tests do.
-var foundations = map[string]bool{"platform": true, "db": true, "history": true, "access": true, "testapi": true, "replay": true}
+var foundations = map[string]bool{"platform": true, "db": true, "history": true, "access": true, "testapi": true, "replay": true, "incidents": true}
 
 // A domain's test that asks the router itself could leave the History net out, which is the forgetting the net exists to stop: every domain's
 // test asks through testapi.

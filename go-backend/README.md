@@ -29,6 +29,7 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 | `REDIX_Certificates__Folder` | Where the domain's certificate is kept | `Redix/Certificates`; Prod: `/var/lib/redix/certificates` |
 | `REDIX_Database__Path` | The SQLite file | `Redix/redix.db` in local application data |
 | `REDIX_Attachments__Folder` | The uploaded files | `Redix/Attachments` |
+| `REDIX_Incidents__Path` | The failed requests, kept 90 days (redix-api #150) | `incidents.db` beside the database |
 | `REDIX_Web__Folder` | The web front end's files; empty for none | |
 | `REDIX_Jwt__SigningKey` | The tokens' key, base64 | required |
 | `REDIX_Admin__Username`, `REDIX_Admin__Password` | The first user, made on an empty database | |

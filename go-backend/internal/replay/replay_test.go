@@ -444,6 +444,7 @@ var addedSinceDotNet = map[string]string{
 	"accountIds":       "the accounts a payment method pays from (redix-app #109)",
 	"timeZone":         "the time zone a project is in (redix-app #107)",
 	"utcOffsetMinutes": "how far a project's zone is ahead of UTC now (redix-app #107)",
+	"code":             "the code every error answer carries, a bare status's too (redix-api #150 R1, R7)",
 }
 
 // withBody holds each route already sent once with a body that is not JSON, before the request it was recorded with: a route .NET answered
