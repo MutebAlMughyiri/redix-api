@@ -9825,14 +9825,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "404": {
@@ -9886,14 +9878,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "404": {
@@ -10543,14 +10527,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "404": {
@@ -10596,14 +10572,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "404": {
@@ -10709,20 +10677,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              },
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "default": {
@@ -10767,20 +10721,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              },
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "default": {
@@ -10876,20 +10816,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              },
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "default": {
@@ -10934,20 +10860,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              },
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "default": {
@@ -12535,14 +12447,6 @@
         ],
         "responses": {
           "200": {
-            "content": {
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
             "description": "OK."
           },
           "400": {

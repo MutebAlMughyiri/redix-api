@@ -44,8 +44,8 @@ func TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger(t *testing.T) {
 
 func TestR31_ANewDatabaseStartsWithItsWordsAndLookups(t *testing.T) {
 	db := open(t)
-	if got := count(t, db, "SELECT count(*) FROM translations"); got != 1960 {
-		t.Errorf("words: %d, want 1960", got)
+	if got := count(t, db, "SELECT count(*) FROM translations"); got != 1966 {
+		t.Errorf("words: %d, want 1966", got)
 	}
 	if got := count(t, db, "SELECT count(*) FROM lk_entry_kind"); got != 5 {
 		t.Errorf("entry kinds: %d, want 5", got)
