@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `GET /health` | Answers `Healthy` when the API runs and reaches the database | No |
 | `GET /translations/{language}` | Every word of `ar` or `en` in one bundle, with an ETag; `304` while unchanged, `404` for another language | No: the sign-in screen needs its words |
-| `GET /swagger`, `GET /openapi/v1.json` | The endpoint reference | No; not served in Production |
+| `GET /swagger`, `GET /openapi/v1.json` | The endpoint reference. **Waits for redix-api #142:** the Go API serves neither yet | No; not served in Production |
 
 ## Tables
 
@@ -33,4 +33,4 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A bundle holds every word of its language | `translations.bundle` | `TranslationsTests.BundleHoldsEveryWordOfTheLanguage` |
 | An unchanged bundle answers `304` | `translations.bundle` | `TranslationsTests.UnchangedBundleAnswersNotModified` |
 | Another language answers `404` | `translations.bundle` | `TranslationsTests.UnknownLanguageIsNotFound` |
-| Swagger only outside Production | `Program.cs` | `SwaggerTests.SwaggerIsServedOutsideProductionOnly` |
+| Swagger only outside Production. **Waits for redix-api #142:** the Go API serves no Swagger yet, so nothing enforces or proves it | - | - |
