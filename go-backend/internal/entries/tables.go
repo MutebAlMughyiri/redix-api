@@ -374,61 +374,69 @@ func tablesOf(category store.Category, item store.Item, subgroups []store.Subgro
 	return tables
 }
 
+// offeredTable is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
+type offeredTable struct {
+	ID         uuid.UUID `json:"id"`
+	Kind       named     `json:"kind"`
+	Name       string    `json:"name"`
+	ColumnKeys []string  `json:"columnKeys"`
+}
+
+// offeredItem is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
+type offeredItem struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Tables    []offeredTable `json:"tables"`
+	IsRevenue bool           `json:"isRevenue"`
+}
+
+// offeredCategory is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
+type offeredCategory struct {
+	ID    uuid.UUID     `json:"id"`
+	Name  string        `json:"name"`
+	Items []offeredItem `json:"items"`
+}
+
 // entryTables is every table the caller may enter into (redix-app #84, redix-api #110), grouped by category and item in the order of the report,
 // each with the keys of the columns its entry is asked.
 func (s Routes) entryTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	type tableView struct {
-		ID         uuid.UUID `json:"id"`
-		Kind       named     `json:"kind"`
-		Name       string    `json:"name"`
-		ColumnKeys []string  `json:"columnKeys"`
-	}
-	type itemView struct {
-		ID        uuid.UUID   `json:"id"`
-		Name      string      `json:"name"`
-		Tables    []tableView `json:"tables"`
-		IsRevenue bool        `json:"isRevenue"`
-	}
-	type categoryView struct {
-		ID    uuid.UUID  `json:"id"`
-		Name  string     `json:"name"`
-		Items []itemView `json:"items"`
-	}
 	tables, err := offered(changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}, caller.Access)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []categoryView{}
+	views := []offeredCategory{}
 	for _, t := range tables {
 		if len(views) == 0 || views[len(views)-1].ID != t.category.ID {
-			views = append(views, categoryView{ID: t.category.ID, Name: t.category.Name, Items: []itemView{}})
+			views = append(views, offeredCategory{ID: t.category.ID, Name: t.category.Name, Items: []offeredItem{}})
 		}
 		category := &views[len(views)-1]
 		if len(category.Items) == 0 || category.Items[len(category.Items)-1].ID != t.item.ID {
-			category.Items = append(category.Items, itemView{ID: t.item.ID, Name: t.item.Name, Tables: []tableView{}, IsRevenue: t.isRevenue()})
+			category.Items = append(category.Items, offeredItem{ID: t.item.ID, Name: t.item.Name, Tables: []offeredTable{}, IsRevenue: t.isRevenue()})
 		}
 		item := &category.Items[len(category.Items)-1]
 		keys := []string{}
 		for _, column := range t.columns {
 			keys = append(keys, column.Key)
 		}
-		item.Tables = append(item.Tables, tableView{ID: t.id, Kind: named{t.kind, tableKinds}, Name: t.name, ColumnKeys: keys})
+		item.Tables = append(item.Tables, offeredTable{ID: t.id, Kind: named{t.kind, tableKinds}, Name: t.name, ColumnKeys: keys})
 	}
 	web.JSON(w, r, http.StatusOK, views)
+}
+
+// itemTableView is part of what GET /projects/{projectId}/items/{itemId}/tables (UC-012) answers.
+type itemTableView struct {
+	ID    uuid.UUID `json:"id"`
+	Kind  named     `json:"kind"`
+	Name  string    `json:"name"`
+	Count int       `json:"count"`
+	place int64
 }
 
 // itemTables is an item's tables in the order its sheet prints them (CategoriesEndpoints.Tables, AC-46.8): its general table named after the
 // item, each named subgroup, each contract's payments named after its contractor, and a capital item's partners the caller sees (BR-31), each
 // with how many approved entries it holds. 404 for an item the project does not hold.
 func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	type view struct {
-		ID    uuid.UUID `json:"id"`
-		Kind  named     `json:"kind"`
-		Name  string    `json:"name"`
-		Count int       `json:"count"`
-		place int64
-	}
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
 	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
 	if changes.Answered(w, r, err) {
@@ -461,19 +469,19 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 			counts[partner]++
 		}
 	}
-	views := []view{}
+	views := []itemTableView{}
 	if item.Type != int64(structure.Capital) {
 		for _, subgroup := range subgroups {
 			kind, name := subgroupTable, subgroup.Name
 			if subgroup.Name == "" {
 				kind, name = generalTable, item.Name
 			}
-			views = append(views, view{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
+			views = append(views, itemTableView{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
 		}
 	}
 	for _, contract := range contractRows {
 		if contract.ItemID == item.ID {
-			views = append(views, view{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
+			views = append(views, itemTableView{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
 		}
 	}
 	seesAll, chosen := caller.Access.Holds(c.ProjectID, access.SeeAllCapital), caller.Access.ChosenIn(c.ProjectID)
@@ -482,10 +490,10 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 	}
 	for _, partner := range partners {
 		if !partner.IsDeleted && (seesAll || slices.Contains(chosen, partner.ID)) {
-			views = append(views, view{ID: partner.ID, Kind: named{partnerTable, tableKinds}, Name: partner.Name, place: partner.SortOrder})
+			views = append(views, itemTableView{ID: partner.ID, Kind: named{partnerTable, tableKinds}, Name: partner.Name, place: partner.SortOrder})
 		}
 	}
-	slices.SortStableFunc(views, func(a, b view) int { return int(a.place - b.place) })
+	slices.SortStableFunc(views, func(a, b itemTableView) int { return int(a.place - b.place) })
 	for i := range views {
 		views[i].Count = counts[views[i].ID]
 	}

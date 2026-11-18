@@ -48,13 +48,16 @@ func (s Routes) attachable(w http.ResponseWriter, r *http.Request, caller access
 	s.answer(w, r, views, err)
 }
 
+// attachInvoiceRequest is the body POST /projects/{projectId}/entries/{entryId}/invoice reads (UC-039).
+type attachInvoiceRequest struct {
+	AttachmentID uuid.UUID `json:"attachmentId"`
+}
+
 // attach puts the file on the entry beside any it has, as its kind's file (D5), and changes nothing else (D15): notYourEntry (403) for one the
 // caller may not handle (BR-42), entryNotAttachable (409) for a deduction, a credit note or a removed entry, unknownAttachment (400), and
 // invoiceAlreadyAttached (409) for a file already on an entry (BR-22).
 func (s Routes) attach(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var typed struct {
-		AttachmentID uuid.UUID `json:"attachmentId"`
-	}
+	var typed attachInvoiceRequest
 	if !web.Read(w, r, &typed) {
 		return
 	}

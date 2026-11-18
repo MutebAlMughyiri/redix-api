@@ -156,12 +156,15 @@ func (s Routes) missingOf(r *http.Request, entry store.Entry) ([]string, error) 
 	return missingOf(entry.Description, values.Values, asked), nil
 }
 
+// describeEntryRequest is the body PUT /projects/{projectId}/entries/{entryId}/description reads (UC-033).
+type describeEntryRequest struct {
+	Description string `json:"description"`
+}
+
 // describe changes an entry's description, allowed even once it is approved (AC-50.2, BR-11): notYourEntry (403), invalidDescription (400).
 // Its line is written whether or not anything changed, as .NET's AddHistory wrote it.
 func (s Routes) describe(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var typed struct {
-		Description string `json:"description"`
-	}
+	var typed describeEntryRequest
 	if !web.Read(w, r, &typed) {
 		return
 	}
@@ -269,23 +272,31 @@ func (s Routes) restore(w http.ResponseWriter, r *http.Request, caller access.Ca
 	s.writer.Done(w, r, caller, func(c changes.Change) error { return setStatus(c, entry, approved, history.Restore) })
 }
 
+// approveEntriesRequest is the body POST /projects/{projectId}/entries/approve reads (UC-032).
+type approveEntriesRequest struct {
+	EntryIDs []uuid.UUID `json:"entryIds"`
+}
+
+// approvalFailure is part of what POST /projects/{projectId}/entries/approve answers (UC-032).
+type approvalFailure struct {
+	EntryID uuid.UUID `json:"entryId"`
+	Code    string    `json:"code"`
+}
+
+// approvalView is what POST /projects/{projectId}/entries/approve answers (UC-032).
+type approvalView struct {
+	Approved []uuid.UUID       `json:"approved"`
+	Failed   []approvalFailure `json:"failed"`
+}
+
 // approve approves the entries named, each on its own (FR-19, AC-19.2): what cannot be approved comes back by id with its reason - unknownEntry,
 // entryNotPending - and nothing is approved in silence. The first expense on a supplier waiting for approval approves it too (AC-44.1).
 func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var typed struct {
-		EntryIDs []uuid.UUID `json:"entryIds"`
-	}
+	var typed approveEntriesRequest
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	type failure struct {
-		EntryID uuid.UUID `json:"entryId"`
-		Code    string    `json:"code"`
-	}
-	view := struct {
-		Approved []uuid.UUID `json:"approved"`
-		Failed   []failure   `json:"failed"`
-	}{Approved: []uuid.UUID{}, Failed: []failure{}}
+	view := approvalView{Approved: []uuid.UUID{}, Failed: []approvalFailure{}}
 	done := s.writer.Write(w, r, caller, func(c changes.Change) error {
 		var named []uuid.UUID
 		for _, id := range typed.EntryIDs {
@@ -297,11 +308,11 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 			entry, err := c.Q.EntryOf(c.Ctx, store.EntryOfParams{ID: id, ProjectID: c.ProjectID})
 			switch {
 			case errors.Is(err, sql.ErrNoRows):
-				view.Failed = append(view.Failed, failure{id, "unknownEntry"})
+				view.Failed = append(view.Failed, approvalFailure{id, "unknownEntry"})
 			case err != nil:
 				return err
 			case entry.Status != pendingApproval:
-				view.Failed = append(view.Failed, failure{id, "entryNotPending"})
+				view.Failed = append(view.Failed, approvalFailure{id, "entryNotPending"})
 			default:
 				if err := Approve(c, entry, c.Now); err != nil {
 					return err
@@ -361,12 +372,15 @@ func approveItsSupplier(c changes.Change, entry store.Entry) error {
 	return c.Record(history.Update, "Suppliers", after.ID, map[string]any{"Status": before.Status}, map[string]any{"Status": after.Status})
 }
 
+// rejectEntryRequest is the body POST /projects/{projectId}/entries/{entryId}/reject reads (UC-032).
+type rejectEntryRequest struct {
+	Reason string `json:"reason"`
+}
+
 // reject rejects an entry, saying why (AC-19.1): it returns to who entered it, to fix and send again. reasonRequired (400) for no reason or one
 // past 500 characters, entryNotPending (409) for one nobody waits on.
 func (s Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var typed struct {
-		Reason string `json:"reason"`
-	}
+	var typed rejectEntryRequest
 	if !web.Read(w, r, &typed) {
 		return
 	}
