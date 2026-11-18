@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package moment owns the times and dates REDIX keeps: a moment in UTC, as datetime2 held it, and a calendar date, as date held it (redix-api #140, G10).
 package moment
 

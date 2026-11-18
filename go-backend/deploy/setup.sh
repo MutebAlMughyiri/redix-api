@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright 2026 Tech Details. All rights reserved.
+# Use of this file is governed by the LICENSE file at the root of this repository.
+
 # Prepares an Ubuntu 24.04 server for REDIX, or brings one up to date (redix-api #145). It is the record of every step: on a new server, at any
 # company, copy this folder over and run it again. Running it twice changes nothing the second time (R4).
 #

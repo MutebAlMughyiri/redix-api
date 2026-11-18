@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package translations serves the words the app shows, one language at a time (UC-001).
 package translations
 

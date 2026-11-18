@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package problem owns how the API answers what it refuses: RFC 9457 problem details carrying a code, which the app shows as a word, as ASP.NET Core's
 // AddProblemDetails, UseStatusCodePages and Refusal.Of wrote them (redix-api #140, N16). The API sends codes, never words.
 package problem

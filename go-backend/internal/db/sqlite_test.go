@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 package db
 
 import (
@@ -41,8 +44,8 @@ func TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger(t *testing.T) {
 
 func TestR31_ANewDatabaseStartsWithItsWordsAndLookups(t *testing.T) {
 	db := open(t)
-	if got := count(t, db, "SELECT count(*) FROM translations"); got != 1686 {
-		t.Errorf("words: %d, want 1686", got)
+	if got := count(t, db, "SELECT count(*) FROM translations"); got != 1694 {
+		t.Errorf("words: %d, want 1694", got)
 	}
 	if got := count(t, db, "SELECT count(*) FROM lk_entry_kind"); got != 5 {
 		t.Errorf("entry kinds: %d, want 5", got)

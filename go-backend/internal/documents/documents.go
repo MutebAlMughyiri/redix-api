@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package documents keeps a project's documents (UC-064): the manager keeps any file under a name, in a group when he gives one, and everyone who
 // reads the project opens them through the attachment store (DocumentsEndpoints, redix-api #140).
 package documents

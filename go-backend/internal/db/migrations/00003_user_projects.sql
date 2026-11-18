@@ -1,4 +1,7 @@
 -- +goose Up
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- What a person holds in each project they are in, as every users route shows it (UsersEndpoints.ProjectsByUserAsync, redix-api #140): the
 -- project's name, the permissions, the free-text role name, the partners chosen for them in order, and whether they are inactive there.
 CREATE VIEW user_projects AS

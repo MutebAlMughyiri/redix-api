@@ -1,4 +1,7 @@
 -- +goose Up
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- The rows a new REDIX database starts with: the lookup tables, the config values and every word, from the SQL Server database at main 8012391
 -- (redix-api #140, N19). Words added later come in their own migrations, as they do today.
 

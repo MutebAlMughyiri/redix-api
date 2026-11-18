@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package partners keeps a project's partners (UC-016) and their capital (UC-042 to UC-044, FR-25 to FR-27): added as tables of the project's
 // capital item (redix-api #109), read by whoever may see them (BR-31), deleted softly at zero capital (redix-api #100) (PartnersEndpoints,
 // CapitalEndpoints; redix-api #140).

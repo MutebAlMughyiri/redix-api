@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package web owns how requests reach the API: every route at its old path and again under /api/v1 (R6), the front end's files for any other path
 // (R18, G1), and the answers ASP.NET Core gave a path or a method it did not know (redix-api #140).
 package web

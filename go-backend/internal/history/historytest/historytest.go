@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package historytest is the net under History (redix-api #140, Muteb's choice of 16 Nov 2026): around any write a test makes, it checks that
 // every row the write added, changed or removed has a new History line naming its table and id, so a forgotten line fails a test instead of
 // leaving a silent gap. It runs only in tests; the server pays nothing for it.

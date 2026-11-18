@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 package translations_test
 
 import (
@@ -13,7 +16,7 @@ func TestUC001_EveryWordOfALanguageComesAsOneBundleWithAnETag(t *testing.T) {
 	if answer.Code != 200 || answer.Header().Get("Content-Type") != "application/json" || json.Unmarshal(answer.Body.Bytes(), &words) != nil {
 		t.Fatalf("%d %s", answer.Code, answer.Header().Get("Content-Type"))
 	}
-	if len(words) != 843 || words["permissions.reportsGroup"] != "التقارير" {
+	if len(words) != 847 || words["permissions.reportsGroup"] != "التقارير" {
 		t.Errorf("%d words, permissions.reportsGroup = %q", len(words), words["permissions.reportsGroup"])
 	}
 	if etag := answer.Header().Get("ETag"); len(etag) != 66 || etag[0] != '"' {

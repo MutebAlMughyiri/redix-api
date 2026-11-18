@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package naming is the rule of a name given to anything in a project - the project, a unit, a partner, a category, an item, a subgroup, a column,
 // a payment method (Project.IsAcceptableName, ProjectChanges.WithNameAsync): one owner, which every domain asks.
 package naming

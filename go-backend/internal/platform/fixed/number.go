@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package fixed owns the numbers kept with four decimals: every amount, price and quantity (BR-13, decimal(19,4) in SQL Server).
 package fixed
 

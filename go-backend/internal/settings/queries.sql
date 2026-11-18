@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: PaymentMethodsOf :many
 -- A project's payment methods, disabled ones included, in order.
 SELECT * FROM payment_methods WHERE project_id = ? ORDER BY sort_order, id;

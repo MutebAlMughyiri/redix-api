@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package history writes the History table: who did what to which record, when, and the values it changed (UC-069). It is append-only: the
 // database refuses any change to a line once written (AC-21.1).
 package history

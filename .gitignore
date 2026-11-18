@@ -1,4 +1,5 @@
 # The IDEs' own files; the backend's own ignores are in go-backend/.gitignore.
-.idea/
+.idea/*
+!.idea/copyright/
 .vs/
 .vscode/

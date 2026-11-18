@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package replay drives the Go API with what .NET's tests asked of the .NET API, and compares the answers with what .NET answered (redix-api #140,
 // R4, R23, G17): every recorded test whose routes are all on Go, on a fresh database, with the factory's seeds at .NET's own ids, the clock at each
 // request's recorded moment, and .NET's ids, tokens, ETags and emailed codes mapped to Go's. Any other difference fails: a status, a content type,

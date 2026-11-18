@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package email sends what REDIX emails - a code to reset a password or to confirm an email - in the asker's language (redix-api #127). Sending
 // waits on the network or a file, so it runs after the write that made the code has committed (R14).
 package email

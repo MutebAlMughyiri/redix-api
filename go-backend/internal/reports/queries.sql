@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: WaitingByKind :many
 -- What waits for approval in the project, by kind: how many and how much.
 SELECT kind, count(*) AS entries, CAST(SUM(amount) AS INTEGER) AS total FROM entries WHERE project_id = ? AND status = 1 GROUP BY kind;

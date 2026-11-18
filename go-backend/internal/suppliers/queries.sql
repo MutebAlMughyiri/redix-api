@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: SuppliersOf :many
 -- A project's suppliers by name, disabled ones included, each with the item its expenses usually go to and how many of user_id's purchases name
 -- it.

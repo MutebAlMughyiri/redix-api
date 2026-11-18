@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package spelling is what a search treats alike in Arabic (ArabicSpelling, FR-43): أ إ آ with ا, ة with ه, ى with ي, ؤ with و, ئ with ي, and no
 // tashkeel. A table keeps a normalized copy of what is searched beside it, filled when it is saved, and a search normalizes what was typed the
 // same way.

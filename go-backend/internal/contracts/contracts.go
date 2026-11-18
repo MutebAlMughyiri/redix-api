@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package contracts keeps what each contractor was promised in a project, for an item (UC-020, FR-07), to follow what is paid and what remains
 // (BR-04). There is no delete, and every change is in History, because the remaining of a contract is money (ContractsEndpoints, redix-api #140).
 package contracts

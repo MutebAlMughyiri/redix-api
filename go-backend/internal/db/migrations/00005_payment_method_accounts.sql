@@ -1,4 +1,7 @@
 -- +goose Up
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- The accounts each payment method pays from (redix-app #109, D1), one row a pair, a project's table (redix-api #123). Every method kept before
 -- pays from every account its project has (R4), as an account added later is paid from by every method of its project (D1b), until someone
 -- unticks it.

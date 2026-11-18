@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package accounts keeps where a project's money sits - its bank accounts and cash custodies (UC-015, FR-22) - what each holds, the money moved
 // between them (FR-23), the checks of what they really hold (UC-041, FR-24), and the project's figures every summary reads (AccountsEndpoints,
 // TransfersEndpoints, ReconciliationsEndpoints, ProjectFigures; redix-api #140).

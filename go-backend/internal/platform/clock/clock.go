@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package clock owns what time it is, so every rule that waits - a token's 15 minutes, a lock, an hourly limit - is tested by moving a clock,
 // as FakeTimeProvider moved .NET's TimeProvider (redix-api #140, N17).
 package clock

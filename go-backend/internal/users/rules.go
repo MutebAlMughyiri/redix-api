@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package users keeps the people of REDIX: their details and email, their password when someone resets it, and who is in each project with which
 // permissions (UsersEndpoints, ProjectUsersEndpoints). The rules about a user live here; signing in asks them too (redix-api #140).
 package users

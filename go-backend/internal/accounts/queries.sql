@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: AccountsOf :many
 -- A project's accounts, banks first, then in the order they were added (AC-22.1), each with who holds it.
 SELECT accounts.*, COALESCE(account_custodians.user_id, '') AS custodian_id, COALESCE(users.display_name, '') AS custodian_name

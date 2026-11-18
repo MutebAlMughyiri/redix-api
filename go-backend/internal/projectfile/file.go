@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package projectfile loads a project's file into REDIX (UC-071, FR-53, BR-43): a project that lived in Excel comes in at once, every part of it
 // through the owner that takes it by hand, inside one change. The load holds no rule of its own: it reads the file, finds or adds each part, and
 // asks the owners; one refusal anywhere saves nothing (ProjectFileEndpoints).

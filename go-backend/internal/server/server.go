@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package server wires every domain's routes into one router: the one the binary serves, and the one the replays of .NET's recorded answers drive
 // (redix-api #140), so the two can never differ.
 package server
@@ -16,6 +19,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/documents"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/legal"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
@@ -70,6 +74,7 @@ func Routes(parts Parts) *web.Router {
 		w.Write([]byte("Healthy"))
 	})
 	translations.Map(router, database)
+	legal.Map(router)
 	config.Map(router, database)
 	auth.MapSessions(router, gate, database, tokens, book, now)
 	auth.MapCodes(router, gate, database, now, parts.Sender, limits.PerHour(parts.EmailCodesPerHour, now), parts.Log)

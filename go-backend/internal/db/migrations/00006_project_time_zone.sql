@@ -1,4 +1,7 @@
 -- +goose Up
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- The time zone each project is in (redix-app #107, D1, D3): its entries' today is counted there, every moment staying UTC. A project with no row
 -- is in Asia/Riyadh, as every project was before. Its own table, since SQLite adds no column holding a foreign key and a default; the zones a
 -- project may take are their lookup table, seeded from internal/zones (redix-api #87). A project's table (redix-api #123).

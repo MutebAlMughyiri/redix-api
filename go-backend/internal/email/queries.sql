@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: WordsOf :many
 -- The subject and body words of one email, in one language.
 SELECT translation_keys.key, translations.value

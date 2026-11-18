@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package attachments keeps a project's files and serves them only to people with access to that project (UC-021, FR-09). Each file lives outside
 // the database, under the attachments folder, and is never deleted (NFR-11) (AttachmentsEndpoints, Attachment; redix-api #140).
 package attachments

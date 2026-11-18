@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package db owns the REDIX database: its schema, its two connection pools, the named queries prepared once on each, and the one way to write
 // (redix-api #140).
 package db

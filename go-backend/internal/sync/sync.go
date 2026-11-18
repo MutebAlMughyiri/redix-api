@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package sync answers what a phone keeps so it can work without a network (UC-030, FR-16): every list a person may see and needs to enter an
 // entry, by the address the app reads it at, so a kept copy answers that same read (SyncEndpoints; redix-api #140).
 package sync

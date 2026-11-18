@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package environment owns the API's settings, read from environment variables only (R11), under the names .NET read: REDIX_Jwt__SigningKey, and an
 // environment's own REDIX_{Environment}_Jwt__SigningKey, which wins (redix-api #118).
 package environment

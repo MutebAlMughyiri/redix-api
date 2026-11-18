@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package entries keeps the ledger: every movement of a project's money, of any kind - a purchase, a contractor payment, a partner's capital in
 // or out, revenue - recorded once per id, sent for approval, decided, and read back (Entries, EntryRecording, EntryChanges, ApprovalsEndpoints;
 // redix-api #140).

@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package testapi is the one way a domain's tests ask the API (redix-api #140): the whole router as the binary serves it, on a fresh database,
 // every request under the History net, so no test can send one without it. A guard test keeps every domain's tests going through here.
 package testapi

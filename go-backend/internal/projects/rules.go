@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package projects keeps the projects themselves: listing them, starting and registering one, its name, description and units, closing it, the
 // one a person opens straight into, and the admin's approval (ProjectsEndpoints, RegistrationEndpoints, redix-api #140).
 package projects

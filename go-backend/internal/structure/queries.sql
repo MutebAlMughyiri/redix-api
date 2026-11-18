@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: StructureSourceOf :many
 -- The earlier project a registration chose to copy the structure from; none is copying the template (ProjectStructureSource.OfAsync).
 SELECT structure_source_id FROM project_structure_sources WHERE project_id = ?;

@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package suppliers keeps a project's register of suppliers (UC-017, FR-06), the search of it (UC-018, FR-43), and a supplier added from the
 // field (UC-019, FR-44). There is no delete: what is no longer wanted is disabled (BR-15). (SuppliersEndpoints, redix-api #140.)
 package suppliers

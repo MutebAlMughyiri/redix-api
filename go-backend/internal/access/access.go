@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package access owns what each person may do, everywhere and in each project, so the server guards what a role may do whatever the app shows
 // (FR-03, NFR-08, BR-32 to BR-34, redix-api #120).
 package access

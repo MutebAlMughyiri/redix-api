@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: ContractsOf :many
 -- A project's contracts, disabled ones included, each with its contractor's and its item's names.
 SELECT contracts.*, suppliers.name AS supplier_name, items.name AS item_name

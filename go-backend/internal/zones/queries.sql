@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: ProjectTimeZone :one
 -- The zone a project's manager chose (redix-app #107); none for one still in Riyadh.
 SELECT time_zone FROM project_time_zones WHERE project_id = sqlc.arg(project_id);

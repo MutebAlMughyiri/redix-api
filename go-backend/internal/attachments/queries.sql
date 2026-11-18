@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: AttachmentSent :many
 -- The file a person already sent to the project with these bytes, which a retried upload answers (UC-029).
 SELECT * FROM attachments WHERE project_id = sqlc.arg(project_id) AND uploaded_by_user_id = sqlc.arg(user_id) AND sha256 = sqlc.arg(sha256) LIMIT 1;

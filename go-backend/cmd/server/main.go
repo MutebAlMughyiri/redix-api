@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Command server is the REDIX API: one process that owns the SQLite database and answers the app and the web front end (redix-api #140, R3).
 package main
 

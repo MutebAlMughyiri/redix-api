@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package dbtest is the REDIX database failing on purpose, for tests only (redix-api #141 D1): SQLite's own driver, wrapped so that once a
 // test arms it, the nth call its database makes - a begin, a prepare, an exec, a query, a ping, a commit - fails, and every branch that answers a
 // failed database runs. The server's binary never imports it.

@@ -1,4 +1,7 @@
 -- +goose Up
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- The REDIX schema on SQLite, generated once from the SQL Server database at main 8012391 by the type map in redix-api #140, then owned here.
 -- Every table is STRICT; columns are snake_case (G9); times are ISO 8601 UTC text with seven decimals (G10); money is INTEGER ten-thousandths (N6);
 -- rowversion is gone (N5); the dbo and project schemas share one file (N9).

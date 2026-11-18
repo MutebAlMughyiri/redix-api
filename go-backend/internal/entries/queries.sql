@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: EntryOf :one
 SELECT * FROM entries WHERE id = sqlc.arg(id) AND project_id = sqlc.arg(project_id);
 

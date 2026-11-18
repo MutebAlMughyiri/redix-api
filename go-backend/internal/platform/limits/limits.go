@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package limits owns the fixed windows that cap how often one caller may ask - to register, or for an email code - per hour, as ASP.NET Core's
 // fixed window rate limiter did (redix-api #140, N15). One process owns them (R3), so they live in memory.
 package limits

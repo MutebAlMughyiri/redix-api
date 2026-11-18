@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package changes is what every route that changes something inside a project shares (ProjectChanges): one transaction for the whole change,
 // the refusal it answers with when it rolls back, and a History line for every row it adds, changes or removes - #86 "UC-069: History of every
 // action, with its time, user and record" decided on 6 Nov 2026 that every action is recorded.

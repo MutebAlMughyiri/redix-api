@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package reports keeps what is read of a project's figures: its summary (UC-049, FR-34) and the reports built from it (Reports; redix-api
 // #140).
 package reports

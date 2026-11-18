@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package config serves the values the app reads at start, before anyone signs in: how long it waits for an answer, the VAT rate, and anything
 // later made configurable (UC-070). None is ever a secret: secrets stay in environment variables.
 package config

@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package statement is the statement workbook (FR-46, redix-api #129): how it looks, as the project's own statement does, and the one layout of
 // its sheets, which the periodic report, an item's report and the contracts report share (StatementStyle, StatementWriter, StatementBook,
 // ChoiceLists). A sheet is built cell by cell as ClosedXML built it - a value, a formula, a look added to - and written out once, each cell in

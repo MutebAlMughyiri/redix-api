@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package settings keeps a project's payment methods (UC-014, FR-40): added, renamed, disabled and enabled, and deleted while no expense was paid
 // with them (PaymentMethodsEndpoints, redix-api #140).
 package settings

@@ -1,3 +1,6 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
 // Package structure keeps a project's structure: its categories, their items, each item's subgroups and columns, and the default columns a new
 // item takes (ProjectStructure, CategoriesEndpoints, ColumnsEndpoints; redix-api #140).
 package structure

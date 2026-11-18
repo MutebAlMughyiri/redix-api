@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: ProjectsOfUser :many
 -- Every project a user is in, as the users routes show it.
 SELECT * FROM user_projects WHERE user_id = sqlc.arg(user_id) ORDER BY project_name COLLATE names;

@@ -1,3 +1,6 @@
+-- Copyright 2026 Tech Details. All rights reserved.
+-- Use of this file is governed by the LICENSE file at the root of this repository.
+
 -- name: DocumentsOf :many
 -- A project's documents with their files: those in no group first, then each group in order, newest first within each.
 SELECT documents.id, documents.name, documents.group_name, attachments.id AS attachment_id, attachments.file_name, attachments.content_type, documents.uploaded_at
