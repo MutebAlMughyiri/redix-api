@@ -10,9 +10,9 @@
 
 An entry sent as it is recorded goes through its own route's checks. One saved as a draft is sent here, by reading what the ledger holds. The rule of its columns is the same one: `EntryAnswers` answers for a request and for the rows of a draft alike.
 
-`POST .../submit` answers each required column the entry left empty under `missing` (FR-41), so a person fixes them all at once; a missing file stops nothing (D3). The app sends a draft from its row on Entries (`ProjectEntries.send`), and a draft that lacks something is changed first in Add entry (UC-033).
+`POST .../submit` answers each required column the entry left empty under `missing` (FR-41), so a person fixes them all at once; a missing file stops nothing (D3). The app sends a draft from its row on Entries (redix-app's `OpenedEntry.send`), and a draft that lacks something is changed first in Add entry (UC-033).
 
-Telling Finance belongs to UC-036 "Send push notifications": nothing is faked here, and the History table records who sent what. `EntryDecisions` belongs to UC-032 "Approve or reject entries", the first to need it.
+Telling Finance belongs to UC-036 "Send push notifications": nothing is faked here, and the History table records who sent what. `entry_decisions` belongs to UC-032 "Approve or reject entries", the first to need it.
 
 ## Endpoints
 

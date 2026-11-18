@@ -31,7 +31,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Three letters of the name find the supplier (AC-43.1) | `suppliers.Routes.search` | `ThreeLettersOfTheNameFindTheSupplier` |
 | A search treats أ إ آ with ا, ة with ه, ى with ي, ؤ with و, ئ with ي alike and ignores tashkeel, both ways; an answer shows the name as it was typed | `spelling.Normalize`, `suppliers.Routes.search` | `ASearchTreatsArabicSpellingVariantsAlikeAndIgnoresTashkeel`, `ArabicSpellingKeepsOneFormOfEachLetterAndNoTashkeel`, `AnAnswerShowsTheNameAsItWasTyped` |
 | A rename moves what a search finds; tashkeel counts for nothing toward the three letters | `suppliers.save`, `suppliers.Routes.search` | `ARenamedSupplierIsFoundByItsNewNameAndNoLongerByItsOldOne`, `TashkeelCountsForNothingTowardTheThreeLettersASearchNeeds` |
-| The migration fills the normalized name of rows saved before it, by the same rule | `spelling.Normalize`, the `SupplierNormalizedName` migration | `TheMigrationFillsTheNormalizedNameOfSuppliersSavedBeforeIt` |
+| The migration fills the normalized name of rows saved before it, by the same rule | `spelling.Normalize`, .NET's migration `SupplierNormalizedName`, before the data moved to SQLite | `TheMigrationFillsTheNormalizedNameOfSuppliersSavedBeforeIt` |
 | Part of the VAT number finds the supplier (AC-43.1) | `suppliers.Routes.search` | `PartOfTheVatNumberFindsTheSupplier` |
 | Fewer than three letters narrow nothing down | `suppliers.Routes.search` | `FewerThanThreeLettersNarrowNothingDown` |
 | With no text, the suppliers on offer, by name | `suppliers.Routes.search` | `NoTextOffersTheSuppliersByName` |

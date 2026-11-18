@@ -10,7 +10,7 @@
 
 An account belongs to one project (BR-33). Its type is set when it is added and never changes. A cash custody must have a custodian, who must be in the project; a bank account may have one, as when a field supervisor carries the card.
 
-`AccountCustodians` says who holds what, one row per account at most, and no row means nobody. It answers BRS open question 4: Field spends only from accounts they hold. `Account.IsOfferedTo` is that rule, and `GET .../accounts/offered` serves it. Finance holds `ChargeAnyAccount`, so it is offered every active account.
+`account_custodians` says who holds what, one row per account at most, and no row means nobody. It answers BRS open question 4: Field spends only from accounts they hold. `accounts.Routes.list`, asked for the offered ones, is that rule, and `GET .../accounts/offered` serves it. Finance holds `ChargeAnyAccount`, so it is offered every active account.
 
 `Balance` is the opening balance until the entry use cases bring the ledger; only `Account.Balance` changes then.
 
@@ -35,7 +35,7 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 | Table | Holds |
 | --- | --- |
 | `Accounts` | Each project's accounts |
-| `AccountCustodians` | Who holds which account |
+| `account_custodians` | Who holds which account |
 
 ## Rules and where they live
 
@@ -68,7 +68,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | What | Use case |
 | --- | --- |
-| An entry refusing an account its creator may not spend from, through `Account.IsOfferedTo` | The purchase and contractor payment entry use cases |
+| An entry refusing an account its creator may not spend from, through `entries.refusalOfPayment` | The purchase and contractor payment entry use cases |
 | A balance that moves with approved entries, in `Account.Balance` | The same |
 | Reconciliation, which the canvas draws on the same screen; transfers and custody top-ups were removed on 8 Nov 2026 | UC-040 |
 | A partner's pocket, a third type of account | Retired by redix-api #99: a partner paying with their own money is a capital movement (redix-api #96, D27), so no account holds it |

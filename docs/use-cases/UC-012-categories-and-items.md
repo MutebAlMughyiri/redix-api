@@ -44,7 +44,7 @@ Every change also answers `409` `projectFinished` in a finished project. `type` 
 | `Categories` | A project's categories: name, place in the report, whether active |
 | `Items` | A category's items: name, type, place in the report, whether active |
 | `Subgroups` | An item's groups, a general one named `''` in each, so an entry always has a subgroup and reports never special-case it; its place among the item's tables |
-| `Contracts.SortOrder` | A contract's place among its item's tables, in the same order as the item's subgroups (migration `ContractTableOrder`: after the subgroups, in the order the contracts were added) |
+| `Contracts.SortOrder` | A contract's place among its item's tables, in the same order as the item's subgroups (.NET's migration `ContractTableOrder`: after the subgroups, in the order the contracts were added) |
 | `Projects.IsTemplate` | The default template |
 | `ProjectStructureSources` | The earlier project to copy from on approval; no row for the template (findings row 214) |
 
@@ -56,7 +56,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | --- | --- | --- |
 | An item a contract names keeps its type, or that contract's payments would be refused | `structure.Routes.changeItemType` | `CategoriesTests.AnItemAContractNamesKeepsItsType` |
 | redix-api #109: رأس المال (`ItemType.Capital`) is a revenue type whose tables are its partners: an item with partners keeps its type (`409` `itemHasPartners`), and it takes no sub-table (`itemTakesNoPurchases`) | `structure.Routes.changeItemType`, `AddSubgroup`, `structure.ItemType.hasSubgroupTables` | `CategoriesTests.UC_109_ACapitalItemStaysOneWhilePartnersAreItsTablesAndTakesNoSubTable` |
-| redix-api #109: every project starts with رأس المال, a category of its own first among the revenue, its item calculating each partner's share | `StructureSeed`, migration `CapitalIsATable` | `CategoriesTests.UC_109_EveryProjectStartsWithRasAlMalACategoryOfItsOwnFirstAmongTheRevenueWhoseSheetGivesEachPartnersShare`, `TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
+| redix-api #109: every project starts with رأس المال, a category of its own first among the revenue, its item calculating each partner's share | `structure.Copy`, from the template seeded in migration 00004; .NET's migration `CapitalIsATable` for projects made before | `CategoriesTests.UC_109_EveryProjectStartsWithRasAlMalACategoryOfItsOwnFirstAmongTheRevenueWhoseSheetGivesEachPartnersShare`, `TheTemplateHoldsTheCategoriesAndItemsOfTheBrs` |
 | BR-31, redix-api #109: a project has one رأس المال; a second capital item, added or by a type change, answers `409` `capitalItemExists`, since its total would show one partner's balance to every reader | `structure.change.refuseASecondCapital` | `CategoriesTests.BR_31_UC_109_AProjectHasOneCapitalItemSoNoSecondOneShowsOnePartnersBalance` |
 | BR-31, redix-api #109: رأس المال's tables show every partner to whoever sees all capital, their own to a partner, none to anyone else | `entries.Routes.itemTables`, `PartnerSight` | `CategoriesTests.BR_31_UC_109_RasAlMalsTablesShowEveryPartnerToWhoeverSeesAllCapitalTheirOwnToAPartnerAndNoneToAnyoneElse` |
 | redix-api #109: revenue goes into every revenue item but رأس المال, and a capital item is offered only for a partner | `structure.ItemType.OfferedFor` | `CategoriesTests.UC_109_RevenueGoesIntoEveryRevenueItemButRasAlMalAndAPartnerIntoNothingElse` |
@@ -68,12 +68,12 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A sub-table holds purchases, so an item that takes none has no sub-table (Muteb, 7 Nov 2026) | `structure.Routes.addSubgroup` | `CategoriesTests.SubTable_AnItemThatTakesNoPurchasesHasNoSubTable` |
 | A sub-table added is offered to an expense and takes a purchase | `entries.Routes.entryTables`, `entries.Record` | `CategoriesTests.SubTable_ASubTableAddedIsOfferedAndTakesAPurchase` |
 | An item of purchases or of contractor payments may become both whatever it holds | `structure.Routes.changeItemType` | `CategoriesTests.SubTable_AnItemOfContractorPaymentsWithAContractMayBecomeBoth`, `SubTable_AnItemOfPurchasesWithAnEntryMayBecomeBoth` |
-| R10: an expense is offered an item's general table, each named one and each active contract, in its sheet's order | `entries.Routes.entryTables`, `TablesOf` | `CategoriesTests.R10_AnItemOffersAnExpenseItsGeneralTableEachNamedOneAndEachActiveContractInItsSheetsOrder` |
+| R10: an expense is offered an item's general table, each named one and each active contract, in its sheet's order | `entries.Routes.entryTables`, `entries.offered` | `CategoriesTests.R10_AnItemOffersAnExpenseItsGeneralTableEachNamedOneAndEachActiveContractInItsSheetsOrder` |
 | R7: no disabled item or category, and no item without a table is offered; revenue items are offered only to whoever moves money (redix-api #101) | `entries.Routes.entryTables` | `CategoriesTests.R7_NoDisabledItemOrCategoryAndNoItemWithoutATableIsOffered` |
 | An item's type changes while no entry names it, in the History table, old and new | `structure.Routes.changeItemType` | `CategoriesTests.AnItemsTypeChangesWhileItHasNoEntriesAndIsOfferedAsItsNewTypeIs`, `AChangedTypeIsInTheHistoryOldAndNew`, `AnItemWithAnEntryKeepsItsType`, `OnlyFinanceChangesATypeAndNeverAnotherProjects` |
 | A changed type asks the default columns of the new type, and keeps what a person added | `structure.Routes.changeItemType` | `CategoriesTests.AChangedTypeAsksTheColumnsOfTheNewTypeAndKeepsWhatAPersonAdded`, `ChangingATypeThereAndBackLeavesOneOfEachColumn` |
 | FR-38: an item is added on its side, and revenue entry offers every revenue item and no expense one | `structure.ItemType.OfferedFor` | `CategoriesTests.FR_38_AnItemIsAddedOnItsSideAndRevenueEntryOffersEveryRevenueItemAndNoExpenseOne` |
-| FR-38: a revenue item asks no columns | `structure.Routes.addToItem`, `AddToTemplate` | `CategoriesTests.FR_38_ARevenueItemAsksNoColumns` |
+| FR-38: a revenue item asks no columns | `structure.Routes.addToItem`, `structure.Routes.addToTemplate` | `CategoriesTests.FR_38_ARevenueItemAsksNoColumns` |
 | Every item has a general subgroup | `structure.change.addTemplateColumns`, `db/migrations/00004_template.sql` | `CategoriesTests.EveryItemHasAGeneralSubgroup`, `AnItemIsAddedWithItsTypeAtTheEndOfItsCategoryWithItsGeneralGroup` |
 | Every approved project starts with its own copy of the structure | `structure.Copy` | `CategoriesTests.ApprovingCopiesTheTemplateIntoRowsOfTheProjectsOwn`, `ThePublicRegistrationStartsFromTheTemplateWhenApproved` |
 | A waiting or rejected project has no structure | `structure.Copy` | `CategoriesTests.AWaitingOrRejectedProjectHasNoStructure` |
@@ -83,11 +83,11 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Nobody sees the template | Nobody holds a permission in it | `CategoriesTests.NobodySeesTheTemplate` |
 | A change in one project touches nothing else (BR-33) | Each project's own rows | `CategoriesTests.AChangeInOneProjectLeavesTheTemplateAndOtherProjectsAlone` |
 | One project's route never reaches another's rows (BR-33) | `structure.change.item` and the category lookups | `CategoriesTests.ARouteOfOneProjectNeverReachesAnothersRows` |
-| The order set here is the order of the report (AC-39.1) | `IOrdered`, `structure.Routes.reorderCategories`, `ReorderItems` | `CategoriesTests.TheOrderOfCategoriesIsTheOrderTheReportReads`, `TheOrderOfItemsIsTheOrderTheReportReads` |
+| The order set here is the order of the report (AC-39.1) | `structure.Routes.reorderCategories`, `structure.Routes.reorderItems` | `CategoriesTests.TheOrderOfCategoriesIsTheOrderTheReportReads`, `TheOrderOfItemsIsTheOrderTheReportReads` |
 | An order names every row exactly once | `structure.inOrder` | `CategoriesTests.AnOrderMustNameEveryRowExactlyOnce` |
 | A disabled item leaves entry and stays listed; no item or category can be deleted (AC-05.3, BR-15) | `structure.ItemType.OfferedFor`; no delete route exists | `CategoriesTests.ADisabledItemDisappearsFromEntryAndStaysListed`, `NothingInTheStructureCanBeDeleted` |
 | A disabled category takes its items out of entry | `structure.Offers` | `CategoriesTests.ADisabledCategoryTakesItsItemsOutOfEntryAndStaysListed` |
-| What was disabled can be enabled | `structure.Routes.activateItem`, `EnableCategory` | `CategoriesTests.ADisabledItemComesBackWhenEnabled` |
+| What was disabled can be enabled | `structure.Routes.activateItem`, `structure.Routes.activateCategory` | `CategoriesTests.ADisabledItemComesBackWhenEnabled` |
 | An item is offered only for what its type allows (AC-38.1) | `structure.ItemType.OfferedFor` | `CategoriesTests.APurchasesItemIsNotOfferedForContractorPayments`, `AContractorPaymentsItemIsNotOfferedForPurchases` |
 | A new item reaches Field at their next read (AC-05.1) | `structure.Routes.offered` | `CategoriesTests.ANewItemIsOfferedToFieldAtOnce` |
 | A name has 1 to 100 characters, spaces around it trimmed | `projects.newProject` | `CategoriesTests.ACategoryAnItemOrASubgroupNeedsANameOfAtMost100Characters` |

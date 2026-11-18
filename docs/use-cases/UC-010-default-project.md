@@ -19,7 +19,7 @@ A session answers `defaultProjectId`, the project sign-in opens; empty when ther
 
 | Table | Holds |
 | --- | --- |
-| `UserDefaultProjects` | A user's default project, which sign-in opens, keyed by the user (findings row 216); no row means none |
+| `user_default_projects` | A user's default project, which sign-in opens, keyed by the user (findings row 216); no row means none |
 
 ## Rules and where they live
 
@@ -52,7 +52,7 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A new address holds only once its code is entered, and the old one until then (AC-10.4) | `auth.Codes.askToConfirm`, `Confirm`, `EmailCode` | `MyEmailTests.AC_10_4_ANewAddressHoldsOnlyOnceItsCodeIsEnteredAndTheOldOneUntilThen`, `AC_10_4_AWrongCodeLeavesTheOldAddress` |
+| A new address holds only once its code is entered, and the old one until then (AC-10.4) | `auth.Codes.askToConfirm`, `auth.Codes.confirm`, the `email_codes` table | `MyEmailTests.AC_10_4_ANewAddressHoldsOnlyOnceItsCodeIsEnteredAndTheOldOneUntilThen`, `AC_10_4_AWrongCodeLeavesTheOldAddress` |
 | A new address holding ends the reset code sent to the old one; asking a code for a new address ends none while the old one holds (redix-api #127) | `auth.Codes.confirm`, `users.ChangeEmail` | `MyEmailTests.R127_ANewAddressHoldingEndsTheResetCodeSentToTheOldOne`, `R127_ACodeAskedForANewAddressEndsNoResetCodeWhileTheOldAddressHolds` |
 | A code of another purpose, or none asked for, confirms nothing | `auth.Codes.check` | `MyEmailTests.AC_10_4_AResetCodeConfirmsNoAddressAndNoCodeConfirmsNothing` |
 | The new address is well formed and no other account holds it, when asked and when confirmed (R9) | `users.RefusalOfEmail` | `MyEmailTests.R9_AnAddressAnotherAccountHoldsOrOneNotWellFormedIsRefusedAndNothingIsSent`, `R9_AnAddressAnotherAccountTookBeforeItsCodeWasEnteredIsRefused` |

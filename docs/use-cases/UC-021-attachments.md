@@ -10,7 +10,7 @@
 
 A file is sent first and answered with its id, and whatever needs it names that id: a contract here, and an entry from UC-022 "Record a purchase expense". So an attachment belongs to a project from the moment it is sent, in `Attachments.ProjectId`, and that one column answers who may read it (the database design's decision 22).
 
-The file itself is kept outside the database, under the folder `AttachmentOptions.Folder`, set with the environment variable `REDIX_Attachments__Folder`, and by default in the local application data of the user running the API. It is never in the repo. Its path is made from the project's and the attachment's ids, so nothing a person typed reaches the disk. What a file is comes from its first bytes, never from what the sender says.
+The file itself is kept outside the database, under the folder `environment.Settings.AttachmentsFolder`, set with the environment variable `REDIX_Attachments__Folder`, and by default in the local application data of the user running the API. It is never in the repo. Its path is made from the project's and the attachment's ids, so nothing a person typed reaches the disk. What a file is comes from its first bytes, never from what the sender says.
 
 No route deletes or replaces a file, so it stays for the legal retention period (NFR-11). `Attachments.Sha256` shows a kept file is unchanged.
 
@@ -40,7 +40,7 @@ A contract's documents join here (UC-020 step 3): adding or amending a contract 
 | A typed name never reaches the disk | `attachments.Keep` | `ANameTheSenderChoseNeverReachesThePathOfTheFile` |
 | Only people with access to the project read a file (BR-33) | The `ReadProject` policy, `attachments.Routes.read` | `SomeoneWithNoAccessToTheProjectCannotReadOrKeepAFile`, `AFileOfAnotherProjectIsNotFoundEvenForSomeoneInBoth`, `WithoutASessionNoFileIsServed` |
 | Field and Finance keep files; Reader and Project manager only read them | `ProjectPermission` rows | `FieldAndFinanceKeepFiles`, `WhoHoldsNoAttachFilesCannotKeepAFileButReadsIt` |
-| A finished project keeps no new file and still serves its own (AC-04.1) | `MapProjectChanges` | `AFinishedProjectKeepsNoNewFileAndStillServesItsOwn` |
+| A finished project keeps no new file and still serves its own (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectKeepsNoNewFileAndStillServesItsOwn` |
 | Keeping a file, and linking it to a contract, is in the History table with which file | `history.Write` | `KeepingAFileIsInTheHistory`, `LinkingADocumentToAContractIsInTheHistoryWithWhichOne` |
 | A contract carries its documents, each staying once attached, and only files of its project | `contracts.refusalOfDocuments`, `contracts.keep` | `AContractCarriesItsDocumentFromWhenItIsAdded`, `AnAmendmentAddsADocumentAndKeepsThoseAlreadyCarried`, `ADocumentOfAnotherProjectIsRefusedOnAContract` |
 

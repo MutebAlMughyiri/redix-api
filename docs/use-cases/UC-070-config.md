@@ -8,7 +8,7 @@
 
 ## How it works
 
-`ConfigValues` holds one row per value: a `Key` and its `Value` as text. `GET /config` answers every row by its key, to anyone, so a value here is never a secret: secrets stay in environment variables.
+`config_values` holds one row per value: a `Key` and its `Value` as text. `GET /config` answers every row by its key, to anyone, so a value here is never a secret: secrets stay in environment variables.
 
 | Key | Starts at | Means |
 | --- | --- | --- |

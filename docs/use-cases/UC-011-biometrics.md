@@ -20,7 +20,7 @@ Sign-in, renewal and a password change answer `usesBiometrics` too. A new sign-i
 
 | Column | Holds |
 | --- | --- |
-| `Devices.UsesBiometrics` | Whether this phone asks for a fingerprint or face on opening |
+| `devices.uses_biometrics` | Whether this phone asks for a fingerprint or face on opening |
 
 ## Rules and where they live
 

@@ -10,7 +10,7 @@
 
 The seeded template project holds the default columns of each item type. When a project is approved it takes its own copy, so each project has its own default template and changing it touches no other (BR-33).
 
-A new item starts from its project's default columns of its type (FR-38), and from then on holds its own rows in `ItemColumns`. A column keeps its `Key` from the template to every item, which is how "apply to all items" finds it. A column a person adds has a key starting `custom.`. Every column an entry answers in no field of its own, a person's own, the unit price, the quantity and the product alike, has its value kept in the entry's `ColumnValues` under its key (redix-api #129, R5); the date, the supplier, the amount, the account, the payment method, the file, the contract, the place in it and the notes are the entry's own fields (`Column.IsEntryField`). An item of both types asks a purchase nothing only a contractor payment's template has, and a payment nothing only a purchase's has (`Column.IsAskedOf`).
+A new item starts from its project's default columns of its type (FR-38), and from then on holds its own rows in `item_columns`. A column keeps its `Key` from the template to every item, which is how "apply to all items" finds it. A column a person adds has a key starting `custom.`. Every column an entry answers in no field of its own, a person's own, the unit price, the quantity and the product alike, has its value kept in the entry's `ColumnValues` under its key (redix-api #129, R5); the date, the supplier, the amount, the account, the payment method, the file, the contract, the place in it and the notes are the entry's own fields (`Column.IsEntryField`). An item of both types asks a purchase nothing only a contractor payment's template has, and a payment nothing only a purchase's has (`entries.AskedColumns`).
 
 A list's choices live in its definition, `Choices` (redix-api #129): each has an id, a name and a sign, `none`, `plus` or `minus`. An entry keeps the id of the choice chosen, never its name, so a choice keeps its entries whatever it is called. A sign decides the direction of the amount of the entry that chooses it, so an item holds at most one list whose choices carry a sign.
 
@@ -40,7 +40,7 @@ Every change also answers `409` `projectFinished` in a finished project. A colum
 | Table | Holds |
 | --- | --- |
 | `DefaultColumns` | A project's default template: what a new item of each type starts with |
-| `ItemColumns` | What each item asks for, with `IsHidden` once deleted |
+| `item_columns` | What each item asks for, with `IsHidden` once deleted |
 
 ## Rules and where they live
 
@@ -59,7 +59,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Every item and every project's template took the new columns, and the old ones follow the approved order and print as it does, a person's own after them (redix-api #129, R6) | Migration `EntryTypeAndMovementTypeLists` | `MigrationStepsTests.R129_EntryTypeAndMovementTypeLists_EveryEntryKeepsItsFigureAndTakesTheChoiceItsSignSays` |
 | A column added to one item is asked in that item only (AC-41.1) | `structure.Routes.addToItem` | `ColumnsTests.AColumnAddedToOneItemIsAskedInThatItemOnly` |
 | A column needs a name of 1 to 100 characters | `structure.columnRequest.refusalOfNew`, `structure.column.edited` | `ColumnsTests.AColumnNeedsANameOfAtMost100Characters` |
-| A list a person added gains choices; those it has stay, in their order, because entries hold them; a new choice has the limit of a name; the template's reach items only when applied (BR-21) | `structure.column.edited`, `structure.Routes.editOfItem`, `EditOfTemplate` | `ColumnsTests.APickListGainsChoicesAndKeepsItsOwnInTheirOrder`, `AnEditThatGivesNoNewChoiceChangesNoChoice`, `ANewChoiceIsWithinTheLimitOfAName`, `OnlyAPickListAPersonAddedGainsChoices`, `AnEntryCanHoldTheChoiceAListGained`, `AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied` |
+| A list a person added gains choices; those it has stay, in their order, because entries hold them; a new choice has the limit of a name; the template's reach items only when applied (BR-21) | `structure.column.edited`, `structure.Routes.editOfItem`, `structure.Routes.editOfTemplate` | `ColumnsTests.APickListGainsChoicesAndKeepsItsOwnInTheirOrder`, `AnEditThatGivesNoNewChoiceChangesNoChoice`, `ANewChoiceIsWithinTheLimitOfAName`, `OnlyAPickListAPersonAddedGainsChoices`, `AnEntryCanHoldTheChoiceAListGained`, `AChoiceTheTemplateGainsReachesItemsOnlyWhenApplied` |
 | A pick list needs a choice; another type keeps none | `structure.columnRequest.refusalOfNew`, `structure.columnRequest.newColumn` | `ColumnsTests.APickListNeedsAChoice`, `APickListKeepsItsChoicesAndAnotherTypeNone` |
 | A list's choices live in its definition, each with its own id and an optional sign, + or − (redix-api #129) | `ColumnChoice`, `structure.choicesOf` | `ColumnsTests.R129_AListsChoicesEachHaveAnIdAndASignOfTheirOwn` |
 | An item holds at most one list whose choices give a sign, so the amount's direction has one answer (redix-api #129) | `structure.hasTwoSignedLists` | `ColumnsTests.R129_AnItemTakesOneListWhoseChoicesGiveASignSoTheAmountsDirectionHasOneAnswer` |
@@ -75,7 +75,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | An order names every visible column exactly once | `structure.inOrder` | `ColumnsTests.AnOrderMustNameEveryVisibleColumnExactlyOnce` |
 | A template change leaves existing items alone unless applied (AC-41.3) | `structure.Routes.editOfTemplate` | `ColumnsTests.ATemplateChangeLeavesExistingItemsAloneUnlessApplied` |
 | A new item starts from the template as it is now | `structure.Routes.addItem` | `ColumnsTests.ANewItemStartsFromTheTemplateAsItIsNow` |
-| "Apply to all items" reaches every item of that type, disabled ones too, and no other | `structure.Routes.addToTemplate`, `EditOfTemplate`, `DeleteOfTemplate` | `ColumnsTests.AColumnAppliedToAllReachesEveryItemOfThatTypeAndNoOther`, `ARenameAppliedToAllReachesEveryItemOfThatType`, `ADeleteAppliedToAllHidesItOnEveryItemOfThatType` |
+| "Apply to all items" reaches every item of that type, disabled ones too, and no other | `structure.Routes.addToTemplate`, `structure.Routes.editOfTemplate`, `structure.Routes.deleteOfTemplate` | `ColumnsTests.AColumnAppliedToAllReachesEveryItemOfThatTypeAndNoOther`, `ARenameAppliedToAllReachesEveryItemOfThatType`, `ADeleteAppliedToAllHidesItOnEveryItemOfThatType` |
 | An order applied to all keeps what only that item has after the rest | `structure.Routes.reorderOfTemplate` | `ColumnsTests.AnOrderAppliedToAllKeepsWhatOnlyThatItemHasAfterTheRest` |
 | One project's template changes no other (BR-33) | `access.Gate.Needs` | `ColumnsTests.OneProjectsTemplateChangesNoOtherProject` |
 | A project copied from an earlier one takes its columns, without what it deleted (AC-05.2) | `structure.Copy`, `structure.copyCategories` | `ColumnsTests.AnEarlierProjectsColumnsAreCopiedWithoutWhatItDeleted` |

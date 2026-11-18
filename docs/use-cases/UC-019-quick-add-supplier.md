@@ -10,7 +10,7 @@
 
 There is one route that adds a supplier, UC-017's, because the rules are the same (BR-16, BR-19) and only the status differs: whoever holds `ManageSettings` adds an approved supplier, and anyone else one pending approval.
 
-A pending supplier already holds its VAT number, and is in the register for everyone to see, marked. It is offered to pick (`Supplier.OfferedTo`) only to who added it and to whoever holds `ManageSettings`.
+A pending supplier already holds its VAT number, and is in the register for everyone to see, marked. It is offered to pick (`suppliers.Routes.search`) only to who added it and to whoever holds `ManageSettings`.
 
 ## Endpoints
 
@@ -21,7 +21,7 @@ A pending supplier already holds its VAT number, and is in the register for ever
 
 ## Tables
 
-No new table: it uses `Suppliers.Status` and `Suppliers.CreatedByUserId`. Field and Finance hold the new permission through `RolePermissions`.
+No new table: it uses `suppliers.status` and `suppliers.created_by_user_id`. Whoever may add one holds `AddSupplier`, ticked per person per project in `project_permissions`.
 
 ## Rules and where they live
 

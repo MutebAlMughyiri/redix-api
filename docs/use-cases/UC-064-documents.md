@@ -23,7 +23,7 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | The manager keeps documents; everyone reads them, those in no group first, then by group | `documents.Routes.add`, `List` | `DocumentsTests.UC_064_TheManagerKeepsDocumentsAndEveryoneReadsThemUngroupedFirstThenByGroup` |
-| A document is any file, named by its extension, while an invoice stays a picture or a PDF | `attachments.Keep`, `FileKinds` | `DocumentsTests.ADocumentIsAnyFileNamedByItsExtensionWhileAnInvoiceStaysAPictureOrAPdf` |
+| A document is any file, named by its extension, while an invoice stays a picture or a PDF | `attachments.Keep`, `attachments.kindOf` | `DocumentsTests.ADocumentIsAnyFileNamedByItsExtensionWhileAnInvoiceStaysAPictureOrAPdf` |
 | A document needs a name, a group of 100 letters at most, a file of 25 MB at most, and is kept once | `documents.Routes.add` | `DocumentsTests.ADocumentNeedsANameAGroupOf100LettersAtMostAFileOf25MbAtMostAndIsKeptOnce` |
 | Findings row 137: a document's request may hold as much as a form may (128 MB), not the server's 28 MB, so a file over 25 MB is answered `fileTooLarge` rather than cut off | `documents.Map` | `DocumentsTests.Findings137_ADocumentsRequestMayHoldAsMuchAsAFormSoAFileOver25MbIsAnsweredRatherThanCutOff` |
 | A removed document leaves the list; its file stays | `documents.Routes.remove` | `DocumentsTests.ARemovedDocumentLeavesTheListButItsFileStays` |

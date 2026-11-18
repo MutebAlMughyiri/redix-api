@@ -18,8 +18,8 @@
 
 | Table | Holds |
 | --- | --- |
-| `TranslationKeys` | One row per word, named by its key, such as `app.title` |
-| `Translations` | The word's value in each language, unique per key and language |
+| `translation_keys` | One row per word, named by its key, such as `app.title` |
+| `translations` | The word's value in each language, unique per key and language |
 
 ## Rules and where they live
 

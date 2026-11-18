@@ -9,11 +9,11 @@
 
 ## How it works
 
-There are no roles. A route names a permission, and a database row says who holds it: across the system in `SystemPermissions`, in one project in `ProjectPermissions`, once that project is approved (UC-066). Both are read on each request, so a change counts at the next request, with no new sign-in and no release.
+There are no roles. A route names a permission, and a database row says who holds it: across the system in `system_permissions`, in one project in `ProjectPermissions`, once that project is approved (UC-066). Both are read on each request, so a change counts at the next request, with no new sign-in and no release.
 
 | Table | Holds |
 | --- | --- |
-| `SystemPermissions` | What a user holds everywhere: the admin's `ApproveProjects`, made with the admin at the first start |
+| `system_permissions` | What a user holds everywhere: the admin's `ApproveProjects`, made with the admin at the first start |
 | `ProjectPermissions` | What a user holds in one project, one row per permission ticked |
 
 Holding `ReadProject` is being in the project. Whoever registers a project holds every permission of a project in it, of the two capital ticks `SeeAllCapital`. `ApproveProjects` is never held in a project: the API refuses it and the database's check refuses it too.
@@ -66,9 +66,9 @@ A session answers `permissions`, what the user holds everywhere.
 
 ## Moving from roles
 
-The migration `PermissionsPerPerson` gave each person every permission their roles held in each project, and `DeleteEntries` to whoever held `RecordEntries`; the admin's role became his permission. Then it dropped `Roles`, `RolePermissions`, `UserRoles` and `ProjectMembers`. Going back cannot rebuild the roles from ticked permissions: only a backup taken before it does.
+.NET's migration `PermissionsPerPerson`, before the data moved to SQLite, gave each person every permission their roles held in each project, and `DeleteEntries` to whoever held `RecordEntries`; the admin's role became his permission. Then it dropped `Roles`, `RolePermissions`, `UserRoles` and `ProjectMembers`. Going back cannot rebuild the roles from ticked permissions: only a backup taken before it does.
 
-The migration `ReportPermissions` (redix-api #131 D3) gave `SeeReports` to everyone holding `ReadProject`, and `GenerateReports` to everyone holding `MoveMoney` or `SeeAllCapital`, so nobody lost a report or a file they had; the two are ticked like any other since, and someone added later holds them only once ticked. Going back takes both away.
+.NET's migration `ReportPermissions` (redix-api #131 D3) gave `SeeReports` to everyone holding `ReadProject`, and `GenerateReports` to everyone holding `MoveMoney` or `SeeAllCapital`, so nobody lost a report or a file they had; the two are ticked like any other since, and someone added later holds them only once ticked. Going back takes both away.
 
 ## Rules and where they are proven
 
@@ -91,7 +91,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | No session answers 401 (AC-N08) | `PermissionHandler` | `ProjectsTests.ASessionlessRequestIsUnauthorized` |
 | Whoever registers a project holds all 16 in it (BR-29) | `projects.addWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInIt` |
 | Deleting is its own permission | `entries.Routes.delete` | `EntryChangesTests.DeletingIsItsOwnPermission` |
-| redix-api #131 D3: the upgrade gives `SeeReports` to everyone in a project, and `GenerateReports` to whoever moved money or saw all capital | The migration `ReportPermissions` | `MigrationStepsTests.R131_D3_ReportPermissions_WhoeverReadsAProjectSeesItsReportsAndWhoeverMovedMoneyOrSawAllCapitalGeneratesThem` |
+| redix-api #131 D3: the upgrade gives `SeeReports` to everyone in a project, and `GenerateReports` to whoever moved money or saw all capital | .NET's migration `ReportPermissions` | `MigrationStepsTests.R131_D3_ReportPermissions_WhoeverReadsAProjectSeesItsReportsAndWhoeverMovedMoneyOrSawAllCapitalGeneratesThem` |
 
 ## Left to later use cases
 

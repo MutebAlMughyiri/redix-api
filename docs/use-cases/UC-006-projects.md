@@ -33,7 +33,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A project's description is kept for everyone in it, trimmed, and in the History table; an empty one clears it (redix-api 93) | `projects.Routes.describe` | `ProjectsTests.More_info_ADescriptionIsKeptForEveryoneInTheProjectAndInTheHistory`, `More_info_AnEmptyDescriptionClearsIt` |
 | A description has at most 2,000 characters, when written and when the project is made or registered | `projects.Routes.describe` | `ProjectsTests.More_info_ADescriptionOf2000CharactersIsKeptAndOneLongerIsRefused`, `More_info_AProjectMadeWithADescriptionTooLongIsNotMade`; `RegistrationTests.More_info_ARegistrationWithADescriptionTooLongCreatesNothing` |
 | Only `ManageProject` describes a project, and only while it is open (AC-04.1) | `access.ManageProject`, `projects.Routes.describe` | `ProjectsTests.More_info_OnlyWhoeverManagesTheProjectDescribesIt`, `More_info_AFinishedProjectKeepsItsDescription` |
-| A description can be written when a project is made, and the admin reads it before deciding | `CreateProjectRequest`, `RegisterProjectRequest`, `RegisteredProjectView` | `ProjectsTests.More_info_ADescriptionWrittenWhenTheProjectIsMadeIsKept`; `RegistrationTests.More_info_TheAdminReadsTheDescriptionBeforeDeciding` |
+| A description can be written when a project is made, and the admin reads it before deciding | `projects.startRequest`, `registerProjectRequest`, `registeredView` | `ProjectsTests.More_info_ADescriptionWrittenWhenTheProjectIsMadeIsKept`; `RegistrationTests.More_info_TheAdminReadsTheDescriptionBeforeDeciding` |
 | A project keeps its units, in the order given | `projects.newProject`, `projects.Routes.addUnit` | `ProjectsTests.AProjectKeepsItsUnitsInOrder` |
 | A bad unit name refuses the whole project and saves nothing | `projects.Routes.create` | `ProjectsTests.ABadUnitNameCreatesNothing` |
 | A request missing a field answers 400, in every environment | `web.Read` | `ProjectsTests.ARequestMissingAFieldIsABadRequest` |
@@ -44,7 +44,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A unit added after a deletion still goes last | `projects.Routes.addUnit` | `AUnitAddedAfterADeletionStillGoesLast` |
 | A finished project refuses them all, a unit of another project is 404, and only whoever holds `ManageProject` does them | `access.Gate.Changes`, `projects.Map` | `BR_38_AFinishedProjectRefusesRenamesAndDeletions`, `BR_33_AUnitOfAnotherProjectIsNotFound`, `BR_38_OnlyWhoeverManagesTheProjectRenamesAndDeletes` |
 | A project with entries waiting for approval cannot be closed; drafts and decided entries hold nothing open, and another project's entries nothing here (BR-35) | `projects.Routes.close` | `ProjectsTests.BR_35_AProjectWithEntriesWaitingForApprovalCannotBeClosed`, `BR_35_OnlyEntriesWaitingForApprovalHoldAProjectOpen`, `BR_35_AnEntryWaitingInAnotherProjectHoldsNothingOpen` |
-| The status travels by its glossary name, `active` or `finished` | `ConfigureHttpJsonOptions`, `ProjectStatus` | `ProjectsTests.TheStatusTravelsAsItsGlossaryName` |
+| The status travels by its glossary name, `active` or `finished` | `projects.statusNames` | `ProjectsTests.TheStatusTravelsAsItsGlossaryName` |
 | A unit's name cannot repeat inside its project, compared trimmed; projects may repeat a name, because each is separate (BR-37, BR-33) | `projects.Routes.addUnit` | `ProjectsTests.BR_37_AUnitsNameCannotRepeatInItsProjectComparedTrimmed`, `BR_37_ANewProjectCannotRepeatAUnitsNameAndSavesNothing`, `BR_37_ProjectsMayRepeatANameAndEachTheirUnitsNames`; `RegistrationTests.BR_37_ARegistrationCannotRepeatAUnitsName` |
 | A project or a unit needs a name of 1 to 100 characters, spaces around it trimmed | `projects.newProject` | `ProjectsTests.AProjectOrAUnitNeedsANameOfAtMost100Characters` |
 | Whoever registers a project manages it | `projects.addWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt` |
@@ -54,4 +54,4 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | What | Use case |
 | --- | --- |
-| Refusing new entries and approvals in a finished project | Each entry use case, through `Project.IsReadOnly` |
+| Refusing new entries and approvals in a finished project | Each entry use case, through `access.Gate.Changes`, which answers `projectFinished` |

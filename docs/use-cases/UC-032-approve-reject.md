@@ -11,7 +11,7 @@
 | `POST /projects/{id}/entries/approve` | Approves the entries named, answering what was approved and what was not, with why |
 | `POST /projects/{id}/entries/{entryId}/reject` | Rejects one, saying why, and returns it to who entered it |
 
-`EntryDecisions` holds every step: sent, approved, rejected, with who, when and why.
+`entry_decisions` holds every step: sent, approved, rejected, with who, when and why.
 
 Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
 

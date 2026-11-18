@@ -56,7 +56,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | The register lists suppliers by name | `suppliers.Routes.list` | `TheRegisterListsSuppliersByName` |
 | An approved project starts with the general cash supplier | `structure.Copy`, `suppliers.AddGeneralCash` | `AnApprovedProjectStartsWithTheGeneralCashSupplier` |
 | The general cash supplier can be renamed and never disabled, by a flag set at approval, so another supplier with its name can | `suppliers.AddGeneralCash`, `suppliers.Routes.activate` | `TheGeneralCashSupplierCannotBeDisabled`, `TheGeneralCashSupplierCanBeRenamedAndStaysTheGeneralOne`, `ASupplierNamedLikeTheGeneralOneCanBeDisabled` |
-| The migration marks the row the approval named, in a project approved before it | The `GeneralCashSupplierFlag` migration | `TheMigrationMarksTheRowTheApprovalNamedInAProjectApprovedBeforeIt` |
+| The migration marks the row the approval named, in a project approved before it | .NET's migration `GeneralCashSupplierFlag`, before the data moved to SQLite | `TheMigrationMarksTheRowTheApprovalNamedInAProjectApprovedBeforeIt` |
 | A copied project starts with only that one (AC-05.2) | `structure.Copy` | `ACopiedProjectStartsWithOnlyTheGeneralCashSupplier` |
 | Everyone with access reads the register (BR-31) | `access.ReadProject` | `EveryoneWithAccessReadsTheRegister` |
 | Only Finance changes suppliers | `access.ManageSettings` | `OnlyFinanceChangesSuppliers` |

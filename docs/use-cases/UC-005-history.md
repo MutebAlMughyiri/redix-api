@@ -15,8 +15,8 @@
 | `Id` | The record's number, in the order records were written (`bigint` identity: an append-only log) |
 | `At` | When it was done |
 | `UserId` | Who did it |
-| `Action` | What was done, by name (`HistoryAction`) |
-| `TableName`, `RecordId` | The record it was done to |
+| `Action` | What was done, by name (`history.Action`) |
+| `table_name`, `record_id` | The record it was done to |
 | `Before`, `After` | The values it changed, as JSON objects of column names and values; every value of a new record in `After`, with `{}` in `Before` |
 
 ## Recorded today
@@ -55,7 +55,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | An unknown username records nothing, because there is nobody to record it against | `auth.Sessions.signIn` | `AuthTests.AnUnknownUsernameRecordsNothing` |
 | A password change is recorded with the values before and after, never the password's hash | `auth.Sessions.changePassword` | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
 | A record is built from the values the save changes | `accounts.custodianFields` | Both tests above |
-| No record can be changed or deleted, through the API or any query (AC-21.1) | The database trigger `HistoryIsAppendOnly`, created by the `History` migration | `HistoryTests.NoRecordOfTheTrailCanBeChangedOrDeletedByAnyone` |
+| No record can be changed or deleted, through the API or any query (AC-21.1) | The triggers `history_is_append_only_update` and `history_is_append_only_delete`, in migration 00001 | `HistoryTests.NoRecordOfTheTrailCanBeChangedOrDeletedByAnyone` |
 
 ## Left to later use cases
 

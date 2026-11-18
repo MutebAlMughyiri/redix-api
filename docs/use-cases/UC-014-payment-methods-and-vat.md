@@ -41,7 +41,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| An approved project starts with the three methods | `PaymentMethodSeed`, `structure.Copy` | `PaymentMethodsTests.AnApprovedProjectStartsWithTheThreeMethods` |
+| An approved project starts with the three methods | `structure.Copy`, from the template's payment methods | `PaymentMethodsTests.AnApprovedProjectStartsWithTheThreeMethods` |
 | They are rows of its own | `settings.AddPaymentMethod` | `PaymentMethodsTests.ProjectsTakeTheirOwnRowsOfTheTemplatesMethods` |
 | A project copied from an earlier one still starts from the seed | `structure.Copy` | `PaymentMethodsTests.AProjectCopiedFromAnEarlierOneStillStartsFromTheSeed` |
 | A method is added at the end, and renamed | `settings.Routes.add`, `Rename` | `PaymentMethodsTests.FinanceAddsAMethodAtTheEndOfTheList`, `FinanceRenamesAMethod` |
