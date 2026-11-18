@@ -46,7 +46,8 @@
             "type": "string"
           },
           "actualBalance": {
-            "type": "string"
+            "description": "A figure kept to four decimals.",
+            "type": "number"
           }
         },
         "required": [
@@ -895,7 +896,8 @@
             "type": "string"
           },
           "amount": {
-            "type": "string"
+            "description": "A figure kept to four decimals.",
+            "type": "number"
           },
           "attachmentId": {
             "format": "uuid",

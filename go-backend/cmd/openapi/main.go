@@ -665,14 +665,18 @@ func (g *generator) schema(t types.Type) map[string]any {
 	return map[string]any{}
 }
 
-// named is a named type's schema: an enum, which writes itself by its name, a string of its names; a struct a component of its own, named as
-// Go names it; anything else what it is made of.
+// named is a named type's schema: one that writes itself with the MarshalJSON of a special type, such as fixed.Typed with fixed.Number's, what
+// that type writes; an enum, which writes itself by its name, a string of its names; a struct a component of its own, named as Go names it;
+// anything else what it is made of.
 func (g *generator) named(t *types.Named) map[string]any {
 	name := types.TypeString(t, func(p *types.Package) string { return p.Name() })
 	if known, isSpecial := special[name]; isSpecial {
 		return known
 	}
 	if method, _, _ := types.LookupFieldOrMethod(t, true, t.Obj().Pkg(), "MarshalJSON"); method != nil {
+		if owner, isSpecial := special[strings.TrimSuffix(nameOf(method.(*types.Func)), ".MarshalJSON")]; isSpecial {
+			return owner
+		}
 		schema := map[string]any{"type": "string"}
 		if names := g.enumOf(method.(*types.Func)); len(names) > 0 {
 			schema["enum"] = names

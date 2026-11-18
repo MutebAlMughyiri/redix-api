@@ -98,6 +98,9 @@ func TestR5_FieldsAreCamelCaseAndAnEnumIsItsNames(t *testing.T) {
 		!slices.Contains(account.Required, "name") {
 		t.Errorf("an account reads %+v", account)
 	}
+	if amount := read.Components.Schemas["entries.Request"].Properties["amount"]; amount["type"] != "number" {
+		t.Errorf("an entry's amount, a fixed.Typed written by fixed.Number's MarshalJSON, reads %v", amount)
+	}
 }
 
 func anyStrings(values any) []string {
