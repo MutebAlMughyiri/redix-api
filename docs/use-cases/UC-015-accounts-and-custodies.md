@@ -70,5 +70,5 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | --- | --- |
 | An entry refusing an account its creator may not spend from, through `entries.refusalOfPayment` | The purchase and contractor payment entry use cases |
 | A balance that moves with approved entries, in `Account.Balance` | The same |
-| Reconciliation, which the canvas draws on the same screen; transfers and custody top-ups were removed on 8 Nov 2026 | UC-040 |
+| Reconciliation, which the canvas draws on the same screen; custody top-ups were removed on 8 Nov 2026, and transfers came back on 10 Nov (redix-app #89 R3) | UC-040 |
 | A partner's pocket, a third type of account | Retired by redix-api #99: a partner paying with their own money is a capital movement (redix-api #96, D27), so no account holds it |

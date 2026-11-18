@@ -20,7 +20,7 @@
 
 **No partner's pocket.** An expense is paid only from an account added in Accounts (redix-api #96, D24), and a partner paying with their own money is a capital movement (D27), so UC-045 "Expense paid from a partner's money" went on 7 November 2026. The pocket account each partner used to get went with it (redix-api #99): adding a partner makes no account, and the reconciliation has no "owed to partners" line.
 
-**No transfers between accounts.** Removed on 8 November 2026 (Muteb: "remove this feature completely"): FR-23 and AC-23.1 are retired, and no account takes money from another. RedixReal held none.
+**Transfers between accounts came back on 10 November 2026** (redix-app #89 R3, Muteb: "return back transfer between accounts"), as an action on Accounts for whoever holds `MoveMoney`: `POST /projects/{projectId}/transfers`, `accounts.Routes.transfer`, each transfer moving both accounts' balances (R2). They had been removed on 8 November ("remove this feature completely"); RedixReal held none.
 
 Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
 
