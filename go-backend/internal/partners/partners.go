@@ -86,22 +86,26 @@ func deletable(partners []store.Partner, movements []store.CapitalMovementsRow, 
 	return may
 }
 
+// partnerDraftView is part of what GET /projects/{projectId}/partners (UC-016) answers.
+type partnerDraftView struct {
+	EntryDate moment.Date  `json:"entryDate"`
+	Amount    fixed.Number `json:"amount"`
+}
+
+// partnerView is part of what GET /projects/{projectId}/partners (UC-016) answers.
+type partnerView struct {
+	ID           uuid.UUID          `json:"id"`
+	Name         string             `json:"name"`
+	UserID       string             `json:"userId"`
+	UserName     string             `json:"userName"`
+	MayDelete    bool               `json:"mayDelete"`
+	OthersDrafts []string           `json:"othersDrafts"`
+	MyDrafts     []partnerDraftView `json:"myDrafts"`
+}
+
 // list is the project's partners the caller sees, in their tables' order, each with the name of their own login, whether it may be deleted now,
 // whose drafts hold it - for whoever keeps the settings - and the caller's own drafts naming it; a deleted partner is not among them.
 func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	type draftView struct {
-		EntryDate moment.Date  `json:"entryDate"`
-		Amount    fixed.Number `json:"amount"`
-	}
-	type view struct {
-		ID           uuid.UUID   `json:"id"`
-		Name         string      `json:"name"`
-		UserID       string      `json:"userId"`
-		UserName     string      `json:"userName"`
-		MayDelete    bool        `json:"mayDelete"`
-		OthersDrafts []string    `json:"othersDrafts"`
-		MyDrafts     []draftView `json:"myDrafts"`
-	}
 	read, projectID := s.database.Queries(), web.ID(r, "projectId")
 	partners, err := read.PartnersOf(r.Context(), projectID)
 	movements, movementsErr := read.CapitalMovements(r.Context(), projectID)
@@ -116,12 +120,12 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 		nameOf[row.ID] = row.DisplayName
 	}
 	may := deletable(partners, movements, caller, projectID)
-	views := []view{}
+	views := []partnerView{}
 	for _, partner := range partners {
 		if partner.IsDeleted || !caller.Access.SeesCapitalOf(projectID, partner.ID) {
 			continue
 		}
-		one := view{ID: partner.ID, Name: partner.Name, MayDelete: may[partner.ID], OthersDrafts: []string{}, MyDrafts: []draftView{}}
+		one := partnerView{ID: partner.ID, Name: partner.Name, MayDelete: may[partner.ID], OthersDrafts: []string{}, MyDrafts: []partnerDraftView{}}
 		for _, login := range logins {
 			if login.PartnerID == partner.ID {
 				one.UserID, one.UserName = login.UserID.String(), nameOf[login.UserID]
@@ -132,7 +136,7 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 				continue
 			}
 			if row.CreatedByUserID == caller.UserID {
-				one.MyDrafts = append(one.MyDrafts, draftView{EntryDate: row.EntryDate, Amount: row.Amount})
+				one.MyDrafts = append(one.MyDrafts, partnerDraftView{EntryDate: row.EntryDate, Amount: row.Amount})
 			} else if author := nameOf[row.CreatedByUserID]; caller.Access.Holds(projectID, access.ManageSettings) && !slices.Contains(one.OthersDrafts, author) {
 				one.OthersDrafts = append(one.OthersDrafts, author)
 			}
@@ -376,6 +380,12 @@ func Capital(ctx context.Context, q *store.Queries, projectID uuid.UUID, shows f
 	return total, lines, nil
 }
 
+// capitalView is what GET /projects/{projectId}/capital answers (UC-040).
+type capitalView struct {
+	Total    fixed.Total   `json:"total"`
+	Partners []CapitalLine `json:"partners"`
+}
+
 // capital is the capital screen: everyone who reads the project sees the total, each line whoever sees that partner (BR-31).
 func (s Routes) capital(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
@@ -384,26 +394,25 @@ func (s Routes) capital(w http.ResponseWriter, r *http.Request, caller access.Ca
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	web.JSON(w, r, http.StatusOK, struct {
-		Total    fixed.Total   `json:"total"`
-		Partners []CapitalLine `json:"partners"`
-	}{total, lines})
+	web.JSON(w, r, http.StatusOK, capitalView{total, lines})
+}
+
+// partnerMovementView is part of what GET /projects/{projectId}/partners/{partnerId}/movements answers (UC-040).
+type partnerMovementView struct {
+	ID           uuid.UUID   `json:"id"`
+	MovementName string      `json:"movementName"`
+	Date         moment.Date `json:"date"`
+	Amount       fixed.Total `json:"amount"`
+	Description  string      `json:"description"`
+	AccountName  string      `json:"accountName"`
+	AttachmentID string      `json:"attachmentId"`
+	ContentType  string      `json:"contentType"`
+	FileName     string      `json:"fileName"`
 }
 
 // movements is one partner's approved movements, newest first, for whoever may see their capital (BR-31): 404 for anyone else, so a partner's
 // existence does not show.
 func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	type view struct {
-		ID           uuid.UUID   `json:"id"`
-		MovementName string      `json:"movementName"`
-		Date         moment.Date `json:"date"`
-		Amount       fixed.Total `json:"amount"`
-		Description  string      `json:"description"`
-		AccountName  string      `json:"accountName"`
-		AttachmentID string      `json:"attachmentId"`
-		ContentType  string      `json:"contentType"`
-		FileName     string      `json:"fileName"`
-	}
 	read, projectID, partnerID := s.database.Queries(), web.ID(r, "projectId"), web.ID(r, "partnerId")
 	partners, err := read.PartnersOf(r.Context(), projectID)
 	if err == nil && (!caller.Access.SeesCapitalOf(projectID, partnerID) || !slices.ContainsFunc(partners, func(partner store.Partner) bool { return partner.ID == partnerID })) {
@@ -433,12 +442,12 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 			}
 		}
 	}
-	views := []view{}
+	views := []partnerMovementView{}
 	for _, row := range movements {
 		if row.PartnerID != partnerID || row.Status != approved {
 			continue
 		}
-		one := view{ID: row.ID, MovementName: structure.ChoiceNameIn(capitalColumns, row.ColumnValues), Date: row.EntryDate, Amount: fixed.Counted(row.Amount),
+		one := partnerMovementView{ID: row.ID, MovementName: structure.ChoiceNameIn(capitalColumns, row.ColumnValues), Date: row.EntryDate, Amount: fixed.Counted(row.Amount),
 			Description: row.Description, AccountName: accountName[row.AccountID]}
 		if row.Kind == capitalOut {
 			one.Amount = fixed.Total{}.Minus(fixed.Counted(row.Amount))
