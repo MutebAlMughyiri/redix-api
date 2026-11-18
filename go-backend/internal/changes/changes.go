@@ -146,12 +146,15 @@ func (w Writer) Done(rw http.ResponseWriter, r *http.Request, caller access.Call
 	}
 }
 
+// nameRequest is the body of every route that only names something, read by Named.
+type nameRequest struct {
+	Name string `json:"name"`
+}
+
 // Named reads a request holding a name and answers invalidName (400) for one the rule refuses (ProjectChanges.WithNameAsync); false once it has
 // answered.
 func Named(w http.ResponseWriter, r *http.Request) (string, bool) {
-	var request struct {
-		Name string `json:"name"`
-	}
+	var request nameRequest
 	if !web.Read(w, r, &request) {
 		return "", false
 	}
