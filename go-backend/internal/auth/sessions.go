@@ -54,13 +54,16 @@ type session struct {
 	Email                string              `json:"email"`
 }
 
+// signInRequest is the body POST /auth/sign-in (UC-002) reads.
+type signInRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // signIn opens a session on a new device (FR-01, AC-01.1) and records it in History. A wrong username and a wrong password both answer
 // invalidCredentials; a locked account answers accountLocked (AC-01.2), and a refusal is recorded against the user whose name was typed.
 func (s Sessions) signIn(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
+	var request signInRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -92,11 +95,14 @@ func (s Sessions) signIn(w http.ResponseWriter, r *http.Request) {
 	}, func() { s.answer(w, r, left, device, refreshToken) })
 }
 
+// refreshRequest is the body POST /auth/refresh (UC-002) reads.
+type refreshRequest struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
 // refresh renews a session with its device's refresh token, which it replaces (#126 R6). An unknown, revoked or expired one answers sessionExpired.
 func (s Sessions) refresh(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		RefreshToken string `json:"refreshToken"`
-	}
+	var request refreshRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -117,14 +123,17 @@ func (s Sessions) refresh(w http.ResponseWriter, r *http.Request) {
 		func() { s.answer(w, r, user, device, refreshToken) })
 }
 
+// changePasswordRequest is the body POST /auth/change-password (UC-003) reads.
+type changePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
 // changePassword replaces the signed-in user's password (UC-003, AC-02.1), records it, and signs out the user's other devices; this one stays signed
 // in with a renewed session. A wrong current password answers invalidCredentials and counts toward the lock; a new one the policy refuses, or the
 // current one again, answers weakPassword.
 func (s Sessions) changePassword(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		CurrentPassword string `json:"currentPassword"`
-		NewPassword     string `json:"newPassword"`
-	}
+	var request changePasswordRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -172,12 +181,15 @@ func (s Sessions) signOut(w http.ResponseWriter, r *http.Request, caller access.
 	}, func() { w.WriteHeader(http.StatusNoContent) })
 }
 
+// biometricsRequest is the body POST /auth/biometrics (UC-011) reads.
+type biometricsRequest struct {
+	On bool `json:"on"`
+}
+
 // setBiometrics turns fingerprint or face on or off for this phone (UC-011, FR-35) and records it. The check runs on the phone; the server only
 // remembers it, so the session stops timing out; the token is renewed, so turning it off starts the 12 hours from now.
 func (s Sessions) setBiometrics(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		On bool `json:"on"`
-	}
+	var request biometricsRequest
 	if !web.Read(w, r, &request) {
 		return
 	}

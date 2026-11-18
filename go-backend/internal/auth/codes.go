@@ -63,12 +63,15 @@ func MapCodes(router *web.Router, gate *access.Gate, database db.DB, clock clock
 	router.Handle("POST", "/me/email/confirm", gate.Working(c.confirm))
 }
 
+// forgotPasswordRequest is the body POST /auth/forgot-password (UC-002) reads.
+type forgotPasswordRequest struct {
+	Login string `json:"login"`
+}
+
 // forgotPassword answers 202 at once, whoever the login names, so the answer says nothing about which accounts exist; then, when it names one with
 // an email, it emails a reset code in the asker's language. One login asks at most five times an hour.
 func (c Codes) forgotPassword(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Login string `json:"login"`
-	}
+	var request forgotPasswordRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -96,14 +99,17 @@ func (c Codes) forgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// resetWithCodeRequest is the body POST /auth/reset-with-code (UC-002) reads.
+type resetWithCodeRequest struct {
+	Login       string `json:"login"`
+	Code        string `json:"code"`
+	NewPassword string `json:"newPassword"`
+}
+
 // resetWithCode sets a new password with the code the email brought (AC-02.8): a wrong, used, expired or worn-out code answers codeWrong, a password
 // the policy refuses weakPassword. Every device of the account is signed out, the lock lifted, and the reset recorded.
 func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Login       string `json:"login"`
-		Code        string `json:"code"`
-		NewPassword string `json:"newPassword"`
-	}
+	var request resetWithCodeRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -143,12 +149,15 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// changeEmailRequest is the body POST /me/email reads (UC-010).
+type changeEmailRequest struct {
+	Email string `json:"email"`
+}
+
 // askToConfirm emails a code to the new email the signed-in user typed (#127): an email that is not one answers emailInvalid (400), one another
 // account holds emailTaken (409).
 func (c Codes) askToConfirm(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Email string `json:"email"`
-	}
+	var request changeEmailRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
@@ -167,12 +176,15 @@ func (c Codes) askToConfirm(w http.ResponseWriter, r *http.Request, caller acces
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// confirmEmailRequest is the body POST /me/email/confirm (UC-010) reads.
+type confirmEmailRequest struct {
+	Code string `json:"code"`
+}
+
 // confirm makes the email the code was sent to the user's (AC-10.4), unless another account took it meanwhile; a changed email ends every code the
 // user still holds.
 func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request struct {
-		Code string `json:"code"`
-	}
+	var request confirmEmailRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
