@@ -1379,6 +1379,38 @@
         ],
         "type": "object"
       },
+      "entries.loginLine": {
+        "properties": {
+          "about": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "about",
+          "area",
+          "at",
+          "by",
+          "id",
+          "kind"
+        ],
+        "type": "object"
+      },
       "entries.offeredCategory": {
         "properties": {
           "id": {
@@ -1583,6 +1615,63 @@
           "number",
           "partnerName",
           "supplierName"
+        ],
+        "type": "object"
+      },
+      "entries.projectLine": {
+        "properties": {
+          "about": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "amount": {
+            "description": "A figure kept to four decimals.",
+            "type": "number"
+          },
+          "area": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameWas": {
+            "type": "string"
+          },
+          "thing": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "about",
+          "action",
+          "amount",
+          "area",
+          "at",
+          "by",
+          "from",
+          "id",
+          "name",
+          "nameWas",
+          "thing",
+          "to"
         ],
         "type": "object"
       },
@@ -3905,6 +3994,70 @@
         ]
       }
     },
+    "/me/history": {
+      "get": {
+        "description": "myHistory is a page of «سجلي» (UC-069 R6): every line of the caller's own login, whoever wrote it, newest first; what a change set shows only as the name, username, mobile and email it gave, never a hash, a code or a token. area keeps one kind, any other text every kind.\n\nAccess: a session whose password is changed.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "area",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "text",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/entries.loginLine"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "myHistory is a page of «سجلي» (UC-069 R6): every line of the caller's own login, whoever wrote it, newest first; what a change set shows only as the name, username, mobile and email it gave, never a hash, a code or a token.",
+        "tags": [
+          "entries"
+        ]
+      }
+    },
     "/notifications": {
       "get": {
         "description": "What the caller was told, the latest 100, newest first, about projects they still have (UC-036).\n\nAccess: a session whose password is changed.",
@@ -4461,7 +4614,7 @@
           },
           {
             "in": "query",
-            "name": "mine",
+            "name": "by",
             "schema": {
               "type": "string"
             }
@@ -4793,7 +4946,7 @@
           },
           {
             "in": "query",
-            "name": "mine",
+            "name": "by",
             "schema": {
               "type": "string"
             }
@@ -7648,6 +7801,79 @@
         ]
       }
     },
+    "/projects/{projectId}/history": {
+      "get": {
+        "description": "projectHistory is a page of «سجل المشروع» (UC-069 R1-R5): every action in the project, one line per request, newest first, each only for someone who may see its record; area keeps one kind of record, any other text every kind.\n\nAccess: needs the SeeProjectHistory permission.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "area",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "text",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/entries.projectLine"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
+          }
+        },
+        "summary": "projectHistory is a page of «سجل المشروع» (UC-069 R1-R5): every action in the project, one line per request, newest first, each only for someone who may see its record; area keeps one kind of record, any other text every kind.",
+        "tags": [
+          "entries"
+        ]
+      }
+    },
     "/projects/{projectId}/items/{itemId}": {
       "put": {
         "description": "renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012).\n\nAccess: needs the ManageStructure permission.",
@@ -8653,7 +8879,7 @@
           },
           {
             "in": "query",
-            "name": "mine",
+            "name": "by",
             "schema": {
               "type": "string"
             }

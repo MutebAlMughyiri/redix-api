@@ -40,6 +40,7 @@ Holding `ReadProject` is being in the project. Whoever registers a project holds
 | `MoveMoney` | A project | Capital movements, revenue and reconciling |
 | `SeeReports` | A project | «يرى التقارير»: opening the reports, the periodic report, an item's report, a contract's and the VAT statement (redix-api #131) |
 | `GenerateReports` | A project | «يُصدر التقارير»: issuing the periodic report and taking every report's Excel and PDF, whose capital holds only the partners one may see (redix-api #131, BR-31) |
+| `SeeProjectHistory` | A project | «يرى سجل المشروع»: reading «سجل المشروع», every action in the project, each line only for whoever may see its record (UC-069) |
 
 A new permission is code: a route has to name it, and a migration adds it. The database refuses a permission the code does not know.
 

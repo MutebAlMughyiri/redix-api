@@ -12,6 +12,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/google/uuid"
 )
 
@@ -57,7 +58,8 @@ type Change struct {
 	After     map[string]any
 }
 
-// Write adds one History line with q, inside the write it records.
+// Write adds one History line with q, inside the write it records, under the trace id of the request that made it (UC-069 R7), so the lines one
+// request wrote are read back as one action.
 func Write(ctx context.Context, q *store.Queries, at moment.Moment, userID uuid.UUID, action Action, change Change) error {
 	before, err := json.Marshal(orEmpty(change.Before))
 	if err != nil {
@@ -69,7 +71,7 @@ func Write(ctx context.Context, q *store.Queries, at moment.Moment, userID uuid.
 	}
 	return q.AddHistory(ctx, store.AddHistoryParams{
 		At: at, ProjectID: change.ProjectID, UserID: userID, Action: string(action),
-		TableName: change.Table, RecordID: change.RecordID, Before: string(before), After: string(after),
+		TableName: change.Table, RecordID: change.RecordID, Before: string(before), After: string(after), TraceID: problem.TraceOf(ctx),
 	})
 }
 

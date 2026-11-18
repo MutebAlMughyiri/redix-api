@@ -149,6 +149,13 @@ var ranAtOnce = []string{
 	"PasswordResetTests.D3_TriesSentAtOnceCheckNoMoreGuessesThanACodeAllows",
 }
 
+// askedForMine are the tests that ask a history for the caller's own lines with mine, which the person chip's by replaced (UC-069 D6, no old
+// form kept); TestR5_AHistoryIsFilteredByKindAndPersonAndSearched proves by.
+var askedForMine = []string{
+	"AccountHistoryTests.H10_WhatIDidListsOnlyTheAskingPersonsOwnLines",
+	"PartnerHistoryTests.UC_101_OnePartnersLinesAndWhatICanBeKeptAlone",
+}
+
 // signedByDotNet are the tests that open a link .NET's Data Protection signed, read from a cell of its workbook, which Go's key cannot open by
 // design (redix-api #140 G6); Go's links have their own test, in attachments.
 var signedByDotNet = []string{
@@ -181,7 +188,8 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			// .NET crashed on some of its requests: the rest are compared, and what Go answers to those waits for Muteb's review (redix-api #76
 			// rows 263, 264).
 			underReview++
-		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name):
+		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name),
+			slices.Contains(askedForMine, name):
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {
@@ -445,6 +453,12 @@ var addedSinceDotNet = map[string]string{
 	"timeZone":         "the time zone a project is in (redix-app #107)",
 	"utcOffsetMinutes": "how far a project's zone is ahead of UTC now (redix-app #107)",
 	"code":             "the code every error answer carries, a bare status's too (redix-api #150 R1, R7)",
+}
+
+// retiredSinceDotNet are the names .NET answered that Go no longer does, each retired by a feature built after it, so an answer recorded with one
+// still matches; each names why it went.
+var retiredSinceDotNet = map[string]string{
+	"history.mine": "«ما قمت به», which the person chip's «أنا» replaced in every history (UC-069 D6)",
 }
 
 // withBody holds each route already sent once with a body that is not JSON, before the request it was recorded with: a route .NET answered
@@ -717,6 +731,10 @@ func decode(text string) any {
 // version 7 GUIDs - sorted on their last, random bytes - is chance, and the app reads them as a set. They are compared sorted.
 var sets = map[string]bool{"permissions": true}
 
+// addedSinceDotNetTo are the names Go's sets hold that .NET's never did, each added by a feature built after it, so a set recorded without one
+// still matches: whoever starts a project holds SeeProjectHistory (UC-069 D1, D7).
+var addedSinceDotNetTo = map[string][]string{"permissions": {"seeProjectHistory"}}
+
 func sorted(items []any) []any {
 	kept := slices.Clone(items)
 	slices.SortFunc(kept, func(a, b any) int { return strings.Compare(fmt.Sprint(a), fmt.Sprint(b)) })
@@ -745,6 +763,9 @@ func same(names mapping, path, key string, net, got any) []string {
 		for _, name := range keys {
 			goName := names.into(name)
 			if _, has := got[goName]; !has {
+				if _, retired := retiredSinceDotNet[name]; retired {
+					continue
+				}
 				differences = append(differences, fmt.Sprintf("%s.%s: missing in Go's answer", path, name))
 				continue
 			}
@@ -762,6 +783,9 @@ func same(names mapping, path, key string, net, got any) []string {
 		return differences
 	case []any:
 		got, ok := got.([]any)
+		if ok && sets[key] {
+			got = slices.DeleteFunc(slices.Clone(got), func(item any) bool { return slices.Contains(addedSinceDotNetTo[key], fmt.Sprint(item)) })
+		}
 		if !ok || len(got) != len(net) {
 			return []string{fmt.Sprintf("%s: %d items in .NET's answer, %v in Go's", path, len(net), got)}
 		}

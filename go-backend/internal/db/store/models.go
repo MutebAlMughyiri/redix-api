@@ -162,6 +162,7 @@ type History struct {
 	RecordID  uuid.UUID
 	Before    string
 	After     string
+	TraceID   string
 }
 
 type InactiveMember struct {

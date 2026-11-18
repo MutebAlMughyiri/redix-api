@@ -32,16 +32,16 @@ type historyLine interface {
 	holds(text string) bool
 }
 
-// page is the page of lines lineOf makes of rows (HistoryPage.LinesAsync): after the line before (0 for the newest), only the caller's own when
-// mine, and once something was typed, only those that hold it.
-func page[T historyLine](r *http.Request, rows []store.History, caller access.Caller, lineOf func(store.History) T) []T {
+// page is the page of lines lineOf makes of rows (HistoryPage.LinesAsync): after the line before (0 for the newest), only those the person by
+// wrote when one is named (UC-069 R5), and once something was typed, only those that hold it.
+func page[T historyLine](r *http.Request, rows []store.History, lineOf func(store.History) T) []T {
 	query := r.URL.Query()
-	mine := strings.EqualFold(query.Get("mine"), "true")
+	by, _ := uuid.Parse(query.Get("by"))
 	before, _ := strconv.ParseInt(query.Get("before"), 10, 64)
 	text := query.Get("text")
 	lines := []T{}
 	for _, row := range rows {
-		if (mine && row.UserID != caller.UserID) || (before > 0 && row.ID >= before) {
+		if (by != uuid.Nil && row.UserID != by) || (before > 0 && row.ID >= before) {
 			continue
 		}
 		line := lineOf(row)
@@ -152,7 +152,7 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		}
 		kept = append(kept, row)
 	}
-	lines := page(r, kept, caller, func(row store.History) accountLine {
+	lines := page(r, kept, func(row store.History) accountLine {
 		line := accountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(purchase)}
 		switch row.TableName {
 		case "Accounts":
@@ -256,7 +256,7 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 			kept = append(kept, row)
 		}
 	}
-	lines := page(r, kept, caller, func(row store.History) partnerLine {
+	lines := page(r, kept, func(row store.History) partnerLine {
 		line := partnerLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, partnerKinds}}
 		if row.TableName != "Entries" {
 			switch {
@@ -325,7 +325,7 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 			kept = append(kept, row)
 		}
 	}
-	lines := page(r, kept, caller, func(row store.History) approvalLine {
+	lines := page(r, kept, func(row store.History) approvalLine {
 		entry := entryOf[row.RecordID]
 		line := approvalLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, approvalKinds}, Item: known.itemNameOf(entry),
 			Party: known.supplierOf(entry).Name, Amount: entry.Amount}
@@ -333,13 +333,7 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 			line.Item = known.partners[known.capital[entry.ID]]
 		}
 		if row.Action == "Reject" {
-			line.Kind.value = 1
-			for _, decision := range decisions {
-				if decision.EntryID == entry.ID && decision.Action == rejectedBy && decision.At.Equal(row.At.Time) {
-					line.Reason = decision.Reason
-					break
-				}
-			}
+			line.Kind.value, line.Reason = 1, reasonOf(decisions, entry.ID, row.At)
 		}
 		return line
 	})

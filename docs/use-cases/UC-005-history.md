@@ -3,7 +3,7 @@
 # UC-005: Keep the history
 
 **What it is for:** knowing who did what to every record, and when, with the values before and after (FR-21, AC-21.1).
-**Who uses it:** nobody directly: the API writes it on its own. Reading it comes with the screens that show a record's history.
+**Who uses it:** nobody directly: the API writes it on its own. «سجل المشروع» and «سجلي» read it (UC-069), and so do the accounts', partners' and approvals' histories.
 **Issue:** redix-api #23; no app side.
 
 ## The table
@@ -18,10 +18,11 @@
 | `Action` | What was done, by name (`history.Action`) |
 | `table_name`, `record_id` | The record it was done to |
 | `Before`, `After` | The values it changed, as JSON objects of column names and values; every value of a new record in `After`, with `{}` in `Before` |
+| `trace_id` | The request that wrote it: its trace id (redix-api #150), the same on every line one request wrote, so they are read back as one action (UC-069); empty on the lines written before 18 Nov 2026 |
 
 ## Recorded today
 
-Each use case adds its own actions; entries, users and attachments join the History table as their use cases are built.
+Every change records its line: the History net (`historytest.Check`, redix-api #140) runs under every request the Go tests send, and fails a test whose write leaves a row without a line naming it. The table lists the actions on logins and on a project's start; what each table's lines are in a project's history is UC-069's table.
 
 | Action | When | Record | Values |
 | --- | --- | --- | --- |
@@ -57,6 +58,6 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A record is built from the values the save changes | `accounts.custodianFields` | Both tests above |
 | No record can be changed or deleted, through the API or any query (AC-21.1) | The triggers `history_is_append_only_update` and `history_is_append_only_delete`, in migration 00001 | `HistoryTests.NoRecordOfTheTrailCanBeChangedOrDeletedByAnyone` |
 
-## Left to later use cases
+## Read by
 
-Creating, editing, submitting, approving, rejecting and reversing entries (UC-022 on) and attaching invoices (UC-039) each record their actions when built. Reading the History table comes with the first screen that shows a record's history.
+«سجل المشروع» reads a project's lines, one per request, each for whoever may see its record; «سجلي» reads the lines of one's own login (UC-069).

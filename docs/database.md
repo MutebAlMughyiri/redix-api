@@ -207,7 +207,7 @@ One per enum the database stores, named `lk_{enum}`: `id` is the member's number
 
 ### Not a lookup table yet: Permission
 
-`project_permissions.permission` and `system_permissions.permission` store a permission by name. SQLite checks only its length: `access.Named` is what holds the names, and the API never writes another, so it has no lookup table, because redix-api #120 replaces them with a true/false column per permission. Their names:
+`project_permissions.permission` and `system_permissions.permission` store a permission by name, which a CHECK holds to the names below; `project_permissions` was rebuilt by migration 00008 when `SeeProjectHistory` joined, since SQLite cannot change a CHECK in place. In Go, `access.All` holds them, a new one last, since History keeps a permission as its place there. They have no lookup table, because redix-api #120 replaces them with a true/false column per permission. Their names:
 
 | Name | Meaning |
 | --- | --- |
@@ -230,6 +230,7 @@ One per enum the database stores, named `lk_{enum}`: `id` is the member's number
 | MoveMoney | Enters a project's capital movements and revenue from Add entry, which wait for approval like every entry, and reconciles its accounts (BR-30, FR-24, FR-25). |
 | SeeReports | «يرى التقارير»: opens one project's reports, the periodic report, an item's report, a contract's and the VAT statement (redix-api #131). |
 | GenerateReports | «يُصدر التقارير»: issues one project's next periodic report and takes every report's Excel and PDF, whose capital shows only the partners its holder may see (redix-api #131, BR-31). |
+| SeeProjectHistory | «يرى سجل المشروع»: reads one project's history, every action in it, each line only for whoever may see its record (UC-069). |
 
 ### lk_time_zone
 
@@ -1119,10 +1120,11 @@ Who did what to which record, when, and in which project (FR-21); append-only: t
 | record_id | TEXT (UUID) | not null |  | no foreign key: the id of the record in `table_name` it was done to |
 | before | TEXT (JSON) | not null |  |  |
 | after | TEXT (JSON) | not null |  |  |
+| trace_id | TEXT | not null |  | The trace id of the request that wrote it (redix-api #150), the same on every line of one request (UC-069); `''` before 18 Nov 2026 |
 
 Unique: the key only.
 
-Other indexes: `action`; `project_id, id`; `user_id`.
+Other indexes: `action`; `project_id, id`; `user_id`; `table_name, record_id`, for «سجلي».
 
 Trigger `HistoryIsAppendOnly`: refuses any UPDATE or DELETE.
 

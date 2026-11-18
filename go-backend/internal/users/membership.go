@@ -205,8 +205,9 @@ func isTheLastManager(ctx context.Context, q *store.Queries, projectID, userID u
 	return others == 0, err
 }
 
-// TickStarter gives whoever starts or registers a project every permission in it but SeeChosenCapital and RemoveApprovedEntries, each recorded as
-// theirs (ProjectsEndpoints.AddWithManager, ProjectPermission.OfWhoeverStarts). They count once the admin approves the project (BR-34).
+// TickStarter gives whoever starts or registers a project every permission in it but SeeChosenCapital and RemoveApprovedEntries, SeeProjectHistory
+// among them (UC-069 D7), each recorded as theirs (ProjectsEndpoints.AddWithManager, ProjectPermission.OfWhoeverStarts). They count once the
+// admin approves the project (BR-34).
 func TickStarter(ctx context.Context, q *store.Queries, projectID, managerID uuid.UUID, now moment.Moment) error {
 	c := change{ctx: ctx, q: q, actor: managerID, now: now}
 	for _, permission := range access.All {

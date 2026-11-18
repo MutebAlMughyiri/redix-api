@@ -59,6 +59,7 @@ Numbered in build order; the same number in the app's documentation is the same 
 | [UC-047, UC-056](use-cases/UC-047-revenue-and-vat.md) | Revenue, and the VAT statement's workbook for any period, its VAT worked out and never stored | Whoever does the project's finance; everyone reads |
 | [UC-040 to UC-044](use-cases/UC-040-money-movements.md) | Reconciliation, capital movements, and shares | Whoever does the project's finance; everyone reads |
 | [UC-066](use-cases/UC-066-register-a-project.md) | Register a project with its manager, and approve it | Anyone registers; only the admin approves |
+| [UC-069](use-cases/UC-069-history.md) | Read the history: «سجل المشروع» of every action in a project, one line per request, and «سجلي» of one's own login | Whoever holds `SeeProjectHistory`; everyone for «سجلي» |
 | [UC-070](use-cases/UC-070-config.md) | Keep configurable values in one table, starting with how long the app waits for an answer | The app, before sign-in |
 | [UC-071](use-cases/UC-071-load-a-project-file.md) | Load a project's JSON file: its structure, entries, actual balances and last report | The manager who created the project |
 | [UC-062](use-cases/UC-062-sign-out.md) | Sign out of one device | Every signed-in user |

@@ -135,6 +135,10 @@ WHERE contracts.project_id = ? AND contracts.is_active = 1 ORDER BY contracts.so
 -- name: UserNames :many
 SELECT id, display_name FROM users;
 
+-- name: HistoryOfLogin :many
+-- Every History line of one login, newest first: what my history reads (UC-069 R9), so no other login's line can reach it.
+SELECT * FROM history WHERE table_name = 'Users' AND record_id = ? ORDER BY id DESC;
+
 -- name: HistoryOfProject :many
 -- Every History line of a project, newest first: what the history screens read (D11), so no line of another project can reach them.
 SELECT * FROM history WHERE project_id = ? ORDER BY id DESC;

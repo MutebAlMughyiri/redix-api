@@ -76,6 +76,7 @@ func (q *Queries) AccountOf(ctx context.Context, arg AccountOfParams) (Account, 
 }
 
 const accountsOf = `-- name: AccountsOf :many
+
 SELECT accounts.id, accounts.project_id, accounts.type, accounts.name, accounts.is_active, COALESCE(account_custodians.user_id, '') AS custodian_id, COALESCE(users.display_name, '') AS custodian_name
 FROM accounts LEFT JOIN account_custodians ON account_custodians.account_id = accounts.id LEFT JOIN users ON users.id = account_custodians.user_id
 WHERE accounts.project_id = ? ORDER BY accounts.type, accounts.id
@@ -91,6 +92,8 @@ type AccountsOfRow struct {
 	CustodianName string
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // A project's accounts, banks first, then in the order they were added (AC-22.1), each with who holds it.
 func (q *Queries) AccountsOf(ctx context.Context, projectID uuid.UUID) ([]AccountsOfRow, error) {
 	rows, err := q.query(ctx, q.accountsOfStmt, accountsOf, projectID)
@@ -387,7 +390,8 @@ func (q *Queries) AddExpenseDetails(ctx context.Context, arg AddExpenseDetailsPa
 }
 
 const addHistory = `-- name: AddHistory :exec
-INSERT INTO history (at, project_id, user_id, action, table_name, record_id, before, after) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+
+INSERT INTO history (at, project_id, user_id, action, table_name, record_id, before, after, trace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type AddHistoryParams struct {
@@ -399,8 +403,11 @@ type AddHistoryParams struct {
 	RecordID  uuid.UUID
 	Before    string
 	After     string
+	TraceID   string
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 func (q *Queries) AddHistory(ctx context.Context, arg AddHistoryParams) error {
 	_, err := q.exec(ctx, q.addHistoryStmt, addHistory,
 		arg.At,
@@ -411,6 +418,7 @@ func (q *Queries) AddHistory(ctx context.Context, arg AddHistoryParams) error {
 		arg.RecordID,
 		arg.Before,
 		arg.After,
+		arg.TraceID,
 	)
 	return err
 }
@@ -984,6 +992,7 @@ func (q *Queries) AttachmentOf(ctx context.Context, arg AttachmentOfParams) (Att
 }
 
 const attachmentSent = `-- name: AttachmentSent :many
+
 SELECT id, project_id, storage_path, file_name, content_type, size_bytes, sha256, uploaded_by_user_id, uploaded_at FROM attachments WHERE project_id = ?1 AND uploaded_by_user_id = ?2 AND sha256 = ?3 LIMIT 1
 `
 
@@ -993,6 +1002,8 @@ type AttachmentSentParams struct {
 	Sha256    string
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // The file a person already sent to the project with these bytes, which a retried upload answers (UC-029).
 func (q *Queries) AttachmentSent(ctx context.Context, arg AttachmentSentParams) ([]Attachment, error) {
 	rows, err := q.query(ctx, q.attachmentSentStmt, attachmentSent, arg.ProjectID, arg.UserID, arg.Sha256)
@@ -1531,6 +1542,7 @@ func (q *Queries) ContractOf(ctx context.Context, arg ContractOfParams) (Contrac
 }
 
 const contractsOf = `-- name: ContractsOf :many
+
 SELECT contracts.id, contracts.project_id, contracts.item_id, contracts.sort_order, contracts.supplier_id, contracts.value, contracts.is_open_value, contracts.unit_price, contracts.quantity, contracts.notes, contracts.is_active, suppliers.name AS supplier_name, items.name AS item_name
 FROM contracts JOIN suppliers ON suppliers.id = contracts.supplier_id JOIN items ON items.id = contracts.item_id
 WHERE contracts.project_id = ? ORDER BY contracts.id
@@ -1552,6 +1564,8 @@ type ContractsOfRow struct {
 	ItemName     string
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // A project's contracts, disabled ones included, each with its contractor's and its item's names.
 func (q *Queries) ContractsOf(ctx context.Context, projectID uuid.UUID) ([]ContractsOfRow, error) {
 	rows, err := q.query(ctx, q.contractsOfStmt, contractsOf, projectID)
@@ -1994,6 +2008,7 @@ func (q *Queries) DocumentOf(ctx context.Context, arg DocumentOfParams) (Documen
 }
 
 const documentsOf = `-- name: DocumentsOf :many
+
 SELECT documents.id, documents.name, documents.group_name, attachments.id AS attachment_id, attachments.file_name, attachments.content_type, documents.uploaded_at
 FROM documents JOIN attachments ON attachments.id = documents.attachment_id
 WHERE documents.project_id = ? ORDER BY documents.group_name COLLATE names, documents.uploaded_at DESC, documents.id DESC
@@ -2009,6 +2024,8 @@ type DocumentsOfRow struct {
 	UploadedAt   moment.Moment
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // A project's documents with their files: those in no group first, then each group in order, newest first within each.
 func (q *Queries) DocumentsOf(ctx context.Context, projectID uuid.UUID) ([]DocumentsOfRow, error) {
 	rows, err := q.query(ctx, q.documentsOfStmt, documentsOf, projectID)
@@ -2187,6 +2204,7 @@ func (q *Queries) EntryFilesOf(ctx context.Context, projectID uuid.UUID) ([]Entr
 }
 
 const entryOf = `-- name: EntryOf :one
+
 SELECT id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number FROM entries WHERE id = ?1 AND project_id = ?2
 `
 
@@ -2195,6 +2213,8 @@ type EntryOfParams struct {
 	ProjectID uuid.UUID
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 func (q *Queries) EntryOf(ctx context.Context, arg EntryOfParams) (Entry, error) {
 	row := q.queryRow(ctx, q.entryOfStmt, entryOf, arg.ID, arg.ProjectID)
 	var i Entry
@@ -2260,9 +2280,12 @@ func (q *Queries) HasEntriesWaiting(ctx context.Context, projectID uuid.UUID) (b
 }
 
 const hasUsers = `-- name: HasUsers :one
+
 SELECT EXISTS (SELECT 1 FROM users) AS has_users
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // Whether the database holds any user.
 func (q *Queries) HasUsers(ctx context.Context) (bool, error) {
 	row := q.queryRow(ctx, q.hasUsersStmt, hasUsers)
@@ -2272,9 +2295,12 @@ func (q *Queries) HasUsers(ctx context.Context) (bool, error) {
 }
 
 const heldEverywhere = `-- name: HeldEverywhere :many
+
 SELECT permission FROM system_permissions WHERE user_id = ?1
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // What a person holds across the system.
 func (q *Queries) HeldEverywhere(ctx context.Context, userID uuid.UUID) ([]string, error) {
 	rows, err := q.query(ctx, q.heldEverywhereStmt, heldEverywhere, userID)
@@ -2335,8 +2361,47 @@ func (q *Queries) HeldInProjects(ctx context.Context, userID uuid.UUID) ([]HeldI
 	return items, nil
 }
 
+const historyOfLogin = `-- name: HistoryOfLogin :many
+SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE table_name = 'Users' AND record_id = ? ORDER BY id DESC
+`
+
+// Every History line of one login, newest first: what my history reads (UC-069 R9), so no other login's line can reach it.
+func (q *Queries) HistoryOfLogin(ctx context.Context, recordID uuid.UUID) ([]History, error) {
+	rows, err := q.query(ctx, q.historyOfLoginStmt, historyOfLogin, recordID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []History
+	for rows.Next() {
+		var i History
+		if err := rows.Scan(
+			&i.ID,
+			&i.At,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.RecordID,
+			&i.Before,
+			&i.After,
+			&i.TraceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const historyOfProject = `-- name: HistoryOfProject :many
-SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after" FROM history WHERE project_id = ? ORDER BY id DESC
+SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE project_id = ? ORDER BY id DESC
 `
 
 // Every History line of a project, newest first: what the history screens read (D11), so no line of another project can reach them.
@@ -2359,6 +2424,7 @@ func (q *Queries) HistoryOfProject(ctx context.Context, projectID uuid.UUID) ([]
 			&i.RecordID,
 			&i.Before,
 			&i.After,
+			&i.TraceID,
 		); err != nil {
 			return nil, err
 		}
@@ -2825,9 +2891,12 @@ func (q *Queries) LatestReconciliation(ctx context.Context, projectID uuid.UUID)
 }
 
 const managersOf = `-- name: ManagersOf :many
+
 SELECT user_id FROM project_permissions WHERE project_id = ? AND permission = 'ManageUsers' ORDER BY id
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // Who manages the users of a project.
 func (q *Queries) ManagersOf(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.query(ctx, q.managersOfStmt, managersOf, projectID)
@@ -3174,9 +3243,12 @@ func (q *Queries) OtherActiveManagers(ctx context.Context, arg OtherActiveManage
 }
 
 const partnerLogins = `-- name: PartnerLogins :many
+
 SELECT partner_id, project_id, user_id FROM partner_users WHERE project_id = ?
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 func (q *Queries) PartnerLogins(ctx context.Context, projectID uuid.UUID) ([]PartnerUser, error) {
 	rows, err := q.query(ctx, q.partnerLoginsStmt, partnerLogins, projectID)
 	if err != nil {
@@ -3362,9 +3434,12 @@ func (q *Queries) PaymentMethodUsed(ctx context.Context, paymentMethodID uuid.UU
 }
 
 const paymentMethodsOf = `-- name: PaymentMethodsOf :many
+
 SELECT id, project_id, name, sort_order, is_active FROM payment_methods WHERE project_id = ? ORDER BY sort_order, id
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // A project's payment methods, disabled ones included, in order.
 func (q *Queries) PaymentMethodsOf(ctx context.Context, projectID uuid.UUID) ([]PaymentMethod, error) {
 	rows, err := q.query(ctx, q.paymentMethodsOfStmt, paymentMethodsOf, projectID)
@@ -3576,9 +3651,12 @@ func (q *Queries) PermissionsOf(ctx context.Context, arg PermissionsOfParams) ([
 }
 
 const projectHoldsEntries = `-- name: ProjectHoldsEntries :one
+
 SELECT EXISTS (SELECT 1 FROM entries WHERE project_id = ?)
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // Whether the project holds any entry, a removed one too (Project.HoldingEntriesAsync): a project file loads only into a project holding none.
 func (q *Queries) ProjectHoldsEntries(ctx context.Context, projectID uuid.UUID) (bool, error) {
 	row := q.queryRow(ctx, q.projectHoldsEntriesStmt, projectHoldsEntries, projectID)
@@ -3667,9 +3745,12 @@ func (q *Queries) ProjectOfUser(ctx context.Context, arg ProjectOfUserParams) ([
 }
 
 const projectTimeZone = `-- name: ProjectTimeZone :one
+
 SELECT time_zone FROM project_time_zones WHERE project_id = ?1
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // The zone a project's manager chose (redix-app #107); none for one still in Riyadh.
 func (q *Queries) ProjectTimeZone(ctx context.Context, projectID uuid.UUID) (string, error) {
 	row := q.queryRow(ctx, q.projectTimeZoneStmt, projectTimeZone, projectID)
@@ -3679,9 +3760,12 @@ func (q *Queries) ProjectTimeZone(ctx context.Context, projectID uuid.UUID) (str
 }
 
 const projectWithID = `-- name: ProjectWithID :one
+
 SELECT id, name, start_date, status, rejection_reason, description, is_template, last_entry_number FROM projects WHERE id = ?1
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 func (q *Queries) ProjectWithID(ctx context.Context, id uuid.UUID) (Project, error) {
 	row := q.queryRow(ctx, q.projectWithIDStmt, projectWithID, id)
 	var i Project
@@ -3727,9 +3811,12 @@ func (q *Queries) ProjectsHoldingEntries(ctx context.Context) ([]uuid.UUID, erro
 }
 
 const projectsOfUser = `-- name: ProjectsOfUser :many
+
 SELECT user_id, project_id, project_name, permissions, role_name, partner_ids, is_inactive FROM user_projects WHERE user_id = ?1 ORDER BY project_name COLLATE names
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // Every project a user is in, as the users routes show it.
 func (q *Queries) ProjectsOfUser(ctx context.Context, userID uuid.UUID) ([]UserProject, error) {
 	rows, err := q.query(ctx, q.projectsOfUserStmt, projectsOfUser, userID)
@@ -4938,9 +5025,12 @@ func (q *Queries) SpendCode(ctx context.Context, arg SpendCodeParams) error {
 }
 
 const structureSourceOf = `-- name: StructureSourceOf :many
+
 SELECT structure_source_id FROM project_structure_sources WHERE project_id = ?
 `
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // The earlier project a registration chose to copy the structure from; none is copying the template (ProjectStructureSource.OfAsync).
 func (q *Queries) StructureSourceOf(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.query(ctx, q.structureSourceOfStmt, structureSourceOf, projectID)
@@ -5072,6 +5162,7 @@ func (q *Queries) SupplierOf(ctx context.Context, arg SupplierOfParams) (Supplie
 }
 
 const suppliersOf = `-- name: SuppliersOf :many
+
 SELECT suppliers.id, suppliers.project_id, suppliers.name, suppliers.normalized_name, suppliers.vat_number, suppliers.mobile, suppliers.status, suppliers.is_active, suppliers.is_general_cash, suppliers.created_by_user_id, COALESCE(supplier_default_items.item_id, '') AS default_item_id, COALESCE(items.name, '') AS default_item_name,
     (SELECT count(*) FROM purchase_details JOIN entries ON entries.id = purchase_details.entry_id
      WHERE purchase_details.supplier_id = suppliers.id AND entries.created_by_user_id = ?1) AS times_used
@@ -5102,6 +5193,8 @@ type SuppliersOfRow struct {
 	TimesUsed       int64
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // A project's suppliers by name, disabled ones included, each with the item its expenses usually go to and how many of user_id's purchases name
 // it.
 func (q *Queries) SuppliersOf(ctx context.Context, arg SuppliersOfParams) ([]SuppliersOfRow, error) {
@@ -5399,6 +5492,7 @@ func (q *Queries) UsersOfProject(ctx context.Context, projectID uuid.UUID) ([]Us
 }
 
 const values = `-- name: Values :many
+
 SELECT key, value FROM config_values
 `
 
@@ -5407,6 +5501,8 @@ type ValuesRow struct {
 	Value string
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // Every configurable value, by its key.
 func (q *Queries) Values(ctx context.Context) ([]ValuesRow, error) {
 	rows, err := q.query(ctx, q.valuesStmt, values)
@@ -5432,6 +5528,7 @@ func (q *Queries) Values(ctx context.Context) ([]ValuesRow, error) {
 }
 
 const waitingByKind = `-- name: WaitingByKind :many
+
 SELECT kind, count(*) AS entries, CAST(SUM(amount) AS INTEGER) AS total FROM entries WHERE project_id = ? AND status = 1 GROUP BY kind
 `
 
@@ -5441,6 +5538,8 @@ type WaitingByKindRow struct {
 	Total   int64
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // What waits for approval in the project, by kind: how many and how much.
 func (q *Queries) WaitingByKind(ctx context.Context, projectID uuid.UUID) ([]WaitingByKindRow, error) {
 	rows, err := q.query(ctx, q.waitingByKindStmt, waitingByKind, projectID)
@@ -5466,6 +5565,7 @@ func (q *Queries) WaitingByKind(ctx context.Context, projectID uuid.UUID) ([]Wai
 }
 
 const wordsIn = `-- name: WordsIn :many
+
 SELECT translation_keys.key, translations.value
 FROM translation_keys JOIN translations ON translations.translation_key_id = translation_keys.id
 WHERE translations.language = ?1
@@ -5476,6 +5576,8 @@ type WordsInRow struct {
 	Value string
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // Every word of one language, by its key.
 func (q *Queries) WordsIn(ctx context.Context, language string) ([]WordsInRow, error) {
 	rows, err := q.query(ctx, q.wordsInStmt, wordsIn, language)
@@ -5501,6 +5603,7 @@ func (q *Queries) WordsIn(ctx context.Context, language string) ([]WordsInRow, e
 }
 
 const wordsOf = `-- name: WordsOf :many
+
 SELECT translation_keys.key, translations.value
 FROM translation_keys JOIN translations ON translations.translation_key_id = translation_keys.id
 WHERE translations.language = ?1 AND translation_keys.key IN (?2, ?3)
@@ -5517,6 +5620,8 @@ type WordsOfRow struct {
 	Value string
 }
 
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
 // The subject and body words of one email, in one language.
 func (q *Queries) WordsOf(ctx context.Context, arg WordsOfParams) ([]WordsOfRow, error) {
 	rows, err := q.query(ctx, q.wordsOfStmt, wordsOf, arg.Language, arg.SubjectKey, arg.BodyKey)

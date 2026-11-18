@@ -51,6 +51,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("GET", project+"/accounts/history", reads(s.accountHistory))
 	router.Handle("GET", project+"/partners/history", reads(s.partnerHistory))
 	router.Handle("GET", project+"/approvals/history", gate.Needs(access.ApproveEntries, s.approvalHistory))
+	router.Handle("GET", project+"/history", gate.Needs(access.SeeProjectHistory, s.projectHistory))
+	router.Handle("GET", "/me/history", gate.Working(s.myHistory))
 	router.Handle("POST", project+"/entries", gate.Changes(access.ReadProject, s.record))
 	router.Handle("PUT", project+"/entries/{entryId:guid}", gate.Changes(access.ReadProject, s.change))
 	router.Handle("GET", project+"/entries/{entryId:guid}", reads(s.read))

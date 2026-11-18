@@ -7,6 +7,8 @@ overrides:
     overrides:
       - column: "history.id"
         go_type: "int64"
+      - column: "history.trace_id"
+        go_type: "string"
       - column: "entry_decisions.id"
         go_type: "int64"
       - column: "lk_*.id"

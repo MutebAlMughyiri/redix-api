@@ -285,6 +285,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.heldInProjectsStmt, err = db.PrepareContext(ctx, heldInProjects); err != nil {
 		return nil, fmt.Errorf("error preparing query HeldInProjects: %w", err)
 	}
+	if q.historyOfLoginStmt, err = db.PrepareContext(ctx, historyOfLogin); err != nil {
+		return nil, fmt.Errorf("error preparing query HistoryOfLogin: %w", err)
+	}
 	if q.historyOfProjectStmt, err = db.PrepareContext(ctx, historyOfProject); err != nil {
 		return nil, fmt.Errorf("error preparing query HistoryOfProject: %w", err)
 	}
@@ -1133,6 +1136,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing heldInProjectsStmt: %w", cerr)
 		}
 	}
+	if q.historyOfLoginStmt != nil {
+		if cerr := q.historyOfLoginStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing historyOfLoginStmt: %w", cerr)
+		}
+	}
 	if q.historyOfProjectStmt != nil {
 		if cerr := q.historyOfProjectStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing historyOfProjectStmt: %w", cerr)
@@ -1939,6 +1947,7 @@ type Queries struct {
 	hasUsersStmt                        *sql.Stmt
 	heldEverywhereStmt                  *sql.Stmt
 	heldInProjectsStmt                  *sql.Stmt
+	historyOfLoginStmt                  *sql.Stmt
 	historyOfProjectStmt                *sql.Stmt
 	holdersOfStmt                       *sql.Stmt
 	inactiveOfStmt                      *sql.Stmt
@@ -2168,6 +2177,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		hasUsersStmt:                        q.hasUsersStmt,
 		heldEverywhereStmt:                  q.heldEverywhereStmt,
 		heldInProjectsStmt:                  q.heldInProjectsStmt,
+		historyOfLoginStmt:                  q.historyOfLoginStmt,
 		historyOfProjectStmt:                q.historyOfProjectStmt,
 		holdersOfStmt:                       q.holdersOfStmt,
 		inactiveOfStmt:                      q.inactiveOfStmt,
