@@ -31,8 +31,7 @@ const notesMaxLength = 1000
 
 // The statuses of an entry the money of a contract counts (EntryStatus).
 const (
-	pendingApproval int64 = 1
-	approved        int64 = 2
+	approved int64 = 2
 )
 
 // Money is what the ledger holds inside a contract (ContractMoney, BR-04): what was paid, which counts only once approved (BR-10), and what waits

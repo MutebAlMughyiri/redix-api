@@ -20,7 +20,6 @@ const (
 	contractorPayment
 	capitalIn
 	capitalOut
-	revenue
 )
 
 // The revenue types of item whose totals the figures name (ItemType).

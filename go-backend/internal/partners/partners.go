@@ -32,7 +32,7 @@ import (
 // The entry statuses and kinds capital reads (EntryStatus, EntryKind).
 const (
 	draft, pendingApproval, approved, rejected int64 = 0, 1, 2, 3
-	capitalIn, capitalOut                      int64 = 2, 3
+	capitalOut                                 int64 = 3
 )
 
 // Routes keeps a project's partners.

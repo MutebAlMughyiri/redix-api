@@ -13,6 +13,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -138,7 +139,7 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 	for _, row := range rows {
 		_, isSeen := entryOf[row.RecordID]
 		isAccounts := slices.Contains([]string{"Accounts", "AccountCustodians", "Transfers", "Reconciliations"}, row.TableName)
-		if !isAccounts && !(row.TableName == "Entries" && (row.Action == "Approve" || row.Action == "Reverse") && isSeen) {
+		if !isAccounts && !(row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isSeen) {
 			continue
 		}
 		if accountID != uuid.Nil {
@@ -252,7 +253,7 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 	for _, row := range rows {
 		_, isMovement := entryOf[row.RecordID]
 		partnerRow := (row.TableName == "Partners" || (row.TableName == "PartnerUsers" && row.Action == "Update")) && slices.Contains(shown, row.RecordID)
-		if partnerRow || (row.TableName == "Entries" && (row.Action == "Approve" || row.Action == "Reverse") && isMovement) {
+		if partnerRow || (row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isMovement) {
 			kept = append(kept, row)
 		}
 	}
