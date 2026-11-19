@@ -1,5 +1,6 @@
-# Continuous backup of the SQLite file to an S3-compatible bucket (redix-api #140 D5, #145), in Litestream 0.5's form: one replica, and
-# snapshots kept 30 days. The bucket, its endpoint and its keys come from /etc/redix/backup.env, which Litestream's service loads.
+# Continuous backup of each instance's SQLite file to an S3-compatible bucket (redix-api #140 D5, #145), in Litestream 0.5's form: one replica
+# each, under the instance's own path (R25), and snapshots kept 30 days. The bucket, its endpoint and its keys come from /etc/redix/backup.env,
+# which Litestream's service loads.
 snapshot:
   interval: 24h
   retention: 720h
@@ -8,11 +9,31 @@ retention:
   enabled: true
 
 dbs:
-  - path: /var/lib/redix/redix.db
+  - path: /var/lib/redix/prod/redix.db
     replica:
       type: s3
       bucket: ${REDIX_BACKUP_BUCKET}
-      path: redix.db
+      path: prod/redix.db
+      endpoint: ${REDIX_BACKUP_ENDPOINT}
+      region: auto
+      access-key-id: ${AWS_ACCESS_KEY_ID}
+      secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+      sync-interval: 1s
+  - path: /var/lib/redix/qa/redix.db
+    replica:
+      type: s3
+      bucket: ${REDIX_BACKUP_BUCKET}
+      path: qa/redix.db
+      endpoint: ${REDIX_BACKUP_ENDPOINT}
+      region: auto
+      access-key-id: ${AWS_ACCESS_KEY_ID}
+      secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+      sync-interval: 1s
+  - path: /var/lib/redix/dev/redix.db
+    replica:
+      type: s3
+      bucket: ${REDIX_BACKUP_BUCKET}
+      path: dev/redix.db
       endpoint: ${REDIX_BACKUP_ENDPOINT}
       region: auto
       access-key-id: ${AWS_ACCESS_KEY_ID}

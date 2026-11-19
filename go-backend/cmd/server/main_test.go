@@ -124,10 +124,6 @@ func TestTheServerRefusesToStartOnWhatItCannotWorkWith(t *testing.T) {
 			}
 		},
 		"an address that is not one": func(t *testing.T) { settings(t, "http://[::1") },
-		"a domain with one address": func(t *testing.T) {
-			settings(t, "https://"+freeAddress(t))
-			t.Setenv("REDIX_Domain", "redix.test")
-		},
 		"a domain whose HTTP port is taken, so it could never be proven": func(t *testing.T) {
 			withDomain(t, freeAddress(t), busy.Addr().String())
 		},
@@ -224,6 +220,48 @@ func TestR16_WithADomainHttpGoesToHttpsAndNoOtherNameGetsACertificate(t *testing
 	}
 	if err := handshakeWith(httpsAddress, "elsewhere.test"); err == nil {
 		t.Error("a name that is not the domain got a certificate")
+	}
+}
+
+// qa and dev answer HTTPS on their own name and port with no HTTP port, which production holds for them, and still give no other name a
+// certificate (redix-api #145 R25, D-R25).
+func TestR25_AnInstanceWithoutAnHttpPortAnswersHttpsOnItsOwnName(t *testing.T) {
+	httpsAddress := freeAddress(t)
+	settings(t, "https://"+httpsAddress)
+	t.Setenv("REDIX_Domain", "qa.redix.test")
+	t.Setenv("REDIX_Certificates__Folder", t.TempDir())
+	started(t, quiet, httpsAddress)
+
+	if err := handshakeWith(httpsAddress, "elsewhere.test"); err == nil {
+		t.Error("a name that is not the instance's got a certificate")
+	}
+}
+
+// Production's HTTP port hands Let's Encrypt the token another instance kept in the certificates folder the three share, for a name it proves,
+// and refuses a name it does not (redix-api #145 D-R25).
+func TestR25_ProductionsHttpPortProvesTheNamesOfTheOtherInstances(t *testing.T) {
+	httpsAddress, httpAddress := freeAddress(t), freeAddress(t)
+	withDomain(t, httpsAddress, httpAddress)
+	t.Setenv("REDIX_Certificates__Proves", "qa.redix.test;dev.redix.test")
+	folder := t.TempDir()
+	t.Setenv("REDIX_Certificates__Folder", folder)
+	if err := os.WriteFile(filepath.Join(folder, "token-of-qa+http-01"), []byte("token-of-qa.thumbprint"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	started(t, quiet, httpsAddress)
+
+	for host, want := range map[string]int{"qa.redix.test": http.StatusOK, "elsewhere.test": http.StatusForbidden} {
+		request, _ := http.NewRequest("GET", "http://"+httpAddress+"/.well-known/acme-challenge/token-of-qa", nil)
+		request.Host = host
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(response.Body)
+		response.Body.Close()
+		if response.StatusCode != want || want == http.StatusOK && string(body) != "token-of-qa.thumbprint" {
+			t.Errorf("%s: answered %d %q, want %d", host, response.StatusCode, body, want)
+		}
 	}
 }
 

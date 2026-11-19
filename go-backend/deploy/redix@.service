@@ -1,0 +1,31 @@
+# One instance of the REDIX API as a systemd service (redix-api #140 R22, #145): redix@prod, redix@qa and redix@dev (R25). Each answers HTTPS
+# on its own name and port with the certificate it keeps itself; production alone also listens on 80, to prove the three names to Let's
+# Encrypt and send everyone else to HTTPS (D1, D-R25), and binding port 80 is the one privilege an instance holds. Its settings are REDIX_
+# variables in /etc/redix/%i.env; its database, WAL and attachments live in /var/lib/redix/%i, the certificates of all three in
+# /var/lib/redix/certificates.
+[Unit]
+Description=REDIX API, %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=redix
+Group=redix
+EnvironmentFile=/etc/redix/%i.env
+ExecStartPre=/usr/local/bin/redix-server migrate
+ExecStart=/usr/local/bin/redix-server
+Restart=on-failure
+RestartSec=2
+StateDirectory=redix/%i redix/certificates
+WorkingDirectory=/var/lib/redix/%i
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/redix
+PrivateTmp=true
+MemoryMax=600M
+
+[Install]
+WantedBy=multi-user.target

@@ -34,7 +34,7 @@ Reach for these; never build beside them.
 | A query | sqlc, generating Go from each domain's `queries.sql` | `internal/db/store` |
 | A change to the tables | goose migrations, embedded in the binary, run as the server starts | `internal/db/migrations` |
 | Rows every database starts with, the words | A migration's `INSERT`s | `internal/db/migrations/00002_seed.sql` |
-| A secret | Environment variables prefixed `REDIX_` | Windows user variables, `/etc/redix/redix.env`, never the repo |
+| A secret | Environment variables prefixed `REDIX_` | Windows user variables, `/etc/redix/{prod,qa,dev}.env`, never the repo |
 | A rule the data must never break | A SQLite constraint or trigger | History is append-only (triggers `history_is_append_only_*`, AC-21.1) |
 | A workbook | excelize | `internal/statement` |
 | A PDF | Typst, from a template and the page as JSON | `internal/statement` |

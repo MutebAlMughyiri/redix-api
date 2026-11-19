@@ -70,8 +70,8 @@ Every entry, whatever its table, is recorded by `entries.Record` through one rou
 | History is append-only (AC-21.1) | Triggers `history_is_append_only_update` and `_delete` |
 | The API sends codes, never words; the app shows the word for the code | `changes.Refuse`, `problem`, and the words in `translations` |
 | Enums travel as camelCase names, such as `active` | `web.Enum` |
-| Each environment is a name: `Dev` (automated runs, 127.0.0.1:5010, `RedixDev.db`), `QA` (Muteb's own testing, 127.0.0.1:5012, `RedixQA.db`) and `Prod` (the published server, answering HTTPS on its domain itself, its data under `/var/lib/redix`) | `internal/platform/environment` |
-| Secrets come from environment variables prefixed `REDIX_`, never a file in the repo: on Muteb's PC Windows user variables, on the server `/etc/redix/redix.env`. An environment's own, prefixed `REDIX_{name}_`, win over the shared ones: `REDIX_QA_Admin__Password` | `internal/platform/environment` |
+| Each environment is a name: `Dev` (automated runs, 127.0.0.1:5010, `RedixDev.db`), `QA` (Muteb's own testing, 127.0.0.1:5012, `RedixQA.db`) and `Prod` (the published server, answering HTTPS on its domain itself, its data under `/var/lib/redix/prod`; the server's qa and dev instances beside it, #145 R25) | `internal/platform/environment` |
+| Secrets come from environment variables prefixed `REDIX_`, never a file in the repo: on Muteb's PC Windows user variables, on the server `/etc/redix/{prod,qa,dev}.env`, one per instance. An environment's own, prefixed `REDIX_{name}_`, win over the shared ones: `REDIX_QA_Admin__Password` | `internal/platform/environment` |
 | Every email leaves through one sender, its words the translations' in the language the request asked in | `internal/email` |
 | A business value someone may change while the API runs is a row of `config_values` (UC-070), never a setting in a file | `internal/config` |
 

@@ -76,10 +76,12 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 // (redix-api #145, R17).
 const maxBodyBytes = 30 << 20
 
-// serve answers until ctx ends. With a domain, as Prod runs, it answers HTTPS on the first of Urls, 8443, with the certificate Let's Encrypt
-// gives the domain, which autocert keeps in the certificates folder and renews, and on the second, 80, proves the domain and sends every other
-// request to HTTPS (redix-api #145, D1, R21: 443 is the web front end's). Let's Encrypt checks a domain over HTTPS on 443 alone, so the server
-// does not start without its HTTP port. Without a domain, as Dev and QA run, plain HTTP on the first. No request's body passes 30 MB (R17).
+// serve answers until ctx ends. With a domain, as the server's instances run, it answers HTTPS on the first of Urls, 8443 for production, with
+// the certificate Let's Encrypt gives the domain, which autocert keeps in the certificates folder and renews (redix-api #145, D1, R21: 443 is the
+// web front end's). Let's Encrypt checks a name over HTTP on port 80, which one process alone can hold: the instance whose Urls name a second,
+// HTTP address, production, proves its own name there and those of Certificates__Proves, and sends every other request to HTTPS; qa and dev
+// name none, and their tokens reach port 80 through the certificates folder the three share (D-R25). Without a domain, as Dev and QA run on a
+// PC, plain HTTP on the first. No request's body passes 30 MB (R17).
 func serve(ctx context.Context, logger *slog.Logger, settings environment.Settings, handler http.Handler) error {
 	addresses, err := listenAddresses(settings.Urls)
 	if err != nil {
@@ -90,20 +92,22 @@ func serve(ctx context.Context, logger *slog.Logger, settings environment.Settin
 	if settings.Domain == "" {
 		return until(ctx, api, api.ListenAndServe)
 	}
-	if len(addresses) < 2 {
-		return errors.New("with a domain, REDIX_Urls names the HTTPS address and then the HTTP one, as Prod's https://:8443;http://:80")
-	}
 	certificates := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(settings.Domain),
+		HostPolicy: autocert.HostWhitelist(append([]string{settings.Domain}, settings.CertificatesProves...)...),
 		Cache:      autocert.DirCache(settings.CertificatesFolder),
 	}
-	httpPort, err := net.Listen("tcp", addresses[1])
-	if err != nil {
-		return fmt.Errorf("the HTTP port proves the domain to Let's Encrypt: %w", err)
+	// Asking for the HTTP handler is what makes autocert prove the name over HTTP, the one check port 443's absence leaves, here too where
+	// another instance serves it.
+	proofs := certificates.HTTPHandler(nil)
+	if len(addresses) > 1 {
+		httpPort, err := net.Listen("tcp", addresses[1])
+		if err != nil {
+			return fmt.Errorf("the HTTP port proves the domain to Let's Encrypt: %w", err)
+		}
+		challenges := &http.Server{Handler: proofs, ReadHeaderTimeout: 10 * time.Second}
+		go until(ctx, challenges, func() error { return challenges.Serve(httpPort) })
 	}
-	challenges := &http.Server{Handler: certificates.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
-	go until(ctx, challenges, func() error { return challenges.Serve(httpPort) })
 	api.TLSConfig = certificates.TLSConfig()
 	return until(ctx, api, func() error { return api.ListenAndServeTLS("", "") })
 }

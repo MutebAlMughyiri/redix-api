@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 // Settings is every setting the API reads.
@@ -24,8 +25,12 @@ type Settings struct {
 	// Domain is the name the API answers HTTPS on, with the certificate Let's Encrypt gives it; "" where it answers plain HTTP on Urls
 	// (Domain, redix-api #145 D1).
 	Domain string
-	// CertificatesFolder keeps the domain's certificate across restarts (Certificates__Folder, #145).
+	// CertificatesFolder keeps the domain's certificate across restarts (Certificates__Folder, #145). The instances of one server share it, so a
+	// token Let's Encrypt asks one of them for is read by the instance holding port 80 (#145 D-R25).
 	CertificatesFolder string
+	// CertificatesProves is the names of the server's other instances that this one's HTTP port proves to Let's Encrypt besides its own: only
+	// one process can hold port 80, so production's proves qa's and dev's (Certificates__Proves, ";" between names, #145 D-R25).
+	CertificatesProves []string
 	// DatabasePath is the SQLite file (Database__Path).
 	DatabasePath string
 	// IncidentsPath is the SQLite file of the requests that failed, beside the database unless set (Incidents__Path, redix-api #150).
@@ -54,14 +59,15 @@ type Settings struct {
 // named is what each environment's settings name that is not a secret, as appsettings.{Environment}.json did: where it listens, its admin's
 // username and, for Dev, which Patrol registers projects and asks codes from without end, the limits lifted. Dev and QA each keep their own
 // database file, Redix{Environment}.db, as each had its own database; Prod is the published server, answering HTTPS on its domain itself
-// (#145 D1) and keeping its database, files and certificate under /var/lib/redix, as deploy/setup.sh lays it out; its ports are its server's own,
-// REDIX_Urls in /etc/redix/redix.env, where the firewall reads them too. Its secrets are the server's own, in /etc/redix/redix.env (deploy/prod.env.example).
+// (#145 D1) and keeping its database and files under /var/lib/redix/prod and its certificate in /var/lib/redix/certificates, which the server's
+// qa and dev instances share (#145 D-R25), as deploy/setup.sh lays them out; its ports are its server's own, REDIX_Urls in /etc/redix/prod.env,
+// where the firewall reads them too. Its secrets are the server's own, in /etc/redix/prod.env (deploy/prod.env.example).
 // A variable set in the environment wins over all of it.
 var named = map[string]map[string]string{
 	"Dev": {"Urls": "http://127.0.0.1:5010", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000", "EmailCodes__PermitsPerHour": "100000"},
 	"QA":  {"Urls": "http://127.0.0.1:5012", "Admin__Username": "real-admin"},
-	"Prod": {"Database__Path": "/var/lib/redix/redix.db", "Attachments__Folder": "/var/lib/redix/attachments",
-		"Email__Folder": "/var/lib/redix/emails", "Email__Smtp": "127.0.0.1:25", "Certificates__Folder": "/var/lib/redix/certificates"},
+	"Prod": {"Database__Path": "/var/lib/redix/prod/redix.db", "Attachments__Folder": "/var/lib/redix/prod/attachments",
+		"Email__Folder": "/var/lib/redix/prod/emails", "Email__Smtp": "127.0.0.1:25", "Certificates__Folder": "/var/lib/redix/certificates"},
 }
 
 // Read is the settings in the environment variables lookup gives: an environment's own variable, then the shared one, then what its settings
@@ -100,6 +106,7 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 		Urls:                 get("Urls", "http://0.0.0.0:5012"),
 		Domain:               get("Domain", ""),
 		CertificatesFolder:   get("Certificates__Folder", filepath.Join(data, "Certificates")),
+		CertificatesProves:   strings.FieldsFunc(get("Certificates__Proves", ""), func(separator rune) bool { return separator == ';' }),
 		DatabasePath:         databasePath,
 		Documented:           environment == "Dev" || environment == "QA",
 		IncidentsPath:        get("Incidents__Path", filepath.Join(filepath.Dir(databasePath), "incidents.db")),

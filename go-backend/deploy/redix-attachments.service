@@ -1,5 +1,6 @@
-# Copies the uploaded files to the same bucket as the database (redix-api #140 R32, #145): Litestream copies only the database, and a file is
-# never deleted (NFR-11), so a copy only adds. rclone reaches the bucket by a connection string, its keys from backup.env: no rclone.conf.
+# Copies every instance's uploaded files to the same bucket as the databases, each under its instance's path, prod/attachments beside
+# prod/redix.db (redix-api #140 R32, #145 R25): Litestream copies only the databases, and a file is never deleted (NFR-11), so a copy only
+# adds. rclone reaches the bucket by a connection string, its keys from backup.env: no rclone.conf.
 [Unit]
 Description=REDIX attachments backup
 
@@ -7,4 +8,4 @@ Description=REDIX attachments backup
 Type=oneshot
 User=redix
 EnvironmentFile=/etc/redix/backup.env
-ExecStart=/usr/bin/rclone copy /var/lib/redix/attachments ":s3,provider=Other,env_auth=true,endpoint='${REDIX_BACKUP_ENDPOINT}':${REDIX_BACKUP_BUCKET}/attachments"
+ExecStart=/usr/bin/rclone copy /var/lib/redix ":s3,provider=Other,env_auth=true,endpoint='${REDIX_BACKUP_ENDPOINT}':${REDIX_BACKUP_BUCKET}" --include "/*/attachments/**"

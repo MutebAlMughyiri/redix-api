@@ -5,6 +5,7 @@ package environment
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -79,10 +80,21 @@ func TestR11_ProdAnswersOnItsDomainAndKeepsItsDataWhereTheDeployLaysItOut(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prod.Urls != "https://:8443;http://:80" || prod.Domain != "redix.example" || prod.CertificatesFolder != "/var/lib/redix/certificates" || prod.DatabasePath != "/var/lib/redix/redix.db" ||
-		prod.AttachmentsFolder != "/var/lib/redix/attachments" || prod.EmailFolder != "/var/lib/redix/emails" || prod.AdminUsername != "owner" ||
+	if prod.Urls != "https://:8443;http://:80" || prod.Domain != "redix.example" || prod.CertificatesFolder != "/var/lib/redix/certificates" || prod.DatabasePath != "/var/lib/redix/prod/redix.db" ||
+		prod.AttachmentsFolder != "/var/lib/redix/prod/attachments" || prod.EmailFolder != "/var/lib/redix/prod/emails" || prod.AdminUsername != "owner" ||
 		prod.RegistrationsPerHour != 5 {
 		t.Errorf("Prod read %+v", prod)
+	}
+}
+
+// Production's HTTP port proves the names Certificates__Proves lists, ";" between them, besides its own; an instance that proves none lists none
+// (#145 D-R25).
+func TestR25_ProductionProvesTheNamesOfTheServersOtherInstances(t *testing.T) {
+	for proves, want := range map[string][]string{"qa.redix.example;dev.redix.example": {"qa.redix.example", "dev.redix.example"}, "": nil} {
+		settings, err := Read(lookupIn(map[string]string{"REDIX_Environment": "Prod", "REDIX_Jwt__SigningKey": key, "REDIX_Certificates__Proves": proves}))
+		if err != nil || !slices.Equal(settings.CertificatesProves, want) {
+			t.Errorf("%q proves %q (%v), want %q", proves, settings.CertificatesProves, err, want)
+		}
 	}
 }
 
