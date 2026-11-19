@@ -3550,6 +3550,25 @@
         ],
         "type": "object"
       },
+      "users.seeTablesRequest": {
+        "properties": {
+          "seen": {
+            "type": "boolean"
+          },
+          "tableIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "seen",
+          "tableIds"
+        ],
+        "type": "object"
+      },
       "users.userView": {
         "properties": {
           "displayName": {
@@ -12485,77 +12504,9 @@
         ]
       }
     },
-    "/projects/{projectId}/users/{userId}/tables/{tableId}": {
-      "delete": {
-        "description": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.\n\nAccess: needs the ManageUsers permission.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "projectId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "userId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "tableId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/users.userView"
-                }
-              }
-            },
-            "description": "OK."
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/problem"
-                }
-              }
-            },
-            "description": "Refused, with problem details."
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/problem"
-                }
-              }
-            },
-            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
-          }
-        },
-        "summary": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.",
-        "tags": [
-          "users"
-        ]
-      },
+    "/projects/{projectId}/users/{userId}/tables": {
       "post": {
-        "description": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.\n\nAccess: needs the ManageUsers permission.",
+        "description": "seeTables ticks the tables tableIds for someone in the project when seen, or unticks them, so they no longer see their entries nor count them (#106), all in one request and one transaction, a History line each (findings row 280: an item's tick is one request): 404 for a table that is neither a group nor a contract of the project, or for someone not in it, and then nothing changes.\n\nAccess: needs the ManageUsers permission.",
         "parameters": [
           {
             "in": "path",
@@ -12574,17 +12525,18 @@
               "format": "uuid",
               "type": "string"
             }
-          },
-          {
-            "in": "path",
-            "name": "tableId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/users.seeTablesRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -12617,7 +12569,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.",
+        "summary": "seeTables ticks the tables tableIds for someone in the project when seen, or unticks them, so they no longer see their entries nor count them (#106), all in one request and one transaction, a History line each (findings row 280: an item's tick is one request): 404 for a table that is neither a group nor a contract of the project, or for someone not in it, and then nothing changes.",
         "tags": [
           "users"
         ]

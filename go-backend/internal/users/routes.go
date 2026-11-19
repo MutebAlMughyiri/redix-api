@@ -47,8 +47,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/permissions/{permission}", manage(u.give))
 	router.Handle("DELETE", "/projects/{projectId:guid}/users/{userId:guid}/permissions/{permission}", manage(u.take))
 	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/partners/{partnerId:guid}", manage(u.choose))
-	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/tables/{tableId:guid}", manage(u.seeTable(true)))
-	router.Handle("DELETE", "/projects/{projectId:guid}/users/{userId:guid}/tables/{tableId:guid}", manage(u.seeTable(false)))
+	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/tables", manage(u.seeTables))
 	router.Handle("DELETE", "/projects/{projectId:guid}/users/{userId:guid}/partners/{partnerId:guid}", manage(u.unchoose))
 	router.Handle("PUT", "/projects/{projectId:guid}/users/{userId:guid}/role-name", manage(u.setRoleName))
 	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/disable", manage(u.disable))
@@ -418,24 +417,43 @@ func (u Routes) take(w http.ResponseWriter, r *http.Request, caller access.Calle
 	})
 }
 
-// seeTable ticks the table tableId for someone in the project when sees, or unticks it, so they no longer see its entries nor count them
-// (#106): 404 for a table that is neither a group nor a contract of the project, or for someone not in it.
-func (u Routes) seeTable(sees bool) access.Handler {
-	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-			tableID := web.ID(r, "tableId")
+// seeTablesRequest is the tables one tick changes for someone: all of an item's, or one (findings row 280).
+type seeTablesRequest struct {
+	Seen     bool        `json:"seen"`
+	TableIDs []uuid.UUID `json:"tableIds"`
+}
+
+// seeTables ticks the tables tableIds for someone in the project when seen, or unticks them, so they no longer see their entries nor count them
+// (#106), all in one request and one transaction, a History line each (findings row 280: an item's tick is one request): 404 for a table that
+// is neither a group nor a contract of the project, or for someone not in it, and then nothing changes.
+func (u Routes) seeTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	var request seeTablesRequest
+	if !web.Read(w, r, &request) {
+		return
+	}
+	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
+		for _, tableID := range request.TableIDs {
 			known, err := isTable(r.Context(), u.database.Queries(), projectID, tableID)
 			switch {
 			case err != nil:
 				return http.StatusInternalServerError, "", nil
 			case !known:
 				return http.StatusNotFound, "", nil
-			case sees:
-				return 0, "", func(c change) error { return c.see(projectID, userID, tableID) }
 			}
-			return 0, "", func(c change) error { return c.unsee(projectID, userID, tableID) }
-		})
-	}
+		}
+		return 0, "", func(c change) error {
+			apply := c.unsee
+			if request.Seen {
+				apply = c.see
+			}
+			for _, tableID := range request.TableIDs {
+				if err := apply(projectID, userID, tableID); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	})
 }
 
 // choose shows a partner's capital to someone in the project, ticking SeeChosenCapital: 404 when they are not in it or the partner is not one of

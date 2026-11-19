@@ -132,7 +132,7 @@ A manager unticks, for one person in one project, the tables they may not see: a
 | Route | Needs | Answers |
 | --- | --- | --- |
 | `GET /projects/{projectId}/tables` | `ReadProject` | `200` the tables as «الجداول» ticks them, by category and item in the order of the report, finished contracts included: those the caller sees, and to whoever holds `ManageUsers` every one, so a manager unticked from one can tick it back (G2) |
-| `POST /projects/{projectId}/users/{userId}/tables/{tableId}`, and `DELETE` on the same path | `ManageUsers` | `200` ticks the table for the person again, or unticks it; `404` for a table neither a group nor a contract of the project, or someone not in it |
+| `POST /projects/{projectId}/users/{userId}/tables` `{ seen, tableIds }` | `ManageUsers` | `200` ticks the tables for the person again when `seen`, or unticks them, all of an item's in one request (findings row 280); `404` for a table neither a group nor a contract of the project, or someone not in it, and nothing changes |
 
 `POST /projects/{projectId}/users` takes `unseenTableIds`, the tables the new person starts unticked from, `400` `unknownTable` for one not the project's; the users list and `GET /projects` give each person's `unseenTables`. Every tick is a line of «سجل المشروع», «رؤية الجدول» taken or given (R13). An archive carries the ticks, and a retrieve puts them back with the groups and contracts they name, as it does the chosen partners (UC-073).
 

@@ -6,6 +6,8 @@ package entries_test
 import (
 	"encoding/json"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
@@ -53,9 +55,9 @@ func (a sighted) typed(id, table string, amount int) string {
 	return string(typed)
 }
 
-// tick ticks table for Sara with POST and unticks it with DELETE, as the manager; it is the status answered.
-func (a sighted) tick(method, table string) int {
-	code, _ := a.Ask(method, a.path+"/users/"+a.sara.String()+"/tables/"+table, ``, a.token)
+// tick ticks tables for Sara when seen and unticks them otherwise, in one request, as the manager; it is the status answered.
+func (a sighted) tick(seen bool, tables ...string) int {
+	code, _ := a.Ask("POST", a.path+"/users/"+a.sara.String()+"/tables", `{"seen":`+strconv.FormatBool(seen)+`,"tableIds":["`+strings.Join(tables, `","`)+`"]}`, a.token)
 	return code
 }
 
@@ -80,7 +82,7 @@ func TestR106_R5_R6_R9_AnUntickedTablesEntriesAreNeitherListedNorFound(t *testin
 	if listed := a.listed(a.saraToken); len(listed) != 2 {
 		t.Fatalf("before any unticking Sara sees %v", listed)
 	}
-	if code := a.tick("DELETE", a.group); code != 200 {
+	if code := a.tick(false, a.group); code != 200 {
 		t.Fatalf("untick: %d", code)
 	}
 	if listed := a.listed(a.saraToken); !slices.Equal(listed, []string{a.seenEntry}) {
@@ -108,7 +110,7 @@ func TestR106_R5_R6_R9_AnUntickedTablesEntriesAreNeitherListedNorFound(t *testin
 // redix-api #106 R6, D6: the summary, an account's balance and the item report count only what Sara sees, so her figures add up.
 func TestR106_R6_TheSummaryTheBalancesAndTheItemReportCountOnlyTheSeenTables(t *testing.T) {
 	a := newSighted(t)
-	a.tick("DELETE", a.group)
+	a.tick(false, a.group)
 	for token, want := range map[string]float64{a.token: 300, a.saraToken: 100} {
 		_, summary := a.Ask("GET", a.path+"/summary", ``, token)
 		if got := testapi.Field(summary, "expenses"); got != want {
@@ -133,7 +135,7 @@ func TestR106_R6_TheSummaryTheBalancesAndTheItemReportCountOnlyTheSeenTables(t *
 // redix-api #106 R7, R12: the periodic report, its files and the VAT statement are one document for everyone, so someone narrowed gets none.
 func TestR106_R7_R12_TheWholeDocumentsAreForWhoeverSeesEveryTable(t *testing.T) {
 	a := newSighted(t)
-	a.tick("DELETE", a.group)
+	a.tick(false, a.group)
 	for _, path := range []string{"/periodic-reports", "/periodic-reports/next", "/vat-statement/xlsx", "/reports/contracts/pdf"} {
 		if code, _ := a.Ask("GET", a.path+path, ``, a.saraToken); code != 403 {
 			t.Errorf("GET %s for Sara: %d, want 403", path, code)
@@ -155,7 +157,7 @@ func TestR106_R8_R10_ATableIsOfferedUntilUntickedAndATickBringsItBack(t *testing
 	if got := offered(); got != 2 {
 		t.Fatalf("tables offered before unticking: %d", got)
 	}
-	a.tick("DELETE", a.group)
+	a.tick(false, a.group)
 	if got := offered(); got != 1 {
 		t.Errorf("tables offered after unticking: %d, want 1", got)
 	}
@@ -163,16 +165,16 @@ func TestR106_R8_R10_ATableIsOfferedUntilUntickedAndATickBringsItBack(t *testing
 	if code != 400 || testapi.Field(answer, "code") != "unknownTable" {
 		t.Errorf("recording into the unseen group: %d %v", code, answer)
 	}
-	if code := a.tick("DELETE", a.group); code != 200 {
+	if code := a.tick(false, a.group); code != 200 {
 		t.Errorf("unticking twice: %d", code)
 	}
-	if code := a.tick("POST", a.group); code != 200 {
+	if code := a.tick(true, a.group); code != 200 {
 		t.Errorf("ticking again: %d", code)
 	}
 	if got, listed := offered(), a.listed(a.saraToken); got != 2 || len(listed) != 2 {
 		t.Errorf("after ticking again: %d tables, entries %v", got, listed)
 	}
-	if code := a.tick("DELETE", uuid.NewString()); code != 404 {
+	if code := a.tick(false, uuid.NewString()); code != 404 {
 		t.Errorf("unticking a table of no project: %d, want 404", code)
 	}
 }
@@ -180,7 +182,7 @@ func TestR106_R8_R10_ATableIsOfferedUntilUntickedAndATickBringsItBack(t *testing
 // redix-api #106 R11: of the approvers, only those who see an entry's table are told it waits.
 func TestR106_R11_OnlyThoseWhoSeeAnEntrysTableAreToldOfIt(t *testing.T) {
 	a := newSighted(t)
-	a.tick("DELETE", a.group)
+	a.tick(false, a.group)
 	told := func() int {
 		return a.Count("SELECT count(*) FROM notifications WHERE user_id = ? AND kind = 0", a.sara)
 	}
@@ -224,8 +226,8 @@ func TestR106_R3_R13_ANewPersonStartsUntickedAndEveryChangeIsAHistoryLine(t *tes
 			t.Errorf("the new person's unseen tables: %v", unseen)
 		}
 	}
-	a.tick("DELETE", a.group)
-	a.tick("POST", a.group)
+	a.tick(false, a.group)
+	a.tick(true, a.group)
 	said := a.said(a.path+"/history", a.token)
 	for _, want := range []string{"taken tableSight الأعمدة", "given tableSight الأعمدة"} {
 		if !slices.Contains(said, want) {
@@ -238,7 +240,7 @@ func TestR106_R3_R13_ANewPersonStartsUntickedAndEveryChangeIsAHistoryLine(t *tes
 // back; anyone else only those they see; and the signed-in person's project says which they do not see.
 func TestR106_D9_G2_TheTablesListHoldsEveryTableForAManagerAndTheSeenOnesForAnyoneElse(t *testing.T) {
 	a := newSighted(t)
-	a.tick("DELETE", a.group)
+	a.tick(false, a.group)
 	listed := func(token string) []string {
 		var ids []string
 		_, categories := a.Ask("GET", a.path+"/tables", ``, token)
@@ -258,7 +260,7 @@ func TestR106_D9_G2_TheTablesListHoldsEveryTableForAManagerAndTheSeenOnesForAnyo
 	if err := a.Database.Read.QueryRow("SELECT user_id FROM project_permissions WHERE permission = 'ManageUsers'").Scan(&manager); err != nil {
 		t.Fatal(err)
 	}
-	if code, _ := a.Ask("DELETE", a.path+"/users/"+manager+"/tables/"+a.group, ``, a.token); code != 200 {
+	if code, _ := a.Ask("POST", a.path+"/users/"+manager+"/tables", `{"seen":false,"tableIds":["`+a.group+`"]}`, a.token); code != 200 {
 		t.Fatalf("the manager unticking themselves: %d", code)
 	}
 	if got := listed(a.token); !slices.Contains(got, a.table) || !slices.Contains(got, a.group) {
@@ -273,7 +275,7 @@ func TestR106_D9_G2_TheTablesListHoldsEveryTableForAManagerAndTheSeenOnesForAnyo
 // redix-api #106: every route the sight reaches answers 500 wherever the database fails, and the changes among them write nothing.
 func TestR106_EveryRouteTheSightReachesAnswersAFailingDatabase(t *testing.T) {
 	a := newSighted(t)
-	a.tick("DELETE", a.group)
+	a.tick(false, a.group)
 	sara, manager := "Bearer "+a.saraToken, "Bearer "+a.token
 	person := `{"displayName":"نواف","username":"nawaf","mobile":"","email":"nawaf@example.com","temporaryPassword":"Temporary-1","permissions":["RecordEntries"],
 		"unseenTableIds":["` + a.group + `"]}`
@@ -291,9 +293,9 @@ func TestR106_EveryRouteTheSightReachesAnswersAFailingDatabase(t *testing.T) {
 		{"PUT", a.path + "/entries/" + a.seenEntry + "/description", `{"description":"x"}`, sara},
 		{"POST", a.path + "/entries", a.typed(uuid.Must(uuid.NewV7()).String(), a.table, 10), manager},
 		{"POST", a.path + "/users", person, manager},
-		{"POST", a.path + "/users/" + a.sara.String() + "/tables/" + a.group, ``, manager},
-		{"DELETE", a.path + "/users/" + a.sara.String() + "/tables/" + a.group, ``, manager},
-		{"DELETE", a.path + "/users/" + a.sara.String() + "/tables/" + uuid.NewString(), ``, manager},
+		{"POST", a.path + "/users/" + a.sara.String() + "/tables", `{"seen":true,"tableIds":["` + a.group + `","` + a.table + `"]}`, manager},
+		{"POST", a.path + "/users/" + a.sara.String() + "/tables", `{"seen":false,"tableIds":["` + a.group + `","` + a.table + `"]}`, manager},
+		{"POST", a.path + "/users/" + a.sara.String() + "/tables", `{"seen":false,"tableIds":["` + uuid.NewString() + `"]}`, manager},
 	}
 	for _, step := range steps {
 		for n := int64(1); ; n++ {
@@ -325,7 +327,7 @@ func TestR106_G1_AContractorsPaymentIsItsContractsToSee(t *testing.T) {
 	}
 	payment := a.sent(contract, 300, a.token)
 	a.Ask("POST", a.path+"/entries/approve", `{"entryIds":["`+payment+`"]}`, a.saraToken)
-	if code := a.tick("DELETE", contract); code != 200 {
+	if code := a.tick(false, contract); code != 200 {
 		t.Fatalf("unticking the contract: %d", code)
 	}
 	if listed := a.listed(a.saraToken); slices.Contains(listed, payment) {
@@ -334,10 +336,10 @@ func TestR106_G1_AContractorsPaymentIsItsContractsToSee(t *testing.T) {
 	if code, _ := a.Ask("GET", a.path+"/reports/contracts/"+contract, ``, a.saraToken); code != 404 {
 		t.Errorf("the unseen contract's report for Sara: %d, want 404", code)
 	}
-	if code := a.tick("DELETE", contract); code != 200 {
+	if code := a.tick(false, contract); code != 200 {
 		t.Errorf("unticking the contract twice: %d", code)
 	}
-	if code := a.tick("POST", contract); code != 200 {
+	if code := a.tick(true, contract); code != 200 {
 		t.Errorf("ticking the contract again: %d", code)
 	}
 	if listed := a.listed(a.saraToken); !slices.Contains(listed, payment) {
