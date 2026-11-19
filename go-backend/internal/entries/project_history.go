@@ -288,7 +288,7 @@ func tableSight(d *described, record values, known knowledge) {
 	d.about = known.people[record.id("UserId")]
 }
 
-// sight is what the caller may see in the project (R3): the entries the entries screens show them, and their permissions.
+// sight is what the caller may see in the project (R3): the entries that the Entries screens show them, and their permissions.
 type sight struct {
 	caller    access.Caller
 	projectID uuid.UUID

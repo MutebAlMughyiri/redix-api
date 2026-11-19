@@ -296,7 +296,7 @@ func refusalOfTyped(typed Request, t table) string {
 	return ""
 }
 
-// refusalOfColumns is why typed's column values do not fit columns, those its table asks, or, when sending, a required one is empty (FR-41), and
+// refusalOfColumns is why typed's column values do not fit columns, the ones its table asks, or, when sending, a required one is empty (FR-41), and
 // the column's key; "" when they fit. Every column whose value the entry keeps is checked the same way, whatever it is (redix-api #129, R5).
 func refusalOfColumns(typed Request, columns []store.ItemColumn) (string, string) {
 	values := typed.kept()
