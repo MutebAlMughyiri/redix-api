@@ -5,13 +5,13 @@ package structure
 
 import (
 	"errors"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"math"
 	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"

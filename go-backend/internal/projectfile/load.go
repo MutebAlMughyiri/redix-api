@@ -6,7 +6,6 @@ package projectfile
 import (
 	"encoding/json"
 	"errors"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 	"slices"
 	"strconv"
@@ -32,6 +31,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/settings"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"github.com/google/uuid"
 )
 

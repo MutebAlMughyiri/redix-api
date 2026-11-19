@@ -7,10 +7,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"

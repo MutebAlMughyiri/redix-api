@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"net/http"
 	"slices"
 	"strconv"
@@ -23,6 +22,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/google/uuid"
 )
 

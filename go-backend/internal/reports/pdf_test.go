@@ -5,7 +5,6 @@ package reports
 
 import (
 	"bytes"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"os"
 	"slices"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"github.com/ledongthuc/pdf"
 )
 

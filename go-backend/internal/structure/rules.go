@@ -5,16 +5,16 @@ package structure
 
 import (
 	"encoding/json"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"

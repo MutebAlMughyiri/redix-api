@@ -9,12 +9,12 @@ package projectfile
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"strings"
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 )
 
 // What a REDIX project file says it is, and the newest version of it this API reads.

@@ -5,7 +5,6 @@ package reports
 
 import (
 	"fmt"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
@@ -13,6 +12,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 )
 
 // The reports as PDFs (UC-054, FR-33, FR-45, PeriodicReportFiles): the periodic report's summary laid out as report 23, then the capital and every

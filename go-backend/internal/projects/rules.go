@@ -6,13 +6,13 @@
 package projects
 
 import (
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 )
 
 // Where a project stands (ProjectStatus), as the database keeps it.

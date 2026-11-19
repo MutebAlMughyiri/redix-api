@@ -6,7 +6,6 @@ package reports
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 	"slices"
 	"strconv"
@@ -22,6 +21,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"github.com/google/uuid"
 )
 

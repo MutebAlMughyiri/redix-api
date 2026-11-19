@@ -6,7 +6,6 @@ package entries
 import (
 	"database/sql"
 	"errors"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"net/http"
 	"slices"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/google/uuid"

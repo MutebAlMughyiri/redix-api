@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"net/http"
 	"strings"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"github.com/google/uuid"
 )
 

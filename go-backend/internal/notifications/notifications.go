@@ -6,14 +6,14 @@ package notifications
 
 import (
 	"context"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"net/http"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
 

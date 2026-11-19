@@ -5,7 +5,6 @@ package reports
 
 import (
 	"bytes"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"math"
 	"slices"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"github.com/google/uuid"
 	"github.com/xuri/excelize/v2"
 )

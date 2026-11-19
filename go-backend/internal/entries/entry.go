@@ -7,7 +7,6 @@
 package entries
 
 import (
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -16,6 +15,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"github.com/google/uuid"
 )
 
