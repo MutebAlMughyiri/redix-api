@@ -84,8 +84,8 @@ func (b *Book) SheetName(name string) string {
 		clean = string([]rune(clean)[:28])
 	}
 	unique := clean
-	for copy := 2; b.taken[unique]; copy++ {
-		unique = fmt.Sprintf("%s %d", clean, copy)
+	for number := 2; b.taken[unique]; number++ {
+		unique = fmt.Sprintf("%s %d", clean, number)
 	}
 	b.taken[unique] = true
 	return unique

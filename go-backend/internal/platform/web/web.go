@@ -78,7 +78,7 @@ func constrained(path string) (string, map[string]func(string) bool) {
 	return pattern, found
 }
 
-var routeValue = regexp.MustCompile(`\{(\w+)(?::(guid|int))?\}`)
+var routeValue = regexp.MustCompile(`\{(\w+)(?::(guid|int))?}`)
 
 // Handles says whether a route answers method on path, so a replay can tell the routes already on Go from the rest.
 func (r *Router) Handles(method, path string) bool {

@@ -236,7 +236,7 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 		shown = []uuid.UUID{partnerID}
 	}
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	known, factsErr := factsOf(c, all)
+	known, factsErr := factsOf(c)
 	rows, rowsErr := c.Q.HistoryOfProject(c.Ctx, c.ProjectID)
 	if err != nil || factsErr != nil || rowsErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
@@ -306,7 +306,7 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 	chosen, chosenErr := kinds.Parse(r.URL.Query().Get("kind"))
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	known, factsErr := factsOf(c, all)
+	known, factsErr := factsOf(c)
 	rows, rowsErr := c.Q.HistoryOfProject(c.Ctx, c.ProjectID)
 	decisions, decisionsErr := c.Q.DecisionsOf(c.Ctx, c.ProjectID)
 	if err != nil || factsErr != nil || rowsErr != nil || decisionsErr != nil {

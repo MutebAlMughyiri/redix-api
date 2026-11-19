@@ -2381,6 +2381,27 @@
         ],
         "type": "object"
       },
+      "reports.Report": {
+        "properties": {
+          "expenses": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "issuedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expenses",
+          "issuedAt",
+          "number"
+        ],
+        "type": "object"
+      },
       "reports.Waiting": {
         "properties": {
           "expensesAmount": {
@@ -2530,27 +2551,6 @@
           "id",
           "name",
           "sharePercent"
-        ],
-        "type": "object"
-      },
-      "reports.reportRow": {
-        "properties": {
-          "expenses": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "issuedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "number": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "expenses",
-          "issuedAt",
-          "number"
         ],
         "type": "object"
       },
@@ -9676,7 +9676,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/reports.reportRow"
+                    "$ref": "#/components/schemas/reports.Report"
                   },
                   "type": "array"
                 }
@@ -9718,7 +9718,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/reports.reportRow"
+                  "$ref": "#/components/schemas/reports.Report"
                 }
               }
             },

@@ -323,7 +323,10 @@ func categoryOf(c changes.Change, name string) (uuid.UUID, error) {
 		}
 	}
 	added, err := structure.AddCategory(c, name)
-	return added.ID, err
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return added.ID, nil
 }
 
 // itemOf is the item of fileItem's name in the category, or one added with its type; the owner's refusal otherwise.

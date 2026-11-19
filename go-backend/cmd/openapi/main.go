@@ -556,7 +556,7 @@ func (r *route) operation(g *generator) map[string]any {
 // path is the route's path as OpenAPI writes it, its values without their constraints: "/projects/{projectId}".
 func (r *route) openPath() string { return routeValue.ReplaceAllString(r.path, "{$1}") }
 
-var routeValue = regexp.MustCompile(`\{(\w+)(?::(guid|int))?\}`)
+var routeValue = regexp.MustCompile(`\{(\w+)(?::(guid|int))?}`)
 
 func (r *route) responses(g *generator) map[string]any {
 	responses := map[string]any{}

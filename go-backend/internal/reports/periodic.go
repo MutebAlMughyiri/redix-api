@@ -69,8 +69,8 @@ type snapshot struct {
 	RevenueWithoutSales      fixed.Total          `json:"revenueWithoutSales"`
 }
 
-// reportRow is a report issued (PeriodicReportRowView).
-type reportRow struct {
+// Report is a report issued (PeriodicReportRowView).
+type Report struct {
 	Number   int64         `json:"number"`
 	IssuedAt moment.Moment `json:"issuedAt"`
 	Expenses fixed.Total   `json:"expenses"`
@@ -132,7 +132,7 @@ func snapshotOf(c changes.Change, number int64, at moment.Moment, previous fixed
 
 // issue issues the next report now, numbered after the latest so numbering has no gaps (AC-29.3), and answers it as the list shows it.
 func (s Routes) issue(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var issued reportRow
+	var issued Report
 	if !s.writer.Write(w, r, caller, func(c changes.Change) error {
 		latest, err := latestOf(c)
 		if err == nil {
@@ -149,25 +149,25 @@ func (s Routes) issue(w http.ResponseWriter, r *http.Request, caller access.Call
 // changes (BR-26, PeriodicReportsEndpoints.IssueAsync). What was approved since the previous one is marked new, whatever its date, and the
 // expenses' difference starts from the previous report's (BR-09). The route issues the next number now; a project file's load, the file's number
 // at the file's time (redix-api #132 D9).
-func Issue(c changes.Change, number int64, at moment.Moment) (reportRow, error) {
+func Issue(c changes.Change, number int64, at moment.Moment) (Report, error) {
 	previous, err := latestOf(c)
 	if err != nil {
-		return reportRow{}, err
+		return Report{}, err
 	}
 	report, err := snapshotOf(c, number, at, fixedTotalOf(previous))
 	if err != nil {
-		return reportRow{}, err
+		return Report{}, err
 	}
 	kept, err := json.Marshal(report)
 	if err != nil {
-		return reportRow{}, err
+		return Report{}, err
 	}
 	row := store.AddPeriodicReportParams{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Number: report.Number, IssuedAt: at,
 		IssuedByUserID: c.Actor, ExpensesTotal: report.Expenses.Number(), Snapshot: string(kept)}
 	if err := c.Q.AddPeriodicReport(c.Ctx, row); err != nil {
-		return reportRow{}, err
+		return Report{}, err
 	}
-	return reportRow{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: report.Expenses}, c.Record(history.Create, "PeriodicReports", row.ID, nil,
+	return Report{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: report.Expenses}, c.Record(history.Create, "PeriodicReports", row.ID, nil,
 		map[string]any{"ProjectId": row.ProjectID, "Number": row.Number, "IssuedAt": row.IssuedAt, "IssuedByUserId": row.IssuedByUserID,
 			"ExpensesTotal": row.ExpensesTotal})
 }
@@ -184,9 +184,9 @@ func fixedTotalOf(previous store.LatestPeriodicReportRow) fixed.Total {
 // periodicReports is the reports issued, newest first.
 func (s Routes) periodicReports(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	rows, err := s.database.Queries().PeriodicReportsOf(r.Context(), web.ID(r, "projectId"))
-	issued := []reportRow{}
+	issued := []Report{}
 	for _, row := range rows {
-		issued = append(issued, reportRow{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: fixed.Counted(row.ExpensesTotal)})
+		issued = append(issued, Report{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: fixed.Counted(row.ExpensesTotal)})
 	}
 	s.answer(w, r, issued, err)
 }
@@ -201,8 +201,12 @@ type nextPeriodicReportView struct {
 func (s Routes) nextPeriodicReport(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
 	latest, err := latestOf(c)
-	waiting, waitingErr := WaitingOf(c.Ctx, c.Q, c.ProjectID, access.Everything)
-	s.answer(w, r, nextPeriodicReportView{latest.Number + 1, waiting}, errors.Join(err, waitingErr))
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	waiting, err := WaitingOf(c.Ctx, c.Q, c.ProjectID, access.Everything)
+	s.answer(w, r, nextPeriodicReportView{latest.Number + 1, waiting}, err)
 }
 
 // periodicReport is a report as it was issued: every partner for whoever sees all capital, otherwise the total and only the lines of the partners
@@ -210,7 +214,11 @@ func (s Routes) nextPeriodicReport(w http.ResponseWriter, r *http.Request, _ acc
 func (s Routes) periodicReport(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
 	report, found, err := s.issued(r, web.Int(r, "number"))
-	if err == nil && !found {
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	if !found {
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}

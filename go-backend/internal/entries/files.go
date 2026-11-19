@@ -37,9 +37,8 @@ func (s Routes) attachable(w http.ResponseWriter, r *http.Request, caller access
 	}
 	vatNumber := query.Get("vatNumber")
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	known, factsErr := factsOf(c, all)
-	if err != nil || factsErr != nil {
+	known, err := factsOf(c)
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}

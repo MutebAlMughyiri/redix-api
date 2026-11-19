@@ -484,5 +484,8 @@ func (s Routes) enter(w http.ResponseWriter, r *http.Request, caller access.Call
 // the summary and the periodic report show of it.
 func Reconciled(ctx context.Context, q *store.Queries, projectID uuid.UUID) (moment.Moment, fixed.Total, error) {
 	view, err := LatestOf(ctx, q, projectID, nil)
-	return view.At, view.Difference, err
+	if err != nil {
+		return moment.Moment{}, fixed.Total{}, err
+	}
+	return view.At, view.Difference, nil
 }

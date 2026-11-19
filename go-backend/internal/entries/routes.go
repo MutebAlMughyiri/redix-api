@@ -137,7 +137,7 @@ func (s Routes) submit(w http.ResponseWriter, r *http.Request, caller access.Cal
 // expense's or revenue's item, or the project's capital item for a partner's money.
 func (s Routes) missingOf(r *http.Request, entry store.Entry) ([]string, error) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: entry.ProjectID}
-	known, err := factsOf(c, []store.Entry{entry})
+	known, err := factsOf(c)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func Approve(c changes.Change, entry store.Entry, approvedAt moment.Moment) erro
 
 // approveItsSupplier approves the supplier of the entry - its purchase's, or its contract's contractor - when it waits (AC-44.1).
 func approveItsSupplier(c changes.Change, entry store.Entry) error {
-	facts, err := factsOf(c, []store.Entry{entry})
+	facts, err := factsOf(c)
 	if err != nil {
 		return err
 	}
@@ -445,7 +445,7 @@ func (s Routes) seenBy(c changes.Change, caller access.Caller) ([]store.Entry, f
 	if err != nil {
 		return nil, facts{}, err
 	}
-	known, err := factsOf(c, all)
+	known, err := factsOf(c)
 	if err != nil {
 		return nil, facts{}, err
 	}
@@ -566,7 +566,7 @@ func (s Routes) answerView(w http.ResponseWriter, r *http.Request, entryID uuid.
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	known, err := factsOf(c, []store.Entry{entry})
+	known, err := factsOf(c)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -582,7 +582,7 @@ func (s Routes) pending(w http.ResponseWriter, r *http.Request, caller access.Ca
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	known, err := factsOf(c, waiting)
+	known, err := factsOf(c)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return

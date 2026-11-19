@@ -89,8 +89,7 @@ const descriptionMaxLength = 2000
 // notApproved is the approved moment of an entry not approved yet (Entry.NotApproved).
 var notApproved = moment.Never
 
-// request is what the app sends for any entry, whatever its table (EntryRequest, redix-api #110).
-// Request is an entry as Add entry sends it (EntryRequest).
+// Request is an entry as Add entry sends it, whatever its table (EntryRequest, redix-api #110).
 type Request struct {
 	ID                uuid.UUID   `json:"id"`
 	ItemID            uuid.UUID   `json:"itemId,omitzero"`

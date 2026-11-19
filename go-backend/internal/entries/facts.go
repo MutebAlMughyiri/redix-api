@@ -42,8 +42,8 @@ type facts struct {
 	tables map[uuid.UUID]uuid.UUID
 }
 
-// factsOf reads the facts of the project's entries; entries are those whose waiting money the facts count.
-func factsOf(c changes.Change, entries []store.Entry) (facts, error) {
+// factsOf reads the facts of the project's entries, the waiting money of every entry waiting for approval among them.
+func factsOf(c changes.Change) (facts, error) {
 	q, ctx, projectID := c.Q, c.Ctx, c.ProjectID
 	f := facts{expenses: map[uuid.UUID]store.ExpenseDetail{}, purchases: map[uuid.UUID]store.PurchaseDetail{}, payments: map[uuid.UUID]store.ContractorPaymentDetail{},
 		revenues: map[uuid.UUID]store.RevenueDetail{}, capital: map[uuid.UUID]uuid.UUID{}, invoices: map[uuid.UUID]string{}, files: map[uuid.UUID][]store.EntryFilesOfRow{},

@@ -46,7 +46,7 @@ func VatQuarters(c changes.Change, first, last time.Time) ([]VatQuarter, error) 
 		}
 		return int(a.Number - b.Number)
 	})
-	known, err := factsOf(c, purchases)
+	known, err := factsOf(c)
 	if err != nil {
 		return nil, err
 	}

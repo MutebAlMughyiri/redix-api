@@ -21,11 +21,11 @@ import (
 type Verdict int
 
 const (
-	// Wrong: the password is not the one kept.
+	// Wrong means the password is not the one kept.
 	Wrong Verdict = iota
-	// Right: the password is the one kept.
+	// Right means the password is the one kept.
 	Right
-	// RightButWeak: the password is right, but kept more weakly than today's hash; hash it again (SuccessRehashNeeded).
+	// RightButWeak means the password is right, but kept more weakly than today's hash; hash it again (SuccessRehashNeeded).
 	RightButWeak
 )
 

@@ -92,8 +92,11 @@ func TestR11_ProdAnswersOnItsDomainAndKeepsItsDataWhereTheDeployLaysItOut(t *tes
 func TestR25_ProductionProvesTheNamesOfTheServersOtherInstances(t *testing.T) {
 	for proves, want := range map[string][]string{"qa.redix.example;dev.redix.example": {"qa.redix.example", "dev.redix.example"}, "": nil} {
 		settings, err := Read(lookupIn(map[string]string{"REDIX_Environment": "Prod", "REDIX_Jwt__SigningKey": key, "REDIX_Certificates__Proves": proves}))
-		if err != nil || !slices.Equal(settings.CertificatesProves, want) {
-			t.Errorf("%q proves %q (%v), want %q", proves, settings.CertificatesProves, err, want)
+		if err != nil {
+			t.Fatalf("%q: %v", proves, err)
+		}
+		if !slices.Equal(settings.CertificatesProves, want) {
+			t.Errorf("%q proves %q, want %q", proves, settings.CertificatesProves, want)
 		}
 	}
 }
@@ -101,8 +104,11 @@ func TestR25_ProductionProvesTheNamesOfTheServersOtherInstances(t *testing.T) {
 func TestR4_OnlyDevAndQaServeTheAPIDocument(t *testing.T) {
 	for environment, documented := range map[string]bool{"Dev": true, "QA": true, "Prod": false, "Production": false, "Staging": false} {
 		settings, err := Read(lookupIn(map[string]string{"REDIX_Environment": environment, "REDIX_Jwt__SigningKey": key}))
-		if err != nil || settings.Documented != documented {
-			t.Errorf("%s documented %v (%v), want %v", environment, settings.Documented, err, documented)
+		if err != nil {
+			t.Fatalf("%s: %v", environment, err)
+		}
+		if settings.Documented != documented {
+			t.Errorf("%s documented %v, want %v", environment, settings.Documented, documented)
 		}
 	}
 }
@@ -111,8 +117,11 @@ func TestR4_OnlyDevAndQaServeTheAPIDocument(t *testing.T) {
 func TestR11_DevAndQaNameNoDomain(t *testing.T) {
 	for _, name := range []string{"Dev", "QA"} {
 		settings, err := Read(lookupIn(map[string]string{"REDIX_Environment": name, "REDIX_Jwt__SigningKey": key}))
-		if err != nil || settings.Domain != "" {
-			t.Errorf("%s read the domain %q (%v)", name, settings.Domain, err)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if settings.Domain != "" {
+			t.Errorf("%s read the domain %q", name, settings.Domain)
 		}
 	}
 }

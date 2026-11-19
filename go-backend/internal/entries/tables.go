@@ -447,7 +447,7 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 		return
 	}
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	known, factsErr := factsOf(c, all)
+	known, factsErr := factsOf(c)
 	subgroups, subgroupsErr := c.Q.SubgroupsOfItem(c.Ctx, item.ID)
 	contractRows, contractsErr := c.Q.ContractsOf(c.Ctx, c.ProjectID)
 	partners, partnersErr := c.Q.PartnersInItem(c.Ctx, item.ID)
@@ -513,7 +513,7 @@ func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller acces
 	categories, err := q.CategoriesOf(ctx, projectID)
 	items, itemsErr := q.ItemsOf(ctx, projectID)
 	subgroups, subgroupsErr := q.SubgroupsOf(ctx, projectID)
-	contracts, contractsErr := q.ContractsOf(ctx, projectID)
+	projectContracts, contractsErr := q.ContractsOf(ctx, projectID)
 	if errors.Join(err, itemsErr, subgroupsErr, contractsErr) != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -538,7 +538,7 @@ func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller acces
 					placed = append(placed, itemTableView{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
 				}
 			}
-			for _, contract := range contracts {
+			for _, contract := range projectContracts {
 				if contract.ItemID == item.ID {
 					placed = append(placed, itemTableView{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
 				}

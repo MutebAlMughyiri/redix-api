@@ -35,14 +35,14 @@ type Routes struct {
 func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
 	s := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}}
 	const methods = "/projects/{projectId:guid}/payment-methods"
-	changes := func(handler access.Handler) http.HandlerFunc { return gate.Changes(access.ManageSettings, handler) }
+	manage := func(handler access.Handler) http.HandlerFunc { return gate.Changes(access.ManageSettings, handler) }
 	router.Handle("GET", methods, gate.Needs(access.ReadProject, s.list(false)))
 	router.Handle("GET", methods+"/offered", gate.Needs(access.ReadProject, s.list(true)))
-	router.Handle("POST", methods, changes(s.add))
-	router.Handle("PUT", methods+"/{paymentMethodId:guid}", changes(s.rename))
-	router.Handle("POST", methods+"/{paymentMethodId:guid}/disable", changes(s.activate(false)))
-	router.Handle("POST", methods+"/{paymentMethodId:guid}/enable", changes(s.activate(true)))
-	router.Handle("DELETE", methods+"/{paymentMethodId:guid}", changes(s.delete))
+	router.Handle("POST", methods, manage(s.add))
+	router.Handle("PUT", methods+"/{paymentMethodId:guid}", manage(s.rename))
+	router.Handle("POST", methods+"/{paymentMethodId:guid}/disable", manage(s.activate(false)))
+	router.Handle("POST", methods+"/{paymentMethodId:guid}/enable", manage(s.activate(true)))
+	router.Handle("DELETE", methods+"/{paymentMethodId:guid}", manage(s.delete))
 }
 
 // paymentMethodView is a payment method as the app shows it (PaymentMethodView), with the accounts it pays from (redix-app #109).

@@ -228,7 +228,7 @@ type kept struct {
 	sent []string
 }
 
-func (k *kept) Deliver(_ context.Context, to, subject, body string) error {
+func (k *kept) Deliver(_ context.Context, to, _, body string) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	k.sent = append(k.sent, to+"\n"+body)

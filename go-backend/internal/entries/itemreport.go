@@ -201,7 +201,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	if err != nil {
 		return ItemReport{}, err
 	}
-	known, err := factsOf(c, all)
+	known, err := factsOf(c)
 	if err != nil {
 		return ItemReport{}, err
 	}
@@ -374,6 +374,9 @@ func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, error
 		return ItemReport{}, err
 	}
 	report, err := ItemReportOf(c, item, func(uuid.UUID) bool { return false })
+	if err != nil {
+		return ItemReport{}, err
+	}
 	report.Subgroups = []TableReport{}
 	kept := []ContractReport{}
 	for _, one := range report.Contracts {
@@ -382,7 +385,7 @@ func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, error
 		}
 	}
 	report.Contracts = kept
-	return report, err
+	return report, nil
 }
 
 // WithTablesOf is the same report holding only the tables shows keeps, the partners' of رأس المال a reader may see; its total stays the whole (BR-31).

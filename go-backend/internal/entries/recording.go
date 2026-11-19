@@ -159,7 +159,10 @@ func Record(c changes.Change, typed Request, tellDeciders bool) (store.Entry, er
 // (400) for a table they are not offered.
 func AskedColumns(c changes.Change, itemID, tableID uuid.UUID) ([]store.ItemColumn, error) {
 	t, err := tableOf(c, Request{ItemID: itemID, TableID: tableID})
-	return t.columns, err
+	if err != nil {
+		return nil, err
+	}
+	return t.columns, nil
 }
 
 // tableOf is the table typed goes into, among those the actor is offered: unknownTable (400) for any other.
