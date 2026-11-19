@@ -79,8 +79,9 @@ func fileRole(kind int64) int64 {
 		return 1
 	case capitalIn, capitalOut:
 		return 2
+	default:
+		return 3
 	}
-	return 3
 }
 
 // descriptionMaxLength is the longest description an entry keeps (Entry.DescriptionMaxLength).

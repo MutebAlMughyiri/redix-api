@@ -52,6 +52,7 @@ func attempt(user store.User, password string, now moment.Moment) (string, store
 		return invalidCredentials, user
 	case credentials.RightButWeak:
 		user.PasswordHash = credentials.Hash(password)
+	case credentials.Right:
 	}
 	user.FailedSignIns = 0
 	return "", user

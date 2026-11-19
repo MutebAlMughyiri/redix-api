@@ -360,7 +360,13 @@ func tableOf(c changes.Change, item store.Item, table fileTable) (owner, uuid.UU
 		return contractOf(c, item, strings.TrimSpace(strings.TrimPrefix(name, contractTitlePrefix)), table.ContractAmount)
 	case structure.Capital:
 		return partnerOf(c, name)
+	default:
+		return subgroupOf(c, item, name)
 	}
+}
+
+// subgroupOf is the subgroup of item named name, the item's own table when name is the item's, found or added through its owner.
+func subgroupOf(c changes.Change, item store.Item, name string) (owner, uuid.UUID, string, error) {
 	subgroupName := name
 	if name == item.Name {
 		subgroupName = ""

@@ -97,8 +97,9 @@ func asksOf(kind int64) form {
 		return purchaseForm{}
 	case contractorPayment:
 		return contractForm{}
+	default:
+		return revenueForm{}
 	}
-	return revenueForm{}
 }
 
 func isAmount(key string) bool { return key == "total" || key == "amount" }

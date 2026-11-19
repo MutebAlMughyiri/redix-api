@@ -95,7 +95,7 @@ func tableOf(title string, columns []entries.ReportColumn, amountName string, ro
 // columnOf is a column of an item as its table prints it: a date as a day, an amount as money, a text as it is, anything else centred; a list with
 // the choices its cells take (redix-api #129).
 func columnOf(column entries.ReportColumn) statement.Column {
-	kind := statement.Centred
+	var kind statement.CellKind
 	switch column.DataType {
 	case structure.Date:
 		kind = statement.Day
@@ -103,6 +103,8 @@ func columnOf(column entries.ReportColumn) statement.Column {
 		kind = statement.Price
 	case structure.Text:
 		kind = statement.Text
+	default:
+		kind = statement.Centred
 	}
 	printed := statement.Column{Header: column.Name, Kind: kind, AllowsBlank: !column.IsRequired, IsFile: column.Key == "attachment"}
 	for _, choice := range column.Choices {
@@ -118,8 +120,9 @@ func signText(sign structure.Sign) string {
 		return "+"
 	case structure.Minus:
 		return "−"
+	default:
+		return ""
 	}
-	return ""
 }
 
 // cellOf is a value as its cell holds it: a day, a number, or the text kept; nil when none was given.

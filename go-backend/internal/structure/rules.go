@@ -470,8 +470,9 @@ func Accepts(row store.ItemColumn, value string) bool {
 		return err == nil && len(value) == 10
 	case List:
 		return one.choiceOf(value).ID != uuid.Nil
+	default:
+		return utf8.RuneCountInString(value) <= valueMaxLength
 	}
-	return utf8.RuneCountInString(value) <= valueMaxLength
 }
 
 // ChoiceNameIn is the name of what kept - an entry's column values as kept - chose in the one list among columns whose choices carry a sign

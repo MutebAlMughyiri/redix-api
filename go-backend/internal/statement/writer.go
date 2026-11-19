@@ -230,6 +230,7 @@ func write(cell *Cell, kind CellKind, value any) {
 		cell.Align("center")
 	case Price:
 		cell.Format(MoneyFormat).Align("center")
+	case Text, Day:
 	}
 }
 

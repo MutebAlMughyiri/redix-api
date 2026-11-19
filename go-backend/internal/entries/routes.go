@@ -158,13 +158,7 @@ func (s Routes) missingOf(r *http.Request, entry store.Entry) ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
-	var asks form = revenueForm{}
-	switch entry.Kind {
-	case purchase:
-		asks = purchaseForm{}
-	case contractorPayment:
-		asks = contractForm{}
-	}
+	asks := asksOf(entry.Kind)
 	var asked []store.ItemColumn
 	for _, column := range columns {
 		if !column.IsHidden && asks.asks(column.Key) {
