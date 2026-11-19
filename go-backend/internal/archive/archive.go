@@ -60,7 +60,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", "/projects/{projectId:guid}/retrieve", gate.Changes(access.ManageProjectFiles, s.retrieve))
 }
 
-// archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 41 tables, read in one snapshot; a History line,
+// archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 44 tables, read in one snapshot; a History line,
 // Archive, names who took it (R15).
 func (s Routes) archive(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	archived, err := s.taken(r.Context(), web.ID(r, "projectId"), caller.UserID)

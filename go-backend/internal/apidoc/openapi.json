@@ -5199,7 +5199,7 @@
     },
     "/projects/{projectId}/archive/json": {
       "get": {
-        "description": "archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 41 tables, read in one snapshot; a History line, Archive, names who took it (R15).\n\nAccess: needs the ManageProjectFiles permission.",
+        "description": "archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 44 tables, read in one snapshot; a History line, Archive, names who took it (R15).\n\nAccess: needs the ManageProjectFiles permission.",
         "parameters": [
           {
             "in": "path",
@@ -5226,7 +5226,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 41 tables, read in one snapshot; a History line, Archive, names who took it (R15).",
+        "summary": "archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 44 tables, read in one snapshot; a History line, Archive, names who took it (R15).",
         "tags": [
           "archive"
         ]

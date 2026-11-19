@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 )
 
 // Driver is the name the failing driver is registered under.
@@ -30,6 +31,9 @@ type Failure struct {
 	calls, failAt atomic.Int64
 	untilCommit   atomic.Bool
 	failed        atomic.Bool
+	// fresh commits an empty write before each armed request, so whatever keeps a copy of the database - the access book - is forgotten and
+	// read again: every round of a request then makes the same calls in the same order, and each of them fails once (redix-api #76 row 277).
+	fresh func()
 }
 
 // At fails the nth call from now, and only that one; 0 fails none.
@@ -44,6 +48,9 @@ func (f *Failure) Failed() bool { return f.failed.Load() }
 
 func (f *Failure) arm(n int64, untilCommit bool) {
 	f.failAt.Store(0)
+	if n > 0 {
+		f.fresh()
+	}
 	f.calls.Store(0)
 	f.failed.Store(false)
 	f.untilCommit.Store(untilCommit)
@@ -81,7 +88,7 @@ func init() {
 // Watch is the Failure of the database file at path, for as long as t runs: every connection the failing driver opens on it counts its calls
 // there.
 func Watch(t testing.TB, path string) *Failure {
-	failure := &Failure{}
+	failure := &Failure{fresh: func() {}}
 	watchedMu.Lock()
 	watched[path] = failure
 	watchedMu.Unlock()
@@ -102,6 +109,7 @@ func Open(t testing.TB, path string) (db.DB, *Failure) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { database.Close() })
+	failure.fresh = func() { database.InSQL(context.Background(), func(*sql.Tx, *store.Queries) error { return nil }) }
 	return database, failure
 }
 
