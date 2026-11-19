@@ -22,7 +22,7 @@ A contract's documents join here (UC-020 step 3): adding or amending a contract 
 | --- | --- | --- |
 | `POST /projects/{id}/attachments` | `AttachFiles` | Keeps the multipart `file`, and answers its `AttachmentView` |
 | `GET /projects/{id}/attachments/{attachmentId}` | `ReadProject` | Serves the file; one of another project is not found |
-| `GET /files/{link}` | none: the signed link | Serves the file a workbook's «المرفق» cell links to, for 7 days from the workbook's download (`FileLinks`, Muteb, 16 Nov 2026); a link expired, changed or never made is not found |
+| `GET /files/{link}` | none: the signed link | Serves the file a workbook's «المرفق» cell links to, for 7 days from the workbook's download (`FileLinks`, the owner, 16 Nov 2026); a link expired, changed or never made is not found |
 | `POST /projects/{id}/contracts`, `PUT .../contracts/{contractId}` | `ManageSettings` | Now also take `attachmentIds`; `GET .../contracts` answers each contract's `documents` |
 
 ## Tables

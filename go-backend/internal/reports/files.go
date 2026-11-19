@@ -182,7 +182,7 @@ func (s Routes) sendItemFile(w http.ResponseWriter, r *http.Request, caller acce
 	s.sendReport(w, r, c, report, "item", isPdf, err)
 }
 
-// contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); 404 for a contract of
+// contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (the owner, 12 Nov 2026); 404 for a contract of
 // another project.
 func (s Routes) contractFile(isPdf bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
@@ -195,7 +195,7 @@ func (s Routes) contractFile(isPdf bool) access.Handler {
 	}
 }
 
-// sendReport sends report as name.pdf, or as name.xlsx whose «المرفق» cells open their files by links on the address r came to (Muteb, 16 Nov
+// sendReport sends report as name.pdf, or as name.xlsx whose «المرفق» cells open their files by links on the address r came to (the owner, 16 Nov
 // 2026).
 func (s Routes) sendReport(w http.ResponseWriter, r *http.Request, c changes.Change, report entries.ItemReport, name string, isPdf bool, err error) {
 	if err == nil && isPdf {

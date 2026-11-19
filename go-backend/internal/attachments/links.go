@@ -22,7 +22,7 @@ import (
 const lifetime = 7 * 24 * time.Hour
 
 // Links makes and reads the links that open one kept file with no sign-in until they expire, a week after they are made: what a workbook's
-// «المرفق» cell opens, since Excel cannot sign in (FileLinks, Muteb, 16 Nov 2026). The file's id and the moment it expires are signed with a key
+// «المرفق» cell opens, since Excel cannot sign in (FileLinks, the owner, 16 Nov 2026). The file's id and the moment it expires are signed with a key
 // of their own, derived from the API's signing key as Data Protection derived one per purpose, so a link cannot be made up or kept alive; the
 // moment is checked on the API's one clock. Links .NET made stop opening at the switch, each within a week (#140 G6).
 type Links struct {

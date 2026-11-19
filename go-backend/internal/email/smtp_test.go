@@ -63,7 +63,7 @@ func mailServer(t *testing.T) (string, <-chan string) {
 	return listener.Addr().String(), received
 }
 
-// R127, decided by Muteb on 17 Nov 2026: on the published server each email is handed to the mail server on that machine, as UTF-8, so an Arabic
+// R127, decided by the owner on 17 Nov 2026: on the published server each email is handed to the mail server on that machine, as UTF-8, so an Arabic
 // code email arrives as it was written.
 func TestR127_AnEmailIsHandedToTheMailServerWhole(t *testing.T) {
 	address, received := mailServer(t)

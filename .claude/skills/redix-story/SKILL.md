@@ -1,11 +1,11 @@
 ---
 name: redix-story
-description: Write or update a REDIX work item as a GitHub issue on MutebAlMughyiri/redix-api or redix-app in the house format - what Muteb asked in his words, its state, the requirements table, today measured from the code, the questions for the plan - with the right labels and milestone. Use when Muteb describes a feature, a use case, a bug or a chore for REDIX and wants it captured, when he says "add feature", "open an issue", "add to the backlog", or asks to rewrite an existing issue. A finding is not an issue: it is a row in #76.
+description: Write or update a REDIX work item as a GitHub issue on MutebAlMughyiri/redix-api or redix-app in the house format - what the owner asked in his words, its state, the requirements table, today measured from the code, the questions for the plan - with the right labels and milestone. Use when the owner describes a feature, a use case, a bug or a chore for REDIX and wants it captured, when he says "add feature", "open an issue", "add to the backlog", or asks to rewrite an existing issue. A finding is not an issue: it is a row in #76.
 ---
 
 # REDIX story
 
-> Brought from the Testin project, 12 November 2026. GitHub is the source of truth for REDIX's work: Muteb works across machines, and an issue travels where a local file does not.
+> Brought from the Testin project, 12 November 2026. GitHub is the source of truth for REDIX's work: the owner works across machines, and an issue travels where a local file does not.
 
 ## Which repo, which kind
 
@@ -22,7 +22,7 @@ Read the open issues first (`gh issue list`), and update an existing one with `g
 Write it to a file in the scratchpad, then `gh issue create --body-file`.
 
 ```markdown
-## What Muteb asked (12 Nov 2026)
+## What the owner asked (12 Nov 2026)
 
 > "his words, verbatim, typos and all"
 
@@ -32,7 +32,7 @@ Write it to a file in the scratchpad, then `gh issue create --body-file`.
 
 | # | Requirement | From |
 | --- | --- | --- |
-| R1 | Each thing he asked, a testable sentence | Muteb |
+| R1 | Each thing he asked, a testable sentence | The owner |
 | R2 *added* | What the design needs, or what goes wrong without it | One line why |
 
 ## Today
@@ -60,8 +60,8 @@ Write it to a file in the scratchpad, then `gh issue create --body-file`.
 | --- | --- |
 | `use case` | A `UC-NNN` slice |
 | `feature` | Anything else new |
-| milestone **Release 1** | Muteb put it in release 1 |
-| `release 2` | Muteb deferred it |
+| milestone **Release 1** | The owner put it in release 1 |
+| `release 2` | The owner deferred it |
 | `open question` | It waits for a business answer |
 | `privacy` | It decides who sees what |
 | `translations` | redix-app: words and the glossary |

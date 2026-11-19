@@ -1,4 +1,4 @@
-# Dependabot (Muteb, 13 Nov 2026): once a week, one pull request bundling every minor and patch update, and one per major version. CI tests each before it is merged.
+# Dependabot (the owner, 13 Nov 2026): once a week, one pull request bundling every minor and patch update, and one per major version. CI tests each before it is merged.
 # Since 17 Nov 2026 the API is Go (redix-api #140): the modules in go-backend, and the workflows' actions.
 version: 2
 updates:

@@ -98,4 +98,4 @@ request to the API.
 | P3, the data | `migrate-data` proven on a copy of RedixQA: 59 tables equal, the figures equal, and Go signed in qa's admin and read the project and both issued reports |
 | P4, the phone | The Patrol tests run against Go as Dev (`REDIX_Environment=Dev`) |
 | P5, the rehearsal | Waits for the cloud server |
-| P6, the switch | Muteb's |
+| P6, the switch | The owner's |

@@ -513,7 +513,7 @@ func (s Routes) row(w http.ResponseWriter, r *http.Request, caller access.Caller
 	web.JSON(w, r, http.StatusOK, views[0])
 }
 
-// list is the entries of the project the caller may see, newest first (Muteb, 8 Nov 2026), those a search keeps when anything narrows them
+// list is the entries of the project the caller may see, newest first (the owner, 8 Nov 2026), those a search keeps when anything narrows them
 // (redix-app #104), the newest take of them when take is above 0 (redix-app #105), and with attachable only those a shared file can go on
 // (redix-app #115 D6).
 func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Caller) {

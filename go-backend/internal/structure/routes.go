@@ -418,7 +418,7 @@ func (s Routes) setTablePercentages(w http.ResponseWriter, r *http.Request, call
 }
 
 // addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400)
-// for an item that takes no purchases, since a sub-table holds purchases (Muteb, 7 Nov 2026).
+// for an item that takes no purchases, since a sub-table holds purchases (the owner, 7 Nov 2026).
 func (s Routes) addSubgroup(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	name, ok := changes.Named(w, r)
 	if !ok {
@@ -487,7 +487,7 @@ type itemTypeRequest struct {
 }
 
 // changeItemType changes what an item is for (FR-38): while no entry names it, or itemHasEntries, and no contract, or itemHasContract - though an
-// item of purchases or of contractor payments may always become both (Muteb, 7 Nov 2026); never an item whose tables are partners,
+// item of purchases or of contractor payments may always become both (the owner, 7 Nov 2026); never an item whose tables are partners,
 // itemHasPartners; never a second capital item, capitalItemExists. Its built-in columns become the project's default columns of the new type, and
 // the columns a person added stay, after them.
 func (s Routes) changeItemType(w http.ResponseWriter, r *http.Request, caller access.Caller) {

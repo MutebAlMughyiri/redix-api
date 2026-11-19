@@ -2,7 +2,7 @@
 
 # UC-062: Sign out
 
-**What it is for:** ending a session on one device, so that the next person signs in as themselves (added by Muteb on 5 Nov 2026; numbered last, built after UC-007).
+**What it is for:** ending a session on one device, so that the next person signs in as themselves (added by the owner on 5 Nov 2026; numbered last, built after UC-007).
 **Who uses it:** every signed-in user.
 **Issue:** redix-api #78; the app side is redix-app #74.
 

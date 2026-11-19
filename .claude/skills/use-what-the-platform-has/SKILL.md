@@ -5,7 +5,7 @@ description: Before building any part of a REDIX API feature - an error answer, 
 
 # Use what the platform has
 
-> Brought from the Testin project, 12 November 2026, where Muteb wrote: *"use exist idea tools is better that customize new thing."* REDIX's own form of it: *"No customizations or workarounds, as we follow the business."* (Muteb, 1 November 2026, `redix-code-standard`).
+> Brought from the Testin project, 12 November 2026, where the owner wrote: *"use exist idea tools is better that customize new thing."* REDIX's own form of it: *"No customizations or workarounds, as we follow the business."* (the owner, 1 November 2026, `redix-code-standard`).
 
 A library's feature is documented, tested and maintained by others. A hand-written copy is a second thing to learn and a part REDIX maintains forever, and it is where the bugs hide.
 

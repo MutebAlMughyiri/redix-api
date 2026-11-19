@@ -43,7 +43,7 @@ const (
 )
 
 // Column is a column of a table: its header, how its cells are written, the choices a list's cells take (redix-api #129), whether a cell may be
-// left empty - unless entry requires the column (Muteb, 13 Nov 2026) - and whether it is «المرفق», whose cell opens its row's file.
+// left empty - unless entry requires the column (the owner, 13 Nov 2026) - and whether it is «المرفق», whose cell opens its row's file.
 type Column struct {
 	Header      string
 	Kind        CellKind
@@ -53,7 +53,7 @@ type Column struct {
 }
 
 // Row is a row of a table; Number is nil for none, and each of Cells nil when nothing was given. FileLink is the signed link to its entry's own
-// file, "" for none (Muteb, 16 Nov 2026).
+// file, "" for none (the owner, 16 Nov 2026).
 type Row struct {
 	Number                 any
 	Cells                  []any

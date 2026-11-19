@@ -2,7 +2,7 @@
 
 # UC-033, UC-034, UC-035: Change an unapproved entry, keep the approved version, remove an approved one
 
-**Purpose:** correct an entry before it is approved, and only then. What is approved never changes (BR-11); a mistaken approved entry is removed softly, by its own permission (redix-api #119). There is no reversing an entry (Muteb, 12 Nov 2026: «لايوجد شيء اسمه عكس القيد. اما حذف و مرتجع بالسالب»).
+**Purpose:** correct an entry before it is approved, and only then. What is approved never changes (BR-11); a mistaken approved entry is removed softly, by its own permission (redix-api #119). There is no reversing an entry (the owner, 12 Nov 2026: «لايوجد شيء اسمه عكس القيد. اما حذف و مرتجع بالسالب»).
 
 | Route | Who | What it does |
 | --- | --- | --- |

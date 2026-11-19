@@ -74,7 +74,7 @@ func TestR2_OneRequestIsOneLineOfTheRecordItActedOn(t *testing.T) {
 	a.dated("2026-11-16")
 	a.Ask("POST", a.path+"/items/"+a.item+"/columns", `{"name":"المقاس","dataType":"text","isRequired":false,"showInReports":true,"choices":[]}`, a.token)
 	want := []string{"created column المقاس", "drafted entry 1", "created item التسليح", "created category الحديد", "created account حساب المؤسسة",
-		"approved project غصون", "registered project غصون"}
+		"approved project مشروع A", "registered project مشروع A"}
 	if got := a.said(a.path+"/history", a.token); !slices.Equal(got, want) {
 		t.Errorf("the project's history:\n got %q\nwant %q", got, want)
 	}

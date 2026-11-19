@@ -300,7 +300,7 @@ func (l approvalLine) holds(text string) bool {
 	return spelling.Holds(text, l.Amount, l.By, l.Item, l.Party, l.Reason)
 }
 
-// approvalHistory is a page of the project's approval history (ApprovalHistory, Muteb 12 Nov 2026): every entry approved or rejected, by whom and
+// approvalHistory is a page of the project's approval history (ApprovalHistory, the owner 12 Nov 2026): every entry approved or rejected, by whom and
 // when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.
 func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}

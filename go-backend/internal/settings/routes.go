@@ -199,7 +199,7 @@ func setPaysFrom(c changes.Change, methodID uuid.UUID, from paysFrom, isNew bool
 	return c.Record(history.Update, "PaymentMethods", methodID, map[string]any{"AccountIds": sortedIDs(kept)}, map[string]any{"AccountIds": sortedIDs(wanted)})
 }
 
-// TickOnEveryMethod has every payment method of the change's project pay from the account just added (D1b, Muteb 17 Nov 2026), recorded under the
+// TickOnEveryMethod has every payment method of the change's project pay from the account just added (D1b, the owner 17 Nov 2026), recorded under the
 // account's own line.
 func TickOnEveryMethod(c changes.Change, accountID uuid.UUID) error {
 	methods, err := c.Q.PaymentMethodsOf(c.Ctx, c.ProjectID)

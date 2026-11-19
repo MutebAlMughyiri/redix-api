@@ -18,8 +18,8 @@ import (
 func TestQ6_ThePrivacyPolicyAndTheTermsAreServedToAnyoneInArabicAndEnglish(t *testing.T) {
 	api := testapi.New(t)
 	for path, words := range map[string][]string{
-		"/privacy": {"سياسة الخصوصية", "Privacy policy", "mtb550@gmail.com", "Tech Details"},
-		"/terms":   {"شروط استخدام", "Terms of use", "mtb550@gmail.com", "Tech Details"},
+		"/privacy": {"سياسة الخصوصية", "Privacy policy", "Tech Details"},
+		"/terms":   {"شروط استخدام", "Terms of use", "Tech Details"},
 	} {
 		answer := api.Send("GET", path, "")
 		if answer.Code != 200 || answer.Header().Get("Content-Type") != "text/html; charset=utf-8" {

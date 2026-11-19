@@ -9,7 +9,7 @@
 | Route | What it answers |
 | --- | --- |
 | `GET /projects/{id}/entries/pending` | What waits, oldest first: its `number`, «رقم القيد» (FR-54, redix-api #128), its date, total, item, supplier, an older bill's number, account, description and author, with its file when it has one |
-| `GET /projects/{id}/approvals/history` | What was decided, newest first, 50 a page: each entry approved or rejected, by whom and when, a rejection with its reason; `kind`, `mine`, `text` and `before` as the other histories take them (Muteb, 12 Nov 2026) |
+| `GET /projects/{id}/approvals/history` | What was decided, newest first, 50 a page: each entry approved or rejected, by whom and when, a rejection with its reason; `kind`, `mine`, `text` and `before` as the other histories take them (the owner, 12 Nov 2026) |
 
 Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
 

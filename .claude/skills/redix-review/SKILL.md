@@ -1,11 +1,11 @@
 ---
 name: redix-review
-description: What "review" means in the REDIX API - Muteb's own review of a change before it is committed - simple, clean, well structured, no customization, named and cited from the business, then the checks in order. Read it whenever he says "review", "our review", "review then commit" or "redix review", and before committing any change to redix-api.
+description: What "review" means in the REDIX API - the owner's own review of a change before it is committed - simple, clean, well structured, no customization, named and cited from the business, then the checks in order. Read it whenever he says "review", "our review", "review then commit" or "redix review", and before committing any change to redix-api.
 ---
 
 # REDIX review (API)
 
-> Brought from the Testin project, 12 November 2026, where Muteb defined it: *"our review ... simple code, clean, well-structured, no customization and every thing based on business. no redundant as possible unless it required to make code simpler. rules and use cases added to each method and class."*
+> Brought from the Testin project, 12 November 2026, where the owner defined it: *"our review ... simple code, clean, well-structured, no customization and every thing based on business. no redundant as possible unless it required to make code simpler. rules and use cases added to each method and class."*
 
 A review is not a bug hunt. It takes a change that already works and makes it **simpler without changing what it does**, then commits it. What the app sees stays exactly as tested; only the shape of the code moves.
 
@@ -39,8 +39,8 @@ In this order.
 1. `gofmt -l` lists nothing and `go vet ./...` is clean, from `go-backend/`. A finding is fixed, never silenced.
 2. `make test`: the whole suite, the replay of the .NET API's recorded answers among them; `make cover` before a push, which fails below the coverage floor (redix-api #141).
 3. A migration: a new numbered file in `internal/db/migrations`, named for what it adds; `make sqlc` when a query changes. The qa database is backed up before it is migrated.
-4. When the app sees the change: deploy to qa (on Muteb's PC, `C:\Users\mtb\REDIX\.night\qa97.ps1`, which backs up first) and run the app's Patrol classes that reach it (redix-app's `redix-review`).
+4. When the app sees the change: deploy to qa (on the owner's PC, `C:\Users\mtb\REDIX\.night\qa97.ps1`, which backs up first) and run the app's Patrol classes that reach it (redix-app's `redix-review`).
 
 ## Reporting it
 
-One short table of what the review changed and why, then the checks and their results, then any finding left as a finding. Commit on `main`, one commit per use case, ending with the `Co-Authored-By` line and no session link. Push only when Muteb says push.
+One short table of what the review changed and why, then the checks and their results, then any finding left as a finding. Commit on `main`, one commit per use case, ending with the `Co-Authored-By` line and no session link. Push only when the owner says push.

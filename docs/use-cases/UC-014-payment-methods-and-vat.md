@@ -10,7 +10,7 @@
 
 The seeded template project holds three payment methods: شبكة, تحويل and كاش. FR-40 named a fourth, سداد, which went on 7 November 2026 (redix-api #96, D25). When a project is approved it takes its own copy of them, always from the template: what registration chooses is where the categories and items come from, and it says so on the form. So one project's change touches no other (BR-33).
 
-Each method pays from the accounts its dialog ticks (redix-app #109): a method kept before that change, or added naming none, pays from every account of its project, and an account added later is paid from by every method of its project, until someone unticks it (D1b, Muteb 17 Nov 2026). Add entry asks the method first and offers only the accounts it pays from.
+Each method pays from the accounts its dialog ticks (redix-app #109): a method kept before that change, or added naming none, pays from every account of its project, and an account added later is paid from by every method of its project, until someone unticks it (D1b, the owner 17 Nov 2026). Add entry asks the method first and offers only the accounts it pays from.
 
 A project has no VAT rate of its own any more. REDIX stores no VAT: the VAT statement's workbook works it out of each total at the rate in the config row `vatRatePercent` (UC-070, redix-api #96, D4, D18).
 

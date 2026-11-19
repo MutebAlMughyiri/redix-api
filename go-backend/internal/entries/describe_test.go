@@ -24,7 +24,7 @@ func TestR4_EveryThingNamesItsRecordFromHistorysOwnValues(t *testing.T) {
 	}
 	of := func(id uuid.UUID) string { return `"` + id.String() + `"` }
 	known := knowledgeOf([]store.History{
-		line("Accounts", account, `{"Name":"الراجحي"}`),
+		line("Accounts", account, `{"Name":"بنك A"}`),
 		line("Accounts", other, `{"Name":"الصندوق"}`),
 		line("Partners", partner, `{"Name":"زيد"}`),
 		line("Suppliers", supplier, `{"Name":"مؤسسة البناء"}`),
@@ -41,10 +41,10 @@ func TestR4_EveryThingNamesItsRecordFromHistorysOwnValues(t *testing.T) {
 		line store.History
 		want described
 	}{
-		{line("Accounts", account, `{}`), described{name: "الراجحي"}},
-		{line("AccountCustodians", account, `{"UserId":`+of(sara)+`}`), described{name: "الراجحي", about: "سارة"}},
+		{line("Accounts", account, `{}`), described{name: "بنك A"}},
+		{line("AccountCustodians", account, `{"UserId":`+of(sara)+`}`), described{name: "بنك A", about: "سارة"}},
 		{line("Transfers", uuid.New(), `{"FromAccountId":`+of(account)+`,"ToAccountId":`+of(other)+`,"Amount":5000.0000}`),
-			described{from: "الراجحي", to: "الصندوق", amount: money("5000")}},
+			described{from: "بنك A", to: "الصندوق", amount: money("5000")}},
 		{line("Reconciliations", uuid.New(), `{}`), described{}},
 		{line("PartnerUsers", partner, `{"UserId":`+of(sara)+`}`), described{name: "زيد", about: "سارة"}},
 		{line("Contracts", contract, `{}`), described{name: "مؤسسة البناء", about: "التسليح", amount: money("10000")}},

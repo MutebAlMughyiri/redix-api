@@ -159,7 +159,7 @@ var askedForMine = []string{
 // signedByDotNet are the tests that open a link .NET's Data Protection signed, read from a cell of its workbook, which Go's key cannot open by
 // design (redix-api #140 G6); Go's links have their own test, in attachments.
 var signedByDotNet = []string{
-	"ReportFilesTests.Muteb16Nov_AWorkbooksFileCellOpensItsFileWithNoSignInForSevenDaysAndAChangedLinkOpensNothing",
+	"ReportFilesTests.Owner16Nov_AWorkbooksFileCellOpensItsFileWithNoSignInForSevenDaysAndAChangedLinkOpensNothing",
 }
 
 // isGone says whether s asked for a route .NET did not have - one removed, or a method a path does not take - which Go's router answers as
@@ -193,7 +193,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 		steps := tests[name]
 		switch {
 		case slices.ContainsFunc(steps, func(s step) bool { return s.Step == "request" && s.Status == http.StatusInternalServerError }):
-			// .NET crashed on some of its requests: the rest are compared, and what Go answers to those waits for Muteb's review (redix-api #76
+			// .NET crashed on some of its requests: the rest are compared, and what Go answers to those waits for the owner's review (redix-api #76
 			// rows 263, 264).
 			underReview++
 		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name),

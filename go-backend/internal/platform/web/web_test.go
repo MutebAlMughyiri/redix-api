@@ -125,9 +125,9 @@ func TestR4_AFieldTaggedOmitzeroMayBeLeftOut(t *testing.T) {
 		RoleName string   `json:"roleName,omitzero"`
 		Partners []string `json:"partnerIds,omitzero"`
 	}
-	request := httptest.NewRequest(http.MethodPost, "/projects/x/users", strings.NewReader(`{"name":"نواف"}`))
+	request := httptest.NewRequest(http.MethodPost, "/projects/x/users", strings.NewReader(`{"name":"B"}`))
 	request.Header.Set("Content-Type", "application/json")
-	if !Read(httptest.NewRecorder(), request, &read) || read.Name != "نواف" || read.RoleName != "" || len(read.Partners) != 0 {
+	if !Read(httptest.NewRecorder(), request, &read) || read.Name != "B" || read.RoleName != "" || len(read.Partners) != 0 {
 		t.Errorf("%+v", read)
 	}
 }

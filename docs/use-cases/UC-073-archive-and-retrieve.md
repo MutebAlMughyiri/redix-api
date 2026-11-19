@@ -4,7 +4,7 @@
 
 **What it is for:** keeping the whole project in one file and putting it back. «أرشفة المشروع» hands over every row of the project with its id and times, its History among them; «استرجاع المشروع» makes the project what such a file holds, after showing what will change.
 **Who uses it:** whoever holds `ManageProjectFiles` («ملفات المشروع») in the project, which every ManageProject holder was given by migration 00009 and whoever registers or starts a project holds (D2).
-**Issue:** redix-api #130 "UC-073: Archive a project to one file, and retrieve it over the project"; it replaced #115 and #114, the export and import of settings. UC-073, since the app's UC-072 is the launcher's. The design: https://claude.ai/artifact/PriQGhLBP9V2437o8Fcu9n (private to Muteb's Claude account).
+**Issue:** redix-api #130 "UC-073: Archive a project to one file, and retrieve it over the project"; it replaced #115 and #114, the export and import of settings. UC-073, since the app's UC-072 is the launcher's. The design: https://claude.ai/artifact/PriQGhLBP9V2437o8Fcu9n (private to the owner's Claude account).
 
 ## Endpoints
 
@@ -20,14 +20,14 @@ One JSON file. The app names it «{project} - أرشيف {yyyy-MM-dd HH.mm}.json
 
 ```
 { "format": "redix.archive", "version": 1, "release": 9,
-  "project": { "id": "…", "name": "غصون 6" },
-  "archivedAt": "2026-11-18T18:15:04.1234567Z", "archivedBy": { "id": "…", "name": "متعب" },
-  "tables": { "entries": [ { "id": "…", "number": 1056, "amount": 115000, "created_at": "…", … } ],
+  "project": { "id": "…", "name": "مشروع A" },
+  "archivedAt": "2026-11-18T18:15:04.1234567Z", "archivedBy": { "id": "…", "name": "A" },
+  "tables": { "entries": [ { "id": "…", "number": 1, "amount": 1000, "created_at": "…", … } ],
               "attachments": [ { "id": "…", "file_name": "فاتورة.jpg", "storage_path": "<project id>/<attachment id>.jpg", "sha256": "…", … } ],
               …, "history": [ … ] } }
 ```
 
-`release` is the migration the database stood at. Each table is listed by its own name, each row by its own column names, each value as stored: text as text, whole numbers as whole numbers, money in halalas, a column holding JSON as its text (D4). A bill or a PDF is its attachment's row, its file's name and storage path; the file itself stays in the storage whose base the server's configuration names (`Attachments__Folder`, a bucket's address once files move there), and is never inside the archive (Muteb, 18 Nov 2026).
+`release` is the migration the database stood at. Each table is listed by its own name, each row by its own column names, each value as stored: text as text, whole numbers as whole numbers, money in halalas, a column holding JSON as its text (D4). A bill or a PDF is its attachment's row, its file's name and storage path; the file itself stays in the storage whose base the server's configuration names (`Attachments__Folder`, a bucket's address once files move there), and is never inside the archive (the owner, 18 Nov 2026).
 
 ## What a retrieve replaces
 

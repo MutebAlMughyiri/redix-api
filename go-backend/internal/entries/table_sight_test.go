@@ -206,13 +206,13 @@ func TestR106_R11_OnlyThoseWhoSeeAnEntrysTableAreToldOfIt(t *testing.T) {
 func TestR106_R3_R13_ANewPersonStartsUntickedAndEveryChangeIsAHistoryLine(t *testing.T) {
 	a := newSighted(t)
 	person := func(username, unseen string) (int, any) {
-		return a.Ask("POST", a.path+"/users", `{"displayName":"نواف","username":"`+username+`","mobile":"","email":"`+username+`@example.com","temporaryPassword":"Temporary-1",
+		return a.Ask("POST", a.path+"/users", `{"displayName":"B","username":"`+username+`","mobile":"","email":"`+username+`@example.com","temporaryPassword":"Temporary-1",
 			"permissions":["RecordEntries"],"unseenTableIds":["`+unseen+`"]}`, a.token)
 	}
-	if code, answer := person("nawaf", uuid.NewString()); code != 400 || testapi.Field(answer, "code") != "unknownTable" {
+	if code, answer := person("b", uuid.NewString()); code != 400 || testapi.Field(answer, "code") != "unknownTable" {
 		t.Errorf("a new person unticked from a table of no project: %d %v", code, answer)
 	}
-	code, added := person("nawaf", a.group)
+	code, added := person("b", a.group)
 	if code != 201 {
 		t.Fatalf("a new person: %d %v", code, added)
 	}
@@ -277,7 +277,7 @@ func TestR106_EveryRouteTheSightReachesAnswersAFailingDatabase(t *testing.T) {
 	a := newSighted(t)
 	a.tick(false, a.group)
 	sara, manager := "Bearer "+a.saraToken, "Bearer "+a.token
-	person := `{"displayName":"نواف","username":"nawaf","mobile":"","email":"nawaf@example.com","temporaryPassword":"Temporary-1","permissions":["RecordEntries"],
+	person := `{"displayName":"B","username":"b","mobile":"","email":"b@example.com","temporaryPassword":"Temporary-1","permissions":["RecordEntries"],
 		"unseenTableIds":["` + a.group + `"]}`
 	steps := []struct{ method, path, body, token string }{
 		{"GET", a.path + "/tables", ``, sara},

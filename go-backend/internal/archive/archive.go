@@ -29,7 +29,7 @@ const (
 
 // file is the archive: when and by whom it was taken, at which release of the database, and every row of the project's tables as stored, each
 // table by its own name (D4). A bill or a PDF is its attachment's row - its file's name and storage path - and the file itself stays in the
-// storage the server's configuration names (Muteb, 18 Nov 2026), never inside the archive.
+// storage the server's configuration names (the owner, 18 Nov 2026), never inside the archive.
 type file struct {
 	Format     string           `json:"format"`
 	Version    int              `json:"version"`

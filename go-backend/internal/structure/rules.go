@@ -62,7 +62,7 @@ func (t ItemType) OfferedFor(kind ItemType) bool {
 // alone (Item.HasSubgroupTables).
 func (t ItemType) hasSubgroupTables() bool { return t != Capital }
 
-// takesPurchases says whether an item of this type holds purchases, so a sub-table (Muteb, 7 Nov 2026).
+// takesPurchases says whether an item of this type holds purchases, so a sub-table (the owner, 7 Nov 2026).
 func (t ItemType) takesPurchases() bool { return t == Purchases || t == Both }
 
 // DataType is what a column holds (ColumnDataType, FR-41); a person chooses among the first five, and a file is the attachment's alone.

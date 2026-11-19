@@ -15,7 +15,7 @@ Entrys = "Entrys"
 Anothers = "Anothers"
 # The SMTP command.
 HELO = "HELO"
-# Muteb's own words, quoted as he typed them.
+# The owner's own words, quoted as he typed them.
 poin = "poin"
 reciept = "reciept"
 writen = "writen"

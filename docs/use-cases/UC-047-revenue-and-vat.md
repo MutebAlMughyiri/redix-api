@@ -4,7 +4,7 @@
 
 **Purpose:** record money that comes in other than capital, and give the VAT statement of any period as the accountant's workbook.
 
-**No Revenue screen and no sales invoice** (Muteb, 8 Nov 2026: "remove those completely"). Revenue is entered from Add entry, on a revenue item's table, waits for approval, and shows in القيود with every other entry, where an approved one is removed by whoever holds the removal (redix-api #119). The sales invoice, its route and its table went; RedixReal held none. The VAT statement keeps its purchases.
+**No Revenue screen and no sales invoice** (the owner, 8 Nov 2026: "remove those completely"). Revenue is entered from Add entry, on a revenue item's table, waits for approval, and shows in القيود with every other entry, where an approved one is removed by whoever holds the removal (redix-api #119). The sales invoice, its route and its table went; RedixReal held none. The VAT statement keeps its purchases.
 
 **Who uses it:** whoever holds `MoveMoney` records; everyone who reads the project reads; whoever holds `GenerateReports` takes the statement's workbook (redix-api #131).
 
@@ -13,7 +13,7 @@
 | `POST /projects/{id}/entries` with `{ id, itemId, tableId, date, amount, accountId, description, attachmentId, submit }` | Records revenue on a revenue item's table, whose type says what it is: a VAT refund, a sale or other revenue, as a draft or sent for approval; anything but a table on offer to the caller answers `unknownTable` (redix-api #110) |
 | `GET /projects/{id}/vat-statement/xlsx?from=&to=` | The statement's workbook (UC-053) |
 
-**REDIX stores no VAT** (redix-api #96, D4; Muteb, 7 November 2026: "store only the invoice amount; the VAT is printed in the report without storing it"). `VatStatement` is the one owner of what the statement holds: the period's approved purchases and approved sales invoices, quarter by quarter, each a total with its date, its party, its party's VAT number and what it was. The workbook works the VAT out of each total with a formula at the configured rate, `vatRatePercent` (D18, D19): `VAT = total × rate ÷ (100 + rate)`, on every row, whether its party has a VAT number or not: an empty number means nothing (Muteb, 7 Nov 2026: "if no vat number added when adding new supplier that is means nothing").
+**REDIX stores no VAT** (redix-api #96, D4; the owner, 7 November 2026: "store only the invoice amount; the VAT is printed in the report without storing it"). `VatStatement` is the one owner of what the statement holds: the period's approved purchases and approved sales invoices, quarter by quarter, each a total with its date, its party, its party's VAT number and what it was. The workbook works the VAT out of each total with a formula at the configured rate, `vatRatePercent` (D18, D19): `VAT = total × rate ÷ (100 + rate)`, on every row, whether its party has a VAT number or not: an empty number means nothing (the owner, 7 Nov 2026: "if no vat number added when adding new supplier that is means nothing").
 
 `ProjectFigures` splits revenue into capital, VAT refunds, sales and other by the type of the revenue item each entry came in on (BR-07).
 

@@ -5,7 +5,7 @@ description: How REDIX API code is written - best practice of Go and its standar
 
 # REDIX code standard (API)
 
-> "Our code must be best practice, simple, clean and structured well. No customizations or workarounds, as we follow the business." — Muteb, 1 November 2026
+> "Our code must be best practice, simple, clean and structured well. No customizations or workarounds, as we follow the business." — the owner, 1 November 2026
 
 The API is Go with SQLite, in `go-backend/`, since 17 November 2026 (redix-api #140).
 

@@ -30,7 +30,7 @@ func approved(t *testing.T) api {
 	}
 	a.Exec(`INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, 'ApproveProjects')`, uuid.NewString(), admin)
 	a.token = a.Token(manager, false)
-	code, answer := a.Ask("POST", "/projects", `{"name":"غصون","startDate":"2026-11-01","units":[]}`, a.token)
+	code, answer := a.Ask("POST", "/projects", `{"name":"مشروع A","startDate":"2026-11-01","units":[]}`, a.token)
 	if code != 201 {
 		t.Fatalf("start: %d %v", code, answer)
 	}
@@ -99,10 +99,10 @@ func body(name string, accountIDs ...string) string {
 	return string(sent)
 }
 
-// R3 (Muteb, 12 Nov 2026): a payment method pays from the accounts its dialog ticks, and a change to them is the method's History line.
+// R3 (the owner, 12 Nov 2026): a payment method pays from the accounts its dialog ticks, and a change to them is the method's History line.
 func TestR3_AMethodPaysFromTheAccountsItsDialogTicks(t *testing.T) {
 	a := approved(t)
-	bank, custody := a.account("حساب المؤسسة"), a.account("عهدة متعب")
+	bank, custody := a.account("حساب المؤسسة"), a.account("عهدة A")
 	method := a.added(body("نقداً", custody), "نقداً")
 	if got := a.methods()[method]; !slices.Equal(got, []string{custody}) {
 		t.Fatalf("the new method pays from %v, not the custody alone", got)
@@ -120,7 +120,7 @@ func TestR3_AMethodPaysFromTheAccountsItsDialogTicks(t *testing.T) {
 	}
 }
 
-// R4 and D1b (Muteb, 17 Nov 2026): a method naming no accounts pays from every one, and an account added later is paid from by every method of its
+// R4 and D1b (the owner, 17 Nov 2026): a method naming no accounts pays from every one, and an account added later is paid from by every method of its
 // project, the ones copied from the template among them.
 func TestR4_D1b_EveryMethodPaysFromEveryAccountUntilOneIsUnticked(t *testing.T) {
 	a := approved(t)
@@ -168,7 +168,7 @@ func TestR10_AMethodPaysFromAtLeastOneOfTheProjectsAccounts(t *testing.T) {
 // R5: the API refuses an expense whose account its payment method does not pay from, and takes it once the account is ticked.
 func TestR5_AnExpenseGoesOnlyThroughAnAccountItsMethodPaysFrom(t *testing.T) {
 	a := approved(t)
-	bank, custody := a.account("حساب المؤسسة"), a.account("عهدة متعب")
+	bank, custody := a.account("حساب المؤسسة"), a.account("عهدة A")
 	category := testapi.Field(a.ask("POST", "/categories", `{"name":"الحديد"}`, 201), "id").(string)
 	item := testapi.Field(a.ask("POST", "/categories/"+category+"/items", `{"name":"التسليح","type":"purchases"}`, 201), "id").(string)
 	var table string

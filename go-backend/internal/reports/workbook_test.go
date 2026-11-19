@@ -121,7 +121,7 @@ func category(name string, kind structure.ItemType, items ...entries.ItemReport)
 }
 
 func reportOf(items ...entries.ItemReport) snapshot {
-	report := snapshot{ProjectName: "غصون 6", Number: 1, IssuedAt: moment.Of(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)), Items: items}
+	report := snapshot{ProjectName: "مشروع A", Number: 1, IssuedAt: moment.Of(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)), Items: items}
 	for _, one := range items {
 		report.Expenses = report.Expenses.Plus(one.Total)
 	}
@@ -148,7 +148,7 @@ func open(t *testing.T, content []byte, err error) opened {
 }
 
 func itemWorkbook(t *testing.T, report entries.ItemReport) opened {
-	content, err := workbookOf("غصون 6", report, nil)
+	content, err := workbookOf("مشروع A", report, nil)
 	return open(t, content, err)
 }
 
@@ -380,7 +380,7 @@ func TestR129_EverySheetPrintsOnA4OneWideWithTheProjectAndReportNumberAtItsFootA
 			t.Errorf("%s does not print on A4 one page wide: %+v %v", sheet, layout, err)
 		}
 		footer, _ := book.file.GetHeaderFooter(sheet)
-		book.want(footer.OddFooter, "&L&A&C&P / &N&Rغصون 6 · التقرير 1", sheet+"'s foot")
+		book.want(footer.OddFooter, "&L&A&C&P / &N&Rمشروع A · التقرير 1", sheet+"'s foot")
 	}
 	portrait, _ := book.file.GetPageLayout("الرسوم")
 	landscape, _ := book.file.GetPageLayout("بلاط")
@@ -483,9 +483,9 @@ func TestAC_46_10_ACategoryOfOneItemIsOneLineAndOnlyACategoryOfMoreItemsHasADeta
 
 func TestAC_46_11_EveryColumnFitsItsContentAndTextPastFortyFiveCharactersWraps(t *testing.T) {
 	long := strings.TrimSpace(strings.Repeat("دفعات المكتب الهندسي ", 6))
-	line := entries.ReportRow{EntryID: uuid.New(), Date: moment.Date{Time: time.Date(2025, 7, 5, 0, 0, 0, 0, time.UTC)}, Amount: amountOf(590400),
+	line := entries.ReportRow{EntryID: uuid.New(), Date: moment.Date{Time: time.Date(2025, 7, 5, 0, 0, 0, 0, time.UTC)}, Amount: amountOf(500000),
 		Values: []string{long, "2025-07-05", "", "", ""}}
-	content, err := workbookOf("غصون 6", item("الرسوم", "الرسوم والفواتير", subgroup("", line)), nil)
+	content, err := workbookOf("مشروع A", item("الرسوم", "الرسوم والفواتير", subgroup("", line)), nil)
 	book := open(t, content, err)
 	sheet := book.first()
 	width, _ := book.file.GetColWidth(sheet, "B")
@@ -502,7 +502,7 @@ func TestAC_46_11_EveryColumnFitsItsContentAndTextPastFortyFiveCharactersWraps(t
 }
 
 func TestFindings131_TheContractsWorkbookIsOneStatementTableOfWhatEachContractHasLeft(t *testing.T) {
-	content, err := contractsWorkbookOf("غصون 6", []contracts.View{{SupplierName: "شركة النخيل", ItemName: "الحفر", Value: amountOf(1000), Remaining: countedOf(1000)}})
+	content, err := contractsWorkbookOf("مشروع A", []contracts.View{{SupplierName: "شركة النخيل", ItemName: "الحفر", Value: amountOf(1000), Remaining: countedOf(1000)}})
 	book := open(t, content, err)
 	sheet := book.first()
 	book.want(book.text(sheet, "A1"), "العقود", "A1")

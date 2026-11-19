@@ -53,7 +53,7 @@ func TestTheNetCatchesAChangedRowWithNoHistoryLine(t *testing.T) {
 	database := withUser(t)
 	net := &caught{T: t}
 	Check(net, database, func() {
-		exec(t, database, "UPDATE users SET display_name = 'نواف'")
+		exec(t, database, "UPDATE users SET display_name = 'B'")
 	})
 	if len(net.failures) != 1 {
 		t.Errorf("%v", net.failures)
@@ -64,12 +64,12 @@ func TestTheNetPassesAChangeWithItsLineAndAnExemptTableWithout(t *testing.T) {
 	database := withUser(t)
 	net := &caught{T: t}
 	Check(net, database, func() {
-		exec(t, database, "UPDATE users SET display_name = 'نواف'")
+		exec(t, database, "UPDATE users SET display_name = 'B'")
 		exec(t, database, `INSERT INTO devices (id, user_id, refresh_token_hash, refresh_expires_at, is_revoked, uses_biometrics, last_seen_at)
 			VALUES (?, ?, 'HASH', '2026-11-17T10:00:00.0000000Z', 0, 0, '2026-11-16T10:00:00.0000000Z')`, uuid.NewString(), user.String())
 		err := database.InTx(context.Background(), func(q *store.Queries) error {
 			return history.Write(context.Background(), q, moment.Of(time.Now()), user, history.Update, history.Change{Table: "Users", RecordID: user,
-				Before: map[string]any{"DisplayName": "Manager"}, After: map[string]any{"DisplayName": "نواف"}})
+				Before: map[string]any{"DisplayName": "Manager"}, After: map[string]any{"DisplayName": "B"}})
 		})
 		if err != nil {
 			t.Fatal(err)

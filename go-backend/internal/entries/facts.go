@@ -195,7 +195,7 @@ func (f facts) tableOf(entry store.Entry) uuid.UUID {
 }
 
 // accountWaitingOf is what waits to leave the entry's account: every entry taking money out of it that waits for approval, and the entry itself
-// while it is a draft (Muteb, 10 Nov 2026).
+// while it is a draft (the owner, 10 Nov 2026).
 func (f facts) accountWaitingOf(entry store.Entry) fixed.Total {
 	waiting := f.waitingOut[entry.AccountID]
 	if entry.Status == draft && signed(entry.Kind, fixed.Counted(entry.Amount)).Number() < 0 {

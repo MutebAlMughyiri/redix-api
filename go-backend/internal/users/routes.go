@@ -494,7 +494,7 @@ type roleNameRequest struct {
 	RoleName string `json:"roleName"`
 }
 
-// setRoleName gives someone in the project a free-text role name, "" taking it away (Muteb, 9 Nov 2026): invalidRoleName (400) past 50 characters.
+// setRoleName gives someone in the project a free-text role name, "" taking it away (the owner, 9 Nov 2026): invalidRoleName (400) past 50 characters.
 func (u Routes) setRoleName(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request roleNameRequest
 	if !web.Read(w, r, &request) {

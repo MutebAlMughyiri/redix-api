@@ -470,7 +470,7 @@ Other indexes: `project_id, status`; `user_id`; `status`.
 
 ### project_role_names
 
-What each person is called in each project, a label only (Muteb, 9 Nov 2026).
+What each person is called in each project, a label only (the owner, 9 Nov 2026).
 
 | Column | Type | Null | Key | Points at |
 | --- | --- | --- | --- | --- |
@@ -1064,7 +1064,7 @@ Other indexes: `account_id`.
 
 ### partners
 
-The partners of each project (UC-016); each is a table of the project's one capital item (redix-api #109), which no partner stores: it is read from the project (`ProjectStructure.CapitalItemOf`, Muteb, 16 Nov 2026).
+The partners of each project (UC-016); each is a table of the project's one capital item (redix-api #109), which no partner stores: it is read from the project (`ProjectStructure.CapitalItemOf`, the owner, 16 Nov 2026).
 
 | Column | Type | Null | Key | Points at |
 | --- | --- | --- | --- | --- |

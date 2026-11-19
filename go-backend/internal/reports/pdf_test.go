@@ -115,13 +115,13 @@ func TestAC_54_6_G6_ThePdfShowsTheEntrysNumber(t *testing.T) {
 func TestFR31_TheContractsPdfShowsEachContractsValuePaidAndWhatIsLeftAndAnOverrun(t *testing.T) {
 	list := []contracts.View{{SupplierName: "مؤسسة الدهان", ItemName: "بويه", Value: amountOf(1000), Paid: countedOf(1200), Remaining: countedOf(-200), IsOverrun: true},
 		{SupplierName: "الحارس", ItemName: "الحراسة", IsOpenValue: true, Paid: countedOf(300)}}
-	pages := pagesOf(t, contractsDocumentOf("غصون 6", list))
+	pages := pagesOf(t, contractsDocumentOf("مشروع A", list))
 	for _, figure := range []string{"1,000.00", "1,200.00", "(200.00)", "300.00"} {
 		if !strings.Contains(pages[0], figure) {
 			t.Errorf("the contracts PDF lacks %s", figure)
 		}
 	}
-	document := contractsDocumentOf("غصون 6", list)
+	document := contractsDocumentOf("مشروع A", list)
 	rows := document.Pages[0].Blocks[0].Rows
 	if !strings.HasSuffix(rows[0].Cells[0].Text, " · متجاوز") || !rows[0].Cells[0].Strong || rows[1].Cells[2].Text != "مفتوحة" || rows[1].Cells[4].Text != "" {
 		t.Errorf("an overrun is not marked, or an open value shows a figure: %+v", rows)

@@ -107,7 +107,7 @@ func TestR4_OnlyDevAndQaServeTheAPIDocument(t *testing.T) {
 	}
 }
 
-// Dev and QA name no domain, so they answer plain HTTP on Urls, as on Muteb's PC today (#145 D1).
+// Dev and QA name no domain, so they answer plain HTTP on Urls, as on the owner's PC today (#145 D1).
 func TestR11_DevAndQaNameNoDomain(t *testing.T) {
 	for _, name := range []string{"Dev", "QA"} {
 		settings, err := Read(lookupIn(map[string]string{"REDIX_Environment": name, "REDIX_Jwt__SigningKey": key}))

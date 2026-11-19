@@ -26,7 +26,7 @@ type Sender interface {
 	Deliver(ctx context.Context, to, subject, body string) error
 }
 
-// SenderOf is the sender the settings name: the mail server at smtpAddress when one is named, otherwise the folder, as on Muteb's PC.
+// SenderOf is the sender the settings name: the mail server at smtpAddress when one is named, otherwise the folder, as on the owner's PC.
 func SenderOf(smtpAddress, from, folder string) Sender {
 	if smtpAddress != "" {
 		return Smtp{Address: smtpAddress, From: from}
@@ -35,7 +35,7 @@ func SenderOf(smtpAddress, from, folder string) Sender {
 }
 
 // Smtp hands each email to the mail server at Address, from From: on the published server, Postfix on that same machine, which sends it on
-// (Muteb, 17 Nov 2026, redix-api #127 and #145). It listens there alone, so it asks for no password and offers no TLS.
+// (the owner, 17 Nov 2026, redix-api #127 and #145). It listens there alone, so it asks for no password and offers no TLS.
 type Smtp struct {
 	Address, From string
 }

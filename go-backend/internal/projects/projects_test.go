@@ -34,7 +34,7 @@ func (a api) person(username string, admin bool) (uuid.UUID, string) {
 // started is a project the token's person starts, approved straight in the database when approved is true.
 func (a api) started(token string, approved bool) string {
 	a.t.Helper()
-	code, answer := a.Ask("POST", "/projects", `{"name":"غصون","startDate":"2026-11-01","units":["أ","ب"],"partners":["شريك"]}`, token)
+	code, answer := a.Ask("POST", "/projects", `{"name":"مشروع A","startDate":"2026-11-01","units":["أ","ب"],"partners":["شريك"]}`, token)
 	if code != 201 {
 		a.t.Fatalf("start: %d %v", code, answer)
 	}
@@ -48,13 +48,13 @@ func (a api) started(token string, approved bool) string {
 func TestUC004_StartingAProjectMakesItsStarterItsManagerWaitingForTheAdmin(t *testing.T) {
 	a := newAPI(t)
 	starter, token := a.person("starter", false)
-	answered := a.Send("POST", "/projects", `{"name":" غصون ","startDate":"2026-11-01","units":[" أ ","ب"],"description":" وصف ","partners":["شريك"]}`,
+	answered := a.Send("POST", "/projects", `{"name":" مشروع A ","startDate":"2026-11-01","units":[" أ ","ب"],"description":" وصف ","partners":["شريك"]}`,
 		"Authorization", "Bearer "+token)
 	if answered.Code != 201 || !strings.HasPrefix(answered.Header().Get("Location"), "/projects/") {
 		t.Fatalf("%d %s", answered.Code, answered.Body)
 	}
 	body := answered.Body.String()
-	for _, want := range []string{`"name":"غصون"`, `"status":"pendingApproval"`, `"description":"وصف"`, `"permissions":[]`, `"holdsEntries":false`, `"name":"أ"`} {
+	for _, want := range []string{`"name":"مشروع A"`, `"status":"pendingApproval"`, `"description":"وصف"`, `"permissions":[]`, `"holdsEntries":false`, `"name":"أ"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("%s not in %s", want, body)
 		}
@@ -71,12 +71,12 @@ func TestUC004_AProjectIsRefusedForEachReason(t *testing.T) {
 	a := newAPI(t)
 	_, token := a.person("starter", false)
 	for body, want := range map[string]string{
-		`{"name":"","startDate":"2026-11-01","units":[]}`:                                                       "invalidName",
-		`{"name":"غصون","startDate":"2026-11-01","units":["أ"," أ "]}`:                                          "unitNameTaken",
-		`{"name":"غصون","startDate":"2026-11-01","units":[""]}`:                                                 "invalidName",
-		`{"name":"غصون","startDate":"2026-11-01","units":[],"partners":[""]}`:                                   "invalidName",
-		`{"name":"غصون","startDate":"2026-11-01","units":[],"description":"` + strings.Repeat("و", 2001) + `"}`: "invalidDescription",
-		`{"name":"غصون","startDate":"2026-11-01","units":[],"structureSourceId":"` + uuid.NewString() + `"}`:    "unknownSource",
+		`{"name":"","startDate":"2026-11-01","units":[]}`:                                                          "invalidName",
+		`{"name":"مشروع A","startDate":"2026-11-01","units":["أ"," أ "]}`:                                          "unitNameTaken",
+		`{"name":"مشروع A","startDate":"2026-11-01","units":[""]}`:                                                 "invalidName",
+		`{"name":"مشروع A","startDate":"2026-11-01","units":[],"partners":[""]}`:                                   "invalidName",
+		`{"name":"مشروع A","startDate":"2026-11-01","units":[],"description":"` + strings.Repeat("و", 2001) + `"}`: "invalidDescription",
+		`{"name":"مشروع A","startDate":"2026-11-01","units":[],"structureSourceId":"` + uuid.NewString() + `"}`:    "unknownSource",
 	} {
 		if code, answer := a.Ask("POST", "/projects", body, token); code != 400 || testapi.Field(answer, "code") != want {
 			t.Errorf("%.60s: %d %v, want %s", body, code, answer, want)
@@ -86,19 +86,19 @@ func TestUC004_AProjectIsRefusedForEachReason(t *testing.T) {
 
 func TestUC066_SomeoneWithNoAccountRegistersAProjectAndTheAdminSeesItWaiting(t *testing.T) {
 	a := newAPI(t)
-	code, answer := a.Ask("POST", "/projects/register", `{"name":"مشروع","startDate":"2026-11-05","units":["أ"],"displayName":"نواف","username":"nawaf",
+	code, answer := a.Ask("POST", "/projects/register", `{"name":"مشروع","startDate":"2026-11-05","units":["أ"],"displayName":"B","username":"b",
 		"mobile":"0500000000","password":"Register-1"}`, "")
 	if code != 201 || testapi.Field(answer, "status") != "pendingApproval" {
 		t.Fatalf("%d %v", code, answer)
 	}
-	if code, answer := a.Ask("POST", "/projects/register", `{"name":"مشروع","startDate":"2026-11-05","units":[],"displayName":"x","username":"NAWAF",
+	if code, answer := a.Ask("POST", "/projects/register", `{"name":"مشروع","startDate":"2026-11-05","units":[],"displayName":"x","username":"B",
 		"mobile":"","password":"Register-1"}`, ""); code != 409 || testapi.Field(answer, "code") != "usernameTaken" {
 		t.Errorf("a taken username: %d %v", code, answer)
 	}
 	_, admin := a.person("admin", true)
 	_, waiting := a.Ask("GET", "/projects/registered", "", admin)
 	listed := waiting.([]any)
-	if len(listed) != 1 || testapi.Field(listed[0], "managerUsername") != "nawaf" || testapi.Field(listed[0], "managerMobile") != "0500000000" {
+	if len(listed) != 1 || testapi.Field(listed[0], "managerUsername") != "b" || testapi.Field(listed[0], "managerMobile") != "0500000000" {
 		t.Errorf("%v", waiting)
 	}
 	_, someone := a.person("someone", false)
@@ -130,7 +130,7 @@ func TestFR04_AManagerRenamesDescribesAndKeepsTheUnits(t *testing.T) {
 	a := newAPI(t)
 	_, token := a.person("starter", false)
 	project := "/projects/" + a.started(token, true)
-	if code, answer := a.Ask("PUT", project, `{"name":" غصون ٦ "}`, token); code != 200 || testapi.Field(answer, "name") != "غصون ٦" {
+	if code, answer := a.Ask("PUT", project, `{"name":" مشروع B "}`, token); code != 200 || testapi.Field(answer, "name") != "مشروع B" {
 		t.Errorf("rename: %d %v", code, answer)
 	}
 	if code, answer := a.Ask("PUT", project+"/description", `{"description":"وصف"}`, token); code != 200 || testapi.Field(answer, "description") != "وصف" {
@@ -260,7 +260,7 @@ func TestFR05_AChosenSourceGivesItsActiveStructureAndTheTemplatesPaymentMethods(
 		"payment methods": 3,
 		"general cash":    1,
 	}
-	code, answer := a.Ask("POST", "/projects", `{"name":"غصون ٧","startDate":"2026-11-10","units":[],"structureSourceId":"`+source+`"}`, token)
+	code, answer := a.Ask("POST", "/projects", `{"name":"مشروع B","startDate":"2026-11-10","units":[],"structureSourceId":"`+source+`"}`, token)
 	if code != 201 {
 		t.Fatalf("start from a source: %d %v", code, answer)
 	}

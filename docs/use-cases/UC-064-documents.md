@@ -16,7 +16,7 @@ A document is any file of at most 25 MB, kept in the attachment store outside th
 
 Its group is a free name of at most 100 letters, empty for none. It only groups the list: no unit, report or other part of REDIX reads it.
 
-These answers were decided with Muteb on 7 November 2026 (redix-api 92 "Documents in place of المخططات: add one with a name and its file"), replacing the blueprints: no unit, any file type, an optional group; many documents per group, with no version history; a removed one leaves only the list, since no file is ever deleted (NFR-11).
+These answers were decided with the owner on 7 November 2026 (redix-api 92 "Documents in place of المخططات: add one with a name and its file"), replacing the blueprints: no unit, any file type, an optional group; many documents per group, with no version history; a removed one leaves only the list, since no file is ever deleted (NFR-11).
 
 Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
 

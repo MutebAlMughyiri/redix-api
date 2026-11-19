@@ -61,7 +61,7 @@ func NewBook(footer, summaryName string) *Book {
 }
 
 // NewWorkbook is a workbook in Excel's own look rather than the statement's: Calibri 11, no page setup and no footer, as the VAT statement's
-// workbook for the accountant keeps it (Muteb, 17 Nov 2026, #76 row 267).
+// workbook for the accountant keeps it (the owner, 17 Nov 2026, #76 row 267).
 func NewWorkbook() *Book {
 	book := NewBook("", "")
 	book.plain = true

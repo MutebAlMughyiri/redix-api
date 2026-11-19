@@ -2,7 +2,7 @@
 
 # UC-010: Set the default project
 
-**What it is for:** opening the usual project straight after sign-in (FR-37): a default project always opens directly (Muteb, 8 Nov 2026).
+**What it is for:** opening the usual project straight after sign-in (FR-37): a default project always opens directly (the owner, 8 Nov 2026).
 **Who uses it:** anyone signed in, for themselves.
 **Issue:** redix-api #28; the app side is redix-app #29.
 

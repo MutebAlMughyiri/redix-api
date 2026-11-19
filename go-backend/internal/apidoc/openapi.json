@@ -3992,7 +3992,7 @@
     },
     "/files/{link}": {
       "get": {
-        "description": "readByLink is the file a signed link opens, with no sign-in (FileLinks, Muteb, 16 Nov 2026); 404 for a link expired, changed or never made.",
+        "description": "readByLink is the file a signed link opens, with no sign-in (FileLinks, the owner, 16 Nov 2026); 404 for a link expired, changed or never made.",
         "parameters": [
           {
             "in": "path",
@@ -4029,7 +4029,7 @@
           }
         },
         "security": [],
-        "summary": "readByLink is the file a signed link opens, with no sign-in (FileLinks, Muteb, 16 Nov 2026); 404 for a link expired, changed or never made.",
+        "summary": "readByLink is the file a signed link opens, with no sign-in (FileLinks, the owner, 16 Nov 2026); 404 for a link expired, changed or never made.",
         "tags": [
           "attachments"
         ]
@@ -5090,7 +5090,7 @@
     },
     "/projects/{projectId}/approvals/history": {
       "get": {
-        "description": "approvalHistory is a page of the project's approval history (ApprovalHistory, Muteb 12 Nov 2026): every entry approved or rejected, by whom and when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.\n\nAccess: needs the ApproveEntries permission.",
+        "description": "approvalHistory is a page of the project's approval history (ApprovalHistory, the owner 12 Nov 2026): every entry approved or rejected, by whom and when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.\n\nAccess: needs the ApproveEntries permission.",
         "parameters": [
           {
             "in": "path",
@@ -5155,7 +5155,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "approvalHistory is a page of the project's approval history (ApprovalHistory, Muteb 12 Nov 2026): every entry approved or rejected, by whom and when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.",
+        "summary": "approvalHistory is a page of the project's approval history (ApprovalHistory, the owner 12 Nov 2026): every entry approved or rejected, by whom and when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.",
         "tags": [
           "entries"
         ]
@@ -6944,7 +6944,7 @@
     },
     "/projects/{projectId}/entries": {
       "get": {
-        "description": "list is the entries of the project the caller may see, newest first (Muteb, 8 Nov 2026), those a search keeps when anything narrows them (redix-app #104), the newest take of them when take is above 0 (redix-app #105), and with attachable only those a shared file can go on (redix-app #115 D6).\n\nAccess: needs the ReadProject permission.",
+        "description": "list is the entries of the project the caller may see, newest first (the owner, 8 Nov 2026), those a search keeps when anything narrows them (redix-app #104), the newest take of them when take is above 0 (redix-app #105), and with attachable only those a shared file can go on (redix-app #115 D6).\n\nAccess: needs the ReadProject permission.",
         "parameters": [
           {
             "in": "path",
@@ -7030,7 +7030,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "list is the entries of the project the caller may see, newest first (Muteb, 8 Nov 2026), those a search keeps when anything narrows them (redix-app #104), the newest take of them when take is above 0 (redix-app #105), and with attachable only those a shared file can go on (redix-app #115 D6).",
+        "summary": "list is the entries of the project the caller may see, newest first (the owner, 8 Nov 2026), those a search keeps when anything narrows them (redix-app #104), the newest take of them when take is above 0 (redix-app #105), and with attachable only those a shared file can go on (redix-app #115 D6).",
         "tags": [
           "entries"
         ]
@@ -8511,7 +8511,7 @@
     },
     "/projects/{projectId}/items/{itemId}/subgroups": {
       "post": {
-        "description": "addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400) for an item that takes no purchases, since a sub-table holds purchases (Muteb, 7 Nov 2026).\n\nAccess: needs the ManageStructure permission.",
+        "description": "addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400) for an item that takes no purchases, since a sub-table holds purchases (the owner, 7 Nov 2026).\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -8567,7 +8567,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400) for an item that takes no purchases, since a sub-table holds purchases (Muteb, 7 Nov 2026).",
+        "summary": "addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400) for an item that takes no purchases, since a sub-table holds purchases (the owner, 7 Nov 2026).",
         "tags": [
           "structure"
         ]
@@ -8861,7 +8861,7 @@
     },
     "/projects/{projectId}/items/{itemId}/type": {
       "put": {
-        "description": "changeItemType changes what an item is for (FR-38): while no entry names it, or itemHasEntries, and no contract, or itemHasContract - though an item of purchases or of contractor payments may always become both (Muteb, 7 Nov 2026); never an item whose tables are partners, itemHasPartners; never a second capital item, capitalItemExists. Its built-in columns become the project's default columns of the new type, and the columns a person added stay, after them.\n\nAccess: needs the ManageStructure permission.",
+        "description": "changeItemType changes what an item is for (FR-38): while no entry names it, or itemHasEntries, and no contract, or itemHasContract - though an item of purchases or of contractor payments may always become both (the owner, 7 Nov 2026); never an item whose tables are partners, itemHasPartners; never a second capital item, capitalItemExists. Its built-in columns become the project's default columns of the new type, and the columns a person added stay, after them.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -8907,7 +8907,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "changeItemType changes what an item is for (FR-38): while no entry names it, or itemHasEntries, and no contract, or itemHasContract - though an item of purchases or of contractor payments may always become both (Muteb, 7 Nov 2026); never an item whose tables are partners, itemHasPartners; never a second capital item, capitalItemExists.",
+        "summary": "changeItemType changes what an item is for (FR-38): while no entry names it, or itemHasEntries, and no contract, or itemHasContract - though an item of purchases or of contractor payments may always become both (the owner, 7 Nov 2026); never an item whose tables are partners, itemHasPartners; never a second capital item, capitalItemExists.",
         "tags": [
           "structure"
         ]
@@ -10645,7 +10645,7 @@
     },
     "/projects/{projectId}/reports/contracts/{contractId}": {
       "get": {
-        "description": "contractReportRoute is the report of one contract, as the Contracts screen opens it (Muteb, 12 Nov 2026): its item's report holding that contract's table alone; 404 for a contract of another project.\n\nAccess: needs the SeeReports permission.",
+        "description": "contractReportRoute is the report of one contract, as the Contracts screen opens it (the owner, 12 Nov 2026): its item's report holding that contract's table alone; 404 for a contract of another project.\n\nAccess: needs the SeeReports permission.",
         "parameters": [
           {
             "in": "path",
@@ -10688,7 +10688,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "contractReportRoute is the report of one contract, as the Contracts screen opens it (Muteb, 12 Nov 2026): its item's report holding that contract's table alone; 404 for a contract of another project.",
+        "summary": "contractReportRoute is the report of one contract, as the Contracts screen opens it (the owner, 12 Nov 2026): its item's report holding that contract's table alone; 404 for a contract of another project.",
         "tags": [
           "entries"
         ]
@@ -10696,7 +10696,7 @@
     },
     "/projects/{projectId}/reports/contracts/{contractId}/pdf": {
       "get": {
-        "description": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); 404 for a contract of another project.\n\nAccess: needs the GenerateReports permission.",
+        "description": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (the owner, 12 Nov 2026); 404 for a contract of another project.\n\nAccess: needs the GenerateReports permission.",
         "parameters": [
           {
             "in": "path",
@@ -10732,7 +10732,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); 404 for a contract of another project.",
+        "summary": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (the owner, 12 Nov 2026); 404 for a contract of another project.",
         "tags": [
           "reports"
         ]
@@ -10740,7 +10740,7 @@
     },
     "/projects/{projectId}/reports/contracts/{contractId}/xlsx": {
       "get": {
-        "description": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); 404 for a contract of another project.\n\nAccess: needs the GenerateReports permission.",
+        "description": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (the owner, 12 Nov 2026); 404 for a contract of another project.\n\nAccess: needs the GenerateReports permission.",
         "parameters": [
           {
             "in": "path",
@@ -10776,7 +10776,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (Muteb, 12 Nov 2026); 404 for a contract of another project.",
+        "summary": "contractFile is one contract's report as a PDF or a workbook, from the item report's own writers (the owner, 12 Nov 2026); 404 for a contract of another project.",
         "tags": [
           "reports"
         ]
@@ -12435,7 +12435,7 @@
     },
     "/projects/{projectId}/users/{userId}/role-name": {
       "put": {
-        "description": "setRoleName gives someone in the project a free-text role name, \"\" taking it away (Muteb, 9 Nov 2026): invalidRoleName (400) past 50 characters.\n\nAccess: needs the ManageUsers permission.",
+        "description": "setRoleName gives someone in the project a free-text role name, \"\" taking it away (the owner, 9 Nov 2026): invalidRoleName (400) past 50 characters.\n\nAccess: needs the ManageUsers permission.",
         "parameters": [
           {
             "in": "path",
@@ -12498,7 +12498,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "setRoleName gives someone in the project a free-text role name, \"\" taking it away (Muteb, 9 Nov 2026): invalidRoleName (400) past 50 characters.",
+        "summary": "setRoleName gives someone in the project a free-text role name, \"\" taking it away (the owner, 9 Nov 2026): invalidRoleName (400) past 50 characters.",
         "tags": [
           "users"
         ]

@@ -1,11 +1,11 @@
 ---
 name: names-say-the-business
-description: Every class, method, property, variable, column, route, enum value, word key and test in the REDIX API is named with the business word from the glossary, in full - an entry is an Entry, a capital movement a CapitalMovement, never a shortened or generic name. Use when adding or renaming anything in redix-api, when writing a test name, a doc comment, an issue or a message to Muteb, and when a name says Data, Item, Info or Dto where a business word belongs.
+description: Every class, method, property, variable, column, route, enum value, word key and test in the REDIX API is named with the business word from the glossary, in full - an entry is an Entry, a capital movement a CapitalMovement, never a shortened or generic name. Use when adding or renaming anything in redix-api, when writing a test name, a doc comment, an issue or a message to the owner, and when a name says Data, Item, Info or Dto where a business word belongs.
 ---
 
 # Names say the business word, in full
 
-> Brought from the Testin project, 12 November 2026. In Testin Muteb wrote: *"correct name will allow me and contributors to understand easily and any name should match our correct names in business."*
+> Brought from the Testin project, 12 November 2026. In Testin the owner wrote: *"correct name will allow me and contributors to understand easily and any name should match our correct names in business."*
 
 ## The one owner of the words
 
@@ -27,7 +27,7 @@ Measured 12 November 2026: no `var` or typed local or field in `src/` is named `
 
 **What may stay short:** Go's own idioms (`err`, `i` in a loop, `w` and `r` in a handler, `ctx`, `q` for the queries, `t` in a test).
 
-## Every sentence to Muteb too
+## Every sentence to the owner too
 
 Chats, designs, `AskUserQuestion` briefs and issues use the same words as the code and the screens: an entry (قيد) not "a record", a custody (عهدة) not "a balance". A word the glossary does not hold is added to the glossary first.
 

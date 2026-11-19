@@ -20,7 +20,7 @@ Each environment is a name, and the name alone picks the port, the database and 
 | Environment | Start it | Address | Database |
 | --- | --- | --- | --- |
 | dev, automated runs | `REDIX_Environment=Dev` | http://127.0.0.1:5010 | `RedixDev.db` in `%LOCALAPPDATA%\Redix` |
-| qa, Muteb's own testing | `REDIX_Environment=QA` | http://127.0.0.1:5012 | `RedixQA.db` in `%LOCALAPPDATA%\Redix` |
+| qa, the owner's own testing | `REDIX_Environment=QA` | http://127.0.0.1:5012 | `RedixQA.db` in `%LOCALAPPDATA%\Redix` |
 | Production | `REDIX_Environment=Prod`, by `deploy/setup.sh` | https://&lt;domain&gt;:8443 | `/var/lib/redix/prod/redix.db` |
 | qa and dev for testers, on the same server (#145 R25) | `QA` and `Dev`, by `deploy/setup.sh` | https://qa.&lt;domain&gt;:8444, https://dev.&lt;domain&gt;:8445 | `/var/lib/redix/qa/redix.db`, `/var/lib/redix/dev/redix.db` |
 

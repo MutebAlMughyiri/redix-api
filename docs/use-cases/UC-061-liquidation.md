@@ -2,7 +2,7 @@
 
 # UC-061: Liquidate and close a project
 
-**Retired on 8 Nov 2026:** Muteb removed liquidation and closing (التصفية والإغلاق). Its routes, its movement type and the report's التصفية line are gone; a project closes from Close project ([UC-006](UC-006-projects.md)), which no longer waits for a liquidation. The page stays as the record of what was built.
+**Retired on 8 Nov 2026:** the owner removed liquidation and closing (التصفية والإغلاق). Its routes, its movement type and the report's التصفية line are gone; a project closes from Close project ([UC-006](UC-006-projects.md)), which no longer waits for a liquidation. The page stays as the record of what was built.
 
 **Purpose:** end a project by sharing its final surplus among the partners by their shares, each part paid out or carried to a later project, or a deficit paid in, and then close it (FR-51, BR-27).
 

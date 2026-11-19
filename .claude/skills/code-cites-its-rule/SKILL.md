@@ -46,7 +46,7 @@ A comment naming a rule the BRS or the use case page does not hold is worse than
 
 ## When there is no rule yet
 
-Write the rule first. When the business is unclear or two rules disagree, stop: it is an open question for Muteb, never a guess in code (`redix-code-standard`).
+Write the rule first. When the business is unclear or two rules disagree, stop: it is an open question for the owner, never a guess in code (`redix-code-standard`).
 
 ## When a method carries no rule
 

@@ -16,7 +16,7 @@
 | `GET /projects/{id}/vat-statement/xlsx?from=&to=` | `GenerateReports` | The VAT statement's workbook, its VAT a formula on each total at `vatRatePercent` (redix-api #96, D19, D20) |
 | `GET /projects/{id}/reports/items/{itemId}/pdf`, `/xlsx` | `GenerateReports` | An item's report as files; رأس المال's holds only the partners the caller may see |
 | `GET /projects/{id}/reports/contracts/pdf`, `/xlsx` | `GenerateReports` | The contracts report as files |
-| `GET /projects/{id}/reports/contracts/{contractId}/pdf`, `/xlsx` | `GenerateReports` | One contract's report as files, from the item report's writers, for its ⋮ on Contracts (Muteb, 12 Nov 2026) |
+| `GET /projects/{id}/reports/contracts/{contractId}/pdf`, `/xlsx` | `GenerateReports` | One contract's report as files, from the item report's writers, for its ⋮ on Contracts (the owner, 12 Nov 2026) |
 
 **One table design (UC-067, FR-46).** Every sheet but الخلاصة is a list of tables written by `statement.Book`, the one layout; a builder (`reports.sheetOf`, `reports.contractsWorkbookOf`) only says what each table holds; رأس المال is an item like any other, its sheet a table per partner (redix-api #109). Every table prints its own columns, nothing fixed (redix-api #129, R1, R4): the columns of its item that print in the reports, in their order, «الوصف» first but on رأس المال, where «نوع الحركة» comes before it, each headed by its own name, then its amount column, headed by that column's name; a purchase table is never given what only a payment has, nor a payment what only a purchase has (`ReportColumns`). «سعر الوحدة» and «العدد» appear only on a table whose item has them, and «رقم الفاتورة» on none: a bill number entered before redix-api #96 D2 stays in `Invoices.Number`, for the VAT statement and the lists. A list's cell holds its choice's name; a file's says «فتح المرفق». «الوصف» is the entry's one description. The PDF draws the same tables. A report issued before redix-api #129 kept no columns of its tables, so its files print the amount alone.
 
@@ -24,7 +24,7 @@
 
 A report keeps every figure as issued, in `PeriodicReports.Snapshot`. What was approved after the previous report is new and shaded green, whatever its date (BR-26). `ReportFormats` is the one owner of how a file writes a number, a date and a sheet name, and of the embedded Arabic font (NFR-13). The PDFs use QuestPDF under its Community licence; the workbooks use ClosedXML.
 
-**Not proven:** AC-29.1, AC-45.2 and AC-47.1's totals are golden tests against report 23 and the accountant's file, which need the history of غصون 6 imported (UC-052). AC-33.1's "opens in Excel, Google Sheets and Numbers" has not been tried in those programs; the tests open each file with ClosedXML. Findings row 119 says what is left.
+**Not proven:** AC-29.1, AC-45.2 and AC-47.1's totals are golden tests against report 23 and the accountant's file, which need the history of Project A imported (UC-052). AC-33.1's "opens in Excel, Google Sheets and Numbers" has not been tried in those programs; the tests open each file with ClosedXML. Findings row 119 says what is left.
 
 Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
 

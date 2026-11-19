@@ -1,7 +1,7 @@
 // Copyright 2026 Tech Details. All rights reserved.
 // Use of this file is governed by the LICENSE file at the root of this repository.
 
-// Package zones holds the time zones a project may be in, and the one answer to which a project is in (redix-app #107; D3, Muteb 17 Nov 2026):
+// Package zones holds the time zones a project may be in, and the one answer to which a project is in (redix-app #107; D3, the owner 17 Nov 2026):
 // one short list, each zone by its IANA name and the word naming its city. The zone database is built into the binary, so a server without zone
 // files still knows them. Every moment stays UTC; only an entry's calendar day is counted in its project's zone.
 package zones

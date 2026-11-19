@@ -10,12 +10,12 @@
 | --- | --- |
 | `GET /projects/{id}/summary` | Revenue, expenses, the surplus, the reconciliation difference, what waits as two figures (`WaitingFigures`), each category and item's total, the capital with the partners' lines the caller may see (BR-31), the completion |
 | `GET /projects/{id}/reports/items/{itemId}` | An item's purchases by subgroup, then each contract with its payments |
-| `GET /projects/{id}/reports/contracts/{contractId}` | One contract's table, as the Contracts screen opens it: its item's report holding that contract alone (Muteb, 12 Nov 2026); another project's contract is not found |
+| `GET /projects/{id}/reports/contracts/{contractId}` | One contract's table, as the Contracts screen opens it: its item's report holding that contract alone (the owner, 12 Nov 2026); another project's contract is not found |
 | `GET /projects/{id}/contracts` | Each contract's value, paid, remaining and overrun (UC-020), which is the contracts report |
 
 `ItemTotals` is the one owner of what each item cost (BR-02). The summary reads it on every request, so an approval shows at once.
 
-**Completion is computed, not typed** (Muteb, 7 November 2026): `ProjectFigures.CompletionPercent` is the approved expenses as a percentage of revenue, to two decimals. It is 0 while nothing came in, and passes 100 once expenses pass revenue. UC-063 first had it typed by whoever holds `ManageProject`; cost is the approved expenses; everyone sees both.
+**Completion is computed, not typed** (the owner, 7 November 2026): `ProjectFigures.CompletionPercent` is the approved expenses as a percentage of revenue, to two decimals. It is 0 while nothing came in, and passes 100 once expenses pass revenue. UC-063 first had it typed by whoever holds `ManageProject`; cost is the approved expenses; everyone sees both.
 
 Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
 

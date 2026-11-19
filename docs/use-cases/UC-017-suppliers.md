@@ -8,9 +8,9 @@
 
 ## How it fits together
 
-A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is optional, and empty means nothing more than that none was given (Muteb, 7 Nov 2026: "if no vat number added when adding new supplier that is means nothing"); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
+A supplier belongs to one project (BR-33), so the same company in two projects is two rows, each with the same VAT number. `Suppliers.VatNumber` is optional, and empty means nothing more than that none was given (the owner, 7 Nov 2026: "if no vat number added when adding new supplier that is means nothing"); a filtered unique index holds a number to one supplier in a project, and lets any number of suppliers have none.
 
-A VAT number is optional and, when given, any number of at most 20 digits (BR-16; Muteb, 7 Nov 2026: "just a number has max 20 digit numbers and not required and can keep it empty with remove toogle not vat registered"). Two suppliers of a project still cannot share one.
+A VAT number is optional and, when given, any number of at most 20 digits (BR-16; the owner, 7 Nov 2026: "just a number has max 20 digit numbers and not required and can keep it empty with remove toogle not vat registered"). Two suppliers of a project still cannot share one.
 
 `SupplierDefaultItems` holds the item a supplier's expenses usually go to, one row at most. Its row has a foreign key to the item, which an empty value in a column could not have.
 
@@ -41,7 +41,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | Finance adds a supplier with its name, VAT number, mobile and default item (FR-06) | `suppliers.Add` | `FinanceAddsASupplierWithAllItsDetails` |
-| BR-16: a VAT number is empty or at most 20 digits; more, or anything but digits, is refused (Muteb, 7 Nov 2026) | `suppliers.refusalOf` | `SuppliersTests.BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused` |
+| BR-16: a VAT number is empty or at most 20 digits; more, or anything but digits, is refused (the owner, 7 Nov 2026) | `suppliers.refusalOf` | `SuppliersTests.BR_16_AVatNumberIsNoneOrAnyNumberOfAtMost20Digits`, `BR_16_AVatNumberOfMoreThan20DigitsOrAnythingButDigitsIsRefused` |
 | A number another supplier holds is refused, naming that supplier (AC-06.1) | `suppliers.refusalOf` | `AVatNumberAnotherSupplierHoldsIsRefusedNamingThatSupplier`, `AnEditToANumberAnotherSupplierHoldsIsRefused` |
 | A disabled supplier still holds its number | `suppliers.refusalOf` | `ADisabledSupplierStillHoldsItsVatNumber` |
 | The database holds a number to one supplier in a project | The unique index `ix_suppliers_project_id_vat_number` | `TheDatabaseHoldsAVatNumberToOneSupplierInAProject` |

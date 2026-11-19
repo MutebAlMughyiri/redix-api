@@ -30,7 +30,7 @@ type api struct {
 func newAPI(t *testing.T) api {
 	t.Helper()
 	a := api{API: testapi.New(t), t: t}
-	a.Exec(`INSERT INTO projects (id, name, start_date, status, rejection_reason, description, is_template) VALUES (?, 'غصون', '2026-11-01', 0, '', '', 0)`, project)
+	a.Exec(`INSERT INTO projects (id, name, start_date, status, rejection_reason, description, is_template) VALUES (?, 'مشروع A', '2026-11-01', 0, '', '', 0)`, project)
 	a.Exec(`INSERT INTO projects (id, name, start_date, status, rejection_reason, description, is_template) VALUES (?, 'أخرى', '2026-11-01', 0, '', '', 0)`, other)
 	a.Exec(`INSERT INTO partners (id, project_id, name, sort_order, is_deleted) VALUES (?, ?, 'شريك', 0, 0)`, partner, project)
 	a.manager = a.person("manager", "Manager", project, access.ReadProject, access.ManageUsers)
@@ -62,9 +62,9 @@ func (a api) users() string { return "/projects/" + project.String() + "/users" 
 
 func TestFR02_AManagerAddsSomeoneWithReadProjectTheTicksAPartnerAndARoleName(t *testing.T) {
 	a := newAPI(t)
-	code, answer := a.ask("POST", a.users(), `{"displayName":" نواف ","username":" nawaf ","mobile":"","email":"nawaf@example.com","temporaryPassword":"Temporary-1",
+	code, answer := a.ask("POST", a.users(), `{"displayName":" B ","username":" b ","mobile":"","email":"b@example.com","temporaryPassword":"Temporary-1",
 		"permissions":["recordEntries","seeChosenCapital"],"partnerIds":["`+partner.String()+`"],"roleName":" مشرف ميداني "}`, a.as(a.manager))
-	if code != 201 || field(answer, "username") != "nawaf" || field(answer, "displayName") != "نواف" || field(answer, "mustChangePassword") != true {
+	if code != 201 || field(answer, "username") != "b" || field(answer, "displayName") != "B" || field(answer, "mustChangePassword") != true {
 		t.Fatalf("%d %v", code, answer)
 	}
 	projects := field(answer, "projects").([]any)
@@ -80,7 +80,7 @@ func TestFR02_AManagerAddsSomeoneWithReadProjectTheTicksAPartnerAndARoleName(t *
 func TestFR02_ANewPersonIsRefusedForEachReason(t *testing.T) {
 	a := newAPI(t)
 	base := func(change string) string {
-		fields := map[string]any{"displayName": "نواف", "username": "nawaf", "mobile": "", "email": "nawaf@example.com", "temporaryPassword": "Temporary-1"}
+		fields := map[string]any{"displayName": "B", "username": "b", "mobile": "", "email": "b@example.com", "temporaryPassword": "Temporary-1"}
 		json.Unmarshal([]byte(change), &fields)
 		body, _ := json.Marshal(fields)
 		return string(body)
@@ -138,7 +138,7 @@ func TestD7_MembersComeInArabicDictionaryOrderTheInactiveLeftOut(t *testing.T) {
 
 func TestBR31_SeeingAllCapitalTakesSeeingChosenPartnersAwayAndItsPartners(t *testing.T) {
 	a := newAPI(t)
-	person := a.person("nawaf", "نواف", project, access.ReadProject)
+	person := a.person("b", "B", project, access.ReadProject)
 	path := a.users() + "/" + person.String()
 	token := a.as(a.manager)
 	if code, answer := a.ask("POST", path+"/partners/"+partner.String(), ``, token); code != 200 {
@@ -179,7 +179,7 @@ func TestBR29_TheLastActiveManagerKeepsManagingUsers(t *testing.T) {
 
 func TestUC126_TakingReadProjectTakesSomeoneOutWithTheirRoleNameAndBeingInactive(t *testing.T) {
 	a := newAPI(t)
-	person := a.person("nawaf", "نواف", project, access.ReadProject, access.RecordEntries)
+	person := a.person("b", "B", project, access.ReadProject, access.RecordEntries)
 	path := a.users() + "/" + person.String()
 	token := a.as(a.manager)
 	a.ask("PUT", path+"/role-name", `{"roleName":"مشرف"}`, token)
@@ -208,7 +208,7 @@ func TestUC007_EditingSomeoneInAProjectTheCallerDoesNotManageIsRefused(t *testin
 
 func TestUC007_AResetPasswordMustBeChangedAndSignsOutEveryDevice(t *testing.T) {
 	a := newAPI(t)
-	person := a.person("nawaf", "نواف", project, access.ReadProject)
+	person := a.person("b", "B", project, access.ReadProject)
 	theirs := a.as(person)
 	code, answer := a.ask("POST", "/users/"+person.String()+"/reset-password", `{"temporaryPassword":"Temporary-2"}`, a.as(a.manager))
 	if code != 200 || field(answer, "mustChangePassword") != true {

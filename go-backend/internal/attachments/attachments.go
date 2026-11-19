@@ -78,7 +78,7 @@ func (s Routes) read(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	s.send(w, r, attachment, err)
 }
 
-// readByLink is the file a signed link opens, with no sign-in (FileLinks, Muteb, 16 Nov 2026); 404 for a link expired, changed or never made.
+// readByLink is the file a signed link opens, with no sign-in (FileLinks, the owner, 16 Nov 2026); 404 for a link expired, changed or never made.
 func (s Routes) readByLink(w http.ResponseWriter, r *http.Request) {
 	attachment, err := s.database.Queries().AttachmentWithID(r.Context(), s.links.AttachmentOf(r.PathValue("link")))
 	s.send(w, r, attachment, err)
@@ -196,7 +196,7 @@ func Keep(c changes.Change, folder string, content []byte, fileName string, anyF
 }
 
 // typesByExtension is what a document's file is by its extension, the types .NET's FileExtensionContentTypeProvider answered: one table in
-// the API, never the machine's own, so a file reads the same on Muteb's PC and on the Ubuntu server, where .zip would read application/zip
+// the API, never the machine's own, so a file reads the same on the owner's PC and on the Ubuntu server, where .zip would read application/zip
 // and .dwg image/vnd.dwg (redix-api #145).
 var typesByExtension = map[string]string{
 	".pdf":  "application/pdf",

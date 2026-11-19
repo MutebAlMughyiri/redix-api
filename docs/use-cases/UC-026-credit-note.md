@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-**A credit note**, a مرتجع (BR-18), is a purchase whose «نوع القيد» is «مرتجع» (redix-api #129): «نوع القيد» is a list column of the purchase template, `entryType`, whose choices are «شراء» (+) and «مرتجع» (−), and the sign of the choice taken decides the total's direction. It is typed as a plain amount and kept as a negative `Entries.Amount`: its own row, as in Muteb's statement, so anything that adds up totals, an item total or the VAT statement, takes it away by itself. It names no bill (Muteb, 12 Nov 2026, redix-api #119 D4), so nothing caps it by what a bill counted, and it is approved like any entry, alone, whatever its supplier's bills stand at. The workbook prints its row negative in `#,##0.00;(#,##0.00)`, as his original statement does.
+**A credit note**, a مرتجع (BR-18), is a purchase whose «نوع القيد» is «مرتجع» (redix-api #129): «نوع القيد» is a list column of the purchase template, `entryType`, whose choices are «شراء» (+) and «مرتجع» (−), and the sign of the choice taken decides the total's direction. It is typed as a plain amount and kept as a negative `Entries.Amount`: its own row, as in the owner's statement, so anything that adds up totals, an item total or the VAT statement, takes it away by itself. It names no bill (the owner, 12 Nov 2026, redix-api #119 D4), so nothing caps it by what a bill counted, and it is approved like any entry, alone, whatever its supplier's bills stand at. The workbook prints its row negative in `#,##0.00;(#,##0.00)`, as his original statement does.
 
 **A deduction** (FR-14) is a negative amount typed as it is. It says why in its description (D14), and `Entries.Amount` carries the negative, which reduces the item total.
 

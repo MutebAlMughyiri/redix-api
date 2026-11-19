@@ -28,7 +28,7 @@ func approved(t *testing.T) api {
 	}
 	a.Exec(`INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, 'ApproveProjects')`, uuid.NewString(), admin)
 	a.token = a.Token(manager, false)
-	code, answer := a.Ask("POST", "/projects", `{"name":"غصون","startDate":"2026-11-01","units":[]}`, a.token)
+	code, answer := a.Ask("POST", "/projects", `{"name":"مشروع A","startDate":"2026-11-01","units":[]}`, a.token)
 	if code != 201 {
 		t.Fatalf("start: %d %v", code, answer)
 	}

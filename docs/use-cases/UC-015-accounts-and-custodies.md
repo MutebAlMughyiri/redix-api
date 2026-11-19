@@ -12,7 +12,7 @@ An account belongs to one project (BR-33). Its type is set when it is added and 
 
 `account_custodians` says who holds what, one row per account at most, and no row means nobody. It answers BRS open question 4: Field spends only from accounts they hold. `accounts.Routes.list`, asked for the offered ones, is that rule, and `GET .../accounts/offered` serves it. Finance holds `ChargeAnyAccount`, so it is offered every active account.
 
-`balance` is what the account's approved entries and transfers moved, by their sign (`AccountMoney`). An account has no opening balance since redix-app #89 (10 Nov 2026), Muteb's formula: revenue less expenses equals the total of actual balances.
+`balance` is what the account's approved entries and transfers moved, by their sign (`AccountMoney`). An account has no opening balance since redix-app #89 (10 Nov 2026), the owner's formula: revenue less expenses equals the total of actual balances.
 
 ## Endpoints
 

@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-A partner belongs to one project (BR-33), so someone who is a partner in two projects has two rows. A row of `partner_users` is the login whose capital this is, and no row means a partner with no login, as هيثم who withdrew; the answer's `userId` is empty then. The row points at the login, so the database refuses one that names nobody (findings row 214), and a unique index holds one login to one partner in a project. A deleted partner's row goes with the delete, so the login may be another partner's.
+A partner belongs to one project (BR-33), so someone who is a partner in two projects has two rows. A row of `partner_users` is the login whose capital this is, and no row means a partner with no login, as partner C who withdrew; the answer's `userId` is empty then. The row points at the login, so the database refuses one that names nobody (findings row 214), and a unique index holds one login to one partner in a project. A deleted partner's row goes with the delete, so the login may be another partner's.
 
 Who sees a partner is not this link: it is `PartnerSight`, from the two capital ticks and the partners chosen under the second (redix-api #106), so an accountant who sees the figures is never taken for a partner. Partners are not copied from an earlier project, because only the structure is (AC-05.2).
 

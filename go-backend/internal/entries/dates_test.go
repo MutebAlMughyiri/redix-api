@@ -31,7 +31,7 @@ func approved(t *testing.T, at time.Time) project {
 	}
 	a.Exec(`INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, 'ApproveProjects')`, uuid.NewString(), admin)
 	a.token = a.Token(manager, false)
-	_, answer := a.Ask("POST", "/projects", `{"name":"غصون","startDate":"2026-11-01","units":[]}`, a.token)
+	_, answer := a.Ask("POST", "/projects", `{"name":"مشروع A","startDate":"2026-11-01","units":[]}`, a.token)
 	a.path = "/projects/" + testapi.Field(answer, "id").(string)
 	a.Ask("POST", a.path+"/approve", ``, a.Token(admin, false))
 	a.Ask("POST", a.path+"/accounts", `{"name":"حساب المؤسسة","type":"bank"}`, a.token)
