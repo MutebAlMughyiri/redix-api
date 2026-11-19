@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -168,9 +169,9 @@ var sixDigits = regexp.MustCompile(`\b\d{6}\b`)
 func (e *Emails) LastCodeTo(address string) string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	for i := len(e.sent) - 1; i >= 0; i-- {
-		if e.sent[i].to == address {
-			return sixDigits.FindString(e.sent[i].body)
+	for _, sent := range slices.Backward(e.sent) {
+		if sent.to == address {
+			return sixDigits.FindString(sent.body)
 		}
 	}
 	return ""

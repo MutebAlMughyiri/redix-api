@@ -124,8 +124,7 @@ func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 			err = credentials.ErrNotValid
 		}
 	}
-	var lifetime credentials.LifetimeError
-	if errors.As(err, &lifetime) {
+	if lifetime, ok := errors.AsType[credentials.LifetimeError](err); ok {
 		g.challenge(w, r, `Bearer error="invalid_token", error_description="The token lifetime is invalid; NotBefore: '`+
 			lifetime.NotBefore.Format(dotNetMoment)+`', Expires: '`+lifetime.Expires.Format(dotNetMoment)+`'"`)
 		return Caller{}, false

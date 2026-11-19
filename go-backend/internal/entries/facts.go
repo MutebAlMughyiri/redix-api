@@ -4,6 +4,7 @@
 package entries
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -391,19 +392,10 @@ func (s search) keeps(row rowView) bool {
 	}
 	kind, _ := row.Kind.MarshalJSON()
 	status, _ := row.Status.MarshalJSON()
-	return (!s.mine || row.IsMine) && (s.number == 0 || row.Number == s.number) && (len(s.kinds) == 0 || contains(s.kinds, strings.Trim(string(kind), `"`))) &&
-		(len(s.statuses) == 0 || contains(s.statuses, strings.Trim(string(status), `"`))) && !row.EntryDate.Before(s.from) &&
+	return (!s.mine || row.IsMine) && (s.number == 0 || row.Number == s.number) && (len(s.kinds) == 0 || slices.Contains(s.kinds, strings.Trim(string(kind), `"`))) &&
+		(len(s.statuses) == 0 || slices.Contains(s.statuses, strings.Trim(string(status), `"`))) && !row.EntryDate.Before(s.from) &&
 		(s.to.IsZero() || !row.EntryDate.After(s.to)) &&
 		spelling.Holds(s.text, row.Amount, row.ItemName, row.PartnerName, row.SupplierName, row.AuthorName, row.InvoiceNumber)
-}
-
-func contains(list []string, value string) bool {
-	for _, one := range list {
-		if one == value {
-			return true
-		}
-	}
-	return false
 }
 
 // tableSeen says whether held sees entryID's table in projectID: always for an entry with none, a capital movement, whose partner the capital ticks

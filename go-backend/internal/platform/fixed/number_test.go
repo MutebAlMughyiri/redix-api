@@ -32,7 +32,7 @@ func TestBR13_AnAmountIsReadExactlyAndRoundedPastFourDecimalsAsSqlServerStoresIt
 
 func TestBR13_AddingAmountsNeverLosesAHalala(t *testing.T) {
 	var total Number
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		total += 1000
 	}
 	if total.String() != "100.0000" {

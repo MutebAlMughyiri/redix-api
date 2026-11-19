@@ -196,8 +196,7 @@ func hasEvery(sent map[string]json.RawMessage, request any) bool {
 }
 
 func hasFields(sent map[string]json.RawMessage, fields reflect.Type) bool {
-	for i := range fields.NumField() {
-		field := fields.Field(i)
+	for field := range fields.Fields() {
 		if field.Anonymous && field.Type.Kind() == reflect.Struct {
 			if !hasFields(sent, field.Type) {
 				return false
@@ -237,7 +236,7 @@ func Language(r *http.Request) string {
 		quality float64
 	}
 	var tags []tag
-	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
+	for part := range strings.SplitSeq(r.Header.Get("Accept-Language"), ",") {
 		name, parameters, _ := strings.Cut(strings.TrimSpace(part), ";")
 		quality := 1.0
 		if value, ok := strings.CutPrefix(strings.TrimSpace(parameters), "q="); ok {

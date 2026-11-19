@@ -356,7 +356,7 @@ func (c *Cell) width() float64 {
 		text = fmt.Sprint(value)
 	}
 	widest := 0
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		widest = max(widest, utf8.RuneCountInString(line))
 	}
 	return float64(widest)

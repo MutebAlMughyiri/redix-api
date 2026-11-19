@@ -13,6 +13,7 @@ import (
 	"go/token"
 	"go/types"
 	"log"
+	"maps"
 	"os"
 	"reflect"
 	"regexp"
@@ -734,9 +735,7 @@ func (g *generator) object(structure *types.Struct) map[string]any {
 		}
 		if inner, isStruct := dereference(field.Type()).Underlying().(*types.Struct); field.Embedded() && name == "" && isStruct {
 			embedded := g.object(inner)
-			for key, value := range embedded["properties"].(map[string]any) {
-				properties[key] = value
-			}
+			maps.Copy(properties, embedded["properties"].(map[string]any))
 			required = append(required, embedded["required"].([]string)...)
 			continue
 		}

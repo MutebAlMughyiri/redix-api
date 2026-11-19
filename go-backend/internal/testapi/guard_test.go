@@ -45,7 +45,7 @@ func TestNoTestOnlyPackageIsInThePublishedBinary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range strings.Fields(string(listed)) {
+	for name := range strings.FieldsSeq(string(listed)) {
 		if strings.HasSuffix(name, "/testapi") || strings.HasSuffix(name, "/historytest") || strings.HasSuffix(name, "/replay") || name == "testing" {
 			t.Errorf("the server links %s, a package made for tests", name)
 		}

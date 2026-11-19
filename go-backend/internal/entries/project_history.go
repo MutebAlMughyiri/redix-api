@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"cmp"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"slices"
 	"strconv"
@@ -168,9 +169,7 @@ func knowledgeOf(rows []store.History, people map[uuid.UUID]string) knowledge {
 // add takes in the values row kept before and after its change, these winning.
 func (v values) add(row store.History) {
 	for _, kept := range []string{row.Before, row.After} {
-		for name, value := range valuesIn(kept) {
-			v[name] = value
-		}
+		maps.Copy(v, valuesIn(kept))
 	}
 }
 
@@ -178,9 +177,7 @@ func (v values) add(row store.History) {
 // the record it names.
 func (k knowledge) ownValues(row store.History) values {
 	own := values{"Id": json.RawMessage(strconv.Quote(row.RecordID.String()))}
-	for name, value := range k.of(row.TableName, row.RecordID) {
-		own[name] = value
-	}
+	maps.Copy(own, k.of(row.TableName, row.RecordID))
 	own.add(row)
 	return own
 }

@@ -129,7 +129,7 @@ func until(ctx context.Context, server *http.Server, listen func() error) error 
 // listenAddresses is the host and port of each of urls, which lists them as .NET's Urls setting did: "http://0.0.0.0:5012;http://...".
 func listenAddresses(urls string) ([]string, error) {
 	var addresses []string
-	for _, each := range strings.Split(urls, ";") {
+	for each := range strings.SplitSeq(urls, ";") {
 		parsed, err := url.Parse(each)
 		if err != nil {
 			return nil, err

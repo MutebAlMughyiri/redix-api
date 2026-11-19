@@ -185,8 +185,7 @@ func (s Routes) load(w http.ResponseWriter, r *http.Request, caller access.Calle
 
 // codeOf is the code of an owner's refusal, "" when it did not refuse; any other failure stays an error.
 func codeOf(err error) (string, error) {
-	var refused changes.Refusal
-	if errors.As(err, &refused) {
+	if refused, ok := errors.AsType[changes.Refusal](err); ok {
 		return refused.Code, nil
 	}
 	return "", err
