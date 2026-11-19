@@ -199,7 +199,7 @@ for instance in "${instances[@]}"; do
 done
 cat <<EOF
 $(hostname -I | awk '{print $1}')  PTR  $domain.
-$domain.         TXT  "v=spf1 a:$domain -all"
+$domain.         TXT  "v=spf1 a:$domain include:_spf.mx.cloudflare.net -all"
 _dmarc.$domain.  TXT  "v=DMARC1; p=quarantine"
 EOF
 cat "$keys/redix.txt"

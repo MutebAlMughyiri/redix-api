@@ -72,6 +72,9 @@ production's port 80 reads the token Let's Encrypt asks for (D-R25).
 Before the first run:
 
 1. The three names' A records point at the server, and the server's reverse DNS names the domain (the company's panel).
+   Mail to REDIX is received by Cloudflare's Email Routing, free, and forwarded to the owner's inbox (redix-api #147): in Cloudflare, Email ›
+   Email Routing › Settings › Subdomains adds the domain; Destination addresses holds the owner's inbox, confirmed by its link; Routing
+   rules send info@ and no-reply@ to it. The domain keeps one SPF record, the value the script prints, naming this server and Cloudflare.
 2. A bucket, S3-compatible, with a key pair.
 3. On the PC, outside the repo: filled copies of `deploy/prod.env.example` named `prod.env`, of `deploy/qa.env.example` named `qa.env`
    and again, for dev, `dev.env`, and of `deploy/backup.env.example` named `backup.env`.

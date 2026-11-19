@@ -33,6 +33,17 @@ func TestQ6_ThePrivacyPolicyAndTheTermsAreServedToAnyoneInArabicAndEnglish(t *te
 	}
 }
 
+// The privacy policy and the terms name REDIX's contact, info@ on the domain, under its heading in each language (#147 R11).
+func TestR11_ThePrivacyPolicyAndTheTermsNameREDIXsContactInArabicAndEnglish(t *testing.T) {
+	api := testapi.New(t)
+	contact := regexp.MustCompile(`<h2>(التواصل|Contact)</h2>\n<p>[^<]*(<span dir="ltr">)?info@[a-z0-9.-]+\.[a-z]+`)
+	for _, path := range []string{"/privacy", "/terms"} {
+		if found := contact.FindAllStringSubmatch(api.Send("GET", path, "").Body.String(), -1); len(found) != 2 || found[0][1] != "التواصل" || found[1][1] != "Contact" {
+			t.Errorf("%s names its contact %d times, want once in Arabic, then once in English: %q", path, len(found), found)
+		}
+	}
+}
+
 // notice is the copyright notice every source file opens with (#143 R1), in the comment of its language.
 var notice = []string{"Copyright 2026 Tech Details. All rights reserved.", "Use of this file is governed by the LICENSE file at the root of this repository."}
 
