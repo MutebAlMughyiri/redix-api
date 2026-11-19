@@ -8,7 +8,7 @@
 
 ## How it fits together
 
-One route answers both what was typed and what a QR code read. A VAT number has one holder in a project, so an exact number can only find that supplier, and an empty list is how the app learns that nobody holds it, to offer a quick add.
+One route answers both what was typed and what a QR code read. Part of a name or of a VAT number lists every supplier that holds it, so an exact number finds its one holder together with any supplier whose name or number holds the same digits (Muteb, 19 Nov 2026, findings row 273), and an empty list is how the app learns that nobody holds it, to offer a quick add.
 
 The list is by name for now. "Most used first" (AC-43.1) needs to know which supplier each expense used, and nothing records that until UC-022 "Record a purchase expense". The order lives in one place, `suppliers.Routes.search`.
 
@@ -35,7 +35,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Part of the VAT number finds the supplier (AC-43.1) | `suppliers.Routes.search` | `PartOfTheVatNumberFindsTheSupplier` |
 | Fewer than three letters narrow nothing down | `suppliers.Routes.search` | `FewerThanThreeLettersNarrowNothingDown` |
 | With no text, the suppliers on offer, by name | `suppliers.Routes.search` | `NoTextOffersTheSuppliersByName` |
-| An exact VAT number finds its supplier alone (FR-43) | The index that holds a number to one supplier | `AnExactVatNumberFindsItsSupplierAlone` |
+| An exact VAT number finds its one holder, listed with any supplier whose name or number holds the same digits: part of a name or a number lists every match (FR-43; Muteb, 19 Nov 2026, findings row 273) | `suppliers.Routes.search`, the index that holds a number to one supplier | `AnExactVatNumberFindsItsSupplierAlone`, which holds no other match |
 | A number nobody holds finds nothing, so the app can offer a quick add (FR-43) | `suppliers.Routes.search` | `AVatNumberNoSupplierHoldsFindsNothing` |
 | A disabled supplier is not offered (BR-15) | `suppliers.Routes.search` | `ADisabledSupplierIsNotOffered` |
 | An answer holds at most 20 suppliers, within a second (AC-43.1) | `suppliers.Routes.search`, the index `ix_suppliers_project_id_name` | `ASearchAnswersAtMost20SuppliersWithinASecond` |
