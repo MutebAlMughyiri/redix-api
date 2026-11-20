@@ -9,6 +9,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 )
@@ -36,7 +37,7 @@ func VatQuarters(c changes.Change, first, last time.Time) ([]VatQuarter, error) 
 	}
 	var purchases []store.Entry
 	for _, entry := range all {
-		if entry.Kind == purchase && entry.Status == approved && !entry.EntryDate.Before(first) && !entry.EntryDate.After(last) {
+		if entry.Kind == ledger.Purchase && entry.Status == ledger.Approved && !entry.EntryDate.Before(first) && !entry.EntryDate.After(last) {
 			purchases = append(purchases, entry)
 		}
 	}

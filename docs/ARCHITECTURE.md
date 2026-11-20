@@ -22,6 +22,8 @@ go-backend/
   internal/partners/      a project's partners, their capital movements and shares
   internal/suppliers/     the supplier register, its search, and the rule of a VAT number
   internal/contracts/     what a project's contractors were promised, what the ledger holds inside each, and what remains
+  internal/ledger/        what an entry is and where it stands, by number and name, and how each kind moves money (BR-10): the one owner every
+                          package that reads entries asks (redix-api #87)
   internal/entries/       the ledger: recording, approving, rejecting and removing entries, an item's report, the VAT statement
   internal/attachments/   a project's files: the record of each, the folder they live in, and the signed links that read them
   internal/documents/     a project's documents (UC-064): any file under a name, in optional groups

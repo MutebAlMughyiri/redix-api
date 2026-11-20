@@ -16,6 +16,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -241,7 +242,7 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 			(isEntry && entry.AccountID == accountID) || slices.Contains(checks[row.RecordID], accountID)
 	}
 	lines, err := page(r, projectLines(c), eachAbout(c, known, seenOf, keep, func(row store.History) accountLine {
-		line := accountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(purchase)}
+		line := accountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(ledger.Purchase)}
 		switch row.TableName {
 		case "Accounts":
 			kinds := map[string]int64{"Create": 0, "Disable": 2, "Enable": 3, "Delete": 4}
@@ -263,7 +264,7 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		default:
 			entry := entryOf[row.RecordID]
 			line.Kind.value = 7
-			if signed(entry.Kind, fixed.Counted(entry.Amount)).Number() < 0 {
+			if ledger.Signed(entry.Kind, fixed.Counted(entry.Amount)).Number() < 0 {
 				line.Kind.value = 8
 			}
 			amount := entry.Amount
@@ -371,7 +372,7 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 		}
 		entry := entryOf[row.RecordID]
 		line.Kind.value = 4
-		if entry.Kind == capitalOut {
+		if entry.Kind == ledger.CapitalOut {
 			line.Kind.value = 5
 		}
 		line.Partner, line.Account, line.Amount = known.partners[known.capital[entry.ID]], known.accounts[entry.AccountID], fixed.Counted(entry.Amount)
@@ -406,7 +407,7 @@ func (l approvalLine) holds(text string) bool {
 // when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.
 func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
-	chosen, chosenErr := kinds.Parse(r.URL.Query().Get("kind"))
+	chosen, chosenErr := ledger.Kinds.Parse(r.URL.Query().Get("kind"))
 	known, err := namesOf(c)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)

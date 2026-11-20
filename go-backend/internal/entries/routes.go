@@ -19,6 +19,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -76,7 +77,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 // #106 R9): 404 otherwise.
 func (s Routes) entry(w http.ResponseWriter, r *http.Request, caller access.Caller) (store.Entry, bool) {
 	entry, err := changes.Found(s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")}))
-	if err == nil && entry.Status == removed {
+	if err == nil && entry.Status == ledger.Removed {
 		err = changes.NotFound
 	}
 	if err == nil {
@@ -105,7 +106,7 @@ func (s Routes) submit(w http.ResponseWriter, r *http.Request, caller access.Cal
 		problem.Refuse(w, r, http.StatusForbidden, "notYourEntry")
 		return
 	}
-	if entry.Status != draft && entry.Status != rejected {
+	if entry.Status != ledger.Draft && entry.Status != ledger.Rejected {
 		problem.Refuse(w, r, http.StatusConflict, "entryNotSubmittable")
 		return
 	}
@@ -120,7 +121,7 @@ func (s Routes) submit(w http.ResponseWriter, r *http.Request, caller access.Cal
 	}
 	sent := s.writer.Write(w, r, caller, func(c changes.Change) error {
 		after := entry
-		after.Status = pendingApproval
+		after.Status = ledger.PendingApproval
 		if err := c.Q.SaveEntry(c.Ctx, store.SaveEntryParams(after)); err != nil {
 			return err
 		}
@@ -152,7 +153,7 @@ func (s Routes) missingOf(r *http.Request, entry store.Entry) ([]string, error) 
 		return nil, err
 	}
 	for _, item := range items {
-		if (entry.Kind == capitalIn || entry.Kind == capitalOut) && item.Type == int64(structure.Capital) {
+		if (entry.Kind == ledger.CapitalIn || entry.Kind == ledger.CapitalOut) && item.Type == int64(structure.Capital) {
 			itemID = item.ID
 		}
 	}
@@ -217,12 +218,12 @@ func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !found {
 		return
 	}
-	if entry.Status == approved {
+	if entry.Status == ledger.Approved {
 		if !caller.Access.Holds(entry.ProjectID, access.RemoveApprovedEntries) {
 			problem.Status(w, r, http.StatusForbidden)
 			return
 		}
-		s.writer.Done(w, r, caller, func(c changes.Change) error { return setStatus(c, entry, removed, history.Delete) })
+		s.writer.Done(w, r, caller, func(c changes.Change) error { return setStatus(c, entry, ledger.Removed, history.Delete) })
 		return
 	}
 	if !caller.Access.Holds(entry.ProjectID, access.DeleteEntries) {
@@ -281,7 +282,7 @@ func setStatus(c changes.Change, entry store.Entry, status int64, action history
 // restore brings back an approved entry removed softly, approved again with all it held (redix-api #119): 404 for one not removed.
 func (s Routes) restore(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	entry, err := changes.Found(s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")}))
-	if err == nil && entry.Status != removed {
+	if err == nil && entry.Status != ledger.Removed {
 		err = changes.NotFound
 	}
 	if err == nil {
@@ -290,7 +291,7 @@ func (s Routes) restore(w http.ResponseWriter, r *http.Request, caller access.Ca
 	if changes.Answered(w, r, err) {
 		return
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error { return setStatus(c, entry, approved, history.Restore) })
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return setStatus(c, entry, ledger.Approved, history.Restore) })
 }
 
 // approveEntriesRequest is the body POST /projects/{projectId}/entries/approve reads (UC-032).
@@ -335,7 +336,7 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 				view.Failed = append(view.Failed, approvalFailure{id, "unknownEntry"})
 			case err != nil:
 				return err
-			case entry.Status != pendingApproval:
+			case entry.Status != ledger.PendingApproval:
 				view.Failed = append(view.Failed, approvalFailure{id, "entryNotPending"})
 			default:
 				if err := Approve(c, entry, c.Now); err != nil {
@@ -355,7 +356,7 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 // entered it told unless they decided it themselves, and its supplier approved when it waits.
 func Approve(c changes.Change, entry store.Entry, approvedAt moment.Moment) error {
 	after := entry
-	after.Status, after.ApprovedAt = approved, approvedAt
+	after.Status, after.ApprovedAt = ledger.Approved, approvedAt
 	if err := c.Q.SaveEntry(c.Ctx, store.SaveEntryParams(after)); err != nil {
 		return err
 	}
@@ -417,12 +418,12 @@ func (s Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Cal
 		problem.Refuse(w, r, http.StatusBadRequest, "reasonRequired")
 		return
 	}
-	if entry.Status != pendingApproval {
+	if entry.Status != ledger.PendingApproval {
 		problem.Refuse(w, r, http.StatusConflict, "entryNotPending")
 		return
 	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		if err := setStatus(c, entry, rejected, history.Reject); err != nil {
+		if err := setStatus(c, entry, ledger.Rejected, history.Reject); err != nil {
 			return err
 		}
 		if err := c.Q.AddDecision(c.Ctx, store.AddDecisionParams{EntryID: entry.ID, Action: rejectedBy, UserID: c.Actor, At: c.Now, Reason: reason}); err != nil {
@@ -459,7 +460,7 @@ func (f facts) seenAmong(caller access.Caller, projectID uuid.UUID, entries []st
 	var seen []store.Entry
 	for _, entry := range entries {
 		partner, isCapital := f.capital[entry.ID]
-		if (entry.Status != draft || entry.CreatedByUserID == caller.UserID) && (seesAll || !isCapital || slices.Contains(chosen, partner)) &&
+		if (entry.Status != ledger.Draft || entry.CreatedByUserID == caller.UserID) && (seesAll || !isCapital || slices.Contains(chosen, partner)) &&
 			f.tableSeen(caller.Access, projectID, entry.ID) {
 			seen = append(seen, entry)
 		}
@@ -513,7 +514,7 @@ func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entr
 				continue
 			}
 			view := known.row(entry, caller.UserID)
-			if entry.Status == rejected {
+			if entry.Status == ledger.Rejected {
 				view.RejectionReason = lastReason[entry.ID]
 			}
 			if !show(view) {

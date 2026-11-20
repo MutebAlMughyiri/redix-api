@@ -12,34 +12,13 @@ import (
 	"unicode/utf8"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 	"github.com/google/uuid"
 )
-
-// What an entry is (EntryKind).
-const (
-	purchase int64 = iota
-	contractorPayment
-	capitalIn
-	capitalOut
-	revenue
-)
-
-var kinds = web.Enum{"purchase", "contractorPayment", "capitalIn", "capitalOut", "revenue"}
-
-// Where an entry stands (EntryStatus).
-const (
-	draft int64 = iota
-	pendingApproval
-	approved
-	rejected
-	removed
-)
-
-var statuses = web.Enum{"draft", "pendingApproval", "approved", "rejected", "removed"}
 
 // What a file is to its entry (EntryAttachmentRole).
 var roles = web.Enum{"invoice", "receipt", "bankReceipt", "other"}
@@ -59,25 +38,17 @@ type named struct {
 
 func (n named) MarshalJSON() ([]byte, error) { return n.enum.Write(n.value) }
 
-func kindOf(value int64) named   { return named{value, kinds} }
-func statusOf(value int64) named { return named{value, statuses} }
-
-// signed is an amount of kind as it moves its account: capital in and revenue bring money in, the rest take it out (EntryKinds.Signed, BR-10).
-func signed(kind int64, amount fixed.Total) fixed.Total {
-	if kind == capitalIn || kind == revenue {
-		return amount
-	}
-	return fixed.Total{}.Minus(amount)
-}
+func kindOf(value int64) named   { return named{value, ledger.Kinds} }
+func statusOf(value int64) named { return named{value, ledger.Statuses} }
 
 // fileRole is what an entry of kind's own file is (EntryKinds.FileRole).
 func fileRole(kind int64) int64 {
 	switch kind {
-	case purchase:
+	case ledger.Purchase:
 		return 0
-	case contractorPayment:
+	case ledger.ContractorPayment:
 		return 1
-	case capitalIn, capitalOut:
+	case ledger.CapitalIn, ledger.CapitalOut:
 		return 2
 	default:
 		return 3

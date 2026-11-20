@@ -14,6 +14,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/spelling"
@@ -70,7 +71,7 @@ func sharedFactsOf(c changes.Change) (facts, error) {
 		return f, err
 	}
 	for _, entry := range waiting {
-		if moved := signed(entry.Kind, fixed.Counted(entry.Amount)); moved.Number() < 0 && f.tableSeen(c.Access, c.ProjectID, entry.ID) {
+		if moved := ledger.Signed(entry.Kind, fixed.Counted(entry.Amount)); moved.Number() < 0 && f.tableSeen(c.Access, c.ProjectID, entry.ID) {
 			f.waitingOut[entry.AccountID] = f.waitingOut[entry.AccountID].Minus(moved)
 		}
 	}
@@ -246,7 +247,7 @@ func (f facts) tableOf(entry store.Entry) uuid.UUID {
 // while it is a draft (the owner, 10 Nov 2026).
 func (f facts) accountWaitingOf(entry store.Entry) fixed.Total {
 	waiting := f.waitingOut[entry.AccountID]
-	if entry.Status == draft && signed(entry.Kind, fixed.Counted(entry.Amount)).Number() < 0 {
+	if entry.Status == ledger.Draft && ledger.Signed(entry.Kind, fixed.Counted(entry.Amount)).Number() < 0 {
 		return waiting.Plus(fixed.Counted(entry.Amount))
 	}
 	return waiting.Plus(fixed.Total{})
@@ -255,8 +256,8 @@ func (f facts) accountWaitingOf(entry store.Entry) fixed.Total {
 // accountShortByOf is how much more what waits to leave the entry's account takes than it holds, for an entry taking money out not yet decided;
 // nothing for any other (R5, R6, D4, D6).
 func (f facts) accountShortByOf(entry store.Entry) fixed.Total {
-	takesOut := signed(entry.Kind, fixed.Counted(entry.Amount)).Number() < 0
-	if !takesOut || (entry.Status != draft && entry.Status != pendingApproval) {
+	takesOut := ledger.Signed(entry.Kind, fixed.Counted(entry.Amount)).Number() < 0
+	if !takesOut || (entry.Status != ledger.Draft && entry.Status != ledger.PendingApproval) {
 		return fixed.Total{}
 	}
 	short := f.accountWaitingOf(entry).Minus(f.balances[entry.AccountID])

@@ -19,6 +19,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
@@ -27,12 +28,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/google/uuid"
-)
-
-// The entry statuses and kinds capital reads (EntryStatus, EntryKind).
-const (
-	draft, pendingApproval, approved, rejected int64 = 0, 1, 2, 3
-	capitalOut                                 int64 = 3
 )
 
 // Routes keeps a project's partners.
@@ -59,14 +54,10 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 func balances(movements []store.CapitalMovementsRow) map[uuid.UUID]fixed.Total {
 	held := map[uuid.UUID]fixed.Total{}
 	for _, row := range movements {
-		if row.Status != approved {
+		if row.Status != ledger.Approved {
 			continue
 		}
-		if row.Kind == capitalOut {
-			held[row.PartnerID] = held[row.PartnerID].Minus(fixed.Counted(row.Amount))
-		} else {
-			held[row.PartnerID] = held[row.PartnerID].Plus(fixed.Counted(row.Amount))
-		}
+		held[row.PartnerID] = held[row.PartnerID].Plus(ledger.Signed(row.Kind, fixed.Counted(row.Amount)))
 	}
 	return held
 }
@@ -77,8 +68,8 @@ func deletable(partners []store.Partner, movements []store.CapitalMovementsRow, 
 	held := balances(movements)
 	blocked := map[uuid.UUID]bool{}
 	for _, row := range movements {
-		othersDraft := row.Status == draft && (row.CreatedByUserID != caller.UserID || !caller.Access.Holds(projectID, access.DeleteEntries))
-		if row.Status == pendingApproval || row.Status == rejected || othersDraft {
+		othersDraft := row.Status == ledger.Draft && (row.CreatedByUserID != caller.UserID || !caller.Access.Holds(projectID, access.DeleteEntries))
+		if row.Status == ledger.PendingApproval || row.Status == ledger.Rejected || othersDraft {
 			blocked[row.PartnerID] = true
 		}
 	}
@@ -135,7 +126,7 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 			}
 		}
 		for _, row := range movements {
-			if row.PartnerID != partner.ID || row.Status != draft {
+			if row.PartnerID != partner.ID || row.Status != ledger.Draft {
 				continue
 			}
 			if row.CreatedByUserID == caller.UserID {
@@ -326,7 +317,7 @@ func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Cal
 			return changes.Refuse(http.StatusConflict, "partnerNotDeletable")
 		}
 		for _, row := range movements {
-			if row.PartnerID == partner.ID && row.Status == draft {
+			if row.PartnerID == partner.ID && row.Status == ledger.Draft {
 				entry := store.Entry{ID: row.ID, ProjectID: row.ProjectID, Kind: row.Kind, Status: row.Status, EntryDate: row.EntryDate, Amount: row.Amount,
 					AccountID: row.AccountID, Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedAt: row.CreatedAt, ApprovedAt: row.ApprovedAt,
 					ColumnValues: row.ColumnValues, Number: row.Number}
@@ -451,7 +442,7 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 	}
 	views := []partnerMovementView{}
 	for _, row := range movements {
-		if row.PartnerID != partnerID || row.Status != approved {
+		if row.PartnerID != partnerID || row.Status != ledger.Approved {
 			continue
 		}
 		movementName, err := structure.ChoiceNameIn(capitalColumns, row.ColumnValues)
@@ -459,11 +450,8 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 			problem.Status(w, r, http.StatusInternalServerError)
 			return
 		}
-		one := partnerMovementView{ID: row.ID, MovementName: movementName, Date: row.EntryDate, Amount: fixed.Counted(row.Amount),
+		one := partnerMovementView{ID: row.ID, MovementName: movementName, Date: row.EntryDate, Amount: ledger.Signed(row.Kind, fixed.Counted(row.Amount)),
 			Description: row.Description, AccountName: accountName[row.AccountID]}
-		if row.Kind == capitalOut {
-			one.Amount = fixed.Total{}.Minus(fixed.Counted(row.Amount))
-		}
 		for _, file := range files {
 			if file.EntryID == row.ID {
 				one.AttachmentID, one.ContentType, one.FileName = file.AttachmentID.String(), file.ContentType, file.FileName

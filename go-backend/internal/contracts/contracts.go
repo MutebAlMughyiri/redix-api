@@ -18,6 +18,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -28,11 +29,6 @@ import (
 
 // notesMaxLength is the longest notes a contract keeps (Contract.NotesMaxLength).
 const notesMaxLength = 1000
-
-// The statuses of an entry the money of a contract counts (EntryStatus).
-const (
-	approved int64 = 2
-)
 
 // Money is what the ledger holds inside a contract (ContractMoney, BR-04): what was paid, which counts only once approved (BR-10), and what waits
 // for approval beside it.
@@ -47,7 +43,7 @@ func MoneyOf(ctx context.Context, q *store.Queries, projectID, leftOut uuid.UUID
 	money := map[uuid.UUID]Money{}
 	for _, row := range rows {
 		held := money[row.ContractID]
-		if row.Status == approved {
+		if row.Status == ledger.Approved {
 			held.Paid = held.Paid.Plus(fixed.Counted(fixed.Number(row.Total)))
 		} else {
 			held.Pending = held.Pending.Plus(fixed.Counted(fixed.Number(row.Total)))

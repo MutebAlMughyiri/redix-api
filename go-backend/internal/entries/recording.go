@@ -14,6 +14,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -91,11 +92,11 @@ func (s Routes) change(w http.ResponseWriter, r *http.Request, caller access.Cal
 // notYourEntry (403) for one they may not handle; entryWaitingForDecision (409) for one waiting, unless they manage any entry.
 func refusalOfChange(entry store.Entry, caller access.Caller) (int, string) {
 	switch {
-	case entry.Status == approved:
+	case entry.Status == ledger.Approved:
 		return http.StatusConflict, "entryApproved"
 	case !mayHandle(entry, caller):
 		return http.StatusForbidden, "notYourEntry"
-	case entry.Status == pendingApproval && !caller.Access.Holds(entry.ProjectID, access.ManageAnyEntry):
+	case entry.Status == ledger.PendingApproval && !caller.Access.Holds(entry.ProjectID, access.ManageAnyEntry):
 		return http.StatusConflict, "entryWaitingForDecision"
 	}
 	return 0, ""
@@ -104,7 +105,7 @@ func refusalOfChange(entry store.Entry, caller access.Caller) (int, string) {
 // mayHandle says whether caller may act on entry at all (EntryChanges.MayHandle): they entered it, or it was sent and they manage any entry; a draft
 // is its author's alone until it is sent (BR-42).
 func mayHandle(entry store.Entry, caller access.Caller) bool {
-	return entry.CreatedByUserID == caller.UserID || (entry.Status != draft && caller.Access.Holds(entry.ProjectID, access.ManageAnyEntry))
+	return entry.CreatedByUserID == caller.UserID || (entry.Status != ledger.Draft && caller.Access.Holds(entry.ProjectID, access.ManageAnyEntry))
 }
 
 // save keeps typed as a new entry, or in place of existing (EntryRecording.SaveAsync): unknownTable (400) for a table the caller is not offered,
@@ -186,11 +187,11 @@ func entryOf(c changes.Change, typed Request, t table, editing uuid.UUID) (store
 	}
 	sign := t.sign(typed)
 	amount := t.form.amount(typed, sign)
-	entry := store.Entry{ID: typed.ID, ProjectID: c.ProjectID, Kind: t.form.entryKind(sign), Status: draft, EntryDate: typed.Date, Amount: amount.Number(),
+	entry := store.Entry{ID: typed.ID, ProjectID: c.ProjectID, Kind: t.form.entryKind(sign), Status: ledger.Draft, EntryDate: typed.Date, Amount: amount.Number(),
 		AccountID: typed.AccountID, Description: typed.description(), ColumnValues: typed.kept().KeptText(), CreatedByUserID: c.Actor, CreatedAt: c.Now,
 		ApprovedAt: notApproved}
 	if typed.Submit {
-		entry.Status = pendingApproval
+		entry.Status = ledger.PendingApproval
 	}
 	return entry, amount, nil
 }
@@ -353,7 +354,7 @@ func add(c changes.Change, entry store.Entry, typed Request, t table, tellDecide
 	if err := c.Q.SaveEntry(c.Ctx, store.SaveEntryParams(entry)); err != nil {
 		return err
 	}
-	sent := entry.Status == pendingApproval
+	sent := entry.Status == ledger.PendingApproval
 	action := history.Create
 	if sent {
 		action = history.Submit
@@ -426,12 +427,12 @@ func replace(c changes.Change, existing, edited store.Entry, typed Request, t ta
 	if err := removeRows(c, existing.ID, files[:min(1, len(files))]); err != nil {
 		return existing, err
 	}
-	sending := edited.Status == pendingApproval && existing.Status != pendingApproval
+	sending := edited.Status == ledger.PendingApproval && existing.Status != ledger.PendingApproval
 	after := existing
 	after.Kind, after.EntryDate, after.Amount, after.AccountID, after.Description, after.ColumnValues = edited.Kind, edited.EntryDate, edited.Amount,
 		edited.AccountID, edited.Description, edited.ColumnValues
-	if edited.Status == pendingApproval {
-		after.Status = pendingApproval
+	if edited.Status == ledger.PendingApproval {
+		after.Status = ledger.PendingApproval
 	}
 	if err := c.Q.SaveEntry(c.Ctx, store.SaveEntryParams(after)); err != nil {
 		return after, err

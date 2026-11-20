@@ -11,6 +11,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -93,9 +94,9 @@ type ItemReport struct {
 // asksOf is the form whose columns an entry of kind is asked (StructureSeed.IsAsked).
 func asksOf(kind int64) form {
 	switch kind {
-	case purchase:
+	case ledger.Purchase:
 		return purchaseForm{}
-	case contractorPayment:
+	case ledger.ContractorPayment:
 		return contractForm{}
 	default:
 		return revenueForm{}
@@ -242,9 +243,9 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		}
 		return int(a.Number - b.Number)
 	})
-	groupKind := purchase
+	groupKind := ledger.Purchase
 	if structure.ItemType(item.Type).IsRevenue() {
-		groupKind = revenue
+		groupKind = ledger.Revenue
 	}
 	rowOf := func(entry store.Entry, printed []store.ItemColumn, amount fixed.Number) (ReportRow, error) {
 		isOutside := known.payments[entry.ID].IsOutsideContract
@@ -255,7 +256,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	report := ItemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name, Subgroups: []TableReport{}, Contracts: []ContractReport{},
 		ShowsTablePercentages: item.ShowsTablePercentages, Type: structure.ItemType(item.Type), ShowsEveryTable: true}
 	for _, entry := range approvedOldestFirst {
-		if entry.Status != approved {
+		if entry.Status != ledger.Approved {
 			continue
 		}
 		expense, isExpense := known.expenses[entry.ID]
@@ -267,16 +268,16 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 			report.Total = report.Total.Plus(signedFor(entry))
 		}
 	}
-	groupColumns, paymentColumns, capitalColumns := printedOf(columns, groupKind), printedOf(columns, contractorPayment), printedOf(columns, capitalIn)
+	groupColumns, paymentColumns, capitalColumns := printedOf(columns, groupKind), printedOf(columns, ledger.ContractorPayment), printedOf(columns, ledger.CapitalIn)
 	for _, subgroup := range subgroups {
 		table := TableReport{ID: subgroup.ID, Name: subgroup.Name, Rows: []ReportRow{}, SortOrder: subgroup.SortOrder, Columns: g.viewsOf(groupColumns),
 			AmountName: amountNameOf(columns, groupKind)}
 		for _, entry := range approvedOldestFirst {
 			expense, isExpense := known.expenses[entry.ID]
 			revenueRow, isRevenue := known.revenues[entry.ID]
-			ofGroup := (isExpense && entry.Kind == purchase && expense.ItemID == item.ID && expense.SubgroupID == subgroup.ID) ||
+			ofGroup := (isExpense && entry.Kind == ledger.Purchase && expense.ItemID == item.ID && expense.SubgroupID == subgroup.ID) ||
 				(isRevenue && revenueRow.ItemID == item.ID && revenueRow.SubgroupID == subgroup.ID)
-			if entry.Status == approved && ofGroup {
+			if entry.Status == ledger.Approved && ofGroup {
 				row, err := rowOf(entry, groupColumns, entry.Amount)
 				if err != nil {
 					return ItemReport{}, err
@@ -301,10 +302,10 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		paid := money[row.ID].Paid
 		view := ContractReport{ID: row.ID, ContractorName: row.SupplierName, Value: row.Value, IsOpenValue: row.IsOpenValue, Paid: paid,
 			Remaining: contracts.Remaining(contract, paid), IsOverrun: contracts.Overrun(contract, paid), Payments: []ReportRow{}, SortOrder: row.SortOrder,
-			Columns: g.viewsOf(paymentColumns), AmountName: amountNameOf(columns, contractorPayment)}
+			Columns: g.viewsOf(paymentColumns), AmountName: amountNameOf(columns, ledger.ContractorPayment)}
 		for _, entry := range approvedOldestFirst {
 			payment, isPayment := known.payments[entry.ID]
-			if entry.Status == approved && entry.Kind == contractorPayment && isPayment && payment.ContractID == row.ID && known.expenses[entry.ID].ItemID == item.ID {
+			if entry.Status == ledger.Approved && entry.Kind == ledger.ContractorPayment && isPayment && payment.ContractID == row.ID && known.expenses[entry.ID].ItemID == item.ID {
 				payment, err := rowOf(entry, paymentColumns, entry.Amount)
 				if err != nil {
 					return ItemReport{}, err
@@ -325,9 +326,9 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		}
 		shown++
 		table := TableReport{ID: partner.ID, Name: partner.Name, Rows: []ReportRow{}, SortOrder: partner.SortOrder, Columns: g.viewsOf(capitalColumns),
-			AmountName: amountNameOf(columns, capitalIn)}
+			AmountName: amountNameOf(columns, ledger.CapitalIn)}
 		for _, entry := range approvedOldestFirst {
-			if mover, isCapital := known.capital[entry.ID]; entry.Status == approved && isCapital && mover == partner.ID {
+			if mover, isCapital := known.capital[entry.ID]; entry.Status == ledger.Approved && isCapital && mover == partner.ID {
 				amount := signedFor(entry)
 				row, err := rowOf(entry, capitalColumns, amount.Number())
 				if err != nil {
@@ -349,7 +350,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 
 // signedFor is what an entry adds to its item's total: its amount, taken away for capital taken out.
 func signedFor(entry store.Entry) fixed.Total {
-	if entry.Kind == capitalOut {
+	if entry.Kind == ledger.CapitalOut {
 		return fixed.Total{}.Minus(fixed.Counted(entry.Amount))
 	}
 	return fixed.Counted(entry.Amount)

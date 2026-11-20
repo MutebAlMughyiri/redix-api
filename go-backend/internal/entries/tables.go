@@ -14,6 +14,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -98,7 +99,7 @@ type purchaseForm struct {
 	subgroup store.Subgroup
 }
 
-func (purchaseForm) entryKind(structure.Sign) int64 { return purchase }
+func (purchaseForm) entryKind(structure.Sign) int64 { return ledger.Purchase }
 
 func (purchaseForm) asks(key string) bool { return !slices.Contains(onlyPayments, key) }
 
@@ -177,7 +178,7 @@ type contractForm struct {
 	general  uuid.UUID
 }
 
-func (contractForm) entryKind(structure.Sign) int64 { return contractorPayment }
+func (contractForm) entryKind(structure.Sign) int64 { return ledger.ContractorPayment }
 
 func (contractForm) asks(key string) bool {
 	return key != "supplier" && !slices.Contains(onlyPurchases, key)
@@ -221,7 +222,7 @@ type revenueForm struct {
 	subgroup store.Subgroup
 }
 
-func (revenueForm) entryKind(structure.Sign) int64 { return revenue }
+func (revenueForm) entryKind(structure.Sign) int64 { return ledger.Revenue }
 
 func (revenueForm) asks(string) bool { return true }
 
@@ -241,9 +242,9 @@ type partnerForm struct {
 
 func (partnerForm) entryKind(sign structure.Sign) int64 {
 	if sign == structure.Minus {
-		return capitalOut
+		return ledger.CapitalOut
 	}
-	return capitalIn
+	return ledger.CapitalIn
 }
 
 func (partnerForm) asks(string) bool { return true }
@@ -457,10 +458,10 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 	}
 	counts := map[uuid.UUID]int{}
 	for _, entry := range all {
-		if entry.Status != approved {
+		if entry.Status != ledger.Approved {
 			continue
 		}
-		if row, has := known.expenses[entry.ID]; has && row.ItemID == item.ID && entry.Kind == purchase {
+		if row, has := known.expenses[entry.ID]; has && row.ItemID == item.ID && entry.Kind == ledger.Purchase {
 			counts[row.SubgroupID]++
 		}
 		if row, has := known.revenues[entry.ID]; has && row.ItemID == item.ID {

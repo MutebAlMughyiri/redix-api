@@ -10,6 +10,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -22,7 +23,7 @@ import (
 // attachableBy says whether caller may put a file on entry (EntryFileEndpoints.AttachableBy): one paying something - no deduction and no credit
 // note - not removed, and theirs to handle.
 func attachableBy(entry store.Entry, caller access.Caller) bool {
-	return entry.Amount > 0 && entry.Status != removed && mayHandle(entry, caller)
+	return entry.Amount > 0 && entry.Status != ledger.Removed && mayHandle(entry, caller)
 }
 
 // attachable is the entries a QR code on a shared file matches (AC-49.2), as the lists show them: those the caller may put a file on whose

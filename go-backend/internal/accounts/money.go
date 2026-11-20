@@ -10,16 +10,9 @@ import (
 	"context"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/google/uuid"
-)
-
-// The kinds of entry, as the database keeps them (EntryKind).
-const (
-	purchase int64 = iota
-	contractorPayment
-	capitalIn
-	capitalOut
 )
 
 // The revenue types of item whose totals the figures name (ItemType).
@@ -76,10 +69,10 @@ func FiguresOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, unsee
 		byType[row.Type] = fixed.Counted(fixed.Number(row.Total))
 	}
 	return Figures{
-		Capital:      byKind[capitalIn].Minus(byKind[capitalOut]),
+		Capital:      byKind[ledger.CapitalIn].Minus(byKind[ledger.CapitalOut]),
 		VatRefunds:   byType[vatRefund],
 		Sales:        byType[sale],
 		OtherRevenue: byType[otherRevenue],
-		Expenses:     byKind[purchase].Plus(byKind[contractorPayment]),
+		Expenses:     byKind[ledger.Purchase].Plus(byKind[ledger.ContractorPayment]),
 	}, err
 }
