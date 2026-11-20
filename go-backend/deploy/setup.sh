@@ -165,7 +165,10 @@ for instance in "${instances[@]}"; do
   echo | timeout 20 openssl s_client -connect "$name:${https_url##*:}" -servername "$name" 2>/dev/null \
     | openssl x509 -noout -issuer -enddate 2>/dev/null || echo "HTTPS: no certificate yet - is the A record $name -> this server?"
 done
-if timeout 5 bash -c 'exec 3<>/dev/tcp/gmail-smtp-in.l.google.com/25' 2>/dev/null; then
+# Postfix sends over IPv4 alone, so the check dials Gmail's IPv4 address: its name may be reached over IPv6, which reported port 25
+# open on 20 Nov 2026 while the company blocked it on IPv4 and every message waited in the queue.
+gmail=$(getent ahostsv4 gmail-smtp-in.l.google.com | awk 'NR == 1 {print $1}')
+if timeout 5 bash -c "exec 3<>/dev/tcp/$gmail/25" 2>/dev/null; then
   echo "Port 25 out: open, mail goes straight to the receiving servers"
 else
   echo "Port 25 out: CLOSED by the company - ask them to open it, or name a relay (Q7)"
