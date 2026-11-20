@@ -153,7 +153,6 @@ func (a *API) AskWithFile(path, name string, content []byte, token string, field
 	return answered.Code, answer
 }
 
-// Exec writes straight into the database, as a test sets up what it needs, as the .NET factory's seeds did.
 // ApprovedProject is a project a new manager started and a new admin approved, its structure and payment methods copied from the template:
 // the manager's token and the project's path.
 func (a *API) ApprovedProject() (token, path string) {
@@ -176,6 +175,7 @@ func (a *API) ApprovedProject() (token, path string) {
 	return token, path
 }
 
+// Exec writes straight into the database, as a test sets up what it needs, as the .NET factory's seeds did.
 func (a *API) Exec(statement string, args ...any) {
 	a.t.Helper()
 	if err := a.Database.Exec(context.Background(), statement, args...); err != nil {
