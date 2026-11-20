@@ -1,5 +1,8 @@
 # The IDEs' own files; the backend's own ignores are in go-backend/.gitignore.
 .idea/*
 !.idea/copyright/
+# The qa database as GoLand's data source, and SQLite as the SQL dialect, on every machine; dataSources.local.xml stays each person's own.
+!.idea/dataSources.xml
+!.idea/sqldialects.xml
 .vs/
 .vscode/
