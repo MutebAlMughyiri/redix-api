@@ -67,7 +67,7 @@ func (s site) turn(w http.ResponseWriter, r *http.Request, change func(view) vie
 		return
 	}
 	p.view = change(p.view)
-	p.view.keep(w)
+	p.view.keepTabs(w)
 	if p, err = s.open(r, p, caller); err != nil {
 		failed(w)
 		return
@@ -87,7 +87,7 @@ func (s site) keepView(w http.ResponseWriter, r *http.Request) {
 	if width, err := strconv.Atoi(r.PostFormValue("width")); err == nil {
 		v.Width = min(max(width, narrowest), widest)
 	}
-	v.keep(w)
+	v.keepLook(w)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -99,7 +99,6 @@ func (s site) chooseLanguage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: languageCookie, Value: language, Path: "/", MaxAge: 365 * 24 * 60 * 60, HttpOnly: true, Secure: true,
-		SameSite: http.SameSiteLaxMode})
+	setPreference(w, languageCookie, language)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

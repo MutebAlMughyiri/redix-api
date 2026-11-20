@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -381,4 +382,24 @@ func TestWeb_R19_AfterAWrongPasswordTheCursorWaitsInPassword(t *testing.T) {
 	refused := browser.Send("POST", "/sign-in", url.Values{"username": {id.String()}, "password": {"wrong-1"}}).Body.String()
 	has(t, refused, `autocomplete="current-password" autofocus required`)
 	lacks(t, refused, `autocomplete="username" autofocus`)
+}
+
+func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *testing.T) {
+	browser, _ := signedIn(t, testapi.New(t), "User A")
+	cookies := func(answered interface{ Result() *http.Response }) []string {
+		var names []string
+		for _, cookie := range answered.Result().Cookies() {
+			names = append(names, cookie.Name)
+		}
+		return names
+	}
+	if set := cookies(browser.Send("GET", "/tab/settings", nil)); !slices.Equal(set, []string{"redix_tabs"}) {
+		t.Errorf("opening a tab keeps the tabs alone: %v", set)
+	}
+	if set := cookies(browser.Send("POST", "/view", url.Values{"side": {"on"}, "width": {"300"}})); !slices.Equal(set, []string{"redix_view"}) {
+		t.Errorf("the View menu keeps the look alone: %v", set)
+	}
+	page := browser.Send("GET", "/", nil).Body.String()
+	has(t, page, `style="--side-w: 300px;"`)
+	has(t, page, `id="web.tab.settings" class="tab" role="tab" aria-selected="true"`)
 }
