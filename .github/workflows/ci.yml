@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: No typo, in code, docs or words (redix-api #125); the words right as written are in _typos.toml
         uses: crate-ci/typos@v1.51.1
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go-backend/go.mod
           cache-dependency-path: go-backend/go.sum
