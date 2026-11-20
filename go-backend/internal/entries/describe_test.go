@@ -4,6 +4,8 @@
 package entries
 
 import (
+	"bytes"
+	"log/slog"
 	"slices"
 	"testing"
 	"time"
@@ -94,5 +96,22 @@ func TestR2_AFileNeverShowsAloneAndAPartOnlyWithoutItsOwner(t *testing.T) {
 	}
 	if want := []int64{2, 4, 5, 7, 9, 10}; !slices.Equal(kept, want) {
 		t.Errorf("the lines that stand for an action: %v, want %v", kept, want)
+	}
+}
+
+// redix-api #76 row 283: knownAbout asks every value of a line whether it is an id; one written as a string is read, and a number, a list or a
+// value not kept is no id - none of them a value the server could not read, so none is logged.
+func TestRow283_AValueThatIsNoIdIsNoIdAndLogsNothing(t *testing.T) {
+	var logged bytes.Buffer
+	before := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(before) })
+	id := uuid.New()
+	kept := valuesIn(`{"Id":"` + id.String() + `","Kind":2,"Amount":12.5,"Names":["a"]}`)
+	if kept.id("Id") != id || kept.id("Kind") != uuid.Nil || kept.id("Amount") != uuid.Nil || kept.id("Names") != uuid.Nil || kept.id("Missing") != uuid.Nil {
+		t.Errorf("ids: %v %v %v %v %v", kept.id("Id"), kept.id("Kind"), kept.id("Amount"), kept.id("Names"), kept.id("Missing"))
+	}
+	if logged.Len() != 0 {
+		t.Errorf("logged: %s", logged.String())
 	}
 }

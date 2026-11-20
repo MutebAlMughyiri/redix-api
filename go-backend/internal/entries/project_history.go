@@ -123,8 +123,10 @@ func (v values) text(name string) string {
 	return text
 }
 
+// id is the id a value kept under name holds; uuid.Nil for none, and for a value that is no id - a kind, an amount - which knownAbout asks every
+// value of a line about, so it is read from the stored text itself: an id is written as a plain JSON string, with nothing to unescape.
 func (v values) id(name string) uuid.UUID {
-	id, _ := uuid.Parse(v.text(name))
+	id, _ := uuid.Parse(strings.Trim(string(v[name]), `"`))
 	return id
 }
 
