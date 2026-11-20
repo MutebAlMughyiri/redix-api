@@ -156,9 +156,11 @@ func (g registers) viewsOf(columns []store.ItemColumn) []ReportColumn {
 
 // valuesOf is what entry shows under each of columns, as text (ReportColumns.ValuesOf): a date as yyyy-MM-dd, a number as it was kept, a list's
 // choice by its name.
-func (g registers) valuesOf(columns []store.ItemColumn, entry store.Entry, known facts, isOutside bool) []string {
+func (g registers) valuesOf(columns []store.ItemColumn, entry store.Entry, known facts, isOutside bool) ([]string, error) {
 	kept := web.Ordered{}
-	kept.UnmarshalJSON([]byte(entry.ColumnValues))
+	if err := kept.UnmarshalJSON([]byte(entry.ColumnValues)); err != nil {
+		return nil, err
+	}
 	values := []string{}
 	for _, column := range columns {
 		value := kept.Values[column.Key]
@@ -190,7 +192,7 @@ func (g registers) valuesOf(columns []store.ItemColumn, entry store.Entry, known
 		}
 		values = append(values, value)
 	}
-	return values
+	return values, nil
 }
 
 // ItemReportOf is the report of the item, from what is approved, in date order, what was approved since the latest periodic report marked new
@@ -244,10 +246,11 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	if structure.ItemType(item.Type).IsRevenue() {
 		groupKind = revenue
 	}
-	rowOf := func(entry store.Entry, printed []store.ItemColumn, amount fixed.Number) ReportRow {
+	rowOf := func(entry store.Entry, printed []store.ItemColumn, amount fixed.Number) (ReportRow, error) {
 		isOutside := known.payments[entry.ID].IsOutsideContract
-		return ReportRow{EntryID: entry.ID, Date: entry.EntryDate, Amount: amount, IsOutsideContract: isOutside, Values: g.valuesOf(printed, entry, known, isOutside),
-			IsNew: entry.ApprovedAt.After(newSince.Time), Number: entry.Number}
+		values, err := g.valuesOf(printed, entry, known, isOutside)
+		return ReportRow{EntryID: entry.ID, Date: entry.EntryDate, Amount: amount, IsOutsideContract: isOutside, Values: values,
+			IsNew: entry.ApprovedAt.After(newSince.Time), Number: entry.Number}, err
 	}
 	report := ItemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name, Subgroups: []TableReport{}, Contracts: []ContractReport{},
 		ShowsTablePercentages: item.ShowsTablePercentages, Type: structure.ItemType(item.Type), ShowsEveryTable: true}
@@ -274,7 +277,11 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 			ofGroup := (isExpense && entry.Kind == purchase && expense.ItemID == item.ID && expense.SubgroupID == subgroup.ID) ||
 				(isRevenue && revenueRow.ItemID == item.ID && revenueRow.SubgroupID == subgroup.ID)
 			if entry.Status == approved && ofGroup {
-				table.Rows = append(table.Rows, rowOf(entry, groupColumns, entry.Amount))
+				row, err := rowOf(entry, groupColumns, entry.Amount)
+				if err != nil {
+					return ItemReport{}, err
+				}
+				table.Rows = append(table.Rows, row)
 				table.Total = table.Total.Plus(fixed.Counted(entry.Amount))
 			}
 		}
@@ -298,7 +305,11 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		for _, entry := range approvedOldestFirst {
 			payment, isPayment := known.payments[entry.ID]
 			if entry.Status == approved && entry.Kind == contractorPayment && isPayment && payment.ContractID == row.ID && known.expenses[entry.ID].ItemID == item.ID {
-				view.Payments = append(view.Payments, rowOf(entry, paymentColumns, entry.Amount))
+				payment, err := rowOf(entry, paymentColumns, entry.Amount)
+				if err != nil {
+					return ItemReport{}, err
+				}
+				view.Payments = append(view.Payments, payment)
 				view.PaymentsTotal = view.PaymentsTotal.Plus(fixed.Counted(entry.Amount))
 			}
 		}
@@ -318,7 +329,11 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		for _, entry := range approvedOldestFirst {
 			if mover, isCapital := known.capital[entry.ID]; entry.Status == approved && isCapital && mover == partner.ID {
 				amount := signedFor(entry)
-				table.Rows = append(table.Rows, rowOf(entry, capitalColumns, amount.Number()))
+				row, err := rowOf(entry, capitalColumns, amount.Number())
+				if err != nil {
+					return ItemReport{}, err
+				}
+				table.Rows = append(table.Rows, row)
 				table.Total = table.Total.Plus(amount)
 			}
 		}

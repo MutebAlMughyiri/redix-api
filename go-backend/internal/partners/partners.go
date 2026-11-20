@@ -450,7 +450,12 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 		if row.PartnerID != partnerID || row.Status != approved {
 			continue
 		}
-		one := partnerMovementView{ID: row.ID, MovementName: structure.ChoiceNameIn(capitalColumns, row.ColumnValues), Date: row.EntryDate, Amount: fixed.Counted(row.Amount),
+		movementName, err := structure.ChoiceNameIn(capitalColumns, row.ColumnValues)
+		if err != nil {
+			problem.Status(w, r, http.StatusInternalServerError)
+			return
+		}
+		one := partnerMovementView{ID: row.ID, MovementName: movementName, Date: row.EntryDate, Amount: fixed.Counted(row.Amount),
 			Description: row.Description, AccountName: accountName[row.AccountID]}
 		if row.Kind == capitalOut {
 			one.Amount = fixed.Total{}.Minus(fixed.Counted(row.Amount))

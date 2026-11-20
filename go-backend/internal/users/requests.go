@@ -6,6 +6,7 @@ package users
 import (
 	"cmp"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -55,21 +56,28 @@ type requestView struct {
 	RejectionReason string              `json:"rejectionReason"`
 }
 
-func viewOfRequest(row store.PermissionRequest, displayName string) requestView {
-	return requestView{ID: row.ID, UserID: row.UserID, DisplayName: displayName, Gives: permissionsIn(row.Gives), Takes: permissionsIn(row.Takes),
-		Reason: row.Reason, AskedAt: row.AskedAt, Status: requestStatus(row.Status), RejectionReason: row.RejectionReason}
+func viewOfRequest(row store.PermissionRequest, displayName string) (requestView, error) {
+	gives, givesErr := permissionsIn(row.Gives)
+	takes, takesErr := permissionsIn(row.Takes)
+	if err := errors.Join(givesErr, takesErr); err != nil {
+		return requestView{}, err
+	}
+	return requestView{ID: row.ID, UserID: row.UserID, DisplayName: displayName, Gives: gives, Takes: takes,
+		Reason: row.Reason, AskedAt: row.AskedAt, Status: requestStatus(row.Status), RejectionReason: row.RejectionReason}, nil
 }
 
 // permissionsIn is the permissions a request keeps as JSON, each by its name as the API writes it.
-func permissionsIn(kept string) []access.Permission {
+func permissionsIn(kept string) ([]access.Permission, error) {
 	var names []string
-	json.Unmarshal([]byte(kept), &names)
+	if err := json.Unmarshal([]byte(kept), &names); err != nil {
+		return nil, err
+	}
 	permissions := []access.Permission{}
 	for _, name := range names {
 		permission, _ := access.Named(name)
 		permissions = append(permissions, permission)
 	}
-	return permissions
+	return permissions, nil
 }
 
 func requestFields(row store.PermissionRequest) map[string]any {
@@ -97,7 +105,12 @@ func (u Routes) myRequest(w http.ResponseWriter, r *http.Request, caller access.
 	}
 	views := []requestView{}
 	for _, row := range rows {
-		views = append(views, viewOfRequest(row, ""))
+		view, err := viewOfRequest(row, "")
+		if err != nil {
+			problem.Status(w, r, http.StatusInternalServerError)
+			return
+		}
+		views = append(views, view)
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }
@@ -147,8 +160,12 @@ func (u Routes) ask(w http.ResponseWriter, r *http.Request, caller access.Caller
 		}
 		return notifications.TellManagers(c.ctx, c.q, projectID, notifications.PermissionRequested, c.now)
 	})
+	if changes.Answered(w, r, err) {
+		return
+	}
+	view, err := viewOfRequest(row, "")
 	if !changes.Answered(w, r, err) {
-		web.JSON(w, r, http.StatusCreated, viewOfRequest(row, ""))
+		web.JSON(w, r, http.StatusCreated, view)
 	}
 }
 
@@ -193,7 +210,12 @@ func (u Routes) waitingRequests(w http.ResponseWriter, r *http.Request, _ access
 	}
 	views := []requestView{}
 	for _, row := range rows {
-		views = append(views, viewOfRequest(row.PermissionRequest, row.DisplayName))
+		view, err := viewOfRequest(row.PermissionRequest, row.DisplayName)
+		if err != nil {
+			problem.Status(w, r, http.StatusInternalServerError)
+			return
+		}
+		views = append(views, view)
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }
@@ -202,12 +224,17 @@ func (u Routes) waitingRequests(w http.ResponseWriter, r *http.Request, _ access
 // longer changes anything is left (R11). The person is told (R6). 404 for no request waiting in the project.
 func (u Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	u.decide(w, r, caller, approved, "", func(c change, row store.PermissionRequest) error {
-		for _, given := range permissionsIn(row.Gives) {
+		gives, givesErr := permissionsIn(row.Gives)
+		takes, takesErr := permissionsIn(row.Takes)
+		if err := errors.Join(givesErr, takesErr); err != nil {
+			return err
+		}
+		for _, given := range gives {
 			if err := c.give(row.ProjectID, row.UserID, given); err != nil {
 				return err
 			}
 		}
-		for _, taken := range permissionsIn(row.Takes) {
+		for _, taken := range takes {
 			if err := c.take(row.ProjectID, row.UserID, taken); err != nil {
 				return err
 			}

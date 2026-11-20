@@ -477,15 +477,17 @@ func Accepts(row store.ItemColumn, value string) bool {
 
 // ChoiceNameIn is the name of what kept - an entry's column values as kept - chose in the one list among columns whose choices carry a sign
 // (Column.SignedChoiceOf): a capital movement's type, as its screen names it; "" for none.
-func ChoiceNameIn(columns []store.ItemColumn, kept string) string {
+func ChoiceNameIn(columns []store.ItemColumn, kept string) (string, error) {
 	values := map[string]string{}
-	json.Unmarshal([]byte(kept), &values)
+	if err := json.Unmarshal([]byte(kept), &values); err != nil {
+		return "", err
+	}
 	for _, row := range columns {
 		if one := ofItemColumn(row); one.signed() {
-			return one.choiceOf(values[row.Key]).Name
+			return one.choiceOf(values[row.Key]).Name, nil
 		}
 	}
-	return ""
+	return "", nil
 }
 
 // Choice is one of a list column's choices: the id an entry keeps, its name and the sign it gives the amount.

@@ -166,7 +166,9 @@ func (s Routes) missingOf(r *http.Request, entry store.Entry) ([]string, error) 
 		}
 	}
 	values := web.Ordered{}
-	values.UnmarshalJSON([]byte(entry.ColumnValues))
+	if err := values.UnmarshalJSON([]byte(entry.ColumnValues)); err != nil {
+		return nil, err
+	}
 	return missingOf(entry.Description, values.Values, asked), nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
@@ -49,8 +50,12 @@ func Map(router *web.Router, gate *access.Gate) {
 				ID string `json:"id"`
 			} `json:"items"`
 		}
-		json.Unmarshal(lists[project+"/categories/offered?itemType=purchases"], &categories)
-		json.Unmarshal(lists[project+"/categories/offered?itemType=contractorPayments"], &paying)
+		err := errors.Join(json.Unmarshal(lists[project+"/categories/offered?itemType=purchases"], &categories),
+			json.Unmarshal(lists[project+"/categories/offered?itemType=contractorPayments"], &paying))
+		if err != nil {
+			problem.Status(w, r, http.StatusInternalServerError)
+			return
+		}
 		for _, category := range append(categories, paying...) {
 			for _, item := range category.Items {
 				address := project + "/items/" + item.ID + "/columns"

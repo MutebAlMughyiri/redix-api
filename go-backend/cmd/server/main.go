@@ -106,24 +106,30 @@ func serve(ctx context.Context, logger *slog.Logger, settings environment.Settin
 			return fmt.Errorf("the HTTP port proves the domain to Let's Encrypt: %w", err)
 		}
 		challenges := &http.Server{Handler: proofs, ReadHeaderTimeout: 10 * time.Second}
-		go until(ctx, challenges, func() error { return challenges.Serve(httpPort) })
+		go func() {
+			if err := until(ctx, challenges, func() error { return challenges.Serve(httpPort) }); err != nil {
+				logger.Error("the HTTP port stopped proving the domain to Let's Encrypt", "error", err)
+			}
+		}()
 	}
 	api.TLSConfig = certificates.TLSConfig()
 	return until(ctx, api, func() error { return api.ListenAndServeTLS("", "") })
 }
 
-// until runs listen until ctx ends, then shuts server down within ten seconds; a server closed that way is no error.
+// until runs listen until ctx ends, then shuts server down within ten seconds and waits for it: a server closed that way is no error, a
+// shutdown that failed is.
 func until(ctx context.Context, server *http.Server, listen func() error) error {
+	stopped := make(chan error, 1)
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		server.Shutdown(shutdown)
+		stopped <- server.Shutdown(shutdown)
 	}()
 	if err := listen(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
-	return nil
+	return <-stopped
 }
 
 // listenAddresses is the host and port of each of urls, which lists them as .NET's Urls setting did: "http://0.0.0.0:5012;http://...".
