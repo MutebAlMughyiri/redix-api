@@ -8,7 +8,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
 	"github.com/google/uuid"
 )
@@ -23,21 +22,7 @@ type api struct {
 // approved is an API with one approved project, its structure and payment methods copied from the template, and its manager's token.
 func approved(t *testing.T) api {
 	a := api{API: testapi.New(t), t: t}
-	manager, admin := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
-	for _, id := range []uuid.UUID{manager, admin} {
-		a.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
-			VALUES (?, ?, 'x', '', ?, 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-01T10:00:00.0000000Z', '')`, id, id.String(), credentials.Hash("Patrol-chosen-2"))
-	}
-	a.Exec(`INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, 'ApproveProjects')`, uuid.NewString(), admin)
-	a.token = a.Token(manager, false)
-	code, answer := a.Ask("POST", "/projects", `{"name":"مشروع A","startDate":"2026-11-01","units":[]}`, a.token)
-	if code != 201 {
-		t.Fatalf("start: %d %v", code, answer)
-	}
-	a.project = "/projects/" + testapi.Field(answer, "id").(string)
-	if code, _ := a.Ask("POST", a.project+"/approve", ``, a.Token(admin, false)); code != 200 {
-		t.Fatalf("approve: %d", code)
-	}
+	a.token, a.project = a.ApprovedProject()
 	return a
 }
 
@@ -66,7 +51,7 @@ func (a api) methods() map[string][]string {
 	answer := a.ask("GET", "/payment-methods", ``, 200)
 	methods := map[string][]string{}
 	for _, method := range answer.([]any) {
-		ids := []string{}
+		var ids []string
 		for _, id := range testapi.Field(method, "accountIds").([]any) {
 			ids = append(ids, id.(string))
 		}

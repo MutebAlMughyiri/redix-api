@@ -203,19 +203,23 @@ func (s Routes) reorderCategories(w http.ResponseWriter, r *http.Request, caller
 		if err != nil {
 			return err
 		}
-		places, ok := inOrder(idsOf(categories, func(row store.Category) uuid.UUID { return row.ID }), request.IDs)
-		if !ok {
-			return refused(invalidOrder)
-		}
-		for _, before := range categories {
-			after := before
-			after.SortOrder = places[before.ID]
-			if err := c.saveCategory(before, after); err != nil {
-				return err
-			}
-		}
-		return nil
+		return reorder(categories, request.IDs, func(row store.Category) uuid.UUID { return row.ID },
+			func(row store.Category, place int64) store.Category { row.SortOrder = place; return row }, c.saveCategory)
 	})
+}
+
+// reorder saves each of rows at its place in ids, through save (AC-39.1): invalidOrder (400) for ids that are not exactly rows', by id.
+func reorder[T any](rows []T, ids []uuid.UUID, id func(T) uuid.UUID, placed func(T, int64) T, save func(before, after T) error) error {
+	places, ok := inOrder(idsOf(rows, id), ids)
+	if !ok {
+		return refused(invalidOrder)
+	}
+	for _, before := range rows {
+		if err := save(before, placed(before, places[id(before)])); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func idsOf[T any](rows []T, id func(T) uuid.UUID) []uuid.UUID {
@@ -357,18 +361,8 @@ func (s Routes) reorderItems(w http.ResponseWriter, r *http.Request, caller acce
 		if err != nil {
 			return err
 		}
-		places, ok := inOrder(idsOf(items, func(row store.Item) uuid.UUID { return row.ID }), request.IDs)
-		if !ok {
-			return refused(invalidOrder)
-		}
-		for _, before := range items {
-			after := before
-			after.SortOrder = places[before.ID]
-			if err := c.saveItem(before, after); err != nil {
-				return err
-			}
-		}
-		return nil
+		return reorder(items, request.IDs, func(row store.Item) uuid.UUID { return row.ID },
+			func(row store.Item, place int64) store.Item { row.SortOrder = place; return row }, c.saveItem)
 	})
 }
 

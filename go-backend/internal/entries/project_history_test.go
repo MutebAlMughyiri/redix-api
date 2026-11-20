@@ -325,8 +325,15 @@ func (a project) longHistory() {
 func TestR87_AFailingDatabaseAtAnyCallOfAHistoryScreenAnswers500(t *testing.T) {
 	a := approved(t, started)
 	a.longHistory()
-	for _, path := range []string{a.path + "/history", a.path + "/history?before=1500", a.path + "/accounts/history", a.path + "/partners/history",
-		a.path + "/approvals/history", "/me/history"} {
+	a.failsAtEveryCall(a.path+"/history", a.path+"/history?before=1500", a.path+"/accounts/history", a.path+"/partners/history",
+		a.path+"/approvals/history", "/me/history")
+}
+
+// failsAtEveryCall fails the test unless each of paths answers 500 and writes no History line when the database fails at any of its calls
+// (#141 D1, #87).
+func (a project) failsAtEveryCall(paths ...string) {
+	a.t.Helper()
+	for _, path := range paths {
 		for n := int64(1); ; n++ {
 			before := a.Count("SELECT count(*) FROM history")
 			answered, failed := a.SendFailing(n, "GET", path, ``, "Authorization", "Bearer "+a.token)
@@ -334,7 +341,7 @@ func TestR87_AFailingDatabaseAtAnyCallOfAHistoryScreenAnswers500(t *testing.T) {
 				break
 			}
 			if answered.Code != 500 || a.Count("SELECT count(*) FROM history") != before {
-				t.Errorf("%s, the database failing at its call %d: %d", path, n, answered.Code)
+				a.t.Errorf("%s, the database failing at its call %d: %d", path, n, answered.Code)
 			}
 		}
 	}

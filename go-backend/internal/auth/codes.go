@@ -119,17 +119,8 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 	}
 	now := moment.Of(c.clock.Now())
 	user, _, err := c.accountOf(r.Context(), request.Login)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	code, ok, err := c.check(r.Context(), user.ID, resetPassword, strings.TrimSpace(request.Code), now)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
+	code, ok := c.codeOf(w, r, err, user.ID, resetPassword, request.Code, now)
 	if !ok {
-		problem.Refuse(w, r, http.StatusBadRequest, "codeWrong")
 		return
 	}
 	if !users.KeepsPolicy(request.NewPassword, user.Username) {
@@ -194,17 +185,8 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 	}
 	now := moment.Of(c.clock.Now())
 	user, err := c.database.Queries().UserWithID(r.Context(), caller.UserID)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	code, ok, err := c.check(r.Context(), user.ID, confirmEmail, strings.TrimSpace(request.Code), now)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
+	code, ok := c.codeOf(w, r, err, user.ID, confirmEmail, request.Code, now)
 	if !ok {
-		problem.Refuse(w, r, http.StatusBadRequest, "codeWrong")
 		return
 	}
 	if c.refuseEmail(w, r, code.Email, user.ID) {
@@ -270,6 +252,24 @@ func (c Codes) make(ctx context.Context, userID uuid.UUID, purpose int64, addres
 		return q.AddCode(ctx, store.AddCodeParams{ID: uuid.Must(uuid.NewV7()), UserID: userID, Purpose: purpose, Email: address, CodeHash: credentials.Hash(code), ExpiresAt: expiresAt})
 	})
 	return code, err
+}
+
+// codeOf is the code the user typed for purpose, checked at now, once the user was read (readErr): 500 when the user or the code could not be
+// read, codeWrong (400) for a wrong, used, expired or worn-out code (AC-02.8, AC-10.4); false once it has answered.
+func (c Codes) codeOf(w http.ResponseWriter, r *http.Request, readErr error, userID uuid.UUID, purpose int64, typed string, now moment.Moment) (store.EmailCode, bool) {
+	if readErr != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return store.EmailCode{}, false
+	}
+	code, ok, err := c.check(r.Context(), userID, purpose, strings.TrimSpace(typed), now)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return code, false
+	}
+	if !ok {
+		problem.Refuse(w, r, http.StatusBadRequest, "codeWrong")
+	}
+	return code, ok
 }
 
 // check is the user's latest code for purpose when typed is it, unused, unexpired and with a try left; each check counts a try, right or wrong

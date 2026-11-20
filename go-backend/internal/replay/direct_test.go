@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -130,42 +131,35 @@ func writeRow(tx *sql.Tx, names mapping, table string, row directRow) error {
 	return fmt.Errorf("a row %s", row.State)
 }
 
+// namesOf is the names query reads for of, in its order.
+func namesOf(tx *sql.Tx, query, of string) ([]string, error) {
+	rows, err := tx.Query(query, of)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, errors.Join(err, rows.Close())
+		}
+		names = append(names, name)
+	}
+	return names, rows.Close()
+}
+
 // locate is the condition that finds row's one row in table: by its key, or - when the key holds an id of .NET's no answer showed, as a column
 // the approval copied - by a unique index whose every column the row names, after which the replay knows the two ids as one. A row neither finds
 // stops the replay, so a write never matches nothing unnoticed.
 func locate(tx *sql.Tx, names mapping, table string, keys []string, values map[string]any, recorded map[string]json.RawMessage) (string, []any, error) {
 	candidates := [][]string{keys}
-	indexes, err := tx.Query("SELECT name FROM pragma_index_list(?) WHERE \"unique\" = 1 AND origin <> 'pk'", table)
+	indexNames, err := namesOf(tx, "SELECT name FROM pragma_index_list(?) WHERE \"unique\" = 1 AND origin <> 'pk'", table)
 	if err != nil {
 		return "", nil, err
 	}
-	var indexNames []string
-	for indexes.Next() {
-		var name string
-		if err := indexes.Scan(&name); err != nil {
-			_ = indexes.Close()
-			return "", nil, err
-		}
-		indexNames = append(indexNames, name)
-	}
-	if err := indexes.Close(); err != nil {
-		return "", nil, err
-	}
 	for _, index := range indexNames {
-		columns, err := tx.Query("SELECT name FROM pragma_index_info(?) ORDER BY seqno", index)
+		unique, err := namesOf(tx, "SELECT name FROM pragma_index_info(?) ORDER BY seqno", index)
 		if err != nil {
-			return "", nil, err
-		}
-		var unique []string
-		for columns.Next() {
-			var name string
-			if err := columns.Scan(&name); err != nil {
-				_ = columns.Close()
-				return "", nil, err
-			}
-			unique = append(unique, name)
-		}
-		if err := columns.Close(); err != nil {
 			return "", nil, err
 		}
 		candidates = append(candidates, unique)

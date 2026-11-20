@@ -154,6 +154,28 @@ func (a *API) AskWithFile(path, name string, content []byte, token string, field
 }
 
 // Exec writes straight into the database, as a test sets up what it needs, as the .NET factory's seeds did.
+// ApprovedProject is a project a new manager started and a new admin approved, its structure and payment methods copied from the template:
+// the manager's token and the project's path.
+func (a *API) ApprovedProject() (token, path string) {
+	a.t.Helper()
+	manager, admin := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
+	for _, id := range []uuid.UUID{manager, admin} {
+		a.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
+			VALUES (?, ?, 'x', '', ?, 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-01T10:00:00.0000000Z', '')`, id, id.String(), credentials.Hash("Patrol-chosen-2"))
+	}
+	a.Exec(`INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, 'ApproveProjects')`, uuid.NewString(), admin)
+	token = a.Token(manager, false)
+	code, answer := a.Ask("POST", "/projects", `{"name":"مشروع A","startDate":"2026-11-01","units":[]}`, token)
+	if code != 201 {
+		a.t.Fatalf("start: %d %v", code, answer)
+	}
+	path = "/projects/" + Field(answer, "id").(string)
+	if code, _ := a.Ask("POST", path+"/approve", ``, a.Token(admin, false)); code != 200 {
+		a.t.Fatalf("approve: %d", code)
+	}
+	return token, path
+}
+
 func (a *API) Exec(statement string, args ...any) {
 	a.t.Helper()
 	if err := a.Database.Exec(context.Background(), statement, args...); err != nil {

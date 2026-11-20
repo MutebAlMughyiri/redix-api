@@ -114,6 +114,19 @@ func textOf(columns []string, values []any) string {
 }
 
 // rowsNow is every row the project holds of each table a retrieve replaces, each as its text, sorted.
+// unchanged fails t when a table's rows or History's lines differ from rows and lines, read before (AC-73.2, R12).
+func (a *project) unchanged(t *testing.T, rows map[string][]string, lines int) {
+	t.Helper()
+	for _, table := range archive.Retrieved() {
+		if !slices.Equal(a.rowsNow()[table[0]], rows[table[0]]) {
+			t.Errorf("%s changed", table[0])
+		}
+	}
+	if a.lines() != lines {
+		t.Errorf("History: %d lines, %d before", a.lines(), lines)
+	}
+}
+
 func (a *project) rowsNow() map[string][]string {
 	a.t.Helper()
 	kept := map[string][]string{}
@@ -315,14 +328,7 @@ func TestAC73_2_APreviewCountsNowAndAfterAndChangesNothing(t *testing.T) {
 		now["attachments"] != float64(2) || after["attachments"] != float64(1) || now["entries"] != after["entries"] || after["entries"] == float64(0) {
 		t.Fatalf("preview: %d %v", code, answer)
 	}
-	for _, table := range archive.Retrieved() {
-		if !slices.Equal(a.rowsNow()[table[0]], rows[table[0]]) {
-			t.Errorf("%s changed", table[0])
-		}
-	}
-	if a.lines() != lines {
-		t.Errorf("History: %d lines, %d before", a.lines(), lines)
-	}
+	a.unchanged(t, rows, lines)
 }
 
 // UC-073 AC-73.6, D7: an archive taken on an earlier release is brought to the server's by its own migrations, and retrieves.
@@ -391,14 +397,7 @@ func TestAC73_5_AnArchiveThatCannotRetrieveIsRefusedAndNothingIsSaved(t *testing
 			t.Errorf("%s: %d %v, want %d %s", c.name, code, answer, c.status, c.code)
 		}
 	}
-	for _, table := range archive.Retrieved() {
-		if !slices.Equal(a.rowsNow()[table[0]], rows[table[0]]) {
-			t.Errorf("%s changed", table[0])
-		}
-	}
-	if a.lines() != lines {
-		t.Errorf("History: %d lines, %d before", a.lines(), lines)
-	}
+	a.unchanged(t, rows, lines)
 }
 
 // UC-073 R12: another project's archive is refused, naming that project.

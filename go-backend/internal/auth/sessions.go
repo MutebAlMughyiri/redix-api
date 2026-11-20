@@ -141,11 +141,8 @@ func (s Sessions) changePassword(w http.ResponseWriter, r *http.Request, caller 
 		return
 	}
 	now := moment.Of(s.clock.Now())
-	read := s.database.Queries()
-	user, err := read.UserWithID(r.Context(), caller.UserID)
-	device, deviceErr := read.DeviceWithID(r.Context(), caller.DeviceID)
-	if err != nil || deviceErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
+	user, device, ok := s.signedIn(w, r, caller)
+	if !ok {
 		return
 	}
 	refusal, left := attempt(user, request.CurrentPassword, now)
@@ -197,11 +194,8 @@ func (s Sessions) setBiometrics(w http.ResponseWriter, r *http.Request, caller a
 		return
 	}
 	now := moment.Of(s.clock.Now())
-	read := s.database.Queries()
-	user, err := read.UserWithID(r.Context(), caller.UserID)
-	device, deviceErr := read.DeviceWithID(r.Context(), caller.DeviceID)
-	if err != nil || deviceErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
+	user, device, ok := s.signedIn(w, r, caller)
+	if !ok {
 		return
 	}
 	device.UsesBiometrics = request.On
@@ -216,6 +210,18 @@ func (s Sessions) setBiometrics(w http.ResponseWriter, r *http.Request, caller a
 		}
 		return history.Write(ctx, q, now, user.ID, action, history.Change{Table: "Users", RecordID: user.ID})
 	}, func() { s.answer(w, r, user, device, refreshToken) })
+}
+
+// signedIn is the caller's user and this device: 500 when either cannot be read; false once it has answered.
+func (s Sessions) signedIn(w http.ResponseWriter, r *http.Request, caller access.Caller) (store.User, store.Device, bool) {
+	read := s.database.Queries()
+	user, err := read.UserWithID(r.Context(), caller.UserID)
+	device, deviceErr := read.DeviceWithID(r.Context(), caller.DeviceID)
+	if err != nil || deviceErr != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return user, device, false
+	}
+	return user, device, true
 }
 
 // write runs change in one write transaction, then answers with answered; a failed write answers 500.

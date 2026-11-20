@@ -69,16 +69,5 @@ func TestR87_6_TheEntriesListReadInBatchesKeepsItsOrderAndItsTake(t *testing.T) 
 func TestR87_AFailingDatabaseAtAnyCallOfABatchedListAnswers500(t *testing.T) {
 	a := approved(t, started)
 	a.manyEntries()
-	for _, path := range []string{a.path + "/entries?take=700", a.path + "/entries/mine"} {
-		for n := int64(1); ; n++ {
-			before := a.Count("SELECT count(*) FROM history")
-			answered, failed := a.SendFailing(n, "GET", path, ``, "Authorization", "Bearer "+a.token)
-			if !failed {
-				break
-			}
-			if answered.Code != 500 || a.Count("SELECT count(*) FROM history") != before {
-				t.Errorf("%s, the database failing at its call %d: %d", path, n, answered.Code)
-			}
-		}
-	}
+	a.failsAtEveryCall(a.path+"/entries?take=700", a.path+"/entries/mine")
 }
