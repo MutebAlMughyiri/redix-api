@@ -37,7 +37,21 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 
 ## How a feature joins it
 
-A feature never draws a frame of its own. It adds its tab's content to `contents` in `web/page.go`, keyed by its side-menu item's name, and the item stops standing gray. Its rules stay in the backend's owner; where one sits inside a JSON handler, the feature moves it into a function both doors call (#80 D7).
+A feature never draws a frame of its own. It adds its tab's content to `contents` in `web/page.go`, keyed by its side-menu item's name, and the item stops standing gray. Every element it draws gets an id by the rule below. Its rules stay in the backend's owner; where one sits inside a JSON handler, the feature moves it into a function both doors call (#80 D7).
+
+## Every element's id
+
+Every element a test clicks or reads has an id, so automation finds it as the app's Patrol tests find a widget by its key (the owner, 21 Nov 2026). Where the app has the same element, the id is the app's key name; elsewhere it is the web's own, under `web.`. An id is on one element of a page only (`TestWeb_EveryElementsIdIsTheOnlyOneOnItsPage`). [redix-web-automation](https://github.com/MutebAlMughyiri/redix-web-automation) finds them with Playwright's `getByTestId`, set to read `id`.
+
+| Part | Ids |
+| --- | --- |
+| Frame | `web.shell`, `web.topBar`, `web.brand`, `web.person`, `myAccount.signOut`, `web.content`, `web.statusBar`, `web.host`, `appVersion.line` |
+| Side menu | `web.sideMenu`, `web.fold`, `web.tree`, `web.item.<name>` for home, entries, approvals, accounts, partners, contracts, reports, history and settings, `web.sideLine` |
+| Tabs | `web.unfold`, `web.tabs`, `web.tab.<name>`, `web.tab.<name>.title`, `web.tab.<name>.close`, `web.pickFromMenu` |
+| View menu | `web.view`, `web.viewMenu`, `web.view.topBar`, `web.view.statusBar`, `web.view.sideMenu`, `web.view.width` |
+| Sign-in | `signIn.form`, `signIn.title`, `signIn.hint`, `signIn.username`, `signIn.password`, `signIn.message`, `signIn.submit`, `signIn.registerProject`, `auth.forgotPassword` |
+| Change password | `changePassword.form`, `changePassword.title`, `changePassword.hint`, `changePassword.current`, `changePassword.new`, `changePassword.confirm`, `changePassword.message`, `changePassword.submit` |
+| Settings | `sharedSettings.title`, `web.setting.language`, `myAccount.language`, `web.language`, `myAccount.arabic`, `myAccount.english` |
 
 ## The look
 

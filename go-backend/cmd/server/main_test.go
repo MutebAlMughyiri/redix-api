@@ -99,7 +99,7 @@ func TestTheServerAnswersTheWebsPagesOnTheirOwnPort(t *testing.T) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if !strings.Contains(page, `id="shell"`) {
+	if !strings.Contains(page, `id="web.shell"`) {
 		t.Fatalf("the web's port answered %q", page)
 	}
 	if response, err := http.Get("http://" + api + "/health"); err != nil || response.StatusCode != http.StatusOK {

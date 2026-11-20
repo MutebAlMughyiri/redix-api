@@ -26,9 +26,9 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
   grid-template-rows: var(--top) minmax(0, 1fr) var(--status); grid-template-columns: 0 minmax(0, 1fr);
   grid-template-areas: "top top" "side main" "status status"; transition: grid-template-columns 260ms cubic-bezier(.2, .7, .2, 1); }
 .shell.in { grid-template-columns: var(--side-w) minmax(0, 1fr); }
-.shell.in:has(#view-side:not(:checked)) { grid-template-columns: 0 minmax(0, 1fr); }
-.shell.in:has(#view-top:not(:checked)) { --top: 0px; } .shell.in:has(#view-top:not(:checked)) .top { display: none; }
-.shell.in:has(#view-status:not(:checked)) { --status: 0px; } .shell.in:has(#view-status:not(:checked)) .status { display: none; }
+.shell.in:has([id="web.view.sideMenu"]:not(:checked)) { grid-template-columns: 0 minmax(0, 1fr); }
+.shell.in:has([id="web.view.topBar"]:not(:checked)) { --top: 0px; } .shell.in:has([id="web.view.topBar"]:not(:checked)) .top { display: none; }
+.shell.in:has([id="web.view.statusBar"]:not(:checked)) { --status: 0px; } .shell.in:has([id="web.view.statusBar"]:not(:checked)) .status { display: none; }
 .shell.resizing { transition: none; cursor: col-resize; user-select: none; }
 
 .top { grid-area: top; display: flex; align-items: center; gap: 14px; padding-inline: 12px; background: var(--chrome); border-block-end: 1px solid var(--chrome-line); min-width: 0; }
@@ -44,7 +44,7 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .fold, .unfold { position: relative; margin-inline-start: auto; font-size: 15px; line-height: 1; color: var(--quiet); border-radius: 4px; padding: 3px 7px; cursor: pointer; user-select: none; }
 .fold:hover, .unfold:hover { background: var(--select); color: var(--text); }
 .unfold { display: none; align-self: center; margin-inline: 4px; }
-.shell:has(#view-side:not(:checked)) .unfold { display: inline-block; }
+.shell:has([id="web.view.sideMenu"]:not(:checked)) .unfold { display: inline-block; }
 [data-tip]:hover::after { content: attr(data-tip); position: absolute; z-index: 5; inset-block-start: calc(100% + 6px); inset-inline-start: 0; white-space: nowrap;
   font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--text); color: var(--content); pointer-events: none; }
 .fold[data-tip]:hover::after { inset-inline-start: auto; inset-inline-end: 0; }
@@ -59,7 +59,7 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .sash::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 2px; width: 3px; background: transparent; transition: background 120ms; }
 .sash:hover::after { background: var(--accent); transition-delay: 150ms; }
 .shell.resizing .sash::after { background: var(--accent); transition-delay: 0ms; }
-.shell:has(#view-side:not(:checked)) .sash { display: none; }
+.shell:has([id="web.view.sideMenu"]:not(:checked)) .sash { display: none; }
 
 /* Tabs, the View menu, and the content area. */
 .main { grid-area: main; display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; background: var(--content); }
@@ -125,8 +125,8 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 
 /* A phone's width: the side menu opens over the content, and the fold arrow closes it again. */
 @media (max-width: 700px) {
-  .shell.in, .shell.in:has(#view-side:not(:checked)) { grid-template-columns: 0 minmax(0, 1fr); }
-  .shell.in:has(#view-side:checked) .side { position: absolute; z-index: 4; inset-block: calc(var(--top) + 1px) calc(var(--status) + 1px); inset-inline-start: 0;
+  .shell.in, .shell.in:has([id="web.view.sideMenu"]:not(:checked)) { grid-template-columns: 0 minmax(0, 1fr); }
+  .shell.in:has([id="web.view.sideMenu"]:checked) .side { position: absolute; z-index: 4; inset-block: calc(var(--top) + 1px) calc(var(--status) + 1px); inset-inline-start: 0;
     width: min(260px, 85vw); box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
   .shell .sash, .brand span, .who, .status .host { display: none; }
   .content { padding-inline: 14px; }

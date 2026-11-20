@@ -54,11 +54,11 @@ func TestWeb_R1_TheRightPasswordOpensTheShellWithItsMotion(t *testing.T) {
 	browser2 := api.Browser()
 	id, _ := api.Person("User B")
 	signing := browser2.Send("POST", "/sign-in", url.Values{"username": {id.String()}, "password": {password}})
-	if signing.Header().Get("HX-Retarget") != "#shell" || signing.Header().Get("HX-Reswap") != "outerHTML" {
+	if signing.Header().Get("HX-Retarget") != "[id='web.shell']" || signing.Header().Get("HX-Reswap") != "outerHTML" {
 		t.Errorf("signing in answers the whole shell in place: %v", signing.Header())
 	}
 	has(t, signing.Body.String(), `class="shell in arriving"`)
-	has(t, signing.Body.String(), `data-key="myAccount.signOut"`)
+	has(t, signing.Body.String(), `id="myAccount.signOut"`)
 }
 
 func TestWeb_R1_AWrongPasswordAnswersTheFormWithTheAppsWords(t *testing.T) {
@@ -92,7 +92,7 @@ func TestWeb_R2_TheSignInFormHasWhatTheAppsHas(t *testing.T) {
 	body := testapi.New(t).Browser().Send("GET", "/", nil).Body.String()
 	for _, key := range []string{"signIn.username", "signIn.password", "signIn.submit", "signIn.registerProject", "auth.forgotPassword", "signIn.message",
 		"appVersion.line", "myAccount.arabic", "myAccount.english"} {
-		has(t, body, `data-key="`+key+`"`)
+		has(t, body, `id="`+key+`"`)
 	}
 	has(t, body, "الإصدار 1.0.0")
 	has(t, body, `autocomplete="username"`)
@@ -145,9 +145,9 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	answered := browser.Send("GET", "/tab/settings", nil)
 	body := answered.Body.String()
 	lacks(t, body, `id="shell"`)
-	has(t, body, `<h2>الإعدادات</h2>`)
-	has(t, body, `id="tabs" class="tabs" role="tablist" hx-swap-oob="true"`)
-	has(t, body, `aria-current="true" data-key="sharedSettings.title" hx-swap-oob="true">الإعدادات</a>`)
+	has(t, body, `<h2 id="sharedSettings.title">الإعدادات</h2>`)
+	has(t, body, `id="web.tabs" class="tabs" role="tablist" hx-swap-oob="true"`)
+	has(t, body, `aria-current="true" hx-swap-oob="true">الإعدادات</a>`)
 	lacks(t, body, `class="tree"`)
 	closed := browser.Send("DELETE", "/tab/settings", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
@@ -160,8 +160,8 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 func TestWeb_R7_TheSideMenuFoldsWithAKeyboardCharacterAndAlt1(t *testing.T) {
 	browser, _ := signedIn(t, testapi.New(t), "User A")
 	body := browser.Send("GET", "/", nil).Body.String()
-	has(t, body, `<label class="fold" for="view-side" data-tip="طيّ القائمة `+"\u2068(Alt+1)\u2069"+`">»</label>`)
-	has(t, body, `<label class="unfold" for="view-side" data-tip="إظهار القائمة `+"\u2068(Alt+1)\u2069"+`">«</label>`)
+	has(t, body, `<label id="web.fold" class="fold" for="web.view.sideMenu" data-tip="طيّ القائمة `+"\u2068(Alt+1)\u2069"+`">»</label>`)
+	has(t, body, `<label id="web.unfold" class="unfold" for="web.view.sideMenu" data-tip="إظهار القائمة `+"\u2068(Alt+1)\u2069"+`">«</label>`)
 	if strings.Count(body, "Digit1") != 1 || strings.Contains(body, "accesskey") {
 		t.Error("Alt+1 has one handler, on the page's body")
 	}
@@ -176,9 +176,9 @@ func TestWeb_R9_R18_TheViewMenuHidesTheBarsAndTheServerDrawsThemHidden(t *testin
 		t.Fatalf("keeping the view draws nothing: %d", answered.Code)
 	}
 	body := browser.Send("GET", "/", nil).Body.String()
-	has(t, body, `<input type="checkbox" id="view-top" name="top">`)
-	has(t, body, `<input type="checkbox" id="view-status" name="status">`)
-	has(t, body, `<input type="checkbox" id="view-side" name="side" checked>`)
+	has(t, body, `<input type="checkbox" id="web.view.topBar" name="top">`)
+	has(t, body, `<input type="checkbox" id="web.view.statusBar" name="status">`)
+	has(t, body, `<input type="checkbox" id="web.view.sideMenu" name="side" checked>`)
 	has(t, body, `style="--side-w: 300px;"`)
 	browser.Send("POST", "/view", url.Values{"top": {"on"}, "width": {"9000"}})
 	has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 480px;"`)
@@ -189,7 +189,7 @@ func TestWeb_R11_TheLanguageIsInSettingsNotTheTopBar(t *testing.T) {
 	page := browser.Send("GET", "/", nil).Body.String()
 	lacks(t, page, `href="/language/`)
 	settings := browser.Send("GET", "/tab/settings", nil).Body.String()
-	has(t, settings, `<h3>اللغة</h3>`)
+	has(t, settings, `<h3 id="myAccount.language">اللغة</h3>`)
 	has(t, settings, `href="/language/en"`)
 }
 
@@ -218,9 +218,9 @@ func TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse(t *testing.T) {
 	api.Exec(`UPDATE users SET must_change_password = 1 WHERE id = ?`, id)
 	browser := api.Browser()
 	signing := browser.Send("POST", "/sign-in", url.Values{"username": {id.String()}, "password": {password}}).Body.String()
-	has(t, signing, `data-key="changePassword.current"`)
+	has(t, signing, `id="changePassword.current"`)
 	lacks(t, signing, `class="side"`)
-	if browser.Send("GET", "/tab/settings", nil).Header().Get("HX-Retarget") != "#shell" {
+	if browser.Send("GET", "/tab/settings", nil).Header().Get("HX-Retarget") != "[id='web.shell']" {
 		t.Error("a tab answers the change-password form in the whole shell while the password is temporary")
 	}
 	mismatch := browser.Send("POST", "/change-password", url.Values{"current": {password}, "new": {"Chosen-new-3"}, "confirm": {"Chosen-new-4"}})
@@ -240,13 +240,12 @@ func TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse(t *testing.T) {
 func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	signedOut := api.Browser().Send("GET", "/", nil).Body.String()
-	has(t, signedOut, `<span aria-disabled="true" data-key="signIn.registerProject">`)
-	has(t, signedOut, `<span aria-disabled="true" data-key="auth.forgotPassword">`)
+	has(t, signedOut, `<span id="signIn.registerProject" aria-disabled="true">`)
+	has(t, signedOut, `<span id="auth.forgotPassword" aria-disabled="true">`)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"web.home", "entries.title", "approvals.title", "accounts.title", "partners.title", "contracts.title", "reports.title",
-		"history.projectTitle"} {
-		has(t, page, `<span class="parked" aria-disabled="true" data-key="`+key+`">`)
+	for _, key := range []string{"home", "entries", "approvals", "accounts", "partners", "contracts", "reports", "history"} {
+		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/settings"`)
 }
@@ -257,7 +256,7 @@ func TestWeb_R16_SignOutEndsThisBrowserAndClearsItsCookies(t *testing.T) {
 	open := `SELECT count(*) FROM devices WHERE is_revoked = 0`
 	before := api.Count(open)
 	answered := browser.Send("POST", "/sign-out", nil)
-	has(t, answered.Body.String(), `data-key="signIn.username"`)
+	has(t, answered.Body.String(), `id="signIn.username"`)
 	if browser.Cookie("redix_access") != "" || browser.Cookie("redix_refresh") != "" {
 		t.Error("signing out clears the session's cookies")
 	}
@@ -288,7 +287,7 @@ func TestWeb_R16_TwelveHoursUnusedEndTheSession(t *testing.T) {
 	if browser.Cookie("redix_refresh") != "" {
 		t.Error("an ended session's cookies are cleared")
 	}
-	if browser.Send("GET", "/tab/settings", nil).Header().Get("HX-Retarget") != "#shell" {
+	if browser.Send("GET", "/tab/settings", nil).Header().Get("HX-Retarget") != "[id='web.shell']" {
 		t.Error("a tab asked with no session answers the sign-in form in the whole shell")
 	}
 }
@@ -348,8 +347,28 @@ func TestWeb_R5_ClosingATabNotOpenChangesNothing(t *testing.T) {
 
 func TestWeb_R13_ChangingAPasswordWithNoSessionAnswersTheSignInForm(t *testing.T) {
 	answered := testapi.New(t).Browser().Send("POST", "/change-password", url.Values{"current": {password}, "new": {"Chosen-new-3"}, "confirm": {"Chosen-new-3"}})
-	if answered.Header().Get("HX-Retarget") != "#shell" {
+	if answered.Header().Get("HX-Retarget") != "[id='web.shell']" {
 		t.Errorf("no session answers the whole shell: %v", answered.Header())
 	}
-	has(t, answered.Body.String(), `data-key="signIn.username"`)
+	has(t, answered.Body.String(), `id="signIn.username"`)
+}
+
+func TestWeb_EveryElementsIdIsTheOnlyOneOnItsPage(t *testing.T) {
+	api := testapi.New(t)
+	pages := map[string]string{"signed out": api.Browser().Send("GET", "/", nil).Body.String()}
+	browser, _ := signedIn(t, api, "User A")
+	browser.Send("GET", "/tab/settings", nil)
+	pages["signed in"] = browser.Send("GET", "/", nil).Body.String()
+	for name, page := range pages {
+		seen := map[string]bool{}
+		for _, id := range regexp.MustCompile(` id="([^"]+)"`).FindAllStringSubmatch(page, -1) {
+			if seen[id[1]] {
+				t.Errorf("%s: the id %q is on two elements", name, id[1])
+			}
+			seen[id[1]] = true
+		}
+		if len(seen) < 15 {
+			t.Errorf("%s: only %d ids", name, len(seen))
+		}
+	}
 }

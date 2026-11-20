@@ -22,7 +22,7 @@ templ document(p page) {
 			<link rel="stylesheet" href={ p.assets.css }/>
 			<script src={ p.assets.htmx } defer></script>
 		</head>
-		<body hx-on:keydown="if (event.altKey && event.code === 'Digit1' && document.getElementById('view-side')) { event.preventDefault(); document.getElementById('view-side').click() }">
+		<body hx-on:keydown="if (event.altKey && event.code === 'Digit1' && document.getElementById('web.view.sideMenu')) { event.preventDefault(); document.getElementById('web.view.sideMenu').click() }">
 			@shell(p)
 		</body>
 	</html>
@@ -31,23 +31,24 @@ templ document(p page) {
 // shell is the frame every page lives in, the base design the owner approved on 21 Nov 2026: top bar, side menu, tabs and content, status bar
 // (#161 R5). Before signing in, only the top bar, the content and the status bar.
 templ shell(p page) {
-	<div id="shell" class={ "shell", templ.KV("in", p.in), templ.KV("arriving", p.arriving) } style={ p.view.width() }>
+	<div id="web.shell" class={ "shell", templ.KV("in", p.in), templ.KV("arriving", p.arriving) } style={ p.view.width() }>
 		@topBar(p)
 		if p.in {
 			@side(p)
 			<div
+				id="web.sideLine"
 				class="sash"
 				aria-hidden="true"
 				hx-on:pointerdown="this.setPointerCapture(event.pointerId); this.closest('.shell').classList.add('resizing')"
-				hx-on:pointermove="if (!this.hasPointerCapture(event.pointerId)) return; const shell = this.closest('.shell'), box = shell.getBoundingClientRect(), along = getComputedStyle(shell).direction === 'rtl' ? box.right - event.clientX : event.clientX - box.left, width = Math.round(Math.max(180, Math.min(480, box.width - 320, along))); shell.style.setProperty('--side-w', width + 'px'); document.getElementById('view-width').value = width"
-				hx-on:lostpointercapture="this.closest('.shell').classList.remove('resizing'); htmx.trigger('#view-menu', 'change')"
+				hx-on:pointermove="if (!this.hasPointerCapture(event.pointerId)) return; const shell = this.closest('.shell'), box = shell.getBoundingClientRect(), along = getComputedStyle(shell).direction === 'rtl' ? box.right - event.clientX : event.clientX - box.left, width = Math.round(Math.max(180, Math.min(480, box.width - 320, along))); shell.style.setProperty('--side-w', width + 'px'); document.getElementById('web.view.width').value = width"
+				hx-on:lostpointercapture="this.closest('.shell').classList.remove('resizing'); htmx.trigger(document.getElementById('web.viewMenu'), 'change')"
 			></div>
 		}
 		<main class="main">
 			if p.in {
 				@tabsRow(p)
 			}
-			<div id="content" class="content">
+			<div id="web.content" class="content">
 				@p.content
 			</div>
 		</main>
@@ -57,15 +58,15 @@ templ shell(p page) {
 
 // topBar holds the logo and, once someone is signed in, their name and Sign out (#161 R6).
 templ topBar(p page) {
-	<header class="top">
-		<div class="brand">
+	<header id="web.topBar" class="top">
+		<div id="web.brand" class="brand">
 			@logo()
 			<span>{ p.words.Of("app.title") }</span>
 		</div>
 		if p.person != "" {
 			<div class="end">
-				<span class="who">{ p.person }</span>
-				<button class="signout" type="button" hx-post="/sign-out" hx-target="#shell" hx-swap="outerHTML" data-key="myAccount.signOut">{ p.words.Of("myAccount.signOut") }</button>
+				<span id="web.person" class="who">{ p.person }</span>
+				<button id="myAccount.signOut" class="signout" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
 			</div>
 		}
 	</header>
@@ -78,9 +79,9 @@ templ logo() {
 
 // side is the side menu, like a project explorer, folded by a keyboard character beside the project's name or Alt+1 (#161 R7).
 templ side(p page) {
-	<aside class="side" aria-label={ p.words.Of("web.sideMenu") }>
+	<aside id="web.sideMenu" class="side" aria-label={ p.words.Of("web.sideMenu") }>
 		<div class="side-head">
-			<label class="fold" for="view-side" data-tip={ p.shortcut("web.collapse") }>{ p.foldArrow() }</label>
+			<label id="web.fold" class="fold" for="web.view.sideMenu" data-tip={ p.shortcut("web.collapse") }>{ p.foldArrow() }</label>
 		</div>
 		@tree(p)
 	</aside>
@@ -88,13 +89,13 @@ templ side(p page) {
 
 // tree is the side menu's items: one whose feature is built opens its tab, the others stand gray (#161 R15).
 templ tree(p page) {
-	<ul class="tree">
+	<ul id="web.tree" class="tree">
 		for _, item := range sideMenu {
 			<li>
 				if item.built() {
 					@itemLink(p, item, false)
 				} else {
-					<span class="parked" aria-disabled="true" data-key={ item.title }>{ p.words.Of(item.title) }</span>
+					<span id={ "web.item." + item.name } class="parked" aria-disabled="true">{ p.words.Of(item.title) }</span>
 				}
 			</li>
 		}
@@ -103,7 +104,7 @@ templ tree(p page) {
 
 // itemLink is a built item's link, marked while its tab is in front.
 templ itemLink(p page, item menuItem, outOfBand bool) {
-	<a id={ "item-" + item.name } href="#" hx-get={ "/tab/" + item.name } hx-target="#content" aria-current={ strconv.FormatBool(item.name == p.view.Active) } data-key={ item.title } { swapOutOfBand(outOfBand)... }>{ p.words.Of(item.title) }</a>
+	<a id={ "web.item." + item.name } href="#" hx-get={ "/tab/" + item.name } hx-target="[id='web.content']" aria-current={ strconv.FormatBool(item.name == p.view.Active) } { swapOutOfBand(outOfBand)... }>{ p.words.Of(item.title) }</a>
 }
 
 // itemLinks are every built item's link, carried beside a tab's content so the one in front is marked; the items themselves stay in place.
@@ -118,25 +119,25 @@ templ itemLinks(p page) {
 // tabsRow is the arrow that brings the side menu back, the open tabs, and the View menu, whose ticks the whole shell's look follows (#161 R9).
 templ tabsRow(p page) {
 	<div class="tabs-row">
-		<label class="unfold" for="view-side" data-tip={ p.shortcut("web.showMenu") }>{ p.unfoldArrow() }</label>
+		<label id="web.unfold" class="unfold" for="web.view.sideMenu" data-tip={ p.shortcut("web.showMenu") }>{ p.unfoldArrow() }</label>
 		@tabs(p, false)
-		<button class="view-button" type="button" popovertarget="view-menu" data-key="web.view">{ p.words.Of("web.view") }</button>
-		<form id="view-menu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none">
-			<label><input type="checkbox" id="view-top" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
-			<label><input type="checkbox" id="view-status" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
-			<label><input type="checkbox" id="view-side" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd>Alt+1</kbd></label>
-			<input type="hidden" id="view-width" name="width" value={ strconv.Itoa(p.view.Width) }/>
+		<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu">{ p.words.Of("web.view") }</button>
+		<form id="web.viewMenu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none">
+			<label><input type="checkbox" id="web.view.topBar" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
+			<label><input type="checkbox" id="web.view.statusBar" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
+			<label><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd>Alt+1</kbd></label>
+			<input type="hidden" id="web.view.width" name="width" value={ strconv.Itoa(p.view.Width) }/>
 		</form>
 	</div>
 }
 
 // tabs are the open tabs, the front one marked.
 templ tabs(p page, outOfBand bool) {
-	<div id="tabs" class="tabs" role="tablist" { swapOutOfBand(outOfBand)... }>
+	<div id="web.tabs" class="tabs" role="tablist" { swapOutOfBand(outOfBand)... }>
 		for _, item := range p.openTabs() {
-			<div class="tab" role="tab" aria-selected={ strconv.FormatBool(item.name == p.view.Active) }>
-				<button class="tab-title" type="button" hx-get={ "/tab/" + item.name } hx-target="#content">{ p.words.Of(item.title) }</button>
-				<button class="close" type="button" hx-delete={ "/tab/" + item.name } hx-target="#content" aria-label={ p.words.Of("web.close") }>✕</button>
+			<div id={ "web.tab." + item.name } class="tab" role="tab" aria-selected={ strconv.FormatBool(item.name == p.view.Active) }>
+				<button id={ "web.tab." + item.name + ".title" } class="tab-title" type="button" hx-get={ "/tab/" + item.name } hx-target="[id='web.content']">{ p.words.Of(item.title) }</button>
+				<button id={ "web.tab." + item.name + ".close" } class="close" type="button" hx-delete={ "/tab/" + item.name } hx-target="[id='web.content']" aria-label={ p.words.Of("web.close") }>✕</button>
 			</div>
 		}
 	</div>
@@ -144,15 +145,15 @@ templ tabs(p page, outOfBand bool) {
 
 // statusBar is the host this page came from and the web's version (#161 R2).
 templ statusBar(p page) {
-	<footer class="status">
-		<span class="host"><span class="dot"></span>{ p.host }</span>
-		<span class="end" data-key="appVersion.line">{ p.words.Of("app.version") + " " + Version }</span>
+	<footer id="web.statusBar" class="status">
+		<span id="web.host" class="host"><span class="dot"></span>{ p.host }</span>
+		<span id="appVersion.line" class="end">{ p.words.Of("app.version") + " " + Version }</span>
 	</footer>
 }
 
 // emptyContent is the content area before a tab is open.
 templ emptyContent(p page) {
-	<p class="empty" data-key="web.pickFromMenu">{ p.words.Of("web.pickFromMenu") }</p>
+	<p id="web.pickFromMenu" class="empty">{ p.words.Of("web.pickFromMenu") }</p>
 }
 
 // signInForm is the sign-in, in the content area: what the app's sign-in has, with the language at its foot, since Settings cannot be reached before
@@ -160,27 +161,28 @@ templ emptyContent(p page) {
 templ signInForm(p page, message string, username string) {
 	<div class="signin">
 		<form
+			id="signIn.form"
 			hx-post="/sign-in"
 			hx-target="closest .signin"
 			hx-swap="outerHTML"
 			data-no-connection={ p.words.Of("signIn.noConnection") }
 			hx-on::send-error="const message = this.querySelector('.refusal'); message.textContent = this.dataset.noConnection; message.hidden = false"
 		>
-			<h1>{ p.words.Of("app.title") }</h1>
-			<p class="hint">{ p.words.Of("signIn.hint") }</p>
+			<h1 id="signIn.title">{ p.words.Of("app.title") }</h1>
+			<p id="signIn.hint" class="hint">{ p.words.Of("signIn.hint") }</p>
 			<div class="field">
-				<label for="username">{ p.words.Of("signIn.username") }</label>
-				<input id="username" name="username" autocomplete="username" autofocus required value={ username } data-key="signIn.username"/>
+				<label for="signIn.username">{ p.words.Of("signIn.username") }</label>
+				<input id="signIn.username" name="username" autocomplete="username" autofocus required value={ username }/>
 			</div>
 			<div class="field">
-				<label for="password">{ p.words.Of("signIn.password") }</label>
-				<input id="password" name="password" type="password" autocomplete="current-password" required data-key="signIn.password"/>
+				<label for="signIn.password">{ p.words.Of("signIn.password") }</label>
+				<input id="signIn.password" name="password" type="password" autocomplete="current-password" required/>
 			</div>
-			<p class="refusal" role="alert" data-key="signIn.message" hidden?={ message == "" }>{ p.words.Of(message) }</p>
-			<button class="primary" type="submit" data-key="signIn.submit">{ p.words.Of("signIn.submit") }</button>
+			<p id="signIn.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
+			<button id="signIn.submit" class="primary" type="submit">{ p.words.Of("signIn.submit") }</button>
 			<div class="parked-links">
-				<span aria-disabled="true" data-key="signIn.registerProject">{ p.words.Of("signIn.registerProject") }</span>
-				<span aria-disabled="true" data-key="auth.forgotPassword">{ p.words.Of("auth.forgotPassword") }</span>
+				<span id="signIn.registerProject" aria-disabled="true">{ p.words.Of("signIn.registerProject") }</span>
+				<span id="auth.forgotPassword" aria-disabled="true">{ p.words.Of("auth.forgotPassword") }</span>
 			</div>
 			<div class="form-language">
 				@languageChoice(p)
@@ -194,46 +196,47 @@ templ signInForm(p page, message string, username string) {
 templ changePasswordForm(p page, message string, username string) {
 	<div class="signin">
 		<form
+			id="changePassword.form"
 			hx-post="/change-password"
 			hx-target="closest .signin"
 			hx-swap="outerHTML"
 			data-no-connection={ p.words.Of("changePassword.noConnection") }
 			hx-on::send-error="const message = this.querySelector('.refusal'); message.textContent = this.dataset.noConnection; message.hidden = false"
 		>
-			<h1>{ p.words.Of("changePassword.title") }</h1>
-			<p class="hint">{ p.words.Of("changePassword.hint") }</p>
+			<h1 id="changePassword.title">{ p.words.Of("changePassword.title") }</h1>
+			<p id="changePassword.hint" class="hint">{ p.words.Of("changePassword.hint") }</p>
 			<input type="text" name="username" autocomplete="username" value={ username } hidden/>
 			<div class="field">
-				<label for="current">{ p.words.Of("changePassword.current") }</label>
-				<input id="current" name="current" type="password" autocomplete="current-password" autofocus required data-key="changePassword.current"/>
+				<label for="changePassword.current">{ p.words.Of("changePassword.current") }</label>
+				<input id="changePassword.current" name="current" type="password" autocomplete="current-password" autofocus required/>
 			</div>
 			<div class="field">
-				<label for="new">{ p.words.Of("changePassword.new") }</label>
-				<input id="new" name="new" type="password" autocomplete="new-password" required data-key="changePassword.new"/>
+				<label for="changePassword.new">{ p.words.Of("changePassword.new") }</label>
+				<input id="changePassword.new" name="new" type="password" autocomplete="new-password" required/>
 			</div>
 			<div class="field">
-				<label for="confirm">{ p.words.Of("changePassword.confirm") }</label>
-				<input id="confirm" name="confirm" type="password" autocomplete="new-password" required data-key="changePassword.confirm"/>
+				<label for="changePassword.confirm">{ p.words.Of("changePassword.confirm") }</label>
+				<input id="changePassword.confirm" name="confirm" type="password" autocomplete="new-password" required/>
 			</div>
-			<p class="refusal" role="alert" data-key="changePassword.message" hidden?={ message == "" }>{ p.words.Of(message) }</p>
-			<button class="primary" type="submit" data-key="changePassword.submit">{ p.words.Of("changePassword.submit") }</button>
+			<p id="changePassword.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
+			<button id="changePassword.submit" class="primary" type="submit">{ p.words.Of("changePassword.submit") }</button>
 		</form>
 	</div>
 }
 
 // settingsTab is Settings: the language, chosen here and never in the top bar (#161 R11).
 templ settingsTab(p page) {
-	<div class="view-head"><h2>{ p.words.Of("sharedSettings.title") }</h2></div>
-	<section class="setting">
-		<h3>{ p.words.Of("myAccount.language") }</h3>
+	<div class="view-head"><h2 id="sharedSettings.title">{ p.words.Of("sharedSettings.title") }</h2></div>
+	<section id="web.setting.language" class="setting">
+		<h3 id="myAccount.language">{ p.words.Of("myAccount.language") }</h3>
 		@languageChoice(p)
 	</section>
 }
 
 // languageChoice is the two languages, the one in use marked; choosing one draws the page again in it (#161 S6).
 templ languageChoice(p page) {
-	<nav class="language" aria-label={ p.words.Of("myAccount.language") }>
-		<a href="/language/ar" lang="ar" aria-current={ strconv.FormatBool(p.language == "ar") } data-key="myAccount.arabic">{ p.words.Of("myAccount.arabic") }</a>
-		<a href="/language/en" lang="en" aria-current={ strconv.FormatBool(p.language == "en") } data-key="myAccount.english">{ p.words.Of("myAccount.english") }</a>
+	<nav id="web.language" class="language" aria-label={ p.words.Of("myAccount.language") }>
+		<a id="myAccount.arabic" href="/language/ar" lang="ar" aria-current={ strconv.FormatBool(p.language == "ar") }>{ p.words.Of("myAccount.arabic") }</a>
+		<a id="myAccount.english" href="/language/en" lang="en" aria-current={ strconv.FormatBool(p.language == "en") }>{ p.words.Of("myAccount.english") }</a>
 	</nav>
 }

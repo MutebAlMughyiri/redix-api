@@ -166,7 +166,7 @@ func (s site) signOut(w http.ResponseWriter, r *http.Request) {
 
 // reshell answers the whole shell in place of whatever part asked, without loading the page again (#161 R5, R6).
 func reshell(w http.ResponseWriter, r *http.Request, p page) {
-	w.Header().Set("HX-Retarget", "#shell")
+	w.Header().Set("HX-Retarget", "[id='web.shell']")
 	w.Header().Set("HX-Reswap", "outerHTML")
 	draw(w, r, http.StatusOK, shell(p))
 }
