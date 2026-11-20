@@ -89,10 +89,11 @@ install -d -m 755 /run/sshd
 sshd -t
 systemctl try-reload-or-restart ssh
 
-say "5. The firewall lets in SSH and the ports each instance's REDIX_Urls names, and closes any other it had opened (R7, R21, R25)"
+say "5. The firewall lets in SSH and the ports each instance's REDIX_Urls and REDIX_Web__Urls name, and closes any other it had opened"
+# (R7, R21, R25; the web's, redix-api #161: 443, 9444 and 9445 once each instance's settings open its web)
 open="22/tcp"
 for instance in "${instances[@]}"; do
-  urls=$(setting "$instance" REDIX_Urls)
+  urls="$(setting "$instance" REDIX_Urls);$(setting "$instance" REDIX_Web__Urls)"
   for url in ${urls//;/ }; do open+=" ${url##*:}/tcp"; done
 done
 for rule in $(ufw show added | awk '$1 == "ufw" && $2 == "allow" {print $3}'); do
@@ -164,6 +165,8 @@ for instance in "${instances[@]}"; do
   printf '%s, %s:%s\n' "$instance" "$name" "${https_url##*:}"
   echo | timeout 20 openssl s_client -connect "$name:${https_url##*:}" -servername "$name" 2>/dev/null \
     | openssl x509 -noout -issuer -enddate 2>/dev/null || echo "HTTPS: no certificate yet - is the A record $name -> this server?"
+  web_url=$(setting "$instance" REDIX_Web__Urls)
+  if [[ -n $web_url ]]; then printf '%s web, https://%s:%s\n' "$instance" "$name" "${web_url##*:}"; fi
 done
 # Postfix sends over IPv4 alone, so the check dials Gmail's IPv4 address: its name may be reached over IPv6, which reported port 25
 # open on 20 Nov 2026 while the company blocked it on IPv4 and every message waited in the queue.
