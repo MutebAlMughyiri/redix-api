@@ -7,6 +7,7 @@ The server of REDIX (Real Estate Development Intelligence): it keeps every proje
 | [Architecture](ARCHITECTURE.md) | See how the API is built, where each thing lives, and how a request flows |
 | [Database](database.md) | See every table, its columns and keys, what each points at, the lookup tables and their values, and the diagrams of how the tables relate |
 | [Decisions](decisions.md) | Know why things are as they are |
+| [Environments](environments.md) | Open any environment: its web and API addresses, its data, and which app talks to it |
 | [Use cases](#use-cases) | Know what each part does, who may use it, and where each rule lives in the code |
 | The OpenAPI document | Read every route, what it takes, answers and refuses, at `/openapi/v1.json`, with Swagger UI at `/swagger`, in Dev and QA: written from the Go code by `go generate ./internal/apidoc` (redix-api #142) |
 
