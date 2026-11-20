@@ -18,7 +18,7 @@ import (
 )
 
 // The كشف الضريبة as the accountant's workbook (VatStatementFiles, redix-api #96, D5, D19): a sheet per quarter, its purchases, each row's VAT and
-// amount before VAT as formulas on its total at the configured rate, and the net due at the foot; in Excel's own look, not the statement's (#76
+// amount before VAT as formulas on its total at the configured rate, and the purchases' VAT at the foot; in Excel's own look, not the statement's (#76
 // row 267).
 
 var (
