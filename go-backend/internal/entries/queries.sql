@@ -139,9 +139,26 @@ SELECT id, display_name FROM users;
 -- Every History line of one login, newest first: what my history reads (UC-069 R9), so no other login's line can reach it.
 SELECT * FROM history WHERE table_name = 'Users' AND record_id = ? ORDER BY id DESC;
 
--- name: HistoryOfProject :many
--- Every History line of a project, newest first: what the history screens read (D11), so no line of another project can reach them.
-SELECT * FROM history WHERE project_id = ? ORDER BY id DESC;
+-- name: HistoryBefore :many
+-- The newest take of a project's History lines older than before, newest first: a history screen reads its page a batch at a time (#87), and
+-- only the project's lines, so no line of another project can reach it (D11).
+SELECT * FROM history WHERE project_id = sqlc.arg(project_id) AND id < sqlc.arg(before) ORDER BY id DESC LIMIT sqlc.arg(take);
+
+-- name: HistoryAfter :many
+-- The oldest take of a project's History lines newer than after, oldest first: the rest of a request a batch ends inside (#87).
+SELECT * FROM history WHERE project_id = sqlc.arg(project_id) AND id > sqlc.arg(after) ORDER BY id LIMIT sqlc.arg(take);
+
+-- name: HistoryOfRecords :many
+-- Every line of a project's History about the records named, a JSON list of [table, id] pairs, oldest first: what History knows of them,
+-- each record looked up through the index on table and record; CROSS JOIN keeps that order whatever SQLite's statistics say (#87).
+SELECT history.* FROM json_each(sqlc.arg(records)) AS named CROSS JOIN history
+    ON history.table_name = json_extract(named.value, '$[0]') AND history.record_id = json_extract(named.value, '$[1]')
+WHERE history.project_id = sqlc.arg(project_id)
+ORDER BY history.id;
+
+-- name: DeletedAccountsOf :many
+-- The History lines of a project's accounts deleted: the names the account history shows for them (#87).
+SELECT * FROM history WHERE project_id = ? AND table_name = 'Accounts' AND action = 'Delete';
 
 -- name: TransfersOf :many
 SELECT * FROM transfers WHERE project_id = ?;

@@ -5,6 +5,7 @@ package entries_test
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -218,5 +219,93 @@ func TestR7_EveryLineKeepsTheTraceIdOfTheRequestThatWroteIt(t *testing.T) {
 	a.Ask("POST", a.path+"/units", `{"name":"B8"}`, a.token)
 	if got := a.said(a.path+"/history", a.token)[:2]; !slices.Equal(got, []string{"created unit B8", "created unit B7"}) {
 		t.Errorf("two requests at one instant: %q", got)
+	}
+}
+
+// redix-api #87 R8: the project history is read a batch at a time, and its pages still hold every line the person may see, once each, newest
+// first: a request of 701 lines spanning the end of a batch is one line, as its account's line stands for its custody lines; a page that begins
+// inside a request leaves that request's custody lines hidden as the whole request does.
+func TestR87_8_APagedHistoryShowsEveryLineOnceAcrossBatches(t *testing.T) {
+	a := approved(t, started)
+	pages := func(from string) []map[string]any {
+		var all []map[string]any
+		for path := from; ; {
+			page := a.lines(path, a.token)
+			all = append(all, page...)
+			if len(page) < 50 {
+				return all
+			}
+			path = from + "?before=" + strconv.FormatInt(int64(page[len(page)-1]["id"].(float64)), 10)
+		}
+	}
+	base := len(pages(a.path + "/history"))
+	a.longHistory()
+
+	all := pages(a.path + "/history")
+	ids := map[float64]bool{}
+	for i, line := range all {
+		if ids[line["id"].(float64)] || (i > 0 && line["id"].(float64) >= all[i-1]["id"].(float64)) {
+			t.Fatalf("line %d (%v) repeats or breaks the order", i, line["id"])
+		}
+		ids[line["id"].(float64)] = true
+		if line["thing"] == "custody" {
+			t.Errorf("a custody line shows although its request's account line stands for it: %v", line["id"])
+		}
+	}
+	if want := base + 300 + 1 + 450 + 1 + 450; len(all) != want {
+		t.Errorf("%d lines across the pages, want %d", len(all), want)
+	}
+	var mid int64
+	if err := a.Database.Read.QueryRow(`SELECT max(id) FROM history WHERE trace_id = 'mid'`).Scan(&mid); err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range a.lines(a.path+"/history?before="+strconv.FormatInt(mid, 10), a.token) {
+		if line["thing"] == "custody" {
+			t.Errorf("a page beginning inside a request shows its custody line %v", line["id"])
+		}
+	}
+}
+
+// longHistory writes 1,932 lines into the project's History, more than three batches: single requests around a request of 701 lines (an account's
+// line and 700 custody lines) spanning a batch's end, and a request of 31 a page can begin inside, its account's line written last.
+func (a project) longHistory() {
+	a.t.Helper()
+	project := strings.TrimPrefix(a.path, "/projects/")
+	var manager string
+	if err := a.Database.Read.QueryRow(`SELECT user_id FROM history WHERE project_id = ? LIMIT 1`, project).Scan(&manager); err != nil {
+		a.t.Fatal(err)
+	}
+	write := func(count int, table, trace string) {
+		a.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?)
+			INSERT INTO history (at, project_id, user_id, action, table_name, record_id, before, after, trace_id)
+			SELECT '2026-11-16T10:00:00.0000000Z', ?, ?, 'Update', ?, ?, '{}', '{"Name":"حساب المؤسسة","UserId":"`+manager+`"}',
+				CASE WHEN ? = '' THEN 'single-' || hex(randomblob(8)) ELSE ? END FROM n`, count, project, manager, table, a.account, trace, trace)
+	}
+	write(300, "Accounts", "")
+	write(1, "Accounts", "big")
+	write(700, "AccountCustodians", "big")
+	write(450, "Accounts", "")
+	write(30, "AccountCustodians", "mid")
+	write(1, "Accounts", "mid")
+	write(450, "Accounts", "")
+}
+
+// redix-api #141 D1, #87: each history screen read a batch at a time answers 500 when the database fails at any of its calls - a batch, the rest
+// of a request, what History knows of a record - and writes no History line.
+func TestR87_AFailingDatabaseAtAnyCallOfAHistoryScreenAnswers500(t *testing.T) {
+	a := approved(t, started)
+	a.longHistory()
+	for _, path := range []string{a.path + "/history", a.path + "/history?before=1500", a.path + "/accounts/history", a.path + "/partners/history",
+		a.path + "/approvals/history", "/me/history"} {
+		for n := int64(1); ; n++ {
+			before := a.Count("SELECT count(*) FROM history")
+			answered, failed := a.SendFailing(n, "GET", path, ``, "Authorization", "Bearer "+a.token)
+			if !failed {
+				break
+			}
+			if answered.Code != 500 || a.Count("SELECT count(*) FROM history") != before {
+				t.Errorf("%s, the database failing at its call %d: %d", path, n, answered.Code)
+			}
+		}
 	}
 }

@@ -5,6 +5,7 @@ package entries
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
@@ -33,28 +34,68 @@ type historyLine interface {
 	holds(text string) bool
 }
 
-// page is the page of lines lineOf makes of rows (HistoryPage.LinesAsync): after the line before (0 for the newest), only those the person by
-// wrote when one is named (UC-069 R5), and once something was typed, only those that hold it.
-func page[T historyLine](r *http.Request, rows []store.History, lineOf func(store.History) T) []T {
+// historyBatch is how many History lines a screen reads at a time, newest first, until its page is full (#87): a page reads the batches it needs
+// where it read every line of the project (the project history on a project ten times qa's size: 1.6 s to 0.5 s).
+const historyBatch = 500
+
+// historyLines reads a history screen's lines older than before, newest first, a batch at a time; none once they have run out.
+type historyLines func(before int64) ([]store.History, error)
+
+// projectLines are the project's History lines, a batch at a time, only the project's (D11).
+func projectLines(c changes.Change) historyLines {
+	return func(before int64) ([]store.History, error) {
+		return c.Q.HistoryBefore(c.Ctx, store.HistoryBeforeParams{ProjectID: c.ProjectID, Before: before, Take: historyBatch})
+	}
+}
+
+// page is a page of a history screen (HistoryPage.LinesAsync): its lines read newest first a batch at a time, after the line before (0 for the
+// newest), linesOf keeping the ones the screen shows and making them; only those the person by wrote when one is named (UC-069 R5) and, once
+// something was typed, only those that hold it, until the page is full or the lines run out (#87).
+func page[T historyLine](r *http.Request, read historyLines, linesOf func(batch []store.History) ([]T, error)) ([]T, error) {
 	query := r.URL.Query()
 	by, _ := uuid.Parse(query.Get("by"))
 	before, _ := strconv.ParseInt(query.Get("before"), 10, 64)
+	if before <= 0 {
+		before = math.MaxInt64
+	}
 	text := query.Get("text")
 	lines := []T{}
-	for _, row := range rows {
-		if (by != uuid.Nil && row.UserID != by) || (before > 0 && row.ID >= before) {
-			continue
+	for {
+		batch, err := read(before)
+		if err != nil || len(batch) == 0 {
+			return lines, err
 		}
-		line := lineOf(row)
-		if strings.TrimSpace(text) != "" && !line.holds(text) {
-			continue
+		before = batch[len(batch)-1].ID
+		if by != uuid.Nil {
+			batch = slices.DeleteFunc(batch, func(row store.History) bool { return row.UserID != by })
 		}
-		lines = append(lines, line)
-		if len(lines) == pageSize {
-			break
+		made, err := linesOf(batch)
+		if err != nil {
+			return nil, err
+		}
+		for _, line := range made {
+			if strings.TrimSpace(text) != "" && !line.holds(text) {
+				continue
+			}
+			lines = append(lines, line)
+			if len(lines) == pageSize {
+				return lines, nil
+			}
 		}
 	}
-	return lines
+}
+
+// each makes a line of every row of a batch keep keeps: a screen whose lines need nothing beyond their own row and what it read before.
+func each[T historyLine](keep func(store.History) bool, lineOf func(store.History) T) func([]store.History) ([]T, error) {
+	return func(batch []store.History) ([]T, error) {
+		var lines []T
+		for _, row := range batch {
+			if keep(row) {
+				lines = append(lines, lineOf(row))
+			}
+		}
+		return lines, nil
+	}
 }
 
 // textIn is the text a line kept under name; "" when it kept none (HistoryPage.TextIn).
@@ -108,18 +149,16 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		return
 	}
 	seen, known, err := s.seenBy(c, caller)
-	rows, rowsErr := c.Q.HistoryOfProject(c.Ctx, c.ProjectID)
+	deleted, deletedErr := c.Q.DeletedAccountsOf(c.Ctx, c.ProjectID)
 	transfers, transfersErr := c.Q.TransfersOf(c.Ctx, c.ProjectID)
 	balances, balancesErr := c.Q.ReconciliationBalancesOf(c.Ctx, c.ProjectID)
-	if err != nil || rowsErr != nil || transfersErr != nil || balancesErr != nil {
+	if err != nil || deletedErr != nil || transfersErr != nil || balancesErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
 	names := known.accounts
-	for _, row := range rows {
-		if row.TableName == "Accounts" && row.Action == "Delete" {
-			names[row.RecordID] = textIn(row.Before, "Name")
-		}
+	for _, row := range deleted {
+		names[row.RecordID] = textIn(row.Before, "Name")
 	}
 	entryOf := map[uuid.UUID]store.Entry{}
 	for _, entry := range seen {
@@ -135,25 +174,21 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		checked[balance.ReconciliationID] = checked[balance.ReconciliationID].Plus(fixed.Counted(balance.ActualBalance))
 		checks[balance.ReconciliationID] = append(checks[balance.ReconciliationID], balance.AccountID)
 	}
-	var kept []store.History
-	for _, row := range rows {
+	keep := func(row store.History) bool {
 		_, isSeen := entryOf[row.RecordID]
 		isAccounts := slices.Contains([]string{"Accounts", "AccountCustodians", "Transfers", "Reconciliations"}, row.TableName)
 		if !isAccounts && !(row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isSeen) {
-			continue
+			return false
 		}
-		if accountID != uuid.Nil {
-			transfer, isTransfer := transferOf[row.RecordID]
-			entry, isEntry := entryOf[row.RecordID]
-			named := row.RecordID == accountID || (isTransfer && (transfer.FromAccountID == accountID || transfer.ToAccountID == accountID)) ||
-				(isEntry && entry.AccountID == accountID) || slices.Contains(checks[row.RecordID], accountID)
-			if !named {
-				continue
-			}
+		if accountID == uuid.Nil {
+			return true
 		}
-		kept = append(kept, row)
+		transfer, isTransfer := transferOf[row.RecordID]
+		entry, isEntry := entryOf[row.RecordID]
+		return row.RecordID == accountID || (isTransfer && (transfer.FromAccountID == accountID || transfer.ToAccountID == accountID)) ||
+			(isEntry && entry.AccountID == accountID) || slices.Contains(checks[row.RecordID], accountID)
 	}
-	lines := page(r, kept, func(row store.History) accountLine {
+	lines, err := page(r, projectLines(c), each(keep, func(row store.History) accountLine {
 		line := accountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(purchase)}
 		switch row.TableName {
 		case "Accounts":
@@ -186,7 +221,11 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 			line.Account, line.Amount, line.EntryKind = names[entry.AccountID], fixed.Counted(amount), kindOf(entry.Kind)
 		}
 		return line
-	})
+	}))
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	web.JSON(w, r, http.StatusOK, lines)
 }
 
@@ -238,8 +277,7 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 	}
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
 	known, factsErr := factsOf(c)
-	rows, rowsErr := c.Q.HistoryOfProject(c.Ctx, c.ProjectID)
-	if err != nil || factsErr != nil || rowsErr != nil {
+	if err != nil || factsErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
@@ -249,15 +287,12 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 			entryOf[entry.ID] = entry
 		}
 	}
-	var kept []store.History
-	for _, row := range rows {
+	keep := func(row store.History) bool {
 		_, isMovement := entryOf[row.RecordID]
 		partnerRow := (row.TableName == "Partners" || (row.TableName == "PartnerUsers" && row.Action == "Update")) && slices.Contains(shown, row.RecordID)
-		if partnerRow || (row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isMovement) {
-			kept = append(kept, row)
-		}
+		return partnerRow || (row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isMovement)
 	}
-	lines := page(r, kept, func(row store.History) partnerLine {
+	lines, err := page(r, projectLines(c), each(keep, func(row store.History) partnerLine {
 		line := partnerLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, partnerKinds}}
 		if row.TableName != "Entries" {
 			switch {
@@ -279,7 +314,11 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 		}
 		line.Partner, line.Account, line.Amount = known.partners[known.capital[entry.ID]], known.accounts[entry.AccountID], fixed.Counted(entry.Amount)
 		return line
-	})
+	}))
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	web.JSON(w, r, http.StatusOK, lines)
 }
 
@@ -308,9 +347,8 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 	chosen, chosenErr := kinds.Parse(r.URL.Query().Get("kind"))
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
 	known, factsErr := factsOf(c)
-	rows, rowsErr := c.Q.HistoryOfProject(c.Ctx, c.ProjectID)
 	decisions, decisionsErr := c.Q.DecisionsOf(c.Ctx, c.ProjectID)
-	if err != nil || factsErr != nil || rowsErr != nil || decisionsErr != nil {
+	if err != nil || factsErr != nil || decisionsErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
@@ -320,13 +358,11 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 			entryOf[entry.ID] = entry
 		}
 	}
-	var kept []store.History
-	for _, row := range rows {
-		if _, decided := entryOf[row.RecordID]; decided && row.TableName == "Entries" && (row.Action == "Approve" || row.Action == "Reject") {
-			kept = append(kept, row)
-		}
+	keep := func(row store.History) bool {
+		_, decided := entryOf[row.RecordID]
+		return decided && row.TableName == "Entries" && (row.Action == "Approve" || row.Action == "Reject")
 	}
-	lines := page(r, kept, func(row store.History) approvalLine {
+	lines, err := page(r, projectLines(c), each(keep, func(row store.History) approvalLine {
 		entry := entryOf[row.RecordID]
 		line := approvalLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, approvalKinds}, Item: known.itemNameOf(entry),
 			Party: known.supplierOf(entry).Name, Amount: entry.Amount}
@@ -337,6 +373,10 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 			line.Kind.value, line.Reason = 1, reasonOf(decisions, entry.ID, row.At)
 		}
 		return line
-	})
+	}))
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	web.JSON(w, r, http.StatusOK, lines)
 }

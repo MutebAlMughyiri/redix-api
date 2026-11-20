@@ -249,6 +249,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteEveryCodeStmt, err = db.PrepareContext(ctx, deleteEveryCode); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteEveryCode: %w", err)
 	}
+	if q.deletedAccountsOfStmt, err = db.PrepareContext(ctx, deletedAccountsOf); err != nil {
+		return nil, fmt.Errorf("error preparing query DeletedAccountsOf: %w", err)
+	}
 	if q.deviceIsOpenStmt, err = db.PrepareContext(ctx, deviceIsOpen); err != nil {
 		return nil, fmt.Errorf("error preparing query DeviceIsOpen: %w", err)
 	}
@@ -309,11 +312,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.heldInProjectsStmt, err = db.PrepareContext(ctx, heldInProjects); err != nil {
 		return nil, fmt.Errorf("error preparing query HeldInProjects: %w", err)
 	}
+	if q.historyAfterStmt, err = db.PrepareContext(ctx, historyAfter); err != nil {
+		return nil, fmt.Errorf("error preparing query HistoryAfter: %w", err)
+	}
+	if q.historyBeforeStmt, err = db.PrepareContext(ctx, historyBefore); err != nil {
+		return nil, fmt.Errorf("error preparing query HistoryBefore: %w", err)
+	}
 	if q.historyOfLoginStmt, err = db.PrepareContext(ctx, historyOfLogin); err != nil {
 		return nil, fmt.Errorf("error preparing query HistoryOfLogin: %w", err)
 	}
-	if q.historyOfProjectStmt, err = db.PrepareContext(ctx, historyOfProject); err != nil {
-		return nil, fmt.Errorf("error preparing query HistoryOfProject: %w", err)
+	if q.historyOfRecordsStmt, err = db.PrepareContext(ctx, historyOfRecords); err != nil {
+		return nil, fmt.Errorf("error preparing query HistoryOfRecords: %w", err)
 	}
 	if q.holdersOfStmt, err = db.PrepareContext(ctx, holdersOf); err != nil {
 		return nil, fmt.Errorf("error preparing query HoldersOf: %w", err)
@@ -1133,6 +1142,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteEveryCodeStmt: %w", cerr)
 		}
 	}
+	if q.deletedAccountsOfStmt != nil {
+		if cerr := q.deletedAccountsOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deletedAccountsOfStmt: %w", cerr)
+		}
+	}
 	if q.deviceIsOpenStmt != nil {
 		if cerr := q.deviceIsOpenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deviceIsOpenStmt: %w", cerr)
@@ -1233,14 +1247,24 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing heldInProjectsStmt: %w", cerr)
 		}
 	}
+	if q.historyAfterStmt != nil {
+		if cerr := q.historyAfterStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing historyAfterStmt: %w", cerr)
+		}
+	}
+	if q.historyBeforeStmt != nil {
+		if cerr := q.historyBeforeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing historyBeforeStmt: %w", cerr)
+		}
+	}
 	if q.historyOfLoginStmt != nil {
 		if cerr := q.historyOfLoginStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing historyOfLoginStmt: %w", cerr)
 		}
 	}
-	if q.historyOfProjectStmt != nil {
-		if cerr := q.historyOfProjectStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing historyOfProjectStmt: %w", cerr)
+	if q.historyOfRecordsStmt != nil {
+		if cerr := q.historyOfRecordsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing historyOfRecordsStmt: %w", cerr)
 		}
 	}
 	if q.holdersOfStmt != nil {
@@ -2087,6 +2111,7 @@ type Queries struct {
 	defaultProjectOfStmt                *sql.Stmt
 	deleteCodesStmt                     *sql.Stmt
 	deleteEveryCodeStmt                 *sql.Stmt
+	deletedAccountsOfStmt               *sql.Stmt
 	deviceIsOpenStmt                    *sql.Stmt
 	deviceWithIDStmt                    *sql.Stmt
 	deviceWithRefreshTokenStmt          *sql.Stmt
@@ -2107,8 +2132,10 @@ type Queries struct {
 	hasUsersStmt                        *sql.Stmt
 	heldEverywhereStmt                  *sql.Stmt
 	heldInProjectsStmt                  *sql.Stmt
+	historyAfterStmt                    *sql.Stmt
+	historyBeforeStmt                   *sql.Stmt
 	historyOfLoginStmt                  *sql.Stmt
-	historyOfProjectStmt                *sql.Stmt
+	historyOfRecordsStmt                *sql.Stmt
 	holdersOfStmt                       *sql.Stmt
 	inactiveOfStmt                      *sql.Stmt
 	inactiveProjectsOfStmt              *sql.Stmt
@@ -2336,6 +2363,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		defaultProjectOfStmt:                q.defaultProjectOfStmt,
 		deleteCodesStmt:                     q.deleteCodesStmt,
 		deleteEveryCodeStmt:                 q.deleteEveryCodeStmt,
+		deletedAccountsOfStmt:               q.deletedAccountsOfStmt,
 		deviceIsOpenStmt:                    q.deviceIsOpenStmt,
 		deviceWithIDStmt:                    q.deviceWithIDStmt,
 		deviceWithRefreshTokenStmt:          q.deviceWithRefreshTokenStmt,
@@ -2356,8 +2384,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		hasUsersStmt:                        q.hasUsersStmt,
 		heldEverywhereStmt:                  q.heldEverywhereStmt,
 		heldInProjectsStmt:                  q.heldInProjectsStmt,
+		historyAfterStmt:                    q.historyAfterStmt,
+		historyBeforeStmt:                   q.historyBeforeStmt,
 		historyOfLoginStmt:                  q.historyOfLoginStmt,
-		historyOfProjectStmt:                q.historyOfProjectStmt,
+		historyOfRecordsStmt:                q.historyOfRecordsStmt,
 		holdersOfStmt:                       q.holdersOfStmt,
 		inactiveOfStmt:                      q.inactiveOfStmt,
 		inactiveProjectsOfStmt:              q.inactiveProjectsOfStmt,

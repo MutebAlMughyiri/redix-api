@@ -373,15 +373,11 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 	area, areaErr := areas.Parse(r.URL.Query().Get("area"))
 	seen, known, err := s.seenBy(c, caller)
 	all, allErr := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	newest, rowsErr := c.Q.HistoryOfProject(c.Ctx, c.ProjectID)
 	decisions, decisionsErr := c.Q.DecisionsOf(c.Ctx, c.ProjectID)
-	if err != nil || allErr != nil || rowsErr != nil || decisionsErr != nil {
+	if err != nil || allErr != nil || decisionsErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	oldest := slices.Clone(newest)
-	slices.Reverse(oldest)
-	records := knowledgeOf(oldest, known.authors)
 	sees := sight{caller: caller, projectID: c.ProjectID, entries: map[uuid.UUID]bool{}}
 	for _, entry := range all {
 		sees.entries[entry.ID] = false
@@ -389,34 +385,158 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 	for _, entry := range seen {
 		sees.entries[entry.ID] = true
 	}
-	var kept []store.History
-	for _, row := range shown(newest) {
-		kind := things[row.TableName]
-		if kind.seen(sees, records.ownValues(row)) && (areaErr != nil || kind.area == areas[area]) {
-			kept = append(kept, row)
+	lines, err := page(r, wholeRequests(c, projectLines(c)), func(batch []store.History) ([]projectLine, error) {
+		rows, err := shownOf(c, batch)
+		if err != nil {
+			return nil, err
+		}
+		records, err := knownAbout(c, rows, known.authors)
+		if err != nil {
+			return nil, err
+		}
+		var made []projectLine
+		for _, row := range rows {
+			kind := things[row.TableName]
+			if kind.seen(sees, records.ownValues(row)) && (areaErr != nil || kind.area == areas[area]) {
+				made = append(made, projectLineOf(row, records, decisions))
+			}
+		}
+		return made, nil
+	})
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	web.JSON(w, r, http.StatusOK, lines)
+}
+
+// projectLineOf is the line of «سجل المشروع» row stands for, described from what History knows of its records (UC-069 R1-R4).
+func projectLineOf(row store.History, records knowledge, decisions []store.EntryDecision) projectLine {
+	kind := things[row.TableName]
+	action := actionOf[row.Action]
+	if said, saidSo := kind.saidAs[row.Action]; saidSo {
+		action = said
+	}
+	var said described
+	kind.describe(&said, records.ownValues(row), records)
+	if row.Action == "Update" {
+		said.nameWas = valuesIn(row.Before).text("Name")
+	}
+	if row.Action == "Reject" {
+		said.about = reasonOf(decisions, row.RecordID, row.At)
+	}
+	if row.Action == "Retrieve" {
+		said.about = valuesIn(row.After).text("ArchivedAt")
+	}
+	return projectLine{ID: row.ID, At: row.At, By: records.people[row.UserID], Area: one(areas, kind.area), Action: one(actions, action),
+		Thing: one(thingNames, kind.name), Name: said.name, About: said.about, NameWas: said.nameWas, From: said.from, To: said.to, Amount: said.amount}
+}
+
+// wholeRequests reads as read does, each full batch read on to the end of its last request: a request's lines sit together, and one can hold
+// thousands, as a project file's load writes, so no request is split between two batches (#87).
+func wholeRequests(c changes.Change, read historyLines) historyLines {
+	return func(before int64) ([]store.History, error) {
+		batch, err := read(before)
+		if err != nil || len(batch) < historyBatch {
+			return batch, err
+		}
+		rest, err := restOfRequest(c, batch[len(batch)-1], false)
+		return append(batch, rest...), err
+	}
+}
+
+// shownOf is shown over a batch, the newer lines of its first request read first: a page that begins after a line can begin inside a request
+// (#87). Only the batch's own rows come back.
+func shownOf(c changes.Change, batch []store.History) ([]store.History, error) {
+	if len(batch) == 0 {
+		return nil, nil
+	}
+	newer, err := restOfRequest(c, batch[0], true)
+	if err != nil {
+		return nil, err
+	}
+	inBatch := map[int64]bool{}
+	for _, row := range batch {
+		inBatch[row.ID] = true
+	}
+	return slices.DeleteFunc(shown(append(newer, batch...)), func(row store.History) bool { return !inBatch[row.ID] }), nil
+}
+
+// restOfRequest is the lines of row's request beyond it, the newer ones when newer and the older ones otherwise, read until the request ends.
+func restOfRequest(c changes.Change, row store.History, newer bool) ([]store.History, error) {
+	request := requestOf(row)
+	var rest []store.History
+	for from := row.ID; ; {
+		var lines []store.History
+		var err error
+		if newer {
+			lines, err = c.Q.HistoryAfter(c.Ctx, store.HistoryAfterParams{ProjectID: c.ProjectID, After: from, Take: historyBatch})
+		} else {
+			lines, err = c.Q.HistoryBefore(c.Ctx, store.HistoryBeforeParams{ProjectID: c.ProjectID, Before: from, Take: historyBatch})
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, line := range lines {
+			if requestOf(line) != request {
+				return rest, nil
+			}
+			rest = append(rest, line)
+		}
+		if len(lines) < historyBatch {
+			return rest, nil
+		}
+		from = lines[len(lines)-1].ID
+	}
+}
+
+// naming are the tables a line's description can name a record of by an id its values keep: an entry, a supplier, an attachment, an account,
+// a partner, an item, a contract or a group (the describe functions above).
+var naming = []string{"Entries", "Suppliers", "Attachments", "Accounts", "Partners", "Items", "Contracts", "Subgroups"}
+
+// knownAbout is what History knows of rows' records and of the records their values name, two steps on (a group's sight line names a contract, a
+// contract its supplier): every line of each, read through the index on table and record, where every line of the project was read (#87). A
+// record's knowledge comes from its own lines alone, so reading a few records more changes no line.
+func knownAbout(c changes.Change, rows []store.History, people map[uuid.UUID]string) (knowledge, error) {
+	known := knowledge{records: map[record]values{}, people: people}
+	asked := map[record]bool{}
+	var fresh []record
+	ask := func(one record) {
+		if !asked[one] {
+			asked[one] = true
+			fresh = append(fresh, one)
 		}
 	}
-	lines := page(r, kept, func(row store.History) projectLine {
-		kind := things[row.TableName]
-		action := actionOf[row.Action]
-		if said, saidSo := kind.saidAs[row.Action]; saidSo {
-			action = said
+	for _, row := range rows {
+		ask(record{row.TableName, row.RecordID})
+	}
+	for step := 0; step < 3 && len(fresh) > 0; step++ {
+		pairs := make([][2]string, 0, len(fresh))
+		for _, one := range fresh {
+			pairs = append(pairs, [2]string{one.table, one.id.String()})
 		}
-		var said described
-		kind.describe(&said, records.ownValues(row), records)
-		if row.Action == "Update" {
-			said.nameWas = valuesIn(row.Before).text("Name")
+		named, err := json.Marshal(pairs)
+		if err != nil {
+			return knowledge{}, err
 		}
-		if row.Action == "Reject" {
-			said.about = reasonOf(decisions, row.RecordID, row.At)
+		lines, err := c.Q.HistoryOfRecords(c.Ctx, store.HistoryOfRecordsParams{Records: string(named), ProjectID: c.ProjectID})
+		if err != nil {
+			return knowledge{}, err
 		}
-		if row.Action == "Retrieve" {
-			said.about = valuesIn(row.After).text("ArchivedAt")
+		learnt := knowledgeOf(lines, people).records
+		maps.Copy(known.records, learnt)
+		fresh = nil
+		for _, kept := range learnt {
+			for name := range kept {
+				if id := kept.id(name); id != uuid.Nil {
+					for _, table := range naming {
+						ask(record{table, id})
+					}
+				}
+			}
 		}
-		return projectLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Area: one(areas, kind.area), Action: one(actions, action),
-			Thing: one(thingNames, kind.name), Name: said.name, About: said.about, NameWas: said.nameWas, From: said.from, To: said.to, Amount: said.amount}
-	})
-	web.JSON(w, r, http.StatusOK, lines)
+	}
+	return known, nil
 }
 
 // reasonOf is the reason entryID was rejected with at: the decision of that moment.
@@ -463,13 +583,15 @@ func (s Routes) myHistory(w http.ResponseWriter, r *http.Request, caller access.
 	for _, person := range people {
 		names[person.ID] = person.DisplayName
 	}
-	var kept []store.History
-	for _, row := range rows {
-		if kind, known := loginKindOf[row.Action]; known && (areaErr != nil || kind.area == areas[area]) {
-			kept = append(kept, row)
-		}
+	keep := func(row store.History) bool {
+		kind, known := loginKindOf[row.Action]
+		return known && (areaErr != nil || kind.area == areas[area])
 	}
-	lines := page(r, kept, func(row store.History) loginLine {
+	// One login's lines are few, so they are read whole and handed to the pager as one batch.
+	mine := func(before int64) ([]store.History, error) {
+		return slices.DeleteFunc(slices.Clone(rows), func(row store.History) bool { return row.ID >= before }), nil
+	}
+	lines, err := page(r, mine, each(keep, func(row store.History) loginLine {
 		kind, gave := loginKindOf[row.Action], valuesIn(row.After)
 		var about []string
 		for _, field := range []string{"DisplayName", "Username", "Mobile", "Email"} {
@@ -479,6 +601,10 @@ func (s Routes) myHistory(w http.ResponseWriter, r *http.Request, caller access.
 		}
 		return loginLine{ID: row.ID, At: row.At, By: names[row.UserID], Area: one(areas, kind.area), Kind: one(loginKinds, kind.kind),
 			About: strings.Join(about, " · ")}
-	})
+	}))
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
 	web.JSON(w, r, http.StatusOK, lines)
 }

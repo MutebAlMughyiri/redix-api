@@ -2052,6 +2052,45 @@ func (q *Queries) DeleteEveryCode(ctx context.Context, userID uuid.UUID) error {
 	return err
 }
 
+const deletedAccountsOf = `-- name: DeletedAccountsOf :many
+SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE project_id = ? AND table_name = 'Accounts' AND action = 'Delete'
+`
+
+// The History lines of a project's accounts deleted: the names the account history shows for them (#87).
+func (q *Queries) DeletedAccountsOf(ctx context.Context, projectID uuid.UUID) ([]History, error) {
+	rows, err := q.query(ctx, q.deletedAccountsOfStmt, deletedAccountsOf, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []History
+	for rows.Next() {
+		var i History
+		if err := rows.Scan(
+			&i.ID,
+			&i.At,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.RecordID,
+			&i.Before,
+			&i.After,
+			&i.TraceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deviceIsOpen = `-- name: DeviceIsOpen :one
 SELECT EXISTS (SELECT 1 FROM devices WHERE id = ?1 AND user_id = ?2 AND is_revoked = 0) AS is_open
 `
@@ -2585,6 +2624,97 @@ func (q *Queries) HeldInProjects(ctx context.Context, userID uuid.UUID) ([]HeldI
 	return items, nil
 }
 
+const historyAfter = `-- name: HistoryAfter :many
+SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE project_id = ?1 AND id > ?2 ORDER BY id LIMIT ?3
+`
+
+type HistoryAfterParams struct {
+	ProjectID uuid.UUID
+	After     int64
+	Take      int64
+}
+
+// The oldest take of a project's History lines newer than after, oldest first: the rest of a request a batch ends inside (#87).
+func (q *Queries) HistoryAfter(ctx context.Context, arg HistoryAfterParams) ([]History, error) {
+	rows, err := q.query(ctx, q.historyAfterStmt, historyAfter, arg.ProjectID, arg.After, arg.Take)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []History
+	for rows.Next() {
+		var i History
+		if err := rows.Scan(
+			&i.ID,
+			&i.At,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.RecordID,
+			&i.Before,
+			&i.After,
+			&i.TraceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const historyBefore = `-- name: HistoryBefore :many
+SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE project_id = ?1 AND id < ?2 ORDER BY id DESC LIMIT ?3
+`
+
+type HistoryBeforeParams struct {
+	ProjectID uuid.UUID
+	Before    int64
+	Take      int64
+}
+
+// The newest take of a project's History lines older than before, newest first: a history screen reads its page a batch at a time (#87), and
+// only the project's lines, so no line of another project can reach it (D11).
+func (q *Queries) HistoryBefore(ctx context.Context, arg HistoryBeforeParams) ([]History, error) {
+	rows, err := q.query(ctx, q.historyBeforeStmt, historyBefore, arg.ProjectID, arg.Before, arg.Take)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []History
+	for rows.Next() {
+		var i History
+		if err := rows.Scan(
+			&i.ID,
+			&i.At,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.RecordID,
+			&i.Before,
+			&i.After,
+			&i.TraceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const historyOfLogin = `-- name: HistoryOfLogin :many
 SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE table_name = 'Users' AND record_id = ? ORDER BY id DESC
 `
@@ -2624,13 +2754,22 @@ func (q *Queries) HistoryOfLogin(ctx context.Context, recordID uuid.UUID) ([]His
 	return items, nil
 }
 
-const historyOfProject = `-- name: HistoryOfProject :many
-SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE project_id = ? ORDER BY id DESC
+const historyOfRecords = `-- name: HistoryOfRecords :many
+SELECT history.id, history.at, history.project_id, history.user_id, history."action", history.table_name, history.record_id, history."before", history."after", history.trace_id FROM json_each(?1) AS named CROSS JOIN history
+    ON history.table_name = json_extract(named.value, '$[0]') AND history.record_id = json_extract(named.value, '$[1]')
+WHERE history.project_id = ?2
+ORDER BY history.id
 `
 
-// Every History line of a project, newest first: what the history screens read (D11), so no line of another project can reach them.
-func (q *Queries) HistoryOfProject(ctx context.Context, projectID uuid.UUID) ([]History, error) {
-	rows, err := q.query(ctx, q.historyOfProjectStmt, historyOfProject, projectID)
+type HistoryOfRecordsParams struct {
+	Records   interface{}
+	ProjectID uuid.UUID
+}
+
+// Every line of a project's History about the records named, a JSON list of [table, id] pairs, oldest first: what History knows of them,
+// each record looked up through the index on table and record; CROSS JOIN keeps that order whatever SQLite's statistics say (#87).
+func (q *Queries) HistoryOfRecords(ctx context.Context, arg HistoryOfRecordsParams) ([]History, error) {
+	rows, err := q.query(ctx, q.historyOfRecordsStmt, historyOfRecords, arg.Records, arg.ProjectID)
 	if err != nil {
 		return nil, err
 	}
