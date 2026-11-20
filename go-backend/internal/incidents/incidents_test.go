@@ -33,7 +33,7 @@ func newAPI(t *testing.T) *api {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { _ = store.Close() })
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /projects/{projectId}/suppliers/{supplierId}", func(w http.ResponseWriter, r *http.Request) {
 		facts := problem.FactsOf(r.Context())
@@ -41,7 +41,7 @@ func newAPI(t *testing.T) *api {
 		problem.Status(w, r, http.StatusNotFound)
 	})
 	mux.HandleFunc("GET /periodic-reports/{number}", func(w http.ResponseWriter, r *http.Request) { panic("a nil map") })
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("Healthy")) })
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("Healthy")) })
 	log := &bytes.Buffer{}
 	fake := clock.NewFake(time.Date(2026, 11, 18, 10, 0, 0, 0, time.UTC))
 	return &api{t: t, store: store, log: log, clock: fake, handler: problem.Traced(Recorded(mux, store, slog.New(slog.NewJSONHandler(log, nil)), fake))}
@@ -153,7 +153,7 @@ func TestR12_AnIncidentPastNinetyDaysGoesWhenTheNextIsKept(t *testing.T) {
 
 func TestR8_AnIncidentTheFileCannotTakeIsStillInTheLog(t *testing.T) {
 	a := newAPI(t)
-	a.store.Close()
+	_ = a.store.Close()
 	answer := a.send("/periodic-reports/28")
 	trace := answer.Header().Get("X-Trace-Id")
 	if answer.Code != 500 || !strings.Contains(a.log.String(), `"msg":"request"`) || !strings.Contains(a.log.String(), "an incident was not kept") ||

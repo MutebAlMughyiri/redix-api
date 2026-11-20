@@ -22,7 +22,7 @@ func TestBR16_AVatNumberTheDatabaseCannotCheckIsAFailureNotARefusal(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	closed.Close()
+	_ = closed.Close()
 	err = refusalOf(changes.Change{Ctx: context.Background(), Q: store.New(closed), ProjectID: uuid.New()}, uuid.Nil, Request{Name: "Cement Co", VatNumber: "300000000000003"})
 	var refused changes.Refusal
 	if err == nil || errors.As(err, &refused) {

@@ -44,6 +44,29 @@ func TestR112_APersonAsksAndNothingChangesUntilAManagerDecides(t *testing.T) {
 	}
 }
 
+// redix-api #125: a request whose kept permissions are not a list of names, a shape the database's json_valid lets through but the API never
+// writes, answers 500 on the person's own list, the managers' list and the approval, where it read as no permission; approving it changes nothing.
+func TestR125_ARequestKeptInAShapeTheAPINeverWritesAnswers500AndChangesNothing(t *testing.T) {
+	a := newAPI(t)
+	sara := a.person("sara", "سارة", project, access.ReadProject, access.SeeReports)
+	code, answer := a.ask("POST", a.requests(), `{"gives":["recordEntries"],"takes":["seeReports"],"reason":"أسجل المصروفات"}`, a.as(sara))
+	if code != 201 {
+		t.Fatalf("ask: %d %v", code, answer)
+	}
+	a.Exec(`UPDATE permission_requests SET gives = '{}'`)
+	for _, asked := range []struct{ path, token string }{{a.requests() + "/mine", a.as(sara)}, {a.requests(), a.as(a.manager)}} {
+		if code, _ := a.ask("GET", asked.path, ``, asked.token); code != 500 {
+			t.Errorf("%s: %d, want 500", asked.path, code)
+		}
+	}
+	if code, _ := a.ask("POST", a.requests()+"/"+field(answer, "id").(string)+"/approve", ``, a.as(a.manager)); code != 500 {
+		t.Errorf("approve: %d, want 500", code)
+	}
+	if a.held(sara.String()) != 2 {
+		t.Error("approving a request it could not read changed a permission")
+	}
+}
+
 // redix-api #112 R4, R6, R11: an approved request is applied as ticking is, the person told; a permission ticked by hand meanwhile changes nothing.
 func TestR112_AnApprovedRequestIsAppliedAsTickingIsAndThePersonIsTold(t *testing.T) {
 	a := newAPI(t)

@@ -84,7 +84,7 @@ func (c Codes) forgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
-	http.NewResponseController(w).Flush()
+	_ = http.NewResponseController(w).Flush()
 	ctx := context.WithoutCancel(r.Context())
 	user, found, err := c.accountOf(ctx, request.Login)
 	if err != nil {

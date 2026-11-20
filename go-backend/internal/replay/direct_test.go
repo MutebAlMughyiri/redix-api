@@ -143,7 +143,7 @@ func locate(tx *sql.Tx, names mapping, table string, keys []string, values map[s
 	for indexes.Next() {
 		var name string
 		if err := indexes.Scan(&name); err != nil {
-			indexes.Close()
+			_ = indexes.Close()
 			return "", nil, err
 		}
 		indexNames = append(indexNames, name)
@@ -160,7 +160,7 @@ func locate(tx *sql.Tx, names mapping, table string, keys []string, values map[s
 		for columns.Next() {
 			var name string
 			if err := columns.Scan(&name); err != nil {
-				columns.Close()
+				_ = columns.Close()
 				return "", nil, err
 			}
 			unique = append(unique, name)
@@ -198,7 +198,7 @@ func locate(tx *sql.Tx, names mapping, table string, keys []string, values map[s
 				pointers[index] = &key[index]
 			}
 			if err := found.Scan(pointers...); err != nil {
-				found.Close()
+				_ = found.Close()
 				return "", nil, err
 			}
 			rows = append(rows, key)
@@ -238,7 +238,7 @@ func columnsOfTable(tx *sql.Tx, table string) ([]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var columns []string
 	keys := map[int]string{}
 	for rows.Next() {

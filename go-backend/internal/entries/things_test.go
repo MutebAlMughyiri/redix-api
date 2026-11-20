@@ -39,15 +39,17 @@ func TestR2_EveryTableIsAThingOfTheProjectHistoryOrSaysWhyNot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 	rows, err := database.Read.Query("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'lk\\_%' ESCAPE '\\'")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var name string
-		rows.Scan(&name)
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
 		parts := strings.Split(name, "_")
 		for i, part := range parts {
 			parts[i] = strings.ToUpper(part[:1]) + part[1:]

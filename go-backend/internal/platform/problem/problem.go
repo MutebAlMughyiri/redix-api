@@ -114,7 +114,7 @@ func write(w http.ResponseWriter, r *http.Request, status int, extensions ...fie
 	body.WriteByte('}')
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(status)
-	w.Write(body.Bytes())
+	_, _ = w.Write(body.Bytes())
 }
 
 type traceKey struct{}
@@ -146,8 +146,8 @@ var sentTrace = regexp.MustCompile(`^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$
 func Traced(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		trace, span := make([]byte, 16), make([]byte, 8)
-		rand.Read(trace)
-		rand.Read(span)
+		_, _ = rand.Read(trace)
+		_, _ = rand.Read(span)
 		traceID := hex.EncodeToString(trace)
 		if sent := sentTrace.FindStringSubmatch(r.Header.Get("traceparent")); sent != nil && sent[1] != "00000000000000000000000000000000" {
 			traceID = sent[1]

@@ -19,7 +19,7 @@ var foundations = map[string]bool{"platform": true, "db": true, "history": true,
 // A domain's test that asks the router itself could leave the History net out, which is the forgetting the net exists to stop: every domain's
 // test asks through testapi.
 func TestEveryDomainsTestsAskThroughTestapi(t *testing.T) {
-	filepath.WalkDir("..", func(path string, entry fs.DirEntry, err error) error {
+	err := filepath.WalkDir("..", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -37,6 +37,9 @@ func TestEveryDomainsTestsAskThroughTestapi(t *testing.T) {
 		}
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 // The published binary holds only the server's code: no package made for tests may be linked into it.

@@ -74,7 +74,7 @@ func mayReplace(newPassword, currentPassword, username string) bool {
 // renew gives device a new refresh token, which it returns, keeping only its hash, valid for 12 hours from now (Device.RenewRefreshToken).
 func renew(device *store.Device, now moment.Moment) string {
 	random := make([]byte, 32)
-	rand.Read(random)
+	_, _ = rand.Read(random)
 	token := base64.RawURLEncoding.EncodeToString(random)
 	device.RefreshTokenHash = hashOf(token)
 	device.RefreshExpiresAt = moment.Of(now.Add(idleTimeout))

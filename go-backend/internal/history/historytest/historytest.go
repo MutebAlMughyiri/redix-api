@@ -67,7 +67,9 @@ func Check(t testing.TB, database db.DB, write func()) {
 		before[table] = rowsOf(t, database, table)
 	}
 	var lastLine int64
-	database.Read.QueryRow("SELECT COALESCE(MAX(id), 0) FROM history").Scan(&lastLine)
+	if err := database.Read.QueryRow("SELECT COALESCE(MAX(id), 0) FROM history").Scan(&lastLine); err != nil {
+		t.Fatal(err)
+	}
 
 	write()
 
@@ -78,14 +80,16 @@ func Check(t testing.TB, database db.DB, write func()) {
 	}
 	for found.Next() {
 		var table, record, action string
-		found.Scan(&table, &record, &action)
+		if err := found.Scan(&table, &record, &action); err != nil {
+			t.Fatal(err)
+		}
 		lines[table+" "+record] = true
 		approved = approved || (table == "Projects" && action == "ApproveProject")
 		// A retrieve puts back thousands of rows under one Retrieve line on the project: the archive it puts back is each row's record, so a row
 		// added, changed or removed passes when the same write recorded one (UC-073 D9).
 		retrieved = retrieved || (table == "Projects" && action == "Retrieve")
 	}
-	found.Close()
+	_ = found.Close()
 	for _, table := range tables {
 		after := rowsOf(t, database, table)
 		for _, id := range changed(before[table], after) {
@@ -121,11 +125,13 @@ func keptTables(t testing.TB, database db.DB) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var tables []string
 	for rows.Next() {
 		var name string
-		rows.Scan(&name)
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
 		if _, skip := exempt[name]; !skip {
 			tables = append(tables, name)
 		}
@@ -141,7 +147,7 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	columns, _ := rows.Columns()
 	if len(key) == 0 {
 		key = columns[:1]
@@ -153,7 +159,9 @@ func rowsOf(t testing.TB, database db.DB, table string) map[string]row {
 		for i := range values {
 			pointers[i] = &values[i]
 		}
-		rows.Scan(pointers...)
+		if err := rows.Scan(pointers...); err != nil {
+			t.Fatal(err)
+		}
 		read := row{values: map[string]string{}}
 		for i, column := range columns {
 			read.values[column] = fmt.Sprint(values[i])
@@ -178,11 +186,13 @@ func keyOf(t testing.TB, database db.DB, table string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var key []string
 	for rows.Next() {
 		var column string
-		rows.Scan(&column)
+		if err := rows.Scan(&column); err != nil {
+			t.Fatal(err)
+		}
 		key = append(key, column)
 	}
 	return key

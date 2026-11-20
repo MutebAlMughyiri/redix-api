@@ -22,15 +22,15 @@ func mailServer(t *testing.T) (string, <-chan string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { listener.Close() })
+	t.Cleanup(func() { _ = listener.Close() })
 	received := make(chan string, 1)
 	go func() {
 		connection, err := listener.Accept()
 		if err != nil {
 			return
 		}
-		defer connection.Close()
-		reader, say := bufio.NewReader(connection), func(line string) { io.WriteString(connection, line+"\r\n") }
+		defer func() { _ = connection.Close() }()
+		reader, say := bufio.NewReader(connection), func(line string) { _, _ = io.WriteString(connection, line+"\r\n") }
 		say("220 test")
 		var data strings.Builder
 		for {
@@ -91,7 +91,7 @@ func TestR127_NoMailServerListeningIsAFailureToSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	address := listener.Addr().String()
-	listener.Close()
+	_ = listener.Close()
 	if err := SenderOf(address, "no-reply@redix.example", "").Deliver(context.Background(), "manager@example.com", "s", "b"); err == nil {
 		t.Fatal("an email went to a mail server that is not there")
 	}

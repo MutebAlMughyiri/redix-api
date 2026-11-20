@@ -108,8 +108,8 @@ func Open(t testing.TB, path string) (db.DB, *Failure) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { database.Close() })
-	failure.fresh = func() { database.InSQL(context.Background(), func(*sql.Tx, *store.Queries) error { return nil }) }
+	t.Cleanup(func() { _ = database.Close() })
+	failure.fresh = func() { _ = database.InSQL(context.Background(), func(*sql.Tx, *store.Queries) error { return nil }) }
 	return database, failure
 }
 
@@ -243,7 +243,7 @@ type tx struct {
 // Commit fails as any call does, rolling the transaction back first, so its connection is left with none open.
 func (t tx) Commit() error {
 	if err := t.failure.next(); err != nil {
-		t.inner.Rollback()
+		_ = t.inner.Rollback()
 		return err
 	}
 	if err := t.inner.Commit(); err != nil {

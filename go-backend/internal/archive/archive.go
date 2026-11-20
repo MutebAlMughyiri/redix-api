@@ -93,7 +93,7 @@ func (s Routes) taken(ctx context.Context, projectID, userID uuid.UUID) (file, e
 	if err != nil {
 		return file{}, err
 	}
-	defer snapshot.Rollback()
+	defer func() { _ = snapshot.Rollback() }()
 	for _, t := range tables {
 		if archived.Tables[t.name], err = rowsOf(ctx, snapshot, t, projectID); err != nil {
 			return file{}, err

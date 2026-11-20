@@ -164,7 +164,7 @@ func JSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	w.Write(body)
+	_, _ = w.Write(body)
 }
 
 // Read decodes the request's JSON body into request, a struct whose every field is required unless tagged omitzero, as .NET bound a request record

@@ -92,7 +92,7 @@ func (t Typst) Pdf(document Document) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(folder)
+	defer func() { _ = os.RemoveAll(folder) }()
 	data, err := json.Marshal(document)
 	if err == nil {
 		err = os.WriteFile(filepath.Join(folder, "data.json"), data, 0o600)

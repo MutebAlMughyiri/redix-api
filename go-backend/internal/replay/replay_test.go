@@ -128,7 +128,7 @@ func recorded(t *testing.T) (map[string][]step, []string, []host) {
 			}
 			tests[s.Test] = append(tests[s.Test], s)
 		}
-		opened.Close()
+		_ = opened.Close()
 	}
 	return tests, order, hosts
 }
@@ -185,7 +185,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer discovery.Close()
+	defer func() { _ = discovery.Close() }()
 	routes := server.Routes(server.Parts{Database: discovery, Clock: clock.System{}, SigningKey: []byte("k"), Log: quiet})
 	var byHand, waiting, underReview int
 	var replayed []string
@@ -348,7 +348,9 @@ func replay(t *testing.T, steps []step, hosts []host, swept map[int]bool) {
 			applyDirect(t, database, names, s)
 		case "email":
 			var body string
-			json.Unmarshal(s.Body, &body)
+			if err := json.Unmarshal(s.Body, &body); err != nil {
+				t.Fatal(err)
+			}
 			if netCode := code.FindString(body); netCode != "" {
 				pending = append(pending, sentCode{to: s.To, nth: sentTo[s.To], code: netCode})
 			}
@@ -503,8 +505,8 @@ func withBrokenBody(s step) step {
 func kindOf(class string, s step) string {
 	var text string
 	var fields map[string]json.RawMessage
-	json.Unmarshal(s.Body, &text)
-	json.Unmarshal([]byte(text), &fields)
+	_ = json.Unmarshal(s.Body, &text)
+	_ = json.Unmarshal([]byte(text), &fields)
 	query, _ := url.ParseQuery(strings.TrimPrefix(s.Query, "?"))
 	return fmt.Sprint(s.Method, " ", pathPattern.ReplaceAllString(s.Path, "{id}"), " ", s.Status, " ", slices.Sorted(maps.Keys(fields)), " ",
 		slices.Sorted(maps.Keys(query)), " ", class)
@@ -546,7 +548,9 @@ func seed(t *testing.T, database db.DB, names mapping, s step) {
 			Email              string    `json:"email"`
 			CreatedAt          time.Time `json:"createdAt"`
 		}
-		json.Unmarshal(s.Given, &given)
+		if err := json.Unmarshal(s.Given, &given); err != nil {
+			t.Fatal(err)
+		}
 		created, _ := moment.Of(given.CreatedAt).Value()
 		write(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
 			VALUES (?, ?, '', '', ?, ?, 0, '1900-01-01T00:00:00.0000000Z', ?, ?)`, given.ID, given.Username, credentials.Hash(given.Password), given.MustChangePassword, created, given.Email)
@@ -559,7 +563,9 @@ func seed(t *testing.T, database db.DB, names mapping, s step) {
 			ProjectID   string `json:"projectId"`
 			Permissions []int  `json:"permissions"`
 		}
-		json.Unmarshal(s.Given, &given)
+		if err := json.Unmarshal(s.Given, &given); err != nil {
+			t.Fatal(err)
+		}
 		for _, number := range given.Permissions {
 			for _, permission := range append([]access.Permission{access.All[number]}, upgradedWith[access.All[number]]...) {
 				write(`INSERT INTO project_permissions (id, project_id, user_id, permission) SELECT ?, ?, ?, ? WHERE NOT EXISTS
@@ -573,7 +579,9 @@ func seed(t *testing.T, database db.DB, names mapping, s step) {
 			UserID    string `json:"userId"`
 			ProjectID string `json:"projectId"`
 		}
-		json.Unmarshal(s.Given, &given)
+		if err := json.Unmarshal(s.Given, &given); err != nil {
+			t.Fatal(err)
+		}
 		write(`INSERT INTO inactive_members (id, project_id, user_id) VALUES (?, ?, ?)`, uuid.NewString(), names.into(given.ProjectID), names.into(given.UserID))
 	case "approve":
 		// ApprovedProjectAsync: ProjectStructure.ApproveAsync straight in the database, in the name of the project's first permission holder - no
@@ -581,7 +589,9 @@ func seed(t *testing.T, database db.DB, names mapping, s step) {
 		var given struct {
 			ProjectID string `json:"projectId"`
 		}
-		json.Unmarshal(s.Given, &given)
+		if err := json.Unmarshal(s.Given, &given); err != nil {
+			t.Fatal(err)
+		}
 		projectID := uuid.MustParse(names.into(given.ProjectID))
 		var manager uuid.UUID
 		err := database.Read.QueryRow("SELECT user_id FROM project_permissions WHERE project_id = ? ORDER BY id LIMIT 1", projectID).Scan(&manager)
@@ -613,7 +623,7 @@ func send(handler http.Handler, names mapping, s step) *httptest.ResponseRecorde
 		var file struct {
 			Base64 string `json:"base64"`
 		}
-		json.Unmarshal(s.Body, &file)
+		_ = json.Unmarshal(s.Body, &file)
 		body, _ = base64.StdEncoding.DecodeString(file.Base64)
 	}
 	request := httptest.NewRequest(s.Method, names.into(s.Path+lineQuery(names, s.Query)), bytes.NewReader(body))
@@ -875,7 +885,7 @@ func sameWorkbook(net []recordedSheet, content []byte) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("Go's workbook does not open: %v", err)}
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	var names []string
 	for _, sheet := range net {
 		names = append(names, sheet.Name)

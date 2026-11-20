@@ -31,6 +31,6 @@ func Map(router *web.Router) {
 func served(contentType string, content []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", contentType)
-		w.Write(content)
+		_, _ = w.Write(content)
 	}
 }

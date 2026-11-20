@@ -81,7 +81,9 @@ func TestFR02_ANewPersonIsRefusedForEachReason(t *testing.T) {
 	a := newAPI(t)
 	base := func(change string) string {
 		fields := map[string]any{"displayName": "B", "username": "b", "mobile": "", "email": "b@example.com", "temporaryPassword": "Temporary-1"}
-		json.Unmarshal([]byte(change), &fields)
+		if err := json.Unmarshal([]byte(change), &fields); err != nil {
+			t.Fatal(err)
+		}
 		body, _ := json.Marshal(fields)
 		return string(body)
 	}

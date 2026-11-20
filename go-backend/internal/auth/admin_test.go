@@ -22,7 +22,7 @@ func emptyDatabase(t *testing.T) db.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { database.Close() })
+	t.Cleanup(func() { _ = database.Close() })
 	return database
 }
 
@@ -55,8 +55,12 @@ func TestBR29_AnEmptyDatabaseGetsItsAdminWhoMustChangeThePasswordAndMayApprovePr
 
 func TestBR29_ADatabaseWithUsersGetsNoSecondAdmin(t *testing.T) {
 	database := emptyDatabase(t)
-	SeedAdmin(context.Background(), database, "real-admin", "Temporary-1", now)
-	SeedAdmin(context.Background(), database, "other-admin", "Temporary-2", now)
+	if err := SeedAdmin(context.Background(), database, "real-admin", "Temporary-1", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := SeedAdmin(context.Background(), database, "other-admin", "Temporary-2", now); err != nil {
+		t.Fatal(err)
+	}
 	if got := count(t, database, "SELECT count(*) FROM users"); got != 1 {
 		t.Errorf("users: %d", got)
 	}
@@ -64,7 +68,9 @@ func TestBR29_ADatabaseWithUsersGetsNoSecondAdmin(t *testing.T) {
 
 func TestBR29_NoAdminIsMadeWithoutAUsername(t *testing.T) {
 	database := emptyDatabase(t)
-	SeedAdmin(context.Background(), database, "", "Temporary-1", now)
+	if err := SeedAdmin(context.Background(), database, "", "Temporary-1", now); err != nil {
+		t.Fatal(err)
+	}
 	if got := count(t, database, "SELECT count(*) FROM users"); got != 0 {
 		t.Errorf("users: %d", got)
 	}

@@ -97,7 +97,7 @@ func broughtUp(ctx context.Context, archived file) (map[string][]row, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer scratch.Close()
+	defer func() { _ = scratch.Close() }()
 	if err := filled(ctx, scratch, archived); err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func filled(ctx context.Context, scratch db.Scratch, archived file) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	for name, rows := range archived.Tables {
 		if _, known := tableNamed(name); !known {
 			return notAnArchive

@@ -50,7 +50,7 @@ func freeAddress(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	return listener.Addr().String()
 }
 
@@ -66,7 +66,7 @@ func TestTheServerStartsAnswersAndStopsWhenAsked(t *testing.T) {
 	for range 100 {
 		if response, err := http.Get("http://" + address + "/health"); err == nil {
 			body, _ := io.ReadAll(response.Body)
-			response.Body.Close()
+			_ = response.Body.Close()
 			answer = string(body)
 			break
 		}
@@ -92,7 +92,7 @@ func TestMigrateBringsTheSchemaUpToDateAndStops(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 	var tables int
 	if err := opened.QueryRow("SELECT count(*) FROM sqlite_schema WHERE type = 'table'").Scan(&tables); err != nil || tables < 59 {
 		t.Fatalf("after migrate the database holds %d tables (%v)", tables, err)
@@ -105,7 +105,7 @@ func TestTheServerRefusesToStartOnWhatItCannotWorkWith(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer busy.Close()
+	defer func() { _ = busy.Close() }()
 	for name, arrange := range map[string]func(t *testing.T){
 		"no signing key": func(t *testing.T) { settings(t, "http://"+freeAddress(t)); t.Setenv("REDIX_Jwt__SigningKey", "") },
 		"a database in a folder that does not exist": func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestTheServerRefusesToStartOnWhatItCannotWorkWith(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer database.Close()
+			defer func() { _ = database.Close() }()
 			if err := database.Exec(context.Background(), "CREATE TRIGGER no_users BEFORE INSERT ON users BEGIN SELECT RAISE(ABORT, 'no users'); END"); err != nil {
 				t.Fatal(err)
 			}
@@ -173,7 +173,7 @@ func started(t *testing.T, logger *slog.Logger, address string) {
 	})
 	for range 100 {
 		if connection, err := net.Dial("tcp", address); err == nil {
-			connection.Close()
+			_ = connection.Close()
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -195,7 +195,7 @@ func withDomain(t *testing.T, httpsAddress, httpAddress string) {
 func handshakeWith(address, name string) error {
 	connection, err := tls.Dial("tcp", address, &tls.Config{ServerName: name})
 	if err == nil {
-		connection.Close()
+		_ = connection.Close()
 	}
 	return err
 }
@@ -214,7 +214,7 @@ func TestR16_WithADomainHttpGoesToHttpsAndNoOtherNameGetsACertificate(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	response.Body.Close()
+	_ = response.Body.Close()
 	if response.StatusCode != http.StatusFound || response.Header.Get("Location") != "https://redix.test/health" {
 		t.Errorf("HTTP answered %d, to %q", response.StatusCode, response.Header.Get("Location"))
 	}
@@ -258,7 +258,7 @@ func TestR25_ProductionsHttpPortProvesTheNamesOfTheOtherInstances(t *testing.T) 
 			t.Fatal(err)
 		}
 		body, _ := io.ReadAll(response.Body)
-		response.Body.Close()
+		_ = response.Body.Close()
 		if response.StatusCode != want || want == http.StatusOK && string(body) != "token-of-qa.thumbprint" {
 			t.Errorf("%s: answered %d %q, want %d", host, response.StatusCode, body, want)
 		}
@@ -275,7 +275,7 @@ func TestR17_ABodyOver30MBIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response.Body.Close()
+	_ = response.Body.Close()
 	if response.StatusCode != http.StatusBadRequest {
 		t.Errorf("a body of 30 MB and a byte answered %d", response.StatusCode)
 	}

@@ -25,7 +25,7 @@ func TestOpenAnswersEveryFailureOfTheDatabase(t *testing.T) {
 			if err != nil {
 				t.Fatalf("nothing failed, and Open answered %v", err)
 			}
-			database.Close()
+			_ = database.Close()
 			t.Logf("Open made %d calls, each answered when it failed", n-1)
 			return
 		}
@@ -35,7 +35,7 @@ func TestOpenAnswersEveryFailureOfTheDatabase(t *testing.T) {
 			if err := database.Read.QueryRow("SELECT count(*) FROM sqlite_schema WHERE type = 'table'").Scan(&tables); err != nil || tables < 59 {
 				t.Fatalf("call %d failed, and Open answered a database holding %d tables (%v)", n, tables, err)
 			}
-			database.Close()
+			_ = database.Close()
 		}
 	}
 }

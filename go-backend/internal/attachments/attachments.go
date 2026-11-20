@@ -140,7 +140,7 @@ func Sent(w http.ResponseWriter, r *http.Request) ([]byte, string, bool) {
 		problem.Status(w, r, http.StatusBadRequest)
 		return nil, "", false
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	content, err := io.ReadAll(file)
 	if err != nil {
 		problem.Status(w, r, http.StatusBadRequest)

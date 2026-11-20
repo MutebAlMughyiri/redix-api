@@ -57,8 +57,7 @@ func OpenWith(ctx context.Context, driverName, path string) (DB, error) {
 	}
 	write.SetMaxOpenConns(1)
 	if err := migrate(ctx, write); err != nil {
-		write.Close()
-		return DB{}, fmt.Errorf("migrating %s: %w", path, err)
+		return DB{}, errors.Join(fmt.Errorf("migrating %s: %w", path, err), write.Close())
 	}
 	read, _ := sql.Open(driverName, "file:"+path+"?mode=ro&"+pragmas)
 	read.SetMaxOpenConns(readers)
@@ -156,7 +155,7 @@ func (db DB) inTx(ctx context.Context, change func(*sql.Tx) error) error {
 		return err
 	}
 	if err := change(tx); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 	if err := tx.Commit(); err != nil {

@@ -109,7 +109,7 @@ func (b *Book) addNamed(name string, widths ...float64) *Worksheet {
 // Bytes is the workbook as a file, its sheets in the order they were added.
 func (b *Book) Bytes() ([]byte, error) {
 	file := excelize.NewFile()
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	styles := map[look]int{}
 	for index, sheet := range b.sheets {
 		var err error

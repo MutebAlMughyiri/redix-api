@@ -80,7 +80,7 @@ func writeKeptString(text *strings.Builder, value string) {
 			text.WriteString(`\t`)
 		default:
 			if letter < 0x20 {
-				fmt.Fprintf(text, `\u%04X`, letter)
+				_, _ = fmt.Fprintf(text, `\u%04X`, letter)
 			} else {
 				text.WriteRune(letter)
 			}

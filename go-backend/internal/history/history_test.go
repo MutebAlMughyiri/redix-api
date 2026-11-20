@@ -23,7 +23,7 @@ func TestUC069_ALineKeepsWhoDidWhatToWhichRecordWithTheValuesItChanged(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 	account := uuid.MustParse("0193a1b2-0000-7000-8000-0000000000c1")
 	at := moment.Of(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
 	before, after := Changed(
@@ -42,7 +42,9 @@ func TestUC069_ALineKeepsWhoDidWhatToWhichRecordWithTheValuesItChanged(t *testin
 		t.Fatal(err)
 	}
 	var action, table, kept, made, when string
-	database.Read.QueryRow("SELECT action, table_name, before, after, at FROM history").Scan(&action, &table, &kept, &made, &when)
+	if err := database.Read.QueryRow("SELECT action, table_name, before, after, at FROM history").Scan(&action, &table, &kept, &made, &when); err != nil {
+		t.Fatal(err)
+	}
 	if action != "Update" || table != "Accounts" || when != "2026-11-16T10:00:00.0000000Z" {
 		t.Errorf("%s %s %s", action, table, when)
 	}

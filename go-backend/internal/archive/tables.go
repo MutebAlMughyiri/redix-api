@@ -130,7 +130,7 @@ func rowsOf(ctx context.Context, q querier, t table, projectID uuid.UUID) ([]row
 	if err != nil {
 		return nil, err
 	}
-	defer found.Close()
+	defer func() { _ = found.Close() }()
 	columns, _ := found.Columns()
 	rows := []row{}
 	for found.Next() {
@@ -157,7 +157,7 @@ func columnsOf(ctx context.Context, q querier, table string) (map[string]bool, e
 	if err != nil {
 		return nil, err
 	}
-	defer found.Close()
+	defer func() { _ = found.Close() }()
 	columns := map[string]bool{}
 	for found.Next() {
 		var name, kind string

@@ -16,11 +16,13 @@ func TestD7_NamesSortInArabicDictionaryOrderWithEnglishCaseIgnored(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var got []string
 	for rows.Next() {
 		var name string
-		rows.Scan(&name)
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
 		got = append(got, name)
 	}
 	want := []string{"ahmed", "Bader", "ابراهيم", "أحمد", "احمد", "إسماعيل", "آمنة", "بدر", "سعيد"}

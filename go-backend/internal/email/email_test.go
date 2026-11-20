@@ -18,7 +18,7 @@ func TestR127_ACodeIsEmailedInTheAskersLanguage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 	folder := Folder{Path: filepath.Join(t.TempDir(), "Emails")}
 	if err := Send(context.Background(), database, folder, "manager@example.com", "en", "email.resetSubject", "email.resetBody", "123456"); err != nil {
 		t.Fatal(err)

@@ -143,7 +143,7 @@ func open(t *testing.T, content []byte, err error) opened {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { file.Close() })
+	t.Cleanup(func() { _ = file.Close() })
 	return opened{t: t, file: file}
 }
 

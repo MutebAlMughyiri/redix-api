@@ -114,7 +114,7 @@ func anyStrings(values any) []string {
 
 func TestR1_GoGenerateWritesTheDocumentWhereItRuns(t *testing.T) {
 	text, _ := generated(t)
-	t.Cleanup(func() { os.Remove("openapi.json") })
+	t.Cleanup(func() { _ = os.Remove("openapi.json") })
 	main()
 	if written, err := os.ReadFile("openapi.json"); err != nil || string(written) != string(text) {
 		t.Errorf("main wrote %d bytes (%v), Generate %d", len(written), err, len(text))

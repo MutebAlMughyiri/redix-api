@@ -37,7 +37,7 @@ func gatedRoutes(t *testing.T) gated {
 	exec(t, database, device(openDevice, 0), device(revokedDevice, 1))
 	tokens := credentials.NewTokens([]byte("test-key-for-go-backend-only-32b"), clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)))
 	gate := NewGate(tokens, database, book, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	ok := func(w http.ResponseWriter, r *http.Request, caller Caller) { w.Write([]byte(caller.Username)) }
+	ok := func(w http.ResponseWriter, r *http.Request, caller Caller) { _, _ = w.Write([]byte(caller.Username)) }
 	router := web.NewRouter("")
 	router.Handle("GET", "/me", gate.SignedIn(ok))
 	router.Handle("GET", "/work", gate.Working(ok))

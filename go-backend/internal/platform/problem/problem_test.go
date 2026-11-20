@@ -34,7 +34,9 @@ func TestN16_ARefusalOverSomethingCarriesItUnderItsName(t *testing.T) {
 		RefuseOver(w, r, 400, "rowsRefused", "rows", []map[string]string{{"code": "unknownChoice"}})
 	})
 	var body map[string]any
-	json.Unmarshal(got.Body.Bytes(), &body)
+	if err := json.Unmarshal(got.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
 	if body["code"] != "rowsRefused" || len(body["rows"].([]any)) != 1 || body["title"] != "Bad Request" {
 		t.Errorf("body %s", got.Body)
 	}

@@ -50,7 +50,7 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 	if len(args) > 0 && args[0] == "migrate" {
 		logger.Info("the database's schema is up to date", "path", settings.DatabasePath)
 		return nil
@@ -68,7 +68,7 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer failures.Close()
+	defer func() { _ = failures.Close() }()
 	return serve(ctx, logger, settings, problem.Traced(incidents.Recorded(router, failures, logger, now)))
 }
 

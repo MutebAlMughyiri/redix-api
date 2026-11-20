@@ -44,7 +44,7 @@ var prfs = map[uint32]func() hash.Hash{0: sha1.New, 1: sha256.New, sha512PRF: sh
 // Hash keeps password as ASP.NET Core Identity's PasswordHasher does by default: version 3, HMAC-SHA512, 100,000 iterations, base64.
 func Hash(password string) string {
 	salt := make([]byte, saltLength)
-	rand.Read(salt)
+	_, _ = rand.Read(salt)
 	key, _ := pbkdf2.Key(sha512.New, password, salt, iterations, keyLength)
 	kept := make([]byte, header, header+saltLength+keyLength)
 	kept[0] = version3

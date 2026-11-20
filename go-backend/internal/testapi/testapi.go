@@ -64,7 +64,7 @@ func New(t *testing.T) *API {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { failures.Close() })
+	t.Cleanup(func() { _ = failures.Close() })
 	handler := problem.Traced(incidents.Recorded(routes, failures, quiet, fake))
 	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: handler, tokens: credentials.NewTokens(signingKey, fake), failure: failure}
 }
@@ -105,7 +105,7 @@ func (a *API) Ask(method, path, body, token string) (int, any) {
 	}
 	answered := a.Send(method, path, body, headers...)
 	var answer any
-	json.Unmarshal(answered.Body.Bytes(), &answer)
+	_ = json.Unmarshal(answered.Body.Bytes(), &answer)
 	return answered.Code, answer
 }
 

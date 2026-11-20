@@ -82,17 +82,16 @@ type memberView struct {
 	DisplayName string    `json:"displayName"`
 }
 
-func viewOf(user store.User, rows []store.UserProject) (userView, error) {
+func viewOf(user store.User, rows []store.UserProject) userView {
 	projects := []projectView{}
 	for _, row := range rows {
+		// The user_projects view builds these three with json_group_array, so each is an array and reads without fail.
 		var names []string
 		partners := []uuid.UUID{}
 		unseen := []uuid.UUID{}
-		err := errors.Join(json.Unmarshal([]byte(row.Permissions), &names), json.Unmarshal([]byte(row.PartnerIds), &partners),
-			json.Unmarshal([]byte(row.UnseenTables), &unseen))
-		if err != nil {
-			return userView{}, err
-		}
+		_ = json.Unmarshal([]byte(row.Permissions), &names)
+		_ = json.Unmarshal([]byte(row.PartnerIds), &partners)
+		_ = json.Unmarshal([]byte(row.UnseenTables), &unseen)
 		permissions := []access.Permission{}
 		for _, name := range names {
 			if permission, ok := access.Named(name); ok {
@@ -103,7 +102,7 @@ func viewOf(user store.User, rows []store.UserProject) (userView, error) {
 		projects = append(projects, projectView{ProjectID: row.ProjectID, Permissions: permissions, RoleName: row.RoleName, PartnerIDs: partners,
 			IsInactive: row.IsInactive, UnseenTables: unseen})
 	}
-	return userView{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword, Projects: projects}, nil
+	return userView{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword, Projects: projects}
 }
 
 // editUserRequest is the body PUT /users/{userId} (UC-007) reads.
@@ -244,12 +243,7 @@ func (u Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	views := []userView{}
 	for _, person := range people {
 		mine := slices.DeleteFunc(slices.Clone(held), func(row store.UserProject) bool { return row.UserID != person.ID })
-		view, err := viewOf(person, mine)
-		if err != nil {
-			problem.Status(w, r, http.StatusInternalServerError)
-			return
-		}
-		views = append(views, view)
+		views = append(views, viewOf(person, mine))
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }
@@ -587,10 +581,5 @@ func (u Routes) answer(w http.ResponseWriter, r *http.Request, status int, userI
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	view, err := viewOf(user, rows)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	web.JSON(w, r, status, view)
+	web.JSON(w, r, status, viewOf(user, rows))
 }

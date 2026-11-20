@@ -73,10 +73,10 @@ func Routes(parts Parts) *web.Router {
 		w.Header().Set("Content-Type", "text/plain")
 		if database.Read.PingContext(r.Context()) != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("Unhealthy"))
+			_, _ = w.Write([]byte("Unhealthy"))
 			return
 		}
-		w.Write([]byte("Healthy"))
+		_, _ = w.Write([]byte("Healthy"))
 	})
 	translations.Map(router, database)
 	legal.Map(router)

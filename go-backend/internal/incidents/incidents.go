@@ -11,6 +11,7 @@ package incidents
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -56,8 +57,7 @@ func Open(path string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(1)
 	if _, err := db.Exec(schema); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("the incidents file %s: %w", path, err)
+		return nil, errors.Join(fmt.Errorf("the incidents file %s: %w", path, err), db.Close())
 	}
 	return &Store{db: db}, nil
 }

@@ -29,6 +29,6 @@ func Map(router *web.Router) {
 func page(html []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(html)
+		_, _ = w.Write(html)
 	}
 }

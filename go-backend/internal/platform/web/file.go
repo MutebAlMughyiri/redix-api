@@ -15,7 +15,7 @@ func SendFile(w http.ResponseWriter, contentType, name string, content []byte) {
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", "attachment; filename="+asciiName(name)+"; filename*=UTF-8''"+url.PathEscape(name))
 	w.WriteHeader(http.StatusOK)
-	w.Write(content)
+	_, _ = w.Write(content)
 }
 
 // asciiName is a file's name as the plain filename of a Content-Disposition carries it: what is not ASCII as underscores.

@@ -130,10 +130,12 @@ func (a *project) rowsNow() map[string][]string {
 			for i := range values {
 				pointers[i] = &values[i]
 			}
-			found.Scan(pointers...)
+			if err := found.Scan(pointers...); err != nil {
+				a.t.Fatal(err)
+			}
 			kept[t[0]] = append(kept[t[0]], textOf(columns, values))
 		}
-		found.Close()
+		_ = found.Close()
 		slices.Sort(kept[t[0]])
 	}
 	return kept
@@ -191,11 +193,13 @@ func TestAC73_7_EveryTableOfTheDatabaseIsTheProjectsKeptOrShared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer found.Close()
+	defer func() { _ = found.Close() }()
 	seen := 0
 	for found.Next() {
 		var name string
-		found.Scan(&name)
+		if err := found.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
 		seen++
 		if !strings.HasPrefix(name, "lk_") && !archive.Placed(name) {
 			t.Errorf("%s is neither the project's own, kept, nor shared", name)

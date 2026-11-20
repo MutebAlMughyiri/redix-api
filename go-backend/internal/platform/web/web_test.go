@@ -17,7 +17,9 @@ import (
 func router(t *testing.T) *Router {
 	t.Helper()
 	folder := t.TempDir()
-	os.WriteFile(filepath.Join(folder, "index.html"), []byte("<h1>REDIX</h1>"), 0o644)
+	if err := os.WriteFile(filepath.Join(folder, "index.html"), []byte("<h1>REDIX</h1>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	r := NewRouter(folder)
 	r.Handle("GET", "/projects/{projectId:guid}", func(w http.ResponseWriter, request *http.Request) {
 		JSON(w, request, http.StatusOK, map[string]string{"id": ID(request, "projectId").String()})
