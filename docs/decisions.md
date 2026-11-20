@@ -6,6 +6,7 @@ Newest first. Each says what was decided and why; the code and the issues hold t
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-11-21 | The test support redix-web-automation shares with redix-api-automation, signing the admin in and making people through the API, stays a copy in each repo until a third needs it (#76 row 287) | The owner agreed: a shared test library costs more than two short copies |
 | 2026-11-21 | The web is REDIX's second door in the same program: the app's API on 8443 and the web's pages on 443, on the same rules, sessions and database; every web file lives in `go-backend/web/`, and the backend's packages hold none, only the rules both doors call (redix-api #161 S14) | The owner asked for a separate repo; a separate program calling the API adds a hop and JSON to every page (a layer, #160), and a browser calling the API makes the web a JavaScript app holding its tokens in script. Performance first, then the clearest isolation: a folder of its own |
 | 2026-11-21 | Every web page lives in one IntelliJ-like shell: top bar, side menu, tabs, status bar; the frame never reloads, the page never scrolls, the language is chosen in Settings ([the web's design](web/DESIGN.md)) | The owner approved it as "our base design and our philosophy" |
 | 2026-11-20 | The web uses the device's own font, no web font; htmx is its one script and the logo its one picture (redix-api #80 R19) | The owner, after counting the calls: Google's copy of the font costs two more hosts, our own 127 KB |

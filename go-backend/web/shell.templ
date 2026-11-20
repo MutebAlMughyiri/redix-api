@@ -157,7 +157,8 @@ templ emptyContent(p page) {
 }
 
 // signInForm is the sign-in, in the content area: what the app's sign-in has, with the language at its foot, since Settings cannot be reached before
-// signing in (#161 R2, R12, R19). message is the word key of a refusal, or "".
+// signing in (#161 R2, R12, R19). The cursor waits in Username, or in Password when a refusal kept the username (#76 row 286). message is the
+// word key of a refusal, or "".
 templ signInForm(p page, message string, username string) {
 	<div class="signin">
 		<form
@@ -172,11 +173,11 @@ templ signInForm(p page, message string, username string) {
 			<p id="signIn.hint" class="hint">{ p.words.Of("signIn.hint") }</p>
 			<div class="field">
 				<label for="signIn.username">{ p.words.Of("signIn.username") }</label>
-				<input id="signIn.username" name="username" autocomplete="username" autofocus required value={ username }/>
+				<input id="signIn.username" name="username" autocomplete="username" autofocus?={ username == "" } required value={ username }/>
 			</div>
 			<div class="field">
 				<label for="signIn.password">{ p.words.Of("signIn.password") }</label>
-				<input id="signIn.password" name="password" type="password" autocomplete="current-password" required/>
+				<input id="signIn.password" name="password" type="password" autocomplete="current-password" autofocus?={ username != "" } required/>
 			</div>
 			<p id="signIn.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
 			<button id="signIn.submit" class="primary" type="submit">{ p.words.Of("signIn.submit") }</button>

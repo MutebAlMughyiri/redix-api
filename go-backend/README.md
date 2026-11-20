@@ -46,6 +46,9 @@ The API writes its JSON with `encoding/json/v2`, an experiment in Go 1.27 (redix
 The Makefile and CI set it; on a PC, once, `go env -w GOEXPERIMENT=jsonv2`, so plain `go` commands and GoLand see it too. Without it
 `internal/platform/encode` does not compile. Redix-api #155 takes the flag away once Go publishes the package.
 
+The report PDF tests run typst, which the tests find through `REDIX_Typst__Path` or on the path. On a PC where typst is not on the path, set
+the user variable once to its `typst.exe`, or `go test ./...` fails those tests with "typst: executable file not found" (#76 row 288).
+
 | Command | Does |
 | --- | --- |
 | `make test` | Every test, the replay of .NET's answers among them (about seven minutes) |

@@ -372,3 +372,13 @@ func TestWeb_EveryElementsIdIsTheOnlyOneOnItsPage(t *testing.T) {
 		}
 	}
 }
+
+func TestWeb_R19_AfterAWrongPasswordTheCursorWaitsInPassword(t *testing.T) {
+	api := testapi.New(t)
+	id, _ := api.Person("User A")
+	browser := api.Browser()
+	has(t, browser.Send("GET", "/", nil).Body.String(), `autocomplete="username" autofocus required`)
+	refused := browser.Send("POST", "/sign-in", url.Values{"username": {id.String()}, "password": {"wrong-1"}}).Body.String()
+	has(t, refused, `autocomplete="current-password" autofocus required`)
+	lacks(t, refused, `autocomplete="username" autofocus`)
+}
