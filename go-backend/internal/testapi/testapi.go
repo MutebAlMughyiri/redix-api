@@ -6,10 +6,13 @@
 package testapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -103,6 +106,50 @@ func (a *API) Ask(method, path, body, token string) (int, any) {
 	answered := a.Send(method, path, body, headers...)
 	var answer any
 	json.Unmarshal(answered.Body.Bytes(), &answer)
+	return answered.Code, answer
+}
+
+// Person is a user called name, in no project yet, and a token of theirs.
+func (a *API) Person(name string) (uuid.UUID, string) {
+	a.t.Helper()
+	id := uuid.Must(uuid.NewV7())
+	a.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
+		VALUES (?, ?, ?, '', ?, 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-01T10:00:00.0000000Z', '')`, id, id.String(), name, credentials.Hash("Patrol-chosen-2"))
+	return id, a.Token(id, false)
+}
+
+// Form is a multipart form holding content as its file called name and fields beside it, as the app sends a file: its body and content type.
+func (a *API) Form(name string, content []byte, fields map[string]string) (string, string) {
+	a.t.Helper()
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	for field, value := range fields {
+		if err := form.WriteField(field, value); err != nil {
+			a.t.Fatal(err)
+		}
+	}
+	part, err := form.CreateFormFile("file", name)
+	if err == nil {
+		_, err = part.Write(content)
+	}
+	if err := errors.Join(err, form.Close()); err != nil {
+		a.t.Fatal(err)
+	}
+	return body.String(), form.FormDataContentType()
+}
+
+// AskWithFile asks path with content as the form's file called name and fields beside it, as the app sends a file, as token: the status and
+// the JSON answer.
+func (a *API) AskWithFile(path, name string, content []byte, token string, fields map[string]string) (int, map[string]any) {
+	a.t.Helper()
+	body, contentType := a.Form(name, content, fields)
+	answered := a.Send("POST", path, body, "Content-Type", contentType, "Authorization", "Bearer "+token)
+	var answer map[string]any
+	if answered.Body.Len() > 0 {
+		if err := json.Unmarshal(answered.Body.Bytes(), &answer); err != nil {
+			a.t.Fatalf("%s answered %d, not JSON: %s", path, answered.Code, answered.Body)
+		}
+	}
 	return answered.Code, answer
 }
 

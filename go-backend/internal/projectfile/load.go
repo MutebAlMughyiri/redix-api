@@ -453,7 +453,10 @@ func balancesOf(projectFile file, known registers, refused *[]refusal) []account
 			continue
 		}
 		var held fixed.Typed
-		json.Unmarshal(account.ActualBalance, &held)
+		if len(account.ActualBalance) > 0 && json.Unmarshal(account.ActualBalance, &held) != nil {
+			*refused = append(*refused, refusal{Owner: ownerReconciliation, Code: "invalidAmount", Value: account.Name})
+			continue
+		}
 		balances = append(balances, accounts.Actual{AccountID: accountID, ActualBalance: held})
 	}
 	return balances

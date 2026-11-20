@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"mime/multipart"
 	"os"
 	"slices"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/archive"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
 	"github.com/google/uuid"
 )
@@ -30,14 +28,6 @@ type project struct {
 }
 
 func (a *project) path() string { return "/projects/" + a.id }
-
-// person is a user called name, in no project yet, and a token of theirs.
-func (a *project) person(name string) (uuid.UUID, string) {
-	id := uuid.Must(uuid.NewV7())
-	a.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
-		VALUES (?, ?, ?, '', ?, 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-01T10:00:00.0000000Z', '')`, id, id.String(), name, credentials.Hash("Patrol-chosen-2"))
-	return id, a.Token(id, false)
-}
 
 // started is a new approved project called name, by the same manager, holding the account the sample file names.
 func (a *project) started(name string) string {
@@ -53,8 +43,8 @@ func (a *project) started(name string) string {
 func loaded(t *testing.T) *project {
 	a := &project{API: testapi.New(t), t: t}
 	a.Clock.Set(time.Date(2026, 11, 18, 10, 0, 0, 0, time.UTC))
-	_, a.token = a.person("محمد")
-	adminID, admin := a.person("admin")
+	_, a.token = a.Person("محمد")
+	adminID, admin := a.Person("admin")
 	a.Exec(`INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, 'ApproveProjects')`, uuid.NewString(), adminID)
 	a.admin = admin
 	a.id = a.started("مشروع الاختبار")
@@ -62,7 +52,7 @@ func loaded(t *testing.T) *project {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code, answer := a.sent(a.path()+"/project-file", "project.json", sample, a.token, nil); code != 200 {
+	if code, answer := a.AskWithFile(a.path()+"/project-file", "project.json", sample, a.token, nil); code != 200 {
 		t.Fatalf("loading the sample: %d %v", code, answer)
 	}
 	a.keep("العقد")
@@ -72,33 +62,14 @@ func loaded(t *testing.T) *project {
 // keep adds a document called name to the project.
 func (a *project) keep(name string) {
 	a.t.Helper()
-	if code, answer := a.sent(a.path()+"/documents", name+".pdf", []byte("%PDF-1.4 "+name), a.token, map[string]string{"name": name}); code >= 300 {
+	if code, answer := a.AskWithFile(a.path()+"/documents", name+".pdf", []byte("%PDF-1.4 "+name), a.token, map[string]string{"name": name}); code >= 300 {
 		a.t.Fatalf("keeping %s: %d %v", name, code, answer)
 	}
 }
 
 // formOf is a form holding content as its file called name, and fields beside it, as the app sends a file, and its content type.
-func formOf(name string, content []byte, fields map[string]string) (string, string) {
-	var body bytes.Buffer
-	form := multipart.NewWriter(&body)
-	for field, value := range fields {
-		form.WriteField(field, value)
-	}
-	part, _ := form.CreateFormFile("file", name)
-	part.Write(content)
-	form.Close()
-	return body.String(), form.FormDataContentType()
-}
 
 // sent asks path with content as the form's file called name and fields beside it, as the app sends a file: the status and the answer.
-func (a *project) sent(path, name string, content []byte, token string, fields map[string]string) (int, map[string]any) {
-	a.t.Helper()
-	body, contentType := formOf(name, content, fields)
-	answered := a.Send("POST", path, body, "Content-Type", contentType, "Authorization", "Bearer "+token)
-	var answer map[string]any
-	json.Unmarshal(answered.Body.Bytes(), &answer)
-	return answered.Code, answer
-}
 
 // archived is the archive of the project id names, as token's holder takes it.
 func (a *project) archived(id, token string) (int, []byte) {
@@ -124,7 +95,7 @@ func (a *project) retrieved(archived []byte, preview bool, token string) (int, m
 	if preview {
 		path += "?preview=true"
 	}
-	return a.sent(path, "archive.json", archived, token, nil)
+	return a.AskWithFile(path, "archive.json", archived, token, nil)
 }
 
 // lines is how many History lines the project has.
@@ -287,7 +258,7 @@ func TestAC73_9_RetrievedTheProjectIsItsArchiveAgainWhileHistoryReportsAndMember
 	document := testapi.Field(listed.([]any)[0], "id").(string)
 	a.Ask("DELETE", a.path()+"/documents/"+document, ``, a.token)
 	a.keep("المخطط")
-	member, _ := a.person("أحمد")
+	member, _ := a.Person("أحمد")
 	a.Exec(`INSERT INTO project_permissions (id, project_id, user_id, permission) VALUES (?, ?, ?, 'ReadProject')`, uuid.NewString(), a.id, member)
 	if changed := a.rowsNow(); slices.Equal(changed["categories"], taken["categories"]) || slices.Equal(changed["documents"], taken["documents"]) {
 		t.Fatal("the project did not change")
@@ -452,7 +423,7 @@ func TestAC73_5_AFinishedProjectIsArchivedNeverRetrieved(t *testing.T) {
 func TestAC73_8_WithoutManageProjectFilesNoRouteOfTheProjectsFilesAnswers(t *testing.T) {
 	a := loaded(t)
 	archived := a.taken()
-	member, token := a.person("أحمد")
+	member, token := a.Person("أحمد")
 	a.Exec(`INSERT INTO project_permissions (id, project_id, user_id, permission) VALUES (?, ?, ?, 'ReadProject'), (?, ?, ?, 'ManageProject')`,
 		uuid.NewString(), a.id, member, uuid.NewString(), a.id, member)
 	if code, _ := a.archived(a.id, token); code != 403 {
@@ -461,7 +432,7 @@ func TestAC73_8_WithoutManageProjectFilesNoRouteOfTheProjectsFilesAnswers(t *tes
 	if code, _ := a.retrieved(archived, true, token); code != 403 {
 		t.Errorf("retrieve: %d", code)
 	}
-	if code, _ := a.sent(a.path()+"/project-file", "project.json", []byte(`{}`), token, nil); code != 403 {
+	if code, _ := a.AskWithFile(a.path()+"/project-file", "project.json", []byte(`{}`), token, nil); code != 403 {
 		t.Errorf("load: %d", code)
 	}
 }
@@ -470,7 +441,7 @@ func TestAC73_8_WithoutManageProjectFilesNoRouteOfTheProjectsFilesAnswers(t *tes
 // archive and its retrieve stays quick.
 func lean(t *testing.T) *project {
 	a := &project{API: testapi.New(t), t: t}
-	manager, token := a.person("محمد")
+	manager, token := a.Person("محمد")
 	a.token, a.id = token, uuid.Must(uuid.NewV7()).String()
 	a.Exec(`INSERT INTO projects (id, name, start_date, status, rejection_reason, description, is_template, last_entry_number)
 		VALUES (?, 'مشروع صغير', '2026-11-01', 0, '', '', 0, 0)`, a.id)
@@ -483,7 +454,7 @@ func lean(t *testing.T) *project {
 // the project as it was.
 func TestAFailingDatabaseAtAnyCallOfTheArchiveOrTheRetrieveAnswers500AndChangesNothing(t *testing.T) {
 	a := lean(t)
-	body, contentType := formOf("archive.json", a.taken(), nil)
+	body, contentType := a.Form("archive.json", a.taken(), nil)
 	rows := a.rowsNow()
 	for _, ask := range [][2]string{{"GET", a.path() + "/archive/json"}, {"POST", a.path() + "/retrieve?preview=true"}, {"POST", a.path() + "/retrieve"}} {
 		for n := int64(1); ; n++ {

@@ -27,7 +27,7 @@ One write, `changes.Writer.Write`, holds everything in one transaction; a refusa
 | A partner | `partners.Add`, with no login | Added (D6) |
 | An account | Found by name; the file carries no type or custodian | Refused, `accountNotInProject` (D6) |
 | A row | `entries.Record`, telling no decider, then `entries.Approve` in the caller's name; it counts as approved from the file's report time, while its History lines keep the moment of the load (D7, D12). The rows are recorded by their date, then in the file's order, so each takes its «رقم القيد» in the calendar's order (redix-api #128 D6) | — |
-| The actual balances | `accounts.Enter`: one reconciliation, a difference staying visible (D8) | — |
+| The actual balances | `accounts.Enter`: one reconciliation, a difference staying visible (D8) | A balance that is not an amount: refused, `invalidAmount` under the reconciliation's words, naming its account (#125) |
 | The report | `reports.Issue` with the file's number and time; none for a file with none (D9) | A number the project issued already is `reportAlreadyIssued`, found before anything is saved |
 
 Structure is added, never renamed or removed (D5). A table the caller is not offered is listed once, as `unknownTable`; its rows are not read.
@@ -77,5 +77,6 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | G4: an option the file's lists do not hold, or a choice the table's list does not have, is `unknownChoice`, naming the value and the column | `projectfile.Routes.load` | `ProjectFileTests.G4_AnOptionTheFilesListsDoNotHoldOrAChoiceTheTablesListDoesNotHaveIsAnUnknownChoiceNamingItsColumn` |
 | D14: a part its owner refuses is listed with that owner's code, and nothing is saved | `projectfile.Routes.load`, `structure.Routes.addItem` | `ProjectFileTests.D14_APartItsOwnerRefusesIsListedWithItsOwnersCodeAndNothingIsSaved` |
 | AC-53.8, D6: an account of the actual balances the project lacks is `accountNotInProject`, and nothing is saved | `projectfile.Routes.load` | `ProjectFileTests.AC_53_8_D6_AnAccountOfTheActualBalancesTheProjectLacksIsRefusedAndNothingIsSaved` |
+| #125: an actual balance that is not an amount is `invalidAmount`, owned by the reconciliation and naming its account, where it was read as 0; nothing is saved | `projectfile.Routes.load` | `TestAnActualBalanceThatIsNotAnAmountIsRefusedNamingItsAccountAndNothingIsSaved` |
 | AC-53.9: the route refuses a file that is not a project file, or is newer, and nothing changes | `projectfile.read`, `projectfile.Routes.load` | `ProjectFileTests.AC_53_9_TheRouteRefusesAFileThatIsNotAProjectFileOrIsNewerAndNothingChanges` |
 | AC-29.3: a file whose report the project already issued is `reportAlreadyIssued`, listed before anything is saved; one whose number it has not issued loads beside the reports before it | `projectfile.Routes.load` | `ProjectFileTests.AC_29_3_AFileWhoseReportTheProjectAlreadyIssuedIsRefusedBeforeAnythingIsSaved`, `AC_29_3_AFileWhoseReportNumberTheProjectHasNotIssuedLoadsBesideTheReportsBeforeIt` |
