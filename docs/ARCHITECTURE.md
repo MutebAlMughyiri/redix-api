@@ -44,7 +44,7 @@ go-backend/
   internal/server/        every domain's routes on one router, and /health
   internal/testapi/       the one way a domain's tests ask the API
   internal/replay/        the .NET API's recorded tests, replayed against Go with every answer compared (testdata/golden)
-  deploy/                 the server setup script (setup.sh), the systemd units, Litestream and rclone
+  deploy/                 the server setup script (setup.sh) and the API's systemd unit; the backups' files, kept for #157 and not run
 docs/                     these pages
 ```
 

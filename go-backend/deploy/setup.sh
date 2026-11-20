@@ -4,14 +4,15 @@
 
 # Prepares an Ubuntu 24.04 server for REDIX, or brings one up to date (redix-api #145). It is the record of every step: on a new server, at any
 # company, copy this folder over and run it again. Running it twice changes nothing the second time (R4). The server runs three instances of
-# the API, prod, qa and dev, each with its own settings file, name, port, database, files and backup path (R25).
+# the API, prod, qa and dev, each with its own settings file, name, port, database and files (R25). There is no backup yet (the owner, 20 Nov
+# 2026; redix-api #157 plans it for release 2): each instance's data stays in /var/lib/redix/<instance>, copied by hand (README.md).
 #
 # From the PC, in go-backend (README.md, "Deploying"):
 #   GOEXPERIMENT=jsonv2 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o bin/redix-server ./cmd/server
-#   scp -i ~/.ssh/redix -r deploy bin/redix-server <prod.env> <qa.env> <dev.env> <backup.env> root@<ip>:/opt/redix-setup/
+#   scp -i ~/.ssh/redix -r deploy bin/redix-server <prod.env> <qa.env> <dev.env> root@<ip>:/opt/redix-setup/
 #   ssh -i ~/.ssh/redix root@<ip> bash /opt/redix-setup/deploy/setup.sh
 #
-# It installs only what REDIX needs (R15): the API, Typst for the PDFs, Litestream and rclone for the backups, Postfix and OpenDKIM for the email.
+# It installs only what REDIX needs (R15): the API, Typst for the PDFs, Postfix and OpenDKIM for the email.
 # The API holds its own HTTPS certificate (D1), so there is no web server in front of it.
 set -euo pipefail
 
@@ -19,15 +20,13 @@ here=$(cd "$(dirname "$0")/.." && pwd)
 readonly here
 readonly typst_version=0.15.1
 readonly typst_sha256=a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c
-readonly litestream_version=0.5.18
-readonly litestream_sha256=11d36a2d2058731ee99f201f6b68a52fcb1dd3050bdfd2237f7f39741dafe6ae
 readonly instances=(prod qa dev)
 restart_api=false
 
 say() { printf '\n== %s\n' "$*"; }
 stop() { printf '\nSTOPPED: %s\n' "$*" >&2; exit 1; }
 
-# setting answers the value of $2 in the settings file $1 (prod, qa, dev or backup), read as systemd's EnvironmentFile reads it: the text after
+# setting answers the value of $2 in the settings file $1 (prod, qa or dev), read as systemd's EnvironmentFile reads it: the text after
 # the first =, whatever it holds. Read as shell, the ; between two Urls ended the line, so production's port 80 was left out of the firewall and
 # no name could prove itself to Let's Encrypt (found on WSL, R11); a $ in a password would have been expanded.
 setting() { sed -n "s/^$2=//p" "$here/$1.env" | tail -n 1; }
@@ -42,8 +41,8 @@ say "1. This is a fresh or known Ubuntu 24.04, run as root, with every settings 
 [[ $EUID -eq 0 ]] || stop "run it as root"
 . /etc/os-release
 [[ $ID == ubuntu && $VERSION_ID == 24.04 ]] || stop "it is made for Ubuntu 24.04, this is $PRETTY_NAME"
-for file in "${instances[@]/%/.env}" backup.env; do
-  [[ -s $here/$file ]] || stop "copy the filled $file next to deploy/ (deploy/prod.env.example, qa.env.example and backup.env.example, filled on the PC)"
+for file in "${instances[@]/%/.env}"; do
+  [[ -s $here/$file ]] || stop "copy the filled $file next to deploy/ (deploy/prod.env.example and qa.env.example, filled on the PC)"
   sed -i 's/\r$//' "$here/$file"
 done
 for instance in "${instances[@]}"; do
@@ -54,10 +53,6 @@ for instance in "${instances[@]}"; do
   done
 done
 [[ -n $(setting prod REDIX_Certificates__Proves) ]] || stop "REDIX_Certificates__Proves is empty in prod.env: production's port 80 proves qa's and dev's names"
-for key in REDIX_BACKUP_BUCKET REDIX_BACKUP_ENDPOINT AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
-  declare -x "$key=$(setting backup "$key")"
-  [[ -n ${!key} ]] || stop "$key is empty in backup.env"
-done
 # The mail leaves under production's name, whichever instance sends it.
 domain=$(setting prod REDIX_Domain)
 readonly domain
@@ -75,7 +70,7 @@ postfix postfix/mailname string $domain
 EOF
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q --no-install-recommends openssh-server ufw unattended-upgrades postfix opendkim opendkim-tools rclone
+apt-get install -y -q --no-install-recommends openssh-server ufw unattended-upgrades postfix opendkim opendkim-tools
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
@@ -106,7 +101,7 @@ done
 for rule in $open; do ufw allow "$rule"; done
 ufw --force enable
 
-say "6. Typst $typst_version and Litestream $litestream_version, checked against their pinned SHA-256 (R9)"
+say "6. Typst $typst_version, checked against its pinned SHA-256 (R9)"
 download=$(mktemp -d)
 trap 'rm -rf "$download"' EXIT
 if [[ $(typst --version 2>/dev/null) != "typst $typst_version "* ]]; then
@@ -114,11 +109,6 @@ if [[ $(typst --version 2>/dev/null) != "typst $typst_version "* ]]; then
   echo "$typst_sha256  $download/typst.tar.xz" | sha256sum -c -
   tar -xJf "$download/typst.tar.xz" -C "$download" --strip-components=1 typst-x86_64-unknown-linux-musl/typst
   install -m 755 "$download/typst" /usr/local/bin/typst
-fi
-if [[ $(dpkg-query -W -f='${Version}' litestream 2>/dev/null) != "$litestream_version" ]]; then
-  curl -fsSL -o "$download/litestream.deb" "https://github.com/benbjohnson/litestream/releases/download/v$litestream_version/litestream-$litestream_version-linux-x86_64.deb"
-  echo "$litestream_sha256  $download/litestream.deb" | sha256sum -c -
-  dpkg -i "$download/litestream.deb"
 fi
 
 say "7. The redix user, each instance's folders and settings, and the API"
@@ -129,7 +119,6 @@ for instance in "${instances[@]}"; do
   install -d -m 750 -o redix -g redix "/var/lib/redix/$instance" "/var/lib/redix/$instance/attachments"
   installs "$here/$instance.env" "/etc/redix/$instance.env" 600 && restart_api=true
 done
-installs "$here/backup.env" /etc/redix/backup.env 600 || true
 installs "$here/redix-server" /usr/local/bin/redix-server 755 && restart_api=true
 
 say "8. Email: Postfix sends from this machine alone, OpenDKIM signs it (R12)"
@@ -157,31 +146,15 @@ EOF
 systemctl enable opendkim postfix
 systemctl restart opendkim postfix
 
-say "9. The services: the three instances of the API, Litestream's copy of their databases, and the attachments' copy every ten minutes"
-install -m 644 "$here/deploy/litestream.yml" /etc/litestream.yml
-install -d /etc/systemd/system/litestream.service.d
-printf '[Service]\nEnvironmentFile=/etc/redix/backup.env\n' > /etc/systemd/system/litestream.service.d/redix.conf
-for unit in redix@.service redix-attachments.service redix-attachments.timer; do
-  installs "$here/deploy/$unit" "/etc/systemd/system/$unit" 644 && restart_api=true
-done
+say "9. The services: the three instances of the API"
+installs "$here/deploy/redix@.service" /etc/systemd/system/redix@.service 644 && restart_api=true
 systemctl daemon-reload
-
-say "10. On a new server, each instance's data comes back from the bucket before it first starts (R8)"
-for instance in "${instances[@]}"; do
-  if [[ ! -e /var/lib/redix/$instance/redix.db ]]; then
-    litestream restore -if-replica-exists -config /etc/litestream.yml "/var/lib/redix/$instance/redix.db"
-    rclone copy ":s3,provider=Other,env_auth=true,endpoint='$REDIX_BACKUP_ENDPOINT':$REDIX_BACKUP_BUCKET/$instance/attachments" "/var/lib/redix/$instance/attachments"
-    chown -R redix:redix "/var/lib/redix/$instance"
-  fi
-done
-
 services=("${instances[@]/#/redix@}")
-systemctl enable --now litestream "${services[@]}" redix-attachments.timer
-systemctl restart litestream
+systemctl enable --now "${services[@]}"
 if $restart_api; then systemctl restart "${services[@]}"; fi
 
-say "11. What runs now (R10: no request is sent to the API)"
-for service in "${services[@]}" litestream redix-attachments.timer postfix opendkim; do
+say "10. What runs now (R10: no request is sent to the API)"
+for service in "${services[@]}" postfix opendkim; do
   printf '%-26s %s\n' "$service" "$(systemctl is-active "$service")"
 done
 for instance in "${instances[@]}"; do
@@ -198,7 +171,7 @@ else
   echo "Port 25 out: CLOSED by the company - ask them to open it, or name a relay (Q7)"
 fi
 
-say "12. The DNS records: each instance's name (R25), the mail's (R13), and this server's reverse DNS, set in the company's panel"
+say "11. The DNS records: each instance's name (R25), the mail's (R13), and this server's reverse DNS, set in the company's panel"
 for instance in "${instances[@]}"; do
   printf '%s.  A  %s\n' "$(setting "$instance" REDIX_Domain)" "$(hostname -I | awk '{print $1}')"
 done

@@ -15,7 +15,7 @@ of the .NET API, at its old paths and again under `/api/v1` (redix-api #140).
 | `internal/statement` | The statement workbook every report file shares, written with excelize, and the report PDFs' pages, laid out by a Typst template with the Arabic font embedded |
 | `internal/platform` | What the domains share: the router, problem answers, tokens and passwords, money and moments as .NET wrote them |
 | `internal/replay` | The .NET API's recorded tests replayed against Go, every answer compared (`testdata/golden`); kept as they were recorded since .NET's removal |
-| `deploy/` | The server setup script, the systemd units, Litestream |
+| `deploy/` | The server setup script and the API's systemd unit; the backups' files, kept for #157 and not run |
 
 ## Settings
 
@@ -59,10 +59,11 @@ Every row a change adds, changes or removes has its History line; a test that wr
 ## Deploying (redix-api #145)
 
 `deploy/setup.sh` prepares a fresh Ubuntu 24.04 server, or brings one up to date, and is the record of every step: at a new company, run it
-on the new server. It installs only what REDIX runs: the API, which holds its own HTTPS certificate, Typst, Litestream and rclone for the
-backups, Postfix and OpenDKIM for the email. Running it twice changes nothing the second time.
+on the new server. It installs only what REDIX runs: the API, which holds its own HTTPS certificate, Typst, Postfix and OpenDKIM for the
+email. Running it twice changes nothing the second time. There is no backup yet (the owner, 20 Nov 2026; #157 plans it for release 2): each
+instance's data stays on the server, copied by hand (below).
 
-The server runs three instances of the API, each a `redix@` service with its own settings file, name, port, folder and backup path (R25):
+The server runs three instances of the API, each a `redix@` service with its own settings file, name, port and folder (R25):
 
 | Instance | Name | Port | Settings | Data |
 | --- | --- | --- | --- | --- |
@@ -79,10 +80,9 @@ Before the first run:
    Mail to REDIX is received by Cloudflare's Email Routing, free, and forwarded to the owner's inbox (redix-api #147): in Cloudflare, Email ›
    Email Routing › Settings › Subdomains adds the domain; Destination addresses holds the owner's inbox, confirmed by its link; Routing
    rules send info@ and no-reply@ to it. The domain keeps one SPF record, the value the script prints, naming this server and Cloudflare.
-2. A bucket, S3-compatible, with a key pair.
-3. On the PC, outside the repo: filled copies of `deploy/prod.env.example` named `prod.env`, of `deploy/qa.env.example` named `qa.env`
-   and again, for dev, `dev.env`, and of `deploy/backup.env.example` named `backup.env`.
-4. The PC's key on the server, put there with the company's root password, once; then change that password in the panel:
+2. On the PC, outside the repo: filled copies of `deploy/prod.env.example` named `prod.env`, of `deploy/qa.env.example` named `qa.env`
+   and again, for dev, `dev.env`.
+3. The PC's key on the server, put there with the company's root password, once; then change that password in the panel:
 
        ssh-keygen -t ed25519 -f ~/.ssh/redix
        ssh root@<ip> "mkdir -p ~/.ssh /opt/redix-setup && cat >> ~/.ssh/authorized_keys" < ~/.ssh/redix.pub
@@ -90,12 +90,22 @@ Before the first run:
 Every run, the first or a new version, from go-backend in Git Bash (`make build` is the first line, where make is installed):
 
     GOEXPERIMENT=jsonv2 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o bin/redix-server ./cmd/server
-    scp -i ~/.ssh/redix -r deploy bin/redix-server <prod.env> <qa.env> <dev.env> <backup.env> root@<ip>:/opt/redix-setup/
+    scp -i ~/.ssh/redix -r deploy bin/redix-server <prod.env> <qa.env> <dev.env> root@<ip>:/opt/redix-setup/
     ssh -i ~/.ssh/redix root@<ip> bash /opt/redix-setup/deploy/setup.sh
 
-On a new server it restores each instance's database and attachments from the bucket before it first starts. It ends by listing the
-services, each instance's certificate and whether port 25 is open, and prints the DNS records the names and the mail need. It sends no
-request to the API.
+It ends by listing the services, each instance's certificate and whether port 25 is open, and prints the DNS records the names and the mail
+need. It sends no request to the API.
+
+### Copying an instance by hand
+
+Each instance keeps its database and its attachments in one folder, `/var/lib/redix/<instance>`. To copy one to the PC, stop it for the few
+seconds the copy takes, so the database is not caught in the middle of a write, then start it again:
+
+    ssh -i ~/.ssh/redix root@<ip> systemctl stop redix@prod
+    scp -i ~/.ssh/redix -r root@<ip>:/var/lib/redix/prod ./redix-prod-2026-11-20
+    ssh -i ~/.ssh/redix root@<ip> systemctl start redix@prod
+
+To bring one back, stop it, copy the folder over `/var/lib/redix/<instance>`, give it to the redix user (`chown -R redix:redix`), start it.
 
 ## Where it stands (17 Nov 2026)
 
