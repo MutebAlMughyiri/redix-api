@@ -227,27 +227,11 @@ func TestR7_EveryLineKeepsTheTraceIdOfTheRequestThatWroteIt(t *testing.T) {
 // inside a request leaves that request's custody lines hidden as the whole request does.
 func TestR87_8_APagedHistoryShowsEveryLineOnceAcrossBatches(t *testing.T) {
 	a := approved(t, started)
-	pages := func(from string) []map[string]any {
-		var all []map[string]any
-		for path := from; ; {
-			page := a.lines(path, a.token)
-			all = append(all, page...)
-			if len(page) < 50 {
-				return all
-			}
-			path = from + "?before=" + strconv.FormatInt(int64(page[len(page)-1]["id"].(float64)), 10)
-		}
-	}
-	base := len(pages(a.path + "/history"))
+	base := len(a.everyPage(a.path + "/history"))
 	a.longHistory()
 
-	all := pages(a.path + "/history")
-	ids := map[float64]bool{}
-	for i, line := range all {
-		if ids[line["id"].(float64)] || (i > 0 && line["id"].(float64) >= all[i-1]["id"].(float64)) {
-			t.Fatalf("line %d (%v) repeats or breaks the order", i, line["id"])
-		}
-		ids[line["id"].(float64)] = true
+	all := a.everyPage(a.path + "/history")
+	for _, line := range all {
 		if line["thing"] == "custody" {
 			t.Errorf("a custody line shows although its request's account line stands for it: %v", line["id"])
 		}
@@ -263,6 +247,52 @@ func TestR87_8_APagedHistoryShowsEveryLineOnceAcrossBatches(t *testing.T) {
 		if line["thing"] == "custody" {
 			t.Errorf("a page beginning inside a request shows its custody line %v", line["id"])
 		}
+	}
+}
+
+// redix-api #87 R8: the partner history, read through its records' own lines a batch at a time, pages every line about its partners once,
+// newest first, however many other lines lie between them.
+func TestR87_8_APartnerHistoryPagesItsOwnLinesAcrossOtherLines(t *testing.T) {
+	a := approved(t, started)
+	a.Ask("POST", a.path+"/partners", `{"name":"زيد"}`, a.token)
+	var partner string
+	if err := a.Database.Read.QueryRow("SELECT id FROM partners WHERE name = 'زيد'").Scan(&partner); err != nil {
+		t.Fatal(err)
+	}
+	base := len(a.everyPage(a.path + "/partners/history"))
+	renamed := func(count int) {
+		a.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?)
+			INSERT INTO history (at, project_id, user_id, action, table_name, record_id, before, after, trace_id)
+			SELECT made.at, made.project_id, made.user_id, 'Update', 'Partners', made.record_id, '{"Name":"زيد"}', '{"Name":"زيد"}', 'renamed-' || hex(randomblob(8))
+			FROM (SELECT * FROM history WHERE table_name = 'Partners' AND record_id = ? LIMIT 1) AS made, n`, count, partner)
+	}
+	renamed(40)
+	a.longHistory()
+	renamed(40)
+	a.longHistory()
+	renamed(40)
+	if got := len(a.everyPage(a.path + "/partners/history")); got != base+120 {
+		t.Errorf("%d lines across the pages, want %d", got, base+120)
+	}
+}
+
+// everyPage is every line of the history at from, page after page, each page after the last line of the one before; it fails the test when a
+// line repeats or comes out of order (#87 R8).
+func (a project) everyPage(from string) []map[string]any {
+	a.t.Helper()
+	var all []map[string]any
+	for path := from; ; {
+		page := a.lines(path, a.token)
+		for _, line := range page {
+			if len(all) > 0 && line["id"].(float64) >= all[len(all)-1]["id"].(float64) {
+				a.t.Fatalf("line %v repeats or breaks the order after %v", line["id"], all[len(all)-1]["id"])
+			}
+			all = append(all, line)
+		}
+		if len(page) < 50 {
+			return all
+		}
+		path = from + "?before=" + strconv.FormatInt(int64(page[len(page)-1]["id"].(float64)), 10)
 	}
 }
 

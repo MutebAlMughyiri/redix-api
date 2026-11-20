@@ -839,7 +839,7 @@ The ledger: every movement of money, of any kind; each kind's own fields are in 
 
 Unique: the key; `project_id, number`.
 
-Other indexes: `account_id`; `created_by_user_id`; `kind`; `project_id, created_at, number` (a page of entries in their order, #87); `project_id, status`; `status`.
+Other indexes: `account_id`; `created_by_user_id`; `kind`; `project_id, created_at, number` (a page of entries in their order, #87); `project_id, status, created_at, number, account_id, kind, amount, id` (the entries of one status in their order, and what a balance sums, #87); `status`.
 
 ### expense_details
 

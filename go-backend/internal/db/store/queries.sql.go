@@ -16,9 +16,10 @@ import (
 
 const accountMovements = `-- name: AccountMovements :many
 SELECT moved.account_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
-    SELECT entries.account_id, CASE WHEN entries.kind IN (2, 4) THEN entries.amount ELSE -entries.amount END AS amount
+    SELECT entries.account_id, SUM(CASE WHEN entries.kind IN (2, 4) THEN entries.amount ELSE -entries.amount END) AS amount
     FROM entries WHERE entries.project_id = ?1 AND entries.status = 2
-        AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(?2)))
+        AND entries.id NOT IN (SELECT entry_tables.entry_id FROM json_each(?2) AS hidden CROSS JOIN entry_tables ON entry_tables.table_id = hidden.value)
+    GROUP BY entries.account_id
     UNION ALL SELECT transfers.to_account_id, transfers.amount FROM transfers WHERE transfers.project_id = ?1
     UNION ALL SELECT transfers.from_account_id, -transfers.amount FROM transfers WHERE transfers.project_id = ?1
 ) AS moved GROUP BY moved.account_id
@@ -36,7 +37,8 @@ type AccountMovementsRow struct {
 
 // What each account of the project that anything moved holds (AccountMoney): its approved entries by their kind's sign (BR-10) - capital in and
 // revenue bring money in, the rest take it out - plus the transfers it received, less those it sent. The entries of the tables in unseen, a JSON
-// list, are left out, for someone who does not see them (#106 D6).
+// list, are left out, for someone who does not see them (#106 D6). The entries are summed per account first, from the index holding what a balance
+// sums, and a hidden table's entries are looked up from the tables hidden, so none is looked up when none is (#87).
 func (q *Queries) AccountMovements(ctx context.Context, arg AccountMovementsParams) ([]AccountMovementsRow, error) {
 	rows, err := q.query(ctx, q.accountMovementsStmt, accountMovements, arg.ProjectID, arg.Unseen)
 	if err != nil {
@@ -1209,6 +1211,35 @@ func (q *Queries) CapitalDetailsOf(ctx context.Context, entries interface{}) ([]
 	return items, nil
 }
 
+const capitalEntriesOf = `-- name: CapitalEntriesOf :many
+SELECT capital_movement_details.entry_id FROM json_each(?1) AS named
+CROSS JOIN capital_movement_details ON capital_movement_details.partner_id = named.value
+`
+
+// The entries moving the capital of the partners named, a JSON list of the project's own ids: what the partner history's lines are about (#87).
+func (q *Queries) CapitalEntriesOf(ctx context.Context, partners interface{}) ([]uuid.UUID, error) {
+	rows, err := q.query(ctx, q.capitalEntriesOfStmt, capitalEntriesOf, partners)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var entry_id uuid.UUID
+		if err := rows.Scan(&entry_id); err != nil {
+			return nil, err
+		}
+		items = append(items, entry_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const capitalItemExists = `-- name: CapitalItemExists :one
 SELECT EXISTS (SELECT 1 FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 6)
 `
@@ -1859,11 +1890,20 @@ func (q *Queries) DecidePermissionRequest(ctx context.Context, arg DecidePermiss
 }
 
 const decisionsOf = `-- name: DecisionsOf :many
-SELECT entry_decisions.id, entry_decisions.entry_id, entry_decisions."action", entry_decisions.user_id, entry_decisions.at, entry_decisions.reason FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id WHERE entries.project_id = ? ORDER BY entry_decisions.id
+SELECT entry_decisions.id, entry_decisions.entry_id, entry_decisions."action", entry_decisions.user_id, entry_decisions.at, entry_decisions.reason FROM json_each(?1) AS named
+CROSS JOIN entry_decisions ON entry_decisions.entry_id = named.value JOIN entries ON entries.id = entry_decisions.entry_id
+WHERE entries.project_id = ?2 ORDER BY entry_decisions.id
 `
 
-func (q *Queries) DecisionsOf(ctx context.Context, projectID uuid.UUID) ([]EntryDecision, error) {
-	rows, err := q.query(ctx, q.decisionsOfStmt, decisionsOf, projectID)
+type DecisionsOfParams struct {
+	Entries   interface{}
+	ProjectID uuid.UUID
+}
+
+// The decisions on the project's entries named, a JSON list of ids, in the order made: those a batch of History lines is about, each read through
+// its entry's key, whatever the project's size (#87).
+func (q *Queries) DecisionsOf(ctx context.Context, arg DecisionsOfParams) ([]EntryDecision, error) {
+	rows, err := q.query(ctx, q.decisionsOfStmt, decisionsOf, arg.Entries, arg.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -2054,10 +2094,11 @@ func (q *Queries) DeleteEveryCode(ctx context.Context, userID uuid.UUID) error {
 }
 
 const deletedAccountsOf = `-- name: DeletedAccountsOf :many
-SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE project_id = ? AND table_name = 'Accounts' AND action = 'Delete'
+SELECT id, at, project_id, user_id, "action", table_name, record_id, "before", "after", trace_id FROM history WHERE +project_id = ? AND table_name = 'Accounts' AND action = 'Delete'
 `
 
-// The History lines of a project's accounts deleted: the names the account history shows for them (#87).
+// The History lines of a project's accounts deleted: the names the account history shows for them (#87). The deletions are found through the
+// index on action, few as they are; the + keeps SQLite from walking every line of the project through its index instead (12.9 ms to 0.01 ms).
 func (q *Queries) DeletedAccountsOf(ctx context.Context, projectID uuid.UUID) ([]History, error) {
 	rows, err := q.query(ctx, q.deletedAccountsOfStmt, deletedAccountsOf, projectID)
 	if err != nil {
@@ -2302,6 +2343,55 @@ func (q *Queries) EntriesBefore(ctx context.Context, arg EntriesBeforeParams) ([
 		arg.Number,
 		arg.Take,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Entry
+	for rows.Next() {
+		var i Entry
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Kind,
+			&i.Status,
+			&i.EntryDate,
+			&i.Amount,
+			&i.AccountID,
+			&i.Description,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.ApprovedAt,
+			&i.ColumnValues,
+			&i.Number,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const entriesNamed = `-- name: EntriesNamed :many
+SELECT entries.id, entries.project_id, entries.kind, entries.status, entries.entry_date, entries.amount, entries.account_id, entries.description, entries.created_by_user_id, entries.created_at, entries.approved_at, entries.column_values, entries.number FROM json_each(?1) AS named CROSS JOIN entries ON entries.id = named.value
+WHERE entries.project_id = ?2 AND entries.status <> 4
+`
+
+type EntriesNamedParams struct {
+	Entries   interface{}
+	ProjectID uuid.UUID
+}
+
+// The project's entries named, a JSON list of ids, but those removed (redix-api #119): those a batch of History lines is about, each read through
+// its key, whatever the project's size (#87).
+func (q *Queries) EntriesNamed(ctx context.Context, arg EntriesNamedParams) ([]Entry, error) {
+	rows, err := q.query(ctx, q.entriesNamedStmt, entriesNamed, arg.Entries, arg.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -2847,6 +2937,63 @@ type HistoryOfRecordsParams struct {
 // each record looked up through the index on table and record; CROSS JOIN keeps that order whatever SQLite's statistics say (#87).
 func (q *Queries) HistoryOfRecords(ctx context.Context, arg HistoryOfRecordsParams) ([]History, error) {
 	rows, err := q.query(ctx, q.historyOfRecordsStmt, historyOfRecords, arg.Records, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []History
+	for rows.Next() {
+		var i History
+		if err := rows.Scan(
+			&i.ID,
+			&i.At,
+			&i.ProjectID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.RecordID,
+			&i.Before,
+			&i.After,
+			&i.TraceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const historyOfRecordsBefore = `-- name: HistoryOfRecordsBefore :many
+SELECT history.id, history.at, history.project_id, history.user_id, history."action", history.table_name, history.record_id, history."before", history."after", history.trace_id FROM history WHERE history.id IN (
+    SELECT lines.id FROM json_each(?1) AS named CROSS JOIN history AS lines
+        ON lines.table_name = json_extract(named.value, '$[0]') AND lines.record_id = json_extract(named.value, '$[1]')
+    WHERE +lines.id < ?2 ORDER BY lines.id DESC LIMIT ?3)
+AND history.project_id = ?4 ORDER BY history.id DESC
+`
+
+type HistoryOfRecordsBeforeParams struct {
+	Records   interface{}
+	Before    int64
+	Take      int64
+	ProjectID uuid.UUID
+}
+
+// The newest take of a project's History lines about the records named, a JSON list of [table, id] pairs, older than before, newest first: what a
+// history screen about a few records reads a batch at a time (#87). Their ids are picked from the index on table and record alone, and only those
+// lines read whole; the + keeps SQLite on that index, where the index on project and id would walk every line of the project for each record.
+func (q *Queries) HistoryOfRecordsBefore(ctx context.Context, arg HistoryOfRecordsBeforeParams) ([]History, error) {
+	rows, err := q.query(ctx, q.historyOfRecordsBeforeStmt, historyOfRecordsBefore,
+		arg.Records,
+		arg.Before,
+		arg.Take,
+		arg.ProjectID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -4241,6 +4388,45 @@ func (q *Queries) ProjectOfUser(ctx context.Context, arg ProjectOfUserParams) ([
 			&i.PartnerIds,
 			&i.IsInactive,
 			&i.UnseenTables,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const projectSuppliers = `-- name: ProjectSuppliers :many
+SELECT id, project_id, name, normalized_name, vat_number, mobile, status, is_active, is_general_cash, created_by_user_id FROM suppliers WHERE project_id = ?
+`
+
+// A project's suppliers, as an entry's facts name them (#87): what the supplier screens count for each is not read.
+func (q *Queries) ProjectSuppliers(ctx context.Context, projectID uuid.UUID) ([]Supplier, error) {
+	rows, err := q.query(ctx, q.projectSuppliersStmt, projectSuppliers, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Supplier
+	for rows.Next() {
+		var i Supplier
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.NormalizedName,
+			&i.VatNumber,
+			&i.Mobile,
+			&i.Status,
+			&i.IsActive,
+			&i.IsGeneralCash,
+			&i.CreatedByUserID,
 		); err != nil {
 			return nil, err
 		}

@@ -33,11 +33,13 @@ SELECT EXISTS (SELECT 1 FROM project_permissions WHERE project_id = sqlc.arg(pro
 -- name: AccountMovements :many
 -- What each account of the project that anything moved holds (AccountMoney): its approved entries by their kind's sign (BR-10) - capital in and
 -- revenue bring money in, the rest take it out - plus the transfers it received, less those it sent. The entries of the tables in unseen, a JSON
--- list, are left out, for someone who does not see them (#106 D6).
+-- list, are left out, for someone who does not see them (#106 D6). The entries are summed per account first, from the index holding what a balance
+-- sums, and a hidden table's entries are looked up from the tables hidden, so none is looked up when none is (#87).
 SELECT moved.account_id, CAST(SUM(moved.amount) AS INTEGER) AS total FROM (
-    SELECT entries.account_id, CASE WHEN entries.kind IN (2, 4) THEN entries.amount ELSE -entries.amount END AS amount
+    SELECT entries.account_id, SUM(CASE WHEN entries.kind IN (2, 4) THEN entries.amount ELSE -entries.amount END) AS amount
     FROM entries WHERE entries.project_id = sqlc.arg(project_id) AND entries.status = 2
-        AND entries.id NOT IN (SELECT entry_id FROM entry_tables WHERE table_id IN (SELECT value FROM json_each(sqlc.arg(unseen))))
+        AND entries.id NOT IN (SELECT entry_tables.entry_id FROM json_each(sqlc.arg(unseen)) AS hidden CROSS JOIN entry_tables ON entry_tables.table_id = hidden.value)
+    GROUP BY entries.account_id
     UNION ALL SELECT transfers.to_account_id, transfers.amount FROM transfers WHERE transfers.project_id = sqlc.arg(project_id)
     UNION ALL SELECT transfers.from_account_id, -transfers.amount FROM transfers WHERE transfers.project_id = sqlc.arg(project_id)
 ) AS moved GROUP BY moved.account_id;

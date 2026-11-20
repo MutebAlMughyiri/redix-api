@@ -36,7 +36,7 @@ func TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger(t *testing.T) {
 		t.Errorf("tables: %d, want 66", got)
 	}
 	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND sql IS NOT NULL"); got != 117 {
-		t.Errorf("indexes: %d, want 115", got)
+		t.Errorf("indexes: %d, want 117", got)
 	}
 	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'goose_db_version' AND sql NOT LIKE '%) STRICT'"); got != 0 {
 		t.Errorf("tables not STRICT: %d", got)

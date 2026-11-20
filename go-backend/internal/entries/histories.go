@@ -13,6 +13,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
@@ -34,18 +35,34 @@ type historyLine interface {
 	holds(text string) bool
 }
 
-// historyBatch is how many History lines a screen reads at a time, newest first, until its page is full (#87): a page reads the batches it needs
-// where it read every line of the project (the project history on a project ten times qa's size: 1.6 s to 0.5 s).
-const historyBatch = 500
+// historyBatch is the most History lines a screen reads at a time, newest first, until its page is full (#87): a page reads the batches it needs
+// where it read every line of the project (the project history on a project ten times qa's size: 1.6 s to 0.5 s), its first batch as many lines
+// as the page holds and each after it twice the one before, so a page reads about what it shows, and one whose lines are rare, as a partner's,
+// reads the project's History in few batches.
+const historyBatch = 4000
 
-// historyLines reads a history screen's lines older than before, newest first, a batch at a time; none once they have run out.
-type historyLines func(before int64) ([]store.History, error)
+// historyLines reads a batch of a history screen's lines, up to take older than before, newest first; none once they have run out.
+type historyLines func(before, take int64) ([]store.History, error)
 
 // projectLines are the project's History lines, a batch at a time, only the project's (D11).
 func projectLines(c changes.Change) historyLines {
-	return func(before int64) ([]store.History, error) {
-		return c.Q.HistoryBefore(c.Ctx, store.HistoryBeforeParams{ProjectID: c.ProjectID, Before: before, Take: historyBatch})
+	return func(before, take int64) ([]store.History, error) {
+		return c.Q.HistoryBefore(c.Ctx, store.HistoryBeforeParams{ProjectID: c.ProjectID, Before: before, Take: take})
 	}
+}
+
+// recordLines are the project's History lines about records, [table, id] pairs, a batch at a time (#87).
+func recordLines(c changes.Change, records [][2]string) historyLines {
+	named := recordList(records)
+	return func(before, take int64) ([]store.History, error) {
+		return c.Q.HistoryOfRecordsBefore(c.Ctx, store.HistoryOfRecordsBeforeParams{Records: named, ProjectID: c.ProjectID, Before: before, Take: take})
+	}
+}
+
+// recordList is records, [table, id] pairs, as the JSON list a query reads with json_each. A list of strings always encodes.
+func recordList(records [][2]string) string {
+	named, _ := json.Marshal(records)
+	return string(named)
 }
 
 // page is a page of a history screen (HistoryPage.LinesAsync): its lines read newest first a batch at a time, after the line before (0 for the
@@ -60,8 +77,8 @@ func page[T historyLine](r *http.Request, read historyLines, linesOf func(batch 
 	}
 	text := query.Get("text")
 	lines := []T{}
-	for {
-		batch, err := read(before)
+	for take := int64(pageSize); ; take = min(2*take, historyBatch) {
+		batch, err := read(before, take)
 		if err != nil || len(batch) == 0 {
 			return lines, err
 		}
@@ -82,6 +99,38 @@ func page[T historyLine](r *http.Request, read historyLines, linesOf func(batch 
 				return lines, nil
 			}
 		}
+	}
+}
+
+// entriesIn is the project's entries ids name, but those removed, their own facts read into known: what a history screen reads for the entries
+// a batch of its lines is about, rather than every entry of the project (#87).
+func entriesIn(c changes.Change, known facts, ids []uuid.UUID) ([]store.Entry, error) {
+	about, err := c.Q.EntriesNamed(c.Ctx, store.EntriesNamedParams{Entries: db.IDList(ids), ProjectID: c.ProjectID})
+	if err != nil {
+		return nil, err
+	}
+	return about, known.readEntries(c, about)
+}
+
+// eachAbout is each for a screen whose lines are about entries: before keep sees a batch, the entries its Entries lines are about, with their
+// own facts, are read into known and given to add (#87).
+func eachAbout[T historyLine](c changes.Change, known facts, add func([]store.Entry) error, keep func(store.History) bool, lineOf func(store.History) T) func([]store.History) ([]T, error) {
+	lines := each(keep, lineOf)
+	return func(batch []store.History) ([]T, error) {
+		var ids []uuid.UUID
+		for _, row := range batch {
+			if row.TableName == "Entries" {
+				ids = append(ids, row.RecordID)
+			}
+		}
+		about, err := entriesIn(c, known, ids)
+		if err != nil {
+			return nil, err
+		}
+		if err := add(about); err != nil {
+			return nil, err
+		}
+		return lines(batch)
 	}
 }
 
@@ -148,7 +197,7 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		problem.Refuse(w, r, http.StatusBadRequest, "unknownAccount")
 		return
 	}
-	seen, known, err := s.seenBy(c, caller)
+	known, err := namesOf(c)
 	deleted, deletedErr := c.Q.DeletedAccountsOf(c.Ctx, c.ProjectID)
 	transfers, transfersErr := c.Q.TransfersOf(c.Ctx, c.ProjectID)
 	balances, balancesErr := c.Q.ReconciliationBalancesOf(c.Ctx, c.ProjectID)
@@ -161,8 +210,11 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		names[row.RecordID] = textIn(row.Before, "Name")
 	}
 	entryOf := map[uuid.UUID]store.Entry{}
-	for _, entry := range seen {
-		entryOf[entry.ID] = entry
+	seenOf := func(about []store.Entry) error {
+		for _, entry := range known.seenAmong(caller, c.ProjectID, about) {
+			entryOf[entry.ID] = entry
+		}
+		return nil
 	}
 	transferOf := map[uuid.UUID]store.Transfer{}
 	for _, transfer := range transfers {
@@ -188,7 +240,7 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		return row.RecordID == accountID || (isTransfer && (transfer.FromAccountID == accountID || transfer.ToAccountID == accountID)) ||
 			(isEntry && entry.AccountID == accountID) || slices.Contains(checks[row.RecordID], accountID)
 	}
-	lines, err := page(r, projectLines(c), each(keep, func(row store.History) accountLine {
+	lines, err := page(r, projectLines(c), eachAbout(c, known, seenOf, keep, func(row store.History) accountLine {
 		line := accountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(purchase)}
 		switch row.TableName {
 		case "Accounts":
@@ -275,24 +327,34 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 		}
 		shown = []uuid.UUID{partnerID}
 	}
-	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	known, factsErr := factsOf(c, all)
-	if err != nil || factsErr != nil {
+	known, err := namesOf(c)
+	movements, movementsErr := c.Q.CapitalEntriesOf(c.Ctx, db.IDList(shown))
+	if err != nil || movementsErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
+	var records [][2]string
+	for _, partner := range shown {
+		records = append(records, [2]string{"Partners", partner.String()}, [2]string{"PartnerUsers", partner.String()})
+	}
+	for _, entryID := range movements {
+		records = append(records, [2]string{"Entries", entryID.String()})
+	}
 	entryOf := map[uuid.UUID]store.Entry{}
-	for _, entry := range all {
-		if partner, isCapital := known.capital[entry.ID]; isCapital && slices.Contains(shown, partner) {
-			entryOf[entry.ID] = entry
+	movementsOf := func(about []store.Entry) error {
+		for _, entry := range about {
+			if partner, isCapital := known.capital[entry.ID]; isCapital && slices.Contains(shown, partner) {
+				entryOf[entry.ID] = entry
+			}
 		}
+		return nil
 	}
 	keep := func(row store.History) bool {
 		_, isMovement := entryOf[row.RecordID]
 		partnerRow := (row.TableName == "Partners" || (row.TableName == "PartnerUsers" && row.Action == "Update")) && slices.Contains(shown, row.RecordID)
 		return partnerRow || (row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isMovement)
 	}
-	lines, err := page(r, projectLines(c), each(keep, func(row store.History) partnerLine {
+	lines, err := page(r, recordLines(c, records), eachAbout(c, known, movementsOf, keep, func(row store.History) partnerLine {
 		line := partnerLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, partnerKinds}}
 		if row.TableName != "Entries" {
 			switch {
@@ -345,24 +407,28 @@ func (l approvalLine) holds(text string) bool {
 func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
 	chosen, chosenErr := kinds.Parse(r.URL.Query().Get("kind"))
-	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	known, factsErr := factsOf(c, all)
-	decisions, decisionsErr := c.Q.DecisionsOf(c.Ctx, c.ProjectID)
-	if err != nil || factsErr != nil || decisionsErr != nil {
+	known, err := namesOf(c)
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
 	entryOf := map[uuid.UUID]store.Entry{}
-	for _, entry := range all {
-		if (chosenErr != nil || entry.Kind == chosen) && known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
-			entryOf[entry.ID] = entry
+	var decisions []store.EntryDecision
+	decidedOf := func(about []store.Entry) error {
+		for _, entry := range about {
+			if (chosenErr != nil || entry.Kind == chosen) && known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
+				entryOf[entry.ID] = entry
+			}
 		}
+		var err error
+		decisions, err = c.Q.DecisionsOf(c.Ctx, store.DecisionsOfParams{Entries: entriesNamed(about), ProjectID: c.ProjectID})
+		return err
 	}
 	keep := func(row store.History) bool {
 		_, decided := entryOf[row.RecordID]
 		return decided && row.TableName == "Entries" && (row.Action == "Approve" || row.Action == "Reject")
 	}
-	lines, err := page(r, projectLines(c), each(keep, func(row store.History) approvalLine {
+	lines, err := page(r, projectLines(c), eachAbout(c, known, decidedOf, keep, func(row store.History) approvalLine {
 		entry := entryOf[row.RecordID]
 		line := approvalLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, approvalKinds}, Item: known.itemNameOf(entry),
 			Party: known.supplierOf(entry).Name, Amount: entry.Amount}

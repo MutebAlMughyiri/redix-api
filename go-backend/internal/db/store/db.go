@@ -171,6 +171,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.capitalDetailsOfStmt, err = db.PrepareContext(ctx, capitalDetailsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query CapitalDetailsOf: %w", err)
 	}
+	if q.capitalEntriesOfStmt, err = db.PrepareContext(ctx, capitalEntriesOf); err != nil {
+		return nil, fmt.Errorf("error preparing query CapitalEntriesOf: %w", err)
+	}
 	if q.capitalItemExistsStmt, err = db.PrepareContext(ctx, capitalItemExists); err != nil {
 		return nil, fmt.Errorf("error preparing query CapitalItemExists: %w", err)
 	}
@@ -279,6 +282,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.entriesBeforeStmt, err = db.PrepareContext(ctx, entriesBefore); err != nil {
 		return nil, fmt.Errorf("error preparing query EntriesBefore: %w", err)
 	}
+	if q.entriesNamedStmt, err = db.PrepareContext(ctx, entriesNamed); err != nil {
+		return nil, fmt.Errorf("error preparing query EntriesNamed: %w", err)
+	}
 	if q.entriesOfStmt, err = db.PrepareContext(ctx, entriesOf); err != nil {
 		return nil, fmt.Errorf("error preparing query EntriesOf: %w", err)
 	}
@@ -329,6 +335,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.historyOfRecordsStmt, err = db.PrepareContext(ctx, historyOfRecords); err != nil {
 		return nil, fmt.Errorf("error preparing query HistoryOfRecords: %w", err)
+	}
+	if q.historyOfRecordsBeforeStmt, err = db.PrepareContext(ctx, historyOfRecordsBefore); err != nil {
+		return nil, fmt.Errorf("error preparing query HistoryOfRecordsBefore: %w", err)
 	}
 	if q.holdersOfStmt, err = db.PrepareContext(ctx, holdersOf); err != nil {
 		return nil, fmt.Errorf("error preparing query HoldersOf: %w", err)
@@ -464,6 +473,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.projectOfUserStmt, err = db.PrepareContext(ctx, projectOfUser); err != nil {
 		return nil, fmt.Errorf("error preparing query ProjectOfUser: %w", err)
+	}
+	if q.projectSuppliersStmt, err = db.PrepareContext(ctx, projectSuppliers); err != nil {
+		return nil, fmt.Errorf("error preparing query ProjectSuppliers: %w", err)
 	}
 	if q.projectTimeZoneStmt, err = db.PrepareContext(ctx, projectTimeZone); err != nil {
 		return nil, fmt.Errorf("error preparing query ProjectTimeZone: %w", err)
@@ -1018,6 +1030,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing capitalDetailsOfStmt: %w", cerr)
 		}
 	}
+	if q.capitalEntriesOfStmt != nil {
+		if cerr := q.capitalEntriesOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing capitalEntriesOfStmt: %w", cerr)
+		}
+	}
 	if q.capitalItemExistsStmt != nil {
 		if cerr := q.capitalItemExistsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing capitalItemExistsStmt: %w", cerr)
@@ -1198,6 +1215,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing entriesBeforeStmt: %w", cerr)
 		}
 	}
+	if q.entriesNamedStmt != nil {
+		if cerr := q.entriesNamedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing entriesNamedStmt: %w", cerr)
+		}
+	}
 	if q.entriesOfStmt != nil {
 		if cerr := q.entriesOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing entriesOfStmt: %w", cerr)
@@ -1281,6 +1303,11 @@ func (q *Queries) Close() error {
 	if q.historyOfRecordsStmt != nil {
 		if cerr := q.historyOfRecordsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing historyOfRecordsStmt: %w", cerr)
+		}
+	}
+	if q.historyOfRecordsBeforeStmt != nil {
+		if cerr := q.historyOfRecordsBeforeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing historyOfRecordsBeforeStmt: %w", cerr)
 		}
 	}
 	if q.holdersOfStmt != nil {
@@ -1506,6 +1533,11 @@ func (q *Queries) Close() error {
 	if q.projectOfUserStmt != nil {
 		if cerr := q.projectOfUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing projectOfUserStmt: %w", cerr)
+		}
+	}
+	if q.projectSuppliersStmt != nil {
+		if cerr := q.projectSuppliersStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing projectSuppliersStmt: %w", cerr)
 		}
 	}
 	if q.projectTimeZoneStmt != nil {
@@ -2101,6 +2133,7 @@ type Queries struct {
 	attachmentWithIDStmt                *sql.Stmt
 	balancesOfStmt                      *sql.Stmt
 	capitalDetailsOfStmt                *sql.Stmt
+	capitalEntriesOfStmt                *sql.Stmt
 	capitalItemExistsStmt               *sql.Stmt
 	capitalMovementsStmt                *sql.Stmt
 	categoriesOfStmt                    *sql.Stmt
@@ -2137,6 +2170,7 @@ type Queries struct {
 	documentsOfContractStmt             *sql.Stmt
 	emailTakenStmt                      *sql.Stmt
 	entriesBeforeStmt                   *sql.Stmt
+	entriesNamedStmt                    *sql.Stmt
 	entriesOfStmt                       *sql.Stmt
 	entryExistsStmt                     *sql.Stmt
 	entryFilesOfStmt                    *sql.Stmt
@@ -2154,6 +2188,7 @@ type Queries struct {
 	historyBeforeStmt                   *sql.Stmt
 	historyOfLoginStmt                  *sql.Stmt
 	historyOfRecordsStmt                *sql.Stmt
+	historyOfRecordsBeforeStmt          *sql.Stmt
 	holdersOfStmt                       *sql.Stmt
 	inactiveOfStmt                      *sql.Stmt
 	inactiveProjectsOfStmt              *sql.Stmt
@@ -2199,6 +2234,7 @@ type Queries struct {
 	projectIDsOfUserStmt                *sql.Stmt
 	projectIsFinishedStmt               *sql.Stmt
 	projectOfUserStmt                   *sql.Stmt
+	projectSuppliersStmt                *sql.Stmt
 	projectTimeZoneStmt                 *sql.Stmt
 	projectWithIDStmt                   *sql.Stmt
 	projectsHoldingEntriesStmt          *sql.Stmt
@@ -2355,6 +2391,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		attachmentWithIDStmt:                q.attachmentWithIDStmt,
 		balancesOfStmt:                      q.balancesOfStmt,
 		capitalDetailsOfStmt:                q.capitalDetailsOfStmt,
+		capitalEntriesOfStmt:                q.capitalEntriesOfStmt,
 		capitalItemExistsStmt:               q.capitalItemExistsStmt,
 		capitalMovementsStmt:                q.capitalMovementsStmt,
 		categoriesOfStmt:                    q.categoriesOfStmt,
@@ -2391,6 +2428,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		documentsOfContractStmt:             q.documentsOfContractStmt,
 		emailTakenStmt:                      q.emailTakenStmt,
 		entriesBeforeStmt:                   q.entriesBeforeStmt,
+		entriesNamedStmt:                    q.entriesNamedStmt,
 		entriesOfStmt:                       q.entriesOfStmt,
 		entryExistsStmt:                     q.entryExistsStmt,
 		entryFilesOfStmt:                    q.entryFilesOfStmt,
@@ -2408,6 +2446,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		historyBeforeStmt:                   q.historyBeforeStmt,
 		historyOfLoginStmt:                  q.historyOfLoginStmt,
 		historyOfRecordsStmt:                q.historyOfRecordsStmt,
+		historyOfRecordsBeforeStmt:          q.historyOfRecordsBeforeStmt,
 		holdersOfStmt:                       q.holdersOfStmt,
 		inactiveOfStmt:                      q.inactiveOfStmt,
 		inactiveProjectsOfStmt:              q.inactiveProjectsOfStmt,
@@ -2453,6 +2492,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		projectIDsOfUserStmt:                q.projectIDsOfUserStmt,
 		projectIsFinishedStmt:               q.projectIsFinishedStmt,
 		projectOfUserStmt:                   q.projectOfUserStmt,
+		projectSuppliersStmt:                q.projectSuppliersStmt,
 		projectTimeZoneStmt:                 q.projectTimeZoneStmt,
 		projectWithIDStmt:                   q.projectWithIDStmt,
 		projectsHoldingEntriesStmt:          q.projectsHoldingEntriesStmt,

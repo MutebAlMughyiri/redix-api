@@ -141,6 +141,10 @@ INSERT INTO notification_entries (notification_id, entry_id) VALUES (?, ?);
 -- Who holds a permission in a project.
 SELECT user_id FROM project_permissions WHERE project_id = sqlc.arg(project_id) AND permission = sqlc.arg(permission) ORDER BY id;
 
+-- name: ProjectSuppliers :many
+-- A project's suppliers, as an entry's facts name them (#87): what the supplier screens count for each is not read.
+SELECT * FROM suppliers WHERE project_id = ?;
+
 -- name: PartnersOf :many
 SELECT * FROM partners WHERE project_id = ? ORDER BY sort_order, id;
 
@@ -173,9 +177,25 @@ SELECT history.* FROM json_each(sqlc.arg(records)) AS named CROSS JOIN history
 WHERE history.project_id = sqlc.arg(project_id)
 ORDER BY history.id;
 
+-- name: HistoryOfRecordsBefore :many
+-- The newest take of a project's History lines about the records named, a JSON list of [table, id] pairs, older than before, newest first: what a
+-- history screen about a few records reads a batch at a time (#87). Their ids are picked from the index on table and record alone, and only those
+-- lines read whole; the + keeps SQLite on that index, where the index on project and id would walk every line of the project for each record.
+SELECT history.* FROM history WHERE history.id IN (
+    SELECT lines.id FROM json_each(sqlc.arg(records)) AS named CROSS JOIN history AS lines
+        ON lines.table_name = json_extract(named.value, '$[0]') AND lines.record_id = json_extract(named.value, '$[1]')
+    WHERE +lines.id < sqlc.arg(before) ORDER BY lines.id DESC LIMIT sqlc.arg(take))
+AND history.project_id = sqlc.arg(project_id) ORDER BY history.id DESC;
+
+-- name: CapitalEntriesOf :many
+-- The entries moving the capital of the partners named, a JSON list of the project's own ids: what the partner history's lines are about (#87).
+SELECT capital_movement_details.entry_id FROM json_each(sqlc.arg(partners)) AS named
+CROSS JOIN capital_movement_details ON capital_movement_details.partner_id = named.value;
+
 -- name: DeletedAccountsOf :many
--- The History lines of a project's accounts deleted: the names the account history shows for them (#87).
-SELECT * FROM history WHERE project_id = ? AND table_name = 'Accounts' AND action = 'Delete';
+-- The History lines of a project's accounts deleted: the names the account history shows for them (#87). The deletions are found through the
+-- index on action, few as they are; the + keeps SQLite from walking every line of the project through its index instead (12.9 ms to 0.01 ms).
+SELECT * FROM history WHERE +project_id = ? AND table_name = 'Accounts' AND action = 'Delete';
 
 -- name: TransfersOf :many
 SELECT * FROM transfers WHERE project_id = ?;
@@ -185,7 +205,17 @@ SELECT reconciliation_balances.* FROM reconciliation_balances JOIN reconciliatio
 WHERE reconciliations.project_id = ?;
 
 -- name: DecisionsOf :many
-SELECT entry_decisions.* FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id WHERE entries.project_id = ? ORDER BY entry_decisions.id;
+-- The decisions on the project's entries named, a JSON list of ids, in the order made: those a batch of History lines is about, each read through
+-- its entry's key, whatever the project's size (#87).
+SELECT entry_decisions.* FROM json_each(sqlc.arg(entries)) AS named
+CROSS JOIN entry_decisions ON entry_decisions.entry_id = named.value JOIN entries ON entries.id = entry_decisions.entry_id
+WHERE entries.project_id = sqlc.arg(project_id) ORDER BY entry_decisions.id;
+
+-- name: EntriesNamed :many
+-- The project's entries named, a JSON list of ids, but those removed (redix-api #119): those a batch of History lines is about, each read through
+-- its key, whatever the project's size (#87).
+SELECT entries.* FROM json_each(sqlc.arg(entries)) AS named CROSS JOIN entries ON entries.id = named.value
+WHERE entries.project_id = sqlc.arg(project_id) AND entries.status <> 4;
 
 -- name: ArabicWord :one
 SELECT translations.value FROM translations JOIN translation_keys ON translation_keys.id = translations.translation_key_id

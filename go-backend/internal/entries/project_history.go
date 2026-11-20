@@ -15,6 +15,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -295,6 +296,31 @@ type sight struct {
 	entries   map[uuid.UUID]bool
 }
 
+// sightOf is what caller sees of the entries rows are about, and the decisions on them, read for those entries alone (#87): each row's record,
+// and for an entry's part the entry its own values, owns, name.
+func sightOf(c changes.Change, caller access.Caller, known facts, rows []store.History, owns []values) (sight, []store.EntryDecision, error) {
+	ids := make([]uuid.UUID, 0, 2*len(rows))
+	for i, row := range rows {
+		ids = append(ids, row.RecordID, owns[i].id("Id"))
+	}
+	about, err := entriesIn(c, known, ids)
+	if err != nil {
+		return sight{}, nil, err
+	}
+	decisions, err := c.Q.DecisionsOf(c.Ctx, store.DecisionsOfParams{Entries: db.IDList(ids), ProjectID: c.ProjectID})
+	if err != nil {
+		return sight{}, nil, err
+	}
+	sees := sight{caller: caller, projectID: c.ProjectID, entries: map[uuid.UUID]bool{}}
+	for _, entry := range about {
+		sees.entries[entry.ID] = false
+	}
+	for _, entry := range known.seenAmong(caller, c.ProjectID, about) {
+		sees.entries[entry.ID] = true
+	}
+	return sees, decisions, nil
+}
+
 func (s sight) everyone(values) bool { return true }
 
 // entry: an entry the entries screens show the caller (seenBy), whose id an entry's line and its parts' name as their record; one deleted
@@ -371,19 +397,10 @@ func (l projectLine) holds(text string) bool {
 func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
 	area, areaErr := areas.Parse(r.URL.Query().Get("area"))
-	seen, known, err := s.seenBy(c, caller)
-	all, allErr := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	decisions, decisionsErr := c.Q.DecisionsOf(c.Ctx, c.ProjectID)
-	if err != nil || allErr != nil || decisionsErr != nil {
+	known, err := namesOf(c)
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
-	}
-	sees := sight{caller: caller, projectID: c.ProjectID, entries: map[uuid.UUID]bool{}}
-	for _, entry := range all {
-		sees.entries[entry.ID] = false
-	}
-	for _, entry := range seen {
-		sees.entries[entry.ID] = true
 	}
 	lines, err := page(r, wholeRequests(c, projectLines(c)), func(batch []store.History) ([]projectLine, error) {
 		rows, err := shownOf(c, batch)
@@ -394,11 +411,19 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 		if err != nil {
 			return nil, err
 		}
+		owns := make([]values, len(rows))
+		for i, row := range rows {
+			owns[i] = records.ownValues(row)
+		}
+		sees, decisions, err := sightOf(c, caller, known, rows, owns)
+		if err != nil {
+			return nil, err
+		}
 		var made []projectLine
-		for _, row := range rows {
+		for i, row := range rows {
 			kind := things[row.TableName]
-			if kind.seen(sees, records.ownValues(row)) && (areaErr != nil || kind.area == areas[area]) {
-				made = append(made, projectLineOf(row, records, decisions))
+			if kind.seen(sees, owns[i]) && (areaErr != nil || kind.area == areas[area]) {
+				made = append(made, projectLineOf(row, owns[i], records, decisions))
 			}
 		}
 		return made, nil
@@ -410,15 +435,15 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 	web.JSON(w, r, http.StatusOK, lines)
 }
 
-// projectLineOf is the line of «سجل المشروع» row stands for, described from what History knows of its records (UC-069 R1-R4).
-func projectLineOf(row store.History, records knowledge, decisions []store.EntryDecision) projectLine {
+// projectLineOf is the line of «سجل المشروع» row stands for, described from its own values and what History knows of its records (UC-069 R1-R4).
+func projectLineOf(row store.History, own values, records knowledge, decisions []store.EntryDecision) projectLine {
 	kind := things[row.TableName]
 	action := actionOf[row.Action]
 	if said, saidSo := kind.saidAs[row.Action]; saidSo {
 		action = said
 	}
 	var said described
-	kind.describe(&said, records.ownValues(row), records)
+	kind.describe(&said, own, records)
 	if row.Action == "Update" {
 		said.nameWas = valuesIn(row.Before).text("Name")
 	}
@@ -435,9 +460,9 @@ func projectLineOf(row store.History, records knowledge, decisions []store.Entry
 // wholeRequests reads as read does, each full batch read on to the end of its last request: a request's lines sit together, and one can hold
 // thousands, as a project file's load writes, so no request is split between two batches (#87).
 func wholeRequests(c changes.Change, read historyLines) historyLines {
-	return func(before int64) ([]store.History, error) {
-		batch, err := read(before)
-		if err != nil || len(batch) < historyBatch {
+	return func(before, take int64) ([]store.History, error) {
+		batch, err := read(before, take)
+		if err != nil || int64(len(batch)) < take {
 			return batch, err
 		}
 		rest, err := restOfRequest(c, batch[len(batch)-1], false)
@@ -462,17 +487,18 @@ func shownOf(c changes.Change, batch []store.History) ([]store.History, error) {
 	return slices.DeleteFunc(shown(append(newer, batch...)), func(row store.History) bool { return !inBatch[row.ID] }), nil
 }
 
-// restOfRequest is the lines of row's request beyond it, the newer ones when newer and the older ones otherwise, read until the request ends.
+// restOfRequest is the lines of row's request beyond it, the newer ones when newer and the older ones otherwise, read until the request ends: a
+// page's worth first, since most requests write a few lines, then twice as many each time, as a page reads its batches (#87).
 func restOfRequest(c changes.Change, row store.History, newer bool) ([]store.History, error) {
 	request := requestOf(row)
 	var rest []store.History
-	for from := row.ID; ; {
+	for from, take := row.ID, int64(pageSize); ; take = min(2*take, historyBatch) {
 		var lines []store.History
 		var err error
 		if newer {
-			lines, err = c.Q.HistoryAfter(c.Ctx, store.HistoryAfterParams{ProjectID: c.ProjectID, After: from, Take: historyBatch})
+			lines, err = c.Q.HistoryAfter(c.Ctx, store.HistoryAfterParams{ProjectID: c.ProjectID, After: from, Take: take})
 		} else {
-			lines, err = c.Q.HistoryBefore(c.Ctx, store.HistoryBeforeParams{ProjectID: c.ProjectID, Before: from, Take: historyBatch})
+			lines, err = c.Q.HistoryBefore(c.Ctx, store.HistoryBeforeParams{ProjectID: c.ProjectID, Before: from, Take: take})
 		}
 		if err != nil {
 			return nil, err
@@ -483,7 +509,7 @@ func restOfRequest(c changes.Change, row store.History, newer bool) ([]store.His
 			}
 			rest = append(rest, line)
 		}
-		if len(lines) < historyBatch {
+		if int64(len(lines)) < take {
 			return rest, nil
 		}
 		from = lines[len(lines)-1].ID
@@ -515,11 +541,7 @@ func knownAbout(c changes.Change, rows []store.History, people map[uuid.UUID]str
 		for _, one := range fresh {
 			pairs = append(pairs, [2]string{one.table, one.id.String()})
 		}
-		named, err := json.Marshal(pairs)
-		if err != nil {
-			return knowledge{}, err
-		}
-		lines, err := c.Q.HistoryOfRecords(c.Ctx, store.HistoryOfRecordsParams{Records: string(named), ProjectID: c.ProjectID})
+		lines, err := c.Q.HistoryOfRecords(c.Ctx, store.HistoryOfRecordsParams{Records: recordList(pairs), ProjectID: c.ProjectID})
 		if err != nil {
 			return knowledge{}, err
 		}
@@ -588,7 +610,7 @@ func (s Routes) myHistory(w http.ResponseWriter, r *http.Request, caller access.
 		return known && (areaErr != nil || kind.area == areas[area])
 	}
 	// One login's lines are few, so they are read whole and handed to the pager as one batch.
-	mine := func(before int64) ([]store.History, error) {
+	mine := func(before, _ int64) ([]store.History, error) {
 		return slices.DeleteFunc(slices.Clone(rows), func(row store.History) bool { return row.ID >= before }), nil
 	}
 	lines, err := page(r, mine, each(keep, func(row store.History) loginLine {

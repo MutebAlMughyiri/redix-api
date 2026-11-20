@@ -34,7 +34,7 @@ type facts struct {
 	items          map[uuid.UUID]string
 	accounts       map[uuid.UUID]string
 	paymentMethods map[uuid.UUID]string
-	suppliers      map[uuid.UUID]store.SuppliersOfRow
+	suppliers      map[uuid.UUID]store.Supplier
 	contractors    map[uuid.UUID]uuid.UUID
 	authors        map[uuid.UUID]string
 	balances       map[uuid.UUID]fixed.Total
@@ -55,19 +55,37 @@ func factsOf(c changes.Change, entries []store.Entry) (facts, error) {
 // sharedFactsOf reads what every entry's facts share: the project's names, its accounts' balances, and the money waiting to leave each account,
 // whose entries' own facts it reads too. A list reads it once, then each batch's own (#87).
 func sharedFactsOf(c changes.Change) (facts, error) {
-	q, ctx, projectID := c.Q, c.Ctx, c.ProjectID
-	f := facts{expenses: map[uuid.UUID]store.ExpenseDetail{}, purchases: map[uuid.UUID]store.PurchaseDetail{}, payments: map[uuid.UUID]store.ContractorPaymentDetail{},
-		revenues: map[uuid.UUID]store.RevenueDetail{}, capital: map[uuid.UUID]uuid.UUID{}, invoices: map[uuid.UUID]string{}, files: map[uuid.UUID][]store.EntryFilesOfRow{},
-		partners: map[uuid.UUID]string{}, items: map[uuid.UUID]string{}, accounts: map[uuid.UUID]string{}, paymentMethods: map[uuid.UUID]string{},
-		suppliers: map[uuid.UUID]store.SuppliersOfRow{}, contractors: map[uuid.UUID]uuid.UUID{}, authors: map[uuid.UUID]string{}, waitingOut: map[uuid.UUID]fixed.Total{},
-		tables: map[uuid.UUID]uuid.UUID{}}
-	waiting, err := q.PendingEntriesOf(ctx, projectID)
+	f, err := namesOf(c)
+	if err != nil {
+		return f, err
+	}
+	waiting, err := c.Q.PendingEntriesOf(c.Ctx, c.ProjectID)
 	if err != nil {
 		return f, err
 	}
 	if err := f.readEntries(c, waiting); err != nil {
 		return f, err
 	}
+	if f.balances, err = accounts.Balances(c.Ctx, c.Q, c.ProjectID, c.Access.Unseen(c.ProjectID)); err != nil {
+		return f, err
+	}
+	for _, entry := range waiting {
+		if moved := signed(entry.Kind, fixed.Counted(entry.Amount)); moved.Number() < 0 && f.tableSeen(c.Access, c.ProjectID, entry.ID) {
+			f.waitingOut[entry.AccountID] = f.waitingOut[entry.AccountID].Minus(moved)
+		}
+	}
+	return f, nil
+}
+
+// namesOf reads the names an entry's facts give - the project's partners, items, accounts, payment methods, suppliers and contracts' contractors,
+// and every person's - with no money and no entry's own facts yet: what a history screen reads once, then the entries of each batch (#87).
+func namesOf(c changes.Change) (facts, error) {
+	q, ctx, projectID := c.Q, c.Ctx, c.ProjectID
+	f := facts{expenses: map[uuid.UUID]store.ExpenseDetail{}, purchases: map[uuid.UUID]store.PurchaseDetail{}, payments: map[uuid.UUID]store.ContractorPaymentDetail{},
+		revenues: map[uuid.UUID]store.RevenueDetail{}, capital: map[uuid.UUID]uuid.UUID{}, invoices: map[uuid.UUID]string{}, files: map[uuid.UUID][]store.EntryFilesOfRow{},
+		partners: map[uuid.UUID]string{}, items: map[uuid.UUID]string{}, accounts: map[uuid.UUID]string{}, paymentMethods: map[uuid.UUID]string{},
+		suppliers: map[uuid.UUID]store.Supplier{}, contractors: map[uuid.UUID]uuid.UUID{}, authors: map[uuid.UUID]string{}, waitingOut: map[uuid.UUID]fixed.Total{},
+		tables: map[uuid.UUID]uuid.UUID{}}
 	partners, err := q.PartnersOf(ctx, projectID)
 	if err != nil {
 		return f, err
@@ -96,7 +114,7 @@ func sharedFactsOf(c changes.Change) (facts, error) {
 	for _, row := range methods {
 		f.paymentMethods[row.ID] = row.Name
 	}
-	suppliers, err := q.SuppliersOf(ctx, store.SuppliersOfParams{ProjectID: projectID})
+	suppliers, err := q.ProjectSuppliers(ctx, projectID)
 	if err != nil {
 		return f, err
 	}
@@ -116,14 +134,6 @@ func sharedFactsOf(c changes.Change) (facts, error) {
 	}
 	for _, row := range names {
 		f.authors[row.ID] = row.DisplayName
-	}
-	if f.balances, err = accounts.Balances(ctx, q, projectID, c.Access.Unseen(projectID)); err != nil {
-		return f, err
-	}
-	for _, entry := range waiting {
-		if moved := signed(entry.Kind, fixed.Counted(entry.Amount)); moved.Number() < 0 && f.tableSeen(c.Access, projectID, entry.ID) {
-			f.waitingOut[entry.AccountID] = f.waitingOut[entry.AccountID].Minus(moved)
-		}
 	}
 	return f, nil
 }
@@ -212,14 +222,14 @@ func (f facts) itemNameOf(entry store.Entry) string {
 }
 
 // supplierOf is the entry's supplier, or its contract's contractor; an empty one when it has none.
-func (f facts) supplierOf(entry store.Entry) store.SuppliersOfRow {
+func (f facts) supplierOf(entry store.Entry) store.Supplier {
 	if row, bought := f.purchases[entry.ID]; bought {
 		return f.suppliers[row.SupplierID]
 	}
 	if row, paid := f.payments[entry.ID]; paid {
 		return f.suppliers[f.contractors[row.ContractID]]
 	}
-	return store.SuppliersOfRow{}
+	return store.Supplier{}
 }
 
 // tableOf is the table the entry is in: its contract, its partner, its revenue group, or its expense group.

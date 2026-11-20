@@ -467,7 +467,8 @@ func (f facts) seenAmong(caller access.Caller, projectID uuid.UUID, entries []st
 	return seen
 }
 
-// entryBatch is how many entries a list reads at a time, newest first, with their facts, until it holds what it shows (#87).
+// entryBatch is how many entries a list reads at a time, newest first, with their facts, until it holds what it shows; its first batch is as
+// many as it shows, so a page whose entries are all seen and kept reads no more (#87).
 const entryBatch = 500
 
 // newest is a moment after every entry's, where a list begins.
@@ -486,12 +487,15 @@ func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entr
 	}
 	views := []rowView{}
 	after := store.EntriesBeforeParams{ProjectID: c.ProjectID, CreatedAt: newest, Number: math.MaxInt64, Take: entryBatch}
+	if take > 0 {
+		after.Take = int64(min(take, entryBatch))
+	}
 	for {
 		batch, err := c.Q.EntriesBefore(c.Ctx, after)
 		if err != nil || len(batch) == 0 {
 			return views, err
 		}
-		after.CreatedAt, after.Number = batch[len(batch)-1].CreatedAt, batch[len(batch)-1].Number
+		after.CreatedAt, after.Number, after.Take = batch[len(batch)-1].CreatedAt, batch[len(batch)-1].Number, entryBatch
 		if err := known.readEntries(c, batch); err != nil {
 			return nil, err
 		}
