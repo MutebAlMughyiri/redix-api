@@ -15,7 +15,8 @@ INSERT INTO partner_users (partner_id, project_id, user_id) VALUES (?, ?, ?) ON 
 DELETE FROM partner_users WHERE partner_id = ?;
 
 -- name: CapitalMovements :many
--- Every capital movement of the project, by its entry's status, with its partner.
+-- Every capital movement of the project, by its entry's status, with its partner: read from the movements, few as they are, each entry through its
+-- key, where SQLite walked every entry of the project in order since migration 14 (#87; a project ten times qa's size: 17 ms to 3.7 ms).
 SELECT capital_movement_details.partner_id, entries.*
-FROM capital_movement_details JOIN entries ON entries.id = capital_movement_details.entry_id
+FROM capital_movement_details CROSS JOIN entries ON entries.id = capital_movement_details.entry_id
 WHERE entries.project_id = ? ORDER BY entries.entry_date DESC, entries.number DESC;
