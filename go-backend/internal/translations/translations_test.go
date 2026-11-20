@@ -16,7 +16,7 @@ func TestUC001_EveryWordOfALanguageComesAsOneBundleWithAnETag(t *testing.T) {
 	if answer.Code != 200 || answer.Header().Get("Content-Type") != "application/json" || json.Unmarshal(answer.Body.Bytes(), &words) != nil {
 		t.Fatalf("%d %s", answer.Code, answer.Header().Get("Content-Type"))
 	}
-	if len(words) != 990 || words["permissions.reportsGroup"] != "التقارير" {
+	if len(words) != 999 || words["permissions.reportsGroup"] != "التقارير" {
 		t.Errorf("%d words, permissions.reportsGroup = %q", len(words), words["permissions.reportsGroup"])
 	}
 	if etag := answer.Header().Get("ETag"); len(etag) != 66 || etag[0] != '"' {

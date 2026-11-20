@@ -81,6 +81,46 @@ func TestTheServerStartsAnswersAndStopsWhenAsked(t *testing.T) {
 	}
 }
 
+// The web's pages answer on their own port, beside the API, from the same program (redix-api #161 S14); a busy web port stops both doors.
+func TestTheServerAnswersTheWebsPagesOnTheirOwnPort(t *testing.T) {
+	api, web := freeAddress(t), freeAddress(t)
+	settings(t, "http://"+api)
+	t.Setenv("REDIX_Web__Urls", "http://"+web)
+	ctx, stop := context.WithCancel(context.Background())
+	stopped := make(chan error, 1)
+	go func() { stopped <- run(ctx, quiet, nil) }()
+	var page string
+	for range 100 {
+		if response, err := http.Get("http://" + web + "/"); err == nil {
+			body, _ := io.ReadAll(response.Body)
+			_ = response.Body.Close()
+			page = string(body)
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if !strings.Contains(page, `id="shell"`) {
+		t.Fatalf("the web's port answered %q", page)
+	}
+	if response, err := http.Get("http://" + api + "/health"); err != nil || response.StatusCode != http.StatusOK {
+		t.Fatalf("the API answers beside it: %v", err)
+	}
+	stop()
+	if err := <-stopped; err != nil {
+		t.Fatalf("the server stopped with %v", err)
+	}
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = busy.Close() }()
+	settings(t, "http://"+freeAddress(t))
+	t.Setenv("REDIX_Web__Urls", "http://"+busy.Addr().String())
+	if err := run(context.Background(), quiet, nil); err == nil {
+		t.Fatal("a web port in use stops the server, and says why")
+	}
+}
+
 // migrate brings the database's schema up to date and stops, serving nothing; main runs it as systemd's unit does before it starts.
 func TestMigrateBringsTheSchemaUpToDateAndStops(t *testing.T) {
 	database := settings(t, "http://"+freeAddress(t))

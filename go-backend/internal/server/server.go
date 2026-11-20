@@ -2,7 +2,7 @@
 // Use of this file is governed by the LICENSE file at the root of this repository.
 
 // Package server wires every domain's routes into one router: the one the binary serves, and the one the replays of .NET's recorded answers drive
-// (redix-api #140), so the two can never differ.
+// (redix-api #140), so the two can never differ; and beside it the web's pages, on the same rules (#161).
 package server
 
 import (
@@ -38,6 +38,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/sync"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+	site "github.com/MutebAlMughyiri/redix-api/go-backend/web"
 )
 
 // Parts are what the routes run on.
@@ -59,13 +60,21 @@ type Parts struct {
 	Log       *slog.Logger
 }
 
-// Routes is every route of the API on parts.
-func Routes(parts Parts) *web.Router {
+// Doors are the two ways into REDIX, on one set of rules (redix-api #161 S14): the app's API, answering JSON, and the web's pages, answering HTML.
+// Both stand on the same sessions, gate and access book, so a write either makes is seen by both.
+type Doors struct {
+	API   *web.Router
+	Pages http.Handler
+}
+
+// Routes is every route of the API, and every page of the web, on parts.
+func Routes(parts Parts) Doors {
 	database, now := parts.Database, parts.Clock
 	links := attachments.NewLinks(parts.SigningKey, now)
 	tokens := credentials.NewTokens(parts.SigningKey, now)
 	book := access.NewBook(database)
 	gate := access.NewGate(tokens, database, book, parts.Log)
+	sessions := auth.NewSessions(database, tokens, book, now)
 
 	router := web.NewRouter(parts.WebFolder)
 	// Healthy while the API runs and reaches its database, otherwise 503 Unhealthy (UC-001).
@@ -84,7 +93,7 @@ func Routes(parts Parts) *web.Router {
 		apidoc.Map(router)
 	}
 	config.Map(router, database)
-	auth.MapSessions(router, gate, auth.NewSessions(database, tokens, book, now))
+	auth.MapSessions(router, gate, sessions)
 	auth.MapCodes(router, gate, database, now, parts.Sender, limits.PerHour(parts.EmailCodesPerHour, now), parts.Log)
 	users.Map(router, gate, database, now)
 	projects.Map(router, gate, database, book, now, limits.PerHour(parts.RegistrationsPerHour, now))
@@ -102,5 +111,5 @@ func Routes(parts Parts) *web.Router {
 	projectfile.Map(router, gate, database, now)
 	archive.Map(router, gate, database, now)
 	sync.Map(router, gate)
-	return router
+	return Doors{API: router, Pages: site.Routes(site.Parts{Database: database, Sessions: sessions, Gate: gate, Clock: now})}
 }

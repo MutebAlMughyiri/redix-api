@@ -7,7 +7,7 @@ of the .NET API, at its old paths and again under `/api/v1` (redix-api #140).
 
 | Part | What |
 | --- | --- |
-| `cmd/server` | The API: reads its settings, opens the database, brings its schema up to date, serves the routes and the web front end's files |
+| `cmd/server` | The API: reads its settings, opens the database, brings its schema up to date, serves the routes and, on a port of its own, the web's pages |
 | `internal/<domain>` | One folder per domain - `projects`, `structure`, `entries`, `accounts`... - each with its routes, its rules and its `queries.sql` |
 | `internal/db` | The SQLite file, its two pools (one writer, four readers), the migrations, and the one way to write (`InTx`) |
 | `internal/db/store` | The code sqlc generates from every domain's queries, each prepared once as the server starts |
@@ -15,6 +15,7 @@ of the .NET API, at its old paths and again under `/api/v1` (redix-api #140).
 | `internal/statement` | The statement workbook every report file shares, written with excelize, and the report PDFs' pages, laid out by a Typst template with the Arabic font embedded |
 | `internal/platform` | What the domains share: the router, problem answers, tokens and passwords, money and moments as .NET wrote them |
 | `internal/replay` | The .NET API's recorded tests replayed against Go, every answer compared (`testdata/golden`); kept as they were recorded since .NET's removal |
+| `web` | The web front end, the second door (redix-api #161): its pages inside one shell, the stylesheet and htmx, calling the owners the app's routes call; see [the web's design](../docs/web/DESIGN.md) |
 | `deploy/` | The server setup script and the API's systemd unit; the backups' files, kept for #157 and not run |
 
 ## Settings
@@ -32,6 +33,7 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 | `REDIX_Attachments__Folder` | The uploaded files | `Redix/Attachments` |
 | `REDIX_Incidents__Path` | The failed requests, kept 90 days (redix-api #150) | `incidents.db` beside the database |
 | `REDIX_Web__Folder` | The web front end's files; empty for none | |
+| `REDIX_Web__Urls` | Where the web's pages listen, read as `REDIX_Urls` is: the first address, HTTPS with the domain's certificate when there is a domain; empty for no web (#161) | Dev `http://127.0.0.1:5020`, QA `http://127.0.0.1:5022`; Prod `https://:443`, in `/etc/redix/prod.env` |
 | `REDIX_Jwt__SigningKey` | The tokens' key, base64 | required |
 | `REDIX_Admin__Username`, `REDIX_Admin__Password` | The first user, made on an empty database | |
 | `REDIX_Email__Smtp`, `REDIX_Email__From` | The mail server every email is handed to, as host:port, and the address it comes from; Prod hands it to Postfix on the same machine (#127, #145). With none, each email is written to `REDIX_Email__Folder` | Prod: `127.0.0.1:25` |
@@ -49,6 +51,7 @@ The Makefile and CI set it; on a PC, once, `go env -w GOEXPERIMENT=jsonv2`, so p
 | `make test` | Every test, the replay of .NET's answers among them (about seven minutes) |
 | `make cover` | The same, failing below the coverage floor (redix-api #141) |
 | `go generate ./internal/apidoc` | Writes the OpenAPI document from the code (`cmd/openapi`), after any change to a route, what it reads, answers or refuses; `make test` fails until it is rewritten. Dev and QA serve it at `/openapi/v1.json`, with Swagger UI at `/swagger` (#142) |
+| `go tool templ generate` | Writes the web's pages from their `.templ` files (templ, a tool in go.mod), after any change to one; the generated `_templ.go` files are committed (#80 D14) |
 | `make sqlc` | Generates the store, with two guards: query files stay ASCII, and no `sqlc.arg` is left unreplaced (G15) |
 | `make build` | The Linux binary, `bin/redix-server` |
 | `make migrate` | Brings the database up to date and stops |

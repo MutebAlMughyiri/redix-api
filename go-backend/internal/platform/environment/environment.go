@@ -22,6 +22,9 @@ type Settings struct {
 	Environment string
 	// Urls is where the API listens in plain HTTP when no domain is set, as Dev and QA run (Urls).
 	Urls string
+	// WebUrls is where the web's pages listen, read as Urls is: its first address, HTTPS with the domain's certificate when there is a domain;
+	// "" for no web (Web__Urls, redix-api #161 S14).
+	WebUrls string
 	// Domain is the name the API answers HTTPS on, with the certificate Let's Encrypt gives it; "" where it answers plain HTTP on Urls
 	// (Domain, redix-api #145 D1).
 	Domain string
@@ -64,8 +67,9 @@ type Settings struct {
 // where the firewall reads them too. Its secrets are the server's own, in /etc/redix/prod.env (deploy/prod.env.example).
 // A variable set in the environment wins over all of it.
 var named = map[string]map[string]string{
-	"Dev": {"Urls": "http://127.0.0.1:5010", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000", "EmailCodes__PermitsPerHour": "100000"},
-	"QA":  {"Urls": "http://127.0.0.1:5012", "Admin__Username": "real-admin"},
+	"Dev": {"Urls": "http://127.0.0.1:5010", "Web__Urls": "http://127.0.0.1:5020", "Admin__Username": "dev-admin", "Registration__PermitsPerHour": "100000",
+		"EmailCodes__PermitsPerHour": "100000"},
+	"QA": {"Urls": "http://127.0.0.1:5012", "Web__Urls": "http://127.0.0.1:5022", "Admin__Username": "real-admin"},
 	"Prod": {"Database__Path": "/var/lib/redix/prod/redix.db", "Attachments__Folder": "/var/lib/redix/prod/attachments",
 		"Email__Folder": "/var/lib/redix/prod/emails", "Email__Smtp": "127.0.0.1:25", "Certificates__Folder": "/var/lib/redix/certificates"},
 }
@@ -104,6 +108,7 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 	return Settings{
 		Environment:          environment,
 		Urls:                 get("Urls", "http://0.0.0.0:5012"),
+		WebUrls:              get("Web__Urls", ""),
 		Domain:               get("Domain", ""),
 		CertificatesFolder:   get("Certificates__Folder", filepath.Join(data, "Certificates")),
 		CertificatesProves:   strings.FieldsFunc(get("Certificates__Proves", ""), func(separator rune) bool { return separator == ';' }),

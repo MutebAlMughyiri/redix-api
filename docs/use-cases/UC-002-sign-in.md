@@ -60,6 +60,30 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Development keeps each email in a folder and sends nothing (D7) | `FolderEmailSender` | `EmailSenderTests.R127_D7_DevelopmentKeepsEachEmailAsAFileInItsFolderAndSendsNothing` |
 | A reset by code is in the History table, by the person, never the password's hash (UC-005) | `auth.Codes.resetWithCode` | `PasswordResetTests.AResetIsInTheHistoryByThePersonWithNoPasswordHash` |
 
+## On the web (redix-api #161)
+
+The web signs a person in through the same rules, `auth.Sessions.SignIn`, `Renew`, `ReplacePassword` and `SignOut`, inside the shell every web page lives in ([the web's design](../web/DESIGN.md)). Its pages are in `go-backend/web`, on the web's own port.
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /` | The shell, signed in, or with the sign-in form in its content area | `200` the page |
+| `POST /sign-in` | Signs in from the form: `username`, `password` | `200` the whole shell, its parts arriving; `422` the form with the refusal's words |
+| `POST /change-password` | Replaces a temporary password: `current`, `new`, `confirm` | `200` the whole shell; `422` the form with the refusal's words |
+| `POST /sign-out` | Ends this browser's session | `200` the shell with the sign-in form |
+| `GET /tab/{name}`, `DELETE /tab/{name}` | Opens or closes a tab: its content, beside the tabs and the side menu | `200`; `404` for an item no feature has built |
+| `POST /view` | Keeps the View menu's choices: `top`, `status`, `side`, `width` | `204` |
+| `GET /language/{language}` | Keeps `ar` or `en` and opens the page again in it | `303` to `/`; `404` for any other |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| The right password opens the shell, its parts arriving once; a wrong or locked one answers the app's words under the form | `web.site.signIn`, `auth.Sessions.SignIn` | `TestWeb_R1_TheRightPasswordOpensTheShellWithItsMotion`, `TestWeb_R1_AWrongPasswordAnswersTheFormWithTheAppsWords`, `TestWeb_R1_TheFifthWrongPasswordLocksAsOnThePhone` |
+| The session lives in two cookies a page's script cannot read, sent to this site alone; a form another site posts is refused | `web.site.keep`, `http.CrossOriginProtection` | `TestWeb_R17_TheSessionsCookiesAreHiddenFromScriptAndOtherSites` |
+| An expired access token is renewed inside the request; 12 hours unused end the session, which the form says | `web.site.session`, `auth.Sessions.Renew` | `TestWeb_R16_AnExpiredAccessTokenIsRenewedInsideTheRequest`, `TestWeb_R16_TwelveHoursUnusedEndTheSession` |
+| A temporary password is changed before anything else | `web.site.open`, `web.site.changePassword` | `TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse` |
+| Sign out ends this browser's device, and only it, and clears its cookies | `web.site.signOut`, `auth.Sessions.SignOut` | `TestWeb_R16_SignOutEndsThisBrowserAndClearsItsCookies` |
+| The language is chosen at the sign-in form's foot and in Settings, never in the top bar | `web.site.chooseLanguage`, `web.languageChoice` | `TestWeb_R11_TheLanguageIsInSettingsNotTheTopBar`, `TestWeb_R12_R20_TheSignInFormCarriesTheLanguageAndEnglishReadsLeftToRight` |
+| "Register new project", "Forgot your password?" and every side-menu item not built stand gray | `web.signInForm`, `web.contents` | `TestWeb_R14_R15_WhatIsNotBuiltStandsGray` |
+
 ## Left to later use cases
 
 The user's projects in the session (UC-010). The history row of each sign-in came with UC-005, and the forced password change with token checks on every request with UC-003.

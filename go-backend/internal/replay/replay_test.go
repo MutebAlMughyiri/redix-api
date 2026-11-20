@@ -188,7 +188,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = discovery.Close() }()
-	routes := server.Routes(server.Parts{Database: discovery, Clock: clock.System{}, SigningKey: []byte("k"), Log: quiet})
+	routes := server.Routes(server.Parts{Database: discovery, Clock: clock.System{}, SigningKey: []byte("k"), Log: quiet}).API
 	var byHand, waiting, underReview int
 	var replayed []string
 	for _, name := range order {
@@ -325,7 +325,7 @@ func replay(t *testing.T, steps []step, hosts []host, swept map[int]bool) {
 		}
 		limits := limitsOf(hosts, s)
 		handlers[s.Host] = problem.Traced(server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: []byte("replay-key-for-go-backend-only-32"),
-			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, AttachmentsFolder: files, TypstPath: typstPath(), Log: quiet}))
+			Sender: emails, EmailCodesPerHour: limits.emailCodes, RegistrationsPerHour: limits.registrations, AttachmentsFolder: files, TypstPath: typstPath(), Log: quiet}).API)
 		return handlers[s.Host]
 	}
 	names := mapping{}

@@ -6,7 +6,7 @@ One Go program and one SQLite file, on one small Linux server (redix-api #140). 
 
 ```
 go-backend/
-  cmd/server/             the API: reads its settings, brings the database up to date, serves the routes and the web front end's files
+  cmd/server/             the API: reads its settings, brings the database up to date, serves the routes and, on a port of its own, the web's pages
   cmd/openapi/            writes internal/apidoc/openapi.json from the code, read by Go's own type checker; its test fails when they differ
   internal/db/            the SQLite file: one writer and four readers, the migrations (goose), and the one way to write, InTx
   internal/db/store/      the code sqlc generates from every domain's queries.sql, each query prepared once as the server starts
@@ -41,9 +41,11 @@ go-backend/
   internal/naming/        what a name may be
   internal/platform/      what every domain shares: the router (web), problem answers (problem), tokens and passwords (credentials),
                           money (fixed), moments (moment), the clock, the limits, the environment's settings, Arabic spelling
-  internal/server/        every domain's routes on one router, and /health
+  internal/server/        every domain's routes on one router, /health, and the web's pages beside them on the same rules
   internal/testapi/       the one way a domain's tests ask the API
   internal/replay/        the .NET API's recorded tests, replayed against Go with every answer compared (testdata/golden)
+  web/                    the web front end, REDIX's second door (redix-api #80, #161): its pages inside one shell, the stylesheet and htmx;
+                          every web file, calling the owners the app's routes call ([the web's design](web/DESIGN.md))
   deploy/                 the server setup script (setup.sh) and the API's systemd unit; the backups' files, kept for #157 and not run
 docs/                     these pages
 ```
@@ -51,7 +53,7 @@ docs/                     these pages
 ## A request
 
 1. `net/http` receives it. `problem.Traced` turns any failure into RFC 7807 problem details with a `code` the app translates.
-2. The route's gate, `access.Gate`, checks the access token (`credentials`, JWT) and that its device is still open, then the permission the route needs. What a person holds is kept in the access book, which every committed write refreshes (`db.AfterEveryWrite`).
+2. The route's gate, `access.Gate`, checks the access token (`credentials`, JWT) and that its device is still open, then the permission the route needs. A web page makes the same check, `Gate.Check`, with the token from its cookie. What a person holds is kept in the access book, which every committed write refreshes (`db.AfterEveryWrite`).
 3. A read goes through `db.Queries()`, the read pool. A change goes through `db.InTx`, inside `changes.Change`: one IMMEDIATE transaction on the one writer, with a History line for every row it adds, changes or removes. Nothing inside it waits on the network or a file.
 4. The rule a request depends on lives with the owner of the data (`entries.Record`, `accounts.Enter`, `contracts.Add`, `partners.Add`), so the route only coordinates.
 

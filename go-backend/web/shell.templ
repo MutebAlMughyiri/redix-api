@@ -1,0 +1,239 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import "strconv"
+
+// htmxConfig has htmx swap a refusal, answered 422 with its form, and keep its own styles out of the page (#161 S4).
+const htmxConfig = `{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}],"includeIndicatorStyles":false}`
+
+// document is the whole page: the shell in its language, the stylesheet, and htmx, the one script (#80 R19). Alt+1 folds and unfolds the side menu
+// from anywhere, as its arrows do, by the key's place, so an Arabic keyboard's 1 counts (#161 R7); it is the key's one handler.
+templ document(p page) {
+	<!DOCTYPE html>
+	<html lang={ p.language } dir={ p.direction() }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>REDIX</title>
+			<link rel="icon" href={ logoIcon }/>
+			<meta name="htmx-config" content={ htmxConfig }/>
+			<link rel="stylesheet" href={ p.assets.css }/>
+			<script src={ p.assets.htmx } defer></script>
+		</head>
+		<body hx-on:keydown="if (event.altKey && event.code === 'Digit1' && document.getElementById('view-side')) { event.preventDefault(); document.getElementById('view-side').click() }">
+			@shell(p)
+		</body>
+	</html>
+}
+
+// shell is the frame every page lives in, the base design the owner approved on 21 Nov 2026: top bar, side menu, tabs and content, status bar
+// (#161 R5). Before signing in, only the top bar, the content and the status bar.
+templ shell(p page) {
+	<div id="shell" class={ "shell", templ.KV("in", p.in), templ.KV("arriving", p.arriving) } style={ p.view.width() }>
+		@topBar(p)
+		if p.in {
+			@side(p)
+			<div
+				class="sash"
+				aria-hidden="true"
+				hx-on:pointerdown="this.setPointerCapture(event.pointerId); this.closest('.shell').classList.add('resizing')"
+				hx-on:pointermove="if (!this.hasPointerCapture(event.pointerId)) return; const shell = this.closest('.shell'), box = shell.getBoundingClientRect(), along = getComputedStyle(shell).direction === 'rtl' ? box.right - event.clientX : event.clientX - box.left, width = Math.round(Math.max(180, Math.min(480, box.width - 320, along))); shell.style.setProperty('--side-w', width + 'px'); document.getElementById('view-width').value = width"
+				hx-on:lostpointercapture="this.closest('.shell').classList.remove('resizing'); htmx.trigger('#view-menu', 'change')"
+			></div>
+		}
+		<main class="main">
+			if p.in {
+				@tabsRow(p)
+			}
+			<div id="content" class="content">
+				@p.content
+			</div>
+		</main>
+		@statusBar(p)
+	</div>
+}
+
+// topBar holds the logo and, once someone is signed in, their name and Sign out (#161 R6).
+templ topBar(p page) {
+	<header class="top">
+		<div class="brand">
+			@logo()
+			<span>{ p.words.Of("app.title") }</span>
+		</div>
+		if p.person != "" {
+			<div class="end">
+				<span class="who">{ p.person }</span>
+				<button class="signout" type="button" hx-post="/sign-out" hx-target="#shell" hx-swap="outerHTML" data-key="myAccount.signOut">{ p.words.Of("myAccount.signOut") }</button>
+			</div>
+		}
+	</header>
+}
+
+// logo is REDIX's mark, the one picture (#80 R19).
+templ logo() {
+	@templ.Raw(logoSVG)
+}
+
+// side is the side menu, like a project explorer, folded by a keyboard character beside the project's name or Alt+1 (#161 R7).
+templ side(p page) {
+	<aside class="side" aria-label={ p.words.Of("web.sideMenu") }>
+		<div class="side-head">
+			<label class="fold" for="view-side" data-tip={ p.shortcut("web.collapse") }>{ p.foldArrow() }</label>
+		</div>
+		@tree(p)
+	</aside>
+}
+
+// tree is the side menu's items: one whose feature is built opens its tab, the others stand gray (#161 R15).
+templ tree(p page) {
+	<ul class="tree">
+		for _, item := range sideMenu {
+			<li>
+				if item.built() {
+					@itemLink(p, item, false)
+				} else {
+					<span class="parked" aria-disabled="true" data-key={ item.title }>{ p.words.Of(item.title) }</span>
+				}
+			</li>
+		}
+	</ul>
+}
+
+// itemLink is a built item's link, marked while its tab is in front.
+templ itemLink(p page, item menuItem, outOfBand bool) {
+	<a id={ "item-" + item.name } href="#" hx-get={ "/tab/" + item.name } hx-target="#content" aria-current={ strconv.FormatBool(item.name == p.view.Active) } data-key={ item.title } { swapOutOfBand(outOfBand)... }>{ p.words.Of(item.title) }</a>
+}
+
+// itemLinks are every built item's link, carried beside a tab's content so the one in front is marked; the items themselves stay in place.
+templ itemLinks(p page) {
+	for _, item := range sideMenu {
+		if item.built() {
+			@itemLink(p, item, true)
+		}
+	}
+}
+
+// tabsRow is the arrow that brings the side menu back, the open tabs, and the View menu, whose ticks the whole shell's look follows (#161 R9).
+templ tabsRow(p page) {
+	<div class="tabs-row">
+		<label class="unfold" for="view-side" data-tip={ p.shortcut("web.showMenu") }>{ p.unfoldArrow() }</label>
+		@tabs(p, false)
+		<button class="view-button" type="button" popovertarget="view-menu" data-key="web.view">{ p.words.Of("web.view") }</button>
+		<form id="view-menu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none">
+			<label><input type="checkbox" id="view-top" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
+			<label><input type="checkbox" id="view-status" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
+			<label><input type="checkbox" id="view-side" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd>Alt+1</kbd></label>
+			<input type="hidden" id="view-width" name="width" value={ strconv.Itoa(p.view.Width) }/>
+		</form>
+	</div>
+}
+
+// tabs are the open tabs, the front one marked.
+templ tabs(p page, outOfBand bool) {
+	<div id="tabs" class="tabs" role="tablist" { swapOutOfBand(outOfBand)... }>
+		for _, item := range p.openTabs() {
+			<div class="tab" role="tab" aria-selected={ strconv.FormatBool(item.name == p.view.Active) }>
+				<button class="tab-title" type="button" hx-get={ "/tab/" + item.name } hx-target="#content">{ p.words.Of(item.title) }</button>
+				<button class="close" type="button" hx-delete={ "/tab/" + item.name } hx-target="#content" aria-label={ p.words.Of("web.close") }>✕</button>
+			</div>
+		}
+	</div>
+}
+
+// statusBar is the host this page came from and the web's version (#161 R2).
+templ statusBar(p page) {
+	<footer class="status">
+		<span class="host"><span class="dot"></span>{ p.host }</span>
+		<span class="end" data-key="appVersion.line">{ p.words.Of("app.version") + " " + Version }</span>
+	</footer>
+}
+
+// emptyContent is the content area before a tab is open.
+templ emptyContent(p page) {
+	<p class="empty" data-key="web.pickFromMenu">{ p.words.Of("web.pickFromMenu") }</p>
+}
+
+// signInForm is the sign-in, in the content area: what the app's sign-in has, with the language at its foot, since Settings cannot be reached before
+// signing in (#161 R2, R12, R19). message is the word key of a refusal, or "".
+templ signInForm(p page, message string, username string) {
+	<div class="signin">
+		<form
+			hx-post="/sign-in"
+			hx-target="closest .signin"
+			hx-swap="outerHTML"
+			data-no-connection={ p.words.Of("signIn.noConnection") }
+			hx-on::send-error="const message = this.querySelector('.refusal'); message.textContent = this.dataset.noConnection; message.hidden = false"
+		>
+			<h1>{ p.words.Of("app.title") }</h1>
+			<p class="hint">{ p.words.Of("signIn.hint") }</p>
+			<div class="field">
+				<label for="username">{ p.words.Of("signIn.username") }</label>
+				<input id="username" name="username" autocomplete="username" autofocus required value={ username } data-key="signIn.username"/>
+			</div>
+			<div class="field">
+				<label for="password">{ p.words.Of("signIn.password") }</label>
+				<input id="password" name="password" type="password" autocomplete="current-password" required data-key="signIn.password"/>
+			</div>
+			<p class="refusal" role="alert" data-key="signIn.message" hidden?={ message == "" }>{ p.words.Of(message) }</p>
+			<button class="primary" type="submit" data-key="signIn.submit">{ p.words.Of("signIn.submit") }</button>
+			<div class="parked-links">
+				<span aria-disabled="true" data-key="signIn.registerProject">{ p.words.Of("signIn.registerProject") }</span>
+				<span aria-disabled="true" data-key="auth.forgotPassword">{ p.words.Of("auth.forgotPassword") }</span>
+			</div>
+			<div class="form-language">
+				@languageChoice(p)
+			</div>
+		</form>
+	</div>
+}
+
+// changePasswordForm replaces a temporary password before anything else (AC-02.1, #161 R13), in the content area; the hidden username tells a
+// password manager whose password it is (R19). message is the word key of a refusal, or "".
+templ changePasswordForm(p page, message string, username string) {
+	<div class="signin">
+		<form
+			hx-post="/change-password"
+			hx-target="closest .signin"
+			hx-swap="outerHTML"
+			data-no-connection={ p.words.Of("changePassword.noConnection") }
+			hx-on::send-error="const message = this.querySelector('.refusal'); message.textContent = this.dataset.noConnection; message.hidden = false"
+		>
+			<h1>{ p.words.Of("changePassword.title") }</h1>
+			<p class="hint">{ p.words.Of("changePassword.hint") }</p>
+			<input type="text" name="username" autocomplete="username" value={ username } hidden/>
+			<div class="field">
+				<label for="current">{ p.words.Of("changePassword.current") }</label>
+				<input id="current" name="current" type="password" autocomplete="current-password" autofocus required data-key="changePassword.current"/>
+			</div>
+			<div class="field">
+				<label for="new">{ p.words.Of("changePassword.new") }</label>
+				<input id="new" name="new" type="password" autocomplete="new-password" required data-key="changePassword.new"/>
+			</div>
+			<div class="field">
+				<label for="confirm">{ p.words.Of("changePassword.confirm") }</label>
+				<input id="confirm" name="confirm" type="password" autocomplete="new-password" required data-key="changePassword.confirm"/>
+			</div>
+			<p class="refusal" role="alert" data-key="changePassword.message" hidden?={ message == "" }>{ p.words.Of(message) }</p>
+			<button class="primary" type="submit" data-key="changePassword.submit">{ p.words.Of("changePassword.submit") }</button>
+		</form>
+	</div>
+}
+
+// settingsTab is Settings: the language, chosen here and never in the top bar (#161 R11).
+templ settingsTab(p page) {
+	<div class="view-head"><h2>{ p.words.Of("sharedSettings.title") }</h2></div>
+	<section class="setting">
+		<h3>{ p.words.Of("myAccount.language") }</h3>
+		@languageChoice(p)
+	</section>
+}
+
+// languageChoice is the two languages, the one in use marked; choosing one draws the page again in it (#161 S6).
+templ languageChoice(p page) {
+	<nav class="language" aria-label={ p.words.Of("myAccount.language") }>
+		<a href="/language/ar" lang="ar" aria-current={ strconv.FormatBool(p.language == "ar") } data-key="myAccount.arabic">{ p.words.Of("myAccount.arabic") }</a>
+		<a href="/language/en" lang="en" aria-current={ strconv.FormatBool(p.language == "en") } data-key="myAccount.english">{ p.words.Of("myAccount.english") }</a>
+	</nav>
+}

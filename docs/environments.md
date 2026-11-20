@@ -14,7 +14,7 @@ Every REDIX environment: where to open it, what data it holds, and which app tal
 | PC, dev | http://127.0.0.1:5020 | http://127.0.0.1:5010 | `RedixDev.db` on the PC, for automated runs |
 | PC, qa | http://127.0.0.1:5022 | http://127.0.0.1:5012 | `RedixQA.db` on the PC, for the owner's own testing |
 
-**The web column is planned, not built yet.** The browser front end (redix-api #80, htmx) answers at these addresses once it exists; until then they do not open. The API column answers today: add `/health` to an address to see it is up, as in https://redix.muteb.net:8443/health.
+**The web column opens on the PC** since the sign-in and its shell were built (redix-api #161): the PC's dev and qa answer it, each beside its API in the same process. **On the server it waits** for the next deploy, which opens ports 443, 9444 and 9445. The API column answers today: add `/health` to an address to see it is up, as in https://redix.muteb.net:8443/health.
 
 Production's web address has no port because 443 is the browser's own. qa and dev have their own ports since one port can belong to one process only, and a browser keeps its sign-in by name, so each environment keeps its own name and its sessions stay apart. On the PC everything is plain `http`, as nothing leaves the machine; 5011 belongs to Patrol's PC helper.
 

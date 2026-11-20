@@ -15,6 +15,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -46,6 +47,7 @@ type API struct {
 	Clock    *clock.Fake
 	Emails   *Emails
 	handler  http.Handler
+	pages    http.Handler
 	tokens   credentials.Tokens
 	failure  *dbtest.Failure
 }
@@ -57,7 +59,7 @@ func New(t *testing.T) *API {
 	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
 	emails := &Emails{}
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	routes := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: 100000,
+	doors := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: 100000,
 		AttachmentsFolder: filepath.Join(t.TempDir(), "attachments"), TypstPath: typstPath(),
 		RegistrationsPerHour: 100000, Documented: true, Log: quiet})
 	failures, err := incidents.Open(filepath.Join(t.TempDir(), "incidents.db"))
@@ -65,9 +67,63 @@ func New(t *testing.T) *API {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = failures.Close() })
-	handler := problem.Traced(incidents.Recorded(routes, failures, quiet, fake))
-	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: handler, tokens: credentials.NewTokens(signingKey, fake), failure: failure}
+	recorded := func(door http.Handler) http.Handler {
+		return problem.Traced(incidents.Recorded(door, failures, quiet, fake))
+	}
+	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: recorded(doors.API), pages: recorded(doors.Pages),
+		tokens: credentials.NewTokens(signingKey, fake), failure: failure}
 }
+
+// Browser is a person's browser on the web's pages (redix-api #161): it sends back the cookies each answer sets, as a browser does, every request
+// under the History net.
+type Browser struct {
+	api     *API
+	cookies map[string]string
+}
+
+// Browser is a new browser on a's web pages, holding no cookie yet.
+func (a *API) Browser() *Browser { return &Browser{api: a, cookies: map[string]string{}} }
+
+// Send asks the web's pages method on path with form, as a form posts it, and headers as name and value pairs, carrying the browser's cookies; it
+// keeps the cookies the answer sets and drops those it clears.
+func (b *Browser) Send(method, path string, form url.Values, headers ...string) *httptest.ResponseRecorder {
+	b.api.t.Helper()
+	answered, _ := b.SendFailing(0, method, path, form, headers...)
+	return answered
+}
+
+// SendFailing is Send with the database failing its nth call of the request, unless a write commits first, and whether that call came, as the
+// API's SendFailing fails it (redix-api #141 D1). 0 fails none.
+func (b *Browser) SendFailing(n int64, method, path string, form url.Values, headers ...string) (*httptest.ResponseRecorder, bool) {
+	b.api.t.Helper()
+	request := httptest.NewRequest(method, path, strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for name, value := range b.cookies {
+		request.AddCookie(&http.Cookie{Name: name, Value: value})
+	}
+	for i := 0; i+1 < len(headers); i += 2 {
+		request.Header.Set(headers[i], headers[i+1])
+	}
+	recorder := httptest.NewRecorder()
+	failed := false
+	historytest.Check(b.api.t, b.api.Database, func() {
+		b.api.failure.BeforeCommit(n)
+		b.api.pages.ServeHTTP(recorder, request)
+		failed = b.api.failure.Failed()
+		b.api.failure.At(0)
+	})
+	for _, cookie := range recorder.Result().Cookies() {
+		if cookie.MaxAge < 0 {
+			delete(b.cookies, cookie.Name)
+			continue
+		}
+		b.cookies[cookie.Name] = cookie.Value
+	}
+	return recorder, failed
+}
+
+// Cookie is the value of the browser's cookie called name; "" when it holds none.
+func (b *Browser) Cookie(name string) string { return b.cookies[name] }
 
 // Send asks method on path with body as JSON, and headers as name and value pairs, under the History net.
 func (a *API) Send(method, path, body string, headers ...string) *httptest.ResponseRecorder {

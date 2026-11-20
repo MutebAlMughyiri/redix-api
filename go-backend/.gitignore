@@ -4,3 +4,4 @@
 *.db-wal
 bin/
 cover.out
+cover.kept.out

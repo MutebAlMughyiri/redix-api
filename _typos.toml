@@ -3,6 +3,8 @@
 extend-exclude = [
   "go-backend/internal/replay/testdata/",
   "go-backend/internal/db/store/",
+  # htmx 2.0.11, minified as its makers publish it (redix-api #161): its short names are no words.
+  "go-backend/web/assets/htmx.min.js",
   "go.sum",
 ]
 

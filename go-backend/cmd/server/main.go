@@ -60,7 +60,7 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if err := auth.SeedAdmin(ctx, database, settings.AdminUsername, settings.AdminPassword, moment.Of(now.Now())); err != nil {
 		return err
 	}
-	router := server.Routes(server.Parts{
+	doors := server.Routes(server.Parts{
 		Database: database, Clock: now, SigningKey: settings.SigningKey, Sender: email.SenderOf(settings.EmailSmtp, settings.EmailFrom, settings.EmailFolder),
 		EmailCodesPerHour: settings.EmailCodesPerHour, RegistrationsPerHour: settings.RegistrationsPerHour, WebFolder: settings.WebFolder,
 		AttachmentsFolder: settings.AttachmentsFolder, TypstPath: settings.TypstPath, Documented: settings.Documented, Log: logger,
@@ -70,28 +70,39 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 		return err
 	}
 	defer func() { _ = failures.Close() }()
-	return serve(ctx, logger, settings, problem.Traced(incidents.Recorded(router, failures, logger, now)))
+	recorded := func(door http.Handler) http.Handler {
+		return problem.Traced(incidents.Recorded(door, failures, logger, now))
+	}
+	return serve(ctx, logger, settings, recorded(doors.API), recorded(doors.Pages))
 }
 
 // maxBodyBytes is the largest request body the API reads: the largest file a person may send is 25 MB (fileTooLarge), with room for its form
 // (redix-api #145, R17).
 const maxBodyBytes = 30 << 20
 
-// serve answers until ctx ends. With a domain, as the server's instances run, it answers HTTPS on the first of Urls, 8443 for production, with
-// the certificate Let's Encrypt gives the domain, which autocert keeps in the certificates folder and renews (redix-api #145, D1, R21: 443 is the
-// web front end's). Let's Encrypt checks a name over HTTP on port 80, which one process alone can hold: the instance whose Urls name a second,
-// HTTP address, production, proves its own name there and those of Certificates__Proves, and sends every other request to HTTPS; qa and dev
-// name none, and their tokens reach port 80 through the certificates folder the three share (D-R25). Without a domain, as Dev and QA run on a
-// PC, plain HTTP on the first. No request's body passes 30 MB (R17).
-func serve(ctx context.Context, logger *slog.Logger, settings environment.Settings, handler http.Handler) error {
+// serve answers until ctx ends: the API on the first of Urls and, when Web__Urls names one, the web's pages on its first (redix-api #161 S14).
+// With a domain, as the server's instances run, both answer HTTPS, the API on 8443 and the web on 443 for production, with the certificate Let's
+// Encrypt gives the domain, which autocert keeps in the certificates folder and renews (redix-api #145, D1, R21). Let's Encrypt checks a name over
+// HTTP on port 80, which one process alone can hold: the instance whose Urls name a second, HTTP address, production, proves its own name there
+// and those of Certificates__Proves, and sends every other request to HTTPS; qa and dev name none, and their tokens reach port 80 through the
+// certificates folder the three share (D-R25). Without a domain, as Dev and QA run on a PC, plain HTTP. No request's body passes 30 MB (R17).
+func serve(ctx context.Context, logger *slog.Logger, settings environment.Settings, api, pages http.Handler) error {
 	addresses, err := listenAddresses(settings.Urls)
 	if err != nil {
 		return err
 	}
-	api := &http.Server{Addr: addresses[0], Handler: http.MaxBytesHandler(handler, maxBodyBytes), ReadHeaderTimeout: 10 * time.Second}
-	logger.Info("the API is listening", "address", api.Addr, "domain", settings.Domain, "environment", settings.Environment, "database", settings.DatabasePath)
+	servers := []*http.Server{{Addr: addresses[0], Handler: http.MaxBytesHandler(api, maxBodyBytes), ReadHeaderTimeout: 10 * time.Second}}
+	if settings.WebUrls != "" {
+		web, err := listenAddresses(settings.WebUrls)
+		if err != nil {
+			return err
+		}
+		servers = append(servers, &http.Server{Addr: web[0], Handler: http.MaxBytesHandler(pages, maxBodyBytes), ReadHeaderTimeout: 10 * time.Second})
+	}
+	logger.Info("the API is listening", "address", servers[0].Addr, "web", settings.WebUrls, "domain", settings.Domain, "environment", settings.Environment,
+		"database", settings.DatabasePath)
 	if settings.Domain == "" {
-		return until(ctx, api, api.ListenAndServe)
+		return serveAll(ctx, servers, (*http.Server).ListenAndServe)
 	}
 	certificates := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
@@ -113,8 +124,28 @@ func serve(ctx context.Context, logger *slog.Logger, settings environment.Settin
 			}
 		}()
 	}
-	api.TLSConfig = certificates.TLSConfig()
-	return until(ctx, api, func() error { return api.ListenAndServeTLS("", "") })
+	for _, door := range servers {
+		door.TLSConfig = certificates.TLSConfig()
+	}
+	return serveAll(ctx, servers, func(door *http.Server) error { return door.ListenAndServeTLS("", "") })
+}
+
+// serveAll runs every one of servers with listen until ctx ends, or until one stops with an error, which stops the others and is answered.
+func serveAll(ctx context.Context, servers []*http.Server, listen func(*http.Server) error) error {
+	ctx, stop := context.WithCancel(ctx)
+	defer stop()
+	stopped := make(chan error, len(servers))
+	for _, door := range servers {
+		go func() { stopped <- until(ctx, door, func() error { return listen(door) }) }()
+	}
+	var first error
+	for range servers {
+		if err := <-stopped; err != nil && first == nil {
+			first = err
+			stop()
+		}
+	}
+	return first
 }
 
 // until runs listen until ctx ends, then shuts server down within ten seconds and waits for it: a server closed that way is no error, a
