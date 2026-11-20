@@ -6,7 +6,6 @@ package users
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
@@ -21,6 +20,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/stored"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
@@ -85,13 +85,12 @@ type memberView struct {
 func viewOf(user store.User, rows []store.UserProject) userView {
 	var projects []projectView
 	for _, row := range rows {
-		// The user_projects view builds these three with json_group_array, so each is an array and reads without fail.
 		var names []string
 		var partners []uuid.UUID
 		var unseen []uuid.UUID
-		_ = json.Unmarshal([]byte(row.Permissions), &names)
-		_ = json.Unmarshal([]byte(row.PartnerIds), &partners)
-		_ = json.Unmarshal([]byte(row.UnseenTables), &unseen)
+		stored.Read([]byte(row.Permissions), &names)
+		stored.Read([]byte(row.PartnerIds), &partners)
+		stored.Read([]byte(row.UnseenTables), &unseen)
 		var permissions []access.Permission
 		for _, name := range names {
 			if permission, ok := access.Named(name); ok {
