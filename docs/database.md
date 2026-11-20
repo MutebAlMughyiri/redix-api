@@ -2,7 +2,7 @@
 
 # Database
 
-Every table, column, key and relation of the REDIX database on SQLite, as Go's migrations leave it (`go-backend/internal/db/migrations`, 00001 to 00006, the last adding a project's time zone, 17 Nov 2026). It was read from a database migrated from scratch, through SQLite's own catalog; `TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger` holds the migrations to it. When a migration changes the tables, this page changes in the same commit.
+Every table, column, key and relation of the REDIX database on SQLite, as Go's migrations leave it (`go-backend/internal/db/migrations`, 00001 to 00015, the last adding the word before the app's version, 20 Nov 2026). It was read from a database migrated from scratch, through SQLite's own catalog; `TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger` holds the migrations to it. When a migration changes the tables, this page changes in the same commit.
 
 ## What every table shares
 
