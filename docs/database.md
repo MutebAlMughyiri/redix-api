@@ -839,7 +839,7 @@ The ledger: every movement of money, of any kind; each kind's own fields are in 
 
 Unique: the key; `project_id, number`.
 
-Other indexes: `account_id`; `created_by_user_id`; `kind`; `project_id, status`; `status`.
+Other indexes: `account_id`; `created_by_user_id`; `kind`; `project_id, created_at, number` (a page of entries in their order, #87); `project_id, status`; `status`.
 
 ### expense_details
 
@@ -1258,6 +1258,8 @@ The value of one word in one language.
 | value | TEXT (at most 1000) | not null |  |  |
 
 Unique: `translation_key_id, language`.
+
+Other indexes: `language` (#87).
 
 ### config_values
 

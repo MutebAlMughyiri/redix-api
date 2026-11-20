@@ -5,6 +5,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -34,11 +35,40 @@ func TestR19_ANewDatabaseHoldsEveryTableIndexAndTrigger(t *testing.T) {
 	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'goose_db_version'"); got != 66 {
 		t.Errorf("tables: %d, want 66", got)
 	}
-	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND sql IS NOT NULL"); got != 115 {
+	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND sql IS NOT NULL"); got != 117 {
 		t.Errorf("indexes: %d, want 115", got)
 	}
 	if got := count(t, db, "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'goose_db_version' AND sql NOT LIKE '%) STRICT'"); got != 0 {
 		t.Errorf("tables not STRICT: %d", got)
+	}
+}
+
+// redix-api #87 R5: every foreign key leads an index, so a join or a delete through it never reads the whole table, and every whole-number column
+// named for an enum (a kind, status, type, action, role or purpose) keys its lookup table. A key or an enum column added without them fails here.
+func TestR87_5_EveryForeignKeyLeadsAnIndexAndEveryEnumColumnKeysItsLookupTable(t *testing.T) {
+	db := open(t)
+	for query, problem := range map[string]string{
+		`SELECT m.name || '.' || f."from" FROM sqlite_schema m, pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND NOT EXISTS (
+			SELECT 1 FROM pragma_index_list(m.name) l, pragma_index_info(l.name) i WHERE i.seqno = 0 AND i.name = f."from")`: "a foreign key no index leads with",
+		`SELECT m.name || '.' || c.name FROM sqlite_schema m, pragma_table_info(m.name) c WHERE m.type = 'table' AND m.name NOT LIKE 'lk_%'
+			AND c.type = 'INTEGER' AND (c.name LIKE '%kind' OR c.name LIKE '%status' OR c.name LIKE '%type' OR c.name LIKE '%action'
+			OR c.name LIKE '%role' OR c.name LIKE '%purpose') AND NOT EXISTS (
+			SELECT 1 FROM pragma_foreign_key_list(m.name) f WHERE f."from" = c.name AND f."table" LIKE 'lk_%')`: "an enum column with no lookup table",
+	} {
+		rows, err := db.Read.Query(query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for rows.Next() {
+			var column string
+			if err := rows.Scan(&column); err != nil {
+				t.Fatal(err)
+			}
+			t.Errorf("%s: %s", problem, column)
+		}
+		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
