@@ -99,7 +99,9 @@ func recorded(t *testing.T) (map[string][]step, []string, []host) {
 	if len(files) == 0 {
 		t.Fatal("no recordings in testdata/golden")
 	}
-	tests, order, hosts := map[string][]step{}, []string{}, []host{}
+	tests := map[string][]step{}
+	var order []string
+	var hosts []host
 	for _, file := range files {
 		opened, err := os.Open(file)
 		if err != nil {

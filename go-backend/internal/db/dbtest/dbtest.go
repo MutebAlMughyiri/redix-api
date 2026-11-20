@@ -77,12 +77,11 @@ var (
 )
 
 func init() {
-	// The driver SQLite's package registers as "sqlite", so the collations REDIX registers on it (db.Names) hold on these connections too.
-	sqlite, err := sql.Open("sqlite", "")
-	if err != nil {
-		panic(err)
-	}
+	// The driver SQLite's package registers as "sqlite", so the collations REDIX registers on it (db.Names) hold on these connections too. A
+	// handle on a registered driver always opens and holds no connection; it is closed once its driver is taken.
+	sqlite, _ := sql.Open("sqlite", "")
 	sql.Register(Driver, failing{sqlite.Driver()})
+	_ = sqlite.Close()
 }
 
 // Watch is the Failure of the database file at path, for as long as t runs: every connection the failing driver opens on it counts its calls

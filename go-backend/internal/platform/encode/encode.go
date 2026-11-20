@@ -18,8 +18,8 @@ var written = json.JoinOptions(jsonv1.DefaultOptionsV1(), json.FormatNilSliceAsN
 // JSON is value as the API writes JSON: an answer, a History line's values, a list a query reads.
 func JSON(value any) ([]byte, error) { return json.Marshal(value, written) }
 
-// Indented is value as JSON a person may read too, one member a line indented by a space, as encoding/json's MarshalIndent laid it out: a
-// project's archive.
-func Indented(value any) ([]byte, error) {
-	return json.Marshal(value, written, jsontext.Multiline(true), jsontext.WithIndent(" "), jsontext.SpaceAfterColon(true))
+// Indented is value as JSON a person may read too, one member a line indented by indent, as encoding/json's MarshalIndent laid it out: a
+// project's archive, the OpenAPI document.
+func Indented(value any, indent string) ([]byte, error) {
+	return json.Marshal(value, written, jsontext.Multiline(true), jsontext.WithIndent(indent), jsontext.SpaceAfterColon(true))
 }

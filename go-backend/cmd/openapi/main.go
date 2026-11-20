@@ -6,7 +6,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/constant"
@@ -22,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/types/typeutil"
 )
@@ -77,7 +77,7 @@ func Generate() ([]byte, error) {
 	g.schemas["problem"] = map[string]any{"type": "object", "required": []string{"type", "title", "status", "code", "traceId"}, "properties": map[string]any{
 		"type": map[string]any{"type": "string"}, "title": map[string]any{"type": "string"}, "status": map[string]any{"type": "integer"},
 		"code": map[string]any{"type": "string"}, "traceId": map[string]any{"type": "string"}}}
-	text, err := json.MarshalIndent(document, "", "  ")
+	text, err := encode.Indented(document, "  ")
 	return append(text, '\n'), err
 }
 
@@ -726,7 +726,8 @@ func (g *generator) enumOf(marshal *types.Func) []string {
 // object is a struct as encoding/json writes it: each exported field by its json name, required unless omitempty or omitzero, as web.Read
 // requires it; an embedded struct's fields as its own.
 func (g *generator) object(structure *types.Struct) map[string]any {
-	properties, required := map[string]any{}, []string{}
+	properties := map[string]any{}
+	var required []string
 	for i := range structure.NumFields() {
 		field := structure.Field(i)
 		name, options, _ := strings.Cut(reflect.StructTag(structure.Tag(i)).Get("json"), ",")

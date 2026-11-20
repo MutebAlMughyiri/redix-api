@@ -39,7 +39,7 @@ func TestN15_AKeyAsksItsPermitsAnHourAndThenWaitsForTheNextHour(t *testing.T) {
 func TestN15_PastItsPermitsAnAddressIsAnsweredTooManyRequests(t *testing.T) {
 	window := PerHour(1, clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)))
 	handler := window.PerAddress(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
-	codes := []int{}
+	var codes []int
 	for range 2 {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/auth/forgot-password", nil)

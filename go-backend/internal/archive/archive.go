@@ -67,7 +67,7 @@ func (s Routes) archive(w http.ResponseWriter, r *http.Request, caller access.Ca
 	archived, err := s.taken(r.Context(), web.ID(r, "projectId"), caller.UserID)
 	var content []byte
 	if err == nil {
-		content, err = encode.Indented(archived)
+		content, err = encode.Indented(archived, " ")
 	}
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)

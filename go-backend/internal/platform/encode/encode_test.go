@@ -33,10 +33,10 @@ func TestR125_ANilListOrMapIsWrittenEmpty(t *testing.T) {
 func TestR125_AnIndentedValueIsLaidOutAsMarshalIndentLaidItOut(t *testing.T) {
 	full := line{Name: "حساب", Lines: []string{"x", "y"}, Values: map[string]string{"b": "2", "a": "1"}, Count: 2}
 	v1, _ := jsonv1.MarshalIndent(full, "", " ")
-	if written, err := encode.Indented(full); err != nil || string(written) != string(v1) {
+	if written, err := encode.Indented(full, " "); err != nil || string(written) != string(v1) {
 		t.Errorf("indented: %s (%v), MarshalIndent wrote %s", written, err, v1)
 	}
-	if written, _ := encode.Indented(line{}); !strings.Contains(string(written), `"lines": []`) {
+	if written, _ := encode.Indented(line{}, " "); !strings.Contains(string(written), `"lines": []`) {
 		t.Errorf("a nil list indented: %s", written)
 	}
 }

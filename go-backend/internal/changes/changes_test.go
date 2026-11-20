@@ -24,7 +24,7 @@ func TestUnknownRefusesOnlyARowThatIsNotThere(t *testing.T) {
 		t.Fatal("a row not there was not refused")
 	}
 	failure := errors.New("disk I/O error")
-	if Unknown(failure, "unknownItem") != failure || Unknown(nil, "unknownItem") != nil {
+	if !errors.Is(Unknown(failure, "unknownItem"), failure) || Unknown(nil, "unknownItem") != nil {
 		t.Fatal("a failure, or none, became a refusal")
 	}
 }

@@ -26,11 +26,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// What kind of account holds a project's money (AccountType, FR-22).
-const (
-	Bank AccountType = iota
-	CashCustody
-)
+// CashCustody is cash a custodian holds (AccountType, FR-22); 0, the first of accountTypes, is a bank account, which nothing asks for by name.
+const CashCustody AccountType = 1
 
 var accountTypes = web.Enum{"bank", "cashCustody"}
 

@@ -4,6 +4,7 @@
 package entries
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 
@@ -218,19 +219,20 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	for _, report := range latest {
 		newSince = report.IssuedAt
 	}
+	category, err := q.CategoryOf(ctx, store.CategoryOfParams{ID: item.CategoryID, ProjectID: projectID})
+	if err != nil {
+		return ItemReport{}, err
+	}
 	columns, err := q.ColumnsOfItem(ctx, item.ID)
 	subgroups, subgroupsErr := q.SubgroupsOfItem(ctx, item.ID)
 	contractRows, contractsErr := q.ContractsOf(ctx, projectID)
 	partners, partnersErr := q.PartnersInItem(ctx, item.ID)
-	category, categoryErr := q.CategoryOf(ctx, store.CategoryOfParams{ID: item.CategoryID, ProjectID: projectID})
 	names, namesErr := q.RegisterNames(ctx, projectID)
 	inside, insideErr := q.ArabicWord(ctx, "contractorPayments.inside")
 	outside, outsideErr := q.ArabicWord(ctx, "contractorPayments.outside")
 	money, moneyErr := contracts.MoneyOf(ctx, q, projectID, uuid.Nil)
-	for _, failed := range []error{err, subgroupsErr, contractsErr, partnersErr, categoryErr, namesErr, insideErr, outsideErr, moneyErr} {
-		if failed != nil {
-			return ItemReport{}, failed
-		}
+	if err := errors.Join(err, subgroupsErr, contractsErr, partnersErr, namesErr, insideErr, outsideErr, moneyErr); err != nil {
+		return ItemReport{}, err
 	}
 	g := registers{names: map[string][]string{}, places: [2]string{inside, outside}}
 	for _, row := range names {

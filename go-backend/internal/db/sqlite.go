@@ -51,14 +51,12 @@ func Open(ctx context.Context, path string) (DB, error) { return OpenWith(ctx, "
 // OpenWith is Open through the database/sql driver registered as driverName: SQLite's own for the server, and for tests the failing one that
 // wraps it (dbtest). Both pools go through the one driver, so once the write pool's opens, the read pool's does too.
 func OpenWith(ctx context.Context, driverName, path string) (DB, error) {
-	write, err := sql.Open(driverName, "file:"+path+"?"+pragmas+"&_txlock=immediate")
-	if err != nil {
-		return DB{}, err
+	file := "file:" + path + "?" + pragmas + "&_txlock=immediate"
+	if err := migrate(ctx, driverName, file); err != nil {
+		return DB{}, fmt.Errorf("migrating %s: %w", path, err)
 	}
+	write, _ := sql.Open(driverName, file)
 	write.SetMaxOpenConns(1)
-	if err := migrate(ctx, write); err != nil {
-		return DB{}, errors.Join(fmt.Errorf("migrating %s: %w", path, err), write.Close())
-	}
 	read, _ := sql.Open(driverName, "file:"+path+"?mode=ro&"+pragmas)
 	read.SetMaxOpenConns(readers)
 	reads, err := store.Prepare(ctx, read)
@@ -72,13 +70,21 @@ func OpenWith(ctx context.Context, driverName, path string) (DB, error) {
 	return DB{write: write, Read: read, reads: reads, writes: writes, committed: &afterCommit{}}, nil
 }
 
-func migrate(ctx context.Context, write *sql.DB) error {
-	provider, err := migrationsOn(write)
+// migrate brings the database at file up to date through one connection of its own, as the write pool has one - with more, goose's reads and
+// its immediate transactions would wait on each other - closed on every path: goose's provider closes it too, and closing it twice does nothing.
+// A driver no one registered fails here, before the pools open.
+func migrate(ctx context.Context, driverName, file string) error {
+	database, err := sql.Open(driverName, file)
 	if err != nil {
 		return err
 	}
+	database.SetMaxOpenConns(1)
+	provider, err := migrationsOn(database)
+	if err != nil {
+		return errors.Join(err, database.Close())
+	}
 	_, err = provider.Up(ctx)
-	return err
+	return errors.Join(err, provider.Close(), database.Close())
 }
 
 // migrationsOn is the server's migrations, to run on database.
@@ -93,7 +99,7 @@ func migrationsOn(database *sql.DB) (*goose.Provider, error) {
 // Release is the migration the database stands at, which an archive keeps as the release it was taken on (UC-073 AC-73.1).
 func (db DB) Release(ctx context.Context) (int64, error) {
 	var release int64
-	err := db.Read.QueryRowContext(ctx, "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version WHERE is_applied").Scan(&release)
+	err := db.Read.QueryRowContext(ctx, "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version WHERE is_applied = 1").Scan(&release)
 	return release, err
 }
 
