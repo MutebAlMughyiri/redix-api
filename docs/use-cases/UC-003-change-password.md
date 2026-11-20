@@ -27,10 +27,10 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| Changing a temporary password ends the forced change, and the new password works (AC-02.1) | `auth.Sessions.changePassword` | `ChangePasswordTests.ChangingATemporaryPasswordEndsTheForcedChangeAndTheNewPasswordWorks` |
+| Changing a temporary password ends the forced change, and the new password works (AC-02.1) | `auth.Sessions.ReplacePassword` | `ChangePasswordTests.ChangingATemporaryPasswordEndsTheForcedChangeAndTheNewPasswordWorks` |
 | A wrong current password is refused and counts toward the lockout | `auth.attempt` | `ChangePasswordTests.AWrongCurrentPasswordIsRefusedAndCountsTowardTheLockout` |
 | A new password holds the password policy (redix-api #113: at least 8 characters, with a letter and a digit, not the user name) and differs from the current one | `auth.mayReplace` | `ChangePasswordTests.R113_ANewPasswordShortWithoutALetterOrADigitOrUnchangedIsRefused`, `R113_ANewPasswordThatIsTheUserNameIsRefused`; `PasswordPolicyTests` |
-| The other devices are signed out; this one stays signed in | `auth.Sessions.changePassword` | `ChangePasswordTests.ChangingThePasswordSignsOutTheOtherDevicesAndKeepsThisOne` |
-| A password change is in the History table, never the password's hash (UC-005) | `auth.Sessions.changePassword` | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
+| The other devices are signed out; this one stays signed in | `auth.Sessions.ReplacePassword` | `ChangePasswordTests.ChangingThePasswordSignsOutTheOtherDevicesAndKeepsThisOne` |
+| A password change is in the History table, never the password's hash (UC-005) | `auth.Sessions.ReplacePassword` | `ChangePasswordTests.APasswordChangeIsInTheHistoryWithTheValuesBeforeAndAfterButNeverThePasswordHash` |
 | Changing the password needs a session | `access.Gate.Working` | `ChangePasswordTests.ChangingThePasswordNeedsASession` |
 | A temporary-password session reaches nothing but the password change | `access.Gate.Working` | `ChangePasswordTests.EveryEndpointNotOpenToAllRefusesASessionWithATemporaryPassword` |

@@ -30,10 +30,10 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | --- | --- | --- |
 | A phone with it on never times out | `auth.canRefresh` | `AuthTests.AnUnusedPhoneWithBiometricsNeverTimesOut` |
 | Turning it off brings back the 12 hours, from that moment | `auth.Sessions.setBiometrics` | `AuthTests.TurningBiometricsOffBringsBackThe12Hours` |
-| Sign-out and a changed password still end the session | `auth.canRefresh`, `auth.Sessions.refresh` | `AuthTests.BiometricsDoNotOutliveARevokedPhone` |
+| Sign-out and a changed password still end the session | `auth.canRefresh`, `auth.Sessions.Renew` | `AuthTests.BiometricsDoNotOutliveARevokedPhone` |
 | It belongs to one phone | `auth.Sessions.setBiometrics` | `AuthTests.BiometricsBelongToOnePhone` |
 | A new sign-in starts with it off | `Device` | `AuthTests.ANewSignInStartsWithBiometricsOff` |
 | Every session answer says whether it is on | `auth.Sessions.answer` | `AuthTests.TurningBiometricsOnIsAnswered` |
-| Changing the password keeps it on this phone | `auth.Sessions.changePassword` | `AuthTests.ChangingThePasswordKeepsBiometricsOnThisPhone` |
+| Changing the password keeps it on this phone | `auth.Sessions.ReplacePassword` | `AuthTests.ChangingThePasswordKeepsBiometricsOnThisPhone` |
 | A temporary password cannot turn it on | `access.Gate.Working` | `AuthTests.ATemporaryPasswordCannotTurnBiometricsOn` |
 | Turning it on and off is in the History table | `auth.Sessions.setBiometrics` | `AuthTests.TurningBiometricsOnAndOffIsInHistory` |

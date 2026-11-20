@@ -84,7 +84,7 @@ func Routes(parts Parts) *web.Router {
 		apidoc.Map(router)
 	}
 	config.Map(router, database)
-	auth.MapSessions(router, gate, database, tokens, book, now)
+	auth.MapSessions(router, gate, auth.NewSessions(database, tokens, book, now))
 	auth.MapCodes(router, gate, database, now, parts.Sender, limits.PerHour(parts.EmailCodesPerHour, now), parts.Log)
 	users.Map(router, gate, database, now)
 	projects.Map(router, gate, database, book, now, limits.PerHour(parts.RegistrationsPerHour, now))

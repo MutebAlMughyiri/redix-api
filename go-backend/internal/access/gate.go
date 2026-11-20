@@ -4,7 +4,9 @@
 package access
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -113,16 +115,10 @@ func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 		g.challenge(w, r, "Bearer")
 		return Caller{}, false
 	}
-	session, err := g.tokens.Check(token)
-	if err == nil {
-		open, readErr := g.read.DeviceIsOpen(r.Context(), store.DeviceIsOpenParams{DeviceID: session.DeviceID, UserID: session.UserID})
-		if readErr != nil {
-			problem.Status(w, r, http.StatusInternalServerError)
-			return Caller{}, false
-		}
-		if !open {
-			err = credentials.ErrNotValid
-		}
+	caller, err := g.Check(r.Context(), token)
+	if errors.Is(err, ErrDatabase) {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return Caller{}, false
 	}
 	if lifetime, ok := errors.AsType[credentials.LifetimeError](err); ok {
 		g.challenge(w, r, `Bearer error="invalid_token", error_description="The token lifetime is invalid; NotBefore: '`+
@@ -133,14 +129,34 @@ func (g *Gate) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
 		g.challenge(w, r, `Bearer error="invalid_token"`)
 		return Caller{}, false
 	}
-	access, err := g.book.Of(r.Context(), session.UserID)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return Caller{}, false
-	}
 	facts := problem.FactsOf(r.Context())
-	facts.UserID, facts.ProjectID = session.UserID.String(), r.PathValue("projectId")
-	return Caller{Session: session, Access: access}, true
+	facts.UserID, facts.ProjectID = caller.UserID.String(), r.PathValue("projectId")
+	return caller, true
+}
+
+// ErrDatabase says the database could not tell whether a session is open, or what it holds: a failure, never a refusal.
+var ErrDatabase = errors.New("access: the database could not tell whether the session is open")
+
+// Check is the caller token speaks for, on a device still open, with what it holds: the one check every door makes, the app's with the token
+// from its header and the web's with the token from its cookie (redix-api #161 S3). A token not valid now, its device closed included, is
+// credentials' ErrNotValid; a database that cannot tell is ErrDatabase.
+func (g *Gate) Check(ctx context.Context, token string) (Caller, error) {
+	session, err := g.tokens.Check(token)
+	if err != nil {
+		return Caller{}, err
+	}
+	open, err := g.read.DeviceIsOpen(ctx, store.DeviceIsOpenParams{DeviceID: session.DeviceID, UserID: session.UserID})
+	if err != nil {
+		return Caller{}, fmt.Errorf("%w: %w", ErrDatabase, err)
+	}
+	if !open {
+		return Caller{}, credentials.ErrNotValid
+	}
+	held, err := g.book.Of(ctx, session.UserID)
+	if err != nil {
+		return Caller{}, fmt.Errorf("%w: %w", ErrDatabase, err)
+	}
+	return Caller{Session: session, Access: held}, nil
 }
 
 // dotNetMoment is how JwtBearer wrote a moment in its challenge: invariant culture, month first.

@@ -32,11 +32,11 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | A password is stored only as its hash (NFR-09) | `credentials.Hash`, in ASP.NET Core Identity's format (PBKDF2, HMAC-SHA512, 100,000 iterations), so .NET's hashes still check | `AuthTests.TheRightPasswordOpensASessionWithA15MinuteAccessToken` |
-| The right password opens a session with a 15-minute access token (FR-01, AC-01.1) | `auth.Sessions.signIn`, `AccessTokens` | `AuthTests.TheRightPasswordOpensASessionWithA15MinuteAccessToken` |
-| A wrong password and an unknown username get the same answer (AC-01.2) | `auth.Sessions.signIn`, `auth.attempt` | `AuthTests.AWrongPasswordAndAnUnknownUsernameGetTheSameAnswer` |
+| The right password opens a session with a 15-minute access token (FR-01, AC-01.1) | `auth.Sessions.SignIn`, `AccessTokens` | `AuthTests.TheRightPasswordOpensASessionWithA15MinuteAccessToken` |
+| A wrong password and an unknown username get the same answer (AC-01.2) | `auth.Sessions.SignIn`, `auth.attempt` | `AuthTests.AWrongPasswordAndAnUnknownUsernameGetTheSameAnswer` |
 | Five wrong passwords in a row lock the account for 15 minutes (AC-01.2) | `auth.attempt` | `AuthTests.FiveWrongPasswordsInARowLockTheAccountFor15Minutes` |
 | The right password clears the count of wrong ones | `auth.attempt` | `AuthTests.TheRightPasswordClearsTheCountOfWrongOnes` |
-| Someone inactive in every project signs in and renews as anyone does, to his project list, and a wrong password says what it says to anyone (redix-api #126, D3, R10) | `auth.attempt`, `auth.Sessions.refresh` | `AuthTests.R126_D3_SomeoneInactiveInEveryProjectSignsInAndRenewsAsAnyoneDoes`, `R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs` |
+| Someone inactive in every project signs in and renews as anyone does, to his project list, and a wrong password says what it says to anyone (redix-api #126, D3, R10) | `auth.attempt`, `auth.Sessions.Renew` | `AuthTests.R126_D3_SomeoneInactiveInEveryProjectSignsInAndRenewsAsAnyoneDoes`, `R126_R10_SomeoneInactiveInEveryProjectIsToldAWrongPasswordAsAnyoneIs` |
 | An access token works for 15 minutes, by the server's clock | `credentials.Tokens.Check` | `AuthTests.AnAccessTokenWorksFor15MinutesByTheServersClock` |
 | A session says when its access token expires, at sign-in and at each renewal, and the token is refused from then on (redix-api #126, R6) | `credentials.Tokens.Create`, `auth.Sessions.answer` | `AuthTests.R126_R6_ASessionSaysWhenItsAccessTokenExpiresAtSignInAndAtEachRenewal`, `R126_R6_AnAccessTokenIsRefusedOnceTheMomentItsSessionNamedHasPassed` |
 | A refresh replaces the refresh token; the old one stops working | `auth.renew` | `AuthTests.ARefreshReplacesTheRefreshToken` |
@@ -44,7 +44,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Only the refresh token's hash is stored | `auth.hashOf` | Enforced by the model |
 | The first user is the admin, from configuration, and must change the password (BR-29) | `auth.SeedAdmin`, as the server starts | `AuthTests.TheFirstUserIsTheAdminFromConfigurationAndMustChangeThePassword` |
 | The seed waits while a migration is still to apply, so a rollback to before the `Users` table succeeds quietly | `auth.SeedAdmin` | `AdminSeedTests.AMigrationThatStopsBeforeTheUsersTableSeedsNothingAndSucceeds_AsARollbackDoes` |
-| A sign-in is in the History table with the user and the time (UC-005) | `auth.Sessions.signIn` | `AuthTests.ASignInIsInTheHistoryWithTheUserAndTheTime` |
+| A sign-in is in the History table with the user and the time (UC-005) | `auth.Sessions.SignIn` | `AuthTests.ASignInIsInTheHistoryWithTheUserAndTheTime` |
 | Every session says what its user holds everywhere (UC-009) | `auth.Sessions.answer` | `AuthTests.ASessionSaysWhatItsUserHoldsEverywhere` |
 | «نسيت كلمة المرور؟» with a username or an email sends a six-digit code to the account's email; the code and a new password reset it (AC-02.6, D5) | `auth.Codes.forgotPassword`, `auth.Codes.resetWithCode`, `auth.Codes.make` | `PasswordResetTests.AC_02_6_ACodeToTheAccountsEmailAndANewPasswordResetItAndTheOldOneNoLongerSignsIn`, `AC_02_6_D5_TheEmailNamesTheAccountAsTheUsernameDoesWhateverItsCase`, `AC_02_6_AWrongCodeResetsNothing` |
 | The admin resets the same way, with the email set in Settings (R10, D6) | `auth.Codes.forgotPassword`, `auth.Codes.resetWithCode` | `PasswordResetTests.R10_D6_TheAdminResetsTheSameWay` |

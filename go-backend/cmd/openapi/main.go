@@ -241,10 +241,12 @@ func appendDoc(docs []string, doc string) []string {
 }
 
 // bound is what a helper's parameter was given by the call that is being read: the type of a value passed as any, a constant passed as a string,
-// a function literal passed as a function, read in the package it is written in.
+// the constants a variable passed as a string can be, read where it was assigned - a refusal handed to a helper that answers it (redix-api #161) -
+// and a function literal passed as a function, read in the package it is written in.
 type bound struct {
 	t       types.Type
 	value   constant.Value
+	codes   []constant.Value
 	literal *ast.FuncLit
 	in      *packages.Package
 }
@@ -261,15 +263,20 @@ func (g *generator) body(body *ast.BlockStmt, p *packages.Package, r *route, bin
 			}
 		}
 		literal, _ := ast.Unparen(expression).(*ast.FuncLit)
-		return bound{t: p.TypesInfo.TypeOf(expression), value: p.TypesInfo.Types[expression].Value, literal: literal, in: p}
+		found := bound{t: p.TypesInfo.TypeOf(expression), value: p.TypesInfo.Types[expression].Value, literal: literal, in: p}
+		if text, isBasic := found.t.(*types.Basic); found.value == nil && isBasic && text.Info()&types.IsString != 0 {
+			found.codes = g.assigned(body, p, bindings, expression, 0)
+		}
+		return found
 	}
 	clauses := clausesIn(body, p.TypesInfo)
 	refuse := func(call *ast.CallExpr, status bound, expression ast.Expr) {
-		if value := given(expression).value; value != nil {
-			r.refuse(status, []constant.Value{value})
+		code := given(expression)
+		if code.value != nil {
+			r.refuse(status, []constant.Value{code.value})
 			return
 		}
-		codes := g.assigned(body, p, bindings, expression, 0)
+		codes := code.codes
 		if clause, inSwitch := clauses[call]; inSwitch && clause.variable == p.TypesInfo.Uses[identOf(expression)] {
 			if codes = clause.of(codes); len(codes) == 0 {
 				return

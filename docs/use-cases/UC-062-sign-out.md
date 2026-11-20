@@ -18,6 +18,6 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A sign-out ends this device's tokens, and only this device's | `auth.Sessions.signOut`, `access.Gate.SignedIn` | `AuthTests.ASignOutEndsThisDeviceOnly` |
-| A sign-out is in the History table | `auth.Sessions.signOut` | `AuthTests.ASignOutIsInTheHistory` |
+| A sign-out ends this device's tokens, and only this device's | `auth.Sessions.SignOut`, `access.Gate.SignedIn` | `AuthTests.ASignOutEndsThisDeviceOnly` |
+| A sign-out is in the History table | `auth.Sessions.SignOut` | `AuthTests.ASignOutIsInTheHistory` |
 | Signing out needs a session | `access.Gate.Working` | `AuthTests.SigningOutNeedsASession` |
