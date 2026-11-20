@@ -7,12 +7,12 @@ package translations
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 )
@@ -42,7 +42,7 @@ func bundle(w http.ResponseWriter, r *http.Request, words *store.Queries) {
 	for _, row := range rows {
 		byKey[row.Key] = row.Value
 	}
-	body, _ := json.Marshal(byKey)
+	body, _ := encode.JSON(byKey)
 	sum := sha256.Sum256(body)
 	etag := `"` + strings.ToUpper(hex.EncodeToString(sum[:])) + `"`
 	w.Header().Set("ETag", etag)

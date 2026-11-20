@@ -144,13 +144,13 @@ func (p Routes) sightOf(ctx context.Context, userID uuid.UUID) (sight, error) {
 }
 
 func (s sight) view(project store.Project, units []store.Unit) projectView {
-	views := []unitView{}
+	var views []unitView
 	for _, unit := range units {
 		views = append(views, unitView{ID: unit.ID, Name: unit.Name})
 	}
 	permissions := s.access.In(project.ID)
 	if s.inactive[project.ID] {
-		permissions = []access.Permission{}
+		permissions = nil
 	}
 	return projectView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Status: statusNames[project.Status], RejectionReason: project.RejectionReason,
 		Description: project.Description, Units: views, Permissions: permissions, RoleName: s.roleNames[project.ID], IsInactive: s.inactive[project.ID],
@@ -178,7 +178,7 @@ func (p Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 	for _, id := range theirs {
 		isTheirs[id] = true
 	}
-	views := []projectView{}
+	var views []projectView
 	for _, project := range projects {
 		approved := project.Status == active || project.Status == finished
 		if seen.access.Holds(project.ID, access.ReadProject) || (isTheirs[project.ID] && (!approved || seen.inactive[project.ID])) {
@@ -340,9 +340,9 @@ func (p Routes) waiting(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []registeredView{}
+	var views []registeredView
 	for _, project := range projects {
-		view := registeredView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Units: []string{}, Description: project.Description}
+		view := registeredView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Description: project.Description}
 		for _, unit := range units {
 			if unit.ProjectID == project.ID {
 				view.Units = append(view.Units, unit.Name)
@@ -487,7 +487,8 @@ type zoneView struct {
 
 // timeZones is the zones a project may be in (D3), Saudi Arabia first.
 func (p Routes) timeZones(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	now, views := p.clock.Now(), []zoneView{}
+	now := p.clock.Now()
+	var views []zoneView
 	for _, zone := range zones.All {
 		views = append(views, zoneView{Name: zone.Name, WordKey: zone.WordKey, UTCOffset: zones.OffsetMinutes(zone.Name, now)})
 	}
@@ -603,7 +604,7 @@ func (p Routes) deleteUnit(w http.ResponseWriter, r *http.Request, caller access
 		if c.unit(unitID) == nil {
 			return unknownUnit
 		}
-		kept := []store.Unit{}
+		var kept []store.Unit
 		for _, unit := range *c.units {
 			if unit.ID != unitID {
 				kept = append(kept, unit)

@@ -17,6 +17,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -72,7 +73,7 @@ func permissionsIn(kept string) ([]access.Permission, error) {
 	if err := json.Unmarshal([]byte(kept), &names); err != nil {
 		return nil, err
 	}
-	permissions := []access.Permission{}
+	var permissions []access.Permission
 	for _, name := range names {
 		permission, _ := access.Named(name)
 		permissions = append(permissions, permission)
@@ -103,7 +104,7 @@ func (u Routes) myRequest(w http.ResponseWriter, r *http.Request, caller access.
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []requestView{}
+	var views []requestView
 	for _, row := range rows {
 		view, err := viewOfRequest(row, "")
 		if err != nil {
@@ -143,8 +144,8 @@ func (u Routes) ask(w http.ResponseWriter, r *http.Request, caller access.Caller
 		problem.Refuse(w, r, http.StatusBadRequest, code)
 		return
 	}
-	givesText, _ := json.Marshal(gives)
-	takesText, _ := json.Marshal(takes)
+	givesText, _ := encode.JSON(gives)
+	takesText, _ := encode.JSON(takes)
 	row := store.PermissionRequest{ID: uuid.Must(uuid.NewV7()), ProjectID: projectID, UserID: caller.UserID, Gives: string(givesText),
 		Takes: string(takesText), Reason: reason, Status: int64(waiting)}
 	err := u.write(r, caller, func(c change) error {
@@ -208,7 +209,7 @@ func (u Routes) waitingRequests(w http.ResponseWriter, r *http.Request, _ access
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []requestView{}
+	var views []requestView
 	for _, row := range rows {
 		view, err := viewOfRequest(row.PermissionRequest, row.DisplayName)
 		if err != nil {
@@ -302,7 +303,7 @@ func (u Routes) decide(w http.ResponseWriter, r *http.Request, caller access.Cal
 // permissionsNamed is the project permissions names names, each once, when every one is one of them, but ReadProject, and fits; otherwise the
 // code saying why not: invalidPermission, or unfit when fits refuses one.
 func permissionsNamed(names []string, fits func(access.Permission) bool, unfit string) ([]access.Permission, string) {
-	permissions := []access.Permission{}
+	var permissions []access.Permission
 	for _, name := range names {
 		permission, known := access.Named(name)
 		switch {

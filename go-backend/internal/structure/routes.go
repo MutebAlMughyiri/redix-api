@@ -101,7 +101,7 @@ type subgroupView struct {
 }
 
 func itemViewOf(item store.Item, subgroups []store.Subgroup) itemView {
-	views := []subgroupView{}
+	var views []subgroupView
 	for _, subgroup := range subgroups {
 		if subgroup.ItemID == item.ID {
 			views = append(views, subgroupView{ID: subgroup.ID, Name: subgroup.Name})
@@ -116,9 +116,9 @@ func (s Routes) categories(r *http.Request, offers func(category store.Category,
 	categories, err := read.CategoriesOf(r.Context(), projectID)
 	items, itemsErr := read.ItemsOf(r.Context(), projectID)
 	subgroups, subgroupsErr := read.SubgroupsOf(r.Context(), projectID)
-	views := []categoryView{}
+	var views []categoryView
 	for _, category := range categories {
-		view := categoryView{ID: category.ID, Name: category.Name, IsActive: category.IsActive, Items: []itemView{}}
+		view := categoryView{ID: category.ID, Name: category.Name, IsActive: category.IsActive}
 		for _, item := range items {
 			if item.CategoryID == category.ID && offers(category, item) {
 				view.Items = append(view.Items, itemViewOf(item, subgroups))
@@ -154,7 +154,7 @@ func (s Routes) offered(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	offering := []categoryView{}
+	var offering []categoryView
 	for _, view := range views {
 		if len(view.Items) > 0 {
 			offering = append(offering, view)
@@ -187,7 +187,7 @@ func (s Routes) addCategory(w http.ResponseWriter, r *http.Request, caller acces
 	})
 	if added {
 		w.Header().Set("Location", "/projects/"+category.ProjectID.String()+"/categories/"+category.ID.String())
-		web.JSON(w, r, http.StatusCreated, categoryView{ID: category.ID, Name: category.Name, IsActive: true, Items: []itemView{}})
+		web.JSON(w, r, http.StatusCreated, categoryView{ID: category.ID, Name: category.Name, IsActive: true})
 	}
 }
 
@@ -219,7 +219,7 @@ func (s Routes) reorderCategories(w http.ResponseWriter, r *http.Request, caller
 }
 
 func idsOf[T any](rows []T, id func(T) uuid.UUID) []uuid.UUID {
-	ids := []uuid.UUID{}
+	var ids []uuid.UUID
 	for _, row := range rows {
 		ids = append(ids, id(row))
 	}

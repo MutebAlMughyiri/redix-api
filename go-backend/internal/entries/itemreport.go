@@ -135,9 +135,9 @@ type registers struct {
 }
 
 func (g registers) viewsOf(columns []store.ItemColumn) []ReportColumn {
-	views := []ReportColumn{}
+	var views []ReportColumn
 	for _, column := range columns {
-		view := ReportColumn{Key: column.Key, Name: column.Name, DataType: structure.DataType(column.DataType), IsRequired: column.IsRequired, Choices: []ReportChoice{}}
+		view := ReportColumn{Key: column.Key, Name: column.Name, DataType: structure.DataType(column.DataType), IsRequired: column.IsRequired}
 		switch column.Key {
 		case "supplier", "account", "paymentMethod":
 			for _, name := range g.names[column.Key] {
@@ -162,7 +162,7 @@ func (g registers) valuesOf(columns []store.ItemColumn, entry store.Entry, known
 	if err := kept.UnmarshalJSON([]byte(entry.ColumnValues)); err != nil {
 		return nil, err
 	}
-	values := []string{}
+	var values []string
 	for _, column := range columns {
 		value := kept.Values[column.Key]
 		switch column.Key {
@@ -253,7 +253,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		return ReportRow{EntryID: entry.ID, Date: entry.EntryDate, Amount: amount, IsOutsideContract: isOutside, Values: values,
 			IsNew: entry.ApprovedAt.After(newSince.Time), Number: entry.Number}, err
 	}
-	report := ItemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name, Subgroups: []TableReport{}, Contracts: []ContractReport{},
+	report := ItemReport{ItemID: item.ID, ItemName: item.Name, CategoryName: category.Name,
 		ShowsTablePercentages: item.ShowsTablePercentages, Type: structure.ItemType(item.Type), ShowsEveryTable: true}
 	for _, entry := range approvedOldestFirst {
 		if entry.Status != ledger.Approved {
@@ -270,7 +270,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	}
 	groupColumns, paymentColumns, capitalColumns := printedOf(columns, groupKind), printedOf(columns, ledger.ContractorPayment), printedOf(columns, ledger.CapitalIn)
 	for _, subgroup := range subgroups {
-		table := TableReport{ID: subgroup.ID, Name: subgroup.Name, Rows: []ReportRow{}, SortOrder: subgroup.SortOrder, Columns: g.viewsOf(groupColumns),
+		table := TableReport{ID: subgroup.ID, Name: subgroup.Name, SortOrder: subgroup.SortOrder, Columns: g.viewsOf(groupColumns),
 			AmountName: amountNameOf(columns, groupKind)}
 		for _, entry := range approvedOldestFirst {
 			expense, isExpense := known.expenses[entry.ID]
@@ -301,7 +301,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 		contract := store.Contract{ID: row.ID, Value: row.Value, IsOpenValue: row.IsOpenValue}
 		paid := money[row.ID].Paid
 		view := ContractReport{ID: row.ID, ContractorName: row.SupplierName, Value: row.Value, IsOpenValue: row.IsOpenValue, Paid: paid,
-			Remaining: contracts.Remaining(contract, paid), IsOverrun: contracts.Overrun(contract, paid), Payments: []ReportRow{}, SortOrder: row.SortOrder,
+			Remaining: contracts.Remaining(contract, paid), IsOverrun: contracts.Overrun(contract, paid), SortOrder: row.SortOrder,
 			Columns: g.viewsOf(paymentColumns), AmountName: amountNameOf(columns, ledger.ContractorPayment)}
 		for _, entry := range approvedOldestFirst {
 			payment, isPayment := known.payments[entry.ID]
@@ -325,7 +325,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 			continue
 		}
 		shown++
-		table := TableReport{ID: partner.ID, Name: partner.Name, Rows: []ReportRow{}, SortOrder: partner.SortOrder, Columns: g.viewsOf(capitalColumns),
+		table := TableReport{ID: partner.ID, Name: partner.Name, SortOrder: partner.SortOrder, Columns: g.viewsOf(capitalColumns),
 			AmountName: amountNameOf(columns, ledger.CapitalIn)}
 		for _, entry := range approvedOldestFirst {
 			if mover, isCapital := known.capital[entry.ID]; entry.Status == ledger.Approved && isCapital && mover == partner.ID {
@@ -394,8 +394,8 @@ func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, error
 	if err != nil {
 		return ItemReport{}, err
 	}
-	report.Subgroups = []TableReport{}
-	kept := []ContractReport{}
+	report.Subgroups = nil
+	var kept []ContractReport
 	for _, one := range report.Contracts {
 		if one.ID == contract.ID {
 			kept = append(kept, one)
@@ -407,7 +407,7 @@ func ContractReportOf(c changes.Change, contractID uuid.UUID) (ItemReport, error
 
 // WithTablesOf is the same report holding only the tables shows keeps, the partners' of رأس المال a reader may see; its total stays the whole (BR-31).
 func (r ItemReport) WithTablesOf(shows func(uuid.UUID) bool) ItemReport {
-	kept := []TableReport{}
+	var kept []TableReport
 	for _, table := range r.Subgroups {
 		if shows(table.ID) {
 			kept = append(kept, table)

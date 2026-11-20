@@ -318,7 +318,7 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	view := approvalView{Approved: []uuid.UUID{}, Failed: []approvalFailure{}}
+	view := approvalView{}
 	done := s.writer.Write(w, r, caller, func(c changes.Change) error {
 		var named []uuid.UUID
 		for _, id := range typed.EntryIDs {
@@ -486,7 +486,7 @@ func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entr
 	if err != nil {
 		return nil, err
 	}
-	views := []rowView{}
+	var views []rowView
 	after := store.EntriesBeforeParams{ProjectID: c.ProjectID, CreatedAt: newest, Number: math.MaxInt64, Take: entryBatch}
 	if take > 0 {
 		after.Take = int64(min(take, entryBatch))
@@ -615,7 +615,7 @@ func (s Routes) pending(w http.ResponseWriter, r *http.Request, caller access.Ca
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []pendingView{}
+	var views []pendingView
 	for _, entry := range waiting {
 		if known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
 			views = append(views, known.pending(entry))

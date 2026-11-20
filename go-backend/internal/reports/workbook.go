@@ -271,13 +271,13 @@ func forFilesOf(report snapshot, caller access.Caller, projectID uuid.UUID) snap
 		return report
 	}
 	sees := func(partnerID uuid.UUID) bool { return caller.Access.SeesCapitalOf(projectID, partnerID) }
-	partners := []reportPartner{}
+	var partners []reportPartner
 	for _, partner := range report.Partners {
 		if sees(partner.ID) {
 			partners = append(partners, partner)
 		}
 	}
-	items := []entries.ItemReport{}
+	var items []entries.ItemReport
 	for _, item := range report.Items {
 		if item.Type == structure.Capital {
 			item = item.WithTablesOf(sees)

@@ -323,7 +323,7 @@ func refusalOfColumns(typed Request, columns []store.ItemColumn) (string, string
 // missingOf is the keys of the required columns the entry gives no value, in their order (EntryAnswers.MissingOf): a field of the entry's own counts
 // as given, the description but for an empty one.
 func missingOf(description string, values map[string]string, columns []store.ItemColumn) []string {
-	missing := []string{}
+	var missing []string
 	for _, column := range columns {
 		_, has := values[column.Key]
 		gives := has || (structure.IsEntryField(column.Key) && column.Key != "description") || (column.Key == "description" && description != "")
@@ -542,7 +542,7 @@ func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfR
 // separators, and the decimals it was written with.
 func numberIn(value string) (fixed.Typed, bool) {
 	var number fixed.Typed
-	cleaned := []byte{}
+	var cleaned []byte
 	for _, letter := range []byte(value) {
 		if letter != ',' && letter != ' ' {
 			cleaned = append(cleaned, letter)

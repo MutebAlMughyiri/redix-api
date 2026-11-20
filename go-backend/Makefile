@@ -1,5 +1,9 @@
 # REDIX's Go backend (redix-api #140, R22). Run from go-backend/; sqlc and Go must be on the path.
 
+# encoding/json/v2, which the API writes its JSON with (internal/platform/encode), is an experiment in Go 1.27, so every build and test sets
+# it (redix-api #125); redix-api #155 takes it away once Go publishes the package.
+export GOEXPERIMENT := jsonv2
+
 .PHONY: build test cover sqlc migrate
 
 # A Linux binary for the server, with no C toolchain: modernc's SQLite is pure Go.

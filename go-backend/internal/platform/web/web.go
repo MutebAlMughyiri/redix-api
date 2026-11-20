@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/google/uuid"
 )
@@ -157,7 +158,7 @@ func Int(r *http.Request, name string) int64 {
 
 // JSON answers status with value as JSON, as Results.Ok and Results.Json wrote it.
 func JSON(w http.ResponseWriter, r *http.Request, status int, value any) {
-	body, err := json.Marshal(value)
+	body, err := encode.JSON(value)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return

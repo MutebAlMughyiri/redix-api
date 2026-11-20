@@ -4,8 +4,7 @@
 package db
 
 import (
-	"encoding/json"
-
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/google/uuid"
 )
 
@@ -20,6 +19,6 @@ func IDList(ids []uuid.UUID) string {
 			listed = append(listed, id)
 		}
 	}
-	named, _ := json.Marshal(listed)
+	named, _ := encode.JSON(listed)
 	return string(named)
 }

@@ -96,7 +96,7 @@ func (s Routes) list(activeOnly bool) access.Handler {
 		if changes.Answered(w, r, errors.Join(err, linksErr)) {
 			return
 		}
-		views := []paymentMethodView{}
+		var views []paymentMethodView
 		for _, method := range methods {
 			if method.IsActive || !activeOnly {
 				views = append(views, paymentMethodView{ID: method.ID, Name: method.Name, IsActive: method.IsActive, AccountIDs: accountsOf(links, method.ID)})
@@ -216,7 +216,7 @@ func TickOnEveryMethod(c changes.Change, accountID uuid.UUID) error {
 
 // accountsOf is the accounts the method pays from, among the project's links.
 func accountsOf(links []store.PaymentMethodAccount, methodID uuid.UUID) []uuid.UUID {
-	ids := []uuid.UUID{}
+	var ids []uuid.UUID
 	for _, link := range links {
 		if link.PaymentMethodID == methodID {
 			ids = append(ids, link.AccountID)

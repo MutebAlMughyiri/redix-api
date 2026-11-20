@@ -6,7 +6,6 @@ package statement
 import (
 	"bytes"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 )
 
@@ -93,7 +93,7 @@ func (t Typst) Pdf(document Document) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = os.RemoveAll(folder) }()
-	data, err := json.Marshal(document)
+	data, err := encode.JSON(document)
 	if err == nil {
 		err = os.WriteFile(filepath.Join(folder, "data.json"), data, 0o600)
 	}
@@ -172,7 +172,7 @@ func PdfPage(sheet Sheet) Page {
 
 // pdfTable is a table's header and rows, each under its number (AC-54.6), the first column the widest and the amount the last.
 func pdfTable(table Table) Block {
-	block := Block{Kind: "table", Gap: 2, Widths: []TableWidth{{Points: pdfNumberWidth}, {Shares: 4}}, Header: []string{table.NumberHeader}, Rows: []PdfRow{}}
+	block := Block{Kind: "table", Gap: 2, Widths: []TableWidth{{Points: pdfNumberWidth}, {Shares: 4}}, Header: []string{table.NumberHeader}}
 	for _, column := range table.Columns {
 		block.Widths = append(block.Widths, TableWidth{Shares: 2})
 		block.Header = append(block.Header, column.Header)

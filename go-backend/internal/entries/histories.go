@@ -17,6 +17,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -62,7 +63,7 @@ func recordLines(c changes.Change, records [][2]string) historyLines {
 
 // recordList is records, [table, id] pairs, as the JSON list a query reads with json_each. A list of strings always encodes.
 func recordList(records [][2]string) string {
-	named, _ := json.Marshal(records)
+	named, _ := encode.JSON(records)
 	return string(named)
 }
 
@@ -77,7 +78,7 @@ func page[T historyLine](r *http.Request, read historyLines, linesOf func(batch 
 		before = math.MaxInt64
 	}
 	text := query.Get("text")
-	lines := []T{}
+	var lines []T
 	for take := int64(pageSize); ; take = min(2*take, historyBatch) {
 		batch, err := read(before, take)
 		if err != nil || len(batch) == 0 {

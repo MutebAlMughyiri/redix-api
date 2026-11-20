@@ -63,7 +63,7 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []documentView{}
+	var views []documentView
 	for _, row := range rows {
 		views = append(views, documentView{ID: row.ID, Name: row.Name, Group: row.GroupName, AttachmentID: row.AttachmentID, FileName: row.FileName, ContentType: row.ContentType,
 			UploadedAt: row.UploadedAt})

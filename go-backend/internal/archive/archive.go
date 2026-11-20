@@ -15,6 +15,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -66,7 +67,7 @@ func (s Routes) archive(w http.ResponseWriter, r *http.Request, caller access.Ca
 	archived, err := s.taken(r.Context(), web.ID(r, "projectId"), caller.UserID)
 	var content []byte
 	if err == nil {
-		content, err = json.MarshalIndent(archived, "", " ")
+		content, err = encode.Indented(archived)
 	}
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)

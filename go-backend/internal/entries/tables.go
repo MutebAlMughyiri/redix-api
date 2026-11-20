@@ -410,17 +410,17 @@ func (s Routes) entryTables(w http.ResponseWriter, r *http.Request, caller acces
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []offeredCategory{}
+	var views []offeredCategory
 	for _, t := range tables {
 		if len(views) == 0 || views[len(views)-1].ID != t.category.ID {
-			views = append(views, offeredCategory{ID: t.category.ID, Name: t.category.Name, Items: []offeredItem{}})
+			views = append(views, offeredCategory{ID: t.category.ID, Name: t.category.Name})
 		}
 		category := &views[len(views)-1]
 		if len(category.Items) == 0 || category.Items[len(category.Items)-1].ID != t.item.ID {
-			category.Items = append(category.Items, offeredItem{ID: t.item.ID, Name: t.item.Name, Tables: []offeredTable{}, IsRevenue: t.isRevenue()})
+			category.Items = append(category.Items, offeredItem{ID: t.item.ID, Name: t.item.Name, IsRevenue: t.isRevenue()})
 		}
 		item := &category.Items[len(category.Items)-1]
-		keys := []string{}
+		var keys []string
 		for _, column := range t.columns {
 			keys = append(keys, column.Key)
 		}
@@ -474,7 +474,7 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 			counts[partner]++
 		}
 	}
-	views := []itemTableView{}
+	var views []itemTableView
 	if item.Type != int64(structure.Capital) {
 		for _, subgroup := range subgroups {
 			kind, name := subgroupTable, subgroup.Name
@@ -522,9 +522,9 @@ func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller acces
 	listed := func(id uuid.UUID) bool {
 		return caller.Access.Sees(projectID, id) || caller.Access.Holds(projectID, access.ManageUsers)
 	}
-	views := []offeredCategory{}
+	var views []offeredCategory
 	for _, category := range categories {
-		view := offeredCategory{ID: category.ID, Name: category.Name, Items: []offeredItem{}}
+		view := offeredCategory{ID: category.ID, Name: category.Name}
 		for _, item := range items {
 			if item.CategoryID != category.ID || item.Type == int64(structure.Capital) {
 				continue
@@ -545,10 +545,10 @@ func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller acces
 				}
 			}
 			slices.SortStableFunc(placed, func(a, b itemTableView) int { return int(a.place - b.place) })
-			shown := offeredItem{ID: item.ID, Name: item.Name, Tables: []offeredTable{}, IsRevenue: structure.ItemType(item.Type).IsRevenue()}
+			shown := offeredItem{ID: item.ID, Name: item.Name, IsRevenue: structure.ItemType(item.Type).IsRevenue()}
 			for _, table := range placed {
 				if listed(table.ID) {
-					shown.Tables = append(shown.Tables, offeredTable{ID: table.ID, Kind: table.Kind, Name: table.Name, ColumnKeys: []string{}})
+					shown.Tables = append(shown.Tables, offeredTable{ID: table.ID, Kind: table.Kind, Name: table.Name})
 				}
 			}
 			if len(shown.Tables) > 0 {

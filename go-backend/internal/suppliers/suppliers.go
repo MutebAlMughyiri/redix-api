@@ -104,7 +104,7 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []supplierView{}
+	var views []supplierView
 	for _, row := range rows {
 		views = append(views, viewOf(row, false))
 	}
@@ -134,7 +134,7 @@ func (s Routes) search(w http.ResponseWriter, r *http.Request, caller access.Cal
 		}
 	}
 	slices.SortStableFunc(found, func(a, b store.SuppliersOfRow) int { return int(b.TimesUsed - a.TimesUsed) })
-	views := []supplierView{}
+	var views []supplierView
 	for _, row := range found[:min(len(found), searchLimit)] {
 		views = append(views, viewOf(row, true))
 	}

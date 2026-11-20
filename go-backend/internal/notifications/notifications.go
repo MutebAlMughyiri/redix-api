@@ -73,7 +73,7 @@ func Map(router *web.Router, gate *access.Gate, database db.DB) {
 			problem.Status(w, r, http.StatusInternalServerError)
 			return
 		}
-		views := []notificationView{}
+		var views []notificationView
 		for _, row := range rows {
 			views = append(views, notificationView{ID: row.ID, Kind: Kind(row.Kind), ProjectID: row.ProjectID, ProjectName: row.ProjectName, EntryID: row.EntryID, At: row.At, IsRead: row.IsRead})
 		}

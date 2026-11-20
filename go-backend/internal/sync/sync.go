@@ -13,6 +13,7 @@ import (
 	"net/http"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 )
@@ -66,7 +67,7 @@ func Map(router *web.Router, gate *access.Gate) {
 				lists[address] = answer
 			}
 		}
-		written, _ := json.Marshal(lists)
+		written, _ := encode.JSON(lists)
 		hash := sha256.Sum256(written)
 		stamp := hex.EncodeToString(hash[:])
 		if r.URL.Query().Get("since") == stamp {

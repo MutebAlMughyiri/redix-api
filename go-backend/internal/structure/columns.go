@@ -33,7 +33,7 @@ func visible(columns []store.ItemColumn) []store.ItemColumn {
 }
 
 func asColumns[T any](rows []T, of func(T) column) []column {
-	columns := []column{}
+	var columns []column
 	for _, row := range rows {
 		columns = append(columns, of(row))
 	}
@@ -53,7 +53,7 @@ func (s Routes) columnsOfItem(w http.ResponseWriter, r *http.Request, _ access.C
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []columnView{}
+	var views []columnView
 	for _, row := range visible(columns) {
 		views = append(views, ofItemColumn(row).view(row.ID))
 	}
@@ -80,7 +80,7 @@ func (s Routes) columnsOfTemplate(w http.ResponseWriter, r *http.Request, _ acce
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []columnView{}
+	var views []columnView
 	for _, row := range template {
 		views = append(views, ofDefaultColumn(row).view(row.ID))
 	}

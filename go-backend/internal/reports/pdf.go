@@ -80,7 +80,7 @@ func summaryPage(report snapshot, words waitingWords, zone string) statement.Pag
 // contractsDocumentOf is the contracts report as a PDF: each contract's value, paid, remaining, and an alert where more was paid (FR-31, FR-33).
 func contractsDocumentOf(projectName string, list []contracts.View) statement.Document {
 	table := statement.Block{Kind: "table", Gap: 6, Widths: []statement.TableWidth{{Shares: 3}, {Shares: 2}, {Shares: 2}, {Shares: 2}, {Shares: 2}},
-		Header: []string{"المقاول", "البند", "قيمة العقد", "المدفوع", "المتبقي"}, Rows: []statement.PdfRow{}}
+		Header: []string{"المقاول", "البند", "قيمة العقد", "المدفوع", "المتبقي"}}
 	for _, contract := range list {
 		contractor, value, remaining := contract.SupplierName, statement.Money(contract.Value), statement.Money(contract.Remaining.Number())
 		if contract.IsOverrun {

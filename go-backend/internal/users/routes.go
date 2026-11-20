@@ -83,16 +83,16 @@ type memberView struct {
 }
 
 func viewOf(user store.User, rows []store.UserProject) userView {
-	projects := []projectView{}
+	var projects []projectView
 	for _, row := range rows {
 		// The user_projects view builds these three with json_group_array, so each is an array and reads without fail.
 		var names []string
-		partners := []uuid.UUID{}
-		unseen := []uuid.UUID{}
+		var partners []uuid.UUID
+		var unseen []uuid.UUID
 		_ = json.Unmarshal([]byte(row.Permissions), &names)
 		_ = json.Unmarshal([]byte(row.PartnerIds), &partners)
 		_ = json.Unmarshal([]byte(row.UnseenTables), &unseen)
-		permissions := []access.Permission{}
+		var permissions []access.Permission
 		for _, name := range names {
 			if permission, ok := access.Named(name); ok {
 				permissions = append(permissions, permission)
@@ -223,7 +223,7 @@ func (u Routes) members(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	members := []memberView{}
+	var members []memberView
 	for _, row := range rows {
 		members = append(members, memberView{ID: row.ID, DisplayName: row.DisplayName})
 	}
@@ -240,7 +240,7 @@ func (u Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	views := []userView{}
+	var views []userView
 	for _, person := range people {
 		mine := slices.DeleteFunc(slices.Clone(held), func(row store.UserProject) bool { return row.UserID != person.ID })
 		views = append(views, viewOf(person, mine))
@@ -279,7 +279,7 @@ func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 		problem.Refuse(w, r, http.StatusBadRequest, "invalidPermission")
 		return
 	}
-	partners := []uuid.UUID{}
+	var partners []uuid.UUID
 	if slices.Contains(request.Permissions, access.SeeChosenCapital) {
 		for _, id := range request.PartnerIDs {
 			if !slices.Contains(partners, id) {

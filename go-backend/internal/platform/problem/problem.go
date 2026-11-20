@@ -10,9 +10,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"net/http"
 	"regexp"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 )
 
 // standard is the type link and title ASP.NET Core gives each status it knows (ProblemDetailsDefaults), checked against every problem the .NET API
@@ -102,8 +103,8 @@ func write(w http.ResponseWriter, r *http.Request, status int, extensions ...fie
 		if i > 0 {
 			body.WriteByte(',')
 		}
-		name, _ := json.Marshal(f.name)
-		value, err := json.Marshal(f.value)
+		name, _ := encode.JSON(f.name)
+		value, err := encode.JSON(f.value)
 		if err != nil {
 			value = []byte("null")
 		}

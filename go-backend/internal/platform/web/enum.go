@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 )
 
 // Enum is an enumeration kept as a number, as .NET's JsonStringEnumConverter wrote and read it under the camel-case policy: its names, in the
@@ -20,7 +22,7 @@ func (e Enum) Write(value int64) ([]byte, error) {
 	if value < 0 || value >= int64(len(e)) {
 		return nil, fmt.Errorf("web: %d names none of %v", value, e)
 	}
-	return json.Marshal(e[value])
+	return encode.JSON(e[value])
 }
 
 // Read is the value data names, as the converter read it: one of the names in any case, or a number naming one.

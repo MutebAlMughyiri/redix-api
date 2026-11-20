@@ -8,9 +8,9 @@ package history
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/google/uuid"
@@ -64,11 +64,11 @@ type Change struct {
 // Write adds one History line with q, inside the write it records, under the trace id of the request that made it (UC-069 R7), so the lines one
 // request wrote are read back as one action.
 func Write(ctx context.Context, q *store.Queries, at moment.Moment, userID uuid.UUID, action Action, change Change) error {
-	before, err := json.Marshal(orEmpty(change.Before))
+	before, err := encode.JSON(orEmpty(change.Before))
 	if err != nil {
 		return err
 	}
-	after, err := json.Marshal(orEmpty(change.After))
+	after, err := encode.JSON(orEmpty(change.After))
 	if err != nil {
 		return err
 	}
@@ -83,8 +83,8 @@ func Write(ctx context.Context, q *store.Queries, at moment.Moment, userID uuid.
 func Changed(before, after map[string]any) (map[string]any, map[string]any) {
 	was, is := map[string]any{}, map[string]any{}
 	for name, value := range after {
-		old, _ := json.Marshal(before[name])
-		now, _ := json.Marshal(value)
+		old, _ := encode.JSON(before[name])
+		now, _ := encode.JSON(value)
 		if !bytes.Equal(old, now) {
 			was[name], is[name] = before[name], value
 		}

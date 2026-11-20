@@ -5,6 +5,9 @@ on: [push, pull_request]
 jobs:
   go-backend:
     runs-on: ubuntu-latest
+    # encoding/json/v2, the API's JSON writer, is an experiment in Go 1.27 (redix-api #125, #155).
+    env:
+      GOEXPERIMENT: jsonv2
     defaults:
       run:
         working-directory: go-backend

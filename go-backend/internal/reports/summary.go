@@ -122,9 +122,9 @@ func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, un
 		return nil, nil, err
 	}
 	side := func(isRevenue bool) []categoryTotalView {
-		lines := []categoryTotalView{}
+		var lines []categoryTotalView
 		for _, category := range categories {
-			line := categoryTotalView{ID: category.ID, Name: category.Name, Items: []itemTotalView{}}
+			line := categoryTotalView{ID: category.ID, Name: category.Name}
 			for _, item := range items {
 				if item.CategoryID == category.ID && structure.ItemType(item.Type).IsRevenue() == isRevenue {
 					line.Items = append(line.Items, itemTotalView{ID: item.ID, Name: item.Name, Total: totals[item.ID], Type: structure.ItemType(item.Type)})

@@ -126,7 +126,7 @@ func List(ctx context.Context, q *store.Queries, projectID uuid.UUID) ([]View, e
 	if err := errors.Join(err, documentsErr, moneyErr, paymentsErr); err != nil {
 		return nil, err
 	}
-	views := []View{}
+	var views []View
 	for _, row := range rows {
 		contract := store.Contract{ID: row.ID, ProjectID: row.ProjectID, ItemID: row.ItemID, SortOrder: row.SortOrder, SupplierID: row.SupplierID, Value: row.Value,
 			IsOpenValue: row.IsOpenValue, UnitPrice: row.UnitPrice, Quantity: row.Quantity, Notes: row.Notes, IsActive: row.IsActive}

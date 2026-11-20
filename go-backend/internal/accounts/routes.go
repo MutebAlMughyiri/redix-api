@@ -98,7 +98,7 @@ func (s Routes) list(offeredOnly bool) access.Handler {
 			return
 		}
 		chargesAny := caller.Access.Holds(projectID, access.ChargeAnyAccount)
-		views := []accountView{}
+		var views []accountView
 		for _, account := range accounts {
 			mine := account.CustodianID == caller.UserID && account.CustodianID != uuid.Nil
 			if offeredOnly && !(account.IsActive && (chargesAny || mine)) {
@@ -366,7 +366,7 @@ func LatestOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, typed 
 	if err != nil {
 		return Reconciliation{}, err
 	}
-	view, actual := Reconciliation{Balances: []AccountBalance{}}, map[uuid.UUID]fixed.Total{}
+	view, actual := Reconciliation{}, map[uuid.UUID]fixed.Total{}
 	for _, check := range latest {
 		view.At = check.At
 		balances, err := q.BalancesOf(ctx, check.ID)

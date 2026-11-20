@@ -15,6 +15,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
@@ -85,7 +86,7 @@ func (p *Permission) UnmarshalJSON(data []byte) error {
 }
 
 // MarshalJSON writes the permission as the API's enums are written, camelCase: "approveProjects".
-func (p Permission) MarshalJSON() ([]byte, error) { return json.Marshal(web.Camel(string(p))) }
+func (p Permission) MarshalJSON() ([]byte, error) { return encode.JSON(web.Camel(string(p))) }
 
 // Access is what one person holds: everywhere, in each project, the partners chosen for them (UserAccess), and the tables unticked for them
 // (#106). Nothing in it changes once read.
@@ -112,7 +113,7 @@ func (a Access) UnseenIn(projectID uuid.UUID) []uuid.UUID {
 
 // Unseen is the tables unticked for the person in projectID as the JSON list the sums leave out: [] when they see every table (#106 R6, D6).
 func (a Access) Unseen(projectID uuid.UUID) string {
-	listed, _ := json.Marshal(a.UnseenIn(projectID))
+	listed, _ := encode.JSON(a.UnseenIn(projectID))
 	return string(listed)
 }
 

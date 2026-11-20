@@ -132,7 +132,7 @@ func rowsOf(ctx context.Context, q querier, t table, projectID uuid.UUID) ([]row
 	}
 	defer func() { _ = found.Close() }()
 	columns, _ := found.Columns()
-	rows := []row{}
+	var rows []row
 	for found.Next() {
 		values := make([]any, len(columns))
 		pointers := make([]any, len(columns))

@@ -406,7 +406,6 @@ func (f facts) view(entry store.Entry) entryView {
 	if number, has := f.invoices[entry.ID]; has {
 		view.Invoice.EntryID, view.Invoice.Number = entry.ID, number
 	}
-	view.Attachments = []fileView{}
 	for _, file := range f.files[entry.ID] {
 		view.Attachments = append(view.Attachments, fileView{AttachmentID: file.AttachmentID, Role: named{file.Role, roles}, FileName: file.FileName,
 			ContentType: file.ContentType, UploadedAt: file.UploadedAt})

@@ -53,7 +53,7 @@ func VatQuarters(c changes.Change, first, last time.Time) ([]VatQuarter, error) 
 	}
 	var quarters []VatQuarter
 	for start := time.Date(first.Year(), (first.Month()-1)/3*3+1, 1, 0, 0, 0, 0, time.UTC); !start.After(last); start = start.AddDate(0, 3, 0) {
-		quarter := VatQuarter{Start: start, End: start.AddDate(0, 3, -1), Purchases: []VatRow{}}
+		quarter := VatQuarter{Start: start, End: start.AddDate(0, 3, -1)}
 		for _, entry := range purchases {
 			if entry.EntryDate.Before(quarter.Start) || entry.EntryDate.After(quarter.End) {
 				continue

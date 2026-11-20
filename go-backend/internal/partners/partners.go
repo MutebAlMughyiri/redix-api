@@ -114,12 +114,12 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 		nameOf[row.ID] = row.DisplayName
 	}
 	may := deletable(partners, movements, caller, projectID)
-	views := []partnerView{}
+	var views []partnerView
 	for _, partner := range partners {
 		if partner.IsDeleted || !caller.Access.SeesCapitalOf(projectID, partner.ID) {
 			continue
 		}
-		one := partnerView{ID: partner.ID, Name: partner.Name, MayDelete: may[partner.ID], OthersDrafts: []string{}, MyDrafts: []partnerDraftView{}}
+		one := partnerView{ID: partner.ID, Name: partner.Name, MayDelete: may[partner.ID]}
 		for _, login := range logins {
 			if login.PartnerID == partner.ID {
 				one.UserID, one.UserName = login.UserID.String(), nameOf[login.UserID]
@@ -359,7 +359,7 @@ func Capital(ctx context.Context, q *store.Queries, projectID uuid.UUID, shows f
 	for _, balance := range held {
 		total = total.Plus(balance)
 	}
-	lines := []CapitalLine{}
+	var lines []CapitalLine
 	for _, partner := range partners {
 		if !partner.IsDeleted && shows(partner.ID) {
 			lines = append(lines, CapitalLine{ID: partner.ID, Name: partner.Name, Balance: held[partner.ID], SharePercent: fixed.Percent(held[partner.ID].Number(), total.Number(), 10, true)})
@@ -440,7 +440,7 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 			}
 		}
 	}
-	views := []partnerMovementView{}
+	var views []partnerMovementView
 	for _, row := range movements {
 		if row.PartnerID != partnerID || row.Status != ledger.Approved {
 			continue

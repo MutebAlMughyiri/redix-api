@@ -7,7 +7,7 @@
 # the API, prod, qa and dev, each with its own settings file, name, port, database, files and backup path (R25).
 #
 # From the PC, in go-backend (README.md, "Deploying"):
-#   CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o bin/redix-server ./cmd/server
+#   GOEXPERIMENT=jsonv2 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o bin/redix-server ./cmd/server
 #   scp -i ~/.ssh/redix -r deploy bin/redix-server <prod.env> <qa.env> <dev.env> <backup.env> root@<ip>:/opt/redix-setup/
 #   ssh -i ~/.ssh/redix root@<ip> bash /opt/redix-setup/deploy/setup.sh
 #

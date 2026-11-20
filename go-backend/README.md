@@ -40,6 +40,10 @@ Environment variables, named as the .NET API read them, `REDIX_` first; an envir
 
 ## Working on it
 
+The API writes its JSON with `encoding/json/v2`, an experiment in Go 1.27 (redix-api #125), so every build needs `GOEXPERIMENT=jsonv2`.
+The Makefile and CI set it; on a PC, once, `go env -w GOEXPERIMENT=jsonv2`, so plain `go` commands and GoLand see it too. Without it
+`internal/platform/encode` does not compile. Redix-api #155 takes the flag away once Go publishes the package.
+
 | Command | Does |
 | --- | --- |
 | `make test` | Every test, the replay of .NET's answers among them (about seven minutes) |
@@ -85,7 +89,7 @@ Before the first run:
 
 Every run, the first or a new version, from go-backend in Git Bash (`make build` is the first line, where make is installed):
 
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o bin/redix-server ./cmd/server
+    GOEXPERIMENT=jsonv2 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o bin/redix-server ./cmd/server
     scp -i ~/.ssh/redix -r deploy bin/redix-server <prod.env> <qa.env> <dev.env> <backup.env> root@<ip>:/opt/redix-setup/
     ssh -i ~/.ssh/redix root@<ip> bash /opt/redix-setup/deploy/setup.sh
 

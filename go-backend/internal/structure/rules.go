@@ -14,6 +14,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -191,13 +192,13 @@ const customKeyPrefix = "custom."
 var entryFieldKeys = []string{"description", "date", "supplier", "total", "amount", "account", "paymentMethod", "attachment", "contract", "outsideContract"}
 
 func choicesIn(kept string) []choice {
-	choices := []choice{}
+	var choices []choice
 	json.Unmarshal([]byte(kept), &choices)
 	return choices
 }
 
 func (c column) choicesText() string {
-	written, _ := json.Marshal(append([]choice{}, c.Choices...))
+	written, _ := encode.JSON(append([]choice{}, c.Choices...))
 	return string(written)
 }
 
@@ -256,7 +257,7 @@ type columnView struct {
 }
 
 func (c column) view(id uuid.UUID) columnView {
-	choices := []choiceView{}
+	var choices []choiceView
 	for _, one := range c.Choices {
 		choices = append(choices, choiceView{ID: one.ID, Name: one.Name, Sign: Sign(one.Sign)})
 	}
@@ -267,7 +268,7 @@ func (c column) view(id uuid.UUID) columnView {
 // choicesOf is what was typed as a list's choices, each a new choice with its sign: each name trimmed, the empty and the repeated ones gone
 // (Column.ChoicesOf).
 func choicesOf(typed []choiceRequest) []choice {
-	choices := []choice{}
+	var choices []choice
 	for _, one := range typed {
 		name := strings.TrimSpace(one.Name)
 		if name != "" && !slices.ContainsFunc(choices, func(kept choice) bool { return kept.Name == name }) {
@@ -309,7 +310,7 @@ func (typed columnRequest) refusalOfNew() string {
 // newColumn is the column a person typed, at sortOrder, with a key of its own; only a list keeps choices (DefaultColumn.New).
 func (typed columnRequest) newColumn(sortOrder int64) column {
 	name, _ := naming.Named(typed.Name)
-	choices := []choice{}
+	var choices []choice
 	if typed.DataType == List {
 		choices = choicesOf(typed.Choices)
 	}
@@ -499,7 +500,7 @@ type Choice struct {
 
 // ChoicesIn is the column's own choices, in their order.
 func ChoicesIn(row store.ItemColumn) []Choice {
-	choices := []Choice{}
+	var choices []Choice
 	for _, one := range ofItemColumn(row).Choices {
 		choices = append(choices, Choice{ID: one.ID, Name: one.Name, Sign: Sign(one.Sign)})
 	}

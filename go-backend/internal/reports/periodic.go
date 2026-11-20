@@ -4,7 +4,6 @@
 package reports
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -100,9 +100,9 @@ func snapshotOf(c changes.Change, number int64, at moment.Moment, previous fixed
 	}
 	report := snapshot{ProjectName: project.Name, Number: number, IssuedAt: at, PreviousExpenses: previous, Expenses: figures.Expenses,
 		Capital: figures.Capital, VatRefunds: figures.VatRefunds, Sales: figures.Sales, OtherRevenue: figures.OtherRevenue, Surplus: figures.Surplus(),
-		SurplusWithoutSales: figures.SurplusWithoutSales(), Categories: expenses, Accounts: []reportAccount{}, AccountsTotal: reconciliation.ActualTotal,
+		SurplusWithoutSales: figures.SurplusWithoutSales(), Categories: expenses, AccountsTotal: reconciliation.ActualTotal,
 		ReconciliationDifference: reconciliation.Difference, PendingCount: waiting.ExpensesCount, PendingAmount: waiting.ExpensesAmount,
-		CapitalTotal: capital, Partners: []reportPartner{}, Items: []entries.ItemReport{}, RevenueCategories: revenue,
+		CapitalTotal: capital, RevenueCategories: revenue,
 		PendingRevenueCount: waiting.RevenueCount, PendingRevenueAmount: waiting.RevenueAmount,
 		ExpensesDifference: figures.Expenses.Minus(previous), Revenue: figures.Revenue(), RevenueWithoutSales: figures.Revenue().Minus(figures.Sales)}
 	for _, balance := range reconciliation.Balances {
@@ -158,7 +158,7 @@ func Issue(c changes.Change, number int64, at moment.Moment) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	kept, err := json.Marshal(report)
+	kept, err := encode.JSON(report)
 	if err != nil {
 		return Report{}, err
 	}
@@ -184,7 +184,7 @@ func fixedTotalOf(previous store.LatestPeriodicReportRow) fixed.Total {
 // periodicReports is the reports issued, newest first.
 func (s Routes) periodicReports(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	rows, err := s.database.Queries().PeriodicReportsOf(r.Context(), web.ID(r, "projectId"))
-	issued := []Report{}
+	var issued []Report
 	for _, row := range rows {
 		issued = append(issued, Report{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: fixed.Counted(row.ExpensesTotal)})
 	}
@@ -223,13 +223,13 @@ func (s Routes) periodicReport(w http.ResponseWriter, r *http.Request, caller ac
 		return
 	}
 	if !caller.Access.Holds(projectID, access.SeeAllCapital) {
-		seen := []reportPartner{}
+		var seen []reportPartner
 		for _, partner := range report.Partners {
 			if caller.Access.SeesCapitalOf(projectID, partner.ID) {
 				seen = append(seen, partner)
 			}
 		}
-		report.Partners, report.Items = seen, []entries.ItemReport{}
+		report.Partners, report.Items = seen, nil
 	}
 	s.answer(w, r, report, err)
 }
