@@ -119,7 +119,11 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 	}
 	now := moment.Of(c.clock.Now())
 	user, _, err := c.accountOf(r.Context(), request.Login)
-	code, ok := c.codeOf(w, r, err, user.ID, resetPassword, request.Code, now)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	code, ok := c.codeOf(w, r, user.ID, resetPassword, request.Code, now)
 	if !ok {
 		return
 	}
@@ -185,7 +189,11 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 	}
 	now := moment.Of(c.clock.Now())
 	user, err := c.database.Queries().UserWithID(r.Context(), caller.UserID)
-	code, ok := c.codeOf(w, r, err, user.ID, confirmEmail, request.Code, now)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	code, ok := c.codeOf(w, r, user.ID, confirmEmail, request.Code, now)
 	if !ok {
 		return
 	}
@@ -254,13 +262,9 @@ func (c Codes) make(ctx context.Context, userID uuid.UUID, purpose int64, addres
 	return code, err
 }
 
-// codeOf is the code the user typed for purpose, checked at now, once the user was read (readErr): 500 when the user or the code could not be
-// read, codeWrong (400) for a wrong, used, expired or worn-out code (AC-02.8, AC-10.4); false once it has answered.
-func (c Codes) codeOf(w http.ResponseWriter, r *http.Request, readErr error, userID uuid.UUID, purpose int64, typed string, now moment.Moment) (store.EmailCode, bool) {
-	if readErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return store.EmailCode{}, false
-	}
+// codeOf is the code user userID typed for purpose, checked at now: 500 when it could not be read, codeWrong (400) for a wrong, used, expired or
+// worn-out one (AC-02.8, AC-10.4); false once it has answered.
+func (c Codes) codeOf(w http.ResponseWriter, r *http.Request, userID uuid.UUID, purpose int64, typed string, now moment.Moment) (store.EmailCode, bool) {
 	code, ok, err := c.check(r.Context(), userID, purpose, strings.TrimSpace(typed), now)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
