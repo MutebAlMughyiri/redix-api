@@ -90,7 +90,7 @@ func Read(lookup func(string) (string, bool)) (Settings, error) {
 	}
 	key, err := base64.StdEncoding.DecodeString(get("Jwt__SigningKey", ""))
 	if err != nil || len(key) == 0 {
-		return Settings{}, errors.New("set the REDIX_Jwt__SigningKey environment variable")
+		return Settings{}, errors.New("set the REDIX_Jwt__SigningKey environment variable to a key written in base64")
 	}
 	registrations, err := strconv.Atoi(get("Registration__PermitsPerHour", "5"))
 	if err != nil {

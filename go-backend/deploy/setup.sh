@@ -27,8 +27,10 @@ restart_api=false
 say() { printf '\n== %s\n' "$*"; }
 stop() { printf '\nSTOPPED: %s\n' "$*" >&2; exit 1; }
 
-# setting answers the value of $2 in the settings file of the instance $1, read apart so the three files never mix.
-setting() { (set -a; . "$here/$1.env"; printf '%s' "${!2:-}"); }
+# setting answers the value of $2 in the settings file $1 (prod, qa, dev or backup), read as systemd's EnvironmentFile reads it: the text after
+# the first =, whatever it holds. Read as shell, the ; between two Urls ended the line, so production's port 80 was left out of the firewall and
+# no name could prove itself to Let's Encrypt (found on WSL, R11); a $ in a password would have been expanded.
+setting() { sed -n "s/^$2=//p" "$here/$1.env" | tail -n 1; }
 
 # installs copies $1 to $2 with mode $3 when it differs, and answers whether it did.
 installs() {
@@ -52,9 +54,9 @@ for instance in "${instances[@]}"; do
   done
 done
 [[ -n $(setting prod REDIX_Certificates__Proves) ]] || stop "REDIX_Certificates__Proves is empty in prod.env: production's port 80 proves qa's and dev's names"
-set -a; . "$here/backup.env"; set +a
 for key in REDIX_BACKUP_BUCKET REDIX_BACKUP_ENDPOINT AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
-  [[ -n ${!key:-} ]] || stop "$key is empty in backup.env"
+  declare -x "$key=$(setting backup "$key")"
+  [[ -n ${!key} ]] || stop "$key is empty in backup.env"
 done
 # The mail leaves under production's name, whichever instance sends it.
 domain=$(setting prod REDIX_Domain)
@@ -86,6 +88,9 @@ PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin prohibit-password
 EOF
+# The check needs sshd's privilege separation directory, which ssh.service makes when it first runs: a machine where SSH never ran yet
+# (WSL, R11) lacks it.
+install -d -m 755 /run/sshd
 sshd -t
 systemctl try-reload-or-restart ssh
 
