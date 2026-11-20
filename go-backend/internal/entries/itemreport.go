@@ -204,7 +204,7 @@ func ItemReportOf(c changes.Change, item store.Item, shows func(uuid.UUID) bool)
 	if err != nil {
 		return ItemReport{}, err
 	}
-	known, err := factsOf(c)
+	known, err := factsOf(c, all)
 	if err != nil {
 		return ItemReport{}, err
 	}

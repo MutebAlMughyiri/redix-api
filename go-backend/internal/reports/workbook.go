@@ -302,7 +302,7 @@ func (s Routes) periodicWorkbook(w http.ResponseWriter, r *http.Request, caller 
 	for _, item := range seen.Items {
 		ids = append(ids, item.EntryIDs()...)
 	}
-	links, linksErr := s.links.OfEntries(r.Context(), read, projectID, ids, r)
+	links, linksErr := s.links.OfEntries(r.Context(), read, ids, r)
 	words, wordsErr := s.waitingWords(r)
 	zone, zoneErr := zones.Of(r.Context(), read, projectID)
 	if err != nil || linksErr != nil || wordsErr != nil || zoneErr != nil {

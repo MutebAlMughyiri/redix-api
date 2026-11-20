@@ -425,8 +425,12 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 		return
 	}
 	movements, err := read.CapitalMovements(r.Context(), projectID)
+	moved := make([]uuid.UUID, 0, len(movements))
+	for _, row := range movements {
+		moved = append(moved, row.ID)
+	}
 	accounts, accountsErr := read.AccountsOf(r.Context(), projectID)
-	files, filesErr := read.EntryFilesOf(r.Context(), projectID)
+	files, filesErr := read.EntryFilesOf(r.Context(), db.IDList(moved))
 	items, itemsErr := read.ItemsOf(r.Context(), projectID)
 	columns, columnsErr := read.ColumnsOf(r.Context(), projectID)
 	if err != nil || accountsErr != nil || filesErr != nil || itemsErr != nil || columnsErr != nil {

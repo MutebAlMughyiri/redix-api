@@ -12,6 +12,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -42,69 +43,30 @@ type facts struct {
 	tables map[uuid.UUID]uuid.UUID
 }
 
-// factsOf reads the facts of the project's entries, the waiting money of every entry waiting for approval among them.
-func factsOf(c changes.Change) (facts, error) {
+// factsOf reads the facts of entries with what every entry's facts share (#87).
+func factsOf(c changes.Change, entries []store.Entry) (facts, error) {
+	f, err := sharedFactsOf(c)
+	if err != nil {
+		return f, err
+	}
+	return f, f.readEntries(c, entries)
+}
+
+// sharedFactsOf reads what every entry's facts share: the project's names, its accounts' balances, and the money waiting to leave each account,
+// whose entries' own facts it reads too. A list reads it once, then each batch's own (#87).
+func sharedFactsOf(c changes.Change) (facts, error) {
 	q, ctx, projectID := c.Q, c.Ctx, c.ProjectID
 	f := facts{expenses: map[uuid.UUID]store.ExpenseDetail{}, purchases: map[uuid.UUID]store.PurchaseDetail{}, payments: map[uuid.UUID]store.ContractorPaymentDetail{},
 		revenues: map[uuid.UUID]store.RevenueDetail{}, capital: map[uuid.UUID]uuid.UUID{}, invoices: map[uuid.UUID]string{}, files: map[uuid.UUID][]store.EntryFilesOfRow{},
 		partners: map[uuid.UUID]string{}, items: map[uuid.UUID]string{}, accounts: map[uuid.UUID]string{}, paymentMethods: map[uuid.UUID]string{},
 		suppliers: map[uuid.UUID]store.SuppliersOfRow{}, contractors: map[uuid.UUID]uuid.UUID{}, authors: map[uuid.UUID]string{}, waitingOut: map[uuid.UUID]fixed.Total{},
 		tables: map[uuid.UUID]uuid.UUID{}}
-	tables, err := q.EntryTablesOf(ctx, projectID)
+	waiting, err := q.PendingEntriesOf(ctx, projectID)
 	if err != nil {
 		return f, err
 	}
-	for _, row := range tables {
-		f.tables[row.EntryID] = row.TableID
-	}
-	expenses, err := q.ExpenseDetailsOf(ctx, projectID)
-	if err != nil {
+	if err := f.readEntries(c, waiting); err != nil {
 		return f, err
-	}
-	for _, row := range expenses {
-		f.expenses[row.EntryID] = row
-	}
-	purchases, err := q.PurchaseDetailsOf(ctx, projectID)
-	if err != nil {
-		return f, err
-	}
-	for _, row := range purchases {
-		f.purchases[row.EntryID] = row
-	}
-	payments, err := q.PaymentDetailsOf(ctx, projectID)
-	if err != nil {
-		return f, err
-	}
-	for _, row := range payments {
-		f.payments[row.EntryID] = row
-	}
-	revenues, err := q.RevenueDetailsOf(ctx, projectID)
-	if err != nil {
-		return f, err
-	}
-	for _, row := range revenues {
-		f.revenues[row.EntryID] = row
-	}
-	capital, err := q.CapitalDetailsOf(ctx, projectID)
-	if err != nil {
-		return f, err
-	}
-	for _, row := range capital {
-		f.capital[row.EntryID] = row.PartnerID
-	}
-	invoices, err := q.InvoicesOf(ctx, projectID)
-	if err != nil {
-		return f, err
-	}
-	for _, row := range invoices {
-		f.invoices[row.EntryID] = row.Number
-	}
-	files, err := q.EntryFilesOf(ctx, projectID)
-	if err != nil {
-		return f, err
-	}
-	for _, row := range files {
-		f.files[row.EntryID] = append(f.files[row.EntryID], row)
 	}
 	partners, err := q.PartnersOf(ctx, projectID)
 	if err != nil {
@@ -158,13 +120,88 @@ func factsOf(c changes.Change) (facts, error) {
 	if f.balances, err = accounts.Balances(ctx, q, projectID, c.Access.Unseen(projectID)); err != nil {
 		return f, err
 	}
-	waiting, err := q.PendingEntriesOf(ctx, projectID)
 	for _, entry := range waiting {
 		if moved := signed(entry.Kind, fixed.Counted(entry.Amount)); moved.Number() < 0 && f.tableSeen(c.Access, projectID, entry.ID) {
 			f.waitingOut[entry.AccountID] = f.waitingOut[entry.AccountID].Minus(moved)
 		}
 	}
-	return f, err
+	return f, nil
+}
+
+// readEntries adds to f the own facts of entries - their tables, details, invoices and files - named in one JSON list (#87). An entry read again
+// is read whole again.
+func (f facts) readEntries(c changes.Change, entries []store.Entry) error {
+	q, ctx := c.Q, c.Ctx
+	named := entriesNamed(entries)
+	for _, entry := range entries {
+		delete(f.files, entry.ID)
+	}
+	tables, err := q.EntryTablesOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range tables {
+		f.tables[row.EntryID] = row.TableID
+	}
+	expenses, err := q.ExpenseDetailsOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range expenses {
+		f.expenses[row.EntryID] = row
+	}
+	purchases, err := q.PurchaseDetailsOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range purchases {
+		f.purchases[row.EntryID] = row
+	}
+	payments, err := q.PaymentDetailsOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range payments {
+		f.payments[row.EntryID] = row
+	}
+	revenues, err := q.RevenueDetailsOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range revenues {
+		f.revenues[row.EntryID] = row
+	}
+	capital, err := q.CapitalDetailsOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range capital {
+		f.capital[row.EntryID] = row.PartnerID
+	}
+	invoices, err := q.InvoicesOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range invoices {
+		f.invoices[row.EntryID] = row.Number
+	}
+	files, err := q.EntryFilesOf(ctx, named)
+	if err != nil {
+		return err
+	}
+	for _, row := range files {
+		f.files[row.EntryID] = append(f.files[row.EntryID], row)
+	}
+	return nil
+}
+
+// entriesNamed is the ids of entries as the JSON list the per-entry queries read (#87).
+func entriesNamed(entries []store.Entry) string {
+	ids := make([]uuid.UUID, 0, len(entries))
+	for _, entry := range entries {
+		ids = append(ids, entry.ID)
+	}
+	return db.IDList(ids)
 }
 
 func (f facts) itemNameOf(entry store.Entry) string {

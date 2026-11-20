@@ -1181,12 +1181,13 @@ func (q *Queries) BalancesOf(ctx context.Context, reconciliationID uuid.UUID) ([
 }
 
 const capitalDetailsOf = `-- name: CapitalDetailsOf :many
-SELECT capital_movement_details.entry_id, capital_movement_details.partner_id FROM capital_movement_details JOIN entries ON entries.id = capital_movement_details.entry_id
-WHERE entries.project_id = ?
+SELECT capital_movement_details.entry_id, capital_movement_details.partner_id FROM json_each(?1) AS named
+CROSS JOIN capital_movement_details ON capital_movement_details.entry_id = named.value
 `
 
-func (q *Queries) CapitalDetailsOf(ctx context.Context, projectID uuid.UUID) ([]CapitalMovementDetail, error) {
-	rows, err := q.query(ctx, q.capitalDetailsOfStmt, capitalDetailsOf, projectID)
+// The capital movement details of the entries named, a JSON list of the project's own ids (#87).
+func (q *Queries) CapitalDetailsOf(ctx context.Context, entries interface{}) ([]CapitalMovementDetail, error) {
+	rows, err := q.query(ctx, q.capitalDetailsOfStmt, capitalDetailsOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -2280,6 +2281,62 @@ func (q *Queries) EmailTaken(ctx context.Context, arg EmailTakenParams) (bool, e
 	return taken, err
 }
 
+const entriesBefore = `-- name: EntriesBefore :many
+SELECT id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number FROM entries WHERE project_id = ?1 AND status <> 4 AND (created_at, number) < (?2, CAST(?3 AS INTEGER))
+ORDER BY created_at DESC, number DESC LIMIT ?4
+`
+
+type EntriesBeforeParams struct {
+	ProjectID uuid.UUID
+	CreatedAt moment.Moment
+	Number    int64
+	Take      int64
+}
+
+// The newest take of a project's entries but those removed, listed after the entry at (created_at, number), newest first: the entries list
+// reads a batch at a time through the index on their order (#87).
+func (q *Queries) EntriesBefore(ctx context.Context, arg EntriesBeforeParams) ([]Entry, error) {
+	rows, err := q.query(ctx, q.entriesBeforeStmt, entriesBefore,
+		arg.ProjectID,
+		arg.CreatedAt,
+		arg.Number,
+		arg.Take,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Entry
+	for rows.Next() {
+		var i Entry
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Kind,
+			&i.Status,
+			&i.EntryDate,
+			&i.Amount,
+			&i.AccountID,
+			&i.Description,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.ApprovedAt,
+			&i.ColumnValues,
+			&i.Number,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const entriesOf = `-- name: EntriesOf :many
 SELECT id, project_id, kind, status, entry_date, amount, account_id, description, created_by_user_id, created_at, approved_at, column_values, number FROM entries WHERE project_id = ? AND status <> 4 ORDER BY created_at DESC, number DESC
 `
@@ -2336,8 +2393,8 @@ func (q *Queries) EntryExists(ctx context.Context, id uuid.UUID) (bool, error) {
 const entryFilesOf = `-- name: EntryFilesOf :many
 SELECT entry_attachments.entry_id, entry_attachments.attachment_id, entry_attachments.role, attachments.file_name, attachments.content_type,
     attachments.uploaded_at, attachments.sha256
-FROM entry_attachments JOIN attachments ON attachments.id = entry_attachments.attachment_id
-WHERE attachments.project_id = ? ORDER BY attachments.uploaded_at, attachments.id
+FROM json_each(?1) AS named CROSS JOIN entry_attachments ON entry_attachments.entry_id = named.value
+JOIN attachments ON attachments.id = entry_attachments.attachment_id ORDER BY attachments.uploaded_at, attachments.id
 `
 
 type EntryFilesOfRow struct {
@@ -2350,9 +2407,9 @@ type EntryFilesOfRow struct {
 	Sha256       string
 }
 
-// The files of the project's entries, the oldest first, each with its name and type.
-func (q *Queries) EntryFilesOf(ctx context.Context, projectID uuid.UUID) ([]EntryFilesOfRow, error) {
-	rows, err := q.query(ctx, q.entryFilesOfStmt, entryFilesOf, projectID)
+// The files of the entries named, a JSON list of the project's own ids, the oldest first, each with its name and type (#87).
+func (q *Queries) EntryFilesOf(ctx context.Context, entries interface{}) ([]EntryFilesOfRow, error) {
+	rows, err := q.query(ctx, q.entryFilesOfStmt, entryFilesOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -2438,13 +2495,13 @@ func (q *Queries) EntryOf(ctx context.Context, arg EntryOfParams) (Entry, error)
 }
 
 const entryTablesOf = `-- name: EntryTablesOf :many
-SELECT entry_tables.entry_id, entry_tables.table_id FROM entry_tables JOIN entries ON entries.id = entry_tables.entry_id
-WHERE entries.project_id = ?1
+SELECT entry_tables.entry_id, entry_tables.table_id FROM json_each(?1) AS named
+CROSS JOIN entry_tables ON entry_tables.entry_id = named.value
 `
 
-// Each entry's table in the project: its contract for a contractor's payment, its group otherwise (#106 G1).
-func (q *Queries) EntryTablesOf(ctx context.Context, projectID uuid.UUID) ([]EntryTable, error) {
-	rows, err := q.query(ctx, q.entryTablesOfStmt, entryTablesOf, projectID)
+// The table of each entry named, a JSON list of the project's own ids: its contract for a contractor's payment, its group otherwise (#106 G1, #87).
+func (q *Queries) EntryTablesOf(ctx context.Context, entries interface{}) ([]EntryTable, error) {
+	rows, err := q.query(ctx, q.entryTablesOfStmt, entryTablesOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -2467,11 +2524,12 @@ func (q *Queries) EntryTablesOf(ctx context.Context, projectID uuid.UUID) ([]Ent
 }
 
 const expenseDetailsOf = `-- name: ExpenseDetailsOf :many
-SELECT expense_details.entry_id, expense_details.item_id, expense_details.subgroup_id, expense_details.payment_method_id FROM expense_details JOIN entries ON entries.id = expense_details.entry_id WHERE entries.project_id = ?
+SELECT expense_details.entry_id, expense_details.item_id, expense_details.subgroup_id, expense_details.payment_method_id FROM json_each(?1) AS named CROSS JOIN expense_details ON expense_details.entry_id = named.value
 `
 
-func (q *Queries) ExpenseDetailsOf(ctx context.Context, projectID uuid.UUID) ([]ExpenseDetail, error) {
-	rows, err := q.query(ctx, q.expenseDetailsOfStmt, expenseDetailsOf, projectID)
+// The expense details of the entries named, a JSON list of the project's own ids (#87).
+func (q *Queries) ExpenseDetailsOf(ctx context.Context, entries interface{}) ([]ExpenseDetail, error) {
+	rows, err := q.query(ctx, q.expenseDetailsOfStmt, expenseDetailsOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -2496,6 +2554,25 @@ func (q *Queries) ExpenseDetailsOf(ctx context.Context, projectID uuid.UUID) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const fileOnAnotherEntry = `-- name: FileOnAnotherEntry :one
+SELECT EXISTS (SELECT 1 FROM entry_attachments JOIN attachments ON attachments.id = entry_attachments.attachment_id
+    WHERE attachments.project_id = ?1 AND attachments.sha256 = ?2 AND entry_attachments.entry_id <> ?3)
+`
+
+type FileOnAnotherEntryParams struct {
+	ProjectID uuid.UUID
+	Sha256    string
+	Editing   uuid.UUID
+}
+
+// Whether bytes of this sha256 are on an entry of the project other than editing (BR-22, #87).
+func (q *Queries) FileOnAnotherEntry(ctx context.Context, arg FileOnAnotherEntryParams) (bool, error) {
+	row := q.queryRow(ctx, q.fileOnAnotherEntryStmt, fileOnAnotherEntry, arg.ProjectID, arg.Sha256, arg.Editing)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const groupInProject = `-- name: GroupInProject :many
@@ -2895,11 +2972,12 @@ func (q *Queries) InactiveProjectsOf(ctx context.Context, userID uuid.UUID) ([]u
 }
 
 const invoicesOf = `-- name: InvoicesOf :many
-SELECT invoices.entry_id, invoices.number FROM invoices JOIN entries ON entries.id = invoices.entry_id WHERE entries.project_id = ?
+SELECT invoices.entry_id, invoices.number FROM json_each(?1) AS named CROSS JOIN invoices ON invoices.entry_id = named.value
 `
 
-func (q *Queries) InvoicesOf(ctx context.Context, projectID uuid.UUID) ([]Invoice, error) {
-	rows, err := q.query(ctx, q.invoicesOfStmt, invoicesOf, projectID)
+// The invoices of the entries named, a JSON list of the project's own ids (#87).
+func (q *Queries) InvoicesOf(ctx context.Context, entries interface{}) ([]Invoice, error) {
+	rows, err := q.query(ctx, q.invoicesOfStmt, invoicesOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -3752,12 +3830,13 @@ func (q *Queries) PartnersOf(ctx context.Context, projectID uuid.UUID) ([]Partne
 }
 
 const paymentDetailsOf = `-- name: PaymentDetailsOf :many
-SELECT contractor_payment_details.entry_id, contractor_payment_details.contract_id, contractor_payment_details.is_outside_contract FROM contractor_payment_details JOIN entries ON entries.id = contractor_payment_details.entry_id
-WHERE entries.project_id = ?
+SELECT contractor_payment_details.entry_id, contractor_payment_details.contract_id, contractor_payment_details.is_outside_contract FROM json_each(?1) AS named
+CROSS JOIN contractor_payment_details ON contractor_payment_details.entry_id = named.value
 `
 
-func (q *Queries) PaymentDetailsOf(ctx context.Context, projectID uuid.UUID) ([]ContractorPaymentDetail, error) {
-	rows, err := q.query(ctx, q.paymentDetailsOfStmt, paymentDetailsOf, projectID)
+// The contractor payment details of the entries named, a JSON list of the project's own ids (#87).
+func (q *Queries) PaymentDetailsOf(ctx context.Context, entries interface{}) ([]ContractorPaymentDetail, error) {
+	rows, err := q.query(ctx, q.paymentDetailsOfStmt, paymentDetailsOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -4311,11 +4390,12 @@ func (q *Queries) ProjectsOfUserWithRows(ctx context.Context, userID uuid.UUID) 
 }
 
 const purchaseDetailsOf = `-- name: PurchaseDetailsOf :many
-SELECT purchase_details.entry_id, purchase_details.supplier_id FROM purchase_details JOIN entries ON entries.id = purchase_details.entry_id WHERE entries.project_id = ?
+SELECT purchase_details.entry_id, purchase_details.supplier_id FROM json_each(?1) AS named CROSS JOIN purchase_details ON purchase_details.entry_id = named.value
 `
 
-func (q *Queries) PurchaseDetailsOf(ctx context.Context, projectID uuid.UUID) ([]PurchaseDetail, error) {
-	rows, err := q.query(ctx, q.purchaseDetailsOfStmt, purchaseDetailsOf, projectID)
+// The purchase details of the entries named, a JSON list of the project's own ids (#87).
+func (q *Queries) PurchaseDetailsOf(ctx context.Context, entries interface{}) ([]PurchaseDetail, error) {
+	rows, err := q.query(ctx, q.purchaseDetailsOfStmt, purchaseDetailsOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -4403,8 +4483,8 @@ func (q *Queries) RegisterNames(ctx context.Context, projectID uuid.UUID) ([]Reg
 }
 
 const rejectionsOf = `-- name: RejectionsOf :many
-SELECT entry_decisions.entry_id, entry_decisions.reason FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id
-WHERE entries.project_id = ? AND entry_decisions.action = 2 ORDER BY entry_decisions.id
+SELECT entry_decisions.entry_id, entry_decisions.reason FROM json_each(?1) AS named
+CROSS JOIN entry_decisions ON entry_decisions.entry_id = named.value WHERE entry_decisions.action = 2 ORDER BY entry_decisions.id
 `
 
 type RejectionsOfRow struct {
@@ -4412,9 +4492,9 @@ type RejectionsOfRow struct {
 	Reason  string
 }
 
-// The reasons the project's entries were rejected, in the order given.
-func (q *Queries) RejectionsOf(ctx context.Context, projectID uuid.UUID) ([]RejectionsOfRow, error) {
-	rows, err := q.query(ctx, q.rejectionsOfStmt, rejectionsOf, projectID)
+// The reasons the entries named, a JSON list of the project's own ids, were rejected, in the order given (#87).
+func (q *Queries) RejectionsOf(ctx context.Context, entries interface{}) ([]RejectionsOfRow, error) {
+	rows, err := q.query(ctx, q.rejectionsOfStmt, rejectionsOf, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -4761,11 +4841,12 @@ func (q *Queries) RenewDevice(ctx context.Context, arg RenewDeviceParams) error 
 }
 
 const revenueDetailsOf = `-- name: RevenueDetailsOf :many
-SELECT revenue_details.entry_id, revenue_details.item_id, revenue_details.subgroup_id FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id WHERE entries.project_id = ?
+SELECT revenue_details.entry_id, revenue_details.item_id, revenue_details.subgroup_id FROM json_each(?1) AS named CROSS JOIN revenue_details ON revenue_details.entry_id = named.value
 `
 
-func (q *Queries) RevenueDetailsOf(ctx context.Context, projectID uuid.UUID) ([]RevenueDetail, error) {
-	rows, err := q.query(ctx, q.revenueDetailsOfStmt, revenueDetailsOf, projectID)
+// The revenue details of the entries named, a JSON list of the project's own ids (#87).
+func (q *Queries) RevenueDetailsOf(ctx context.Context, entries interface{}) ([]RevenueDetail, error) {
+	rows, err := q.query(ctx, q.revenueDetailsOfStmt, revenueDetailsOf, entries)
 	if err != nil {
 		return nil, err
 	}

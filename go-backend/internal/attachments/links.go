@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/google/uuid"
@@ -39,16 +40,12 @@ func NewLinks(signingKey []byte, clock clock.Clock) Links {
 
 // OfEntries is the link to the own file of each of entryIDs that has one, its oldest (redix-app #115), by entry, on the address r reached the API
 // at, expiring a week from now.
-func (l Links) OfEntries(ctx context.Context, q *store.Queries, projectID uuid.UUID, entryIDs []uuid.UUID, r *http.Request) (map[uuid.UUID]string, error) {
-	files, err := q.EntryFilesOf(ctx, projectID)
+func (l Links) OfEntries(ctx context.Context, q *store.Queries, entryIDs []uuid.UUID, r *http.Request) (map[uuid.UUID]string, error) {
+	files, err := q.EntryFilesOf(ctx, db.IDList(entryIDs))
 	links := map[uuid.UUID]string{}
-	wanted := map[uuid.UUID]bool{}
-	for _, id := range entryIDs {
-		wanted[id] = true
-	}
 	expiresAt := strconv.FormatInt(l.clock.Now().Add(lifetime).Unix(), 10)
 	for _, file := range files {
-		if _, made := links[file.EntryID]; wanted[file.EntryID] && !made {
+		if _, made := links[file.EntryID]; !made {
 			links[file.EntryID] = schemeOf(r) + "://" + r.Host + "/files/" + l.sign(file.AttachmentID.String()+"|"+expiresAt)
 		}
 	}

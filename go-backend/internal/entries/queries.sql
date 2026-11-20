@@ -7,6 +7,12 @@ SELECT * FROM entries WHERE id = sqlc.arg(id) AND project_id = sqlc.arg(project_
 -- name: EntryExists :one
 SELECT EXISTS (SELECT 1 FROM entries WHERE id = ?);
 
+-- name: EntriesBefore :many
+-- The newest take of a project's entries but those removed, listed after the entry at (created_at, number), newest first: the entries list
+-- reads a batch at a time through the index on their order (#87).
+SELECT * FROM entries WHERE project_id = sqlc.arg(project_id) AND status <> 4 AND (created_at, number) < (sqlc.arg(created_at), CAST(sqlc.arg(number) AS INTEGER))
+ORDER BY created_at DESC, number DESC LIMIT sqlc.arg(take);
+
 -- name: EntriesOf :many
 -- A project's entries but those removed (redix-api #119), newest first.
 SELECT * FROM entries WHERE project_id = ? AND status <> 4 ORDER BY created_at DESC, number DESC;
@@ -29,31 +35,42 @@ ON CONFLICT (id) DO UPDATE SET kind = excluded.kind, status = excluded.status, e
 DELETE FROM entries WHERE id = ?;
 
 -- name: ExpenseDetailsOf :many
-SELECT expense_details.* FROM expense_details JOIN entries ON entries.id = expense_details.entry_id WHERE entries.project_id = ?;
+-- The expense details of the entries named, a JSON list of the project's own ids (#87).
+SELECT expense_details.* FROM json_each(sqlc.arg(entries)) AS named CROSS JOIN expense_details ON expense_details.entry_id = named.value;
 
 -- name: PurchaseDetailsOf :many
-SELECT purchase_details.* FROM purchase_details JOIN entries ON entries.id = purchase_details.entry_id WHERE entries.project_id = ?;
+-- The purchase details of the entries named, a JSON list of the project's own ids (#87).
+SELECT purchase_details.* FROM json_each(sqlc.arg(entries)) AS named CROSS JOIN purchase_details ON purchase_details.entry_id = named.value;
 
 -- name: PaymentDetailsOf :many
-SELECT contractor_payment_details.* FROM contractor_payment_details JOIN entries ON entries.id = contractor_payment_details.entry_id
-WHERE entries.project_id = ?;
+-- The contractor payment details of the entries named, a JSON list of the project's own ids (#87).
+SELECT contractor_payment_details.* FROM json_each(sqlc.arg(entries)) AS named
+CROSS JOIN contractor_payment_details ON contractor_payment_details.entry_id = named.value;
 
 -- name: RevenueDetailsOf :many
-SELECT revenue_details.* FROM revenue_details JOIN entries ON entries.id = revenue_details.entry_id WHERE entries.project_id = ?;
+-- The revenue details of the entries named, a JSON list of the project's own ids (#87).
+SELECT revenue_details.* FROM json_each(sqlc.arg(entries)) AS named CROSS JOIN revenue_details ON revenue_details.entry_id = named.value;
 
 -- name: CapitalDetailsOf :many
-SELECT capital_movement_details.* FROM capital_movement_details JOIN entries ON entries.id = capital_movement_details.entry_id
-WHERE entries.project_id = ?;
+-- The capital movement details of the entries named, a JSON list of the project's own ids (#87).
+SELECT capital_movement_details.* FROM json_each(sqlc.arg(entries)) AS named
+CROSS JOIN capital_movement_details ON capital_movement_details.entry_id = named.value;
 
 -- name: InvoicesOf :many
-SELECT invoices.* FROM invoices JOIN entries ON entries.id = invoices.entry_id WHERE entries.project_id = ?;
+-- The invoices of the entries named, a JSON list of the project's own ids (#87).
+SELECT invoices.* FROM json_each(sqlc.arg(entries)) AS named CROSS JOIN invoices ON invoices.entry_id = named.value;
 
 -- name: EntryFilesOf :many
--- The files of the project's entries, the oldest first, each with its name and type.
+-- The files of the entries named, a JSON list of the project's own ids, the oldest first, each with its name and type (#87).
 SELECT entry_attachments.entry_id, entry_attachments.attachment_id, entry_attachments.role, attachments.file_name, attachments.content_type,
     attachments.uploaded_at, attachments.sha256
-FROM entry_attachments JOIN attachments ON attachments.id = entry_attachments.attachment_id
-WHERE attachments.project_id = ? ORDER BY attachments.uploaded_at, attachments.id;
+FROM json_each(sqlc.arg(entries)) AS named CROSS JOIN entry_attachments ON entry_attachments.entry_id = named.value
+JOIN attachments ON attachments.id = entry_attachments.attachment_id ORDER BY attachments.uploaded_at, attachments.id;
+
+-- name: FileOnAnotherEntry :one
+-- Whether bytes of this sha256 are on an entry of the project other than editing (BR-22, #87).
+SELECT EXISTS (SELECT 1 FROM entry_attachments JOIN attachments ON attachments.id = entry_attachments.attachment_id
+    WHERE attachments.project_id = sqlc.arg(project_id) AND attachments.sha256 = sqlc.arg(sha256) AND entry_attachments.entry_id <> sqlc.arg(editing));
 
 -- name: AttachmentOf :one
 SELECT * FROM attachments WHERE id = sqlc.arg(id) AND project_id = sqlc.arg(project_id);
@@ -101,9 +118,9 @@ DELETE FROM entry_attachments WHERE entry_id = sqlc.arg(entry_id) AND attachment
 INSERT INTO entry_decisions (entry_id, action, user_id, at, reason) VALUES (?, ?, ?, ?, ?);
 
 -- name: RejectionsOf :many
--- The reasons the project's entries were rejected, in the order given.
-SELECT entry_decisions.entry_id, entry_decisions.reason FROM entry_decisions JOIN entries ON entries.id = entry_decisions.entry_id
-WHERE entries.project_id = ? AND entry_decisions.action = 2 ORDER BY entry_decisions.id;
+-- The reasons the entries named, a JSON list of the project's own ids, were rejected, in the order given (#87).
+SELECT entry_decisions.entry_id, entry_decisions.reason FROM json_each(sqlc.arg(entries)) AS named
+CROSS JOIN entry_decisions ON entry_decisions.entry_id = named.value WHERE entry_decisions.action = 2 ORDER BY entry_decisions.id;
 
 -- name: RemoveDecisions :exec
 DELETE FROM entry_decisions WHERE entry_id = ?;
@@ -182,9 +199,9 @@ UNION ALL SELECT 'paymentMethod', payment_methods.name, payment_methods.sort_ord
 ORDER BY 1, 3, 2 COLLATE names;
 
 -- name: EntryTablesOf :many
--- Each entry's table in the project: its contract for a contractor's payment, its group otherwise (#106 G1).
-SELECT entry_tables.entry_id, entry_tables.table_id FROM entry_tables JOIN entries ON entries.id = entry_tables.entry_id
-WHERE entries.project_id = sqlc.arg(project_id);
+-- The table of each entry named, a JSON list of the project's own ids: its contract for a contractor's payment, its group otherwise (#106 G1, #87).
+SELECT entry_tables.entry_id, entry_tables.table_id FROM json_each(sqlc.arg(entries)) AS named
+CROSS JOIN entry_tables ON entry_tables.entry_id = named.value;
 
 -- name: TableOfEntry :many
 -- An entry's table, none for a capital movement (#106).

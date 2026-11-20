@@ -447,7 +447,7 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 		return
 	}
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
-	known, factsErr := factsOf(c)
+	known, factsErr := factsOf(c, all)
 	subgroups, subgroupsErr := c.Q.SubgroupsOfItem(c.Ctx, item.ID)
 	contractRows, contractsErr := c.Q.ContractsOf(c.Ctx, c.ProjectID)
 	partners, partnersErr := c.Q.PartnersInItem(c.Ctx, item.ID)

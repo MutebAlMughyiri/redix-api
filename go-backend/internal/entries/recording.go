@@ -11,6 +11,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
@@ -338,10 +339,7 @@ func fileOnAnotherEntry(c changes.Change, attachmentID, editing uuid.UUID) (bool
 	if err != nil {
 		return false, err
 	}
-	files, err := c.Q.EntryFilesOf(c.Ctx, c.ProjectID)
-	return slices.ContainsFunc(files, func(file store.EntryFilesOfRow) bool {
-		return file.EntryID != editing && file.Sha256 == attachment.Sha256
-	}), err
+	return c.Q.FileOnAnotherEntry(c.Ctx, store.FileOnAnotherEntryParams{ProjectID: c.ProjectID, Sha256: attachment.Sha256, Editing: editing})
 }
 
 // add keeps a new entry under its project's next number (FR-54), with its line - sent, or created - each of its rows with its line, and when sent
@@ -454,19 +452,12 @@ func replace(c changes.Change, existing, edited store.Entry, typed Request, t ta
 
 // filesOf is the entry's files, the oldest first.
 func filesOf(c changes.Change, entryID uuid.UUID) ([]store.EntryFilesOfRow, error) {
-	files, err := c.Q.EntryFilesOf(c.Ctx, c.ProjectID)
-	var kept []store.EntryFilesOfRow
-	for _, file := range files {
-		if file.EntryID == entryID {
-			kept = append(kept, file)
-		}
-	}
-	return kept, err
+	return c.Q.EntryFilesOf(c.Ctx, db.IDList([]uuid.UUID{entryID}))
 }
 
 // removeRows removes what the entry holds - of its files only files - each with its Delete line (EntryChanges.RemoveDetailsAsync).
 func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfRow) error {
-	expenses, err := c.Q.ExpenseDetailsOf(c.Ctx, c.ProjectID)
+	expenses, err := c.Q.ExpenseDetailsOf(c.Ctx, db.IDList([]uuid.UUID{entryID}))
 	if err != nil {
 		return err
 	}
@@ -478,7 +469,7 @@ func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfR
 			}
 		}
 	}
-	purchases, err := c.Q.PurchaseDetailsOf(c.Ctx, c.ProjectID)
+	purchases, err := c.Q.PurchaseDetailsOf(c.Ctx, db.IDList([]uuid.UUID{entryID}))
 	if err != nil {
 		return err
 	}
@@ -489,7 +480,7 @@ func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfR
 			}
 		}
 	}
-	payments, err := c.Q.PaymentDetailsOf(c.Ctx, c.ProjectID)
+	payments, err := c.Q.PaymentDetailsOf(c.Ctx, db.IDList([]uuid.UUID{entryID}))
 	if err != nil {
 		return err
 	}
@@ -501,7 +492,7 @@ func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfR
 			}
 		}
 	}
-	invoices, err := c.Q.InvoicesOf(c.Ctx, c.ProjectID)
+	invoices, err := c.Q.InvoicesOf(c.Ctx, db.IDList([]uuid.UUID{entryID}))
 	if err != nil {
 		return err
 	}
@@ -520,7 +511,7 @@ func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfR
 			return err
 		}
 	}
-	revenues, err := c.Q.RevenueDetailsOf(c.Ctx, c.ProjectID)
+	revenues, err := c.Q.RevenueDetailsOf(c.Ctx, db.IDList([]uuid.UUID{entryID}))
 	if err != nil {
 		return err
 	}
@@ -532,7 +523,7 @@ func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfR
 			}
 		}
 	}
-	capital, err := c.Q.CapitalDetailsOf(c.Ctx, c.ProjectID)
+	capital, err := c.Q.CapitalDetailsOf(c.Ctx, db.IDList([]uuid.UUID{entryID}))
 	if err != nil {
 		return err
 	}

@@ -207,7 +207,7 @@ func (s Routes) sendReport(w http.ResponseWriter, r *http.Request, c changes.Cha
 		return
 	}
 	project, projectErr := c.Q.ProjectWithID(c.Ctx, c.ProjectID)
-	links, linksErr := s.links.OfEntries(c.Ctx, c.Q, c.ProjectID, report.EntryIDs(), r)
+	links, linksErr := s.links.OfEntries(c.Ctx, c.Q, report.EntryIDs(), r)
 	if err != nil || projectErr != nil || linksErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return

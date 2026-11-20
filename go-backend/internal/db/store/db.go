@@ -276,6 +276,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.emailTakenStmt, err = db.PrepareContext(ctx, emailTaken); err != nil {
 		return nil, fmt.Errorf("error preparing query EmailTaken: %w", err)
 	}
+	if q.entriesBeforeStmt, err = db.PrepareContext(ctx, entriesBefore); err != nil {
+		return nil, fmt.Errorf("error preparing query EntriesBefore: %w", err)
+	}
 	if q.entriesOfStmt, err = db.PrepareContext(ctx, entriesOf); err != nil {
 		return nil, fmt.Errorf("error preparing query EntriesOf: %w", err)
 	}
@@ -296,6 +299,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.expenseDetailsOfStmt, err = db.PrepareContext(ctx, expenseDetailsOf); err != nil {
 		return nil, fmt.Errorf("error preparing query ExpenseDetailsOf: %w", err)
+	}
+	if q.fileOnAnotherEntryStmt, err = db.PrepareContext(ctx, fileOnAnotherEntry); err != nil {
+		return nil, fmt.Errorf("error preparing query FileOnAnotherEntry: %w", err)
 	}
 	if q.groupInProjectStmt, err = db.PrepareContext(ctx, groupInProject); err != nil {
 		return nil, fmt.Errorf("error preparing query GroupInProject: %w", err)
@@ -1187,6 +1193,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing emailTakenStmt: %w", cerr)
 		}
 	}
+	if q.entriesBeforeStmt != nil {
+		if cerr := q.entriesBeforeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing entriesBeforeStmt: %w", cerr)
+		}
+	}
 	if q.entriesOfStmt != nil {
 		if cerr := q.entriesOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing entriesOfStmt: %w", cerr)
@@ -1220,6 +1231,11 @@ func (q *Queries) Close() error {
 	if q.expenseDetailsOfStmt != nil {
 		if cerr := q.expenseDetailsOfStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing expenseDetailsOfStmt: %w", cerr)
+		}
+	}
+	if q.fileOnAnotherEntryStmt != nil {
+		if cerr := q.fileOnAnotherEntryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing fileOnAnotherEntryStmt: %w", cerr)
 		}
 	}
 	if q.groupInProjectStmt != nil {
@@ -2120,6 +2136,7 @@ type Queries struct {
 	documentsOfStmt                     *sql.Stmt
 	documentsOfContractStmt             *sql.Stmt
 	emailTakenStmt                      *sql.Stmt
+	entriesBeforeStmt                   *sql.Stmt
 	entriesOfStmt                       *sql.Stmt
 	entryExistsStmt                     *sql.Stmt
 	entryFilesOfStmt                    *sql.Stmt
@@ -2127,6 +2144,7 @@ type Queries struct {
 	entryOfStmt                         *sql.Stmt
 	entryTablesOfStmt                   *sql.Stmt
 	expenseDetailsOfStmt                *sql.Stmt
+	fileOnAnotherEntryStmt              *sql.Stmt
 	groupInProjectStmt                  *sql.Stmt
 	hasEntriesWaitingStmt               *sql.Stmt
 	hasUsersStmt                        *sql.Stmt
@@ -2372,6 +2390,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		documentsOfStmt:                     q.documentsOfStmt,
 		documentsOfContractStmt:             q.documentsOfContractStmt,
 		emailTakenStmt:                      q.emailTakenStmt,
+		entriesBeforeStmt:                   q.entriesBeforeStmt,
 		entriesOfStmt:                       q.entriesOfStmt,
 		entryExistsStmt:                     q.entryExistsStmt,
 		entryFilesOfStmt:                    q.entryFilesOfStmt,
@@ -2379,6 +2398,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		entryOfStmt:                         q.entryOfStmt,
 		entryTablesOfStmt:                   q.entryTablesOfStmt,
 		expenseDetailsOfStmt:                q.expenseDetailsOfStmt,
+		fileOnAnotherEntryStmt:              q.fileOnAnotherEntryStmt,
 		groupInProjectStmt:                  q.groupInProjectStmt,
 		hasEntriesWaitingStmt:               q.hasEntriesWaitingStmt,
 		hasUsersStmt:                        q.hasUsersStmt,

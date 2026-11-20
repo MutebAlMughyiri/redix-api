@@ -7,10 +7,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
@@ -137,7 +139,7 @@ func (s Routes) submit(w http.ResponseWriter, r *http.Request, caller access.Cal
 // expense's or revenue's item, or the project's capital item for a partner's money.
 func (s Routes) missingOf(r *http.Request, entry store.Entry) ([]string, error) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: entry.ProjectID}
-	known, err := factsOf(c)
+	known, err := factsOf(c, []store.Entry{entry})
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +376,7 @@ func Approve(c changes.Change, entry store.Entry, approvedAt moment.Moment) erro
 
 // approveItsSupplier approves the supplier of the entry - its purchase's, or its contract's contractor - when it waits (AC-44.1).
 func approveItsSupplier(c changes.Change, entry store.Entry) error {
-	facts, err := factsOf(c)
+	facts, err := factsOf(c, []store.Entry{entry})
 	if err != nil {
 		return err
 	}
@@ -433,71 +435,103 @@ func (s Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Cal
 	})
 }
 
-// seenBy is the project's entries caller may see, newest first, never a removed one (EntriesEndpoints.SeenByAsync): a draft only for who entered it
-// (BR-42), and a partner's money only for whoever sees that partner (BR-31).
+// seenBy is the project's entries caller may see, newest first, never a removed one, with their facts.
 func (s Routes) seenBy(c changes.Change, caller access.Caller) ([]store.Entry, facts, error) {
 	c.Access = caller.Access
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
 	if err != nil {
 		return nil, facts{}, err
 	}
-	known, err := factsOf(c)
+	known, err := factsOf(c, all)
 	if err != nil {
 		return nil, facts{}, err
 	}
-	seesAll, chosen := caller.Access.Holds(c.ProjectID, access.SeeAllCapital), caller.Access.ChosenIn(c.ProjectID)
-	if !caller.Access.Holds(c.ProjectID, access.SeeChosenCapital) {
+	return known.seenAmong(caller, c.ProjectID, all), known, nil
+}
+
+// seenAmong is those of entries caller may see, in their order (EntriesEndpoints.SeenByAsync): a draft only for who entered it (BR-42), and a
+// partner's money only for whoever sees that partner (BR-31).
+func (f facts) seenAmong(caller access.Caller, projectID uuid.UUID, entries []store.Entry) []store.Entry {
+	seesAll, chosen := caller.Access.Holds(projectID, access.SeeAllCapital), caller.Access.ChosenIn(projectID)
+	if !caller.Access.Holds(projectID, access.SeeChosenCapital) {
 		chosen = nil
 	}
 	var seen []store.Entry
-	for _, entry := range all {
-		partner, isCapital := known.capital[entry.ID]
+	for _, entry := range entries {
+		partner, isCapital := f.capital[entry.ID]
 		if (entry.Status != draft || entry.CreatedByUserID == caller.UserID) && (seesAll || !isCapital || slices.Contains(chosen, partner)) &&
-			known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
+			f.tableSeen(caller.Access, projectID, entry.ID) {
 			seen = append(seen, entry)
 		}
 	}
-	return seen, known, nil
+	return seen
 }
 
-// rows is the entries keep keeps of those caller sees, as the lists show them (EntriesEndpoints.RowsAsync).
-func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entry) bool) ([]rowView, error) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	seen, known, err := s.seenBy(c, caller)
+// entryBatch is how many entries a list reads at a time, newest first, with their facts, until it holds what it shows (#87).
+const entryBatch = 500
+
+// newest is a moment after every entry's, where a list begins.
+var newest = moment.Of(time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC))
+
+// everyRow shows every row a list keeps.
+func everyRow(rowView) bool { return true }
+
+// rows is the entries keep keeps of those caller sees, as the lists show them and show keeps (EntriesEndpoints.RowsAsync), newest first: read a
+// batch at a time with that batch's facts, until take are kept, every one when take is 0 (#87).
+func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entry, facts) bool, show func(rowView) bool, take int) ([]rowView, error) {
+	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
+	known, err := sharedFactsOf(c)
 	if err != nil {
 		return nil, err
-	}
-	rejections, err := c.Q.RejectionsOf(c.Ctx, c.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	lastReason := map[uuid.UUID]string{}
-	for _, row := range rejections {
-		lastReason[row.EntryID] = row.Reason
 	}
 	views := []rowView{}
-	for _, entry := range seen {
-		if !keep(entry) {
-			continue
+	after := store.EntriesBeforeParams{ProjectID: c.ProjectID, CreatedAt: newest, Number: math.MaxInt64, Take: entryBatch}
+	for {
+		batch, err := c.Q.EntriesBefore(c.Ctx, after)
+		if err != nil || len(batch) == 0 {
+			return views, err
 		}
-		view := known.row(entry, caller.UserID)
-		if entry.Status == rejected {
-			view.RejectionReason = lastReason[entry.ID]
+		after.CreatedAt, after.Number = batch[len(batch)-1].CreatedAt, batch[len(batch)-1].Number
+		if err := known.readEntries(c, batch); err != nil {
+			return nil, err
 		}
-		views = append(views, view)
+		seen := known.seenAmong(caller, c.ProjectID, batch)
+		rejections, err := c.Q.RejectionsOf(c.Ctx, entriesNamed(seen))
+		if err != nil {
+			return nil, err
+		}
+		lastReason := map[uuid.UUID]string{}
+		for _, row := range rejections {
+			lastReason[row.EntryID] = row.Reason
+		}
+		for _, entry := range seen {
+			if !keep(entry, known) {
+				continue
+			}
+			view := known.row(entry, caller.UserID)
+			if entry.Status == rejected {
+				view.RejectionReason = lastReason[entry.ID]
+			}
+			if !show(view) {
+				continue
+			}
+			views = append(views, view)
+			if len(views) == take {
+				return views, nil
+			}
+		}
 	}
-	return views, nil
 }
 
 // mine is where the caller's own entries stand, newest first (UC-030).
 func (s Routes) mine(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	views, err := s.rows(r, caller, func(entry store.Entry) bool { return entry.CreatedByUserID == caller.UserID })
+	views, err := s.rows(r, caller, func(entry store.Entry, _ facts) bool { return entry.CreatedByUserID == caller.UserID }, everyRow, 0)
 	s.answer(w, r, views, err)
 }
 
 // row is one entry as the lists show it (findings row 201): 404 for one the caller does not see (BR-31, BR-42), or none.
 func (s Routes) row(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	views, err := s.rows(r, caller, func(entry store.Entry) bool { return entry.ID == web.ID(r, "entryId") })
+	views, err := s.rows(r, caller, func(entry store.Entry, _ facts) bool { return entry.ID == web.ID(r, "entryId") }, everyRow, 1)
 	if err == nil && len(views) != 1 {
 		problem.Status(w, r, http.StatusNotFound)
 		return
@@ -516,19 +550,12 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 	query := r.URL.Query()
 	search := searchOf(query["kinds"], query["statuses"], query.Get("text"), query.Get("mine"), query.Get("from"), query.Get("to"), query.Get("number"))
 	attachableOnly := strings.EqualFold(query.Get("attachable"), "true")
-	views, err := s.rows(r, caller, func(entry store.Entry) bool { return !attachableOnly || attachableBy(entry, caller) })
+	take, _ := strconv.Atoi(query.Get("take"))
+	kept, err := s.rows(r, caller, func(entry store.Entry, _ facts) bool { return !attachableOnly || attachableBy(entry, caller) }, search.keeps,
+		max(take, 0))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
-	}
-	kept := []rowView{}
-	for _, view := range views {
-		if search.keeps(view) {
-			kept = append(kept, view)
-		}
-	}
-	if take, _ := strconv.Atoi(query.Get("take")); take > 0 && take < len(kept) {
-		kept = kept[:take]
 	}
 	web.JSON(w, r, http.StatusOK, kept)
 }
@@ -562,7 +589,7 @@ func (s Routes) answerView(w http.ResponseWriter, r *http.Request, entryID uuid.
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	known, err := factsOf(c)
+	known, err := factsOf(c, []store.Entry{entry})
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -578,7 +605,7 @@ func (s Routes) pending(w http.ResponseWriter, r *http.Request, caller access.Ca
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	known, err := factsOf(c)
+	known, err := factsOf(c, waiting)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
