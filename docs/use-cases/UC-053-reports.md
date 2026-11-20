@@ -24,7 +24,9 @@
 
 A report keeps every figure as issued, in `PeriodicReports.Snapshot`. What was approved after the previous report is new and shaded green, whatever its date (BR-26). `ReportFormats` is the one owner of how a file writes a number, a date and a sheet name, and of the embedded Arabic font (NFR-13). The PDFs use QuestPDF under its Community licence; the workbooks use ClosedXML.
 
-**Not proven:** AC-29.1, AC-45.2 and AC-47.1's totals are golden tests against report 23 and the accountant's file, which need the history of Project A imported (UC-052). AC-33.1's "opens in Excel, Google Sheets and Numbers" has not been tried in those programs; the tests open each file with ClosedXML. Findings row 119 says what is left.
+**Proven on figures worked out by hand:** AC-29.1 and AC-45.2, by `ReportFilesTests.AC_29_1_AC_45_2_TheIssuedReportHoldsEveryFigureAsWorkedOutByHand`, replayed against Go; AC-47.1 by its row below. The golden check against the real report 23 and the accountant's file ran once, on 6 Nov 2026, with Project A's history, and stays off the repo, which keeps no real figures (UC-052).
+
+**Not proven:** AC-33.1's "opens in Excel, Google Sheets and Numbers" has not been tried in those programs; the tests open each file with excelize. Findings row 119 says what is left.
 
 Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNetsAnswers/Class.Name`; one named `Test…` is Go's own.
 
