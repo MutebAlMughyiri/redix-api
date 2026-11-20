@@ -70,6 +70,7 @@ func (t ItemType) takesPurchases() bool { return t == Purchases || t == Both }
 // DataType is what a column holds (ColumnDataType, FR-41); a person chooses among the first five, and a file is the attachment's alone.
 type DataType int64
 
+// The data types, in the order dataTypes names them.
 const (
 	Text DataType = iota
 	Number
@@ -94,6 +95,7 @@ func (d *DataType) UnmarshalJSON(data []byte) error {
 // Sign is the sign a list's choice gives the amount of the entry that chooses it (ChoiceSign, redix-api #129).
 type Sign int64
 
+// The signs a choice gives its entry: none, plus and minus.
 const (
 	Unsigned Sign = iota
 	Plus

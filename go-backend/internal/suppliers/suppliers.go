@@ -83,6 +83,7 @@ type supplierView struct {
 
 type status int64
 
+// MarshalJSON writes the status by its name.
 func (s status) MarshalJSON() ([]byte, error) { return statuses.Write(int64(s)) }
 
 func viewOf(row store.SuppliersOfRow, counted bool) supplierView {

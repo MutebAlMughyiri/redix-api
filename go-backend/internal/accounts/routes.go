@@ -34,8 +34,10 @@ var accountTypes = web.Enum{"bank", "cashCustody"}
 // AccountType is what an account is: a Bank account, or cash a custodian holds (FR-21).
 type AccountType int64
 
+// MarshalJSON writes the account type by its name.
 func (t AccountType) MarshalJSON() ([]byte, error) { return accountTypes.Write(int64(t)) }
 
+// UnmarshalJSON reads the account type by its name or its number.
 func (t *AccountType) UnmarshalJSON(data []byte) error {
 	value, err := accountTypes.Read(data)
 	*t = AccountType(value)

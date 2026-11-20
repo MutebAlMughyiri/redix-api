@@ -96,6 +96,11 @@ type recorded struct {
 	body   bytes.Buffer
 }
 
-func (a *recorded) Header() http.Header         { return a.header }
+// Header is the recorded answer's header.
+func (a *recorded) Header() http.Header { return a.header }
+
+// Write keeps the answer's body.
 func (a *recorded) Write(b []byte) (int, error) { return a.body.Write(b) }
-func (a *recorded) WriteHeader(status int)      { a.status = status }
+
+// WriteHeader keeps the answer's status.
+func (a *recorded) WriteHeader(status int) { a.status = status }

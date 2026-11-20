@@ -35,6 +35,7 @@ type Table struct {
 // CellKind is how a column's cells are written: as they are, centred, as a day, or as an amount centred, the price of one.
 type CellKind int
 
+// The cell kinds, in the order CellKind names them.
 const (
 	Text CellKind = iota
 	Centred

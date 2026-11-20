@@ -116,6 +116,7 @@ type answered struct {
 	status int
 }
 
+// WriteHeader keeps the first status the handler wrote, then sends it.
 func (a *answered) WriteHeader(status int) {
 	if a.status == 0 {
 		a.status = status
@@ -123,6 +124,7 @@ func (a *answered) WriteHeader(status int) {
 	a.ResponseWriter.WriteHeader(status)
 }
 
+// Write keeps 200 as the status when the handler wrote none before its body, then sends the body.
 func (a *answered) Write(body []byte) (int, error) {
 	if a.status == 0 {
 		a.status = http.StatusOK

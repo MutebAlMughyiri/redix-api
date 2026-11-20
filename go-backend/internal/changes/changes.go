@@ -76,6 +76,7 @@ type Refusal struct {
 	Detail any
 }
 
+// Error says the change was refused, with the refusal's code, for a log.
 func (r Refusal) Error() string { return "changes: refused " + r.Code }
 
 // NotFound is a row the project does not hold, 404.

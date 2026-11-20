@@ -36,6 +36,7 @@ type named struct {
 	enum  web.Enum
 }
 
+// MarshalJSON writes the value by its name in its enum.
 func (n named) MarshalJSON() ([]byte, error) { return n.enum.Write(n.value) }
 
 func kindOf(value int64) named   { return named{value, ledger.Kinds} }

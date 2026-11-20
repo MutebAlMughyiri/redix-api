@@ -72,6 +72,7 @@ type LifetimeError struct {
 	NotBefore, Expires time.Time
 }
 
+// Error says the access token's lifetime does not hold now.
 func (e LifetimeError) Error() string { return "auth: the access token's lifetime does not hold now" }
 
 // Is makes a lifetime error one of ErrNotValid.

@@ -51,6 +51,7 @@ func TellManagers(ctx context.Context, q *store.Queries, projectID uuid.UUID, ki
 var kinds = web.Enum{"entrySubmitted", "entryApproved", "entryRejected", "projectApproved", "projectRejected", "permissionRequested",
 	"permissionRequestApproved", "permissionRequestRejected"}
 
+// MarshalJSON writes the kind by its name.
 func (k Kind) MarshalJSON() ([]byte, error) { return kinds.Write(int64(k)) }
 
 // notificationView is part of what GET /notifications answers (UC-036).

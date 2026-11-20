@@ -133,6 +133,7 @@ type problemOnly struct {
 	written bool
 }
 
+// WriteHeader answers the mux's status as problem details in place of its plain text, keeping its other headers.
 func (p *problemOnly) WriteHeader(status int) {
 	p.written = true
 	p.ResponseWriter.Header().Del("Content-Type")
@@ -140,6 +141,7 @@ func (p *problemOnly) WriteHeader(status int) {
 	problem.Status(p.ResponseWriter, p.request, status)
 }
 
+// Write drops the mux's plain-text body, the problem details having been written in its place.
 func (p *problemOnly) Write(body []byte) (int, error) {
 	if !p.written {
 		p.WriteHeader(http.StatusOK)

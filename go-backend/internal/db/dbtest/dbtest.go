@@ -115,6 +115,7 @@ func Open(t testing.TB, path string) (db.DB, *Failure) {
 // failing is SQLite's driver, its connections counted for the file Watch names.
 type failing struct{ sqlite driver.Driver }
 
+// Open is SQLite's connection, wrapped to fail when Watch names its file.
 func (d failing) Open(name string) (driver.Conn, error) {
 	inner, err := d.sqlite.Open(name)
 	if err != nil {
@@ -136,10 +137,12 @@ type conn struct {
 	failure *Failure
 }
 
+// Prepare is PrepareContext with no context, as driver.Conn requires.
 func (c conn) Prepare(query string) (driver.Stmt, error) {
 	return c.PrepareContext(context.Background(), query)
 }
 
+// PrepareContext fails while the failure is armed, else prepares a statement that fails the same way.
 func (c conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
 	if err := c.failure.next(); err != nil {
 		return nil, err
@@ -151,10 +154,13 @@ func (c conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, er
 	return stmt{inner: inner, failure: c.failure}, nil
 }
 
+// Close closes SQLite's connection.
 func (c conn) Close() error { return c.inner.Close() }
 
+// Begin is BeginTx with no context, as driver.Conn requires.
 func (c conn) Begin() (driver.Tx, error) { return c.BeginTx(context.Background(), driver.TxOptions{}) }
 
+// BeginTx fails while the failure is armed, else begins a transaction whose Commit can fail.
 func (c conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	if err := c.failure.next(); err != nil {
 		return nil, err
@@ -166,6 +172,7 @@ func (c conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, er
 	return tx{inner: inner, failure: c.failure}, nil
 }
 
+// ExecContext fails while the failure is armed, else runs the statement on SQLite.
 func (c conn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	if err := c.failure.next(); err != nil {
 		return nil, err
@@ -173,6 +180,7 @@ func (c conn) ExecContext(ctx context.Context, query string, args []driver.Named
 	return c.inner.(driver.ExecerContext).ExecContext(ctx, query, args)
 }
 
+// QueryContext fails while the failure is armed, else runs the query on SQLite.
 func (c conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	if err := c.failure.next(); err != nil {
 		return nil, err
@@ -180,6 +188,7 @@ func (c conn) QueryContext(ctx context.Context, query string, args []driver.Name
 	return c.inner.(driver.QueryerContext).QueryContext(ctx, query, args)
 }
 
+// Ping fails while the failure is armed, else pings SQLite.
 func (c conn) Ping(ctx context.Context) error {
 	if err := c.failure.next(); err != nil {
 		return err
@@ -187,10 +196,12 @@ func (c conn) Ping(ctx context.Context) error {
 	return c.inner.(driver.Pinger).Ping(ctx)
 }
 
+// ResetSession passes to SQLite, as the pool asks before it reuses a connection.
 func (c conn) ResetSession(ctx context.Context) error {
 	return c.inner.(driver.SessionResetter).ResetSession(ctx)
 }
 
+// IsValid passes to SQLite, as the pool asks whether to keep a connection.
 func (c conn) IsValid() bool { return c.inner.(driver.Validator).IsValid() }
 
 type stmt struct {
@@ -198,7 +209,10 @@ type stmt struct {
 	failure *Failure
 }
 
-func (s stmt) Close() error  { return s.inner.Close() }
+// Close closes SQLite's statement.
+func (s stmt) Close() error { return s.inner.Close() }
+
+// NumInput is the number of SQLite's placeholders in the statement.
 func (s stmt) NumInput() int { return s.inner.NumInput() }
 
 // Exec and Query are what driver.Stmt requires; database/sql calls ExecContext and QueryContext instead on a statement that has them, so these
@@ -207,6 +221,7 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 	return s.ExecContext(context.Background(), named(args))
 }
 
+// Query passes to QueryContext, as Exec does to ExecContext.
 func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
 	return s.QueryContext(context.Background(), named(args))
 }
@@ -220,6 +235,7 @@ func named(args []driver.Value) []driver.NamedValue {
 	return values
 }
 
+// ExecContext fails while the failure is armed, else runs the statement on SQLite.
 func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	if err := s.failure.next(); err != nil {
 		return nil, err
@@ -227,6 +243,7 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	return s.inner.(driver.StmtExecContext).ExecContext(ctx, args)
 }
 
+// QueryContext fails while the failure is armed, else runs the query on SQLite.
 func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	if err := s.failure.next(); err != nil {
 		return nil, err
@@ -252,4 +269,5 @@ func (t tx) Commit() error {
 	return nil
 }
 
+// Rollback passes to SQLite and is never made to fail, so a change that failed can always roll back.
 func (t tx) Rollback() error { return t.inner.Rollback() }

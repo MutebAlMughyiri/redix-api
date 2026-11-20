@@ -39,6 +39,7 @@ const (
 
 var requestStatuses = web.Enum{"waiting", "approved", "rejected"}
 
+// MarshalJSON writes the request's status by its name.
 func (s requestStatus) MarshalJSON() ([]byte, error) { return requestStatuses.Write(int64(s)) }
 
 // reasonMaxLength is the longest reason a request or a rejection gives.

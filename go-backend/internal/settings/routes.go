@@ -60,6 +60,7 @@ type paysFrom struct {
 	named bool
 }
 
+// UnmarshalJSON reads the accounts named, and that the request named a list at all.
 func (p *paysFrom) UnmarshalJSON(data []byte) error {
 	p.named = true
 	return json.Unmarshal(data, &p.ids)
