@@ -28,7 +28,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| Money is `decimal(19,4)` (BR-13) | `fixed.Number` | Enforced by the model; checked in the migration |
+| Money is an INTEGER of ten-thousandths, rounding only in totals (BR-13) | `fixed.Number` | `TestBR13_AnAmountIsWrittenWithItsFourDecimalsAsDotNetWritesIt`, `TestBR13_AnAmountIsReadExactlyAndRoundedPastFourDecimalsAsSqlServerStoresIt`, `TestBR13_AddingAmountsNeverLosesAHalala` |
 | Every table has a required rowversion. **Retired with SQL Server (redix-api #140 N5):** SQLite writes one transaction at a time, so no row needs a version | - | - |
 | `/health` checks the database | `server.Routes`: `/health` pings the database | `HealthTests.HealthAnswersAgainstMigratedDatabase` |
 | A bundle holds every word of its language | `translations.bundle` | `TranslationsTests.BundleHoldsEveryWordOfTheLanguage` |
