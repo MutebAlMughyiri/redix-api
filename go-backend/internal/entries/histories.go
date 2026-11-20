@@ -4,7 +4,6 @@
 package entries
 
 import (
-	"encoding/json"
 	"math"
 	"net/http"
 	"slices"
@@ -22,6 +21,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/spelling"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/stored"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
@@ -152,7 +152,7 @@ func each[T historyLine](keep func(store.History) bool, lineOf func(store.Histor
 // textIn is the text a line kept under name; "" when it kept none (HistoryPage.TextIn).
 func textIn(values, name string) string {
 	var kept map[string]any
-	json.Unmarshal([]byte(values), &kept)
+	stored.Read([]byte(values), &kept)
 	text, _ := kept[name].(string)
 	return text
 }

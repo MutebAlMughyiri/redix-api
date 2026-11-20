@@ -21,6 +21,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/spelling"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/stored"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
@@ -118,7 +119,7 @@ type values map[string]json.RawMessage
 
 func (v values) text(name string) string {
 	var text string
-	json.Unmarshal(v[name], &text)
+	stored.Read(v[name], &text)
 	return text
 }
 
@@ -134,7 +135,7 @@ func (v values) number(name string) fixed.Number {
 
 func (v values) whole(name string) int64 {
 	var whole float64
-	json.Unmarshal(v[name], &whole)
+	stored.Read(v[name], &whole)
 	return int64(whole)
 }
 
@@ -186,7 +187,7 @@ func (k knowledge) ownValues(row store.History) values {
 // valuesIn are the values a line kept, before or after its change.
 func valuesIn(kept string) values {
 	var some values
-	json.Unmarshal([]byte(kept), &some)
+	stored.Read([]byte(kept), &some)
 	return some
 }
 

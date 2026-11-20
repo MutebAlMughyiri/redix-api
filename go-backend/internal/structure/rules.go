@@ -17,6 +17,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/stored"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
@@ -193,7 +194,7 @@ var entryFieldKeys = []string{"description", "date", "supplier", "total", "amoun
 
 func choicesIn(kept string) []choice {
 	var choices []choice
-	json.Unmarshal([]byte(kept), &choices)
+	stored.Read([]byte(kept), &choices)
 	return choices
 }
 
