@@ -1864,3 +1864,61 @@ func TestWeb_R4_EveryElementATestReadsHasAnId(t *testing.T) {
 		}
 	}
 }
+
+func TestWeb_R168_FR24_TheCountKeepsTheActualBalancesAndAccountsShowsThem(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/accounts", nil).Body.String(), `hx-get="/tab/reconcile"`)
+	page := w.browser.Send("GET", "/tab/reconcile", nil).Body.String()
+	has(t, page, `id="reconcile.balance.`+w.account+`" name="balance.`+w.account+`"`)
+	has(t, page, `<small id="reconcile.books.`+w.account+`" class="hint">في الدفاتر: 0.00</small>`)
+	has(t, w.browser.Send("POST", "/count", url.Values{"balance." + w.account: {""}}).Body.String(), "اكتب رصيد كل حساب.")
+	figures := w.browser.Send("GET", "/count-figures?balance."+w.account+"=120", nil).Body.String()
+	has(t, figures, `<p id="reconcile.total">مجموع الأرصدة الفعلية: 120.00</p>`)
+	has(t, figures, `<p id="reconcile.difference" class="refused">فرق المطابقة: 120.00</p>`)
+	kept := w.browser.Send("POST", "/count", url.Values{"balance." + w.account: {"120"}}).Body.String()
+	has(t, kept, `<h2 id="accounts.title">الحسابات</h2>`)
+	has(t, kept, `<dd id="reconciliation.actualTotal" class="money">120.00</dd>`)
+	lacks(t, kept, `id="web.tab.reconcile"`)
+	has(t, w.browser.Send("GET", "/tab/reconcile", nil).Body.String(), `value="120"`)
+	if got := w.Count("SELECT count(*) FROM reconciliations WHERE project_id = ?", w.id); got != 1 {
+		t.Errorf("one check is kept: %d", got)
+	}
+}
+
+func TestWeb_R168_TheCountIsLeftToWhoeverMayUpdateIt(t *testing.T) {
+	w := newWorking(t)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	has(t, browser.Send("GET", "/tab/reconcile", nil).Body.String(), `<p id="reconcile.message" class="hint">`)
+	if code := browser.Send("POST", "/count", url.Values{"balance." + w.account: {"5"}}).Code; code != http.StatusForbidden {
+		t.Errorf("counting without MoveMoney: %d", code)
+	}
+	if code := browser.Send("GET", "/count-figures", nil).Code; code != http.StatusNotFound {
+		t.Errorf("the figures without MoveMoney: %d", code)
+	}
+	w.home()
+	for _, path := range []string{"/tab/reconcile", "/count-figures?balance." + w.account + "=5"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/count", url.Values{"balance." + w.account: {"5"}})
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("counting with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}

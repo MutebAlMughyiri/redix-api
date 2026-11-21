@@ -37,6 +37,15 @@ templ accountsList(p page, shown accountsShown) {
 				hx-get="/details/transfer"
 				hx-target="[id='web.details']"
 			>{ p.words.Of("transfers.button") }</button>
+			<button
+				id="accounts.update"
+				class="quiet-button"
+				type="button"
+				disabled?={ !p.mayCount() }
+				title={ p.words.Of("permissions.moveMoney") }
+				hx-get="/tab/reconcile"
+				hx-target="[id='web.content']"
+			>{ p.words.Of("accounts.reconcile") }</button>
 		</span>
 	</div>
 	@reconciliationCard(p, shown.latest)
@@ -284,4 +293,54 @@ templ transferForm(p page, shown accountsShown, typed transferTyped, refusal str
 			<button id="transfer.save" class="primary small" type="submit">{ p.words.Of("transfers.save") }</button>
 		</span>
 	</form>
+}
+
+// countPage is Update the actual balances as the app's screen asks it (FR-24): each account's actual balance, its books' balance under it; then
+// the total and the difference as typed, and why it could not be kept.
+templ countPage(p page, shown count) {
+	<div class="view-head">
+		<h2 id="reconcile.title">{ p.words.Of("reconciliations.enterTitle") }</h2>
+	</div>
+	<form id="reconcile.form" class="count-form" hx-post="/count" hx-target="[id='web.content']">
+		if shown.refusal != "" {
+			<p id="reconcile.message" class="refusal" role="alert">{ p.words.Of(shown.refusal) }</p>
+		}
+		for _, balance := range shown.latest.Balances {
+			<div class="field">
+				<label id={ "reconcile.balance." + balance.AccountID.String() + ".label" } for={ "reconcile.balance." + balance.AccountID.String() }>{ balance.AccountName }</label>
+				<input
+					id={ "reconcile.balance." + balance.AccountID.String() }
+					name={ "balance." + balance.AccountID.String() }
+					inputmode="decimal"
+					value={ shown.typed[balance.AccountID] }
+					hx-get="/count-figures"
+					hx-include="closest form"
+					hx-trigger="change"
+					hx-target="[id='reconcile.figures']"
+					hx-swap="outerHTML"
+				/>
+				<small id={ "reconcile.books." + balance.AccountID.String() } class="hint">{ p.words.Of("reconciliations.books") + ": " + statement.Money(balance.BooksBalance.Number()) }</small>
+			</div>
+		}
+		@countFiguresOf(p, shown)
+		<span id="reconcile.actions" class="form-actions">
+			<button id="reconcile.save" class="primary small" type="submit">{ p.words.Of("reconciliations.save") }</button>
+		</span>
+	</form>
+}
+
+// countFiguresOf is the count's total and difference as typed.
+templ countFiguresOf(p page, shown count) {
+	<div id="reconcile.figures" class="count-figures">
+		<p id="reconcile.total">{ p.words.Of("reconciliations.actualTotal") + ": " + statement.Money(shown.total().Number()) }</p>
+		<p id="reconcile.difference" class={ templ.KV("refused", shown.difference().Number() != 0) }>{ p.words.Of("reconciliations.difference") + ": " + statement.Money(shown.difference().Number()) }</p>
+	</div>
+}
+
+// countNotOffered is the count's tab for whoever may not update the balances: what it needs.
+templ countNotOffered(p page) {
+	<div class="view-head">
+		<h2 id="reconcile.title">{ p.words.Of("reconciliations.enterTitle") }</h2>
+	</div>
+	<p id="reconcile.message" class="hint">{ p.words.Of("permissions.moveMoney") }</p>
 }

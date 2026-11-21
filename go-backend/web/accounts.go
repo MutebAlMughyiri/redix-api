@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -389,4 +390,120 @@ func (s site) transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	draw(w, r, http.StatusOK, listBeside(p, shown))
+}
+
+// mayCount says whether p's caller may update the actual balances, as the app's Update and its route's gate allow: MoveMoney, in a project not
+// finished, seeing every table, since the check is one document for everyone (access.Whole, #106 R12).
+func (p page) mayCount() bool {
+	return !p.finished() && p.may(access.MoveMoney) && p.caller.Access.SeesEveryTable(p.project.ID)
+}
+
+// count is Update the actual balances as typed: the last count, each account's balance as typed - the last count's when nothing was typed -,
+// and why it could not be kept.
+type count struct {
+	latest  accounts.Reconciliation
+	typed   map[uuid.UUID]string
+	refusal string
+}
+
+// countOf is the count query holds over the project's last one, as the app's screen fills its fields from it. The error is the database's.
+func (s site) countOf(r *http.Request, p page, query url.Values) (count, error) {
+	latest, err := accounts.LatestOf(r.Context(), s.Database.Queries(), p.project.ID, nil)
+	shown := count{latest: latest, typed: map[uuid.UUID]string{}}
+	for _, balance := range latest.Balances {
+		key := "balance." + balance.AccountID.String()
+		switch {
+		case query.Has(key):
+			shown.typed[balance.AccountID] = query.Get(key)
+		case balance.WasChecked:
+			shown.typed[balance.AccountID] = strings.TrimRight(strings.TrimRight(balance.ActualBalance.Number().String(), "0"), ".")
+		}
+	}
+	return shown, err
+}
+
+// total is the sum of what is typed, as the app's screen adds its fields; what is no number adds nothing.
+func (c count) total() fixed.Total {
+	sum := fixed.Total{}
+	for _, text := range c.typed {
+		if typed, isNumber := fixed.TypedIn(text); isNumber {
+			sum = sum.Plus(typed.Total())
+		}
+	}
+	return sum
+}
+
+// difference is the total typed less the surplus the books make, as the app's screen shows it.
+func (c count) difference() fixed.Total { return c.total().Minus(c.latest.Surplus) }
+
+// countTab is Update the actual balances in its tab (FR-24, redix-api #168), for whoever may update them.
+func (s site) countTab(r *http.Request, p page) (templ.Component, error) {
+	if !p.mayCount() {
+		return countNotOffered(p), nil
+	}
+	shown, err := s.countOf(r, p, r.URL.Query())
+	return countPage(p, shown), err
+}
+
+// countFigures is the count's total and difference as typed, drawn again as a balance changes.
+func (s site) countFigures(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || !p.mayCount() {
+		http.NotFound(w, r)
+		return
+	}
+	shown, err := s.countOf(r, p, r.URL.Query())
+	if err != nil {
+		failed(w)
+		return
+	}
+	draw(w, r, http.StatusOK, countFiguresOf(p, shown))
+}
+
+// keepCount keeps the balances typed as one check, through the rule the app's route runs (accounts.Enter, FR-24): the count's tab closes and
+// Accounts comes to the front with the new figures; a balance left empty or refused, the page again says why in the app's words. 403 for
+// whoever may not update them.
+func (s site) keepCount(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || r.ParseForm() != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !p.mayCount() {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+	shown, err := s.countOf(r, p, r.PostForm)
+	if err != nil {
+		failed(w)
+		return
+	}
+	var balances []accounts.Actual
+	for _, balance := range shown.latest.Balances {
+		typed, isNumber := fixed.TypedIn(shown.typed[balance.AccountID])
+		if !isNumber {
+			shown.refusal = "reconciliations.accountMissing"
+			draw(w, r, http.StatusOK, countPage(p, shown))
+			return
+		}
+		balances = append(balances, accounts.Actual{AccountID: balance.AccountID, ActualBalance: typed})
+	}
+	err = changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) error { return accounts.Enter(c, balances) })
+	var refused changes.Refusal
+	if errors.As(err, &refused) {
+		shown.refusal = "reconciliations." + refused.Code
+		draw(w, r, http.StatusOK, countPage(p, shown))
+		return
+	}
+	if err != nil {
+		failed(w)
+		return
+	}
+	s.turn(w, r, func(v view) view { return v.closing("reconcile").opening("accounts") })
 }
