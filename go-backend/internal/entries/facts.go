@@ -4,6 +4,7 @@
 package entries
 
 import (
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -424,12 +425,14 @@ type search struct {
 	narrowsNothing bool
 }
 
-func searchOf(kinds, statuses []string, text, mine, from, to, number string) search {
-	s := search{text: strings.TrimSpace(text), mine: strings.EqualFold(mine, "true"), kinds: kinds, statuses: statuses}
-	s.from, _ = time.Parse("2006-01-02", from)
-	s.to, _ = time.Parse("2006-01-02", to)
-	s.number, _ = strconv.ParseInt(number, 10, 64)
-	s.narrowsNothing = s.text == "" && !s.mine && len(kinds) == 0 && len(statuses) == 0 && s.from.IsZero() && s.to.IsZero() && s.number == 0
+// searchOf is the search query asks for, by the names the app's list sends and the web's filters use: kinds, statuses, text, mine, from, to and
+// number.
+func searchOf(query url.Values) search {
+	s := search{text: strings.TrimSpace(query.Get("text")), mine: strings.EqualFold(query.Get("mine"), "true"), kinds: query["kinds"], statuses: query["statuses"]}
+	s.from, _ = time.Parse("2006-01-02", query.Get("from"))
+	s.to, _ = time.Parse("2006-01-02", query.Get("to"))
+	s.number, _ = strconv.ParseInt(query.Get("number"), 10, 64)
+	s.narrowsNothing = s.text == "" && !s.mine && len(s.kinds) == 0 && len(s.statuses) == 0 && s.from.IsZero() && s.to.IsZero() && s.number == 0
 	return s
 }
 
@@ -437,10 +440,8 @@ func (s search) keeps(row Row) bool {
 	if s.narrowsNothing {
 		return true
 	}
-	kind, _ := row.Kind.MarshalJSON()
-	status, _ := row.Status.MarshalJSON()
-	return (!s.mine || row.IsMine) && (s.number == 0 || row.Number == s.number) && (len(s.kinds) == 0 || slices.Contains(s.kinds, strings.Trim(string(kind), `"`))) &&
-		(len(s.statuses) == 0 || slices.Contains(s.statuses, strings.Trim(string(status), `"`))) && !row.EntryDate.Before(s.from) &&
+	return (!s.mine || row.IsMine) && (s.number == 0 || row.Number == s.number) && (len(s.kinds) == 0 || slices.Contains(s.kinds, row.Kind.Name())) &&
+		(len(s.statuses) == 0 || slices.Contains(s.statuses, row.Status.Name())) && !row.EntryDate.Before(s.from) &&
 		(s.to.IsZero() || !row.EntryDate.After(s.to)) &&
 		spelling.Holds(s.text, row.Amount, row.ItemName, row.PartnerName, row.SupplierName, row.AuthorName, row.InvoiceNumber)
 }

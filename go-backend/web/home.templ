@@ -95,10 +95,11 @@ templ summarySide(p page, side string, total fixed.Total, categories []reports.C
 	</details>
 }
 
-// entryRows are entries as the app's lists show them: number, date, the item or the partner, the supplier, the status and the amount.
+// entryRows are entries as the app's lists show them: number, date, the item or the partner, the supplier, the status and the amount; a click or
+// Enter shows one in the details panel, and the list's keys move along them (redix-api #166).
 templ entryRows(p page, rows []entries.Row) {
 	<div class="grid-wrap">
-		<table class="grid">
+		<table class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
 			<thead>
 				<tr>
 					<th>{ p.words.Of("entries.number") }</th>
@@ -111,7 +112,13 @@ templ entryRows(p page, rows []entries.Row) {
 			</thead>
 			<tbody>
 				for _, row := range rows {
-					<tr id={ "entries.row." + row.ID.String() }>
+					<tr
+						id={ "entries.row." + row.ID.String() }
+						tabindex="0"
+						aria-selected="false"
+						hx-get={ "/details/entry/" + row.ID.String() }
+						hx-target="[id='web.details']"
+					>
 						<td>{ strconv.FormatInt(row.Number, 10) }</td>
 						<td>{ row.EntryDate.Format(time.DateOnly) }</td>
 						<td>{ entryTitle(row) }</td>

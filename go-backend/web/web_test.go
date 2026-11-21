@@ -158,7 +158,7 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
-	if browser.Send("GET", "/tab/entries", nil).Code != http.StatusNotFound {
+	if browser.Send("GET", "/tab/approvals", nil).Code != http.StatusNotFound {
 		t.Error("an item whose feature is not built opens no tab")
 	}
 }
@@ -247,10 +247,11 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"entries", "approvals", "accounts", "partners", "contracts", "reports", "history"} {
+	for _, key := range []string{"approvals", "accounts", "partners", "contracts", "reports", "history"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
+	has(t, page, `hx-get="/tab/entries"`)
 	has(t, page, `hx-get="/tab/settings"`)
 }
 
@@ -875,6 +876,137 @@ func TestWeb_R165_StarringAnswersAFailingDatabaseWith500(t *testing.T) {
 		}
 		if answered.Code != http.StatusInternalServerError {
 			t.Errorf("starring with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}
+
+// approved records an entry of amount and approves it; it is the entry's id.
+func (w working) approved(amount int) string {
+	w.t.Helper()
+	id := w.sent(amount)
+	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+id+`"]}`, w.token); code != http.StatusOK {
+		w.t.Fatalf("approve: %d %v", code, answer)
+	}
+	return id
+}
+
+// listed is the Entries tab as the manager's browser asks it with query, after choosing the project.
+func (w working) listed(query string) string {
+	w.t.Helper()
+	answered := w.browser.Send("GET", "/tab/entries"+query, nil)
+	if answered.Code != http.StatusOK {
+		w.t.Fatalf("the list: %d", answered.Code)
+	}
+	return answered.Body.String()
+}
+
+func TestWeb_R166_UC028_TheListShowsWhatTheCallerSeesAndTheFiltersNarrowIt(t *testing.T) {
+	w := newWorking(t)
+	approved, waiting := w.approved(100), w.sent(50)
+	w.home()
+	all := w.listed("")
+	has(t, all, `id="entries.row.`+approved+`"`)
+	has(t, all, `id="entries.row.`+waiting+`"`)
+	lacks(t, all, `id="entries.clear"`)
+	onlyApproved := w.listed("?statuses=approved")
+	has(t, onlyApproved, `id="entries.row.`+approved+`"`)
+	lacks(t, onlyApproved, `id="entries.row.`+waiting+`"`)
+	has(t, onlyApproved, `<input type="checkbox" name="statuses" value="approved" checked>`)
+	has(t, onlyApproved, `id="entries.clear"`)
+	byAmount := w.listed("?text=50")
+	has(t, byAmount, `id="entries.row.`+waiting+`"`)
+	lacks(t, byAmount, `id="entries.row.`+approved+`"`)
+	has(t, w.listed("?kinds=revenue"), `<p id="entries.empty" class="empty">لا قيود بعد.</p>`)
+	has(t, w.listed("?mine=true"), `id="entries.row.`+approved+`"`)
+	lacks(t, w.listed("?from=2026-11-11"), `id="entries.row.`)
+	has(t, w.listed("?from=2026-11-10&to=2026-11-10"), `id="entries.row.`+waiting+`"`)
+}
+
+func TestWeb_R166_ShowMoreAddsAPageWithTheSameFilters(t *testing.T) {
+	w := newWorking(t)
+	for range 31 {
+		w.sent(10)
+	}
+	w.home()
+	first := w.listed("")
+	if got := strings.Count(first, `id="entries.row.`); got != 30 {
+		t.Errorf("the first page holds %d", got)
+	}
+	has(t, first, `hx-vals="{&#34;take&#34;:&#34;60&#34;}"`)
+	has(t, first, `hx-include="[id='entries.filters']"`)
+	second := w.listed("?take=60")
+	if got := strings.Count(second, `id="entries.row.`); got != 31 {
+		t.Errorf("the second page holds %d", got)
+	}
+	lacks(t, second, `id="entries.more"`)
+}
+
+func TestWeb_R166_TheListAnswersAFailingDatabaseWith500AndWithNoProjectTheProjects(t *testing.T) {
+	w := newWorking(t)
+	has(t, w.listed(""), `id="projects.title"`)
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/entries?statuses=approved", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("the list with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}
+
+func TestWeb_R166_ARowOpensItsEntryInTheDetailsPanel(t *testing.T) {
+	w := newWorking(t)
+	id := w.approved(100)
+	w.home()
+	list := w.listed("")
+	has(t, list, `hx-get="/details/entry/`+id+`" hx-target="[id='web.details']"`)
+	has(t, list, `<aside id="web.details" class="details" aria-live="polite" hx-swap-oob="true"></aside>`)
+	panel := w.browser.Send("GET", "/details/entry/"+id, nil)
+	if panel.Code != http.StatusOK {
+		t.Fatalf("the panel: %d", panel.Code)
+	}
+	has(t, panel.Body.String(), `<h3 id="entry.title">قيد `)
+	has(t, panel.Body.String(), `<dd id="entry.amount" class="money">100.00</dd>`)
+	has(t, panel.Body.String(), `<span class="state approved">معتمد</span>`)
+	has(t, panel.Body.String(), `أدخله User A`)
+	lacks(t, panel.Body.String(), `id="entry.reason"`)
+	if code := w.browser.Send("GET", "/details/entry/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("an entry there is none of: %d", code)
+	}
+}
+
+func TestWeb_R166_ARejectedEntrySaysWhy(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	if code, answer := w.Ask("POST", w.path+"/entries/"+id+"/reject", `{"reason":"الفاتورة غير واضحة"}`, w.token); code >= 300 {
+		t.Fatalf("reject: %d %v", code, answer)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/details/entry/"+id, nil).Body.String(), `<dd id="entry.reason" class="refused">الفاتورة غير واضحة</dd>`)
+}
+
+func TestWeb_R166_AnEntryOfAnotherProjectIsNotShown(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	browser, _ := signedIn(t, w.API, "User B")
+	if code := browser.Send("GET", "/details/entry/"+id, nil).Code; code != http.StatusNotFound {
+		t.Errorf("another project's entry: %d", code)
+	}
+}
+
+func TestWeb_R166_ThePanelAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/details/entry/"+id, nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("the panel with the database failing at its call %d answers %d", n, answered.Code)
 		}
 	}
 }

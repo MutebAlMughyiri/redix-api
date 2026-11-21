@@ -73,6 +73,7 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /tab/{name}", s.openTab)
 	mux.HandleFunc("DELETE /tab/{name}", s.closeTab)
 	mux.HandleFunc("POST /view", s.keepView)
+	mux.HandleFunc("GET /details/entry/{id}", s.entryDetails)
 	mux.HandleFunc("POST /project/{id}", s.chooseProject)
 	mux.HandleFunc("POST /project/{id}/default", s.starProject)
 	mux.HandleFunc("GET /language/{language}", s.chooseLanguage)

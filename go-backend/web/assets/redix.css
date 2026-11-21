@@ -210,3 +210,28 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .star { font: inherit; font-size: 15px; line-height: 1; border: 0; border-radius: 4px; background: transparent; color: var(--quiet); padding: 4px 6px; cursor: pointer; }
 .star:hover { background: var(--select); } .star[aria-pressed="true"] { color: var(--accent); }
 .menu-pop .notice { margin: 0 8px 6px; }
+
+/* Entries (redix-api #166): the app's filters as one row above the list, each change asking the list again. */
+.filters { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-block-end: 12px; }
+.filters .search { flex: 1 1 260px; } .filters .number { width: 110px; }
+.filters input[type="search"], .filters input[type="date"], .filters input[type="number"] { font: inherit; height: 30px; box-sizing: border-box; padding-inline: 8px;
+  border: 1px solid var(--outline); border-radius: 5px; background: var(--input); color: var(--text); }
+.picks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; border: 0; } .picks legend { float: inline-start; margin-inline-end: 4px; color: var(--quiet); font-size: 12px; }
+.pick { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border: 1px solid var(--chrome-line); border-radius: 999px; font-size: 12.5px; color: var(--quiet); cursor: pointer; }
+.pick:has(input:checked) { background: var(--select); color: var(--text); border-color: var(--accent); } .pick input { accent-color: var(--accent); margin: 0; }
+.more { align-self: center; margin-block-start: 10px; }
+
+/* The details panel beside a list, like Google Drive's (the base design, redix-api #166): hidden while empty; a row's click fills it. */
+.main { grid-template-columns: minmax(0, 1fr) 0; } .tabs-row { grid-column: 1 / -1; } .content { grid-column: 1; }
+.main:has([id="web.details"]:not(:empty)) { grid-template-columns: minmax(0, 1fr) var(--details-w, 320px); }
+.details { grid-row: 2; grid-column: 2; overflow: hidden auto; background: var(--chrome); border-inline-start: 1px solid var(--chrome-line); min-width: 0; }
+.details:empty { border: 0; }
+.details-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-block-end: 1px solid var(--chrome-line); }
+.details-head h3 { margin: 0; font-size: 14px; font-weight: 600; } .details-head .x { margin-inline-start: auto; font: inherit; background: transparent; border: 0; color: var(--quiet); cursor: pointer; border-radius: 4px; padding: 2px 6px; }
+.details-head .x:hover { background: var(--select); }
+.facts { margin: 0; padding: 10px 14px; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 12.5px; } .facts dt { color: var(--quiet); } .facts dd { margin: 0; overflow-wrap: anywhere; }
+.facts dd.money { font-variant-numeric: tabular-nums; font-weight: 600; } .facts .refused { color: var(--refusal); }
+.grid tbody tr[hx-get] { cursor: pointer; } .grid tbody tr:hover td { background: var(--chrome); } .grid tr[aria-selected="true"] td { background: var(--select); }
+.grid tbody tr:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (max-width: 720px) { .main:has([id="web.details"]:not(:empty)) { grid-template-columns: 0 minmax(0, 1fr); } }
+.details-foot { margin: 0; padding: 0 14px 14px; font-size: 12px; }

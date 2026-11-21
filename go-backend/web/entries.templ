@@ -1,0 +1,114 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"net/url"
+	"slices"
+	"strconv"
+	"time"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+)
+
+// entriesList is the Entries tab (UC-028, redix-api #166): the app's filters as one row - search, mine, kinds, statuses, the period and a number -
+// each change asking the list again; the entries a page at a time with Show more. Add entry stands gray until it is built.
+templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take int) {
+	<div class="view-head">
+		<h2 id="entries.title">{ p.words.Of("entries.title") }</h2>
+		<span class="head-actions">
+			<button id="entries.new" class="primary small" type="button" disabled>{ p.words.Of("entries.new") }</button>
+		</span>
+	</div>
+	<form
+		id="entries.filters"
+		class="filters"
+		hx-get="/tab/entries"
+		hx-target="[id='web.content']"
+		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+	>
+		<input id="entries.search" class="search" type="search" name="text" placeholder={ p.words.Of("entries.searchHint") } aria-label={ p.words.Of("entries.searchHint") } value={ query.Get("text") }/>
+		<label id="entries.mine" class="pick"><input type="checkbox" name="mine" value="true" checked?={ query.Get("mine") == "true" }/>{ p.words.Of("entries.mine") }</label>
+		<fieldset id="entries.kindChoice" class="picks">
+			<legend>{ p.words.Of("entries.kind") }</legend>
+			for _, kind := range entryKinds {
+				<label id={ "entries.kind." + kind.name } class="pick"><input type="checkbox" name="kinds" value={ kind.name } checked?={ slices.Contains(query["kinds"], kind.name) }/>{ p.words.Of(kind.word) }</label>
+			}
+		</fieldset>
+		<fieldset id="entries.statusChoice" class="picks">
+			<legend>{ p.words.Of("entries.status") }</legend>
+			for _, status := range entryStatuses {
+				<label id={ "entries.status." + status } class="pick"><input type="checkbox" name="statuses" value={ status } checked?={ slices.Contains(query["statuses"], status) }/>{ p.words.Of("entries." + status) }</label>
+			}
+		</fieldset>
+		<fieldset id="entries.period" class="picks">
+			<legend>{ p.words.Of("entries.period") }</legend>
+			<input id="entries.from" type="date" name="from" aria-label={ p.words.Of("entries.period") } value={ query.Get("from") }/>
+			<input id="entries.to" type="date" name="to" aria-label={ p.words.Of("entries.period") } value={ query.Get("to") }/>
+		</fieldset>
+		<input id="entries.number" class="number" type="number" name="number" min="1" placeholder={ p.words.Of("entries.number") } aria-label={ p.words.Of("entries.number") } value={ query.Get("number") }/>
+		if narrows(query) {
+			<a id="entries.clear" href="#" hx-get="/tab/entries" hx-target="[id='web.content']">{ p.words.Of("entries.clearFilters") }</a>
+		}
+	</form>
+	if len(rows) == 0 {
+		<p id="entries.empty" class="empty">{ p.words.Of("entries.empty") }</p>
+	} else {
+		@entryRows(p, rows)
+	}
+	if more {
+		<button
+			id="entries.more"
+			class="quiet-button more"
+			type="button"
+			hx-get="/tab/entries"
+			hx-include="[id='entries.filters']"
+			hx-vals={ takeMore(take) }
+			hx-target="[id='web.content']"
+		>{ p.words.Of("entries.showMore") }</button>
+	}
+}
+
+// entryPanel is an entry in the details panel: its number and status, why it was rejected, and what the lists know of it, as the app's read-only
+// entry shows it (redix-api #166); ✕ and Esc hide it.
+templ entryPanel(p page, row entries.Row) {
+	<div class="details-head">
+		<h3 id="entry.title">{ p.words.Of("entries.numberOf", strconv.FormatInt(row.Number, 10)) }</h3>
+		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl class="facts">
+		<dt>{ p.words.Of("entries.status") }</dt>
+		<dd id="entry.status"><span class={ "state", row.Status.Name() }>{ p.words.Of("entries." + row.Status.Name()) }</span></dd>
+		if row.RejectionReason != "" {
+			<dt>{ p.words.Of("entries.reason") }</dt>
+			<dd id="entry.reason" class="refused">{ row.RejectionReason }</dd>
+		}
+		<dt>{ p.words.Of("expenses.date") }</dt>
+		<dd id="entry.date">{ row.EntryDate.Format(time.DateOnly) }</dd>
+		<dt>{ p.words.Of("contracts.item") }</dt>
+		<dd id="entry.item">{ entryTitle(row) }</dd>
+		if row.SupplierName != "" {
+			<dt>{ p.words.Of("expenses.supplier") }</dt>
+			<dd id="entry.supplier">{ row.SupplierName }</dd>
+		}
+		if row.InvoiceNumber != "" {
+			<dt>{ p.words.Of("entries.fileInvoice") }</dt>
+			<dd id="entry.invoice">{ row.InvoiceNumber }</dd>
+		}
+		<dt>{ p.words.Of("expenses.amount") }</dt>
+		<dd id="entry.amount" class="money">{ statement.Money(row.Amount) }</dd>
+		if row.PaymentMethodName != "" {
+			<dt>{ p.words.Of("expenses.paymentMethod") }</dt>
+			<dd id="entry.paymentMethod">{ row.PaymentMethodName }</dd>
+		}
+		<dt>{ p.words.Of("expenses.account") }</dt>
+		<dd id="entry.account">{ row.AccountName }</dd>
+		if row.Description != "" {
+			<dt>{ p.words.Of("expenses.description") }</dt>
+			<dd id="entry.description">{ row.Description }</dd>
+		}
+	</dl>
+	<p id="entry.enteredBy" class="hint details-foot">{ p.words.Of("entries.enteredBy", row.AuthorName) }</p>
+}

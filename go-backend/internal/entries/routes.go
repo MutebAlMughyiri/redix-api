@@ -9,6 +9,7 @@ import (
 	"errors"
 	"math"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -478,6 +479,13 @@ var newest = moment.Of(time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC))
 // everyRow shows every row a list keeps.
 func everyRow(Row) bool { return true }
 
+// Listed is the entries of projectID that caller sees and query's search keeps - kinds, statuses, text, mine, from, to, number, as the app's
+// list sends them - newest first, take of them, every one when take is 0: the list both doors show (UC-028, redix-app #104, redix-api #166). The
+// error is the database's.
+func Listed(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, query url.Values, take int) ([]Row, error) {
+	return rowsOf(ctx, read, projectID, caller, func(store.Entry, facts) bool { return true }, searchOf(query).keeps, take)
+}
+
 // Newest is the newest take entries of projectID that caller sees, as the lists show them: the home's latest entries, on the phone and on the web
 // (redix-api #165). The error is the database's.
 func Newest(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, take int) ([]Row, error) {
@@ -542,16 +550,26 @@ func (s Routes) mine(w http.ResponseWriter, r *http.Request, caller access.Calle
 
 // row is one entry as the lists show it (findings row 201): 404 for one the caller does not see (BR-31, BR-42), or none.
 func (s Routes) row(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	views, err := rowsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, func(entry store.Entry, _ facts) bool { return entry.ID == web.ID(r, "entryId") }, everyRow, 1)
-	if err == nil && len(views) != 1 {
-		problem.Status(w, r, http.StatusNotFound)
-		return
-	}
+	view, found, err := RowOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, web.ID(r, "entryId"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	web.JSON(w, r, http.StatusOK, views[0])
+	if !found {
+		problem.Status(w, r, http.StatusNotFound)
+		return
+	}
+	web.JSON(w, r, http.StatusOK, view)
+}
+
+// RowOf is the entry entryID of projectID as the lists show it, when caller sees it (BR-31, BR-42): the row the app reads and the web's details
+// panel shows (findings row 201, redix-api #166); false for one they do not see, or none. The error is the database's.
+func RowOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, entryID uuid.UUID) (Row, bool, error) {
+	views, err := rowsOf(ctx, read, projectID, caller, func(entry store.Entry, _ facts) bool { return entry.ID == entryID }, everyRow, 1)
+	if err != nil || len(views) != 1 {
+		return Row{}, false, err
+	}
+	return views[0], true, nil
 }
 
 // list is the entries of the project the caller may see, newest first (the owner, 8 Nov 2026), those a search keeps when anything narrows them
@@ -559,7 +577,7 @@ func (s Routes) row(w http.ResponseWriter, r *http.Request, caller access.Caller
 // (redix-app #115 D6).
 func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	query := r.URL.Query()
-	search := searchOf(query["kinds"], query["statuses"], query.Get("text"), query.Get("mine"), query.Get("from"), query.Get("to"), query.Get("number"))
+	search := searchOf(query)
 	attachableOnly := strings.EqualFold(query.Get("attachable"), "true")
 	take, _ := strconv.Atoi(query.Get("take"))
 	kept, err := rowsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, func(entry store.Entry, _ facts) bool { return !attachableOnly || attachableBy(entry, caller) }, search.keeps,

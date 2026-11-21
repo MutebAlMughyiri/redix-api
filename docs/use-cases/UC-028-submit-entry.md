@@ -51,3 +51,19 @@ Tests are in `SubmitEntryTests`.
 | An entry reads back whole | `ViewOfAsync` | `ReadingADraftAnswersWhatItsKindHasAndEmptyForTheRest`, `ReadingACreditNoteAnswersWhatItIsLinkedTo` |
 | A rejected revenue or partner entry is sent again and waits once more; it has no columns to check | `entries.Routes.missingOf` | `RevenueTests.ARejectedRevenueEntryIsSentAgainAndWaitsOnceMore` |
 | BR-31: one partner's money read by its id answers 404 to anyone but that partner and whoever holds `seeAllCapital`; the list and the single read share one filter | `entries.Routes.seenBy`, `Read` | `RevenueTests.BR_31_OnePartnersMoneyReadByItsIdIsLeftToThatPartnerAndWhoeverSeesAllCapital` |
+
+## On the web: the entries and the details panel (redix-api #166)
+
+The web's Entries tab is the app's list in the shell: the same search and filters, sent by the same names, read by `entries.Listed`, the function `GET /projects/{id}/entries` calls too; a page at a time with Show more. A row's click or Enter shows the entry in the shell's details panel from `entries.RowOf`, the row `GET /projects/{id}/entries/{entryId}/row` answers; Up, Down, Home and End move along the list with the panel following, and Esc hides it. Its pages are in `go-backend/web` (`entries.go`, `entries.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/entries?text=&mine=&kinds=&statuses=&from=&to=&number=&take=` | The Entries tab, filtered and paged | `200` the tab's content |
+| `GET /details/entry/{id}` | An entry in the details panel | `200` the panel's content; `404` for one the person does not see |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| The list shows what the person sees, and the filters narrow it as the app's do | `entries.Listed` | `TestWeb_R166_UC028_TheListShowsWhatTheCallerSeesAndTheFiltersNarrowIt` |
+| Show more adds a page with the same filters | `web.site.entriesTab` | `TestWeb_R166_ShowMoreAddsAPageWithTheSameFilters` |
+| A row opens its entry in the details panel; an entry the person does not see is not shown (BR-31) | `entries.RowOf` | `TestWeb_R166_ARowOpensItsEntryInTheDetailsPanel`, `TestWeb_R166_AnEntryOfAnotherProjectIsNotShown` |
+| A rejected entry says why | `web.entryPanel` | `TestWeb_R166_ARejectedEntrySaysWhy` |

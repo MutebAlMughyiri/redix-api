@@ -164,6 +164,7 @@ var sideMenu = []menuItem{
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
 	"home":     site.homeTab,
+	"entries":  site.entriesTab,
 	"settings": func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
 }
 
@@ -179,6 +180,29 @@ func (p page) openTabs() []menuItem {
 	}
 	return open
 }
+
+// shellKeys is the shell's one keydown handler (see document): Alt+1 and Esc. It and the lists' handlers below are constants of our own, holding no
+// person's data, so the templates write them as trusted script.
+const shellKeys = `if (event.altKey && event.code === 'Digit1' && document.getElementById('web.view.sideMenu')) { event.preventDefault(); ` +
+	`document.getElementById('web.view.sideMenu').click() } ` +
+	`const details = document.getElementById('web.details'); ` +
+	`if (event.key === 'Escape' && details && details.hasChildNodes() && !document.querySelector(':popover-open')) { event.preventDefault(); ` +
+	`details.replaceChildren(); const shown = document.querySelector('.grid [aria-selected=true]'); if (shown) shown.focus() }`
+
+// selectRow defines select, which marks one row of a list as the selected one; both of a list's handlers start with it.
+const selectRow = `window.select = window.select || (row => { row.closest('tbody').querySelectorAll('[aria-selected=true]').forEach(other => ` +
+	`other.setAttribute('aria-selected', 'false')); row.setAttribute('aria-selected', 'true') }); `
+
+// listKeys are a list's own keys, which every list of the shell carries (the base design): a click or Enter shows a row in the details panel;
+// Up, Down, Home and End move the selection, and the panel follows it while it is open.
+const listKeys = selectRow + `const row = event.target.closest('tr[hx-get]'); if (!row) return; ` +
+	`const rows = [...this.querySelectorAll('tr[hx-get]')], at = rows.indexOf(row); ` +
+	`if (event.key === 'Enter') { event.preventDefault(); row.click(); return } ` +
+	`const next = rows[{ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: rows.length - 1}[event.key]]; if (!next) return; ` +
+	`event.preventDefault(); next.focus(); if (document.getElementById('web.details').hasChildNodes()) { next.click() } else { select(next) }`
+
+// listSelects marks the row a click shows as the selected one.
+const listSelects = selectRow + `const row = event.target.closest('tr[hx-get]'); if (row) select(row)`
 
 // logoSVG is REDIX's mark, written once: drawn in the top bar, and the browser tab's icon.
 const logoSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" fill="#0E6B68"/>` +

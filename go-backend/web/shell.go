@@ -76,7 +76,7 @@ func (s site) turn(w http.ResponseWriter, r *http.Request, change func(view) vie
 		reshell(w, r, p)
 		return
 	}
-	draw(w, r, http.StatusOK, p.content, tabs(p, true), itemLinks(p))
+	draw(w, r, http.StatusOK, p.content, tabs(p, true), itemLinks(p), detailsPanel(true))
 }
 
 // keepView keeps what the View menu, the fold arrows and the side menu's line chose: the bars, the side menu, its width (#161 R9, R10, R18). The

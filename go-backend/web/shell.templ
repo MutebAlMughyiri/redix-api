@@ -8,8 +8,9 @@ import "strconv"
 // htmxConfig has htmx swap a refusal, answered 422 with its form, and keep its own styles out of the page (#161 S4).
 const htmxConfig = `{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}],"includeIndicatorStyles":false}`
 
-// document is the whole page: the shell in its language, the stylesheet, and htmx, the one script (#80 R19). Alt+1 folds and unfolds the side menu
-// from anywhere, as its arrows do, by the key's place, so an Arabic keyboard's 1 counts (#161 R7); it is the key's one handler.
+// document is the whole page: the shell in its language, the stylesheet, and htmx, the one script (#80 R19). Its keydown is the one handler of the
+// shell's own keys: Alt+1 folds and unfolds the side menu from anywhere, as its arrows do, by the key's place, so an Arabic keyboard's 1 counts
+// (#161 R7); Esc hides the details panel from anywhere, a menu open aside, and gives the row it showed the focus again (redix-api #166).
 templ document(p page) {
 	<!DOCTYPE html>
 	<html lang={ p.language } dir={ p.direction() }>
@@ -22,7 +23,7 @@ templ document(p page) {
 			<link rel="stylesheet" href={ p.assets.css }/>
 			<script src={ p.assets.htmx } defer></script>
 		</head>
-		<body hx-on:keydown="if (event.altKey && event.code === 'Digit1' && document.getElementById('web.view.sideMenu')) { event.preventDefault(); document.getElementById('web.view.sideMenu').click() }">
+		<body hx-on:keydown={ templ.JSUnsafeFuncCall(shellKeys) }>
 			@shell(p)
 		</body>
 	</html>
@@ -51,6 +52,9 @@ templ shell(p page) {
 			<div id="web.content" class="content">
 				@p.content
 			</div>
+			if p.in {
+				@detailsPanel(false)
+			}
 		</main>
 		@statusBar(p)
 	</div>
@@ -157,6 +161,12 @@ templ tabs(p page, outOfBand bool) {
 			</div>
 		}
 	</div>
+}
+
+// detailsPanel is the details panel beside a list, like Google Drive's (the base design): empty, so hidden, until a row fills it. A tab's
+// answer carries it empty beside its content, out of band, so a panel never outlives its list.
+templ detailsPanel(outOfBand bool) {
+	<aside id="web.details" class="details" aria-live="polite" { swapOutOfBand(outOfBand)... }></aside>
 }
 
 // statusBar is the host this page came from and the web's version (#161 R2).
