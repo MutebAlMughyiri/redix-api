@@ -18,7 +18,7 @@ import (
 templ accountsList(p page, shown accountsShown) {
 	<div class="view-head">
 		<h2 id="accounts.title">{ p.words.Of("accounts.title") }</h2>
-		<span class="head-actions">
+		<span id="accounts.actions" class="head-actions">
 			<button
 				id="accounts.add"
 				class="primary small"
@@ -44,7 +44,7 @@ templ accountsList(p page, shown accountsShown) {
 		<p id="accounts.empty" class="empty">{ p.words.Of("accounts.empty") }</p>
 	} else {
 		<div class="grid-wrap">
-			<table class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+			<table id="accounts.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
 				for _, group := range accountGroups {
 					if len(shown.in(group)) > 0 {
 						<tbody>
@@ -71,7 +71,7 @@ templ accountRow(p page, shown accountsShown, account accounts.View, outOfBand b
 		hx-target="[id='web.details']"
 		{ swapOutOfBand(outOfBand)... }
 	>
-		<td>
+		<td id={ "accounts.account." + account.ID.String() }>
 			<span id={ "accounts.name." + account.ID.String() }>{ account.Name }</span>
 			<small id={ "accounts.details." + account.ID.String() } class="hint">{ shown.details(p, account) }</small>
 		</td>
@@ -91,12 +91,12 @@ templ accountBeside(p page, shown accountsShown, account accounts.View) {
 templ reconciliationCard(p page, latest accounts.Reconciliation) {
 	<section id="reconciliation.card" class="card reconciliation">
 		<dl class="facts">
-			<dt>{ p.words.Of("reconciliations.surplus") }</dt>
+			<dt id="reconciliation.surplus.label">{ p.words.Of("reconciliations.surplus") }</dt>
 			<dd id="reconciliation.surplus" class="money">{ statement.Money(latest.Surplus.Number()) }</dd>
 			if !latest.At.IsZero() {
-				<dt>{ p.words.Of("reconciliations.actualTotal") }</dt>
+				<dt id="reconciliation.actualTotal.label">{ p.words.Of("reconciliations.actualTotal") }</dt>
 				<dd id="reconciliation.actualTotal" class="money">{ statement.Money(latest.ActualTotal.Number()) }</dd>
-				<dt>{ p.words.Of("reconciliations.difference") }</dt>
+				<dt id="reconciliation.difference.label">{ p.words.Of("reconciliations.difference") }</dt>
 				<dd id="reconciliation.difference" class={ "money", templ.KV("refused", latest.Difference.Number() != 0) }>{ statement.Money(latest.Difference.Number()) }</dd>
 			}
 		</dl>
@@ -119,13 +119,13 @@ templ accountPanel(p page, shown accountsShown, account accounts.View, said said
 		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
 	</div>
 	<dl class="facts">
-		<dt>{ p.words.Of("accounts.type") }</dt>
+		<dt id="account.type.label">{ p.words.Of("accounts.type") }</dt>
 		<dd id="account.type">{ p.words.Of(groupOf(account).word) }</dd>
 		if account.CustodianName != "" {
-			<dt>{ p.words.Of("accounts.custodian") }</dt>
+			<dt id="account.custodian.label">{ p.words.Of("accounts.custodian") }</dt>
 			<dd id="account.custodian">{ account.CustodianName }</dd>
 		}
-		<dt>{ p.words.Of("expenses.amount") }</dt>
+		<dt id="account.balance.label">{ p.words.Of("expenses.amount") }</dt>
 		<dd id="account.balance" class="money">{ statement.Money(account.Balance.Number()) }</dd>
 	</dl>
 	<p id="account.details" class="hint details-foot">{ shown.details(p, account) }</p>
@@ -137,7 +137,7 @@ templ accountPanel(p page, shown accountsShown, account accounts.View, said said
 	}
 	if said.asking == "delete" && p.mayKeepAccounts() && !account.IsUsed {
 		<div id="account.ask" class="details-say ask">
-			<span>{ p.words.Of("accounts.deleteQuestion") + " " + p.words.Of("accounts.deleteCannotUndo") }</span>
+			<span id="account.askQuestion">{ p.words.Of("accounts.deleteQuestion") + " " + p.words.Of("accounts.deleteCannotUndo") }</span>
 			<button id="account.deleteConfirm" class="primary small danger" type="button" hx-post={ "/account/" + account.ID.String() + "/delete" } hx-target="[id='web.details']">{ p.words.Of("accounts.delete") }</button>
 			<button id="account.deleteCancel" class="quiet-button" type="button" hx-get={ "/details/account/" + account.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
 		</div>
@@ -207,30 +207,30 @@ templ accountForm(p page, editing accounts.View, typed accountTyped, members []s
 		hx-target="[id='web.details']"
 	>
 		<div class="field">
-			<label for="accounts.accountName">{ p.words.Of("accounts.name") }</label>
+			<label id="accounts.accountName.label" for="accounts.accountName">{ p.words.Of("accounts.name") }</label>
 			<input id="accounts.accountName" name="name" required value={ typed.name } autofocus/>
 		</div>
 		if editing.ID == uuid.Nil {
-			<fieldset class="picks">
+			<fieldset id="accounts.typeChoice" class="picks">
 				<legend id="accounts.typeHeading">{ p.words.Of("accounts.type") }</legend>
 				for _, group := range accountGroups {
-					<label id={ "accounts.type." + group.name } class="pick"><input type="radio" name="type" value={ group.name } checked?={ typed.kind == group.name }/>{ p.words.Of(group.word) }</label>
+					<label id={ "accounts.type." + group.name } class="pick"><input id={ "accounts.type." + group.name + ".input" } type="radio" name="type" value={ group.name } checked?={ typed.kind == group.name }/>{ p.words.Of(group.word) }</label>
 				}
 			</fieldset>
 		}
 		<div class="field">
-			<label for="accounts.custodian">{ p.words.Of("accounts.custodian") }</label>
+			<label id="accounts.custodian.label" for="accounts.custodian">{ p.words.Of("accounts.custodian") }</label>
 			<select id="accounts.custodian" name="custodian">
-				<option value="">{ p.words.Of("accounts.noCustodian") }</option>
+				<option id="accounts.custodian.option.none" value="">{ p.words.Of("accounts.noCustodian") }</option>
 				for _, member := range members {
-					<option value={ member.ID.String() } selected?={ member.ID == typed.custodian }>{ member.DisplayName }</option>
+					<option id={ "accounts.custodian.option." + member.ID.String() } value={ member.ID.String() } selected?={ member.ID == typed.custodian }>{ member.DisplayName }</option>
 				}
 			</select>
 		</div>
 		if refusal != "" {
 			<p id="account.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
 		}
-		<span class="details-actions">
+		<span id="account.actions" class="details-actions">
 			<button id="account.save" class="primary small" type="submit">{ p.words.Of("accounts.save") }</button>
 		</span>
 	</form>
@@ -245,10 +245,10 @@ templ transferForm(p page, shown accountsShown, typed transferTyped, refusal str
 	</div>
 	<form id="transfer.form" class="details-form" hx-post="/transfer" hx-target="[id='web.details']">
 		<div class="field">
-			<label for="transfer.from">{ p.words.Of("transfers.from") }</label>
+			<label id="transfer.from.label" for="transfer.from">{ p.words.Of("transfers.from") }</label>
 			<select id="transfer.from" name="from" hx-get="/details/transfer" hx-include="closest form" hx-target="[id='web.details']">
 				for _, account := range shown.active() {
-					<option value={ account.ID.String() } selected?={ account.ID == typed.from }>{ account.Name }</option>
+					<option id={ "transfer.from.option." + account.ID.String() } value={ account.ID.String() } selected?={ account.ID == typed.from }>{ account.Name }</option>
 				}
 			</select>
 			if from, found := shown.accountOf(typed.from); found {
@@ -256,31 +256,31 @@ templ transferForm(p page, shown accountsShown, typed transferTyped, refusal str
 			}
 		</div>
 		<div class="field">
-			<label for="transfer.to">{ p.words.Of("transfers.to") }</label>
+			<label id="transfer.to.label" for="transfer.to">{ p.words.Of("transfers.to") }</label>
 			<select id="transfer.to" name="to">
 				for _, account := range shown.active() {
 					if account.ID != typed.from {
-						<option value={ account.ID.String() } selected?={ account.ID == typed.to }>{ account.Name }</option>
+						<option id={ "transfer.to.option." + account.ID.String() } value={ account.ID.String() } selected?={ account.ID == typed.to }>{ account.Name }</option>
 					}
 				}
 			</select>
 		</div>
 		<div class="field">
-			<label for="transfer.amount">{ p.words.Of("transfers.amount") }</label>
+			<label id="transfer.amount.label" for="transfer.amount">{ p.words.Of("transfers.amount") }</label>
 			<input id="transfer.amount" name="amount" inputmode="decimal" required value={ typed.amount }/>
 		</div>
 		<div class="field">
-			<label for="transfer.date">{ p.words.Of("transfers.date") }</label>
+			<label id="transfer.date.label" for="transfer.date">{ p.words.Of("transfers.date") }</label>
 			<input id="transfer.date" name="date" type="date" required value={ typed.date }/>
 		</div>
 		<div class="field">
-			<label for="transfer.notes">{ p.words.Of("transfers.notes") }</label>
+			<label id="transfer.notes.label" for="transfer.notes">{ p.words.Of("transfers.notes") }</label>
 			<textarea id="transfer.notes" name="notes" maxlength="1000">{ typed.notes }</textarea>
 		</div>
 		if refusal != "" {
 			<p id="transfer.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
 		}
-		<span class="details-actions">
+		<span id="transfer.actions" class="details-actions">
 			<button id="transfer.save" class="primary small" type="submit">{ p.words.Of("transfers.save") }</button>
 		</span>
 	</form>

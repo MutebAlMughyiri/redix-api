@@ -30,27 +30,27 @@ templ registerProject(p page, message string, typed registering) {
 			}
 			<p id="newProject.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
 			<div class="field">
-				<label for="newProject.name">{ p.words.Of("projects.name") }</label>
+				<label id="newProject.name.label" for="newProject.name">{ p.words.Of("projects.name") }</label>
 				<input id="newProject.name" name="name" autofocus required value={ typed.name }/>
 			</div>
 			<div class="field">
-				<label for="newProject.description">{ p.words.Of("projects.description") }</label>
+				<label id="newProject.description.label" for="newProject.description">{ p.words.Of("projects.description") }</label>
 				<textarea id="newProject.description" name="description" maxlength="2000">{ typed.description }</textarea>
 			</div>
 			<div class="field">
-				<label for="newProject.startDate">{ p.words.Of("projects.startDate") }</label>
+				<label id="newProject.startDate.label" for="newProject.startDate">{ p.words.Of("projects.startDate") }</label>
 				<input id="newProject.startDate" name="startDate" type="date" required value={ typed.startDate }/>
 			</div>
 			@registerList(p, "units", typed.units, false)
 			@registerList(p, "partners", typed.partners, false)
 			if p.in {
 				<div class="field">
-					<label for="newProject.structureSource">{ p.words.Of("projects.structureSource") }</label>
+					<label id="newProject.structureSource.label" for="newProject.structureSource">{ p.words.Of("projects.structureSource") }</label>
 					<select id="newProject.structureSource" name="structureSource">
-						<option value="">{ p.words.Of("projects.defaultTemplate") }</option>
+						<option id="newProject.structureSource.option.none" value="">{ p.words.Of("projects.defaultTemplate") }</option>
 						for _, project := range p.projects {
 							if mayOpen(project) {
-								<option value={ project.ID.String() }>{ project.Name }</option>
+								<option id={ "newProject.structureSource.option." + project.ID.String() } value={ project.ID.String() }>{ project.Name }</option>
 							}
 						}
 					</select>
@@ -74,22 +74,22 @@ templ registerProject(p page, message string, typed registering) {
 templ managerLogin(p page, typed registering) {
 	<h2 id="newProject.managerHeading" class="section">{ p.words.Of("projects.manager") }</h2>
 	<div class="field">
-		<label for="newProject.managerName">{ p.words.Of("users.name") }</label>
+		<label id="newProject.managerName.label" for="newProject.managerName">{ p.words.Of("users.name") }</label>
 		<input id="newProject.managerName" name="displayName" required value={ typed.displayName }/>
-		<small class="hint">{ p.words.Of("users.nameHint") }</small>
+		<small id="newProject.managerName.hint" class="hint">{ p.words.Of("users.nameHint") }</small>
 	</div>
 	<div class="field">
-		<label for="newProject.username">{ p.words.Of("users.username") }</label>
+		<label id="newProject.username.label" for="newProject.username">{ p.words.Of("users.username") }</label>
 		<input id="newProject.username" name="username" autocomplete="username" required value={ typed.username }/>
 	</div>
 	<div class="field">
-		<label for="newProject.mobile">{ p.words.Of("users.mobile") }</label>
+		<label id="newProject.mobile.label" for="newProject.mobile">{ p.words.Of("users.mobile") }</label>
 		<input id="newProject.mobile" name="mobile" type="tel" autocomplete="tel" value={ typed.mobile }/>
 	</div>
 	<div class="field">
-		<label for="newProject.password">{ p.words.Of("signIn.password") }</label>
+		<label id="newProject.password.label" for="newProject.password">{ p.words.Of("signIn.password") }</label>
 		<input id="newProject.password" name="password" type="password" autocomplete="new-password" required/>
-		<small class="hint">{ p.words.Of("common.passwordRules") }</small>
+		<small id="newProject.password.hint" class="hint">{ p.words.Of("common.passwordRules") }</small>
 	</div>
 	<p id="legal.agreement" class="hint">{ p.words.Of("legal.agreement") }</p>
 }

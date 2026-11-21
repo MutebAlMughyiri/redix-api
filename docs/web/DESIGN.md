@@ -49,7 +49,18 @@ A feature never draws a frame of its own. It adds its tab's content to `contents
 
 ## Every element's id
 
-Every element a test clicks or reads has an id, so automation finds it as the app's Patrol tests find a widget by its key (the owner, 21 Nov 2026). Where the app has the same element, the id is the app's key name; elsewhere it is the web's own, under `web.`. An id is on one element of a page only (`TestWeb_EveryElementsIdIsTheOnlyOneOnItsPage`). [redix-web-automation](https://github.com/MutebAlMughyiri/redix-web-automation) finds them with Playwright's `getByTestId`, set to read `id`.
+Every element a test clicks or reads has an id, so automation finds it as the app's Patrol tests find a widget by its key (the owner, 21 Nov 2026). Where the app has the same element, the id is the app's key name; elsewhere it is the web's own, under `web.`. An id is on one element of a page only (`TestWeb_EveryElementsIdIsTheOnlyOneOnItsPage`). Every element a test clicks, types into or reads carries one - a label, a field, a button, a link, an option, a heading, a line of text, a caption and its value, a table and its cells, a hint; only layout (a div, a table's body) and a hidden input go without (the owner, 22 Nov 2026; `TestWeb_R4_EveryElementATestReadsHasAnId` reads every template). What one element names after another follows one pattern, as the app names a widget's text `key.label`:
+
+| Element | Its id | For example |
+| --- | --- | --- |
+| A field's label | the field's id + `.label` | `addEntry.amount.label` |
+| A caption beside its value | the value's id + `.label` | `entry.amount.label` |
+| A group's title | the group's id + `.label` | `payment.methodChoice.label` |
+| A filter chip's tick | the chip's id + `.input` | `entries.status.approved.input` |
+| An option | its list's id + `.option.` + its value, `.option.none` for the empty one | `accounts.custodian.option.none` |
+| A table's head cell | the table's name + `.head.` + its column | `entries.head.amount` |
+| A row's cell | the list's name + its column + `.` + the row's id | `entries.amount.<entry id>` |
+| A hint under a field | the field's id + `.hint` | `newProject.password.hint` | [redix-web-automation](https://github.com/MutebAlMughyiri/redix-web-automation) finds them with Playwright's `getByTestId`, set to read `id`.
 
 | Part | Ids |
 | --- | --- |

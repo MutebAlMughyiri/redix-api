@@ -24,10 +24,10 @@ templ home(p page, summary reports.Summary, custody []accounts.View, newest []en
 		if p.project.RoleName != "" {
 			<span id="home.roleName" class="role">{ p.project.RoleName }</span>
 		}
-		<span class="end">
+		<span id="home.headEnd" class="end">
 			<label id="home.collapse" class="quiet-button" for="web.view.summary">
-				<span class="when-shown">{ p.words.Of("home.hideDetails") }</span>
-				<span class="when-hidden">{ p.words.Of("home.showDetails") }</span>
+				<span id="home.hideDetails" class="when-shown">{ p.words.Of("home.hideDetails") }</span>
+				<span id="home.showDetails" class="when-hidden">{ p.words.Of("home.showDetails") }</span>
 			</label>
 			<button id={ "home.addEntry." + p.project.ID.String() } class="primary small" type="button" disabled>{ p.words.Of("entries.new") }</button>
 		</span>
@@ -36,17 +36,17 @@ templ home(p page, summary reports.Summary, custody []accounts.View, newest []en
 		<section id="summary.card" class="card summary">
 			if p.waitsForMe(summary) {
 				<div id="summary.pending" class="pending">
-					<strong>{ p.words.Of("summary.pending", strconv.FormatInt(summary.Waiting.ExpensesCount+summary.Waiting.RevenueCount, 10)) }</strong>
+					<strong id="summary.pendingCount">{ p.words.Of("summary.pending", strconv.FormatInt(summary.Waiting.ExpensesCount+summary.Waiting.RevenueCount, 10)) }</strong>
 					if summary.Waiting.ExpensesCount > 0 {
-						<small>{ p.words.Of("reports.pendingExpenses") } ({ strconv.FormatInt(summary.Waiting.ExpensesCount, 10) }): { money(summary.Waiting.ExpensesAmount) }</small>
+						<small id="summary.pendingExpenses">{ p.words.Of("reports.pendingExpenses") } ({ strconv.FormatInt(summary.Waiting.ExpensesCount, 10) }): { money(summary.Waiting.ExpensesAmount) }</small>
 					}
 					if summary.Waiting.RevenueCount > 0 {
-						<small>{ p.words.Of("reports.pendingRevenue") } ({ strconv.FormatInt(summary.Waiting.RevenueCount, 10) }): { money(summary.Waiting.RevenueAmount) }</small>
+						<small id="summary.pendingRevenue">{ p.words.Of("reports.pendingRevenue") } ({ strconv.FormatInt(summary.Waiting.RevenueCount, 10) }): { money(summary.Waiting.RevenueAmount) }</small>
 					}
 				</div>
 			}
 			<span id="summary.surplus.label" class="label">{ p.words.Of("summary.surplus") }</span>
-			<span id="summary.surplus" class="surplus">{ money(summary.Surplus) } <small>{ p.words.Of("accounts.riyal") }</small></span>
+			<span id="summary.surplus" class="surplus">{ money(summary.Surplus) } <small id="summary.surplus.currency">{ p.words.Of("accounts.riyal") }</small></span>
 			<span id="summary.completion" class="label">{ p.words.Of("summary.completion") }: { string(summary.CompletionPercent) }%</span>
 			<progress id="summary.completionBar" class="bar" max="100" value={ string(summary.CompletionPercent) }></progress>
 			if summary.WasReconciled {
@@ -60,7 +60,7 @@ templ home(p page, summary reports.Summary, custody []accounts.View, newest []en
 		<div class="side-col">
 			for _, account := range custody {
 				<section id={ "home.custody." + account.ID.String() } class="card custody">
-					<span class="label">{ p.words.Of("accounts.myCustody") } · { account.Name }</span>
+					<span id={ "home.custodyName." + account.ID.String() } class="label">{ p.words.Of("accounts.myCustody") } · { account.Name }</span>
 					<b id={ "home.custodyBalance." + account.ID.String() }>{ money(account.Balance) } { p.words.Of("accounts.riyal") }</b>
 				</section>
 			}
@@ -80,15 +80,15 @@ templ home(p page, summary reports.Summary, custody []accounts.View, newest []en
 templ summarySide(p page, side string, total fixed.Total, categories []reports.CategoryTotal) {
 	<details id={ "summary." + side + ".card" } class="tile" name="summary.side">
 		<summary id={ "summary." + side + ".body" }>
-			<span class="label">{ p.words.Of("summary." + side) }</span>
+			<span id={ "summary." + side + ".label" } class="label">{ p.words.Of("summary." + side) }</span>
 			<b id={ "summary." + side }>{ money(total) }</b>
 		</summary>
-		<ul class="shares">
+		<ul id={ "summary." + side + ".shares" } class="shares">
 			for _, category := range categories {
 				<li id={ "summary.category." + category.ID.String() }>
-					<span>{ category.Name }</span>
-					<span class="figure">{ money(category.Total) } · { strconv.Itoa(share(category.Total, total)) }%</span>
-					<progress class="bar" max="100" value={ strconv.Itoa(share(category.Total, total)) }></progress>
+					<span id={ "summary.category." + category.ID.String() + ".name" }>{ category.Name }</span>
+					<span id={ "summary.category." + category.ID.String() + ".figure" } class="figure">{ money(category.Total) } · { strconv.Itoa(share(category.Total, total)) }%</span>
+					<progress id={ "summary.category." + category.ID.String() + ".share" } class="bar" max="100" value={ strconv.Itoa(share(category.Total, total)) }></progress>
 				</li>
 			}
 		</ul>
@@ -99,15 +99,15 @@ templ summarySide(p page, side string, total fixed.Total, categories []reports.C
 // Enter shows one in the details panel, and the list's keys move along them (redix-api #166).
 templ entryRows(p page, rows []entries.Row) {
 	<div class="grid-wrap">
-		<table class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+		<table id="entries.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
 			<thead>
 				<tr>
-					<th>{ p.words.Of("entries.number") }</th>
-					<th>{ p.words.Of("expenses.date") }</th>
-					<th>{ p.words.Of("contracts.item") }</th>
-					<th>{ p.words.Of("expenses.supplier") }</th>
-					<th>{ p.words.Of("entries.status") }</th>
-					<th class="amount">{ p.words.Of("expenses.amount") }</th>
+					<th id="entries.head.number">{ p.words.Of("entries.number") }</th>
+					<th id="entries.head.date">{ p.words.Of("expenses.date") }</th>
+					<th id="entries.head.item">{ p.words.Of("contracts.item") }</th>
+					<th id="entries.head.supplier">{ p.words.Of("expenses.supplier") }</th>
+					<th id="entries.head.status">{ p.words.Of("entries.status") }</th>
+					<th id="entries.head.amount" class="amount">{ p.words.Of("expenses.amount") }</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -129,12 +129,12 @@ templ entryRow(p page, row entries.Row, outOfBand bool) {
 		hx-target="[id='web.details']"
 		{ swapOutOfBand(outOfBand)... }
 	>
-		<td>{ strconv.FormatInt(row.Number, 10) }</td>
-		<td>{ row.EntryDate.Format(time.DateOnly) }</td>
-		<td>{ entryTitle(row) }</td>
-		<td>{ row.SupplierName }</td>
-		<td><span class={ "state", row.Status.Name() }>{ p.words.Of("entries." + row.Status.Name()) }</span></td>
-		<td class="amount">{ statement.Money(row.Amount) }</td>
+		<td id={ "entries.number." + row.ID.String() }>{ strconv.FormatInt(row.Number, 10) }</td>
+		<td id={ "entries.date." + row.ID.String() }>{ row.EntryDate.Format(time.DateOnly) }</td>
+		<td id={ "entries.item." + row.ID.String() }>{ entryTitle(row) }</td>
+		<td id={ "entries.supplier." + row.ID.String() }>{ row.SupplierName }</td>
+		<td id={ "entries.status." + row.ID.String() }><span id={ "entries.status." + row.ID.String() + ".chip" } class={ "state", row.Status.Name() }>{ p.words.Of("entries." + row.Status.Name()) }</span></td>
+		<td id={ "entries.amount." + row.ID.String() } class="amount">{ statement.Money(row.Amount) }</td>
 	</tr>
 }
 
@@ -205,11 +205,11 @@ templ projectChoice(p page, project projects.View, idPrefix string) {
 		aria-current={ strconv.FormatBool(project.ID == p.project.ID) }
 		disabled?={ !mayOpen(project) }
 	>
-		<span>{ project.Name }</span>
+		<span id={ idPrefix + project.ID.String() + ".name" }>{ project.Name }</span>
 		if project.IsInactive {
-			<small>{ p.words.Of("projects.inactive") }</small>
+			<small id={ idPrefix + project.ID.String() + ".inactive" }>{ p.words.Of("projects.inactive") }</small>
 		}
-		<span class={ "state", project.Status }>{ p.words.Of(statusWord(project.Status)) }</span>
+		<span id={ idPrefix + project.ID.String() + ".status" } class={ "state", project.Status }>{ p.words.Of(statusWord(project.Status)) }</span>
 	</button>
 }
 

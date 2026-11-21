@@ -4,10 +4,13 @@
 package web_test
 
 import (
+	"bytes"
 	"compress/gzip"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -619,14 +622,14 @@ func TestWeb_R165_UC049_TheSummaryAndTheNewestEntriesAreTheApps(t *testing.T) {
 	if testapi.Field(summary, "surplus") != -100.0 {
 		t.Fatalf("the app's surplus: %v", testapi.Field(summary, "surplus"))
 	}
-	has(t, home, `<span id="summary.surplus" class="surplus">(100.00) <small>ر.س</small></span>`)
+	has(t, home, `<span id="summary.surplus" class="surplus">(100.00) <small id="summary.surplus.currency">ر.س</small></span>`)
 	has(t, home, `<b id="summary.expenses">100.00</b>`)
-	has(t, home, `<strong>بانتظار اعتمادك: 1</strong>`)
+	has(t, home, `<strong id="summary.pendingCount">بانتظار اعتمادك: 1</strong>`)
 	has(t, home, `id="entries.row.`+approved+`"`)
 	has(t, home, `id="entries.row.`+waiting+`"`)
-	has(t, home, `<span class="state approved">معتمد</span>`)
-	has(t, home, `<span class="state pendingApproval">بانتظار الاعتماد</span>`)
-	has(t, home, `<td class="amount">50.00</td>`)
+	has(t, home, `class="state approved">معتمد</span>`)
+	has(t, home, `class="state pendingApproval">بانتظار الاعتماد</span>`)
+	has(t, home, `class="amount">50.00</td>`)
 	has(t, home, `id="home.addEntry.`+w.id+`" class="primary small" type="button" disabled`)
 }
 
@@ -634,7 +637,7 @@ func TestWeb_R165_AnEmptyProjectSaysSoAndShowsNoWaiting(t *testing.T) {
 	home := newWorking(t).home()
 	has(t, home, "لا قيود بعد.")
 	lacks(t, home, `id="summary.pending"`)
-	has(t, home, `<span id="summary.surplus" class="surplus">0.00 <small>ر.س</small></span>`)
+	has(t, home, `<span id="summary.surplus" class="surplus">0.00 <small id="summary.surplus.currency">ر.س</small></span>`)
 }
 
 func TestWeb_R165_MyCustodyShowsWhatIHold(t *testing.T) {
@@ -911,7 +914,7 @@ func TestWeb_R166_UC028_TheListShowsWhatTheCallerSeesAndTheFiltersNarrowIt(t *te
 	onlyApproved := w.listed("?statuses=approved")
 	has(t, onlyApproved, `id="entries.row.`+approved+`"`)
 	lacks(t, onlyApproved, `id="entries.row.`+waiting+`"`)
-	has(t, onlyApproved, `<input type="checkbox" name="statuses" value="approved" checked>`)
+	has(t, onlyApproved, `type="checkbox" name="statuses" value="approved" checked>`)
 	has(t, onlyApproved, `id="entries.clear"`)
 	byAmount := w.listed("?text=50")
 	has(t, byAmount, `id="entries.row.`+waiting+`"`)
@@ -969,7 +972,7 @@ func TestWeb_R166_ARowOpensItsEntryInTheDetailsPanel(t *testing.T) {
 	}
 	has(t, panel.Body.String(), `<h3 id="entry.title">قيد `)
 	has(t, panel.Body.String(), `<dd id="entry.amount" class="money">100.00</dd>`)
-	has(t, panel.Body.String(), `<span class="state approved">معتمد</span>`)
+	has(t, panel.Body.String(), `class="state approved">معتمد</span>`)
 	has(t, panel.Body.String(), `أدخله User A`)
 	lacks(t, panel.Body.String(), `id="entry.reason"`)
 	if code := w.browser.Send("GET", "/details/entry/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
@@ -1048,7 +1051,7 @@ func TestWeb_R166_FR19_TheManagerApprovesFromThePanelAndTheRowFollows(t *testing
 	if approved.Code != http.StatusOK {
 		t.Fatalf("approving: %d", approved.Code)
 	}
-	has(t, approved.Body.String(), `<span class="state approved">معتمد</span>`)
+	has(t, approved.Body.String(), `class="state approved">معتمد</span>`)
 	has(t, approved.Body.String(), `<tr id="entries.row.`+id+`" tabindex="0" aria-selected="false" hx-get="/details/entry/`+id+`" hx-target="[id='web.details']" hx-swap-oob="true">`)
 	if w.statusOf(id) != 2 {
 		t.Errorf("the entry is approved: %d", w.statusOf(id))
@@ -1068,7 +1071,7 @@ func TestWeb_R166_ADraftIsSentAndTheRemovedOneLeavesTheList(t *testing.T) {
 	has(t, w.browser.Send("GET", "/details/entry/"+draft, nil).Body.String(), `hx-post="/entry/`+draft+`/send"`)
 	sent := w.browser.Send("POST", "/entry/"+draft+"/send", nil).Body.String()
 	has(t, sent, `<p id="entry.notice" class="notice details-say" role="status">أُرسل للاعتماد.</p>`)
-	has(t, sent, `<span class="state pendingApproval">بانتظار الاعتماد</span>`)
+	has(t, sent, `class="state pendingApproval">بانتظار الاعتماد</span>`)
 	asking := w.browser.Send("GET", "/details/entry/"+approved+"?asking=remove", nil).Body.String()
 	has(t, asking, "حذف هذا القيد المعتمد؟")
 	has(t, asking, `hx-post="/entry/`+approved+`/remove"`)
@@ -1152,7 +1155,7 @@ func TestWeb_R166_UC022_AddEntryRecordsThroughTheAppsRuleAndShowsTheEntry(t *tes
 	w.home()
 	has(t, w.browser.Send("GET", "/tab/entries", nil).Body.String(), `hx-get="/tab/addEntry"`)
 	form := w.browser.Send("GET", "/tab/addEntry", nil).Body.String()
-	has(t, form, `<option value="`+w.item+":"+w.table+`">التسليح</option>`)
+	has(t, form, `value="`+w.item+":"+w.table+`">التسليح</option>`)
 	has(t, form, `id="payment.method.`+w.method+`"`)
 	has(t, form, `id="payment.account.`+w.account+`"`)
 	has(t, form, `id="addEntry.supplier"`)
@@ -1238,7 +1241,7 @@ func TestWeb_R166_UC033_ChangeFillsTheFormAndSavesThroughTheAppsRule(t *testing.
 	has(t, w.browser.Send("GET", "/details/entry/"+draft, nil).Body.String(), `hx-get="/tab/changeEntry?entry=`+draft+`"`)
 	form := w.browser.Send("GET", "/tab/changeEntry?entry="+draft, nil).Body.String()
 	has(t, form, `<h2 id="addEntry.title">تعديل</h2>`)
-	has(t, form, `<option value="`+w.item+":"+w.table+`" selected>التسليح</option>`)
+	has(t, form, `value="`+w.item+":"+w.table+`" selected>التسليح</option>`)
 	has(t, form, `<input id="addEntry.amount" name="amount" inputmode="decimal" value="30">`)
 	has(t, form, `hx-post="/entry/`+draft+`"`)
 	changed := w.browser.Send("POST", "/entry/"+draft, w.typedEntry("45", true)).Body.String()
@@ -1473,9 +1476,9 @@ func TestWeb_R167_TheApprovalHistoryTellsEachDecisionNarrowedAsTheAppsIs(t *test
 	w.home()
 	has(t, w.browser.Send("GET", "/tab/approvals", nil).Body.String(), `hx-get="/tab/approvalHistory"`)
 	history := w.browser.Send("GET", "/tab/approvalHistory", nil).Body.String()
-	has(t, history, `<td class="decision rejected">رفض: التسليح · 40.00، والسبب: الفاتورة غير واضحة</td>`)
-	has(t, history, `<td class="decision approved">اعتماد: التسليح · 90.00</td>`)
-	has(t, history, `<td class="who">اعتمده User A · 2026-11-16 13:00</td>`)
+	has(t, history, `class="decision rejected">رفض: التسليح · 40.00، والسبب: الفاتورة غير واضحة</td>`)
+	has(t, history, `class="decision approved">اعتماد: التسليح · 90.00</td>`)
+	has(t, history, `class="who">اعتمده User A · 2026-11-16 13:00</td>`)
 	has(t, history, `id="approvalHistory.person.`+w.manager.String()+`"`)
 	searched := w.browser.Send("GET", "/tab/approvalHistory?text=الفاتورة", nil).Body.String()
 	lacks(t, searched, "اعتماد: التسليح · 90.00")
@@ -1550,7 +1553,7 @@ func TestWeb_R164_UC006_ASignedInPersonRegistersAProjectTheyManage(t *testing.T)
 	w.home()
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<a id="projects.new" class="menu-link" href="#" hx-get="/tab/registerProject"`)
 	form := w.browser.Send("GET", "/tab/registerProject", nil).Body.String()
-	has(t, form, `<option value="`+w.id+`">مشروع A</option>`)
+	has(t, form, `value="`+w.id+`">مشروع A</option>`)
 	lacks(t, form, `id="newProject.managerHeading"`)
 	lacks(t, form, `id="newProject.password"`)
 	typed := url.Values{"name": {"مشروع هـ"}, "startDate": {"2026-11-21"}, "unit": {"B1"}, "structureSource": {w.id}}
@@ -1592,7 +1595,7 @@ func TestWeb_R166_D1_AnEntryWithAFileSaysItHasOne(t *testing.T) {
 	}
 	w.home()
 	panel := w.browser.Send("GET", "/details/entry/"+id, nil).Body.String()
-	has(t, panel, `<dt>فاتورة</dt><dd id="entry.file.0" class="file">invoice-31.pdf</dd>`)
+	has(t, panel, `<dt id="entry.file.0.label">فاتورة</dt><dd id="entry.file.0" class="file">invoice-31.pdf</dd>`)
 	lacks(t, w.browser.Send("GET", "/details/entry/"+w.sent(40), nil).Body.String(), `id="entry.file.0"`)
 }
 
@@ -1690,7 +1693,7 @@ func TestWeb_R168_UC015_NewAccountAndEditAsTheAppsDialog(t *testing.T) {
 	has(t, w.browser.Send("GET", "/tab/accounts", nil).Body.String(), `hx-get="/details/account/new"`)
 	form := w.browser.Send("GET", "/details/account/new", nil).Body.String()
 	has(t, form, `id="accounts.type.cashCustody"`)
-	has(t, form, `<option value="`+w.manager.String()+`">User A</option>`)
+	has(t, form, `value="`+w.manager.String()+`">User A</option>`)
 	custody := url.Values{"name": {"صندوق الموقع"}, "type": {"cashCustody"}, "custodian": {""}}
 	has(t, w.browser.Send("POST", "/account", custody).Body.String(), "العهدة النقدية تحتاج إلى صاحب عهدة.")
 	has(t, w.browser.Send("POST", "/account", url.Values{"name": {" "}, "type": {"bank"}}).Body.String(), "أدخل اسماً من 1 إلى 100 حرف.")
@@ -1798,7 +1801,7 @@ func TestWeb_R168_FR23_TransferMovesMoneyBetweenTwoActiveAccounts(t *testing.T) 
 	w.funded(500)
 	form := w.browser.Send("GET", "/details/transfer", nil).Body.String()
 	has(t, form, `<small id="transfer.balanceNow" class="hint">رصيده الآن: 500.00</small>`)
-	has(t, form, `<option value="`+spare+`">حساب احتياطي</option>`)
+	has(t, form, `value="`+spare+`">حساب احتياطي</option>`)
 	typed := url.Values{"from": {w.account}, "to": {spare}, "amount": {"600"}, "date": {"2026-11-15"}, "notes": {""}}
 	has(t, w.browser.Send("POST", "/transfer", typed).Body.String(), "المبلغ أكبر من رصيد الحساب الآن.")
 	typed.Set("amount", "200")
@@ -1834,6 +1837,30 @@ func TestWeb_R168_FR23_TransferMovesMoneyBetweenTwoActiveAccounts(t *testing.T) 
 		}
 		if answered.Code != http.StatusInternalServerError {
 			t.Errorf("transferring with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}
+
+// TestWeb_R4_EveryElementATestReadsHasAnId reads every template of the web: each element a test clicks, types into or reads - a label, a field,
+// a button, a link, an option, a heading, a line of text, a caption and its value, a table and its cells, a hint - carries an id, so the
+// automation finds it at once by it (#80 D13; the owner, 22 Nov 2026). Only layout - a div, a table's body - and a hidden input go without one.
+func TestWeb_R4_EveryElementATestReadsHasAnId(t *testing.T) {
+	tags := `label|button|input|select|textarea|a|option|h1|h2|h3|h4|p|dt|dd|th|td|legend|small|span|b|strong|kbd|ul|li|table|progress|form|fieldset|section|aside|details|summary`
+	element := regexp.MustCompile(`<(` + tags + `)\b([^>]*)>`)
+	files, err := filepath.Glob("*.templ")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("the templates: %v %v", files, err)
+	}
+	for _, file := range files {
+		text, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, found := range element.FindAllSubmatchIndex(text, -1) {
+			attributes := string(text[found[4]:found[5]])
+			if !strings.Contains(attributes, "id=") && !strings.Contains(attributes, `type="hidden"`) {
+				t.Errorf("%s:%d: <%s> has no id", file, bytes.Count(text[:found[0]], []byte("\n"))+1, text[found[2]:found[3]])
+			}
 		}
 	}
 }

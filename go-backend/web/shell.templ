@@ -68,7 +68,7 @@ templ topBar(p page) {
 	<header id="web.topBar" class="top">
 		<div id="web.brand" class="brand">
 			@logo()
-			<span>{ p.words.Of("app.title") }</span>
+			<span id="web.appTitle">{ p.words.Of("app.title") }</span>
 		</div>
 		if p.in {
 			<button id="web.project" class="project" type="button" popovertarget="web.projects">
@@ -77,7 +77,7 @@ templ topBar(p page) {
 				} else {
 					{ p.words.Of("projects.choose") }
 				}
-				<span class="caret">▾</span>
+				<span id="web.project.caret" class="caret" aria-hidden="true">▾</span>
 			</button>
 			<div id="web.projects" class="menu-pop projects-menu" popover>
 				@projectMenu(p, "")
@@ -113,7 +113,7 @@ templ tree(p page) {
 	<ul id="web.tree" class="tree">
 		for _, item := range sideMenu {
 			if p.offers(item.name) {
-				<li>
+				<li id={ "web.tree." + item.name }>
 					if item.built() {
 					@itemLink(p, item, false)
 				} else {
@@ -146,9 +146,9 @@ templ tabsRow(p page) {
 		@tabs(p, false)
 		<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu">{ p.words.Of("web.view") }</button>
 		<form id="web.viewMenu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none">
-			<label><input type="checkbox" id="web.view.topBar" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
-			<label><input type="checkbox" id="web.view.statusBar" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
-			<label><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd>Alt+1</kbd></label>
+			<label id="web.view.topBar.label"><input type="checkbox" id="web.view.topBar" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
+			<label id="web.view.statusBar.label"><input type="checkbox" id="web.view.statusBar" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
+			<label id="web.view.sideMenu.label"><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd id="web.view.sideMenu.shortcut">Alt+1</kbd></label>
 			<input type="checkbox" id="web.view.summary" name="summary" checked?={ p.view.Summary } hidden/>
 			<input type="hidden" id="web.view.width" name="width" value={ strconv.Itoa(p.view.Width) }/>
 		</form>
@@ -178,7 +178,7 @@ templ detailsPanel(outOfBand bool) {
 // statusBar is the host this page came from and the web's version (#161 R2).
 templ statusBar(p page) {
 	<footer id="web.statusBar" class="status">
-		<span id="web.host" class="host"><span class="dot"></span>{ p.host }</span>
+		<span id="web.host" class="host"><span id="web.host.dot" class="dot" aria-hidden="true"></span>{ p.host }</span>
 		<span id="appVersion.line" class="end">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></span>
 	</footer>
 }
@@ -205,11 +205,11 @@ templ signInForm(p page, message string, username string) {
 			<p id="signIn.hint" class="hint">{ p.words.Of("signIn.hint") }</p>
 			<p id="signIn.notice" class="notice" role="status" hidden?={ p.notice == "" }>{ p.words.Of(p.notice) }</p>
 			<div class="field">
-				<label for="signIn.username">{ p.words.Of("signIn.username") }</label>
+				<label id="signIn.username.label" for="signIn.username">{ p.words.Of("signIn.username") }</label>
 				<input id="signIn.username" name="username" autocomplete="username" autofocus?={ username == "" } required value={ username }/>
 			</div>
 			<div class="field">
-				<label for="signIn.password">{ p.words.Of("signIn.password") }</label>
+				<label id="signIn.password.label" for="signIn.password">{ p.words.Of("signIn.password") }</label>
 				<input id="signIn.password" name="password" type="password" autocomplete="current-password" autofocus?={ username != "" } required/>
 			</div>
 			<p id="signIn.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
@@ -238,7 +238,7 @@ templ forgotPasswordForm(p page, message string, login string, sent bool) {
 			<p id="forgotPassword.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
 			<form id="forgotPassword.sendForm" hx-post="/forgot-password" hx-target="closest .signin" hx-swap="outerHTML">
 				<div class="field">
-					<label for="forgotPassword.login">{ p.words.Of("auth.loginOrEmail") }</label>
+					<label id="forgotPassword.login.label" for="forgotPassword.login">{ p.words.Of("auth.loginOrEmail") }</label>
 					<input id="forgotPassword.login" name="login" autocomplete="username" autofocus?={ !sent } required value={ login }/>
 				</div>
 				if sent {
@@ -249,17 +249,17 @@ templ forgotPasswordForm(p page, message string, login string, sent bool) {
 			if sent {
 				<p id="forgotPassword.sent" class="notice" role="status">{ p.words.Of("auth.codeSent") }</p>
 				<form id="forgotPassword.form" hx-post="/reset-with-code" hx-target="closest .signin" hx-swap="outerHTML">
-					<input type="text" name="login" autocomplete="username" value={ login } hidden/>
+					<input id="forgotPassword.codeLogin" type="text" name="login" autocomplete="username" value={ login } hidden/>
 					<div class="field">
-						<label for="forgotPassword.code">{ p.words.Of("auth.code") }</label>
+						<label id="forgotPassword.code.label" for="forgotPassword.code">{ p.words.Of("auth.code") }</label>
 						<input id="forgotPassword.code" name="code" inputmode="numeric" autocomplete="one-time-code" autofocus required/>
 					</div>
 					<div class="field">
-						<label for="forgotPassword.new">{ p.words.Of("changePassword.new") }</label>
+						<label id="forgotPassword.new.label" for="forgotPassword.new">{ p.words.Of("changePassword.new") }</label>
 						<input id="forgotPassword.new" name="new" type="password" autocomplete="new-password" required/>
 					</div>
 					<div class="field">
-						<label for="forgotPassword.confirm">{ p.words.Of("changePassword.confirm") }</label>
+						<label id="forgotPassword.confirm.label" for="forgotPassword.confirm">{ p.words.Of("changePassword.confirm") }</label>
 						<input id="forgotPassword.confirm" name="confirm" type="password" autocomplete="new-password" required/>
 					</div>
 					<button id="forgotPassword.reset" class="primary" type="submit">{ p.words.Of("auth.resetWithCode") }</button>
@@ -286,17 +286,17 @@ templ changePasswordForm(p page, message string, username string) {
 		>
 			<h1 id="changePassword.title">{ p.words.Of("changePassword.title") }</h1>
 			<p id="changePassword.hint" class="hint">{ p.words.Of("changePassword.hint") }</p>
-			<input type="text" name="username" autocomplete="username" value={ username } hidden/>
+			<input id="changePassword.username" type="text" name="username" autocomplete="username" value={ username } hidden/>
 			<div class="field">
-				<label for="changePassword.current">{ p.words.Of("changePassword.current") }</label>
+				<label id="changePassword.current.label" for="changePassword.current">{ p.words.Of("changePassword.current") }</label>
 				<input id="changePassword.current" name="current" type="password" autocomplete="current-password" autofocus required/>
 			</div>
 			<div class="field">
-				<label for="changePassword.new">{ p.words.Of("changePassword.new") }</label>
+				<label id="changePassword.new.label" for="changePassword.new">{ p.words.Of("changePassword.new") }</label>
 				<input id="changePassword.new" name="new" type="password" autocomplete="new-password" required/>
 			</div>
 			<div class="field">
-				<label for="changePassword.confirm">{ p.words.Of("changePassword.confirm") }</label>
+				<label id="changePassword.confirm.label" for="changePassword.confirm">{ p.words.Of("changePassword.confirm") }</label>
 				<input id="changePassword.confirm" name="confirm" type="password" autocomplete="new-password" required/>
 			</div>
 			<p id="changePassword.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>

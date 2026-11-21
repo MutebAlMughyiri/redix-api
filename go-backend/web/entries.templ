@@ -21,7 +21,7 @@ import (
 templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take int) {
 	<div class="view-head">
 		<h2 id="entries.title">{ p.words.Of("entries.title") }</h2>
-		<span class="head-actions">
+		<span id="entries.actions" class="head-actions">
 			<button
 				id="entries.new"
 				class="primary small"
@@ -41,21 +41,21 @@ templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take 
 		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
 	>
 		<input id="entries.search" class="search" type="search" name="text" placeholder={ p.words.Of("entries.searchHint") } aria-label={ p.words.Of("entries.searchHint") } value={ query.Get("text") }/>
-		<label id="entries.mine" class="pick"><input type="checkbox" name="mine" value="true" checked?={ query.Get("mine") == "true" }/>{ p.words.Of("entries.mine") }</label>
+		<label id="entries.mine" class="pick"><input id="entries.mine.input" type="checkbox" name="mine" value="true" checked?={ query.Get("mine") == "true" }/>{ p.words.Of("entries.mine") }</label>
 		<fieldset id="entries.kindChoice" class="picks">
-			<legend>{ p.words.Of("entries.kind") }</legend>
+			<legend id="entries.kindChoice.label">{ p.words.Of("entries.kind") }</legend>
 			for _, kind := range entryKinds {
-				<label id={ "entries.kind." + kind.name } class="pick"><input type="checkbox" name="kinds" value={ kind.name } checked?={ slices.Contains(query["kinds"], kind.name) }/>{ p.words.Of(kind.word) }</label>
+				<label id={ "entries.kind." + kind.name } class="pick"><input id={ "entries.kind." + kind.name + ".input" } type="checkbox" name="kinds" value={ kind.name } checked?={ slices.Contains(query["kinds"], kind.name) }/>{ p.words.Of(kind.word) }</label>
 			}
 		</fieldset>
 		<fieldset id="entries.statusChoice" class="picks">
-			<legend>{ p.words.Of("entries.status") }</legend>
+			<legend id="entries.statusChoice.label">{ p.words.Of("entries.status") }</legend>
 			for _, status := range entryStatuses {
-				<label id={ "entries.status." + status } class="pick"><input type="checkbox" name="statuses" value={ status } checked?={ slices.Contains(query["statuses"], status) }/>{ p.words.Of("entries." + status) }</label>
+				<label id={ "entries.status." + status } class="pick"><input id={ "entries.status." + status + ".input" } type="checkbox" name="statuses" value={ status } checked?={ slices.Contains(query["statuses"], status) }/>{ p.words.Of("entries." + status) }</label>
 			}
 		</fieldset>
 		<fieldset id="entries.period" class="picks">
-			<legend>{ p.words.Of("entries.period") }</legend>
+			<legend id="entries.period.label">{ p.words.Of("entries.period") }</legend>
 			<input id="entries.from" type="date" name="from" aria-label={ p.words.Of("entries.period") } value={ query.Get("from") }/>
 			<input id="entries.to" type="date" name="to" aria-label={ p.words.Of("entries.period") } value={ query.Get("to") }/>
 		</fieldset>
@@ -91,38 +91,38 @@ templ entryPanel(p page, row entries.Row, shown said) {
 		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
 	</div>
 	<dl class="facts">
-		<dt>{ p.words.Of("entries.status") }</dt>
-		<dd id="entry.status"><span class={ "state", row.Status.Name() }>{ p.words.Of("entries." + row.Status.Name()) }</span></dd>
+		<dt id="entry.status.label">{ p.words.Of("entries.status") }</dt>
+		<dd id="entry.status"><span id="entry.status.chip" class={ "state", row.Status.Name() }>{ p.words.Of("entries." + row.Status.Name()) }</span></dd>
 		if row.RejectionReason != "" {
-			<dt>{ p.words.Of("entries.reason") }</dt>
+			<dt id="entry.reason.label">{ p.words.Of("entries.reason") }</dt>
 			<dd id="entry.reason" class="refused">{ row.RejectionReason }</dd>
 		}
-		<dt>{ p.words.Of("expenses.date") }</dt>
+		<dt id="entry.date.label">{ p.words.Of("expenses.date") }</dt>
 		<dd id="entry.date">{ row.EntryDate.Format(time.DateOnly) }</dd>
-		<dt>{ p.words.Of("contracts.item") }</dt>
+		<dt id="entry.item.label">{ p.words.Of("contracts.item") }</dt>
 		<dd id="entry.item">{ entryTitle(row) }</dd>
 		if row.SupplierName != "" {
-			<dt>{ p.words.Of("expenses.supplier") }</dt>
+			<dt id="entry.supplier.label">{ p.words.Of("expenses.supplier") }</dt>
 			<dd id="entry.supplier">{ row.SupplierName }</dd>
 		}
 		if row.InvoiceNumber != "" {
-			<dt>{ p.words.Of("entries.fileInvoice") }</dt>
+			<dt id="entry.invoice.label">{ p.words.Of("entries.fileInvoice") }</dt>
 			<dd id="entry.invoice">{ row.InvoiceNumber }</dd>
 		}
 		for at, file := range row.Files {
-			<dt>{ p.words.Of(fileWord(file.Role)) }</dt>
+			<dt id={ "entry.file." + strconv.Itoa(at) + ".label" }>{ p.words.Of(fileWord(file.Role)) }</dt>
 			<dd id={ "entry.file." + strconv.Itoa(at) } class="file">{ file.Name }</dd>
 		}
-		<dt>{ p.words.Of("expenses.amount") }</dt>
+		<dt id="entry.amount.label">{ p.words.Of("expenses.amount") }</dt>
 		<dd id="entry.amount" class="money">{ statement.Money(row.Amount) }</dd>
 		if row.PaymentMethodName != "" {
-			<dt>{ p.words.Of("expenses.paymentMethod") }</dt>
+			<dt id="entry.paymentMethod.label">{ p.words.Of("expenses.paymentMethod") }</dt>
 			<dd id="entry.paymentMethod">{ row.PaymentMethodName }</dd>
 		}
-		<dt>{ p.words.Of("expenses.account") }</dt>
+		<dt id="entry.account.label">{ p.words.Of("expenses.account") }</dt>
 		<dd id="entry.account">{ row.AccountName }</dd>
 		if row.Description != "" {
-			<dt>{ p.words.Of("expenses.description") }</dt>
+			<dt id="entry.description.label">{ p.words.Of("expenses.description") }</dt>
 			<dd id="entry.description">{ row.Description }</dd>
 		}
 	</dl>
@@ -137,7 +137,7 @@ templ entryPanel(p page, row entries.Row, shown said) {
 		@rejectForm(p, row)
 	} else if shown.asking == "remove" && p.mayRemove(row) {
 		<div id="entry.ask" class="details-say ask">
-			<span>
+			<span id="entry.askQuestion">
 				if row.Status.Name() == "approved" {
 					{ p.words.Of("entries.removeQuestion") }
 				} else {
@@ -203,15 +203,15 @@ templ entryGone(p page, entryID uuid.UUID, shown said) {
 templ rejectForm(p page, row entries.Row) {
 	<form id="reasonSheet.form" class="details-say ask reason" hx-post={ "/entry/" + row.ID.String() + "/reject" } hx-target="[id='web.details']">
 		<span id="reasonSheet.title">{ p.words.Of("approvals.rejectTitle") }</span>
-		<fieldset class="picks">
+		<fieldset id="reasonSheet.quickReasons" class="picks">
 			<legend id="reasonSheet.quickReasonHeading">{ p.words.Of("approvals.quickReason") }</legend>
 			for at, reason := range quickReasons {
-				<label id={ "reasonSheet.quickReason." + strconv.Itoa(at) } class="pick"><input type="radio" name="quick" value={ p.words.Of(reason) }/>{ p.words.Of(reason) }</label>
+				<label id={ "reasonSheet.quickReason." + strconv.Itoa(at) } class="pick"><input id={ "reasonSheet.quickReason." + strconv.Itoa(at) + ".input" } type="radio" name="quick" value={ p.words.Of(reason) }/>{ p.words.Of(reason) }</label>
 			}
 		</fieldset>
 		<textarea id="reasonSheet.reason" name="reason" maxlength="500" aria-label={ p.words.Of("approvals.reason") } placeholder={ p.words.Of("approvals.reason") }></textarea>
 		<small id="reasonSheet.about" class="hint">{ p.words.Of("approvals.reasonHint") }</small>
-		<span class="details-actions">
+		<span id="reasonSheet.actions" class="details-actions">
 			<button id="reasonSheet.send" class="primary small danger" type="submit">{ p.words.Of("approvals.rejectSend") }</button>
 			<button id="entry.rejectCancel" class="quiet-button" type="button" hx-get={ "/details/entry/" + row.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
 		</span>

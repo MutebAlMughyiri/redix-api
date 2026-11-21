@@ -31,13 +31,13 @@ templ addEntry(p page, form entryForm) {
 				<input type="hidden" name="entry" value={ form.editing.ID.String() }/>
 			}
 			<div class="field wide">
-				<label for="addEntry.table">{ p.words.Of("entries.table") }</label>
+				<label id="addEntry.table.label" for="addEntry.table">{ p.words.Of("entries.table") }</label>
 				<select id="addEntry.table" name="table" hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']">
 					for _, category := range form.tables {
 						<optgroup label={ category.Name }>
 							for _, item := range category.Items {
 								for _, table := range item.Tables {
-									<option value={ tableValue(item, table) } selected?={ item.ID == form.item.ID && table.ID == form.table.ID }>{ tableLabel(item, table) }</option>
+									<option id={ "addEntry.table.option." + tableValue(item, table) } value={ tableValue(item, table) } selected?={ item.ID == form.item.ID && table.ID == form.table.ID }>{ tableLabel(item, table) }</option>
 								}
 							}
 						</optgroup>
@@ -45,35 +45,35 @@ templ addEntry(p page, form entryForm) {
 				</select>
 			</div>
 			<div class="field wide">
-				<label for="addEntry.description">{ p.words.Of("expenses.description") }</label>
+				<label id="addEntry.description.label" for="addEntry.description">{ p.words.Of("expenses.description") }</label>
 				<input id="addEntry.description" name="description" value={ form.typed.Get("description") }/>
 			</div>
 			<div class="field">
-				<label for="addEntry.date">{ p.words.Of("expenses.date") }</label>
+				<label id="addEntry.date.label" for="addEntry.date">{ p.words.Of("expenses.date") }</label>
 				<input id="addEntry.date" name="date" type="date" value={ form.typed.Get("date") }/>
 			</div>
 			<div class="field">
-				<label for="addEntry.amount">{ p.words.Of("expenses.amount") }</label>
+				<label id="addEntry.amount.label" for="addEntry.amount">{ p.words.Of("expenses.amount") }</label>
 				<input id="addEntry.amount" name="amount" inputmode="decimal" value={ form.typed.Get("amount") } aria-invalid?={ form.said.refusal == "expenses.invalidAmount" } { form.figuresFollow()... }/>
 			</div>
 			if form.asksContract() {
 				@contractFigures(p, form)
 				<fieldset id="addEntry.kind" class="picks wide">
-					<legend>{ p.words.Of("contractorPayments.kind") }</legend>
-					<label id="addEntry.inside" class="pick"><input type="radio" name="outside" value="false" checked?={ form.typed.Get("outside") != "true" } { form.figuresFollow()... }/>{ p.words.Of("contractorPayments.inside") }</label>
-					<label id="addEntry.outside" class="pick"><input type="radio" name="outside" value="true" checked?={ form.typed.Get("outside") == "true" } { form.figuresFollow()... }/>{ p.words.Of("contractorPayments.outside") }</label>
+					<legend id="addEntry.kind.label">{ p.words.Of("contractorPayments.kind") }</legend>
+					<label id="addEntry.inside" class="pick"><input id="addEntry.inside.input" type="radio" name="outside" value="false" checked?={ form.typed.Get("outside") != "true" } { form.figuresFollow()... }/>{ p.words.Of("contractorPayments.inside") }</label>
+					<label id="addEntry.outside" class="pick"><input id="addEntry.outside.input" type="radio" name="outside" value="true" checked?={ form.typed.Get("outside") == "true" } { form.figuresFollow()... }/>{ p.words.Of("contractorPayments.outside") }</label>
 					<small id="addEntry.outsideExplain" class="hint">{ p.words.Of("contractorPayments.outsideExplain") }</small>
 				</fieldset>
 			}
 			if form.asksSupplier() {
 				<div class="field wide">
-					<label for="addEntry.supplier">{ p.words.Of("expenses.supplier") }</label>
-					<span class="pair">
+					<label id="addEntry.supplier.label" for="addEntry.supplier">{ p.words.Of("expenses.supplier") }</label>
+					<span id="addEntry.supplierChoice" class="pair">
 						<input id="addEntry.supplierSearch" class="search" type="search" name="supplierText" value={ form.typed.Get("supplierText") } placeholder={ p.words.Of("common.search") } aria-label={ p.words.Of("common.search") } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms"/>
 						<select id="addEntry.supplier" name="supplier">
-							<option value=""></option>
+							<option id="addEntry.supplier.option.none" value=""></option>
 							for _, supplier := range form.suppliers {
-								<option value={ supplier.ID.String() } selected?={ supplier.ID.String() == form.typed.Get("supplier") }>{ supplier.Name }</option>
+								<option id={ "addEntry.supplier.option." + supplier.ID.String() } value={ supplier.ID.String() } selected?={ supplier.ID.String() == form.typed.Get("supplier") }>{ supplier.Name }</option>
 							}
 						</select>
 					</span>
@@ -87,16 +87,16 @@ templ addEntry(p page, form entryForm) {
 			}
 			if !form.item.IsRevenue {
 				<fieldset id="payment.methodChoice" class="picks wide">
-					<legend>{ p.words.Of("expenses.paymentMethod") }</legend>
+					<legend id="payment.methodChoice.label">{ p.words.Of("expenses.paymentMethod") }</legend>
 					for _, method := range form.methods {
 						<label id={ "payment.method." + method.ID.String() } class="pick"><input type="radio" name="method" value={ method.ID.String() } checked?={ method.ID == form.method } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']"/>{ method.Name }</label>
 					}
 				</fieldset>
 			}
 			<fieldset id="addEntry.paymentSection" class="picks wide">
-				<legend>{ p.words.Of("expenses.account") }</legend>
+				<legend id="addEntry.paymentSection.label">{ p.words.Of("expenses.account") }</legend>
 				for _, account := range form.accounts {
-					<label id={ "payment.account." + account.ID.String() } class="pick"><input type="radio" name="account" value={ account.ID.String() } checked?={ account.ID == form.account() }/>{ account.Name }</label>
+					<label id={ "payment.account." + account.ID.String() } class="pick"><input id={ "payment.account." + account.ID.String() + ".input" } type="radio" name="account" value={ account.ID.String() } checked?={ account.ID == form.account() }/>{ account.Name }</label>
 				}
 				if len(form.accounts) == 0 {
 					<p id="payment.noAccount" class="hint">{ p.words.Of("expenses.noAccount") }</p>
@@ -120,11 +120,11 @@ templ addEntry(p page, form entryForm) {
 // number typed as a decimal, anything else as text; the column the last save refused is marked.
 templ columnField(form entryForm, column structure.ColumnView) {
 	<div class="field">
-		<label for={ "addEntry.column." + column.Key } class={ templ.KV("required", column.IsRequired) }>{ column.Name }</label>
+		<label id={ "addEntry.column." + column.Key + ".label" } for={ "addEntry.column." + column.Key } class={ templ.KV("required", column.IsRequired) }>{ column.Name }</label>
 		switch {
 			case column.DataType == structure.List && len(column.Choices) > 0:
 				<select id={ "addEntry.column." + column.Key } name={ "column." + column.Key } aria-invalid?={ form.refused == column.Key }>
-					<option value=""></option>
+					<option id={ "addEntry.column." + column.Key + ".option.none" } value=""></option>
 					for _, choice := range column.Choices {
 						<option id={ "addEntry.columnOption." + column.Key + "." + choice.ID.String() } value={ choice.ID.String() } selected?={ choice.ID.String() == form.typed.Get("column." + column.Key) }>{ choice.Name }</option>
 					}
@@ -160,16 +160,16 @@ templ entryNotChangeable(p page) {
 templ contractFigures(p page, form entryForm) {
 	<div id="addEntry.figures" class="figures wide">
 		<dl class="facts">
-			<dt>{ p.words.Of("contracts.value") }</dt>
+			<dt id="addEntry.value.label">{ p.words.Of("contracts.value") }</dt>
 			if form.contract.IsOpenValue {
 				<dd id="addEntry.value">{ p.words.Of("contracts.open") }</dd>
 			} else {
 				<dd id="addEntry.value" class="money">{ statement.Money(form.contract.Value) }</dd>
 			}
-			<dt>{ p.words.Of("contracts.paid") }</dt>
+			<dt id="addEntry.paid.label">{ p.words.Of("contracts.paid") }</dt>
 			<dd id="addEntry.paid" class="money">{ statement.Money(form.standing.Paid.Number()) }</dd>
 			if !form.contract.IsOpenValue {
-				<dt>{ p.words.Of("contractorPayments.remainingAfter") }</dt>
+				<dt id="addEntry.remaining.label">{ p.words.Of("contractorPayments.remainingAfter") }</dt>
 				<dd id="addEntry.remaining" class={ "money", templ.KV("refused", form.standing.IsOverrun) }>{ statement.Money(form.standing.RemainingAfter.Number()) }</dd>
 			}
 		</dl>
