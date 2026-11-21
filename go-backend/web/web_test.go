@@ -1462,3 +1462,85 @@ func TestWeb_R167_ApprovalsAnswersAFailingDatabaseWith500(t *testing.T) {
 		}
 	}
 }
+
+func TestWeb_R167_TheApprovalHistoryTellsEachDecisionNarrowedAsTheAppsIs(t *testing.T) {
+	w := newWorking(t)
+	w.approved(90)
+	rejected := w.sent(40)
+	if code, answer := w.Ask("POST", w.path+"/entries/"+rejected+"/reject", `{"reason":"الفاتورة غير واضحة"}`, w.token); code >= 300 {
+		t.Fatalf("rejecting: %d %v", code, answer)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/approvals", nil).Body.String(), `hx-get="/tab/approvalHistory"`)
+	history := w.browser.Send("GET", "/tab/approvalHistory", nil).Body.String()
+	has(t, history, `<td class="decision rejected">رفض: التسليح · 40.00، والسبب: الفاتورة غير واضحة</td>`)
+	has(t, history, `<td class="decision approved">اعتماد: التسليح · 90.00</td>`)
+	has(t, history, `<td class="who">اعتمده User A · 2026-11-16 13:00</td>`)
+	has(t, history, `id="approvalHistory.person.`+w.manager.String()+`"`)
+	searched := w.browser.Send("GET", "/tab/approvalHistory?text=الفاتورة", nil).Body.String()
+	lacks(t, searched, "اعتماد: التسليح · 90.00")
+	has(t, searched, "رفض: التسليح · 40.00")
+	has(t, w.browser.Send("GET", "/tab/approvalHistory?kind=contractorPayment", nil).Body.String(), `<p id="approvalHistory.empty" class="empty">لا شيء بعد.</p>`)
+	has(t, w.browser.Send("GET", "/tab/approvalHistory?by="+uuid.NewString(), nil).Body.String(), `id="approvalHistory.empty"`)
+	lacks(t, history, `id="approvalHistory.more"`)
+}
+
+func TestWeb_R167_ShowMoreAddsTheNextPageOfTheApprovalHistory(t *testing.T) {
+	w := newWorking(t)
+	var ids []string
+	for range 51 {
+		ids = append(ids, `"`+w.sent(10)+`"`)
+	}
+	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":[`+strings.Join(ids, ",")+`]}`, w.token); code != http.StatusOK {
+		t.Fatalf("approving: %d %v", code, answer)
+	}
+	w.home()
+	first := w.browser.Send("GET", "/tab/approvalHistory", nil).Body.String()
+	if got := strings.Count(first, `id="approvalHistory.line.`); got != 50 {
+		t.Fatalf("the first page holds 50 lines: %d", got)
+	}
+	at := strings.Index(first, `hx-get="/approval-history?`)
+	if at < 0 {
+		t.Fatal("a full page offers Show more")
+	}
+	next := first[at+len(`hx-get="`):]
+	next = strings.ReplaceAll(next[:strings.Index(next, `"`)], "&amp;", "&")
+	more := w.browser.Send("GET", next, nil).Body.String()
+	if got := strings.Count(more, `id="approvalHistory.line.`); got != 1 {
+		t.Errorf("the next page holds the one line left: %d", got)
+	}
+	has(t, more, `<button id="approvalHistory.more" hx-swap-oob="delete"></button>`)
+}
+
+func TestWeb_R167_TheApprovalHistoryIsLeftOutForWhoeverMayNotApprove(t *testing.T) {
+	w := newWorking(t)
+	w.approved(90)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	lacks(t, browser.Send("GET", "/tab/approvalHistory", nil).Body.String(), `id="approvalHistory.title"`)
+	if code := browser.Send("GET", "/approval-history?before=99", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a page of the history without the permission: %d", code)
+	}
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/approvalHistory", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("the history with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/approval-history?before=99", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("a page of the history with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}

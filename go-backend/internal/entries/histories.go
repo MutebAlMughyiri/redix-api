@@ -4,8 +4,10 @@
 package entries
 
 import (
+	"context"
 	"math"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -26,8 +28,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// pageSize is how many lines a page of a history holds (HistoryPage.Size).
-const pageSize = 50
+// PageSize is how many lines a page of a history holds (HistoryPage.Size): a full page is where the web's Show more asks for the next.
+const PageSize = 50
 
 // The history screens beside one another (redix-app #101): the accounts', the partners' and the approvals', each read from the History table by
 // its project alone (D11), newest first and a page at a time.
@@ -70,8 +72,7 @@ func recordList(records [][2]string) string {
 // page is a page of a history screen (HistoryPage.LinesAsync): its lines read newest first a batch at a time, after the line before (0 for the
 // newest), linesOf keeping the ones the screen shows and making them; only those the person by wrote when one is named (UC-069 R5) and, once
 // something was typed, only those that hold it, until the page is full or the lines run out (#87).
-func page[T historyLine](r *http.Request, read historyLines, linesOf func(batch []store.History) ([]T, error)) ([]T, error) {
-	query := r.URL.Query()
+func page[T historyLine](query url.Values, read historyLines, linesOf func(batch []store.History) ([]T, error)) ([]T, error) {
 	by, _ := uuid.Parse(query.Get("by"))
 	before, _ := strconv.ParseInt(query.Get("before"), 10, 64)
 	if before <= 0 {
@@ -79,7 +80,7 @@ func page[T historyLine](r *http.Request, read historyLines, linesOf func(batch 
 	}
 	text := query.Get("text")
 	var lines []T
-	for take := int64(pageSize); ; take = min(2*take, historyBatch) {
+	for take := int64(PageSize); ; take = min(2*take, historyBatch) {
 		batch, err := read(before, take)
 		if err != nil || len(batch) == 0 {
 			return lines, err
@@ -97,7 +98,7 @@ func page[T historyLine](r *http.Request, read historyLines, linesOf func(batch 
 				continue
 			}
 			lines = append(lines, line)
-			if len(lines) == pageSize {
+			if len(lines) == PageSize {
 				return lines, nil
 			}
 		}
@@ -242,7 +243,7 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		return row.RecordID == accountID || (isTransfer && (transfer.FromAccountID == accountID || transfer.ToAccountID == accountID)) ||
 			(isEntry && entry.AccountID == accountID) || slices.Contains(checks[row.RecordID], accountID)
 	}
-	lines, err := page(r, projectLines(c), eachAbout(c, known, seenOf, keep, func(row store.History) accountLine {
+	lines, err := page(r.URL.Query(), projectLines(c), eachAbout(c, known, seenOf, keep, func(row store.History) accountLine {
 		line := accountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(ledger.Purchase)}
 		switch row.TableName {
 		case "Accounts":
@@ -356,7 +357,7 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 		partnerRow := (row.TableName == "Partners" || (row.TableName == "PartnerUsers" && row.Action == "Update")) && slices.Contains(shown, row.RecordID)
 		return partnerRow || (row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isMovement)
 	}
-	lines, err := page(r, recordLines(c, records), eachAbout(c, known, movementsOf, keep, func(row store.History) partnerLine {
+	lines, err := page(r.URL.Query(), recordLines(c, records), eachAbout(c, known, movementsOf, keep, func(row store.History) partnerLine {
 		line := partnerLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, partnerKinds}}
 		if row.TableName != "Entries" {
 			switch {
@@ -389,7 +390,8 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 // What a line of the approval history says was decided (ApprovalHistoryKind).
 var approvalKinds = web.Enum{"approved", "rejected"}
 
-type approvalLine struct {
+// ApprovalLine is a decision in the approval history, as the app's and the web's list it (redix-api #167).
+type ApprovalLine struct {
 	ID     int64         `json:"id"`
 	At     moment.Moment `json:"at"`
 	By     string        `json:"by"`
@@ -400,19 +402,29 @@ type approvalLine struct {
 	Reason string        `json:"reason"`
 }
 
-func (l approvalLine) holds(text string) bool {
+func (l ApprovalLine) holds(text string) bool {
 	return spelling.Holds(text, l.Amount, l.By, l.Item, l.Party, l.Reason)
 }
 
 // approvalHistory is a page of the project's approval history (ApprovalHistory, the owner 12 Nov 2026): every entry approved or rejected, by whom and
 // when, a rejection with its reason; kind keeps the decisions on entries of one kind, any other text every kind.
 func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
-	chosen, chosenErr := ledger.Kinds.Parse(r.URL.Query().Get("kind"))
-	known, err := namesOf(c)
+	lines, err := ApprovalHistoryOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, r.URL.Query())
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, lines)
+}
+
+// ApprovalHistoryOf is a page of projectID's approval history as caller sees it, as approvalHistory answers it, paged and narrowed by query's
+// kind, by, before and text: the rule both doors call, the app's route and the web's (redix-api #167). The error is the database's.
+func ApprovalHistoryOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, query url.Values) ([]ApprovalLine, error) {
+	c := changes.Change{Ctx: ctx, Q: read, ProjectID: projectID, Access: caller.Access}
+	chosen, chosenErr := ledger.Kinds.Parse(query.Get("kind"))
+	known, err := namesOf(c)
+	if err != nil {
+		return nil, err
 	}
 	entryOf := map[uuid.UUID]store.Entry{}
 	var decisions []store.EntryDecision
@@ -430,9 +442,9 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 		_, decided := entryOf[row.RecordID]
 		return decided && row.TableName == "Entries" && (row.Action == "Approve" || row.Action == "Reject")
 	}
-	lines, err := page(r, projectLines(c), eachAbout(c, known, decidedOf, keep, func(row store.History) approvalLine {
+	return page(query, projectLines(c), eachAbout(c, known, decidedOf, keep, func(row store.History) ApprovalLine {
 		entry := entryOf[row.RecordID]
-		line := approvalLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, approvalKinds}, Item: known.itemNameOf(entry),
+		line := ApprovalLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, approvalKinds}, Item: known.itemNameOf(entry),
 			Party: known.supplierOf(entry).Name, Amount: entry.Amount}
 		if line.Item == "" {
 			line.Item = known.partners[known.capital[entry.ID]]
@@ -442,9 +454,4 @@ func (s Routes) approvalHistory(w http.ResponseWriter, r *http.Request, caller a
 		}
 		return line
 	}))
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	web.JSON(w, r, http.StatusOK, lines)
 }

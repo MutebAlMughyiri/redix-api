@@ -405,7 +405,7 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	lines, err := page(r, wholeRequests(c, projectLines(c)), func(batch []store.History) ([]projectLine, error) {
+	lines, err := page(r.URL.Query(), wholeRequests(c, projectLines(c)), func(batch []store.History) ([]projectLine, error) {
 		rows, err := shownOf(c, batch)
 		if err != nil {
 			return nil, err
@@ -495,7 +495,7 @@ func shownOf(c changes.Change, batch []store.History) ([]store.History, error) {
 func restOfRequest(c changes.Change, row store.History, newer bool) ([]store.History, error) {
 	request := requestOf(row)
 	var rest []store.History
-	for from, take := row.ID, int64(pageSize); ; take = min(2*take, historyBatch) {
+	for from, take := row.ID, int64(PageSize); ; take = min(2*take, historyBatch) {
 		var lines []store.History
 		var err error
 		if newer {
@@ -616,7 +616,7 @@ func (s Routes) myHistory(w http.ResponseWriter, r *http.Request, caller access.
 	mine := func(before, _ int64) ([]store.History, error) {
 		return slices.DeleteFunc(slices.Clone(rows), func(row store.History) bool { return row.ID >= before }), nil
 	}
-	lines, err := page(r, mine, each(keep, func(row store.History) loginLine {
+	lines, err := page(r.URL.Query(), mine, each(keep, func(row store.History) loginLine {
 		kind, gave := loginKindOf[row.Action], valuesIn(row.After)
 		var about []string
 		for _, field := range []string{"DisplayName", "Username", "Mobile", "Email"} {

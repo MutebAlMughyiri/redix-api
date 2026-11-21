@@ -30,12 +30,14 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 
 ## On the web: Approvals (redix-api #167)
 
-The web's Approvals is the app's screen in the shell, its side-menu item left out for whoever does not approve entries. It lists what waits from `entries.PendingOf`, the function `GET /projects/{id}/entries/pending` calls too: All, Purchases and Contractor payments with their counts, a search, and each entry with its item and supplier, who entered it from which account, and an account that falls short saying so. Ticking entries shows Approve selected, which runs `entries.ApproveEach`; a row opens the entry in the details panel, where Approve and Reject stand. Reject asks the reason as the app's reason sheet does, with its four quick reasons, and runs `entries.Reject`, the rule `POST /projects/{id}/entries/{entryId}/reject` calls too. An entry decided from the panel leaves the list beside it. Its pages are in `go-backend/web` (`approvals.go`, `approvals.templ`; the panel in `entries.templ`).
+The web's Approvals is the app's screen in the shell, its side-menu item left out for whoever does not approve entries. Its History opens the approval history from `entries.ApprovalHistoryOf`, the function `GET /projects/{id}/approvals/history` calls too. It lists what waits from `entries.PendingOf`, the function `GET /projects/{id}/entries/pending` calls too: All, Purchases and Contractor payments with their counts, a search, and each entry with its item and supplier, who entered it from which account, and an account that falls short saying so. Ticking entries shows Approve selected, which runs `entries.ApproveEach`; a row opens the entry in the details panel, where Approve and Reject stand. Reject asks the reason as the app's reason sheet does, with its four quick reasons, and runs `entries.Reject`, the rule `POST /projects/{id}/entries/{entryId}/reject` calls too. An entry decided from the panel leaves the list beside it. Its pages are in `go-backend/web` (`approvals.go`, `approvals.templ`; the panel in `entries.templ`).
 
 | Page | Purpose | Answers |
 | --- | --- | --- |
 | `GET /tab/approvals?filter=&text=` | Approvals, filtered and searched | `200` the tab's content |
 | `POST /approvals/approve` | Approves the ticked entries (`entry`, many) | `200` Approvals again, saying beside each entry not approved why; `403` without ApproveEntries or in a finished project |
+| `GET /tab/approvalHistory?text=&kind=&by=` | The approval history, opened from Approvals' History, searched and narrowed by kind and person | `200` the tab's content |
+| `GET /approval-history?before=&text=&kind=&by=` | The next page of the history, after the line `before` | `200` its lines, with Show more again while there is more; `404` without ApproveEntries |
 | `GET /details/entry/{id}?asking=reject` | Reject's reason in the details panel | `200` the panel |
 | `POST /entry/{id}/reject` | Rejects with the reason typed, or the quick reason chosen | `200` the panel, the row leaving Approvals; the reason asked again when there is none; `403` without ApproveEntries |
 
@@ -46,3 +48,6 @@ The web's Approvals is the app's screen in the shell, its side-menu item left ou
 | Reject needs a reason, typed or quick; the entry returns to who entered it and leaves Approvals (AC-19.1) | `entries.Reject` | `TestWeb_R167_AC19_1_RejectAsksItsReasonAndTheRowLeavesApprovals` |
 | Approvals is left out for whoever may not approve, and its actions refused (REDIX rule of 7 Nov) | `web.page.offers`, `web.actionNeeds` | `TestWeb_R167_R7_ApprovalsIsLeftOutForWhoeverMayNotApprove` |
 | A failing database answers 500 and keeps nothing | `changes.Writer.Run` | `TestWeb_R167_ApprovalsAnswersAFailingDatabaseWith500` |
+| The approval history tells each decision as the app's line does - what on which entry, a rejection's reason, who and when in the project's time - searched and narrowed by kind and person (the owner, 12 Nov 2026) | `entries.ApprovalHistoryOf` | `TestWeb_R167_TheApprovalHistoryTellsEachDecisionNarrowedAsTheAppsIs` |
+| Show more adds the next page after the last line | `entries.PageSize`, `web.approvalHistory.more` | `TestWeb_R167_ShowMoreAddsTheNextPageOfTheApprovalHistory` |
+| The history is left out for whoever may not approve; a failing database answers 500 | `web.page.offers` | `TestWeb_R167_TheApprovalHistoryIsLeftOutForWhoeverMayNotApprove` |

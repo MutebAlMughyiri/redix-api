@@ -5,19 +5,23 @@ package web
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 )
 
 // approvalFilter is one of Approvals' filters, as the app's: its name, its word, and the kind of entry it keeps, every kind for "".
@@ -139,4 +143,81 @@ func rejectionReason(r *http.Request) string {
 		return typed
 	}
 	return r.PostFormValue("quick")
+}
+
+// approvalHistory is a page of the approval history as the app's screen shows it: its lines, the project's members to narrow by, what the query
+// chose, and the project's time zone its times are told in.
+type approvalHistory struct {
+	lines    []entries.ApprovalLine
+	members  []store.MembersRow
+	query    url.Values
+	location *time.Location
+}
+
+// more is the query of the page after this one - its last line's - when this page is full; "" when it is the last.
+func (h approvalHistory) more() string {
+	if len(h.lines) < entries.PageSize {
+		return ""
+	}
+	next := url.Values{"before": {strconv.FormatInt(h.lines[len(h.lines)-1].ID, 10)}, "kind": {h.query.Get("kind")}, "by": {h.query.Get("by")},
+		"text": {h.query.Get("text")}}
+	return next.Encode()
+}
+
+// what is what line says was decided, as the app's line says it: the entry's item, supplier and amount, and a rejection's reason.
+func (h approvalHistory) what(p page, line entries.ApprovalLine) string {
+	key := "history.entryApproved"
+	if line.Kind.Name() == "rejected" {
+		key = "history.entryRejected"
+	}
+	return p.words.Of(key, parts(line.Item, line.Party, statement.Money(line.Amount)), line.Reason)
+}
+
+// whoAndWhen is who decided line and when, in the project's time: an approval says who approved it.
+func (h approvalHistory) whoAndWhen(p page, line entries.ApprovalLine) string {
+	who := line.By
+	if line.Kind.Name() == "approved" {
+		who = p.words.Of("history.approvedBy", line.By)
+	}
+	return parts(who, line.At.In(h.location).Format("2006-01-02 15:04"))
+}
+
+// parts is the non-empty of values, each apart from the next by a middle dot, as the app's partsLine joins them.
+func parts(values ...string) string {
+	return strings.Join(slices.DeleteFunc(values, func(value string) bool { return value == "" }), " · ")
+}
+
+// approvalHistoryOf is the page of the approval history query asks, through the rule the app's route answers (entries.ApprovalHistoryOf),
+// with the project's members and time zone. The error is the database's.
+func (s site) approvalHistoryOf(ctx context.Context, p page, query url.Values) (approvalHistory, error) {
+	read := s.Database.Queries()
+	lines, err := entries.ApprovalHistoryOf(ctx, read, p.project.ID, p.caller, query)
+	members, membersErr := read.Members(ctx, p.project.ID)
+	zone, zoneErr := zones.Of(ctx, read, p.project.ID)
+	return approvalHistory{lines: lines, members: members, query: query, location: zones.Location(zone)}, errors.Join(err, membersErr, zoneErr)
+}
+
+// approvalHistoryTab is the approval history in its tab (the owner, 12 Nov 2026; redix-api #167): what was approved and rejected, by whom and
+// when, newest first, searched and narrowed by kind and person as the app's.
+func (s site) approvalHistoryTab(r *http.Request, p page) (templ.Component, error) {
+	history, err := s.approvalHistoryOf(r.Context(), p, r.URL.Query())
+	return approvalHistoryPage(p, history), err
+}
+
+// approvalHistoryMore is the next page of the approval history, added after the last line, with Show more again while there is more.
+func (s site) approvalHistoryMore(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || !p.offers("approvalHistory") {
+		http.NotFound(w, r)
+		return
+	}
+	history, err := s.approvalHistoryOf(r.Context(), p, r.URL.Query())
+	if err != nil {
+		failed(w)
+		return
+	}
+	draw(w, r, http.StatusOK, approvalLines(p, history), moreHistory(p, history, true))
 }

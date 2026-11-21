@@ -708,6 +708,47 @@
         ],
         "type": "object"
       },
+      "entries.ApprovalLine": {
+        "properties": {
+          "amount": {
+            "description": "A figure kept to four decimals.",
+            "type": "number"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "item": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "party": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "at",
+          "by",
+          "id",
+          "item",
+          "kind",
+          "party",
+          "reason"
+        ],
+        "type": "object"
+      },
       "entries.ContractReport": {
         "properties": {
           "amountName": {
@@ -1323,47 +1364,6 @@
           "kind",
           "nameWas",
           "otherAccount"
-        ],
-        "type": "object"
-      },
-      "entries.approvalLine": {
-        "properties": {
-          "amount": {
-            "description": "A figure kept to four decimals.",
-            "type": "number"
-          },
-          "at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "by": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "item": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "party": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "amount",
-          "at",
-          "by",
-          "id",
-          "item",
-          "kind",
-          "party",
-          "reason"
         ],
         "type": "object"
       },
@@ -5176,7 +5176,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.approvalLine"
+                    "$ref": "#/components/schemas/entries.ApprovalLine"
                   },
                   "type": "array"
                 }
