@@ -135,12 +135,17 @@ type Writer struct {
 // Write runs work as one change to the route's project and says whether it was done; otherwise it has answered: a refusal with its status and
 // code, any other failure 500. Nothing work wrote is kept when it fails.
 func (w Writer) Write(rw http.ResponseWriter, r *http.Request, caller access.Caller, work func(Change) error) bool {
-	c := Change{Ctx: r.Context(), ProjectID: web.ID(r, "projectId"), Actor: caller.UserID, Now: moment.Of(w.Clock.Now()), Access: caller.Access}
-	err := w.Database.InTx(r.Context(), func(q *store.Queries) error {
+	return !Answered(rw, r, w.Run(r.Context(), web.ID(r, "projectId"), caller, work))
+}
+
+// Run runs work as one change to projectID by caller, as Write does, and is its failure - a Refusal, or the database's - for a door that answers
+// it its own way, as the web's pages do (redix-api #166). Nothing work wrote is kept when it fails.
+func (w Writer) Run(ctx context.Context, projectID uuid.UUID, caller access.Caller, work func(Change) error) error {
+	c := Change{Ctx: ctx, ProjectID: projectID, Actor: caller.UserID, Now: moment.Of(w.Clock.Now()), Access: caller.Access}
+	return w.Database.InTx(ctx, func(q *store.Queries) error {
 		c.Q = q
 		return work(c)
 	})
-	return !Answered(rw, r, err)
 }
 
 // Done runs work as Write does and answers 200 with no body once it is done.

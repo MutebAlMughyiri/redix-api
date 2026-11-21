@@ -235,3 +235,9 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .grid tbody tr:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (max-width: 720px) { .main:has([id="web.details"]:not(:empty)) { grid-template-columns: 0 minmax(0, 1fr); } }
 .details-foot { margin: 0; padding: 0 14px 14px; font-size: 12px; }
+
+/* An entry's actions in the details panel (redix-api #166). */
+.details-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 14px; } .details-say { margin: 0 14px 12px; }
+.ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; border-radius: 6px; background: var(--refusal-bg); }
+.ask span { flex: 1 1 100%; color: var(--refusal); } .primary.danger { background: var(--refusal); color: var(--on-accent); }
+.filters a { color: var(--accent); text-decoration: none; font-size: 12.5px; } .filters a:hover { text-decoration: underline; }

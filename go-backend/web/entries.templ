@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
@@ -72,8 +75,9 @@ templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take 
 }
 
 // entryPanel is an entry in the details panel: its number and status, why it was rejected, and what the lists know of it, as the app's read-only
-// entry shows it (redix-api #166); ✕ and Esc hide it.
-templ entryPanel(p page, row entries.Row) {
+// entry shows it, with what the caller may do to it - Approve one that waits, gray without the permission; Send a draft; Remove, asked first;
+// Change, gray until Add entry is built - and what shown says (redix-api #166); ✕ and Esc hide it.
+templ entryPanel(p page, row entries.Row, shown said) {
 	<div class="details-head">
 		<h3 id="entry.title">{ p.words.Of("entries.numberOf", strconv.FormatInt(row.Number, 10)) }</h3>
 		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
@@ -111,4 +115,70 @@ templ entryPanel(p page, row entries.Row) {
 		}
 	</dl>
 	<p id="entry.enteredBy" class="hint details-foot">{ p.words.Of("entries.enteredBy", row.AuthorName) }</p>
+	if shown.notice != "" {
+		<p id="entry.notice" class="notice details-say" role="status">{ p.words.Of(shown.notice) }</p>
+	}
+	if shown.refusal != "" {
+		<p id="entry.refusal" class="refusal details-say" role="alert">{ p.words.Of(shown.refusal) }</p>
+	}
+	if shown.asking && p.mayRemove(row) {
+		<div id="entry.ask" class="details-say ask">
+			<span>
+				if row.Status.Name() == "approved" {
+					{ p.words.Of("entries.removeQuestion") }
+				} else {
+					{ p.words.Of("swipe.question") }
+				}
+			</span>
+			<button id="entry.removeConfirm" class="primary small danger" type="button" hx-post={ "/entry/" + row.ID.String() + "/remove" } hx-target="[id='web.details']">{ p.words.Of("swipe.remove") }</button>
+			<button id="entry.removeCancel" class="quiet-button" type="button" hx-get={ "/details/entry/" + row.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+		</div>
+	} else {
+		<div class="details-actions">
+			if row.Status.Name() == "pendingApproval" {
+				<button
+					id="entry.approve"
+					class="primary small"
+					type="button"
+					disabled?={ p.finished() || !p.may(access.ApproveEntries) }
+					title={ p.words.Of("permissions.approveEntries") }
+					hx-post={ "/entry/" + row.ID.String() + "/approve" }
+					hx-target="[id='web.details']"
+				>{ p.words.Of("approvals.approve") }</button>
+			}
+			if row.Status.Name() == "draft" && p.mayChange(row) {
+				<button id="entry.send" class="primary small" type="button" hx-post={ "/entry/" + row.ID.String() + "/send" } hx-target="[id='web.details']">{ p.words.Of("entries.send") }</button>
+			}
+			if p.mayChange(row) {
+				<button id="entry.change" class="quiet-button" type="button" disabled>
+					if row.Status.Name() == "rejected" {
+						{ p.words.Of("entries.fix") }
+					} else {
+						{ p.words.Of("entries.edit") }
+					}
+				</button>
+			}
+			if p.mayRemove(row) {
+				<button id="entry.remove" class="quiet-button" type="button" hx-get={ "/details/entry/" + row.ID.String() + "?asking=remove" } hx-target="[id='web.details']">{ p.words.Of("entries.remove") }</button>
+			}
+		</div>
+	}
+}
+
+// entryGone is the details panel once its entry has left the list - removed - saying so, its row leaving the list too, sent in a template as
+// rowBeside's is.
+templ entryGone(p page, entryID uuid.UUID, shown said) {
+	<div class="details-head">
+		<h3 id="entry.title">{ p.words.Of(shown.notice) }</h3>
+		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<template><tr id={ "entries.row." + entryID.String() } hx-swap-oob="delete"></tr></template>
+}
+
+// rowBeside is an entry's row carried beside the panel, out of band, in a template: a row outside a table is dropped by the browser's parser,
+// and htmx swaps what a template holds.
+templ rowBeside(p page, row entries.Row) {
+	<template>
+		@entryRow(p, row, true)
+	</template>
 }

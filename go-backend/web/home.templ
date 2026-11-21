@@ -112,24 +112,30 @@ templ entryRows(p page, rows []entries.Row) {
 			</thead>
 			<tbody>
 				for _, row := range rows {
-					<tr
-						id={ "entries.row." + row.ID.String() }
-						tabindex="0"
-						aria-selected="false"
-						hx-get={ "/details/entry/" + row.ID.String() }
-						hx-target="[id='web.details']"
-					>
-						<td>{ strconv.FormatInt(row.Number, 10) }</td>
-						<td>{ row.EntryDate.Format(time.DateOnly) }</td>
-						<td>{ entryTitle(row) }</td>
-						<td>{ row.SupplierName }</td>
-						<td><span class={ "state", row.Status.Name() }>{ p.words.Of("entries." + row.Status.Name()) }</span></td>
-						<td class="amount">{ statement.Money(row.Amount) }</td>
-					</tr>
+					@entryRow(p, row, false)
 				}
 			</tbody>
 		</table>
 	</div>
+}
+
+// entryRow is an entry on a list; an action's answer carries it out of band in rowBeside, so the list shows what the action did.
+templ entryRow(p page, row entries.Row, outOfBand bool) {
+	<tr
+		id={ "entries.row." + row.ID.String() }
+		tabindex="0"
+		aria-selected="false"
+		hx-get={ "/details/entry/" + row.ID.String() }
+		hx-target="[id='web.details']"
+		{ swapOutOfBand(outOfBand)... }
+	>
+		<td>{ strconv.FormatInt(row.Number, 10) }</td>
+		<td>{ row.EntryDate.Format(time.DateOnly) }</td>
+		<td>{ entryTitle(row) }</td>
+		<td>{ row.SupplierName }</td>
+		<td><span class={ "state", row.Status.Name() }>{ p.words.Of("entries." + row.Status.Name()) }</span></td>
+		<td class="amount">{ statement.Money(row.Amount) }</td>
+	</tr>
 }
 
 // projectList is the caller's projects while they choose one, as the app lands on its list (redix-api #165); one they may not open stands gray.

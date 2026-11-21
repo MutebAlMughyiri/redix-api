@@ -164,6 +164,31 @@ func (s site) signOut(w http.ResponseWriter, r *http.Request) {
 	reshell(w, r, p)
 }
 
+// working is r's page opened for its signed-in caller, their projects and the one they work in; false once it has answered - 500 for a failing
+// database, the sign-in form in the whole shell for a session that ended.
+func (s site) working(w http.ResponseWriter, r *http.Request) (page, bool) {
+	p, err := s.page(r)
+	if err != nil {
+		failed(w)
+		return p, false
+	}
+	caller, signedIn, err := s.session(w, r)
+	if err != nil {
+		failed(w)
+		return p, false
+	}
+	if !signedIn {
+		p.content = signInForm(p, ended(r), "")
+		reshell(w, r, p)
+		return p, false
+	}
+	if p, err = s.open(r, p, caller); err != nil {
+		failed(w)
+		return p, false
+	}
+	return p, true
+}
+
 // reshell answers the whole shell in place of whatever part asked, without loading the page again (#161 R5, R6).
 func reshell(w http.ResponseWriter, r *http.Request, p page) {
 	w.Header().Set("HX-Retarget", "[id='web.shell']")

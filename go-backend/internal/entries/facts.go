@@ -295,6 +295,9 @@ type Row struct {
 	AccountName       string       `json:"accountName"`
 	PaymentMethodName string       `json:"paymentMethodName"`
 	AccountShortBy    fixed.Total  `json:"accountShortBy"`
+	// Changeable says whether the caller may change or delete the entry as refusalOfChange decides it (BR-42), for the web's panel to ask
+	// rather than decide again (redix-api #166); the app's answer does not carry it.
+	Changeable bool `json:"-"`
 }
 
 func (f facts) row(entry store.Entry, userID uuid.UUID) Row {

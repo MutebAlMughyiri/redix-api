@@ -1014,3 +1014,115 @@ func TestWeb_R166_ThePanelAnswersAFailingDatabaseWith500(t *testing.T) {
 func TestWeb_R166_NewContentIsSettledAtOnceSoItsTriggersHearTheFirstKey(t *testing.T) {
 	has(t, testapi.New(t).Browser().Send("GET", "/", nil).Body.String(), `&#34;defaultSettleDelay&#34;:0}`)
 }
+
+// drafted records an entry of amount into the item's table as a draft, not sent; it is the entry's id.
+func (w working) drafted(amount int) string {
+	w.t.Helper()
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + w.item + `","tableId":"` + w.table + `","date":"2026-11-10","amount":` + strconv.Itoa(amount) + `,"accountId":"` +
+		w.account + `","paymentMethodId":"` + w.method + `","description":"","columnValues":{},"submit":false}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		w.t.Fatalf("drafting: %d %v", code, answer)
+	}
+	return id
+}
+
+// statusOf is the entry's status as kept.
+func (w working) statusOf(id string) int {
+	w.t.Helper()
+	var status int
+	if err := w.Database.Read.QueryRow("SELECT status FROM entries WHERE id = ?", id).Scan(&status); err != nil {
+		w.t.Fatal(err)
+	}
+	return status
+}
+
+func TestWeb_R166_FR19_TheManagerApprovesFromThePanelAndTheRowFollows(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	w.home()
+	panel := w.browser.Send("GET", "/details/entry/"+id, nil).Body.String()
+	has(t, panel, `hx-post="/entry/`+id+`/approve"`)
+	lacks(t, panel, `id="entry.approve" class="primary small" type="button" disabled`)
+	approved := w.browser.Send("POST", "/entry/"+id+"/approve", nil)
+	if approved.Code != http.StatusOK {
+		t.Fatalf("approving: %d", approved.Code)
+	}
+	has(t, approved.Body.String(), `<span class="state approved">معتمد</span>`)
+	has(t, approved.Body.String(), `<tr id="entries.row.`+id+`" tabindex="0" aria-selected="false" hx-get="/details/entry/`+id+`" hx-target="[id='web.details']" hx-swap-oob="true">`)
+	if w.statusOf(id) != 2 {
+		t.Errorf("the entry is approved: %d", w.statusOf(id))
+	}
+	again := w.browser.Send("POST", "/entry/"+id+"/approve", nil).Body.String()
+	has(t, again, `<p id="entry.refusal" class="refusal details-say" role="alert">قرر أحدهم هذا القيد من قبل.</p>`)
+}
+
+func TestWeb_R166_ADraftIsSentAndTheRemovedOneLeavesTheList(t *testing.T) {
+	w := newWorking(t)
+	draft, approved := w.drafted(30), w.approved(70)
+	w.home()
+	lacks(t, w.browser.Send("GET", "/details/entry/"+approved+"?asking=remove", nil).Body.String(), `id="entry.ask"`)
+	if code, answer := w.Ask("POST", w.path+"/users/"+w.manager.String()+"/permissions/RemoveApprovedEntries", ``, w.token); code >= 300 {
+		t.Fatalf("ticking: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("GET", "/details/entry/"+draft, nil).Body.String(), `hx-post="/entry/`+draft+`/send"`)
+	sent := w.browser.Send("POST", "/entry/"+draft+"/send", nil).Body.String()
+	has(t, sent, `<p id="entry.notice" class="notice details-say" role="status">أُرسل للاعتماد.</p>`)
+	has(t, sent, `<span class="state pendingApproval">بانتظار الاعتماد</span>`)
+	asking := w.browser.Send("GET", "/details/entry/"+approved+"?asking=remove", nil).Body.String()
+	has(t, asking, "حذف هذا القيد المعتمد؟")
+	has(t, asking, `hx-post="/entry/`+approved+`/remove"`)
+	removed := w.browser.Send("POST", "/entry/"+approved+"/remove", nil).Body.String()
+	has(t, removed, `<h3 id="entry.title">حُذف.</h3>`)
+	has(t, removed, `<template><tr id="entries.row.`+approved+`" hx-swap-oob="delete"></tr></template>`)
+	if w.statusOf(approved) != 4 {
+		t.Errorf("the approved entry is removed softly: %d", w.statusOf(approved))
+	}
+}
+
+func TestWeb_R166_AnActionIsGatedAsTheAppsRouteIs(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	has(t, browser.Send("GET", "/details/entry/"+id, nil).Body.String(), `id="entry.approve" class="primary small" type="button" disabled`)
+	if code := browser.Send("POST", "/entry/"+id+"/approve", nil).Code; code != http.StatusForbidden {
+		t.Errorf("approving without the permission: %d", code)
+	}
+	if w.statusOf(id) != 1 {
+		t.Errorf("the entry still waits: %d", w.statusOf(id))
+	}
+	w.home()
+	if code := w.browser.Send("POST", "/entry/"+id+"/archive", nil).Code; code != http.StatusNotFound {
+		t.Errorf("an action there is none of: %d", code)
+	}
+	w.browser.Send("POST", "/entry/"+id+"/approve", nil)
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/entry/"+id+"/remove", nil).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+	if w.statusOf(id) != 2 {
+		t.Errorf("a finished project's entry stays approved: %d", w.statusOf(id))
+	}
+}
+
+func TestWeb_R166_AnActionAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/entry/"+id+"/approve", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("approving with the database failing at its call %d answers %d", n, answered.Code)
+		}
+		if w.statusOf(id) != 1 {
+			t.Errorf("an approval failing at its call %d keeps nothing: %d", n, w.statusOf(id))
+		}
+	}
+}

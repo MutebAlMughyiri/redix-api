@@ -77,14 +77,21 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 // entry is the route's entry when it is the project's, not removed and of a table caller sees (Entry.OfProjectAsync, BR-33, redix-api #119,
 // #106 R9): 404 otherwise.
 func (s Routes) entry(w http.ResponseWriter, r *http.Request, caller access.Caller) (store.Entry, bool) {
-	entry, err := changes.Found(s.database.Queries().EntryOf(r.Context(), store.EntryOfParams{ID: web.ID(r, "entryId"), ProjectID: web.ID(r, "projectId")}))
+	entry, err := seenEntry(changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}, caller, web.ID(r, "entryId"))
+	return entry, !changes.Answered(w, r, err)
+}
+
+// seenEntry is the entry entryID of c's project when caller sees it: changes.NotFound for one removed, one of a table they do not see (#106 R9),
+// or none.
+func seenEntry(c changes.Change, caller access.Caller, entryID uuid.UUID) (store.Entry, error) {
+	entry, err := changes.Found(c.Q.EntryOf(c.Ctx, store.EntryOfParams{ID: entryID, ProjectID: c.ProjectID}))
 	if err == nil && entry.Status == ledger.Removed {
 		err = changes.NotFound
 	}
 	if err == nil {
-		err = seen(r.Context(), s.database.Queries(), caller.Access, entry)
+		err = seen(c.Ctx, c.Q, caller.Access, entry)
 	}
-	return entry, !changes.Answered(w, r, err)
+	return entry, err
 }
 
 // seen is NotFound for an entry of a table held does not see (#106 R9); an entry with no table, a capital movement, is the capital ticks'.
@@ -99,48 +106,48 @@ func seen(ctx context.Context, q *store.Queries, held access.Access, entry store
 // submit sends a draft or a rejected entry for approval and answers it (UC-028): notYourEntry (403) for one the caller may not handle (BR-42);
 // entryNotSubmittable (409) for one already sent; entryIncomplete (400) with every required column left empty under missing (FR-41).
 func (s Routes) submit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	entry, found := s.entry(w, r, caller)
-	if !found {
-		return
-	}
-	if !mayHandle(entry, caller) {
-		problem.Refuse(w, r, http.StatusForbidden, "notYourEntry")
-		return
-	}
-	if entry.Status != ledger.Draft && entry.Status != ledger.Rejected {
-		problem.Refuse(w, r, http.StatusConflict, "entryNotSubmittable")
-		return
-	}
-	missing, err := s.missingOf(r, entry)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	if len(missing) > 0 {
-		problem.RefuseOver(w, r, http.StatusBadRequest, "entryIncomplete", "missing", missing)
-		return
-	}
-	sent := s.writer.Write(w, r, caller, func(c changes.Change) error {
-		after := entry
-		after.Status = ledger.PendingApproval
-		if err := c.Q.SaveEntry(c.Ctx, store.SaveEntryParams(after)); err != nil {
-			return err
-		}
-		was, is := history.Changed(fields(entry), fields(after))
-		if err := c.Record(history.Submit, "Entries", entry.ID, was, is); err != nil {
-			return err
-		}
-		return sendOff(c, after, true)
-	})
-	if sent {
-		s.answerView(w, r, entry.ID)
+	entryID := web.ID(r, "entryId")
+	if s.writer.Write(w, r, caller, func(c changes.Change) error { return Submit(c, caller, entryID) }) {
+		s.answerView(w, r, entryID)
 	}
 }
 
-// missingOf is the required columns the entry gives no value, among those of its item its kind is asked (EntriesEndpoints.MissingOfAsync): an
+// Submit sends the entry entryID of c's project for approval as caller, as submit answers it (UC-028): the rule both doors call (redix-api
+// #166). It refuses notYourEntry (403), entryNotSubmittable (409) and entryIncomplete (400) as submit describes, and changes.NotFound for an
+// entry caller does not see.
+func Submit(c changes.Change, caller access.Caller, entryID uuid.UUID) error {
+	entry, err := seenEntry(c, caller, entryID)
+	if err != nil {
+		return err
+	}
+	if !mayHandle(entry, caller) {
+		return changes.Refuse(http.StatusForbidden, "notYourEntry")
+	}
+	if entry.Status != ledger.Draft && entry.Status != ledger.Rejected {
+		return changes.Refuse(http.StatusConflict, "entryNotSubmittable")
+	}
+	missing, err := missingOfEntry(c, entry)
+	if err != nil {
+		return err
+	}
+	if len(missing) > 0 {
+		return changes.RefuseOver(http.StatusBadRequest, "entryIncomplete", "missing", missing)
+	}
+	after := entry
+	after.Status = ledger.PendingApproval
+	if err := c.Q.SaveEntry(c.Ctx, store.SaveEntryParams(after)); err != nil {
+		return err
+	}
+	was, is := history.Changed(fields(entry), fields(after))
+	if err := c.Record(history.Submit, "Entries", entry.ID, was, is); err != nil {
+		return err
+	}
+	return sendOff(c, after, true)
+}
+
+// missingOfEntry is the required columns the entry gives no value, among those of its item its kind is asked (EntriesEndpoints.MissingOfAsync): an
 // expense's or revenue's item, or the project's capital item for a partner's money.
-func (s Routes) missingOf(r *http.Request, entry store.Entry) ([]string, error) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: entry.ProjectID}
+func missingOfEntry(c changes.Change, entry store.Entry) ([]string, error) {
 	known, err := factsOf(c, []store.Entry{entry})
 	if err != nil {
 		return nil, err
@@ -215,27 +222,34 @@ func (s Routes) describe(w http.ResponseWriter, r *http.Request, caller access.C
 // delete deletes an entry (UC-033): one never approved goes with all it holds, for whoever deletes entries, with the refusals of a change; an
 // approved one is removed softly for whoever removes approved entries (redix-api #119). Without the permission the entry asks for, 403.
 func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	entry, found := s.entry(w, r, caller)
-	if !found {
-		return
+	entryID := web.ID(r, "entryId")
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Remove(c, caller, entryID) })
+}
+
+// forbidden is the refusal of an entry the caller sees but may not take away: 403 with no code, as the gate refuses a permission.
+var forbidden = changes.Refusal{Status: http.StatusForbidden}
+
+// Remove takes the entry entryID of c's project away as caller, as delete answers it (UC-033): the rule both doors call (redix-api #166). An
+// approved one is removed softly for whoever removes approved entries (redix-api #119); any other goes with all it holds for whoever deletes
+// entries, with the refusals of a change; 403 without the permission the entry asks for; changes.NotFound for one caller does not see.
+func Remove(c changes.Change, caller access.Caller, entryID uuid.UUID) error {
+	entry, err := seenEntry(c, caller, entryID)
+	if err != nil {
+		return err
 	}
 	if entry.Status == ledger.Approved {
 		if !caller.Access.Holds(entry.ProjectID, access.RemoveApprovedEntries) {
-			problem.Status(w, r, http.StatusForbidden)
-			return
+			return forbidden
 		}
-		s.writer.Done(w, r, caller, func(c changes.Change) error { return setStatus(c, entry, ledger.Removed, history.Delete) })
-		return
+		return setStatus(c, entry, ledger.Removed, history.Delete)
 	}
 	if !caller.Access.Holds(entry.ProjectID, access.DeleteEntries) {
-		problem.Status(w, r, http.StatusForbidden)
-		return
+		return forbidden
 	}
 	if status, code := refusalOfChange(entry, caller); code != "" {
-		problem.Refuse(w, r, status, code)
-		return
+		return changes.Refuse(status, code)
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error { return Delete(c, entry) })
+	return Delete(c, entry)
 }
 
 // Delete removes an entry never approved, with all it holds - its rows, its files, its decisions and what anyone was told of it - History keeping
@@ -300,8 +314,9 @@ type approveEntriesRequest struct {
 	EntryIDs []uuid.UUID `json:"entryIds"`
 }
 
-// approvalFailure is part of what POST /projects/{projectId}/entries/approve answers (UC-032).
-type approvalFailure struct {
+// ApprovalFailure is an entry that could not be approved, with its reason: part of what POST /projects/{projectId}/entries/approve answers (UC-032),
+// and what the web's approval says.
+type ApprovalFailure struct {
 	EntryID uuid.UUID `json:"entryId"`
 	Code    string    `json:"code"`
 }
@@ -309,7 +324,7 @@ type approvalFailure struct {
 // approvalView is what POST /projects/{projectId}/entries/approve answers (UC-032).
 type approvalView struct {
 	Approved []uuid.UUID       `json:"approved"`
-	Failed   []approvalFailure `json:"failed"`
+	Failed   []ApprovalFailure `json:"failed"`
 }
 
 // approve approves the entries named, each on its own (FR-19, AC-19.2): what cannot be approved comes back by id with its reason - unknownEntry,
@@ -321,36 +336,45 @@ func (s Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Ca
 	}
 	view := approvalView{}
 	done := s.writer.Write(w, r, caller, func(c changes.Change) error {
-		var named []uuid.UUID
-		for _, id := range typed.EntryIDs {
-			if !slices.Contains(named, id) {
-				named = append(named, id)
-			}
-		}
-		for _, id := range named {
-			entry, err := c.Q.EntryOf(c.Ctx, store.EntryOfParams{ID: id, ProjectID: c.ProjectID})
-			if err == nil {
-				err = seen(c.Ctx, c.Q, caller.Access, entry)
-			}
-			switch {
-			case errors.Is(err, sql.ErrNoRows) || errors.Is(err, changes.NotFound):
-				view.Failed = append(view.Failed, approvalFailure{id, "unknownEntry"})
-			case err != nil:
-				return err
-			case entry.Status != ledger.PendingApproval:
-				view.Failed = append(view.Failed, approvalFailure{id, "entryNotPending"})
-			default:
-				if err := Approve(c, entry, c.Now); err != nil {
-					return err
-				}
-				view.Approved = append(view.Approved, id)
-			}
-		}
-		return nil
+		var err error
+		view.Approved, view.Failed, err = ApproveEach(c, caller, typed.EntryIDs)
+		return err
 	})
 	if done {
 		web.JSON(w, r, http.StatusOK, view)
 	}
+}
+
+// ApproveEach approves the entries ids name, each on its own, as approve answers them (FR-19, AC-19.2): the rule both doors call (redix-api
+// #166). It is those approved, and those that could not be with their reason - unknownEntry, entryNotPending; the error is the database's.
+func ApproveEach(c changes.Change, caller access.Caller, ids []uuid.UUID) ([]uuid.UUID, []ApprovalFailure, error) {
+	var named, approved []uuid.UUID
+	var failed []ApprovalFailure
+	for _, id := range ids {
+		if !slices.Contains(named, id) {
+			named = append(named, id)
+		}
+	}
+	for _, id := range named {
+		entry, err := c.Q.EntryOf(c.Ctx, store.EntryOfParams{ID: id, ProjectID: c.ProjectID})
+		if err == nil {
+			err = seen(c.Ctx, c.Q, caller.Access, entry)
+		}
+		switch {
+		case errors.Is(err, sql.ErrNoRows) || errors.Is(err, changes.NotFound):
+			failed = append(failed, ApprovalFailure{id, "unknownEntry"})
+		case err != nil:
+			return nil, nil, err
+		case entry.Status != ledger.PendingApproval:
+			failed = append(failed, ApprovalFailure{id, "entryNotPending"})
+		default:
+			if err := Approve(c, entry, c.Now); err != nil {
+				return nil, nil, err
+			}
+			approved = append(approved, id)
+		}
+	}
+	return approved, failed, nil
 }
 
 // Approve approves entry, one waiting, as counting from approvedAt (ApprovalsEndpoints.ApproveAsync, BR-26, BR-43): its decision, its line, who
@@ -528,6 +552,8 @@ func rowsOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, calle
 				continue
 			}
 			view := known.row(entry, caller.UserID)
+			_, refused := refusalOfChange(entry, caller)
+			view.Changeable = refused == ""
 			if entry.Status == ledger.Rejected {
 				view.RejectionReason = lastReason[entry.ID]
 			}

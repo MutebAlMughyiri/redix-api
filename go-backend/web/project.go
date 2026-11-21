@@ -45,6 +45,9 @@ func (p page) may(permission access.Permission) bool {
 	return p.caller.Access.Holds(p.project.ID, permission)
 }
 
+// finished says whether the project p's caller works in is finished, so it only reads (AC-04.1).
+func (p page) finished() bool { return p.project.Status == "finished" }
+
 // statusWord is the word of a project's status, as the app's project list chips it.
 func statusWord(status string) string {
 	if status == "pendingApproval" {
@@ -56,23 +59,8 @@ func statusWord(status string) string {
 // starProject makes the project the path names the one the person's sign-in opens straight into, or clears it when it already is, as the app's
 // star does (AC-37.1, redix-api #165); the list answers in place, still open, saying so: 404 for a project they may not open.
 func (s site) starProject(w http.ResponseWriter, r *http.Request) {
-	p, err := s.page(r)
-	if err != nil {
-		failed(w)
-		return
-	}
-	caller, signedIn, err := s.session(w, r)
-	if err != nil {
-		failed(w)
-		return
-	}
-	if !signedIn {
-		p.content = signInForm(p, ended(r), "")
-		reshell(w, r, p)
-		return
-	}
-	if p, err = s.open(r, p, caller); err != nil {
-		failed(w)
+	p, ok := s.working(w, r)
+	if !ok {
 		return
 	}
 	starred, _ := uuid.Parse(r.PathValue("id"))
@@ -81,12 +69,12 @@ func (s site) starProject(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	notice := ""
+	notice, err := "", error(nil)
 	if p.defaultProject == starred {
-		err = projects.RemoveDefault(r.Context(), s.Database, caller.UserID)
+		err = projects.RemoveDefault(r.Context(), s.Database, p.caller.UserID)
 		p.defaultProject = uuid.Nil
 	} else {
-		err = projects.SetDefault(r.Context(), s.Database, caller.UserID, starred)
+		err = projects.SetDefault(r.Context(), s.Database, p.caller.UserID, starred)
 		p.defaultProject, notice = starred, p.words.Of("projects.defaultSet", project.Name)
 	}
 	if err != nil {

@@ -692,6 +692,22 @@
         ],
         "type": "object"
       },
+      "entries.ApprovalFailure": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "entryId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "entryId"
+        ],
+        "type": "object"
+      },
       "entries.ContractReport": {
         "properties": {
           "amountName": {
@@ -1148,22 +1164,6 @@
         ],
         "type": "object"
       },
-      "entries.approvalFailure": {
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "entryId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "code",
-          "entryId"
-        ],
-        "type": "object"
-      },
       "entries.approvalLine": {
         "properties": {
           "amount": {
@@ -1216,7 +1216,7 @@
           },
           "failed": {
             "items": {
-              "$ref": "#/components/schemas/entries.approvalFailure"
+              "$ref": "#/components/schemas/entries.ApprovalFailure"
             },
             "type": "array"
           }

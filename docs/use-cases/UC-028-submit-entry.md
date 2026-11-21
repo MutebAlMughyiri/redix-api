@@ -59,7 +59,8 @@ The web's Entries tab is the app's list in the shell: the same search and filter
 | Page | Purpose | Answers |
 | --- | --- | --- |
 | `GET /tab/entries?text=&mine=&kinds=&statuses=&from=&to=&number=&take=` | The Entries tab, filtered and paged | `200` the tab's content |
-| `GET /details/entry/{id}` | An entry in the details panel | `200` the panel's content; `404` for one the person does not see |
+| `GET /details/entry/{id}` | An entry in the details panel; `?asking=remove` asks before Remove | `200` the panel's content; `404` for one the person does not see |
+| `POST /entry/{id}/approve`, `/send`, `/remove` | An entry's action from the panel, through `entries.ApproveEach`, `Submit` or `Remove` in one change (`changes.Writer.Run`), behind the gate the app's route has | `200` the panel saying what it did or why not, the entry's row beside it; `403` without the action's permission; `404` for an action there is none of |
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
@@ -67,3 +68,6 @@ The web's Entries tab is the app's list in the shell: the same search and filter
 | Show more adds a page with the same filters | `web.site.entriesTab` | `TestWeb_R166_ShowMoreAddsAPageWithTheSameFilters` |
 | A row opens its entry in the details panel; an entry the person does not see is not shown (BR-31) | `entries.RowOf` | `TestWeb_R166_ARowOpensItsEntryInTheDetailsPanel`, `TestWeb_R166_AnEntryOfAnotherProjectIsNotShown` |
 | A rejected entry says why | `web.entryPanel` | `TestWeb_R166_ARejectedEntrySaysWhy` |
+| Whoever approves approves a waiting entry from the panel, and its row follows; a second approval says it was decided (FR-19) | `entries.ApproveEach`, `web.site.entryAction` | `TestWeb_R166_FR19_TheManagerApprovesFromThePanelAndTheRowFollows` |
+| A draft is sent; Remove asks first, then the entry leaves the list, an approved one removed softly (UC-033, redix-api #119) | `entries.Submit`, `entries.Remove` | `TestWeb_R166_ADraftIsSentAndTheRemovedOneLeavesTheList` |
+| An action is gated as the app's route is: its permission, and a finished project changes nothing (AC-04.1) | `web.actionNeeds`, `web.page.finished` | `TestWeb_R166_AnActionIsGatedAsTheAppsRouteIs` |
