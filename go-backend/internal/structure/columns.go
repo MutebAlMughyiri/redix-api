@@ -53,9 +53,9 @@ func (s Routes) columnsOfItem(w http.ResponseWriter, r *http.Request, _ access.C
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var views []columnView
+	var views []ColumnView
 	for _, row := range visible(columns) {
-		views = append(views, ofItemColumn(row).view(row.ID))
+		views = append(views, ColumnOf(row))
 	}
 	web.JSON(w, r, http.StatusOK, views)
 }
@@ -80,7 +80,7 @@ func (s Routes) columnsOfTemplate(w http.ResponseWriter, r *http.Request, _ acce
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var views []columnView
+	var views []ColumnView
 	for _, row := range template {
 		views = append(views, ofDefaultColumn(row).view(row.ID))
 	}

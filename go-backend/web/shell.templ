@@ -168,7 +168,9 @@ templ tabs(p page, outOfBand bool) {
 // detailsPanel is the details panel beside a list, like Google Drive's (the base design): empty, so hidden, until a row fills it. A tab's
 // answer carries it empty beside its content, out of band, so a panel never outlives its list.
 templ detailsPanel(outOfBand bool) {
-	<aside id="web.details" class="details" aria-live="polite" { swapOutOfBand(outOfBand)... }></aside>
+	<aside id="web.details" class="details" aria-live="polite" { swapOutOfBand(outOfBand)... }>
+		{ children... }
+	</aside>
 }
 
 // statusBar is the host this page came from and the web's version (#161 R2).

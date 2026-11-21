@@ -68,8 +68,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", suppliers+"/{supplierId:guid}/enable", keeps(s.activate(true)))
 }
 
-// supplierView is a supplier as the app shows it (SupplierView); timesUsed counts the caller's purchases naming it, in a search.
-type supplierView struct {
+// View is a supplier as the app shows it (SupplierView); timesUsed counts the caller's purchases naming it, in a search.
+type View struct {
 	ID              uuid.UUID `json:"id"`
 	Name            string    `json:"name"`
 	VatNumber       string    `json:"vatNumber"`
@@ -86,8 +86,8 @@ type status int64
 // MarshalJSON writes the status by its name.
 func (s status) MarshalJSON() ([]byte, error) { return statuses.Write(int64(s)) }
 
-func viewOf(row store.SuppliersOfRow, counted bool) supplierView {
-	view := supplierView{ID: row.ID, Name: row.Name, VatNumber: row.VatNumber, Mobile: row.Mobile, DefaultItemName: row.DefaultItemName,
+func viewOf(row store.SuppliersOfRow, counted bool) View {
+	view := View{ID: row.ID, Name: row.Name, VatNumber: row.VatNumber, Mobile: row.Mobile, DefaultItemName: row.DefaultItemName,
 		Status: status(row.Status), IsActive: row.IsActive}
 	if row.DefaultItemID != uuid.Nil {
 		view.DefaultItemID = row.DefaultItemID.String()
@@ -105,7 +105,7 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var views []supplierView
+	var views []View
 	for _, row := range rows {
 		views = append(views, viewOf(row, false))
 	}
@@ -116,14 +116,23 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 // keeps the settings, whose name - read as spelling reads it - or VAT number holds text; those on most of the caller's purchases first, then by
 // name, at most twenty. Fewer than three letters narrow nothing down.
 func (s Routes) search(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	projectID := web.ID(r, "projectId")
-	rows, err := s.database.Queries().SuppliersOf(r.Context(), store.SuppliersOfParams{ProjectID: projectID, UserID: caller.UserID})
+	views, err := Search(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, r.URL.Query().Get("text"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// Search is the suppliers caller may name in projectID's purchase whose name or VAT number holds text, as search answers them: the rule both
+// doors call, the app's route and the web's Add entry (redix-api #166). The error is the database's.
+func Search(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, text string) ([]View, error) {
+	rows, err := read.SuppliersOf(ctx, store.SuppliersOfParams{ProjectID: projectID, UserID: caller.UserID})
+	if err != nil {
+		return nil, err
+	}
 	seesPending := caller.Access.Holds(projectID, access.ManageSettings)
-	typed := strings.TrimSpace(r.URL.Query().Get("text"))
+	typed := strings.TrimSpace(text)
 	normalized := strings.ToLower(spelling.Normalize(typed))
 	narrowsNothing := utf8.RuneCountInString(normalized) < searchMinLength
 	var found []store.SuppliersOfRow
@@ -135,11 +144,11 @@ func (s Routes) search(w http.ResponseWriter, r *http.Request, caller access.Cal
 		}
 	}
 	slices.SortStableFunc(found, func(a, b store.SuppliersOfRow) int { return int(b.TimesUsed - a.TimesUsed) })
-	var views []supplierView
+	var views []View
 	for _, row := range found[:min(len(found), searchLimit)] {
 		views = append(views, viewOf(row, true))
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // Request is a supplier as a person types it (SupplierRequest).

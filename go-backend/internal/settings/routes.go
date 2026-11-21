@@ -6,6 +6,7 @@
 package settings
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -45,8 +46,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("DELETE", methods+"/{paymentMethodId:guid}", manage(s.delete))
 }
 
-// paymentMethodView is a payment method as the app shows it (PaymentMethodView), with the accounts it pays from (redix-app #109).
-type paymentMethodView struct {
+// PaymentMethod is a payment method as the app shows it (PaymentMethodView), with the accounts it pays from (redix-app #109).
+type PaymentMethod struct {
 	ID         uuid.UUID   `json:"id"`
 	Name       string      `json:"name"`
 	IsActive   bool        `json:"isActive"`
@@ -91,20 +92,28 @@ func read(w http.ResponseWriter, r *http.Request) (string, paysFrom, bool) {
 // list is the project's payment methods in order: every one, or only the active ones an entry may choose from (AC-40.1).
 func (s Routes) list(activeOnly bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-		read, projectID := s.database.Queries(), web.ID(r, "projectId")
-		methods, err := read.PaymentMethodsOf(r.Context(), projectID)
-		links, linksErr := read.PaymentMethodAccountsOf(r.Context(), projectID)
-		if changes.Answered(w, r, errors.Join(err, linksErr)) {
-			return
+		views, err := MethodsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), activeOnly)
+		if !changes.Answered(w, r, err) {
+			web.JSON(w, r, http.StatusOK, views)
 		}
-		var views []paymentMethodView
-		for _, method := range methods {
-			if method.IsActive || !activeOnly {
-				views = append(views, paymentMethodView{ID: method.ID, Name: method.Name, IsActive: method.IsActive, AccountIDs: accountsOf(links, method.ID)})
-			}
-		}
-		web.JSON(w, r, http.StatusOK, views)
 	}
+}
+
+// MethodsOf is projectID's payment methods as list answers them, only the active ones when activeOnly, each with the accounts it pays from: the
+// rule both doors call, the app's routes and the web's Add entry (redix-api #166). The error is the database's.
+func MethodsOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, activeOnly bool) ([]PaymentMethod, error) {
+	methods, err := read.PaymentMethodsOf(ctx, projectID)
+	links, linksErr := read.PaymentMethodAccountsOf(ctx, projectID)
+	if err := errors.Join(err, linksErr); err != nil {
+		return nil, err
+	}
+	var views []PaymentMethod
+	for _, method := range methods {
+		if method.IsActive || !activeOnly {
+			views = append(views, PaymentMethod{ID: method.ID, Name: method.Name, IsActive: method.IsActive, AccountIDs: accountsOf(links, method.ID)})
+		}
+	}
+	return views, nil
 }
 
 func fields(method store.PaymentMethod) map[string]any {

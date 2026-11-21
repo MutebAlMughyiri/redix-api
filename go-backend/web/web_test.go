@@ -1126,3 +1126,97 @@ func TestWeb_R166_AnActionAnswersAFailingDatabaseWith500(t *testing.T) {
 		}
 	}
 }
+
+// typedEntry is Add entry's form as a person fills it for the item's table, with amount, sent for approval when send.
+func (w working) typedEntry(amount string, send bool) url.Values {
+	submit := "draft"
+	if send {
+		submit = "send"
+	}
+	return url.Values{"table": {w.item + ":" + w.table}, "description": {"دفعة"}, "date": {"2026-11-10"}, "amount": {amount}, "method": {w.method},
+		"account": {w.account}, "submit": {submit}}
+}
+
+// entriesKept is how many entries of the project are kept with status.
+func (w working) entriesKept(status int) int {
+	w.t.Helper()
+	var count int
+	if err := w.Database.Read.QueryRow("SELECT count(*) FROM entries WHERE project_id = ? AND status = ?", w.id, status).Scan(&count); err != nil {
+		w.t.Fatal(err)
+	}
+	return count
+}
+
+func TestWeb_R166_UC022_AddEntryRecordsThroughTheAppsRuleAndShowsTheEntry(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/entries", nil).Body.String(), `hx-get="/tab/addEntry"`)
+	form := w.browser.Send("GET", "/tab/addEntry", nil).Body.String()
+	has(t, form, `<option value="`+w.item+":"+w.table+`">التسليح</option>`)
+	has(t, form, `id="payment.method.`+w.method+`"`)
+	has(t, form, `id="payment.account.`+w.account+`"`)
+	has(t, form, `id="addEntry.supplier"`)
+	sent := w.browser.Send("POST", "/entry", w.typedEntry("1,200", true)).Body.String()
+	has(t, sent, `<p id="addEntry.message" class="notice wide" role="status">أُرسل للاعتماد.</p>`)
+	has(t, sent, `<aside id="web.details" class="details" aria-live="polite" hx-swap-oob="true">`)
+	has(t, sent, `<dd id="entry.amount" class="money">1,200.00</dd>`)
+	lacks(t, sent, `value="1,200"`)
+	if w.entriesKept(1) != 1 {
+		t.Errorf("one entry waits: %d", w.entriesKept(1))
+	}
+	has(t, w.browser.Send("POST", "/entry", w.typedEntry("75", false)).Body.String(), "حُفظ كمسودة.")
+	if w.entriesKept(0) != 1 {
+		t.Errorf("one draft is kept: %d", w.entriesKept(0))
+	}
+}
+
+func TestWeb_R166_UC022_AddEntrySaysWhyNotAndKeepsWhatWasTyped(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	for amount, word := range map[string]string{"abc": "أدخل مبلغاً أكبر من صفر", "": "أدخل مبلغاً أكبر من صفر"} {
+		refused := w.browser.Send("POST", "/entry", w.typedEntry(amount, true)).Body.String()
+		has(t, refused, word)
+		has(t, refused, `<input id="addEntry.description" name="description" value="دفعة">`)
+	}
+	early := w.typedEntry("50", true)
+	early.Set("date", "2026-10-01")
+	has(t, w.browser.Send("POST", "/entry", early).Body.String(), `<p id="addEntry.message" class="refusal wide" role="alert">`)
+	if w.entriesKept(0)+w.entriesKept(1) != 0 {
+		t.Errorf("a refused entry is not kept: %d", w.entriesKept(0)+w.entriesKept(1))
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	finished := w.browser.Send("POST", "/entry", w.typedEntry("50", true)).Body.String()
+	has(t, finished, "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+	has(t, w.browser.Send("GET", "/tab/entries", nil).Body.String(), `id="entries.new" class="primary small" type="button" disabled`)
+	if w.entriesKept(1) != 0 {
+		t.Errorf("a finished project records nothing: %d", w.entriesKept(1))
+	}
+}
+
+func TestWeb_R166_AddEntryAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/entry", w.typedEntry("40", true))
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("recording with the database failing at its call %d answers %d", n, answered.Code)
+		}
+		if w.entriesKept(1) != 0 {
+			t.Fatalf("an entry failing at its call %d keeps nothing: %d", n, w.entriesKept(1))
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/addEntry", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("drawing Add entry with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}

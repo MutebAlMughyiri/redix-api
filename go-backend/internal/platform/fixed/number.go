@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"slices"
 	"strings"
 )
 
@@ -211,4 +212,21 @@ func Percent(part, whole Number, places int, away bool) Written {
 
 func ten(power int) *big.Rat {
 	return new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(power)), nil))
+}
+
+// TypedIn is value read as a number a person typed, as decimal.TryParse read it with NumberStyles.Number: digits with a sign, a point and
+// thousands separators, and the decimals it was written with. The one reader of typed text, an entry's column's and the web's amount
+// (redix-api #166).
+func TypedIn(value string) (Typed, bool) {
+	var number Typed
+	var cleaned []byte
+	for _, letter := range []byte(value) {
+		if letter != ',' && letter != ' ' {
+			cleaned = append(cleaned, letter)
+		}
+	}
+	if len(cleaned) == 0 || slices.ContainsFunc(cleaned, func(letter byte) bool { return letter == 'e' || letter == 'E' }) {
+		return number, false
+	}
+	return number, number.UnmarshalJSON(cleaned) == nil
 }

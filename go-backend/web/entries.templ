@@ -22,7 +22,15 @@ templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take 
 	<div class="view-head">
 		<h2 id="entries.title">{ p.words.Of("entries.title") }</h2>
 		<span class="head-actions">
-			<button id="entries.new" class="primary small" type="button" disabled>{ p.words.Of("entries.new") }</button>
+			<button
+				id="entries.new"
+				class="primary small"
+				type="button"
+				disabled?={ p.finished() || !p.may(access.RecordEntries) }
+				title={ p.words.Of("permissions.recordEntries") }
+				hx-get="/tab/addEntry"
+				hx-target="[id='web.content']"
+			>{ p.words.Of("entries.new") }</button>
 		</span>
 	</div>
 	<form

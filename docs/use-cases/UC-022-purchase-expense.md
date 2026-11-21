@@ -63,3 +63,18 @@ Tests are in `ExpensesTests` and `SimpleExpenseTests`.
 | AC-43.1: the caller's most used suppliers first | `suppliers.Routes.search` | `ExpensesTests.AC_43_1_TheSearchPutsWhatTheCallerUsedMostFirstAndThenByName`, `AC_43_1_MostUsedIsTheCallersOwnNotSomeoneElses` |
 
 A QR code on the file fills the date, the total and the supplier in the app (UC-024, D21). The API takes no QR code value.
+
+## On the web: Add entry (redix-api #166)
+
+The web's Add entry is the app's screen in a tab of its own, opened by Entries' Add entry button (gray, with its reason, without RecordEntries or in a finished project, as the app's is). It offers what the app's routes answer: the tables from `entries.Offered`, each named as the app's picker names it; the table's own columns from `entries.AskedColumns`, drawn from `structure.ColumnOf`; the payment methods from `settings.MethodsOf` and the accounts from `accounts.ListOf`, only those the method pays from; a purchase's suppliers from `suppliers.Search`. Changing the table, the method or the supplier search draws the form again with what was typed. Saving records through `entries.Record`, the rule the app's route and a project file's load run, as a draft or sent for approval. No file is taken on the web (#80 D2). Its pages are in `go-backend/web` (`addentry.go`, `addentry.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/addEntry?table=&method=&supplierText=&…` | Add entry, drawn with what was typed | `200` the tab's content |
+| `POST /entry` | Records the form, `submit=draft` or `submit=send` | `200` the form again: emptied and saying it was kept, the new entry in the details panel; or as typed, saying why not and marking the column refused |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Add entry offers the caller's tables, methods and accounts, records through the app's rule, and shows the new entry (UC-022, FR-41) | `entries.Record`, `web.site.recordEntry` | `TestWeb_R166_UC022_AddEntryRecordsThroughTheAppsRuleAndShowsTheEntry` |
+| What cannot be saved says why and keeps what was typed: an amount that is no number, a refusal of the API's (BR-12); a finished project records nothing (AC-04.1) | `web.entryForm.whatIsWrong`, `entries.Record` | `TestWeb_R166_UC022_AddEntrySaysWhyNotAndKeepsWhatWasTyped` |
+| A failing database answers 500 and keeps nothing | `changes.Writer.Run` | `TestWeb_R166_AddEntryAnswersAFailingDatabaseWith500` |

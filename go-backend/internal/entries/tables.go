@@ -110,8 +110,8 @@ func (purchaseForm) total(r Request) fixed.Total {
 		return r.Amount.Total()
 	}
 	values := r.kept()
-	unitPrice, priceOK := numberIn(values.Values["unitPrice"])
-	quantity, quantityOK := numberIn(values.Values["quantity"])
+	unitPrice, priceOK := fixed.TypedIn(values.Values["unitPrice"])
+	quantity, quantityOK := fixed.TypedIn(values.Values["quantity"])
 	if !priceOK || !quantityOK || unitPrice.Number <= 0 || quantity.Number <= 0 || unitPrice.IsBeyond() || quantity.IsBeyond() {
 		return fixed.Total{}
 	}
@@ -379,54 +379,64 @@ func tablesOf(category store.Category, item store.Item, subgroups []store.Subgro
 	return tables
 }
 
-// offeredTable is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
-type offeredTable struct {
+// OfferedTable is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
+type OfferedTable struct {
 	ID         uuid.UUID `json:"id"`
 	Kind       named     `json:"kind"`
 	Name       string    `json:"name"`
 	ColumnKeys []string  `json:"columnKeys"`
 }
 
-// offeredItem is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
-type offeredItem struct {
+// OfferedItem is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
+type OfferedItem struct {
 	ID        uuid.UUID      `json:"id"`
 	Name      string         `json:"name"`
-	Tables    []offeredTable `json:"tables"`
+	Tables    []OfferedTable `json:"tables"`
 	IsRevenue bool           `json:"isRevenue"`
 }
 
-// offeredCategory is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
-type offeredCategory struct {
+// OfferedCategory is part of what GET /projects/{projectId}/entry-tables (UC-012) answers.
+type OfferedCategory struct {
 	ID    uuid.UUID     `json:"id"`
 	Name  string        `json:"name"`
-	Items []offeredItem `json:"items"`
+	Items []OfferedItem `json:"items"`
 }
 
 // entryTables is every table the caller may enter into (redix-app #84, redix-api #110), grouped by category and item in the order of the report,
 // each with the keys of the columns its entry is asked.
 func (s Routes) entryTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	tables, err := offered(changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}, caller.Access)
+	views, err := Offered(changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}, caller.Access)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var views []offeredCategory
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// Offered is every table of c's project whoever holds held may enter into, as entryTables answers them: the rule both doors call, the app's
+// route and the web's Add entry (redix-api #166). The error is the database's.
+func Offered(c changes.Change, held access.Access) ([]OfferedCategory, error) {
+	tables, err := offered(c, held)
+	if err != nil {
+		return nil, err
+	}
+	var views []OfferedCategory
 	for _, t := range tables {
 		if len(views) == 0 || views[len(views)-1].ID != t.category.ID {
-			views = append(views, offeredCategory{ID: t.category.ID, Name: t.category.Name})
+			views = append(views, OfferedCategory{ID: t.category.ID, Name: t.category.Name})
 		}
 		category := &views[len(views)-1]
 		if len(category.Items) == 0 || category.Items[len(category.Items)-1].ID != t.item.ID {
-			category.Items = append(category.Items, offeredItem{ID: t.item.ID, Name: t.item.Name, IsRevenue: t.isRevenue()})
+			category.Items = append(category.Items, OfferedItem{ID: t.item.ID, Name: t.item.Name, IsRevenue: t.isRevenue()})
 		}
 		item := &category.Items[len(category.Items)-1]
 		var keys []string
 		for _, column := range t.columns {
 			keys = append(keys, column.Key)
 		}
-		item.Tables = append(item.Tables, offeredTable{ID: t.id, Kind: named{t.kind, tableKinds}, Name: t.name, ColumnKeys: keys})
+		item.Tables = append(item.Tables, OfferedTable{ID: t.id, Kind: named{t.kind, tableKinds}, Name: t.name, ColumnKeys: keys})
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // itemTableView is part of what GET /projects/{projectId}/items/{itemId}/tables (UC-012) answers.
@@ -522,9 +532,9 @@ func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller acces
 	listed := func(id uuid.UUID) bool {
 		return caller.Access.Sees(projectID, id) || caller.Access.Holds(projectID, access.ManageUsers)
 	}
-	var views []offeredCategory
+	var views []OfferedCategory
 	for _, category := range categories {
-		view := offeredCategory{ID: category.ID, Name: category.Name}
+		view := OfferedCategory{ID: category.ID, Name: category.Name}
 		for _, item := range items {
 			if item.CategoryID != category.ID || item.Type == int64(structure.Capital) {
 				continue
@@ -545,10 +555,10 @@ func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller acces
 				}
 			}
 			slices.SortStableFunc(placed, func(a, b itemTableView) int { return int(a.place - b.place) })
-			shown := offeredItem{ID: item.ID, Name: item.Name, IsRevenue: structure.ItemType(item.Type).IsRevenue()}
+			shown := OfferedItem{ID: item.ID, Name: item.Name, IsRevenue: structure.ItemType(item.Type).IsRevenue()}
 			for _, table := range placed {
 				if listed(table.ID) {
-					shown.Tables = append(shown.Tables, offeredTable{ID: table.ID, Kind: table.Kind, Name: table.Name})
+					shown.Tables = append(shown.Tables, OfferedTable{ID: table.ID, Kind: table.Kind, Name: table.Name})
 				}
 			}
 			if len(shown.Tables) > 0 {

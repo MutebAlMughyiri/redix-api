@@ -537,19 +537,3 @@ func removeRows(c changes.Change, entryID uuid.UUID, files []store.EntryFilesOfR
 	}
 	return nil
 }
-
-// numberIn is a column's value read as a number, as decimal.TryParse read it with NumberStyles.Number: digits with a sign, a point and thousands
-// separators, and the decimals it was written with.
-func numberIn(value string) (fixed.Typed, bool) {
-	var number fixed.Typed
-	var cleaned []byte
-	for _, letter := range []byte(value) {
-		if letter != ',' && letter != ' ' {
-			cleaned = append(cleaned, letter)
-		}
-	}
-	if len(cleaned) == 0 || slices.ContainsFunc(cleaned, func(letter byte) bool { return letter == 'e' || letter == 'E' }) {
-		return number, false
-	}
-	return number, number.UnmarshalJSON(cleaned) == nil
-}

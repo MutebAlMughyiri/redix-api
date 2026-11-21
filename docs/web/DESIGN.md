@@ -19,7 +19,8 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 | `web/project.go` | The project the person works in: chosen from the top bar, else the default, kept in a cookie |
 | `web/home.go`, `web/home.templ` | The home: the summary, my custody, the newest entries; the project list while choosing |
 | `web/register.go`, `web/register.templ` | Register new project from the sign-in: the form, its lists, sending it |
-| `web/entries.go`, `web/entries.templ` | The Entries tab: its filters, its pages, an entry in the details panel |
+| `web/entries.go`, `web/entries.templ` | The Entries tab: its filters, its pages, an entry in the details panel and its actions |
+| `web/addentry.go`, `web/addentry.templ` | Add entry: the form the app's screen asks, drawn again as it changes, recorded through `entries.Record` |
 | `web/shell.go` | The page, the tabs, the View menu's choices, the language |
 | `web/view.go` | The shell's choices, kept in a cookie |
 | `web/assets.go` | The embedded files, gzipped once, served under their hash and kept a year |
@@ -59,6 +60,7 @@ Every element a test clicks or reads has an id, so automation finds it as the ap
 | Change password | `changePassword.form`, `changePassword.title`, `changePassword.hint`, `changePassword.current`, `changePassword.new`, `changePassword.confirm`, `changePassword.message`, `changePassword.submit` |
 | Settings | `sharedSettings.title`, `web.setting.language`, `myAccount.language`, `web.language`, `myAccount.arabic`, `myAccount.english` |
 | Details panel | `web.details`; an entry: `entry.title`, `entry.close`, `entry.status`, `entry.reason`, `entry.date`, `entry.item`, `entry.supplier`, `entry.invoice`, `entry.amount`, `entry.paymentMethod`, `entry.account`, `entry.description`, `entry.enteredBy`, `entry.notice`, `entry.refusal`, `entry.approve`, `entry.send`, `entry.change`, `entry.remove`, `entry.ask`, `entry.removeConfirm`, `entry.removeCancel` |
+| Add entry (#166) | `addEntry.title`, `addEntry.form`, `addEntry.table`, `addEntry.description`, `addEntry.date`, `addEntry.amount`, `addEntry.kind`, `addEntry.inside`, `addEntry.outside`, `addEntry.supplierSearch`, `addEntry.supplier`, `addEntry.columnsSection`, `addEntry.column.<key>`, `addEntry.columnOption.<key>.<choice>`, `payment.methodChoice`, `payment.method.<id>`, `addEntry.paymentSection`, `payment.account.<id>`, `payment.noAccount`, `addEntry.message`, `addEntry.draft`, `addEntry.send` |
 | Entries | `entries.title`, `entries.new`, `entries.filters`, `entries.search`, `entries.mine`, `entries.kindChoice`, `entries.kind.<kind>`, `entries.statusChoice`, `entries.status.<status>`, `entries.period`, `entries.from`, `entries.to`, `entries.number`, `entries.clear`, `entries.empty`, `entries.row.<id>`, `entries.more` |
 | Register new project | `newProject.form`, `newProject.title`, `newProject.hint`, `newProject.message`, `newProject.name`, `newProject.description`, `newProject.startDate`, `newProject.units`, `newProject.unitsHeading`, `newProject.unitName`, `newProject.addUnit`, `newProject.unit.<n>`, the same for `partners` and `partner`, `newProject.managerHeading`, `newProject.managerName`, `newProject.username`, `newProject.mobile`, `newProject.password`, `legal.agreement`, `newProject.submit`, `newProject.cancel` |
 | Projects | `web.project`, `web.projects`, `web.projects.title`, `web.projects.notice`, `web.projects.<id>`, `projects.star.<id>`, `projects.new`, `web.sideProject`; on the list: `projects.title`, `projects.hint`, `projects.empty`, `projects.card.<id>` |

@@ -122,8 +122,8 @@ type choice struct {
 	Sign int64     `json:"Sign"`
 }
 
-// choiceView is a choice as the API writes it.
-type choiceView struct {
+// ChoiceView is a choice as the API writes it.
+type ChoiceView struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 	Sign Sign      `json:"sign"`
@@ -245,8 +245,8 @@ func hasTwoSignedLists(columns []column) bool {
 	return count > 1
 }
 
-// columnView is a column as the app shows it (ColumnView).
-type columnView struct {
+// ColumnView is a column as the app shows it (ColumnView), and as the web's Add entry draws its field (redix-api #166).
+type ColumnView struct {
 	ID            uuid.UUID    `json:"id"`
 	Key           string       `json:"key"`
 	Name          string       `json:"name"`
@@ -255,16 +255,19 @@ type columnView struct {
 	IsCustom      bool         `json:"isCustom"`
 	IsRequired    bool         `json:"isRequired"`
 	ShowInReports bool         `json:"showInReports"`
-	Choices       []choiceView `json:"choices"`
+	Choices       []ChoiceView `json:"choices"`
 	IsEntryField  bool         `json:"isEntryField"`
 }
 
-func (c column) view(id uuid.UUID) columnView {
-	var choices []choiceView
+// ColumnOf is the item's column row as the app shows it: the one view both doors draw a column from (redix-api #166).
+func ColumnOf(row store.ItemColumn) ColumnView { return ofItemColumn(row).view(row.ID) }
+
+func (c column) view(id uuid.UUID) ColumnView {
+	var choices []ChoiceView
 	for _, one := range c.Choices {
-		choices = append(choices, choiceView{ID: one.ID, Name: one.Name, Sign: Sign(one.Sign)})
+		choices = append(choices, ChoiceView{ID: one.ID, Name: one.Name, Sign: Sign(one.Sign)})
 	}
-	return columnView{ID: id, Key: c.Key, Name: c.Name, DataType: c.DataType, IsCore: c.IsCore, IsCustom: c.isCustom(), IsRequired: c.IsRequired,
+	return ColumnView{ID: id, Key: c.Key, Name: c.Name, DataType: c.DataType, IsCore: c.IsCore, IsCustom: c.isCustom(), IsRequired: c.IsRequired,
 		ShowInReports: c.ShowInReports, Choices: choices, IsEntryField: slices.Contains(entryFieldKeys, c.Key)}
 }
 

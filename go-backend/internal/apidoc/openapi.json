@@ -834,6 +834,83 @@
         ],
         "type": "object"
       },
+      "entries.OfferedCategory": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/entries.OfferedItem"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "items",
+          "name"
+        ],
+        "type": "object"
+      },
+      "entries.OfferedItem": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isRevenue": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/entries.OfferedTable"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "isRevenue",
+          "name",
+          "tables"
+        ],
+        "type": "object"
+      },
+      "entries.OfferedTable": {
+        "properties": {
+          "columnKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "columnKeys",
+          "id",
+          "kind",
+          "name"
+        ],
+        "type": "object"
+      },
       "entries.ReportChoice": {
         "properties": {
           "name": {
@@ -1519,83 +1596,6 @@
           "by",
           "id",
           "kind"
-        ],
-        "type": "object"
-      },
-      "entries.offeredCategory": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/entries.offeredItem"
-            },
-            "type": "array"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "items",
-          "name"
-        ],
-        "type": "object"
-      },
-      "entries.offeredItem": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "isRevenue": {
-            "type": "boolean"
-          },
-          "name": {
-            "type": "string"
-          },
-          "tables": {
-            "items": {
-              "$ref": "#/components/schemas/entries.offeredTable"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "isRevenue",
-          "name",
-          "tables"
-        ],
-        "type": "object"
-      },
-      "entries.offeredTable": {
-        "properties": {
-          "columnKeys": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "columnKeys",
-          "id",
-          "kind",
-          "name"
         ],
         "type": "object"
       },
@@ -2751,21 +2751,7 @@
         ],
         "type": "object"
       },
-      "settings.methodRequest": {
-        "properties": {
-          "accountIds": {
-            "$ref": "#/components/schemas/settings.paysFrom"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "type": "object"
-      },
-      "settings.paymentMethodView": {
+      "settings.PaymentMethod": {
         "properties": {
           "accountIds": {
             "items": {
@@ -2793,9 +2779,107 @@
         ],
         "type": "object"
       },
+      "settings.methodRequest": {
+        "properties": {
+          "accountIds": {
+            "$ref": "#/components/schemas/settings.paysFrom"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "settings.paysFrom": {
         "properties": {},
         "required": [],
+        "type": "object"
+      },
+      "structure.ChoiceView": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sign": {
+            "enum": [
+              "none",
+              "plus",
+              "minus"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sign"
+        ],
+        "type": "object"
+      },
+      "structure.ColumnView": {
+        "properties": {
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/structure.ChoiceView"
+            },
+            "type": "array"
+          },
+          "dataType": {
+            "enum": [
+              "text",
+              "number",
+              "amount",
+              "date",
+              "list",
+              "file"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isCore": {
+            "type": "boolean"
+          },
+          "isCustom": {
+            "type": "boolean"
+          },
+          "isEntryField": {
+            "type": "boolean"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "showInReports": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "choices",
+          "dataType",
+          "id",
+          "isCore",
+          "isCustom",
+          "isEntryField",
+          "isRequired",
+          "key",
+          "name",
+          "showInReports"
+        ],
         "type": "object"
       },
       "structure.addItemRequest": {
@@ -2910,31 +2994,6 @@
         ],
         "type": "object"
       },
-      "structure.choiceView": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "sign": {
-            "enum": [
-              "none",
-              "plus",
-              "minus"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "sign"
-        ],
-        "type": "object"
-      },
       "structure.columnRequest": {
         "properties": {
           "choices": {
@@ -2968,65 +3027,6 @@
           "choices",
           "dataType",
           "isRequired",
-          "name",
-          "showInReports"
-        ],
-        "type": "object"
-      },
-      "structure.columnView": {
-        "properties": {
-          "choices": {
-            "items": {
-              "$ref": "#/components/schemas/structure.choiceView"
-            },
-            "type": "array"
-          },
-          "dataType": {
-            "enum": [
-              "text",
-              "number",
-              "amount",
-              "date",
-              "list",
-              "file"
-            ],
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "isCore": {
-            "type": "boolean"
-          },
-          "isCustom": {
-            "type": "boolean"
-          },
-          "isEntryField": {
-            "type": "boolean"
-          },
-          "isRequired": {
-            "type": "boolean"
-          },
-          "key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "showInReports": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "choices",
-          "dataType",
-          "id",
-          "isCore",
-          "isCustom",
-          "isEntryField",
-          "isRequired",
-          "key",
           "name",
           "showInReports"
         ],
@@ -3232,7 +3232,7 @@
         ],
         "type": "object"
       },
-      "suppliers.supplierView": {
+      "suppliers.View": {
         "properties": {
           "defaultItemId": {
             "type": "string"
@@ -6424,7 +6424,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/structure.columnView"
+                    "$ref": "#/components/schemas/structure.ColumnView"
                   },
                   "type": "array"
                 }
@@ -8035,7 +8035,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.offeredCategory"
+                    "$ref": "#/components/schemas/entries.OfferedCategory"
                   },
                   "type": "array"
                 }
@@ -8226,7 +8226,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/structure.columnView"
+                    "$ref": "#/components/schemas/structure.ColumnView"
                   },
                   "type": "array"
                 }
@@ -9389,7 +9389,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/settings.paymentMethodView"
+                    "$ref": "#/components/schemas/settings.PaymentMethod"
                   },
                   "type": "array"
                 }
@@ -9487,7 +9487,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/settings.paymentMethodView"
+                    "$ref": "#/components/schemas/settings.PaymentMethod"
                   },
                   "type": "array"
                 }
@@ -11128,7 +11128,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/suppliers.supplierView"
+                    "$ref": "#/components/schemas/suppliers.View"
                   },
                   "type": "array"
                 }
@@ -11180,7 +11180,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/suppliers.supplierView"
+                  "$ref": "#/components/schemas/suppliers.View"
                 }
               }
             },
@@ -11250,7 +11250,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/suppliers.supplierView"
+                    "$ref": "#/components/schemas/suppliers.View"
                   },
                   "type": "array"
                 }
@@ -11526,7 +11526,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.offeredCategory"
+                    "$ref": "#/components/schemas/entries.OfferedCategory"
                   },
                   "type": "array"
                 }

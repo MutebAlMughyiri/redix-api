@@ -1,0 +1,136 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+)
+
+// addEntry is Add entry as the app's screen asks it (UC-022, redix-api #166), with no file (#80 D2): the table, the description, the date and
+// the amount; inside or outside a contract's agreement, a purchase's supplier, the item's own columns; the payment method and the account; then
+// Save draft and Send. Changing the table, the method or the supplier search draws it again with what was typed.
+templ addEntry(p page, form entryForm) {
+	<div class="view-head">
+		<h2 id="addEntry.title">{ p.words.Of("entries.new") }</h2>
+	</div>
+	if form.table.ID == uuid.Nil {
+		<p id="addEntry.message" class="hint">{ p.words.Of("entries.noTableMatch") }</p>
+	} else {
+		<form id="addEntry.form" class="entry-form" hx-post="/entry" hx-target="[id='web.content']" hx-sync="this:drop">
+			<div class="field wide">
+				<label for="addEntry.table">{ p.words.Of("entries.table") }</label>
+				<select id="addEntry.table" name="table" hx-get="/tab/addEntry" hx-include="closest form" hx-target="[id='web.content']">
+					for _, category := range form.tables {
+						<optgroup label={ category.Name }>
+							for _, item := range category.Items {
+								for _, table := range item.Tables {
+									<option value={ tableValue(item, table) } selected?={ item.ID == form.item.ID && table.ID == form.table.ID }>{ tableLabel(item, table) }</option>
+								}
+							}
+						</optgroup>
+					}
+				</select>
+			</div>
+			<div class="field wide">
+				<label for="addEntry.description">{ p.words.Of("expenses.description") }</label>
+				<input id="addEntry.description" name="description" value={ form.typed.Get("description") }/>
+			</div>
+			<div class="field">
+				<label for="addEntry.date">{ p.words.Of("expenses.date") }</label>
+				<input id="addEntry.date" name="date" type="date" value={ form.typed.Get("date") }/>
+			</div>
+			<div class="field">
+				<label for="addEntry.amount">{ p.words.Of("expenses.amount") }</label>
+				<input id="addEntry.amount" name="amount" inputmode="decimal" value={ form.typed.Get("amount") } aria-invalid?={ form.said.refusal == "expenses.invalidAmount" }/>
+			</div>
+			if form.asksContract() {
+				<fieldset id="addEntry.kind" class="picks wide">
+					<legend>{ p.words.Of("contractorPayments.kind") }</legend>
+					<label id="addEntry.inside" class="pick"><input type="radio" name="outside" value="false" checked?={ form.typed.Get("outside") != "true" }/>{ p.words.Of("contractorPayments.inside") }</label>
+					<label id="addEntry.outside" class="pick"><input type="radio" name="outside" value="true" checked?={ form.typed.Get("outside") == "true" }/>{ p.words.Of("contractorPayments.outside") }</label>
+				</fieldset>
+			}
+			if form.asksSupplier() {
+				<div class="field wide">
+					<label for="addEntry.supplier">{ p.words.Of("expenses.supplier") }</label>
+					<span class="pair">
+						<input id="addEntry.supplierSearch" class="search" type="search" name="supplierText" value={ form.typed.Get("supplierText") } placeholder={ p.words.Of("common.search") } aria-label={ p.words.Of("common.search") } hx-get="/tab/addEntry" hx-include="closest form" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms"/>
+						<select id="addEntry.supplier" name="supplier">
+							<option value=""></option>
+							for _, supplier := range form.suppliers {
+								<option value={ supplier.ID.String() } selected?={ supplier.ID.String() == form.typed.Get("supplier") }>{ supplier.Name }</option>
+							}
+						</select>
+					</span>
+				</div>
+			}
+			if len(form.columns) > 0 {
+				<p id="addEntry.columnsSection" class="section-title wide">{ p.words.Of("columns.title") }</p>
+				for _, column := range form.columns {
+					@columnField(form, column)
+				}
+			}
+			if !form.item.IsRevenue {
+				<fieldset id="payment.methodChoice" class="picks wide">
+					<legend>{ p.words.Of("expenses.paymentMethod") }</legend>
+					for _, method := range form.methods {
+						<label id={ "payment.method." + method.ID.String() } class="pick"><input type="radio" name="method" value={ method.ID.String() } checked?={ method.ID == form.method } hx-get="/tab/addEntry" hx-include="closest form" hx-target="[id='web.content']"/>{ method.Name }</label>
+					}
+				</fieldset>
+			}
+			<fieldset id="addEntry.paymentSection" class="picks wide">
+				<legend>{ p.words.Of("expenses.account") }</legend>
+				for _, account := range form.accounts {
+					<label id={ "payment.account." + account.ID.String() } class="pick"><input type="radio" name="account" value={ account.ID.String() } checked?={ account.ID == form.account() }/>{ account.Name }</label>
+				}
+				if len(form.accounts) == 0 {
+					<p id="payment.noAccount" class="hint">{ p.words.Of("expenses.noAccount") }</p>
+				}
+			</fieldset>
+			if form.said.notice != "" {
+				<p id="addEntry.message" class="notice wide" role="status">{ p.words.Of(form.said.notice) }</p>
+			}
+			if form.said.refusal != "" {
+				<p id="addEntry.message" class="refusal wide" role="alert">{ p.words.Of(form.said.refusal) }</p>
+			}
+			<div class="form-actions wide">
+				<button id="addEntry.draft" class="quiet-button" type="submit" name="submit" value="draft">{ p.words.Of("expenses.saveDraft") }</button>
+				<button id="addEntry.send" class="primary small" type="submit" name="submit" value="send">{ p.words.Of("expenses.send") }</button>
+			</div>
+		</form>
+	}
+}
+
+// columnField is one of the item's own columns as the app's ColumnValueField draws it: a list a dropdown of its choices, a date a date, a
+// number typed as a decimal, anything else as text; the column the last save refused is marked.
+templ columnField(form entryForm, column structure.ColumnView) {
+	<div class="field">
+		<label for={ "addEntry.column." + column.Key } class={ templ.KV("required", column.IsRequired) }>{ column.Name }</label>
+		switch {
+			case column.DataType == structure.List && len(column.Choices) > 0:
+				<select id={ "addEntry.column." + column.Key } name={ "column." + column.Key } aria-invalid?={ form.refused == column.Key }>
+					<option value=""></option>
+					for _, choice := range column.Choices {
+						<option id={ "addEntry.columnOption." + column.Key + "." + choice.ID.String() } value={ choice.ID.String() } selected?={ choice.ID.String() == form.typed.Get("column." + column.Key) }>{ choice.Name }</option>
+					}
+				</select>
+			case column.DataType == structure.Date:
+				<input id={ "addEntry.column." + column.Key } name={ "column." + column.Key } type="date" value={ form.typed.Get("column." + column.Key) } aria-invalid?={ form.refused == column.Key }/>
+			case column.DataType == structure.Number || column.DataType == structure.Amount:
+				<input id={ "addEntry.column." + column.Key } name={ "column." + column.Key } inputmode="decimal" value={ form.typed.Get("column." + column.Key) } aria-invalid?={ form.refused == column.Key }/>
+			default:
+				<input id={ "addEntry.column." + column.Key } name={ "column." + column.Key } value={ form.typed.Get("column." + column.Key) } aria-invalid?={ form.refused == column.Key }/>
+		}
+	</div>
+}
+
+// panelBeside is an entry in the details panel, carried out of band beside the answer that recorded it.
+templ panelBeside(p page, row entries.Row) {
+	@detailsPanel(true) {
+		@entryPanel(p, row, said{})
+	}
+}

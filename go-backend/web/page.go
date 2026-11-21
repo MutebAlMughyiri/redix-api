@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -157,10 +158,14 @@ var sideMenu = []menuItem{
 	{"contracts", "contracts.title"}, {"reports", "reports.title"}, {"history", "history.projectTitle"}, {"settings", "sharedSettings.title"},
 }
 
+// pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button (redix-api #166).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}}
+
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
 	"home":     site.homeTab,
 	"entries":  site.entriesTab,
+	"addEntry": site.addEntryTab,
 	"settings": func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
 }
 
@@ -168,7 +173,7 @@ var contents = map[string]tab{
 func (p page) openTabs() []menuItem {
 	var open []menuItem
 	for _, name := range p.view.Tabs {
-		for _, item := range sideMenu {
+		for _, item := range slices.Concat(sideMenu, pageTabs) {
 			if item.name == name {
 				open = append(open, item)
 			}
