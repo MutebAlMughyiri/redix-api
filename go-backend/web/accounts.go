@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -14,6 +16,8 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
 
@@ -279,4 +283,110 @@ func (s site) keepAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	account, _ := shown.accountOf(accountID)
 	draw(w, r, http.StatusOK, accountPanel(p, shown, account, said{}), listBeside(p, shown))
+}
+
+// active is the accounts money may move between: the active ones.
+func (a accountsShown) active() []accounts.View {
+	var kept []accounts.View
+	for _, account := range a.accounts {
+		if account.IsActive {
+			kept = append(kept, account)
+		}
+	}
+	return kept
+}
+
+// mayTransfer says whether p's caller may move money between shown's accounts, as the app's Transfer button allows: MoveMoney, in a project not
+// finished, with two active accounts at least.
+func (p page) mayTransfer(shown accountsShown) bool {
+	return !p.finished() && p.may(access.MoveMoney) && len(shown.active()) > 1
+}
+
+// transferTyped is Transfer's form as typed: from and to, the amount, the date and the notes.
+type transferTyped struct {
+	from, to            uuid.UUID
+	amount, date, notes string
+}
+
+// transferTypedOf is the form query holds, from the first active account when it names none, dated today in the project's zone when it has no
+// date.
+func (s site) transferTypedOf(r *http.Request, p page, shown accountsShown, query url.Values) (transferTyped, error) {
+	from, _ := uuid.Parse(query.Get("from"))
+	to, _ := uuid.Parse(query.Get("to"))
+	typed := transferTyped{from: from, to: to, amount: query.Get("amount"), date: query.Get("date"), notes: query.Get("notes")}
+	if _, found := shown.accountOf(typed.from); !found && len(shown.active()) > 0 {
+		typed.from = shown.active()[0].ID
+	}
+	var err error
+	if typed.date == "" {
+		typed.date, err = s.today(r.Context(), p)
+	}
+	return typed, err
+}
+
+// transferForm answers the details panel with Transfer as query holds it and why it could not be made; 404 for whoever may not transfer.
+func (s site) transferFormOf(w http.ResponseWriter, r *http.Request, p page, query url.Values, refusal string) {
+	shown, err := s.accountsOf(r.Context(), p)
+	if err != nil {
+		failed(w)
+		return
+	}
+	if !p.inProject() || !p.mayTransfer(shown) {
+		http.NotFound(w, r)
+		return
+	}
+	typed, err := s.transferTypedOf(r, p, shown, query)
+	if err != nil {
+		failed(w)
+		return
+	}
+	draw(w, r, http.StatusOK, transferForm(p, shown, typed, refusal))
+}
+
+// transferDetails is Transfer in the details panel, drawn again with what was typed when the account it moves from changes (FR-23).
+func (s site) transferDetails(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	s.transferFormOf(w, r, p, r.URL.Query(), "")
+}
+
+// transfer moves the amount the form names, through the rule the app's route runs (accounts.Transfer, FR-23), in one change: the panel closes
+// and Accounts beside it shows the balances after; refused, the form again says why in the app's words. 403 without MoveMoney, as the route's
+// gate refuses it.
+func (s site) transfer(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || r.ParseForm() != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !p.may(access.MoveMoney) || p.finished() {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+	from, _ := uuid.Parse(r.PostFormValue("from"))
+	to, _ := uuid.Parse(r.PostFormValue("to"))
+	amount, _ := fixed.TypedIn(r.PostFormValue("amount"))
+	date, _ := time.Parse(time.DateOnly, r.PostFormValue("date"))
+	request := accounts.TransferRequest{FromAccountID: from, ToAccountID: to, Amount: amount.Number, Date: moment.Date{Time: date}, Notes: r.PostFormValue("notes")}
+	err := changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) error { return accounts.Transfer(c, request) })
+	var refused changes.Refusal
+	if errors.As(err, &refused) {
+		s.transferFormOf(w, r, p, r.PostForm, "transfers."+refused.Code)
+		return
+	}
+	if err != nil {
+		failed(w)
+		return
+	}
+	shown, err := s.accountsOf(r.Context(), p)
+	if err != nil {
+		failed(w)
+		return
+	}
+	draw(w, r, http.StatusOK, listBeside(p, shown))
 }

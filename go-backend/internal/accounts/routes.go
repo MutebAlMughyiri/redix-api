@@ -320,8 +320,8 @@ func Delete(c changes.Change, accountID uuid.UUID) error {
 	return c.Record(history.Delete, "Accounts", account.ID, accountFields(account), nil)
 }
 
-// transferRequest is the body POST /projects/{projectId}/transfers reads (FR-23).
-type transferRequest struct {
+// TransferRequest is the body POST /projects/{projectId}/transfers reads (FR-23), and what the web's Transfer sends (redix-api #168).
+type TransferRequest struct {
 	FromAccountID uuid.UUID    `json:"fromAccountId"`
 	ToAccountID   uuid.UUID    `json:"toAccountId"`
 	Amount        fixed.Number `json:"amount"`
@@ -333,42 +333,46 @@ type transferRequest struct {
 // account not in the project, then sameAccount, accountDisabled, invalidAmount for none or more than two decimals, invalidNotes past 1,000
 // characters, insufficientBalance for more than the first account holds (400).
 func (s Routes) transfer(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request transferRequest
+	var request TransferRequest
 	if !web.Read(w, r, &request) {
 		return
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		from, err := c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: request.FromAccountID, ProjectID: c.ProjectID})
-		to, toErr := c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: request.ToAccountID, ProjectID: c.ProjectID})
-		if err := changes.Unknown(errors.Join(err, toErr), "unknownAccount"); err != nil {
-			return err
-		}
-		balances, err := Balances(c.Ctx, c.Q, c.ProjectID, access.Everything)
-		if err != nil {
-			return err
-		}
-		notes := strings.TrimSpace(request.Notes)
-		switch {
-		case from.ID == to.ID:
-			return changes.Refuse(http.StatusBadRequest, "sameAccount")
-		case !from.IsActive || !to.IsActive:
-			return changes.Refuse(http.StatusBadRequest, "accountDisabled")
-		case request.Amount <= 0 || !request.Amount.IsAcceptableMoney():
-			return changes.Refuse(http.StatusBadRequest, "invalidAmount")
-		case utf8.RuneCountInString(notes) > notesMaxLength:
-			return changes.Refuse(http.StatusBadRequest, "invalidNotes")
-		case request.Amount > balances[from.ID].Number():
-			return changes.Refuse(http.StatusBadRequest, "insufficientBalance")
-		}
-		transfer := store.AddTransferParams{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, FromAccountID: from.ID, ToAccountID: to.ID, Amount: request.Amount,
-			Date: request.Date, Notes: notes, CreatedByUserID: c.Actor, CreatedAt: c.Now}
-		if err := c.Q.AddTransfer(c.Ctx, transfer); err != nil {
-			return err
-		}
-		return c.Record(history.Create, "Transfers", transfer.ID, nil, map[string]any{"ProjectId": transfer.ProjectID, "FromAccountId": transfer.FromAccountID,
-			"ToAccountId": transfer.ToAccountID, "Amount": transfer.Amount, "Date": transfer.Date, "Notes": transfer.Notes,
-			"CreatedByUserId": transfer.CreatedByUserID, "CreatedAt": transfer.CreatedAt})
-	})
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Transfer(c, request) })
+}
+
+// Transfer moves request's amount between two accounts of c's project, as transfer answers it (FR-23): the rule both doors call, the app's
+// route and the web's Transfer (redix-api #168). Its refusals are transfer's.
+func Transfer(c changes.Change, request TransferRequest) error {
+	from, err := c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: request.FromAccountID, ProjectID: c.ProjectID})
+	to, toErr := c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: request.ToAccountID, ProjectID: c.ProjectID})
+	if err := changes.Unknown(errors.Join(err, toErr), "unknownAccount"); err != nil {
+		return err
+	}
+	balances, err := Balances(c.Ctx, c.Q, c.ProjectID, access.Everything)
+	if err != nil {
+		return err
+	}
+	notes := strings.TrimSpace(request.Notes)
+	switch {
+	case from.ID == to.ID:
+		return changes.Refuse(http.StatusBadRequest, "sameAccount")
+	case !from.IsActive || !to.IsActive:
+		return changes.Refuse(http.StatusBadRequest, "accountDisabled")
+	case request.Amount <= 0 || !request.Amount.IsAcceptableMoney():
+		return changes.Refuse(http.StatusBadRequest, "invalidAmount")
+	case utf8.RuneCountInString(notes) > notesMaxLength:
+		return changes.Refuse(http.StatusBadRequest, "invalidNotes")
+	case request.Amount > balances[from.ID].Number():
+		return changes.Refuse(http.StatusBadRequest, "insufficientBalance")
+	}
+	transfer := store.AddTransferParams{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, FromAccountID: from.ID, ToAccountID: to.ID, Amount: request.Amount,
+		Date: request.Date, Notes: notes, CreatedByUserID: c.Actor, CreatedAt: c.Now}
+	if err := c.Q.AddTransfer(c.Ctx, transfer); err != nil {
+		return err
+	}
+	return c.Record(history.Create, "Transfers", transfer.ID, nil, map[string]any{"ProjectId": transfer.ProjectID, "FromAccountId": transfer.FromAccountID,
+		"ToAccountId": transfer.ToAccountID, "Amount": transfer.Amount, "Date": transfer.Date, "Notes": transfer.Notes,
+		"CreatedByUserId": transfer.CreatedByUserID, "CreatedAt": transfer.CreatedAt})
 }
 
 // Reconciliation is the accounts against the books (ReconciliationView).

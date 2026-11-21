@@ -85,6 +85,8 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /details/account/new", s.newAccountForm)
 	mux.HandleFunc("POST /account", s.keepAccount)
 	mux.HandleFunc("POST /account/{id}/edit", s.keepAccount)
+	mux.HandleFunc("GET /details/transfer", s.transferDetails)
+	mux.HandleFunc("POST /transfer", s.transfer)
 	mux.HandleFunc("POST /project/{id}", s.chooseProject)
 	mux.HandleFunc("POST /project/{id}/default", s.starProject)
 	mux.HandleFunc("GET /language/{language}", s.chooseLanguage)

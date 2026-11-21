@@ -28,6 +28,15 @@ templ accountsList(p page, shown accountsShown) {
 				hx-get="/details/account/new"
 				hx-target="[id='web.details']"
 			>{ p.words.Of("accounts.new") }</button>
+			<button
+				id="accounts.transfer"
+				class="quiet-button"
+				type="button"
+				disabled?={ !p.mayTransfer(shown) }
+				title={ p.words.Of("permissions.moveMoney") }
+				hx-get="/details/transfer"
+				hx-target="[id='web.details']"
+			>{ p.words.Of("transfers.button") }</button>
 		</span>
 	</div>
 	@reconciliationCard(p, shown.latest)
@@ -223,6 +232,56 @@ templ accountForm(p page, editing accounts.View, typed accountTyped, members []s
 		}
 		<span class="details-actions">
 			<button id="account.save" class="primary small" type="submit">{ p.words.Of("accounts.save") }</button>
+		</span>
+	</form>
+}
+
+// transferForm is Transfer in the details panel, as the app's transfer dialog asks it: from which active account - its balance now under it -,
+// to which, the amount, the date and notes, and why it could not be made.
+templ transferForm(p page, shown accountsShown, typed transferTyped, refusal string) {
+	<div class="details-head">
+		<h3 id="transfer.title">{ p.words.Of("transfers.title") }</h3>
+		<button id="transfer.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="transfer.form" class="details-form" hx-post="/transfer" hx-target="[id='web.details']">
+		<div class="field">
+			<label for="transfer.from">{ p.words.Of("transfers.from") }</label>
+			<select id="transfer.from" name="from" hx-get="/details/transfer" hx-include="closest form" hx-target="[id='web.details']">
+				for _, account := range shown.active() {
+					<option value={ account.ID.String() } selected?={ account.ID == typed.from }>{ account.Name }</option>
+				}
+			</select>
+			if from, found := shown.accountOf(typed.from); found {
+				<small id="transfer.balanceNow" class="hint">{ p.words.Of("transfers.balanceNow", statement.Money(from.Balance.Number())) }</small>
+			}
+		</div>
+		<div class="field">
+			<label for="transfer.to">{ p.words.Of("transfers.to") }</label>
+			<select id="transfer.to" name="to">
+				for _, account := range shown.active() {
+					if account.ID != typed.from {
+						<option value={ account.ID.String() } selected?={ account.ID == typed.to }>{ account.Name }</option>
+					}
+				}
+			</select>
+		</div>
+		<div class="field">
+			<label for="transfer.amount">{ p.words.Of("transfers.amount") }</label>
+			<input id="transfer.amount" name="amount" inputmode="decimal" required value={ typed.amount }/>
+		</div>
+		<div class="field">
+			<label for="transfer.date">{ p.words.Of("transfers.date") }</label>
+			<input id="transfer.date" name="date" type="date" required value={ typed.date }/>
+		</div>
+		<div class="field">
+			<label for="transfer.notes">{ p.words.Of("transfers.notes") }</label>
+			<textarea id="transfer.notes" name="notes" maxlength="1000">{ typed.notes }</textarea>
+		</div>
+		if refusal != "" {
+			<p id="transfer.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span class="details-actions">
+			<button id="transfer.save" class="primary small" type="submit">{ p.words.Of("transfers.save") }</button>
 		</span>
 	</form>
 }

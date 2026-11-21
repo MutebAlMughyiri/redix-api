@@ -90,6 +90,37 @@
         ],
         "type": "object"
       },
+      "accounts.TransferRequest": {
+        "properties": {
+          "amount": {
+            "description": "A figure kept to four decimals.",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "fromAccountId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "toAccountId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "date",
+          "fromAccountId",
+          "notes",
+          "toAccountId"
+        ],
+        "type": "object"
+      },
       "accounts.View": {
         "properties": {
           "balance": {
@@ -188,37 +219,6 @@
         },
         "required": [
           "balances"
-        ],
-        "type": "object"
-      },
-      "accounts.transferRequest": {
-        "properties": {
-          "amount": {
-            "description": "A figure kept to four decimals.",
-            "type": "number"
-          },
-          "date": {
-            "format": "date",
-            "type": "string"
-          },
-          "fromAccountId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "notes": {
-            "type": "string"
-          },
-          "toAccountId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "amount",
-          "date",
-          "fromAccountId",
-          "notes",
-          "toAccountId"
         ],
         "type": "object"
       },
@@ -11633,7 +11633,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/accounts.transferRequest"
+                "$ref": "#/components/schemas/accounts.TransferRequest"
               }
             }
           },

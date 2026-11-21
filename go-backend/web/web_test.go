@@ -1764,3 +1764,76 @@ func TestWeb_R168_TheAccountFormRefusesAndFailsAsTheAppsRoutes(t *testing.T) {
 		t.Errorf("a finished project keeps nothing: %d", got)
 	}
 }
+
+// funded is the bank account holding amount more, by a revenue recorded into it and approved.
+func (w working) funded(amount int) {
+	w.t.Helper()
+	_, category := w.Ask("POST", w.path+"/categories", `{"name":"الإيرادات"}`, w.token)
+	code, item := w.Ask("POST", w.path+"/categories/"+testapi.Field(category, "id").(string)+"/items", `{"name":"البيع","type":"sale"}`, w.token)
+	if code >= 300 {
+		w.t.Fatalf("the revenue item: %d %v", code, item)
+	}
+	itemID := testapi.Field(item, "id").(string)
+	var table string
+	if err := w.Database.Read.QueryRow("SELECT id FROM subgroups WHERE item_id = ?", itemID).Scan(&table); err != nil {
+		w.t.Fatal(err)
+	}
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + itemID + `","tableId":"` + table + `","date":"2026-11-10","amount":` + strconv.Itoa(amount) + `,"accountId":"` +
+		w.account + `","description":"","columnValues":{},"submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		w.t.Fatalf("the revenue: %d %v", code, answer)
+	}
+	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+id+`"]}`, w.token); code != http.StatusOK {
+		w.t.Fatalf("approving the revenue: %d %v", code, answer)
+	}
+}
+
+func TestWeb_R168_FR23_TransferMovesMoneyBetweenTwoActiveAccounts(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/accounts", nil).Body.String(), `id="accounts.transfer" class="quiet-button" type="button" disabled`)
+	w.Ask("POST", w.path+"/accounts", `{"name":"حساب احتياطي","type":"bank"}`, w.token)
+	spare := w.accountNamed("حساب احتياطي")
+	w.funded(500)
+	form := w.browser.Send("GET", "/details/transfer", nil).Body.String()
+	has(t, form, `<small id="transfer.balanceNow" class="hint">رصيده الآن: 500.00</small>`)
+	has(t, form, `<option value="`+spare+`">حساب احتياطي</option>`)
+	typed := url.Values{"from": {w.account}, "to": {spare}, "amount": {"600"}, "date": {"2026-11-15"}, "notes": {""}}
+	has(t, w.browser.Send("POST", "/transfer", typed).Body.String(), "المبلغ أكبر من رصيد الحساب الآن.")
+	typed.Set("amount", "200")
+	moved := w.browser.Send("POST", "/transfer", typed).Body.String()
+	has(t, moved, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	has(t, moved, `<td id="accounts.balance.`+spare+`" class="amount">200.00</td>`)
+	has(t, moved, `<td id="accounts.balance.`+w.account+`" class="amount">300.00</td>`)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	if code := browser.Send("POST", "/transfer", typed).Code; code != http.StatusForbidden {
+		t.Errorf("transferring without MoveMoney: %d", code)
+	}
+	if code := browser.Send("GET", "/details/transfer", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Transfer without MoveMoney: %d", code)
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/details/transfer", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("Transfer with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	typed.Set("amount", "10")
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/transfer", typed)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("transferring with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}
