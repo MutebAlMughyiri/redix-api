@@ -1544,3 +1544,36 @@ func TestWeb_R167_TheApprovalHistoryIsLeftOutForWhoeverMayNotApprove(t *testing.
 		}
 	}
 }
+
+func TestWeb_R164_UC006_ASignedInPersonRegistersAProjectTheyManage(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<a id="projects.new" class="menu-link" href="#" hx-get="/tab/registerProject"`)
+	form := w.browser.Send("GET", "/tab/registerProject", nil).Body.String()
+	has(t, form, `<option value="`+w.id+`">مشروع A</option>`)
+	lacks(t, form, `id="newProject.managerHeading"`)
+	lacks(t, form, `id="newProject.password"`)
+	typed := url.Values{"name": {"مشروع هـ"}, "startDate": {"2026-11-21"}, "unit": {"B1"}, "structureSource": {w.id}}
+	created := w.browser.Send("POST", "/register", typed).Body.String()
+	has(t, created, `<p id="newProject.notice" class="notice" role="status">مشروع هـ · بانتظار الاعتماد</p>`)
+	has(t, created, `<div id="web.projects" hx-swap-oob="innerHTML">`)
+	has(t, created, "مشروع هـ")
+	if got := w.Count(`SELECT count(*) FROM projects WHERE name = 'مشروع هـ' AND status = 2`); got != 1 {
+		t.Errorf("the project waits for the admin: %d", got)
+	}
+	if got := w.Count(`SELECT count(*) FROM project_structure_sources JOIN projects ON projects.id = project_structure_sources.project_id WHERE projects.name = 'مشروع هـ'`); got != 1 {
+		t.Errorf("its structure comes from the project chosen: %d", got)
+	}
+	has(t, w.browser.Send("POST", "/register", url.Values{"name": {" "}, "startDate": {"2026-11-21"}}).Body.String(), "اكتب اسماً من 1 إلى 100 حرف.")
+	has(t, w.browser.Send("POST", "/register", url.Values{"name": {"مشروع و"}, "startDate": {"2026-11-21"}, "structureSource": {uuid.NewString()}}).Body.String(),
+		"لا يمكنك النسخ من ذلك المشروع.")
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/register", url.Values{"name": {"مشروع ز"}, "startDate": {"2026-11-21"}})
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("registering with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}

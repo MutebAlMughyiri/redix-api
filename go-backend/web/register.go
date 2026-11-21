@@ -4,6 +4,9 @@
 package web
 
 import (
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/a-h/templ"
+	"github.com/google/uuid"
 	"net/http"
 	"slices"
 	"strconv"
@@ -34,7 +37,7 @@ func (s site) registeringOf(r *http.Request) registering {
 		displayName: r.PostFormValue("displayName"), username: r.PostFormValue("username"), mobile: r.PostFormValue("mobile"),
 		units: r.PostForm["unit"], partners: r.PostForm["partner"]}
 	if typed.startDate == "" {
-		typed.startDate = s.Clock.Now().Format(time.DateOnly)
+		typed.startDate = s.freshRegistering().startDate
 	}
 	return typed
 }
@@ -46,7 +49,17 @@ func (s site) registerForm(w http.ResponseWriter, r *http.Request) {
 		failed(w)
 		return
 	}
-	draw(w, r, http.StatusOK, registerProject(p, "", registering{startDate: s.Clock.Now().Format(time.DateOnly)}))
+	draw(w, r, http.StatusOK, registerProject(p, "", s.freshRegistering()))
+}
+
+// registerTab is Register new project signed in, in its tab, opened from the project menu (redix-api #164).
+func (s site) registerTab(_ *http.Request, p page) (templ.Component, error) {
+	return registerProject(p, "", s.freshRegistering()), nil
+}
+
+// freshRegistering is the form before anything is typed: today its start date, as the app's form starts.
+func (s site) freshRegistering() registering {
+	return registering{startDate: s.Clock.Now().Format(time.DateOnly)}
 }
 
 // listed answers a list of the form - units or partners - with the one typed added, or the one named removed, its typing field emptied and
@@ -84,6 +97,15 @@ func (s site) register(w http.ResponseWriter, r *http.Request) {
 		failed(w)
 		return
 	}
+	caller, signedIn, err := s.session(w, r)
+	if err != nil {
+		failed(w)
+		return
+	}
+	if signedIn {
+		s.create(w, r, p, caller)
+		return
+	}
 	typed := s.registeringOf(r)
 	if !s.Registrations.AllowsCaller(r) {
 		draw(w, r, http.StatusUnprocessableEntity, registerProject(p, "register.tooManyTries", typed))
@@ -103,4 +125,34 @@ func (s site) register(w http.ResponseWriter, r *http.Request) {
 	}
 	p.notice = "register.sent"
 	draw(w, r, http.StatusOK, signInForm(p, "", ""))
+}
+
+// create starts the project the form describes for caller, its manager, through the rule the app's route runs (projects.Create, UC-004): the
+// form again, emptied and saying the project waits for the admin, the project menu beside it holding it; or as typed, saying why not in the
+// app's words (redix-api #164).
+func (s site) create(w http.ResponseWriter, r *http.Request, p page, caller access.Caller) {
+	p, err := s.open(r, p, caller)
+	if err != nil {
+		failed(w)
+		return
+	}
+	typed := s.registeringOf(r)
+	startDate, _ := time.Parse(time.DateOnly, typed.startDate)
+	source, _ := uuid.Parse(r.PostFormValue("structureSource"))
+	_, refusal, err := projects.Create(r.Context(), s.Database, s.Clock.Now(), caller, projects.Start{Name: typed.name, StartDate: moment.Date{Time: startDate},
+		Units: typed.units, Description: typed.description, Partners: typed.partners, StructureSourceID: source})
+	if err != nil {
+		failed(w)
+		return
+	}
+	if refusal != "" {
+		draw(w, r, http.StatusOK, registerProject(p, "projects."+refusal, typed))
+		return
+	}
+	if p, err = s.open(r, p, caller); err != nil {
+		failed(w)
+		return
+	}
+	p.notice = typed.name + " · " + p.words.Of("projects.pending")
+	draw(w, r, http.StatusOK, registerProject(p, "", s.freshRegistering()), projectMenuBeside(p))
 }

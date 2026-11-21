@@ -8,17 +8,26 @@ import "strconv"
 // registerProject is Register new project in the sign-in's place (UC-066, redix-api #164): the project, its units and partners, and the manager's
 // own login, as the app's register form has them; the cursor waits in the project's name. message is the word key of a refusal, or "".
 templ registerProject(p page, message string, typed registering) {
-	<div class="signin wide">
+	<div class={ templ.KV("signin wide", !p.in), templ.KV("register-tab", p.in) }>
 		<form
 			id="newProject.form"
 			hx-post="/register"
-			hx-target="closest .signin"
-			hx-swap="outerHTML"
+			if p.in {
+				hx-target="[id='web.content']"
+			} else {
+				hx-target="closest .signin"
+				hx-swap="outerHTML"
+			}
 			data-no-connection={ p.words.Of("register.noConnection") }
 			hx-on::send-error="const message = this.querySelector('.refusal'); message.textContent = this.dataset.noConnection; message.hidden = false"
 		>
 			<h1 id="newProject.title">{ p.words.Of("projects.new") }</h1>
-			<p id="newProject.hint" class="hint">{ p.words.Of("register.hint") }</p>
+			if !p.in {
+				<p id="newProject.hint" class="hint">{ p.words.Of("register.hint") }</p>
+			}
+			if p.notice != "" {
+				<p id="newProject.notice" class="notice" role="status">{ p.notice }</p>
+			}
 			<p id="newProject.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
 			<div class="field">
 				<label for="newProject.name">{ p.words.Of("projects.name") }</label>
@@ -34,32 +43,55 @@ templ registerProject(p page, message string, typed registering) {
 			</div>
 			@registerList(p, "units", typed.units, false)
 			@registerList(p, "partners", typed.partners, false)
-			<h2 id="newProject.managerHeading" class="section">{ p.words.Of("projects.manager") }</h2>
-			<div class="field">
-				<label for="newProject.managerName">{ p.words.Of("users.name") }</label>
-				<input id="newProject.managerName" name="displayName" required value={ typed.displayName }/>
-				<small class="hint">{ p.words.Of("users.nameHint") }</small>
-			</div>
-			<div class="field">
-				<label for="newProject.username">{ p.words.Of("users.username") }</label>
-				<input id="newProject.username" name="username" autocomplete="username" required value={ typed.username }/>
-			</div>
-			<div class="field">
-				<label for="newProject.mobile">{ p.words.Of("users.mobile") }</label>
-				<input id="newProject.mobile" name="mobile" type="tel" autocomplete="tel" value={ typed.mobile }/>
-			</div>
-			<div class="field">
-				<label for="newProject.password">{ p.words.Of("signIn.password") }</label>
-				<input id="newProject.password" name="password" type="password" autocomplete="new-password" required/>
-				<small class="hint">{ p.words.Of("common.passwordRules") }</small>
-			</div>
-			<p id="legal.agreement" class="hint">{ p.words.Of("legal.agreement") }</p>
+			if p.in {
+				<div class="field">
+					<label for="newProject.structureSource">{ p.words.Of("projects.structureSource") }</label>
+					<select id="newProject.structureSource" name="structureSource">
+						<option value="">{ p.words.Of("projects.defaultTemplate") }</option>
+						for _, project := range p.projects {
+							if mayOpen(project) {
+								<option value={ project.ID.String() }>{ project.Name }</option>
+							}
+						}
+					</select>
+				</div>
+			} else {
+				@managerLogin(p, typed)
+			}
 			<button id="newProject.submit" class="primary" type="submit">{ p.words.Of("projects.create") }</button>
 			<div class="form-links">
-				<a id="newProject.cancel" href="#" hx-get="/sign-in" hx-target="closest .signin" hx-swap="outerHTML">{ p.words.Of("common.cancel") }</a>
+				if p.in {
+					<a id="newProject.cancel" href="#" hx-delete="/tab/registerProject" hx-target="[id='web.content']">{ p.words.Of("common.cancel") }</a>
+				} else {
+					<a id="newProject.cancel" href="#" hx-get="/sign-in" hx-target="closest .signin" hx-swap="outerHTML">{ p.words.Of("common.cancel") }</a>
+				}
 			</div>
 		</form>
 	</div>
+}
+
+// managerLogin is the manager's own login, which a registration from the sign-in asks and a signed-in person's does not: they are its manager.
+templ managerLogin(p page, typed registering) {
+	<h2 id="newProject.managerHeading" class="section">{ p.words.Of("projects.manager") }</h2>
+	<div class="field">
+		<label for="newProject.managerName">{ p.words.Of("users.name") }</label>
+		<input id="newProject.managerName" name="displayName" required value={ typed.displayName }/>
+		<small class="hint">{ p.words.Of("users.nameHint") }</small>
+	</div>
+	<div class="field">
+		<label for="newProject.username">{ p.words.Of("users.username") }</label>
+		<input id="newProject.username" name="username" autocomplete="username" required value={ typed.username }/>
+	</div>
+	<div class="field">
+		<label for="newProject.mobile">{ p.words.Of("users.mobile") }</label>
+		<input id="newProject.mobile" name="mobile" type="tel" autocomplete="tel" value={ typed.mobile }/>
+	</div>
+	<div class="field">
+		<label for="newProject.password">{ p.words.Of("signIn.password") }</label>
+		<input id="newProject.password" name="password" type="password" autocomplete="new-password" required/>
+		<small class="hint">{ p.words.Of("common.passwordRules") }</small>
+	</div>
+	<p id="legal.agreement" class="hint">{ p.words.Of("legal.agreement") }</p>
 }
 
 // registerList is the form's units or partners: a field to type one and Add, the ones added each with Remove, kept in the form as hidden values.

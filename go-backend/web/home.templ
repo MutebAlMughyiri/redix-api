@@ -183,7 +183,14 @@ templ projectMenu(p page, notice string) {
 			}
 		</div>
 	}
-	<span id="projects.new" class="parked" aria-disabled="true">{ p.words.Of("projects.new") }</span>
+	<a id="projects.new" class="menu-link" href="#" hx-get="/tab/registerProject" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.projects').hidePopover()">{ p.words.Of("projects.new") }</a>
+}
+
+// projectMenuBeside is the project menu carried out of band beside an answer that changed the projects it lists.
+templ projectMenuBeside(p page) {
+	<div id="web.projects" hx-swap-oob="innerHTML">
+		@projectMenu(p, "")
+	</div>
 }
 
 // projectChoice is one project to choose, its status beside its name; choosing it opens its home in the whole shell.

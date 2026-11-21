@@ -215,35 +215,45 @@ func (p Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !web.Read(w, r, &request) {
 		return
 	}
-	project, units, partners, refusal := started(request)
+	projectID, refusal, err := Create(r.Context(), p.database, p.clock.Now(), caller, request)
 	if refusal != "" {
 		problem.Refuse(w, r, http.StatusBadRequest, refusal)
 		return
 	}
-	if request.StructureSourceID != uuid.Nil && !caller.Access.Holds(request.StructureSourceID, access.ReadProject) {
-		problem.Refuse(w, r, http.StatusBadRequest, "unknownSource")
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	now := moment.Of(p.clock.Now())
-	err := p.database.InTx(r.Context(), func(q *store.Queries) error {
-		if err := addWithManager(r.Context(), q, project, units, partners, caller.UserID, now); err != nil {
+	w.Header().Set("Location", "/projects/"+projectID.String())
+	p.answer(w, r, http.StatusCreated, projectID, caller.UserID)
+}
+
+// Create starts the project request describes at now, waiting for the admin, with caller as its manager, as create answers it (UC-004): the
+// rule both doors call, the app's route and the web's signed-in Register new project (redix-api #164). It is the project's id, or the refusal
+// of what was typed - invalidName, invalidDescription, unitNameTaken, unknownSource for a structure source caller may not read; the error is
+// the database's.
+func Create(ctx context.Context, database db.DB, now time.Time, caller access.Caller, request Start) (uuid.UUID, string, error) {
+	project, units, partners, refusal := started(request)
+	if refusal != "" {
+		return uuid.Nil, refusal, nil
+	}
+	if request.StructureSourceID != uuid.Nil && !caller.Access.Holds(request.StructureSourceID, access.ReadProject) {
+		return uuid.Nil, "unknownSource", nil
+	}
+	at := moment.Of(now)
+	return project.ID, "", database.InTx(ctx, func(q *store.Queries) error {
+		if err := addWithManager(ctx, q, project, units, partners, caller.UserID, at); err != nil {
 			return err
 		}
 		if request.StructureSourceID == uuid.Nil {
 			return nil
 		}
-		if err := q.AddStructureSource(r.Context(), store.AddStructureSourceParams{ProjectID: project.ID, StructureSourceID: request.StructureSourceID}); err != nil {
+		if err := q.AddStructureSource(ctx, store.AddStructureSourceParams{ProjectID: project.ID, StructureSourceID: request.StructureSourceID}); err != nil {
 			return err
 		}
-		return history.Write(r.Context(), q, now, caller.UserID, history.RegisterProject, history.Change{Table: "ProjectStructureSources", RecordID: project.ID,
+		return history.Write(ctx, q, at, caller.UserID, history.RegisterProject, history.Change{Table: "ProjectStructureSources", RecordID: project.ID,
 			ProjectID: project.ID, After: map[string]any{"StructureSourceId": request.StructureSourceID}})
 	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Location", "/projects/"+project.ID.String())
-	p.answer(w, r, http.StatusCreated, project.ID, caller.UserID)
 }
 
 // started is the project request describes, with its units and partners, or the refusal of what was typed (Project.New, DeclaredWith).
