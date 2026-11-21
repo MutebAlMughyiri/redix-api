@@ -199,7 +199,8 @@ func TestTheServerExitsWithOneWhenItCannotStart(t *testing.T) {
 	}
 }
 
-// started runs the server with the settings the test set until the test ends, and waits until address answers.
+// started runs the server with the settings the test set until the test ends, and waits until address answers: up to a minute, since a fresh
+// database's migrations take seconds while the whole suite runs beside them, and not a moment longer once the server has stopped.
 func started(t *testing.T, logger *slog.Logger, address string) {
 	t.Helper()
 	ctx, stop := context.WithCancel(context.Background())
@@ -211,14 +212,19 @@ func started(t *testing.T, logger *slog.Logger, address string) {
 			t.Errorf("the server stopped with %v", err)
 		}
 	})
-	for range 100 {
+	for deadline := time.Now().Add(time.Minute); time.Now().Before(deadline); {
 		if connection, err := net.Dial("tcp", address); err == nil {
 			_ = connection.Close()
 			return
 		}
-		time.Sleep(50 * time.Millisecond)
+		select {
+		case err := <-stopped:
+			stopped <- err
+			t.Fatalf("the server stopped before answering on %s: %v", address, err)
+		case <-time.After(50 * time.Millisecond):
+		}
 	}
-	t.Fatalf("nothing answered on %s", address)
+	t.Fatalf("nothing answered on %s within a minute", address)
 }
 
 // withDomain is the settings of a server answering HTTPS on its domain, redix.test, at httpsAddress, and plain HTTP at httpAddress, as Prod
