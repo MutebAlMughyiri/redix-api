@@ -91,6 +91,20 @@ func TestR1_ARouteSaysWhatItReadsAnswersRefusesAndNeeds(t *testing.T) {
 	}
 }
 
+func TestR1_ARefusalIsToldUnderTheStatusItsCodeIsAnsweredWith(t *testing.T) {
+	_, read := generated(t)
+	register := read.Paths["/projects/register"]["post"]
+	if register.Responses["409"].Description != "Refused: usernameTaken." {
+		t.Errorf("registering is refused with 400 %q and 409 %q", register.Responses["400"].Description, register.Responses["409"].Description)
+	}
+	if !strings.Contains(register.Responses["400"].Description, "unitNameTaken") || register.Responses["201"].Content["application/json"] == nil {
+		t.Errorf("registering answers %+v", register.Responses)
+	}
+	if people := read.Paths["/projects/{projectId}/users"]["post"].Responses["409"].Description; people != "Refused: emailTaken, usernameTaken." {
+		t.Errorf("adding a person is refused with 409 %q", people)
+	}
+}
+
 func TestR5_FieldsAreCamelCaseAndAnEnumIsItsNames(t *testing.T) {
 	_, read := generated(t)
 	account := read.Components.Schemas["accounts.View"]

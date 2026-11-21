@@ -270,7 +270,13 @@ func (g *generator) body(body *ast.BlockStmt, p *packages.Package, r *route, bin
 		return found
 	}
 	clauses := clausesIn(body, p.TypesInfo)
-	refuse := func(call *ast.CallExpr, status bound, expression ast.Expr) {
+	refuse := func(call *ast.CallExpr, status bound, statusExpression, expression ast.Expr) {
+		if from, statusAt, codeAt := sameCall(body, p, statusExpression, expression); status.value == nil && from != nil {
+			for _, pair := range g.paired(p, from, statusAt, codeAt, 0) {
+				r.refuse(bound{value: constant.MakeInt64(int64(pair.status))}, pair.codes)
+			}
+			return
+		}
 		code := given(expression)
 		if code.value != nil {
 			r.refuse(status, []constant.Value{code.value})
@@ -319,11 +325,11 @@ func (g *generator) body(body *ast.BlockStmt, p *packages.Package, r *route, bin
 		case "problem.Status":
 			r.refuse(given(arguments[2]), nil)
 		case "problem.Refuse", "problem.RefuseOver":
-			refuse(call, given(arguments[2]), arguments[3])
+			refuse(call, given(arguments[2]), arguments[2], arguments[3])
 		case "changes.Refuse", "changes.RefuseOver":
-			refuse(call, given(arguments[0]), arguments[1])
+			refuse(call, given(arguments[0]), arguments[0], arguments[1])
 		case "changes.Unknown":
-			refuse(call, bound{value: constant.MakeInt64(400)}, arguments[1])
+			refuse(call, bound{value: constant.MakeInt64(400)}, nil, arguments[1])
 		default:
 			if function == nil || function.Pkg() == nil || platform[function.Pkg().Name()] || reading[function.FullName()] || len(reading) > 4 {
 				return true
@@ -368,11 +374,11 @@ func appendText(texts []string, value constant.Value) []string {
 	return append(texts, constant.StringVal(value))
 }
 
-// refuse notes a refusal the code answers with a constant status below 500, with its codes; a status passed on is answered by whoever chose it,
-// and every failure is in the default answer.
+// refuse notes a refusal the code answers with a constant status from 400 to 499, with its codes; a status passed on is answered by whoever chose
+// it, and every failure is in the default answer.
 func (r *route) refuse(status bound, codes []constant.Value) {
 	at := statusOf(status)
-	if at == 0 || at >= 500 {
+	if at < 400 || at >= 500 {
 		return
 	}
 	r.refusals[at] = appendText(r.refusals[at], nil)
@@ -383,10 +389,10 @@ func (r *route) refuse(status bound, codes []constant.Value) {
 
 // assigned is the constants a function assigns to the variable an expression names - refusal = "custodianRequired" - or that what it was
 // assigned from returns in its place: refusal, left := attempt(...) takes each code attempt returns first, and refusal = decide(...) each code the
-// function literal given as decide returns. It follows returned variables and calls four functions deep.
+// function literal given as decide returns. It follows returned variables and calls six functions deep.
 func (g *generator) assigned(body *ast.BlockStmt, p *packages.Package, bindings map[*types.Var]bound, expression ast.Expr, depth int) []constant.Value {
 	variable := p.TypesInfo.Uses[identOf(expression)]
-	if variable == nil || depth > 4 {
+	if variable == nil || depth > 6 {
 		return nil
 	}
 	var values []constant.Value
@@ -418,6 +424,77 @@ func (g *generator) valuesOf(body *ast.BlockStmt, p *packages.Package, bindings 
 	return g.assigned(body, p, bindings, expression, depth+1)
 }
 
+// pair is a status a function answers a refusal with, and the codes it answers with it.
+type pair struct {
+	status int
+	codes  []constant.Value
+}
+
+// paired is each status a call returns at statusAt with the codes it returns beside it at codeAt: a constant status with the codes its code can
+// be, or both passed on from one call, followed six calls deep - so a refusal whose status was chosen further down is told with that status.
+func (g *generator) paired(p *packages.Package, call *ast.CallExpr, statusAt, codeAt, depth int) []pair {
+	code, declared := g.functions[fullName(typeutil.StaticCallee(p.TypesInfo, call))]
+	if !declared || depth > 6 {
+		return nil
+	}
+	body, in := code.declaration.Body, code.pkg
+	var pairs []pair
+	ast.Inspect(body, func(node ast.Node) bool {
+		if _, isLiteral := node.(*ast.FuncLit); isLiteral {
+			return false
+		}
+		returned, isReturn := node.(*ast.ReturnStmt)
+		if !isReturn || len(returned.Results) <= max(statusAt, codeAt) {
+			return true
+		}
+		status, codes := returned.Results[statusAt], returned.Results[codeAt]
+		if value := in.TypesInfo.Types[status].Value; value != nil {
+			at, _ := constant.Int64Val(value)
+			pairs = append(pairs, pair{status: int(at), codes: g.valuesOf(body, in, nil, codes, 0, depth)})
+		} else if from, fromStatus, fromCode := sameCall(body, in, status, codes); from != nil {
+			pairs = append(pairs, g.paired(in, from, fromStatus, fromCode, depth+1)...)
+		}
+		return true
+	})
+	return pairs
+}
+
+// sameCall is the call two variables are assigned from in one statement - status, refusal := decide(...) - with their places among its results.
+func sameCall(body *ast.BlockStmt, p *packages.Package, first, second ast.Expr) (*ast.CallExpr, int, int) {
+	a, b := p.TypesInfo.ObjectOf(identOf(first)), p.TypesInfo.ObjectOf(identOf(second))
+	if identOf(first) == nil || identOf(second) == nil || a == nil || b == nil {
+		return nil, 0, 0
+	}
+	var found *ast.CallExpr
+	firstAt, secondAt := -1, -1
+	ast.Inspect(body, func(node ast.Node) bool {
+		assignment, isAssignment := node.(*ast.AssignStmt)
+		if found != nil || !isAssignment || len(assignment.Rhs) != 1 {
+			return found == nil
+		}
+		call, isCall := ast.Unparen(assignment.Rhs[0]).(*ast.CallExpr)
+		if !isCall {
+			return true
+		}
+		firstAt, secondAt = -1, -1
+		for i, left := range assignment.Lhs {
+			if name, isName := left.(*ast.Ident); isName {
+				switch p.TypesInfo.ObjectOf(name) {
+				case a:
+					firstAt = i
+				case b:
+					secondAt = i
+				}
+			}
+		}
+		if firstAt >= 0 && secondAt >= 0 {
+			found = call
+		}
+		return found == nil
+	})
+	return found, firstAt, secondAt
+}
+
 // returned is the constants a call returns as its result at place: a function of the API's own, or a function literal a parameter was given.
 func (g *generator) returned(p *packages.Package, bindings map[*types.Var]bound, call *ast.CallExpr, place, depth int) []constant.Value {
 	body, in := (*ast.BlockStmt)(nil), p
@@ -426,7 +503,7 @@ func (g *generator) returned(p *packages.Package, bindings map[*types.Var]bound,
 	} else if parameter, isVariable := typeutil.Callee(p.TypesInfo, call).(*types.Var); isVariable && bindings[parameter].literal != nil {
 		body, in = bindings[parameter].literal.Body, bindings[parameter].in
 	}
-	if body == nil || depth > 4 {
+	if body == nil || depth > 6 {
 		return nil
 	}
 	var values []constant.Value
