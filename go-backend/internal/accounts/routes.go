@@ -37,6 +37,9 @@ type AccountType int64
 // MarshalJSON writes the account type by its name.
 func (t AccountType) MarshalJSON() ([]byte, error) { return accountTypes.Write(int64(t)) }
 
+// Name is the type's name, as the API writes it: bank or cashCustody.
+func (t AccountType) Name() string { return accountTypes[t] }
+
 // UnmarshalJSON reads the account type by its name or its number.
 func (t *AccountType) UnmarshalJSON(data []byte) error {
 	value, err := accountTypes.Read(data)
@@ -247,53 +250,63 @@ func handTo(c changes.Change, accountID, userID uuid.UUID) error {
 // activate disables an account, so it leaves entry and every account picker and stays in the reports (BR-15), or brings it back. Its line is
 // written even when nothing changed, as .NET wrote it, since the account history shows it.
 func (s Routes) activate(active bool) access.Handler {
+	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+		accountID := web.ID(r, "accountId")
+		s.writer.Done(w, r, caller, func(c changes.Change) error { return Activate(c, accountID, active) })
+	}
+}
+
+// Activate enables the account accountID of c's project, or disables it, as active says (UC-015): the rule both doors call, the app's routes and
+// the web's details panel (redix-api #168). changes.NotFound for an account not in the project.
+func Activate(c changes.Change, accountID uuid.UUID, active bool) error {
+	before, err := changes.Found(c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: accountID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
+	}
 	action := history.Disable
 	if active {
 		action = history.Enable
 	}
-	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		before, found := s.account(w, r)
-		if !found {
-			return
-		}
-		s.writer.Done(w, r, caller, func(c changes.Change) error {
-			after := before
-			after.IsActive = active
-			if err := c.Q.SaveAccount(c.Ctx, store.SaveAccountParams(after)); err != nil {
-				return err
-			}
-			was, is := history.Changed(accountFields(before), accountFields(after))
-			return c.Record(action, "Accounts", after.ID, was, is)
-		})
+	after := before
+	after.IsActive = active
+	if err := c.Q.SaveAccount(c.Ctx, store.SaveAccountParams(after)); err != nil {
+		return err
 	}
+	was, is := history.Changed(accountFields(before), accountFields(after))
+	return c.Record(action, "Accounts", after.ID, was, is)
 }
 
 // delete deletes an account nothing names: accountInUse (409) for one an entry in any status, a check or a transfer names, which is disabled
 // instead (BR-15). Its history stays.
 func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	account, found := s.account(w, r)
-	if !found {
-		return
+	accountID := web.ID(r, "accountId")
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Delete(c, accountID) })
+}
+
+// Delete deletes the account accountID of c's project, as delete answers it (BR-15): the rule both doors call, the app's route and the web's
+// details panel (redix-api #168). changes.NotFound for an account not in the project; accountInUse (409) for one in use.
+func Delete(c changes.Change, accountID uuid.UUID) error {
+	account, err := changes.Found(c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: accountID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		used, err := c.Q.AccountsUsed(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		if slices.Contains(used, account.ID) {
-			return changes.Refuse(http.StatusConflict, "accountInUse")
-		}
-		if err := c.Q.RemoveCustodian(c.Ctx, account.ID); err != nil {
-			return err
-		}
-		if err := c.Q.RemoveAccountFromPaymentMethods(c.Ctx, account.ID); err != nil {
-			return err
-		}
-		if err := c.Q.RemoveAccount(c.Ctx, account.ID); err != nil {
-			return err
-		}
-		return c.Record(history.Delete, "Accounts", account.ID, accountFields(account), nil)
-	})
+	used, err := c.Q.AccountsUsed(c.Ctx, c.ProjectID)
+	if err != nil {
+		return err
+	}
+	if slices.Contains(used, account.ID) {
+		return changes.Refuse(http.StatusConflict, "accountInUse")
+	}
+	if err := c.Q.RemoveCustodian(c.Ctx, account.ID); err != nil {
+		return err
+	}
+	if err := c.Q.RemoveAccountFromPaymentMethods(c.Ctx, account.ID); err != nil {
+		return err
+	}
+	if err := c.Q.RemoveAccount(c.Ctx, account.ID); err != nil {
+		return err
+	}
+	return c.Record(history.Delete, "Accounts", account.ID, accountFields(account), nil)
 }
 
 // transferRequest is the body POST /projects/{projectId}/transfers reads (FR-23).

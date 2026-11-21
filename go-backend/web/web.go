@@ -80,6 +80,8 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /entry-figures", s.entryFigures)
 	mux.HandleFunc("POST /approvals/approve", s.approveSelected)
 	mux.HandleFunc("GET /approval-history", s.approvalHistoryMore)
+	mux.HandleFunc("GET /details/account/{id}", s.accountDetails)
+	mux.HandleFunc("POST /account/{id}/{action}", s.accountAction)
 	mux.HandleFunc("POST /project/{id}", s.chooseProject)
 	mux.HandleFunc("POST /project/{id}/default", s.starProject)
 	mux.HandleFunc("GET /language/{language}", s.chooseLanguage)

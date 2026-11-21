@@ -178,6 +178,7 @@ var contents = map[string]tab{
 	"entries":         site.entriesTab,
 	"addEntry":        site.addEntryTab,
 	"approvals":       site.approvalsTab,
+	"accounts":        site.accountsTab,
 	"approvalHistory": site.approvalHistoryTab,
 	"registerProject": site.registerTab,
 	"changeEntry":     site.changeEntryTab,

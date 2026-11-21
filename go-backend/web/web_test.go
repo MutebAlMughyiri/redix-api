@@ -158,7 +158,7 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
-	if browser.Send("GET", "/tab/accounts", nil).Code != http.StatusNotFound {
+	if browser.Send("GET", "/tab/partners", nil).Code != http.StatusNotFound {
 		t.Error("an item whose feature is not built opens no tab")
 	}
 }
@@ -247,7 +247,7 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"accounts", "partners", "contracts", "reports", "history"} {
+	for _, key := range []string{"partners", "contracts", "reports", "history"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
@@ -1594,4 +1594,92 @@ func TestWeb_R166_D1_AnEntryWithAFileSaysItHasOne(t *testing.T) {
 	panel := w.browser.Send("GET", "/details/entry/"+id, nil).Body.String()
 	has(t, panel, `<dt>فاتورة</dt><dd id="entry.file.0" class="file">invoice-31.pdf</dd>`)
 	lacks(t, w.browser.Send("GET", "/details/entry/"+w.sent(40), nil).Body.String(), `id="entry.file.0"`)
+}
+
+// accountNamed is the id of the project's account called name.
+func (w working) accountNamed(name string) string {
+	w.t.Helper()
+	var id string
+	if err := w.Database.Read.QueryRow("SELECT id FROM accounts WHERE project_id = ? AND name = ?", w.id, name).Scan(&id); err != nil {
+		w.t.Fatal(err)
+	}
+	return id
+}
+
+func TestWeb_R168_UC015_AccountsListsTheAccountsByTypeWithTheLastCount(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	list := w.browser.Send("GET", "/tab/accounts", nil).Body.String()
+	has(t, list, `<th id="accounts.group.bank" colspan="2">الحسابات البنكية</th>`)
+	has(t, list, `<span id="accounts.name.`+w.account+`">حساب المؤسسة</span>`)
+	has(t, list, `<p id="reconciliation.never" class="hint">لا مطابقة بعد.</p>`)
+	has(t, list, `id="reconciliation.surplus"`)
+	panel := w.browser.Send("GET", "/details/account/"+w.account, nil).Body.String()
+	has(t, panel, `<h3 id="account.title">حساب المؤسسة</h3>`)
+	has(t, panel, `hx-post="/account/`+w.account+`/disable"`)
+	if code := w.browser.Send("GET", "/details/account/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("an account not in the project: %d", code)
+	}
+}
+
+func TestWeb_R168_BR15_DisableEnableAndDeleteAsTheAppsRoutes(t *testing.T) {
+	w := newWorking(t)
+	w.Ask("POST", w.path+"/accounts", `{"name":"حساب احتياطي","type":"bank"}`, w.token)
+	spare := w.accountNamed("حساب احتياطي")
+	w.sent(40)
+	w.home()
+	w.browser.Send("GET", "/tab/accounts", nil)
+	disabled := w.browser.Send("POST", "/account/"+spare+"/disable", nil).Body.String()
+	has(t, disabled, `hx-post="/account/`+spare+`/enable"`)
+	has(t, disabled, `<tr id="accounts.row.`+spare+`" class="disabled"`)
+	has(t, w.browser.Send("POST", "/account/"+spare+"/enable", nil).Body.String(), `hx-post="/account/`+spare+`/disable"`)
+	used := w.browser.Send("GET", "/details/account/"+w.account, nil).Body.String()
+	has(t, used, `<p id="accounts.deleteReason" class="hint details-say">مستخدم في قيود أو مطابقات أو تحويلات، فيمكن تعطيله فقط.</p>`)
+	has(t, w.browser.Send("POST", "/account/"+w.account+"/delete", nil).Body.String(), `<p id="account.refusal" class="refusal details-say" role="alert">مستخدم في قيود`)
+	has(t, w.browser.Send("GET", "/details/account/"+spare+"?asking=delete", nil).Body.String(), "حذف الحساب؟ لا يمكن التراجع عن الحذف.")
+	deleted := w.browser.Send("POST", "/account/"+spare+"/delete", nil).Body.String()
+	has(t, deleted, `<h3 id="account.title">تم حذف الحساب.</h3>`)
+	has(t, deleted, `<template><tr id="accounts.row.`+spare+`" hx-swap-oob="delete"></tr></template>`)
+	if got := w.Count("SELECT count(*) FROM accounts WHERE id = ?", spare); got != 0 {
+		t.Errorf("the account is deleted: %d", got)
+	}
+	if code := w.browser.Send("POST", "/account/"+w.account+"/archive", nil).Code; code != http.StatusNotFound {
+		t.Errorf("an action there is none of: %d", code)
+	}
+}
+
+func TestWeb_R168_AnAccountsActionsAreGatedAsTheAppsRoutesAre(t *testing.T) {
+	w := newWorking(t)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	lacks(t, browser.Send("GET", "/details/account/"+w.account, nil).Body.String(), `hx-post="/account/`)
+	if code := browser.Send("POST", "/account/"+w.account+"/disable", nil).Code; code != http.StatusForbidden {
+		t.Errorf("disabling without ManageSettings: %d", code)
+	}
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/account/"+w.account+"/disable", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("disabling with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/accounts", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("listing with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/account/"+w.account+"/disable", nil).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
 }

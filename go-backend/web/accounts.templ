@@ -1,0 +1,155 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+)
+
+// accountsList is Accounts as the app's screen shows them (UC-015, redix-api #168): the last count's card - the surplus the books make, the
+// actual total and their difference, or that nothing was counted yet - then the accounts grouped by type, each with its line and balance.
+templ accountsList(p page, shown accountsShown) {
+	<div class="view-head">
+		<h2 id="accounts.title">{ p.words.Of("accounts.title") }</h2>
+	</div>
+	@reconciliationCard(p, shown.latest)
+	if len(shown.accounts) == 0 {
+		<p id="accounts.empty" class="empty">{ p.words.Of("accounts.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				for _, group := range accountGroups {
+					if len(shown.in(group)) > 0 {
+						<tbody>
+							<tr class="group"><th id={ "accounts.group." + group.name } colspan="2">{ p.words.Of(group.heading) }</th></tr>
+							for _, account := range shown.in(group) {
+								@accountRow(p, shown, account, false)
+							}
+						</tbody>
+					}
+				}
+			</table>
+		</div>
+	}
+}
+
+// accountRow is an account on the list: its name and line, and its balance; an action's answer carries it out of band.
+templ accountRow(p page, shown accountsShown, account accounts.View, outOfBand bool) {
+	<tr
+		id={ "accounts.row." + account.ID.String() }
+		class={ templ.KV("disabled", !account.IsActive) }
+		tabindex="0"
+		aria-selected="false"
+		hx-get={ "/details/account/" + account.ID.String() }
+		hx-target="[id='web.details']"
+		{ swapOutOfBand(outOfBand)... }
+	>
+		<td>
+			<span id={ "accounts.name." + account.ID.String() }>{ account.Name }</span>
+			<small id={ "accounts.details." + account.ID.String() } class="hint">{ shown.details(p, account) }</small>
+		</td>
+		<td id={ "accounts.balance." + account.ID.String() } class="amount">{ statement.Money(account.Balance.Number()) }</td>
+	</tr>
+}
+
+// accountBeside is an account's row carried beside the panel, out of band, in a template, as rowBeside carries an entry's.
+templ accountBeside(p page, shown accountsShown, account accounts.View) {
+	<template>
+		@accountRow(p, shown, account, true)
+	</template>
+}
+
+// reconciliationCard is the last count of the accounts' actual balances as the app's card shows it: the surplus the books make, the actual
+// total, their difference - explained while there is one - and when it was counted; or that nothing was counted yet.
+templ reconciliationCard(p page, latest accounts.Reconciliation) {
+	<section id="reconciliation.card" class="card reconciliation">
+		<dl class="facts">
+			<dt>{ p.words.Of("reconciliations.surplus") }</dt>
+			<dd id="reconciliation.surplus" class="money">{ statement.Money(latest.Surplus.Number()) }</dd>
+			if !latest.At.IsZero() {
+				<dt>{ p.words.Of("reconciliations.actualTotal") }</dt>
+				<dd id="reconciliation.actualTotal" class="money">{ statement.Money(latest.ActualTotal.Number()) }</dd>
+				<dt>{ p.words.Of("reconciliations.difference") }</dt>
+				<dd id="reconciliation.difference" class={ "money", templ.KV("refused", latest.Difference.Number() != 0) }>{ statement.Money(latest.Difference.Number()) }</dd>
+			}
+		</dl>
+		if latest.At.IsZero() {
+			<p id="reconciliation.never" class="hint">{ p.words.Of("reconciliations.never") }</p>
+		} else {
+			if latest.Difference.Number() != 0 {
+				<p id="reconciliation.differenceExplain" class="hint">{ p.words.Of("reconciliations.differenceExplain") }</p>
+			}
+			<p id="reconciliation.lastUpdated" class="hint">{ p.words.Of("reconciliations.lastUpdated") + ": " + latest.At.Format(time.DateOnly) }</p>
+		}
+	</section>
+}
+
+// accountPanel is an account in the details panel: its type, custodian, balance and line, and what whoever manages the project's settings may
+// do to it - Disable or Enable, and Delete, asked first and gray with its reason while the account is in use - and what shown says.
+templ accountPanel(p page, shown accountsShown, account accounts.View, said said) {
+	<div class="details-head">
+		<h3 id="account.title">{ account.Name }</h3>
+		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl class="facts">
+		<dt>{ p.words.Of("accounts.type") }</dt>
+		<dd id="account.type">{ p.words.Of(groupOf(account).word) }</dd>
+		if account.CustodianName != "" {
+			<dt>{ p.words.Of("accounts.custodian") }</dt>
+			<dd id="account.custodian">{ account.CustodianName }</dd>
+		}
+		<dt>{ p.words.Of("expenses.amount") }</dt>
+		<dd id="account.balance" class="money">{ statement.Money(account.Balance.Number()) }</dd>
+	</dl>
+	<p id="account.details" class="hint details-foot">{ shown.details(p, account) }</p>
+	if said.notice != "" {
+		<p id="account.notice" class="notice details-say" role="status">{ p.words.Of(said.notice) }</p>
+	}
+	if said.refusal != "" {
+		<p id="account.refusal" class="refusal details-say" role="alert">{ p.words.Of(said.refusal) }</p>
+	}
+	if said.asking == "delete" && p.mayKeepAccounts() && !account.IsUsed {
+		<div id="account.ask" class="details-say ask">
+			<span>{ p.words.Of("accounts.deleteQuestion") + " " + p.words.Of("accounts.deleteCannotUndo") }</span>
+			<button id="account.deleteConfirm" class="primary small danger" type="button" hx-post={ "/account/" + account.ID.String() + "/delete" } hx-target="[id='web.details']">{ p.words.Of("accounts.delete") }</button>
+			<button id="account.deleteCancel" class="quiet-button" type="button" hx-get={ "/details/account/" + account.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+		</div>
+	} else if p.mayKeepAccounts() {
+		<div class="details-actions">
+			if account.IsActive {
+				<button id="accounts.disable" class="quiet-button" type="button" hx-post={ "/account/" + account.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("accounts.disable") }</button>
+			} else {
+				<button id="accounts.enable" class="quiet-button" type="button" hx-post={ "/account/" + account.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("accounts.enable") }</button>
+			}
+			<button
+				id="accounts.delete"
+				class="quiet-button"
+				type="button"
+				disabled?={ account.IsUsed }
+				if account.IsUsed {
+					title={ p.words.Of("accounts.accountInUse") }
+				}
+				hx-get={ "/details/account/" + account.ID.String() + "?asking=delete" }
+				hx-target="[id='web.details']"
+			>{ p.words.Of("accounts.delete") }</button>
+		</div>
+		if account.IsUsed {
+			<p id="accounts.deleteReason" class="hint details-say">{ p.words.Of("accounts.accountInUse") }</p>
+		}
+	}
+}
+
+// accountGone is the details panel once its account was deleted, saying so, its row leaving the list too.
+templ accountGone(p page, accountID uuid.UUID, said said) {
+	<div class="details-head">
+		<h3 id="account.title">{ p.words.Of(said.notice) }</h3>
+		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<template><tr id={ "accounts.row." + accountID.String() } hx-swap-oob="delete"></tr></template>
+}
