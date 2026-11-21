@@ -126,28 +126,27 @@ func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, calle
 	return views, nil
 }
 
-// refused answers why an account named name, of its type, held by custodianID, cannot be kept (Account.RefusalOf): invalidName,
-// custodianRequired for a cash custody nobody holds, unknownCustodian for a custodian not in the project (400).
-func (s Routes) refused(w http.ResponseWriter, r *http.Request, name string, typeOf int64, custodianID uuid.UUID) bool {
+// refusalOf is why an account named name, of its type, held by custodianID, cannot be kept in c's project (Account.RefusalOf): invalidName,
+// custodianRequired for a cash custody nobody holds, unknownCustodian for a custodian not in the project (400); nil when it can.
+func refusalOf(c changes.Change, name string, typeOf int64, custodianID uuid.UUID) error {
 	refusal := ""
 	if _, named := naming.Named(name); !named {
 		refusal = naming.Invalid
 	} else if AccountType(typeOf) == CashCustody && custodianID == uuid.Nil {
 		refusal = "custodianRequired"
 	} else if custodianID != uuid.Nil {
-		member, err := s.database.Queries().IsMember(r.Context(), store.IsMemberParams{ProjectID: web.ID(r, "projectId"), UserID: custodianID})
+		member, err := c.Q.IsMember(c.Ctx, store.IsMemberParams{ProjectID: c.ProjectID, UserID: custodianID})
 		if err != nil {
-			problem.Status(w, r, http.StatusInternalServerError)
-			return true
+			return err
 		}
 		if !member {
 			refusal = "unknownCustodian"
 		}
 	}
 	if refusal != "" {
-		problem.Refuse(w, r, http.StatusBadRequest, refusal)
+		return changes.Refuse(http.StatusBadRequest, refusal)
 	}
-	return refusal != ""
+	return nil
 }
 
 func accountFields(row store.Account) map[string]any {
@@ -169,31 +168,35 @@ type addAccountRequest struct {
 // recorded it.
 func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request addAccountRequest
-	if !web.Read(w, r, &request) || s.refused(w, r, request.Name, int64(request.Type), request.CustodianID) {
+	if !web.Read(w, r, &request) {
 		return
 	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		name, _ := naming.Named(request.Name)
-		account := store.Account{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Type: int64(request.Type), Name: name, IsActive: true}
-		if err := c.Q.SaveAccount(c.Ctx, store.SaveAccountParams(account)); err != nil {
-			return err
-		}
-		if request.CustodianID != uuid.Nil {
-			if err := c.Q.SaveCustodian(c.Ctx, store.SaveCustodianParams{AccountID: account.ID, UserID: request.CustodianID}); err != nil {
-				return err
-			}
-		}
-		if err := settings.TickOnEveryMethod(c, account.ID); err != nil {
-			return err
-		}
-		return c.Record(history.Create, "Accounts", account.ID, nil, accountFields(account))
+		_, err := Add(c, request.Name, request.Type, request.CustodianID)
+		return err
 	})
 }
 
-// account is the route's account: 404 for one the project does not hold.
-func (s Routes) account(w http.ResponseWriter, r *http.Request) (store.Account, bool) {
-	account, err := changes.Found(s.database.Queries().AccountOf(r.Context(), store.AccountOfParams{ID: web.ID(r, "accountId"), ProjectID: web.ID(r, "projectId")}))
-	return account, !changes.Answered(w, r, err)
+// Add adds to c's project an account named name of type typeOf, held by custodianID - none for a bank -, as add answers it (UC-015): the rule
+// both doors call, the app's route and the web's New account (redix-api #168). It is the new account's id; the refusals of refusalOf.
+func Add(c changes.Change, name string, typeOf AccountType, custodianID uuid.UUID) (uuid.UUID, error) {
+	if err := refusalOf(c, name, int64(typeOf), custodianID); err != nil {
+		return uuid.Nil, err
+	}
+	named, _ := naming.Named(name)
+	account := store.Account{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Type: int64(typeOf), Name: named, IsActive: true}
+	if err := c.Q.SaveAccount(c.Ctx, store.SaveAccountParams(account)); err != nil {
+		return uuid.Nil, err
+	}
+	if custodianID != uuid.Nil {
+		if err := c.Q.SaveCustodian(c.Ctx, store.SaveCustodianParams{AccountID: account.ID, UserID: custodianID}); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	if err := settings.TickOnEveryMethod(c, account.ID); err != nil {
+		return uuid.Nil, err
+	}
+	return account.ID, c.Record(history.Create, "Accounts", account.ID, nil, accountFields(account))
 }
 
 // editAccountRequest is the body PUT /projects/{projectId}/accounts/{accountId} reads (UC-015).
@@ -209,19 +212,27 @@ func (s Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Calle
 	if !web.Read(w, r, &request) {
 		return
 	}
-	before, found := s.account(w, r)
-	if !found || s.refused(w, r, request.Name, before.Type, request.CustodianID) {
-		return
+	accountID := web.ID(r, "accountId")
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Edit(c, accountID, request.Name, request.CustodianID) })
+}
+
+// Edit names the account accountID of c's project name and hands it to custodianID, as edit answers it (UC-015): the rule both doors call,
+// the app's route and the web's Edit (redix-api #168). changes.NotFound for an account not in the project; the refusals of refusalOf.
+func Edit(c changes.Change, accountID uuid.UUID, name string, custodianID uuid.UUID) error {
+	before, err := changes.Found(c.Q.AccountOf(c.Ctx, store.AccountOfParams{ID: accountID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		after := before
-		after.Name, _ = naming.Named(request.Name)
-		if err := c.Save("Accounts", after.ID, false, accountFields(before), accountFields(after),
-			func() error { return c.Q.SaveAccount(c.Ctx, store.SaveAccountParams(after)) }); err != nil {
-			return err
-		}
-		return handTo(c, before.ID, request.CustodianID)
-	})
+	if err := refusalOf(c, name, before.Type, custodianID); err != nil {
+		return err
+	}
+	after := before
+	after.Name, _ = naming.Named(name)
+	if err := c.Save("Accounts", after.ID, false, accountFields(before), accountFields(after),
+		func() error { return c.Q.SaveAccount(c.Ctx, store.SaveAccountParams(after)) }); err != nil {
+		return err
+	}
+	return handTo(c, before.ID, custodianID)
 }
 
 // handTo makes userID the one who holds the account, uuid.Nil nobody (Account.HandTo).

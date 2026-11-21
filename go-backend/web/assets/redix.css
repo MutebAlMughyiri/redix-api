@@ -262,3 +262,4 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 
 /* Accounts (redix-api #168): the last count's card, the groups' headings, a disabled account quieter. */
 .reconciliation { margin-block-end: 12px; } .grid tr.group th { text-align: start; font-size: 12px; color: var(--quiet); background: transparent; padding-block-start: 10px; } .grid tr.disabled td { color: var(--quiet); } .facts dd.money.refused { color: var(--refusal); }
+.details-form { display: flex; flex-direction: column; gap: 12px; padding: 0 14px 14px; } .field select { width: 100%; }

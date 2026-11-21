@@ -23,12 +23,10 @@ type accountGroup struct{ name, word, heading string }
 // accountGroups are the types of account in the order the app groups them: banks, then cash custodies.
 var accountGroups = []accountGroup{{"bank", "accounts.typeBank", "accounts.banks"}, {"cashCustody", "accounts.typeCashCustody", "accounts.custodies"}}
 
-// groupOf is the group of account's type.
+// groupOf is the group of account's type: a cash custody's, or the banks'.
 func groupOf(account accounts.View) accountGroup {
-	for _, group := range accountGroups {
-		if group.name == account.Type.Name() {
-			return group
-		}
+	if account.Type == accounts.CashCustody {
+		return accountGroups[1]
 	}
 	return accountGroups[0]
 }
@@ -109,6 +107,10 @@ func (s site) accountDetails(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if r.URL.Query().Get("asking") == "edit" && p.mayKeepAccounts() {
+		s.accountFormOf(w, r, p, account, accountTyped{name: account.Name, kind: account.Type.Name(), custodian: custodianOf(account)}, "")
+		return
+	}
 	draw(w, r, http.StatusOK, accountPanel(p, shown, account, said{asking: r.URL.Query().Get("asking")}))
 }
 
@@ -168,3 +170,113 @@ func (s site) accountAction(w http.ResponseWriter, r *http.Request) {
 
 // mayKeepAccounts says whether p's caller may change the project's accounts: ManageSettings, in a project not finished.
 func (p page) mayKeepAccounts() bool { return !p.finished() && p.may(access.ManageSettings) }
+
+// accountTyped is New account's or Edit's form as typed: the name, the type - bank or cashCustody, chosen only for a new one - and who holds it.
+type accountTyped struct {
+	name, kind string
+	custodian  uuid.UUID
+}
+
+// accountTypedOf is the form r posted.
+func accountTypedOf(r *http.Request) accountTyped {
+	custodian, _ := uuid.Parse(r.PostFormValue("custodian"))
+	return accountTyped{name: r.PostFormValue("name"), kind: r.PostFormValue("type"), custodian: custodian}
+}
+
+// accountTypeOf is the type a form names: a cash custody, or a bank, the type's zero, for any other.
+func accountTypeOf(kind string) accounts.AccountType {
+	if kind == "cashCustody" {
+		return accounts.CashCustody
+	}
+	return 0
+}
+
+// custodianOf is who holds account, none for a bank.
+func custodianOf(account accounts.View) uuid.UUID {
+	custodian, _ := uuid.Parse(account.CustodianID)
+	return custodian
+}
+
+// accountFormOf answers the details panel with New account's form - or Edit's, for editing - as typed, with the project's members to hand it to
+// and why it could not be kept.
+func (s site) accountFormOf(w http.ResponseWriter, r *http.Request, p page, editing accounts.View, typed accountTyped, refusal string) {
+	members, err := s.Database.Queries().Members(r.Context(), p.project.ID)
+	if err != nil {
+		failed(w)
+		return
+	}
+	draw(w, r, http.StatusOK, accountForm(p, editing, typed, members, refusal))
+}
+
+// newAccountForm is New account in the details panel, for whoever manages the project's settings (UC-015, redix-api #168).
+func (s site) newAccountForm(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || !p.mayKeepAccounts() {
+		http.NotFound(w, r)
+		return
+	}
+	s.accountFormOf(w, r, p, accounts.View{}, accountTyped{kind: "bank"}, "")
+}
+
+// keepAccount keeps the form posted: a new account through accounts.Add, or the account the path names through accounts.Edit - the rules the
+// app's routes run - in one change. Kept, the panel shows the account and the list beside it holds it; refused, the form again says why in the
+// app's words. 403 without ManageSettings; a finished project keeps nothing (AC-04.1).
+func (s site) keepAccount(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || r.ParseForm() != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !p.may(access.ManageSettings) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+	shown, err := s.accountsOf(r.Context(), p)
+	if err != nil {
+		failed(w)
+		return
+	}
+	typed, editing := accountTypedOf(r), accounts.View{}
+	if r.PathValue("id") != "" {
+		accountID, _ := uuid.Parse(r.PathValue("id"))
+		var found bool
+		if editing, found = shown.accountOf(accountID); !found {
+			http.NotFound(w, r)
+			return
+		}
+	}
+	if p.finished() {
+		s.accountFormOf(w, r, p, editing, typed, "projects.projectFinished")
+		return
+	}
+	accountID := editing.ID
+	err = changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) error {
+		if editing.ID != uuid.Nil {
+			return accounts.Edit(c, editing.ID, typed.name, typed.custodian)
+		}
+		var err error
+		accountID, err = accounts.Add(c, typed.name, accountTypeOf(typed.kind), typed.custodian)
+		return err
+	})
+	var refused changes.Refusal
+	if errors.As(err, &refused) {
+		s.accountFormOf(w, r, p, editing, typed, "accounts."+refused.Code)
+		return
+	}
+	if err != nil {
+		failed(w)
+		return
+	}
+	if shown, err = s.accountsOf(r.Context(), p); err != nil {
+		failed(w)
+		return
+	}
+	account, _ := shown.accountOf(accountID)
+	draw(w, r, http.StatusOK, accountPanel(p, shown, account, said{}), listBeside(p, shown))
+}

@@ -1683,3 +1683,84 @@ func TestWeb_R168_AnAccountsActionsAreGatedAsTheAppsRoutesAre(t *testing.T) {
 	}
 	has(t, w.browser.Send("POST", "/account/"+w.account+"/disable", nil).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
 }
+
+func TestWeb_R168_UC015_NewAccountAndEditAsTheAppsDialog(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/accounts", nil).Body.String(), `hx-get="/details/account/new"`)
+	form := w.browser.Send("GET", "/details/account/new", nil).Body.String()
+	has(t, form, `id="accounts.type.cashCustody"`)
+	has(t, form, `<option value="`+w.manager.String()+`">User A</option>`)
+	custody := url.Values{"name": {"صندوق الموقع"}, "type": {"cashCustody"}, "custodian": {""}}
+	has(t, w.browser.Send("POST", "/account", custody).Body.String(), "العهدة النقدية تحتاج إلى صاحب عهدة.")
+	has(t, w.browser.Send("POST", "/account", url.Values{"name": {" "}, "type": {"bank"}}).Body.String(), "أدخل اسماً من 1 إلى 100 حرف.")
+	custody.Set("custodian", w.manager.String())
+	added := w.browser.Send("POST", "/account", custody).Body.String()
+	has(t, added, `<h3 id="account.title">صندوق الموقع</h3>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	has(t, added, `<th id="accounts.group.cashCustody" colspan="2">العهد النقدية</th>`)
+	editing := w.browser.Send("GET", "/details/account/"+w.account+"?asking=edit", nil).Body.String()
+	has(t, editing, `value="حساب المؤسسة"`)
+	lacks(t, editing, `id="accounts.type.bank"`)
+	edited := w.browser.Send("POST", "/account/"+w.account+"/edit", url.Values{"name": {"الحساب الجاري"}, "custodian": {""}}).Body.String()
+	has(t, edited, `<h3 id="account.title">الحساب الجاري</h3>`)
+	if got := w.Count("SELECT count(*) FROM accounts WHERE id = ? AND name = 'الحساب الجاري'", w.account); got != 1 {
+		t.Errorf("the account is renamed: %d", got)
+	}
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	if code := browser.Send("GET", "/details/account/new", nil).Code; code != http.StatusNotFound {
+		t.Errorf("New account without ManageSettings: %d", code)
+	}
+	if code := browser.Send("POST", "/account", url.Values{"name": {"x"}, "type": {"bank"}}).Code; code != http.StatusForbidden {
+		t.Errorf("adding without ManageSettings: %d", code)
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/account", url.Values{"name": {"حساب آخر"}, "type": {"bank"}})
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("adding with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}
+
+func TestWeb_R168_TheAccountFormRefusesAndFailsAsTheAppsRoutes(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("POST", "/account", url.Values{"name": {"صندوق"}, "type": {"cashCustody"}, "custodian": {uuid.NewString()}}).Body.String(), "هذا الشخص ليس في هذا المشروع.")
+	if code := w.browser.Send("POST", "/account/"+uuid.NewString()+"/edit", url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+		t.Errorf("editing an account not in the project: %d", code)
+	}
+	for _, path := range []string{"/details/account/new", "/details/account/" + w.account, "/details/account/" + w.account + "?asking=edit"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/account/"+w.account+"/edit", url.Values{"name": {"الحساب الجاري"}})
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("editing with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/account/"+w.account+"/edit", url.Values{"name": {"بعد الإغلاق"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+	if got := w.Count("SELECT count(*) FROM accounts WHERE name = 'بعد الإغلاق'"); got != 0 {
+		t.Errorf("a finished project keeps nothing: %d", got)
+	}
+}

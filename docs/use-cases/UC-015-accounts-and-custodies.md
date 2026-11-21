@@ -66,18 +66,22 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 ## On the web: Accounts (redix-api #168)
 
-The web's Accounts is the app's screen in the shell. Its card is the last count of the actual balances from `accounts.LatestOf`, the function `GET /projects/{id}/reconciliations/latest` calls too: the surplus the books make, the actual total and their difference, explained while there is one, or that nothing was counted yet. Under it the accounts from `accounts.ListOf`, banks then cash custodies, each with its type, custodian, the last count and its balance. A row opens the account in the details panel, where whoever manages the project's settings disables or enables it (`accounts.Activate`) and deletes it, asked first (`accounts.Delete`); Delete stands gray with its reason while the account is in use. Its pages are in `go-backend/web` (`accounts.go`, `accounts.templ`).
+The web's Accounts is the app's screen in the shell. Its card is the last count of the actual balances from `accounts.LatestOf`, the function `GET /projects/{id}/reconciliations/latest` calls too: the surplus the books make, the actual total and their difference, explained while there is one, or that nothing was counted yet. Under it the accounts from `accounts.ListOf`, banks then cash custodies, each with its type, custodian, the last count and its balance. A row opens the account in the details panel, where whoever manages the project's settings disables or enables it (`accounts.Activate`) and deletes it, asked first (`accounts.Delete`); Delete stands gray with its reason while the account is in use. New account, in the head, and Edit, in the panel, ask in the panel what the app's account dialog asks - the name, the type for a new one, who holds it among the project's members - and keep it through `accounts.Add` and `accounts.Edit`, the rules `POST /projects/{id}/accounts` and `PUT …/accounts/{accountId}` call too. Its pages are in `go-backend/web` (`accounts.go`, `accounts.templ`).
 
 | Page | Purpose | Answers |
 | --- | --- | --- |
 | `GET /tab/accounts` | Accounts, with the last count's card | `200` the tab's content |
 | `GET /details/account/{id}` | An account in the details panel; `?asking=delete` asks before Delete | `200` the panel; `404` for an account not in the list |
+| `GET /details/account/new`, `GET /details/account/{id}?asking=edit` | New account's or Edit's form in the details panel | `200` the form; `404` without ManageSettings |
+| `POST /account`, `POST /account/{id}/edit` | Keeps the form: `name`, `type` for a new one, `custodian` | `200` the panel showing the account, Accounts beside it holding it; or the form again saying why not; `403` without ManageSettings |
 | `POST /account/{id}/disable`, `/enable`, `/delete` | An account's action, through the rule the app's route runs, behind its gate | `200` the panel saying what it did or why not, the row beside it; a deleted account leaves the list; `403` without ManageSettings; `404` for an action there is none of |
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | Accounts lists the accounts by type, with the last count's card (UC-015) | `accounts.ListOf`, `accounts.LatestOf` | `TestWeb_R168_UC015_AccountsListsTheAccountsByTypeWithTheLastCount` |
 | Disable and Enable as the app's; an account in use is only disabled, its Delete gray with the reason and refused; an unused one is deleted, asked first (BR-15) | `accounts.Activate`, `accounts.Delete` | `TestWeb_R168_BR15_DisableEnableAndDeleteAsTheAppsRoutes` |
+| New account and Edit as the app's dialog: a cash custody needs its custodian, a name 1 to 100 letters; the list then holds it (UC-015) | `accounts.Add`, `accounts.Edit` | `TestWeb_R168_UC015_NewAccountAndEditAsTheAppsDialog` |
+| A custodian not in the project is refused; a finished project keeps nothing (AC-04.1); a failing database answers 500 | `accounts.refusalOf`, `web.site.keepAccount` | `TestWeb_R168_TheAccountFormRefusesAndFailsAsTheAppsRoutes` |
 | An account's actions need ManageSettings, a finished project changes nothing (AC-04.1), a failing database answers 500 | `web.site.accountAction` | `TestWeb_R168_AnAccountsActionsAreGatedAsTheAppsRoutesAre` |
 
 ## Left to later use cases

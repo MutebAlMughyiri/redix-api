@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
 
@@ -17,6 +18,17 @@ import (
 templ accountsList(p page, shown accountsShown) {
 	<div class="view-head">
 		<h2 id="accounts.title">{ p.words.Of("accounts.title") }</h2>
+		<span class="head-actions">
+			<button
+				id="accounts.add"
+				class="primary small"
+				type="button"
+				disabled?={ !p.mayKeepAccounts() }
+				title={ p.words.Of("permissions.manageSettings") }
+				hx-get="/details/account/new"
+				hx-target="[id='web.details']"
+			>{ p.words.Of("accounts.new") }</button>
+		</span>
 	</div>
 	@reconciliationCard(p, shown.latest)
 	if len(shown.accounts) == 0 {
@@ -122,6 +134,7 @@ templ accountPanel(p page, shown accountsShown, account accounts.View, said said
 		</div>
 	} else if p.mayKeepAccounts() {
 		<div class="details-actions">
+			<button id="accounts.edit" class="quiet-button" type="button" hx-get={ "/details/account/" + account.ID.String() + "?asking=edit" } hx-target="[id='web.details']">{ p.words.Of("accounts.edit") }</button>
 			if account.IsActive {
 				<button id="accounts.disable" class="quiet-button" type="button" hx-post={ "/account/" + account.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("accounts.disable") }</button>
 			} else {
@@ -152,4 +165,64 @@ templ accountGone(p page, accountID uuid.UUID, said said) {
 		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
 	</div>
 	<template><tr id={ "accounts.row." + accountID.String() } hx-swap-oob="delete"></tr></template>
+}
+
+// listBeside is Accounts again, carried out of band beside the panel, once an account was added or changed.
+templ listBeside(p page, shown accountsShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@accountsList(p, shown)
+	</div>
+}
+
+// accountForm is New account or Edit in the details panel, as the app's account dialog asks it: the name; the type, for a new one only; who
+// holds it, among the project's members - a cash custody needs one -; and why it could not be kept.
+templ accountForm(p page, editing accounts.View, typed accountTyped, members []store.MembersRow, refusal string) {
+	<div class="details-head">
+		<h3 id="account.title">
+			if editing.ID == uuid.Nil {
+				{ p.words.Of("accounts.new") }
+			} else {
+				{ p.words.Of("accounts.edit") }
+			}
+		</h3>
+		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form
+		id="account.form"
+		class="details-form"
+		if editing.ID == uuid.Nil {
+			hx-post="/account"
+		} else {
+			hx-post={ "/account/" + editing.ID.String() + "/edit" }
+		}
+		hx-target="[id='web.details']"
+	>
+		<div class="field">
+			<label for="accounts.accountName">{ p.words.Of("accounts.name") }</label>
+			<input id="accounts.accountName" name="name" required value={ typed.name } autofocus/>
+		</div>
+		if editing.ID == uuid.Nil {
+			<fieldset class="picks">
+				<legend id="accounts.typeHeading">{ p.words.Of("accounts.type") }</legend>
+				for _, group := range accountGroups {
+					<label id={ "accounts.type." + group.name } class="pick"><input type="radio" name="type" value={ group.name } checked?={ typed.kind == group.name }/>{ p.words.Of(group.word) }</label>
+				}
+			</fieldset>
+		}
+		<div class="field">
+			<label for="accounts.custodian">{ p.words.Of("accounts.custodian") }</label>
+			<select id="accounts.custodian" name="custodian">
+				<option value="">{ p.words.Of("accounts.noCustodian") }</option>
+				for _, member := range members {
+					<option value={ member.ID.String() } selected?={ member.ID == typed.custodian }>{ member.DisplayName }</option>
+				}
+			</select>
+		</div>
+		if refusal != "" {
+			<p id="account.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span class="details-actions">
+			<button id="account.save" class="primary small" type="submit">{ p.words.Of("accounts.save") }</button>
+		</span>
+	</form>
 }
