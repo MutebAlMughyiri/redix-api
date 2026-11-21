@@ -203,7 +203,7 @@ templ signInForm(p page, message string, username string) {
 			<p id="signIn.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
 			<button id="signIn.submit" class="primary" type="submit">{ p.words.Of("signIn.submit") }</button>
 			<div class="form-links">
-				<span id="signIn.registerProject" aria-disabled="true">{ p.words.Of("signIn.registerProject") }</span>
+				<a id="signIn.registerProject" href="#" hx-get="/register" hx-target="closest .signin" hx-swap="outerHTML">{ p.words.Of("signIn.registerProject") }</a>
 				<a id="auth.forgotPassword" href="#" hx-get="/forgot-password" hx-target="closest .signin" hx-swap="outerHTML">{ p.words.Of("auth.forgotPassword") }</a>
 			</div>
 			<div class="form-language">

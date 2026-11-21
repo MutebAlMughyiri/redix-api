@@ -1337,20 +1337,20 @@ func signInForm(p page, message string, username string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "</button><div class=\"form-links\"><span id=\"signIn.registerProject\" aria-disabled=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "</button><div class=\"form-links\"><a id=\"signIn.registerProject\" href=\"#\" hx-get=\"/register\" hx-target=\"closest .signin\" hx-swap=\"outerHTML\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var68 string
 		templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("signIn.registerProject"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `shell.templ`, Line: 206, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `shell.templ`, Line: 206, Col: 149}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "</span> <a id=\"auth.forgotPassword\" href=\"#\" hx-get=\"/forgot-password\" hx-target=\"closest .signin\" hx-swap=\"outerHTML\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "</a> <a id=\"auth.forgotPassword\" href=\"#\" hx-get=\"/forgot-password\" hx-target=\"closest .signin\" hx-swap=\"outerHTML\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

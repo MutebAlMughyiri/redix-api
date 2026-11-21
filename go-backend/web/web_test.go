@@ -245,8 +245,6 @@ func TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse(t *testing.T) {
 
 func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
-	signedOut := api.Browser().Send("GET", "/", nil).Body.String()
-	has(t, signedOut, `<span id="signIn.registerProject" aria-disabled="true">`)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
 	for _, key := range []string{"entries", "approvals", "accounts", "partners", "contracts", "reports", "history"} {
@@ -718,6 +716,129 @@ func TestWeb_R165_EveryIdOnTheHomeIsTheOnlyOne(t *testing.T) {
 		seen[id[1]] = true
 	}
 	if len(seen) < 40 {
+		t.Errorf("only %d ids", len(seen))
+	}
+}
+
+// registration is a whole Register new project form, as a person fills it in.
+func registration(username string) url.Values {
+	return url.Values{"name": {"مشروع د"}, "description": {""}, "startDate": {"2026-11-21"}, "unit": {"A1", "A2"}, "partner": {"شريك أ"},
+		"displayName": {"مدير د"}, "username": {username}, "mobile": {"0500000000"}, "password": {"Chosen-passw0rd-1"}}
+}
+
+func TestWeb_R164_TheSignInsRegisterLinkOpensItsFormAndCancelGoesBack(t *testing.T) {
+	browser := testapi.New(t).Browser()
+	has(t, browser.Send("GET", "/", nil).Body.String(), `<a id="signIn.registerProject" href="#" hx-get="/register"`)
+	form := browser.Send("GET", "/register", nil).Body.String()
+	for _, key := range []string{"newProject.title", "newProject.hint", "newProject.name", "newProject.startDate", "newProject.unitName", "newProject.addUnit",
+		"newProject.partnerName", "newProject.addPartner", "newProject.managerName", "newProject.username", "newProject.mobile", "newProject.password",
+		"legal.agreement", "newProject.submit", "newProject.cancel"} {
+		has(t, form, `id="`+key+`"`)
+	}
+	has(t, form, `value="2026-11-`)
+	has(t, browser.Send("GET", "/sign-in", nil).Body.String(), `id="signIn.username"`)
+}
+
+func TestWeb_R164_UC066_ARegistrationWaitsForTheAdminAndTheSignInSaysSo(t *testing.T) {
+	api := testapi.New(t)
+	answered := api.Browser().Send("POST", "/register", registration("manager.d"))
+	if answered.Code != http.StatusOK {
+		t.Fatalf("register: %d %s", answered.Code, answered.Body)
+	}
+	has(t, answered.Body.String(), `<p id="signIn.notice" class="notice" role="status">أُرسل للاعتماد. سجّل الدخول لمتابعته.</p>`)
+	if got := api.Count(`SELECT count(*) FROM projects WHERE name = 'مشروع د' AND status = 2`); got != 1 {
+		t.Errorf("the project waits for the admin: %d", got)
+	}
+	if got := api.Count(`SELECT count(*) FROM units JOIN projects ON projects.id = units.project_id WHERE projects.name = 'مشروع د'`); got != 2 {
+		t.Errorf("its units: %d", got)
+	}
+	signing := api.Browser().Send("POST", "/sign-in", url.Values{"username": {"manager.d"}, "password": {"Chosen-passw0rd-1"}})
+	if signing.Code != http.StatusOK {
+		t.Errorf("the manager signs in with their own password: %d", signing.Code)
+	}
+}
+
+func TestWeb_R164_ARefusalAnswersTheFormWithTheAppsWordsAndKeepsWhatWasTyped(t *testing.T) {
+	api := testapi.New(t)
+	api.Browser().Send("POST", "/register", registration("manager.d"))
+	for _, step := range []struct {
+		change func(url.Values)
+		says   string
+	}{
+		{func(form url.Values) { form.Set("name", "") }, "اكتب اسماً من 1 إلى 100 حرف."},
+		{func(form url.Values) { form.Set("password", "short") }, "استخدم 8 أحرف على الأقل فيها حرف ورقم، وليست اسم المستخدم."},
+		{func(form url.Values) { form["unit"] = []string{"A1", "A1"} }, "لا يصح أن تحمل وحدتان الاسم نفسه."},
+		{func(form url.Values) { form.Set("username", "manager.d") }, "اسم المستخدم هذا مستخدم. إن كان لك، سجّل الدخول وسجّل المشروع من مشاريعك."},
+	} {
+		form := registration("manager.e")
+		step.change(form)
+		answered := api.Browser().Send("POST", "/register", form)
+		if answered.Code != http.StatusUnprocessableEntity {
+			t.Errorf("%q: %d", step.says, answered.Code)
+		}
+		has(t, answered.Body.String(), step.says)
+		has(t, answered.Body.String(), `<input type="hidden" name="partner" value="شريك أ">`)
+		lacks(t, answered.Body.String(), "Chosen-passw0rd-1")
+	}
+}
+
+func TestWeb_R164_AddAndRemoveAnswerTheListAlone(t *testing.T) {
+	browser := testapi.New(t).Browser()
+	added := browser.Send("POST", "/register/units", url.Values{"unit": {"A1"}, "unitName": {" A2 "}}).Body.String()
+	has(t, added, `<fieldset id="newProject.units" class="list-field">`)
+	has(t, added, `<input type="hidden" name="unit" value="A1">`)
+	has(t, added, `<input type="hidden" name="unit" value="A2">`)
+	lacks(t, added, `id="newProject.name"`)
+	removed := browser.Send("POST", "/register/units", url.Values{"unit": {"A1", "A2"}, "unitName": {"A3"}, "remove": {"0"}}).Body.String()
+	lacks(t, removed, `value="A1"`)
+	lacks(t, removed, `value="A3"`)
+	has(t, removed, `<span id="newProject.unit.0" class="chip">`)
+	blank := browser.Send("POST", "/register/partners", url.Values{"partnerName": {"  "}}).Body.String()
+	lacks(t, blank, `class="chip"`)
+	if code := browser.Send("POST", "/register/people", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a list the form has not: %d", code)
+	}
+}
+
+func TestWeb_R164_RegisteringAnswersAFailingDatabaseWith500(t *testing.T) {
+	api := testapi.New(t)
+	for _, step := range []struct {
+		path string
+		form url.Values
+	}{{"/register", nil}, {"/register/units", url.Values{"unitName": {"A1"}}}} {
+		for n := int64(1); ; n++ {
+			answered, failed := api.Browser().SendFailing(n, "POST", step.path, step.form)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", step.path, n, answered.Code)
+			}
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := api.Browser().SendFailing(n, "POST", "/register", registration("manager.f"))
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("registering with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}
+
+func TestWeb_R164_EveryIdOnTheRegisterFormIsTheOnlyOneAndNoneIsTheFrames(t *testing.T) {
+	form := registration("manager.h")
+	form.Set("name", "")
+	fragment := testapi.New(t).Browser().Send("POST", "/register", form).Body.String()
+	seen := map[string]bool{}
+	for _, id := range regexp.MustCompile(` id="([^"]+)"`).FindAllStringSubmatch(fragment, -1) {
+		if seen[id[1]] || strings.HasPrefix(id[1], "web.") || id[1] == "appVersion.line" {
+			t.Errorf("the id %q is on two elements", id[1])
+		}
+		seen[id[1]] = true
+	}
+	if len(seen) < 25 {
 		t.Errorf("only %d ids", len(seen))
 	}
 }

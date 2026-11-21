@@ -2062,6 +2062,94 @@
         ],
         "type": "object"
       },
+      "projects.Registration": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "mobile": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partners": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "password": {
+            "type": "string"
+          },
+          "startDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "structureSourceId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "units": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayName",
+          "mobile",
+          "name",
+          "password",
+          "startDate",
+          "units",
+          "username"
+        ],
+        "type": "object"
+      },
+      "projects.Start": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partners": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "startDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "structureSourceId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "units": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "startDate",
+          "units"
+        ],
+        "type": "object"
+      },
       "projects.Unit": {
         "properties": {
           "id": {
@@ -2186,58 +2274,6 @@
         ],
         "type": "object"
       },
-      "projects.registerProjectRequest": {
-        "properties": {
-          "description": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "mobile": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "partners": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "password": {
-            "type": "string"
-          },
-          "startDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "structureSourceId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "units": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "username": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "displayName",
-          "mobile",
-          "name",
-          "password",
-          "startDate",
-          "units",
-          "username"
-        ],
-        "type": "object"
-      },
       "projects.registeredView": {
         "properties": {
           "description": {
@@ -2312,42 +2348,6 @@
         },
         "required": [
           "name"
-        ],
-        "type": "object"
-      },
-      "projects.startRequest": {
-        "properties": {
-          "description": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "partners": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "startDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "structureSourceId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "units": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "name",
-          "startDate",
-          "units"
         ],
         "type": "object"
       },
@@ -4435,7 +4435,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/projects.startRequest"
+                "$ref": "#/components/schemas/projects.Start"
               }
             }
           },
@@ -4517,7 +4517,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/projects.registerProjectRequest"
+                "$ref": "#/components/schemas/projects.Registration"
               }
             }
           },
@@ -4542,7 +4542,7 @@
                 }
               }
             },
-            "description": "Refused: invalidDescription, invalidMobile, invalidName, invalidUsername, unitNameTaken, usernameTaken, weakPassword."
+            "description": "Refused: invalidDescription, invalidMobile, invalidName, invalidUsername, unitNameTaken, weakPassword."
           },
           "409": {
             "content": {

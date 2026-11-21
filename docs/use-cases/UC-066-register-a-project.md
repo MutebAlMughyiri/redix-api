@@ -37,3 +37,20 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A project manager cannot take over the admin | `users.Routes.mayChange`, `users.Routes.addExisting` | `ProjectUsersTests.AManagerCannotTakeOverTheAdmin` |
 | Too many tries from one address are refused | `limits.PerHour`, `Window.PerAddress` | `RegistrationTests.TooManyTriesAreRefused` |
 | Every registration and decision is in the History table | `history.Write` | `RegistrationTests.EveryDecisionIsInTheHistory` |
+
+## On the web (redix-api #164)
+
+The sign-in's «تسجيل مشروع جديد» opens the same registration in the sign-in's place: the project, its units and partners added one at a time, and the manager's own login. Sending calls `projects.Register`, the rule `POST /projects/register` calls, and counts in the same window per address, so asking at the web does not reset the app's count. Its pages are in `go-backend/web` (`register.go`, `register.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /register` | The form, in the sign-in's place | `200` the form |
+| `POST /register/{list}` | Adds the unit or partner typed (`unitName`, `partnerName`), or removes the one at `remove`, among those sent (`unit`, `partner`) | `200` the list alone; `404` for a list the form has not |
+| `POST /register` | Sends the project for approval | `200` the sign-in form saying «أُرسل للاعتماد. سجّل الدخول لمتابعته.»; `422` the form with the refusal's words |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| The sign-in's link opens the form; Cancel goes back | `web.signInForm`, `web.site.registerForm` | `TestWeb_R164_TheSignInsRegisterLinkOpensItsFormAndCancelGoesBack` |
+| A registration waits for the admin with its units, and its manager signs in with the password they chose (UC-066) | `projects.Register` | `TestWeb_R164_UC066_ARegistrationWaitsForTheAdminAndTheSignInSaysSo` |
+| A refusal answers the app's words and keeps what was typed but the password | `web.site.register` | `TestWeb_R164_ARefusalAnswersTheFormWithTheAppsWordsAndKeepsWhatWasTyped` |
+| Add and Remove answer the list alone; a blank is not added | `web.site.listed` | `TestWeb_R164_AddAndRemoveAnswerTheListAlone` |

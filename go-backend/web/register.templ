@@ -1,0 +1,109 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import "strconv"
+
+// registerProject is Register new project in the sign-in's place (UC-066, redix-api #164): the project, its units and partners, and the manager's
+// own login, as the app's register form has them; the cursor waits in the project's name. message is the word key of a refusal, or "".
+templ registerProject(p page, message string, typed registering) {
+	<div class="signin wide">
+		<form
+			id="newProject.form"
+			hx-post="/register"
+			hx-target="closest .signin"
+			hx-swap="outerHTML"
+			data-no-connection={ p.words.Of("register.noConnection") }
+			hx-on::send-error="const message = this.querySelector('.refusal'); message.textContent = this.dataset.noConnection; message.hidden = false"
+		>
+			<h1 id="newProject.title">{ p.words.Of("projects.new") }</h1>
+			<p id="newProject.hint" class="hint">{ p.words.Of("register.hint") }</p>
+			<p id="newProject.message" class="refusal" role="alert" hidden?={ message == "" }>{ p.words.Of(message) }</p>
+			<div class="field">
+				<label for="newProject.name">{ p.words.Of("projects.name") }</label>
+				<input id="newProject.name" name="name" autofocus required value={ typed.name }/>
+			</div>
+			<div class="field">
+				<label for="newProject.description">{ p.words.Of("projects.description") }</label>
+				<textarea id="newProject.description" name="description" maxlength="2000">{ typed.description }</textarea>
+			</div>
+			<div class="field">
+				<label for="newProject.startDate">{ p.words.Of("projects.startDate") }</label>
+				<input id="newProject.startDate" name="startDate" type="date" required value={ typed.startDate }/>
+			</div>
+			@registerList(p, "units", typed.units, false)
+			@registerList(p, "partners", typed.partners, false)
+			<h2 id="newProject.managerHeading" class="section">{ p.words.Of("projects.manager") }</h2>
+			<div class="field">
+				<label for="newProject.managerName">{ p.words.Of("users.name") }</label>
+				<input id="newProject.managerName" name="displayName" required value={ typed.displayName }/>
+				<small class="hint">{ p.words.Of("users.nameHint") }</small>
+			</div>
+			<div class="field">
+				<label for="newProject.username">{ p.words.Of("users.username") }</label>
+				<input id="newProject.username" name="username" autocomplete="username" required value={ typed.username }/>
+			</div>
+			<div class="field">
+				<label for="newProject.mobile">{ p.words.Of("users.mobile") }</label>
+				<input id="newProject.mobile" name="mobile" type="tel" autocomplete="tel" value={ typed.mobile }/>
+			</div>
+			<div class="field">
+				<label for="newProject.password">{ p.words.Of("signIn.password") }</label>
+				<input id="newProject.password" name="password" type="password" autocomplete="new-password" required/>
+				<small class="hint">{ p.words.Of("common.passwordRules") }</small>
+			</div>
+			<p id="legal.agreement" class="hint">{ p.words.Of("legal.agreement") }</p>
+			<button id="newProject.submit" class="primary" type="submit">{ p.words.Of("projects.create") }</button>
+			<div class="form-links">
+				<a id="newProject.cancel" href="#" hx-get="/sign-in" hx-target="closest .signin" hx-swap="outerHTML">{ p.words.Of("common.cancel") }</a>
+			</div>
+		</form>
+	</div>
+}
+
+// registerList is the form's units or partners: a field to type one and Add, the ones added each with Remove, kept in the form as hidden values.
+// Add and Remove answer this list alone, so nothing else typed is sent or lost; Enter in its field adds, as the app's field does, and the cursor
+// waits in the field again for the next one when focus is true.
+templ registerList(p page, list string, items []string, focus bool) {
+	<fieldset id={ "newProject." + list } class="list-field">
+		<legend id={ "newProject." + list + "Heading" }>{ p.words.Of(listWords[list].heading) }</legend>
+		<div class="toolbar">
+			<input
+				id={ "newProject." + listWords[list].field + "Name" }
+				name={ listWords[list].field + "Name" }
+				aria-label={ p.words.Of(listWords[list].name) }
+				placeholder={ p.words.Of(listWords[list].name) }
+				autofocus?={ focus }
+				hx-on:keydown="if (event.key === 'Enter') { event.preventDefault(); this.nextElementSibling.click() }"
+			/>
+			<button
+				id={ "newProject.add" + listWords[list].title }
+				class="quiet-button"
+				type="button"
+				hx-post={ "/register/" + list }
+				hx-params={ listWords[list].field + "," + listWords[list].field + "Name" }
+				hx-target={ "[id='newProject." + list + "']" }
+				hx-swap="outerHTML"
+			>{ p.words.Of(listWords[list].add) }</button>
+		</div>
+		<div class="chips">
+			for index, item := range items {
+				<span id={ "newProject." + listWords[list].field + "." + strconv.Itoa(index) } class="chip">
+					<input type="hidden" name={ listWords[list].field } value={ item }/>
+					{ item }
+					<button
+						class="remove"
+						type="button"
+						aria-label={ p.words.Of("swipe.remove") }
+						hx-post={ "/register/" + list }
+						hx-params={ listWords[list].field + ",remove" }
+						hx-vals={ `{"remove":"` + strconv.Itoa(index) + `"}` }
+						hx-target={ "[id='newProject." + list + "']" }
+						hx-swap="outerHTML"
+					>✕</button>
+				</span>
+			}
+		</div>
+	</fieldset>
+}

@@ -94,7 +94,7 @@ func TestR1_ARouteSaysWhatItReadsAnswersRefusesAndNeeds(t *testing.T) {
 func TestR1_ARefusalIsToldUnderTheStatusItsCodeIsAnsweredWith(t *testing.T) {
 	_, read := generated(t)
 	register := read.Paths["/projects/register"]["post"]
-	if register.Responses["409"].Description != "Refused: usernameTaken." {
+	if register.Responses["409"].Description != "Refused: usernameTaken." || strings.Contains(register.Responses["400"].Description, "usernameTaken") {
 		t.Errorf("registering is refused with 400 %q and 409 %q", register.Responses["400"].Description, register.Responses["409"].Description)
 	}
 	if !strings.Contains(register.Responses["400"].Description, "unitNameTaken") || register.Responses["201"].Content["application/json"] == nil {

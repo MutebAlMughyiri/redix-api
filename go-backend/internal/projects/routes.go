@@ -198,8 +198,8 @@ func List(ctx context.Context, read *store.Queries, book *access.Book, now time.
 	return views, nil
 }
 
-// startRequest is a project as the one starting it types it (CreateProjectRequest).
-type startRequest struct {
+// Start is a project as the one starting it types it (CreateProjectRequest), on the phone or on the web.
+type Start struct {
 	Name              string      `json:"name"`
 	StartDate         moment.Date `json:"startDate"`
 	Units             []string    `json:"units"`
@@ -211,11 +211,11 @@ type startRequest struct {
 // create starts a project, which waits for the admin, with the one starting it as its manager (UC-004): invalidName, invalidDescription or
 // unitNameTaken (400) for what was typed, unknownSource (400) for a structure source they may not read; 201 with it.
 func (p Routes) create(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request startRequest
+	var request Start
 	if !web.Read(w, r, &request) {
 		return
 	}
-	project, units, partners, refusal := p.started(request)
+	project, units, partners, refusal := started(request)
 	if refusal != "" {
 		problem.Refuse(w, r, http.StatusBadRequest, refusal)
 		return
@@ -247,7 +247,7 @@ func (p Routes) create(w http.ResponseWriter, r *http.Request, caller access.Cal
 }
 
 // started is the project request describes, with its units and partners, or the refusal of what was typed (Project.New, DeclaredWith).
-func (p Routes) started(request startRequest) (store.Project, []string, []string, string) {
+func started(request Start) (store.Project, []string, []string, string) {
 	name, description, units, refusal := newProject(request.Name, request.Description, request.Units)
 	if refusal != "" {
 		return store.Project{}, nil, nil, refusal
@@ -283,9 +283,10 @@ func addWithManager(ctx context.Context, q *store.Queries, project store.Project
 	return users.TickStarter(ctx, q, project.ID, managerID, now)
 }
 
-// registerProjectRequest is the body POST /projects/register (UC-066) reads.
-type registerProjectRequest struct {
-	startRequest
+// Registration is a project registered with its manager's own new login (RegisterProjectRequest): the body POST /projects/register reads
+// (UC-066), and what the web's form sends.
+type Registration struct {
+	Start
 	DisplayName string `json:"displayName"`
 	Username    string `json:"username"`
 	Mobile      string `json:"mobile"`
@@ -295,17 +296,11 @@ type registerProjectRequest struct {
 // register lets someone with no account register a project and become its manager (UC-066): the project's refusals as create's, then the new
 // user's; 201 with the project as its manager sees it.
 func (p Routes) register(w http.ResponseWriter, r *http.Request) {
-	var request registerProjectRequest
+	var request Registration
 	if !web.Read(w, r, &request) {
 		return
 	}
-	project, units, partners, refusal := p.started(request.startRequest)
-	if refusal != "" {
-		problem.Refuse(w, r, http.StatusBadRequest, refusal)
-		return
-	}
-	now := moment.Of(p.clock.Now())
-	manager, status, refusal, err := users.New(r.Context(), p.database.Queries(), request.DisplayName, request.Username, request.Mobile, request.Password, false, now)
+	registered, status, refusal, err := Register(r.Context(), p.database, p.clock.Now(), request)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -314,18 +309,32 @@ func (p Routes) register(w http.ResponseWriter, r *http.Request) {
 		problem.Refuse(w, r, status, refusal)
 		return
 	}
-	err = p.database.InTx(r.Context(), func(q *store.Queries) error {
-		if err := users.Add(r.Context(), q, manager, manager.ID, now); err != nil {
+	w.Header().Set("Location", "/projects/"+registered.ProjectID.String())
+	p.answer(w, r, http.StatusCreated, registered.ProjectID, registered.ManagerID)
+}
+
+// Registered is a registration kept: the project waiting for the admin, and its manager.
+type Registered struct{ ProjectID, ManagerID uuid.UUID }
+
+// Register keeps registration at now: the project waiting for the admin, with the one registering it as its manager on a login of their own
+// (UC-066): the rule both doors call, the app's registration and the web's (redix-api #164, #80 D7). It refuses as register describes, with the
+// status the refusal answers; the error is the database's.
+func Register(ctx context.Context, database db.DB, now time.Time, registration Registration) (Registered, int, string, error) {
+	project, units, partners, refused := started(registration.Start)
+	if refused != "" {
+		return Registered{}, http.StatusBadRequest, refused, nil
+	}
+	at := moment.Of(now)
+	manager, status, refusal, err := users.New(ctx, database.Queries(), registration.DisplayName, registration.Username, registration.Mobile, registration.Password, false, at)
+	if err != nil || refusal != "" {
+		return Registered{}, status, refusal, err
+	}
+	return Registered{ProjectID: project.ID, ManagerID: manager.ID}, http.StatusCreated, "", database.InTx(ctx, func(q *store.Queries) error {
+		if err := users.Add(ctx, q, manager, manager.ID, at); err != nil {
 			return err
 		}
-		return addWithManager(r.Context(), q, project, units, partners, manager.ID, now)
+		return addWithManager(ctx, q, project, units, partners, manager.ID, at)
 	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Location", "/projects/"+project.ID.String())
-	p.answer(w, r, http.StatusCreated, project.ID, manager.ID)
 }
 
 // registeredView is a project waiting for the admin, with who registered it (RegisteredProjectView).

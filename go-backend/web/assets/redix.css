@@ -192,3 +192,15 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .state.approved, .state.active { color: var(--ok); border-color: currentColor; } .state.rejected { color: var(--refusal); border-color: currentColor; }
 .hint { color: var(--quiet); }
 @media (max-width: 720px) { .home { grid-template-columns: minmax(0, 1fr); } }
+
+/* Register new project (redix-api #164): the sign-in's box made wider, its units and partners added one at a time. */
+.signin.wide > * { max-width: 520px; } .signin.wide { height: auto; align-items: start; padding-block: 20px; }
+.signin h2.section { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--quiet); }
+.field textarea { font: inherit; font-size: 14px; min-height: 60px; box-sizing: border-box; padding: 6px 10px; border: 1px solid var(--outline); border-radius: 5px; background: var(--input); color: var(--text); resize: vertical; }
+.field small.hint { font-size: 12px; }
+.list-field { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; } .list-field legend { padding: 0; margin-block-end: 6px; font-size: 12.5px; font-weight: 500; }
+.toolbar { display: flex; gap: 8px; align-items: center; } .toolbar input { flex: 1; min-width: 0; font: inherit; font-size: 14px; height: 34px; box-sizing: border-box; padding-inline: 10px;
+  border: 1px solid var(--outline); border-radius: 5px; background: var(--input); color: var(--text); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; } .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border: 1px solid var(--chrome-line); border-radius: 999px; font-size: 12.5px; }
+[dir="rtl"] .chip { padding: 2px 10px 2px 4px; } .chip .remove { font: inherit; border: 0; background: transparent; color: var(--quiet); cursor: pointer; border-radius: 999px; padding: 0 5px; }
+.chip .remove:hover { background: var(--select); color: var(--text); }
