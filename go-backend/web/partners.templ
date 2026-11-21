@@ -1,0 +1,88 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"time"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+)
+
+// partnersList is Partners as the app's screen shows them (UC-016, UC-040): the capital total on its card, then each partner the caller sees -
+// their name, their login or that they have none, their share and their balance.
+templ partnersList(p page, shown partnersShown) {
+	<div class="view-head">
+		<h2 id="partners.title">{ p.words.Of("partners.title") }</h2>
+	</div>
+	<section id="partners.total.card" class="card">
+		<dl class="facts">
+			<dt id="partners.total.label">{ p.words.Of("capital.total") }</dt>
+			<dd id="partners.total" class="money">{ statement.Money(shown.total.Number()) }</dd>
+		</dl>
+	</section>
+	if len(shown.lines) == 0 {
+		<p id="partners.empty" class="empty">{ p.words.Of("partners.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id="partners.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<tbody id="partners.rows">
+					for _, line := range shown.lines {
+						<tr
+							id={ "partners.row." + line.ID.String() }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/partner/" + line.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "partners.partner." + line.ID.String() }>
+								<span id={ "partners.name." + line.ID.String() }>{ line.Name }</span>
+								<small id={ "partners.details." + line.ID.String() } class="hint">
+									if shown.login(line.ID) != "" {
+										{ shown.login(line.ID) }
+									} else {
+										{ p.words.Of("partners.noLogin") }
+									}
+								</small>
+							</td>
+							<td id={ "partners.share." + line.ID.String() }>{ shareOf(line) }</td>
+							<td id={ "partners.balance." + line.ID.String() } class="amount">{ statement.Money(line.Balance.Number()) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// partnerPanel is a partner in the details panel: their balance and share on one line, as the app's row shows them, and their approved
+// movements, newest first, each with its kind, date, account and amount, as the app's movements screen lists them; a movement's receipt stays
+// off the web (D1).
+templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movements []partners.Movement) {
+	<div class="details-head">
+		<h3 id="partner.title">{ line.Name }</h3>
+		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<p id="partner.figures" class="details-say"><b id="partner.balance" class="money">{ statement.Money(line.Balance.Number()) }</b> · <span id="partner.share">{ shareOf(line) }</span></p>
+	<p id="partner.movements.label" class="section-title details-say">{ p.words.Of("capital.movements") }</p>
+	if len(movements) == 0 {
+		<p id="partner.noMovements" class="hint details-say">{ p.words.Of("capital.noMovements") }</p>
+	} else {
+		<ul id="partner.movements" class="movements">
+			for _, movement := range movements {
+				<li id={ "movements.row." + movement.ID.String() }>
+					<span id={ "movements.row." + movement.ID.String() + ".title" }>
+						if movement.Description != "" {
+							{ movement.Description }
+						} else {
+							{ movement.MovementName }
+						}
+					</span>
+					<small id={ "movements.row." + movement.ID.String() + ".subtitle" } class="hint">{ parts(movement.MovementName, movement.Date.Format(time.DateOnly), movement.AccountName) }</small>
+					<b id={ "movements.row." + movement.ID.String() + ".trailing" } class="money">{ statement.Money(movement.Amount.Number()) }</b>
+				</li>
+			}
+		</ul>
+	}
+}

@@ -161,7 +161,7 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
-	if browser.Send("GET", "/tab/partners", nil).Code != http.StatusNotFound {
+	if browser.Send("GET", "/tab/contracts", nil).Code != http.StatusNotFound {
 		t.Error("an item whose feature is not built opens no tab")
 	}
 }
@@ -250,7 +250,7 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"partners", "contracts", "reports", "history"} {
+	for _, key := range []string{"contracts", "reports", "history"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
@@ -1990,5 +1990,77 @@ func TestWeb_R168_EveryKindOfAccountLineIsSaidAsTheAppsIs(t *testing.T) {
 		`class="decision check">مطابقة الأرصدة الفعلية: 460.00</td>`,
 	} {
 		has(t, history, line)
+	}
+}
+
+// partner adds a partner called name, with login as their own login when it is not empty; it is the partner's id.
+func (w working) partner(name, login string) string {
+	w.t.Helper()
+	body := `{"name":"` + name + `"}`
+	if login != "" {
+		body = `{"name":"` + name + `","userId":"` + login + `"}`
+	}
+	if code, answer := w.Ask("POST", w.path+"/partners", body, w.token); code >= 300 {
+		w.t.Fatalf("the partner: %d %v", code, answer)
+	}
+	var id string
+	if err := w.Database.Read.QueryRow("SELECT id FROM partners WHERE project_id = ? AND name = ?", w.id, name).Scan(&id); err != nil {
+		w.t.Fatal(err)
+	}
+	return id
+}
+
+// capitalIn records amount the partner partnerID puts into the bank account, described as description, and approves it.
+func (w working) capitalIn(partnerID string, amount int, description string) {
+	w.t.Helper()
+	var item string
+	if err := w.Database.Read.QueryRow("SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 6", w.id).Scan(&item); err != nil {
+		w.t.Fatal(err)
+	}
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + item + `","tableId":"` + partnerID + `","date":"2026-11-10","amount":` + strconv.Itoa(amount) + `,"accountId":"` + w.account +
+		`","description":"` + description + `","columnValues":{},"submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		w.t.Fatalf("the movement: %d %v", code, answer)
+	}
+	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+id+`"]}`, w.token); code != http.StatusOK {
+		w.t.Fatalf("approving the movement: %d %v", code, answer)
+	}
+}
+
+func TestWeb_R169_UC040_PartnersListsTheCapitalAndEachPartnersShare(t *testing.T) {
+	w := newWorking(t)
+	first, second := w.partner("شريك أ", w.manager.String()), w.partner("شريك ب", "")
+	w.capitalIn(first, 750, "دفعة أولى")
+	w.capitalIn(second, 250, "")
+	w.home()
+	list := w.browser.Send("GET", "/tab/partners", nil).Body.String()
+	has(t, list, `<dd id="partners.total" class="money">1,000.00</dd>`)
+	has(t, list, `<span id="partners.name.`+first+`">شريك أ</span>`)
+	has(t, list, `<small id="partners.details.`+first+`" class="hint">User A</small>`)
+	has(t, list, `<small id="partners.details.`+second+`" class="hint">بدون حساب دخول</small>`)
+	has(t, list, `<td id="partners.share.`+first+`">75.0000000000%</td>`)
+	has(t, list, `<td id="partners.balance.`+second+`" class="amount">250.00</td>`)
+	if strings.Index(list, `partners.row.`+first) > strings.Index(list, `partners.row.`+second) {
+		t.Error("the largest balance comes first")
+	}
+	panel := w.browser.Send("GET", "/details/partner/"+first, nil).Body.String()
+	has(t, panel, `<h3 id="partner.title">شريك أ</h3>`)
+	has(t, panel, "دفعة أولى")
+	has(t, panel, `class="money">750.00</b>`)
+	has(t, w.browser.Send("GET", "/tab/partners", nil).Body.String(), `hx-get="/details/partner/`+second+`"`)
+	if code := w.browser.Send("GET", "/details/partner/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("a partner not in the project: %d", code)
+	}
+	for _, path := range []string{"/tab/partners", "/details/partner/" + first} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
 	}
 }

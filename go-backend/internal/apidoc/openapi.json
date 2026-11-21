@@ -1896,26 +1896,7 @@
         ],
         "type": "object"
       },
-      "partners.capitalView": {
-        "properties": {
-          "partners": {
-            "items": {
-              "$ref": "#/components/schemas/partners.CapitalLine"
-            },
-            "type": "array"
-          },
-          "total": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          }
-        },
-        "required": [
-          "partners",
-          "total"
-        ],
-        "type": "object"
-      },
-      "partners.partnerDraftView": {
+      "partners.Draft": {
         "properties": {
           "amount": {
             "description": "A figure kept to four decimals.",
@@ -1932,7 +1913,7 @@
         ],
         "type": "object"
       },
-      "partners.partnerMovementView": {
+      "partners.Movement": {
         "properties": {
           "accountName": {
             "type": "string"
@@ -1978,22 +1959,7 @@
         ],
         "type": "object"
       },
-      "partners.partnerRequest": {
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "userId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "type": "object"
-      },
-      "partners.partnerView": {
+      "partners.View": {
         "properties": {
           "id": {
             "format": "uuid",
@@ -2004,7 +1970,7 @@
           },
           "myDrafts": {
             "items": {
-              "$ref": "#/components/schemas/partners.partnerDraftView"
+              "$ref": "#/components/schemas/partners.Draft"
             },
             "type": "array"
           },
@@ -2032,6 +1998,40 @@
           "othersDrafts",
           "userId",
           "userName"
+        ],
+        "type": "object"
+      },
+      "partners.capitalView": {
+        "properties": {
+          "partners": {
+            "items": {
+              "$ref": "#/components/schemas/partners.CapitalLine"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "partners",
+          "total"
+        ],
+        "type": "object"
+      },
+      "partners.partnerRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
         ],
         "type": "object"
       },
@@ -9030,7 +9030,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/partners.partnerView"
+                    "$ref": "#/components/schemas/partners.View"
                   },
                   "type": "array"
                 }
@@ -9336,7 +9336,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/partners.partnerMovementView"
+                    "$ref": "#/components/schemas/partners.Movement"
                   },
                   "type": "array"
                 }

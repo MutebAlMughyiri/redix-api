@@ -65,6 +65,19 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Findings row 202: a delete that would take the caller's own drafts needs `DeleteEntries` too | `partners.deletable` | `PartnerDeleteTests.Row_202_ADeleteThatTakesTheCallersOwnDraftsNeedsDeleteEntriesTooWhileOneWithNoDraftOfTheirsDoesNot` |
 | Findings row 203, BR-42: whose draft names a partner is told only to whoever holds `ManageSettings` | `partners.Routes.list` | `PartnerDeleteTests.Row_203_WhoseDraftNamesAPartnerIsToldOnlyToWhoeverMayDeletePartners` |
 
+## On the web: Partners (redix-api #169)
+
+The web's Partners is the app's screen in the shell: the capital total from `partners.Capital`, the function `GET /projects/{id}/capital` calls too, everyone who reads the project seeing it; then each partner the person sees (BR-31), the largest balance first, with their login - or that they have none, from `partners.ListOf`, the function `GET /projects/{id}/partners` calls too - their share, written to ten decimals as the app writes it, and their balance. A row opens the partner in the details panel with their approved movements, newest first, from `partners.MovementsOf`, the function `GET /projects/{id}/partners/{partnerId}/movements` calls too; a movement's receipt stays off the web (#80 D2). Its pages are in `go-backend/web` (`partners.go`, `partners.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/partners` | Partners, with the capital total | `200` the tab's content |
+| `GET /details/partner/{id}` | A partner and their movements in the details panel | `200` the panel; `404` for a partner the person does not see, or none |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Partners lists the capital and each partner's login, share and balance, the largest first; a partner's movements open in the panel (UC-040, BR-05, BR-28); a failing database answers 500 | `partners.Capital`, `partners.ListOf`, `partners.MovementsOf` | `TestWeb_R169_UC040_PartnersListsTheCapitalAndEachPartnersShare` |
+
 ## Left to later use cases
 
 | What | Use case |

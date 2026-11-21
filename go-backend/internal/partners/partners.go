@@ -80,46 +80,55 @@ func deletable(partners []store.Partner, movements []store.CapitalMovementsRow, 
 	return may
 }
 
-// partnerDraftView is part of what GET /projects/{projectId}/partners (UC-016) answers.
-type partnerDraftView struct {
+// Draft is part of what GET /projects/{projectId}/partners (UC-016) answers.
+type Draft struct {
 	EntryDate moment.Date  `json:"entryDate"`
 	Amount    fixed.Number `json:"amount"`
 }
 
-// partnerView is part of what GET /projects/{projectId}/partners (UC-016) answers.
-type partnerView struct {
-	ID           uuid.UUID          `json:"id"`
-	Name         string             `json:"name"`
-	UserID       string             `json:"userId"`
-	UserName     string             `json:"userName"`
-	MayDelete    bool               `json:"mayDelete"`
-	OthersDrafts []string           `json:"othersDrafts"`
-	MyDrafts     []partnerDraftView `json:"myDrafts"`
+// View is a partner as GET /projects/{projectId}/partners (UC-016) answers them, and as the web's Partners lists them (redix-api #169).
+type View struct {
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	UserID       string    `json:"userId"`
+	UserName     string    `json:"userName"`
+	MayDelete    bool      `json:"mayDelete"`
+	OthersDrafts []string  `json:"othersDrafts"`
+	MyDrafts     []Draft   `json:"myDrafts"`
 }
 
 // list is the project's partners the caller sees, in their tables' order, each with the name of their own login, whether it may be deleted now,
 // whose drafts hold it - for whoever keeps the settings - and the caller's own drafts naming it; a deleted partner is not among them.
 func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	partners, err := read.PartnersOf(r.Context(), projectID)
-	movements, movementsErr := read.CapitalMovements(r.Context(), projectID)
-	logins, loginsErr := read.PartnerLogins(r.Context(), projectID)
-	names, namesErr := read.UserNames(r.Context())
-	if err != nil || movementsErr != nil || loginsErr != nil || namesErr != nil {
+	views, err := ListOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller)
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// ListOf is projectID's partners caller sees, as list answers them: the rule both doors call, the app's route and the web's Partners (redix-api
+// #169). The error is the database's.
+func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller) ([]View, error) {
+	partners, err := read.PartnersOf(ctx, projectID)
+	movements, movementsErr := read.CapitalMovements(ctx, projectID)
+	logins, loginsErr := read.PartnerLogins(ctx, projectID)
+	names, namesErr := read.UserNames(ctx)
+	if err := errors.Join(err, movementsErr, loginsErr, namesErr); err != nil {
+		return nil, err
 	}
 	nameOf := map[uuid.UUID]string{}
 	for _, row := range names {
 		nameOf[row.ID] = row.DisplayName
 	}
 	may := deletable(partners, movements, caller, projectID)
-	var views []partnerView
+	var views []View
 	for _, partner := range partners {
 		if partner.IsDeleted || !caller.Access.SeesCapitalOf(projectID, partner.ID) {
 			continue
 		}
-		one := partnerView{ID: partner.ID, Name: partner.Name, MayDelete: may[partner.ID]}
+		one := View{ID: partner.ID, Name: partner.Name, MayDelete: may[partner.ID]}
 		for _, login := range logins {
 			if login.PartnerID == partner.ID {
 				one.UserID, one.UserName = login.UserID.String(), nameOf[login.UserID]
@@ -130,14 +139,14 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 				continue
 			}
 			if row.CreatedByUserID == caller.UserID {
-				one.MyDrafts = append(one.MyDrafts, partnerDraftView{EntryDate: row.EntryDate, Amount: row.Amount})
+				one.MyDrafts = append(one.MyDrafts, Draft{EntryDate: row.EntryDate, Amount: row.Amount})
 			} else if author := nameOf[row.CreatedByUserID]; caller.Access.Holds(projectID, access.ManageSettings) && !slices.Contains(one.OthersDrafts, author) {
 				one.OthersDrafts = append(one.OthersDrafts, author)
 			}
 		}
 		views = append(views, one)
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 type partnerRequest struct {
@@ -391,8 +400,9 @@ func (s Routes) capital(w http.ResponseWriter, r *http.Request, caller access.Ca
 	web.JSON(w, r, http.StatusOK, capitalView{total, lines})
 }
 
-// partnerMovementView is part of what GET /projects/{projectId}/partners/{partnerId}/movements answers (UC-040).
-type partnerMovementView struct {
+// Movement is one of a partner's approved movements, as GET /projects/{projectId}/partners/{partnerId}/movements answers them (UC-040) and the
+// web's panel lists them.
+type Movement struct {
 	ID           uuid.UUID   `json:"id"`
 	MovementName string      `json:"movementName"`
 	Date         moment.Date `json:"date"`
@@ -407,26 +417,34 @@ type partnerMovementView struct {
 // movements is one partner's approved movements, newest first, for whoever may see their capital (BR-31): 404 for anyone else, so a partner's
 // existence does not show.
 func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	read, projectID, partnerID := s.database.Queries(), web.ID(r, "projectId"), web.ID(r, "partnerId")
-	partners, err := read.PartnersOf(r.Context(), projectID)
+	views, err := MovementsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), web.ID(r, "partnerId"), caller)
+	if !changes.Answered(w, r, err) {
+		web.JSON(w, r, http.StatusOK, views)
+	}
+}
+
+// MovementsOf is the partner partnerID's approved movements in projectID, newest first, as movements answers them (UC-040): the rule both doors
+// call, the app's route and the web's details panel (redix-api #169). changes.NotFound for a partner caller may not see, or none; otherwise the
+// error is the database's.
+func MovementsOf(ctx context.Context, read *store.Queries, projectID, partnerID uuid.UUID, caller access.Caller) ([]Movement, error) {
+	partners, err := read.PartnersOf(ctx, projectID)
 	if err == nil && (!caller.Access.SeesCapitalOf(projectID, partnerID) || !slices.ContainsFunc(partners, func(partner store.Partner) bool { return partner.ID == partnerID })) {
 		err = changes.NotFound
 	}
-	if changes.Answered(w, r, err) {
-		return
+	if err != nil {
+		return nil, err
 	}
-	movements, err := read.CapitalMovements(r.Context(), projectID)
+	movements, err := read.CapitalMovements(ctx, projectID)
 	moved := make([]uuid.UUID, 0, len(movements))
 	for _, row := range movements {
 		moved = append(moved, row.ID)
 	}
-	accounts, accountsErr := read.AccountsOf(r.Context(), projectID)
-	files, filesErr := read.EntryFilesOf(r.Context(), db.IDList(moved))
-	items, itemsErr := read.ItemsOf(r.Context(), projectID)
-	columns, columnsErr := read.ColumnsOf(r.Context(), projectID)
-	if err != nil || accountsErr != nil || filesErr != nil || itemsErr != nil || columnsErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	accounts, accountsErr := read.AccountsOf(ctx, projectID)
+	files, filesErr := read.EntryFilesOf(ctx, db.IDList(moved))
+	items, itemsErr := read.ItemsOf(ctx, projectID)
+	columns, columnsErr := read.ColumnsOf(ctx, projectID)
+	if err := errors.Join(err, accountsErr, filesErr, itemsErr, columnsErr); err != nil {
+		return nil, err
 	}
 	accountName := map[uuid.UUID]string{}
 	for _, account := range accounts {
@@ -440,17 +458,16 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 			}
 		}
 	}
-	var views []partnerMovementView
+	var views []Movement
 	for _, row := range movements {
 		if row.PartnerID != partnerID || row.Status != ledger.Approved {
 			continue
 		}
 		movementName, err := structure.ChoiceNameIn(capitalColumns, row.ColumnValues)
 		if err != nil {
-			problem.Status(w, r, http.StatusInternalServerError)
-			return
+			return nil, err
 		}
-		one := partnerMovementView{ID: row.ID, MovementName: movementName, Date: row.EntryDate, Amount: ledger.Signed(row.Kind, fixed.Counted(row.Amount)),
+		one := Movement{ID: row.ID, MovementName: movementName, Date: row.EntryDate, Amount: ledger.Signed(row.Kind, fixed.Counted(row.Amount)),
 			Description: row.Description, AccountName: accountName[row.AccountID]}
 		for _, file := range files {
 			if file.EntryID == row.ID {
@@ -460,5 +477,5 @@ func (s Routes) movements(w http.ResponseWriter, r *http.Request, caller access.
 		}
 		views = append(views, one)
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
