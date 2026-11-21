@@ -1,0 +1,55 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import "strconv"
+
+// historyPerson is a history's choice of the person whose lines it keeps, every one's when none is chosen, as the app's history screens offer it.
+templ historyPerson(p page, shown history) {
+	<label id={ shown.name + ".personChoice.label" } class="pick-select">
+		{ p.words.Of("history.person") }
+		<select id={ shown.name + ".personChoice" } name="by">
+			<option id={ shown.name + ".personChoice.option.none" } value="">{ p.words.Of("history.all") }</option>
+			for _, member := range shown.members {
+				<option id={ shown.name + ".person." + member.ID.String() } value={ member.ID.String() } selected?={ member.ID.String() == shown.query.Get("by") }>{ member.DisplayName }</option>
+			}
+		</select>
+	</label>
+}
+
+// historyList is a history's lines, newest first, with Show more while a page was full; or that there is nothing yet.
+templ historyList(p page, shown history) {
+	if len(shown.rows) == 0 {
+		<p id={ shown.name + ".empty" } class="empty">{ p.words.Of("history.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id={ shown.name + ".table" } class="grid lines">
+				<tbody id={ shown.name + ".lines" }>
+					@historyRows(shown)
+				</tbody>
+			</table>
+		</div>
+		@historyMoreButton(p, shown, false)
+	}
+}
+
+// historyRows are a page's lines of a history: what was done, marked by its kind, and who did it when.
+templ historyRows(shown history) {
+	for _, row := range shown.rows {
+		<tr id={ shown.name + ".line." + strconv.FormatInt(row.id, 10) }>
+			<td id={ shown.name + ".what." + strconv.FormatInt(row.id, 10) } class={ "decision", row.kind }>{ row.what }</td>
+			<td id={ shown.name + ".who." + strconv.FormatInt(row.id, 10) } class="who">{ row.who }</td>
+		</tr>
+	}
+}
+
+// historyMoreButton is Show more under a history while a page was full, adding the next one after the last line; carried out of band beside
+// that page, it is gone once there is no more.
+templ historyMoreButton(p page, shown history, outOfBand bool) {
+	if shown.more() != "" {
+		<button id={ shown.name + ".more" } class="quiet-button more" type="button" hx-get={ shown.more() } hx-target={ "[id='" + shown.name + ".lines']" } hx-swap="beforeend" { swapOutOfBand(outOfBand)... }>{ p.words.Of("history.more") }</button>
+	} else if outOfBand {
+		<button id={ shown.name + ".more" } hx-swap-oob="delete"></button>
+	}
+}

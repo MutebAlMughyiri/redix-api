@@ -169,8 +169,8 @@ func (p page) offers(name string) bool {
 }
 
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
-// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances, from Accounts (redix-api #168).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}}
+// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
@@ -180,6 +180,7 @@ var contents = map[string]tab{
 	"approvals":       site.approvalsTab,
 	"accounts":        site.accountsTab,
 	"reconcile":       site.countTab,
+	"accountHistory":  site.accountHistoryTab,
 	"approvalHistory": site.approvalHistoryTab,
 	"registerProject": site.registerTab,
 	"changeEntry":     site.changeEntryTab,

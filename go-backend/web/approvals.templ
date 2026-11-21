@@ -91,7 +91,7 @@ templ approvalsList(p page, shown approvals) {
 
 // approvalHistoryPage is the approval history as the app's screen shows it: a search, the kind and the person to narrow by, then each decision -
 // what was decided on which entry, a rejection's reason, and who decided it when - newest first, with Show more while there is more.
-templ approvalHistoryPage(p page, history approvalHistory) {
+templ approvalHistoryPage(p page, history history) {
 	<div class="view-head">
 		<h2 id="approvalHistory.title">{ p.words.Of("approvals.history") }</h2>
 	</div>
@@ -110,47 +110,7 @@ templ approvalHistoryPage(p page, history approvalHistory) {
 				<label id={ "approvalHistory.kind." + filter.kind } class="pick"><input id={ "approvalHistory.kind." + filter.kind + ".input" } type="radio" name="kind" value={ filter.kind } checked?={ history.query.Get("kind") == filter.kind }/>{ p.words.Of(filter.word) }</label>
 			}
 		</fieldset>
-		<label id="approvalHistory.personChoice.label" class="pick-select">
-			{ p.words.Of("history.person") }
-			<select id="approvalHistory.personChoice" name="by">
-				<option id="approvalHistory.personChoice.option.none" value="">{ p.words.Of("history.all") }</option>
-				for _, member := range history.members {
-					<option id={ "approvalHistory.person." + member.ID.String() } value={ member.ID.String() } selected?={ member.ID.String() == history.query.Get("by") }>{ member.DisplayName }</option>
-				}
-			</select>
-		</label>
+		@historyPerson(p, history)
 	</form>
-	if len(history.lines) == 0 {
-		<p id="approvalHistory.empty" class="empty">{ p.words.Of("history.empty") }</p>
-	} else {
-		<div class="grid-wrap">
-			<table id="approvalHistory.table" class="grid lines">
-				<tbody id="approvalHistory.lines">
-					@approvalLines(p, history)
-				</tbody>
-			</table>
-		</div>
-		@moreHistory(p, history, false)
-	}
+	@historyList(p, history)
 }
-
-// approvalLines are a page's lines of the approval history.
-templ approvalLines(p page, history approvalHistory) {
-	for _, line := range history.lines {
-		<tr id={ "approvalHistory.line." + strconv.FormatInt(line.ID, 10) }>
-			<td id={ "approvalHistory.what." + strconv.FormatInt(line.ID, 10) } class={ "decision", line.Kind.Name() }>{ history.what(p, line) }</td>
-			<td id={ "approvalHistory.who." + strconv.FormatInt(line.ID, 10) } class="who">{ history.whoAndWhen(p, line) }</td>
-		</tr>
-	}
-}
-
-// moreHistory is Show more under the approval history while a page was full, adding the next one after the last line; carried out of band beside
-// that page, it is gone once there is no more.
-templ moreHistory(p page, history approvalHistory, outOfBand bool) {
-	if history.more() != "" {
-		<button id="approvalHistory.more" class="quiet-button more" type="button" hx-get={ "/approval-history?" + history.more() } hx-target="[id='approvalHistory.lines']" hx-swap="beforeend" { swapOutOfBand(outOfBand)... }>{ p.words.Of("history.more") }</button>
-	} else if outOfBand {
-		<button id="approvalHistory.more" hx-swap-oob="delete"></button>
-	}
-}
-

@@ -89,6 +89,7 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("POST /transfer", s.transfer)
 	mux.HandleFunc("GET /count-figures", s.countFigures)
 	mux.HandleFunc("POST /count", s.keepCount)
+	mux.HandleFunc("GET /account-history", s.accountHistoryMore)
 	mux.HandleFunc("POST /project/{id}", s.chooseProject)
 	mux.HandleFunc("POST /project/{id}/default", s.starProject)
 	mux.HandleFunc("GET /language/{language}", s.chooseLanguage)

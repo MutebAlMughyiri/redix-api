@@ -507,3 +507,19 @@ func (s site) keepCount(w http.ResponseWriter, r *http.Request) {
 	}
 	s.turn(w, r, func(v view) view { return v.closing("reconcile").opening("accounts") })
 }
+
+// accountHistoryTab is the account history in its tab (redix-app #89, redix-api #168): accounts added, changed, disabled, enabled or deleted, a
+// custodian handed on, transfers, approved entries and checks, newest first, searched and narrowed by account and person as the app's.
+func (s site) accountHistoryTab(r *http.Request, p page) (templ.Component, error) {
+	shown, err := s.accountHistoryOf(r.Context(), p, r.URL.Query())
+	if err != nil {
+		return nil, err
+	}
+	listed, err := s.accountsOf(r.Context(), p)
+	return accountHistoryPage(p, shown, listed), err
+}
+
+// accountHistoryMore is the next page of the account history, added after the last line.
+func (s site) accountHistoryMore(w http.ResponseWriter, r *http.Request) {
+	s.historyMore(w, r, "accountHistory", s.accountHistoryOf)
+}

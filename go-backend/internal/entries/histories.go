@@ -5,6 +5,7 @@ package entries
 
 import (
 	"context"
+	"errors"
 	"math"
 	"net/http"
 	"net/url"
@@ -168,7 +169,8 @@ func idIn(values, name string) uuid.UUID {
 var accountKinds = web.Enum{"accountCreated", "accountChanged", "accountDisabled", "accountEnabled", "accountDeleted", "custodianChanged", "transfer",
 	"entryIn", "entryOut", "check"}
 
-type accountLine struct {
+// AccountLine is a line of the account history, as the app's and the web's list it (redix-api #168).
+type AccountLine struct {
 	ID           int64         `json:"id"`
 	At           moment.Moment `json:"at"`
 	By           string        `json:"by"`
@@ -181,7 +183,7 @@ type accountLine struct {
 	Custodian    string        `json:"custodian"`
 }
 
-func (l accountLine) holds(text string) bool {
+func (l AccountLine) holds(text string) bool {
 	return spelling.Holds(text, l.Amount.Number(), l.By, l.Account, l.OtherAccount, l.NameWas, l.Custodian)
 }
 
@@ -189,24 +191,32 @@ func (l accountLine) holds(text string) bool {
 // deleted, a custodian changed, transfers, entries once approved or reversed, and checks; account keeps one account's lines, unknownAccount (400)
 // for one not in the project.
 func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	accountID, _ := uuid.Parse(r.URL.Query().Get("account"))
-	accounts, err := c.Q.AccountsOf(c.Ctx, c.ProjectID)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
+	lines, err := AccountHistoryOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, r.URL.Query())
+	if changes.Answered(w, r, err) {
 		return
 	}
+	web.JSON(w, r, http.StatusOK, lines)
+}
+
+// AccountHistoryOf is a page of projectID's account history as caller sees it, as accountHistory answers it, paged and narrowed by query's
+// account, by, before and text: the rule both doors call, the app's route and the web's (redix-api #168). unknownAccount (400) for an account
+// not in the project; otherwise the error is the database's.
+func AccountHistoryOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, query url.Values) ([]AccountLine, error) {
+	c := changes.Change{Ctx: ctx, Q: read, ProjectID: projectID}
+	accountID, _ := uuid.Parse(query.Get("account"))
+	accounts, err := c.Q.AccountsOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return nil, err
+	}
 	if accountID != uuid.Nil && !slices.ContainsFunc(accounts, func(account store.AccountsOfRow) bool { return account.ID == accountID }) {
-		problem.Refuse(w, r, http.StatusBadRequest, "unknownAccount")
-		return
+		return nil, changes.Refuse(http.StatusBadRequest, "unknownAccount")
 	}
 	known, err := namesOf(c)
 	deleted, deletedErr := c.Q.DeletedAccountsOf(c.Ctx, c.ProjectID)
 	transfers, transfersErr := c.Q.TransfersOf(c.Ctx, c.ProjectID)
 	balances, balancesErr := c.Q.ReconciliationBalancesOf(c.Ctx, c.ProjectID)
-	if err != nil || deletedErr != nil || transfersErr != nil || balancesErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if err := errors.Join(err, deletedErr, transfersErr, balancesErr); err != nil {
+		return nil, err
 	}
 	names := known.accounts
 	for _, row := range deleted {
@@ -243,8 +253,8 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		return row.RecordID == accountID || (isTransfer && (transfer.FromAccountID == accountID || transfer.ToAccountID == accountID)) ||
 			(isEntry && entry.AccountID == accountID) || slices.Contains(checks[row.RecordID], accountID)
 	}
-	lines, err := page(r.URL.Query(), projectLines(c), eachAbout(c, known, seenOf, keep, func(row store.History) accountLine {
-		line := accountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(ledger.Purchase)}
+	return page(query, projectLines(c), eachAbout(c, known, seenOf, keep, func(row store.History) AccountLine {
+		line := AccountLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{1, accountKinds}, EntryKind: kindOf(ledger.Purchase)}
 		switch row.TableName {
 		case "Accounts":
 			kinds := map[string]int64{"Create": 0, "Disable": 2, "Enable": 3, "Delete": 4}
@@ -277,11 +287,6 @@ func (s Routes) accountHistory(w http.ResponseWriter, r *http.Request, caller ac
 		}
 		return line
 	}))
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	web.JSON(w, r, http.StatusOK, lines)
 }
 
 // What a line of the partner history says was done (PartnerHistoryKind).

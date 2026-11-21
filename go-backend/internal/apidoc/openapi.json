@@ -692,6 +692,55 @@
         ],
         "type": "object"
       },
+      "entries.AccountLine": {
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "amount": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "custodian": {
+            "type": "string"
+          },
+          "entryKind": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "nameWas": {
+            "type": "string"
+          },
+          "otherAccount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account",
+          "amount",
+          "at",
+          "by",
+          "custodian",
+          "entryKind",
+          "id",
+          "kind",
+          "nameWas",
+          "otherAccount"
+        ],
+        "type": "object"
+      },
       "entries.ApprovalFailure": {
         "properties": {
           "code": {
@@ -1315,55 +1364,6 @@
           "rows",
           "sortOrder",
           "total"
-        ],
-        "type": "object"
-      },
-      "entries.accountLine": {
-        "properties": {
-          "account": {
-            "type": "string"
-          },
-          "amount": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "by": {
-            "type": "string"
-          },
-          "custodian": {
-            "type": "string"
-          },
-          "entryKind": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "nameWas": {
-            "type": "string"
-          },
-          "otherAccount": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "account",
-          "amount",
-          "at",
-          "by",
-          "custodian",
-          "entryKind",
-          "id",
-          "kind",
-          "nameWas",
-          "otherAccount"
         ],
         "type": "object"
       },
@@ -4844,7 +4844,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.accountLine"
+                    "$ref": "#/components/schemas/entries.AccountLine"
                   },
                   "type": "array"
                 }

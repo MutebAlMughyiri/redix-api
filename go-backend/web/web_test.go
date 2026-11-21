@@ -1922,3 +1922,73 @@ func TestWeb_R168_TheCountIsLeftToWhoeverMayUpdateIt(t *testing.T) {
 		}
 	}
 }
+
+func TestWeb_R168_TheAccountHistoryTellsEachLineAsTheAppsDoes(t *testing.T) {
+	w := newWorking(t)
+	w.funded(500)
+	w.Ask("POST", w.path+"/accounts", `{"name":"حساب احتياطي","type":"bank"}`, w.token)
+	spare := w.accountNamed("حساب احتياطي")
+	w.Ask("POST", w.path+"/accounts/"+spare+"/disable", ``, w.token)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/accounts", nil).Body.String(), `hx-get="/tab/accountHistory"`)
+	history := w.browser.Send("GET", "/tab/accountHistory", nil).Body.String()
+	has(t, history, `class="decision accountDisabled">تعطيل حساب احتياطي</td>`)
+	has(t, history, `class="decision accountCreated">إضافة الحساب حساب احتياطي</td>`)
+	has(t, history, `class="decision entryIn">إيرادات 500.00 إلى حساب المؤسسة</td>`)
+	has(t, history, `class="who">اعتمده User A · 2026-11-16 13:00</td>`)
+	has(t, history, `id="accountHistory.account.`+spare+`"`)
+	one := w.browser.Send("GET", "/tab/accountHistory?account="+spare, nil).Body.String()
+	has(t, one, "تعطيل حساب احتياطي")
+	lacks(t, one, "إيرادات 500.00")
+	has(t, w.browser.Send("GET", "/tab/accountHistory?account="+uuid.NewString(), nil).Body.String(), `id="accountHistory.empty"`)
+	searched := w.browser.Send("GET", "/tab/accountHistory?text=500", nil).Body.String()
+	has(t, searched, "إيرادات 500.00")
+	lacks(t, searched, "تعطيل حساب احتياطي")
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/accountHistory", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("the account history with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/account-history?before=999999", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("a page of the account history with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}
+
+func TestWeb_R168_EveryKindOfAccountLineIsSaidAsTheAppsIs(t *testing.T) {
+	w := newWorking(t)
+	w.funded(500)
+	w.Ask("POST", w.path+"/accounts", `{"name":"حساب احتياطي","type":"bank"}`, w.token)
+	spare := w.accountNamed("حساب احتياطي")
+	w.Ask("PUT", w.path+"/accounts/"+spare, `{"name":"الحساب الثاني"}`, w.token)
+	w.Ask("PUT", w.path+"/accounts/"+spare, `{"name":"الحساب الثاني","custodianId":"`+w.manager.String()+`"}`, w.token)
+	w.Ask("PUT", w.path+"/accounts/"+spare, `{"name":"الحساب الثاني"}`, w.token)
+	if code, answer := w.Ask("POST", w.path+"/transfers", `{"fromAccountId":"`+w.account+`","toAccountId":"`+spare+`","amount":100,"date":"2026-11-15","notes":""}`, w.token); code >= 300 {
+		t.Fatalf("transferring: %d %v", code, answer)
+	}
+	w.approved(40)
+	w.home()
+	if code := w.browser.Send("POST", "/count", url.Values{"balance." + w.account: {"360"}, "balance." + spare: {"100"}}).Code; code != http.StatusOK {
+		t.Fatalf("counting: %d", code)
+	}
+	history := w.browser.Send("GET", "/tab/accountHistory", nil).Body.String()
+	for _, line := range []string{
+		`class="decision accountChanged">تعديل الحساب الثاني: الاسم كان حساب احتياطي</td>`,
+		`class="decision custodianChanged">الحساب الثاني أصبح مع User A</td>`,
+		`class="decision custodianChanged">الحساب الثاني أصبح مع لا أحد</td>`,
+		`class="decision transfer">تحويل 100.00 من حساب المؤسسة إلى الحساب الثاني</td>`,
+		`class="decision entryOut">مشتريات 40.00 من حساب المؤسسة</td>`,
+		`class="decision check">مطابقة الأرصدة الفعلية: 460.00</td>`,
+	} {
+		has(t, history, line)
+	}
+}
