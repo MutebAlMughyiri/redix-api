@@ -35,14 +35,15 @@ var build = func() string {
 	return ""
 }()
 
-// Parts are what the pages run on: the same database, sessions, codes and gate as the app's API, and the same window that caps how often one
-// address asks for an emailed code.
+// Parts are what the pages run on: the same database, sessions, codes, gate and access book as the app's API, and the same window that caps how
+// often one address asks for an emailed code.
 type Parts struct {
 	Database   db.DB
 	Sessions   auth.Sessions
 	Codes      auth.Codes
 	EmailCodes *limits.Window
 	Gate       *access.Gate
+	Book       *access.Book
 	Clock      clock.Clock
 }
 
@@ -68,6 +69,7 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /tab/{name}", s.openTab)
 	mux.HandleFunc("DELETE /tab/{name}", s.closeTab)
 	mux.HandleFunc("POST /view", s.keepView)
+	mux.HandleFunc("POST /project/{id}", s.chooseProject)
 	mux.HandleFunc("GET /language/{language}", s.chooseLanguage)
 	return http.NewCrossOriginProtection().Handler(mux)
 }

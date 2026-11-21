@@ -82,7 +82,7 @@ func TestR1_ARouteSaysWhatItReadsAnswersRefusesAndNeeds(t *testing.T) {
 		t.Errorf("adding an account is refused with %q", refused)
 	}
 	if accounts := read.Paths["/projects/{projectId}/accounts"]["get"].Responses["200"].Content["application/json"]["schema"]; fmt.Sprint(accounts) !=
-		"map[items:map[$ref:#/components/schemas/accounts.accountView] type:array]" {
+		"map[items:map[$ref:#/components/schemas/accounts.View] type:array]" {
 		t.Errorf("the accounts answer %v", accounts)
 	}
 	signIn := read.Paths["/auth/sign-in"]["post"]
@@ -93,7 +93,7 @@ func TestR1_ARouteSaysWhatItReadsAnswersRefusesAndNeeds(t *testing.T) {
 
 func TestR5_FieldsAreCamelCaseAndAnEnumIsItsNames(t *testing.T) {
 	_, read := generated(t)
-	account := read.Components.Schemas["accounts.accountView"]
+	account := read.Components.Schemas["accounts.View"]
 	if !slices.Equal(anyStrings(account.Properties["type"]["enum"]), []string{"bank", "cashCustody"}) || account.Properties["isActive"] == nil ||
 		!slices.Contains(account.Required, "name") {
 		t.Errorf("an account reads %+v", account)

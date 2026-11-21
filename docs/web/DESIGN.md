@@ -16,6 +16,8 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 | `web/page.go` | One drawing of the shell; the side menu's items and which of them a built feature opens |
 | `web/session.go` | The session's cookies, and the sign-in, change-password and sign-out pages |
 | `web/reset.go` | Forgot password: the form, asking for a code, and the reset |
+| `web/project.go` | The project the person works in: chosen from the top bar, else the default, kept in a cookie |
+| `web/home.go`, `web/home.templ` | The home: the summary, my custody, the newest entries; the project list while choosing |
 | `web/shell.go` | The page, the tabs, the View menu's choices, the language |
 | `web/view.go` | The shell's choices, kept in a cookie |
 | `web/assets.go` | The embedded files, gzipped once, served under their hash and kept a year |
@@ -54,6 +56,8 @@ Every element a test clicks or reads has an id, so automation finds it as the ap
 | Forgot password | `forgotPassword.title`, `forgotPassword.message`, `forgotPassword.sendForm`, `forgotPassword.login`, `forgotPassword.send`, `forgotPassword.sent`, `forgotPassword.form`, `forgotPassword.code`, `forgotPassword.new`, `forgotPassword.confirm`, `forgotPassword.reset`, `forgotPassword.cancel` |
 | Change password | `changePassword.form`, `changePassword.title`, `changePassword.hint`, `changePassword.current`, `changePassword.new`, `changePassword.confirm`, `changePassword.message`, `changePassword.submit` |
 | Settings | `sharedSettings.title`, `web.setting.language`, `myAccount.language`, `web.language`, `myAccount.arabic`, `myAccount.english` |
+| Projects | `web.project`, `web.projects`, `web.projects.title`, `web.projects.<id>`, `projects.new`, `web.sideProject`; on the list: `projects.title`, `projects.hint`, `projects.empty`, `projects.card.<id>` |
+| Home | `home.title`, `home.roleName`, `home.collapse`, `home.addEntry.<id>`, `summary.card`, `summary.pending`, `summary.surplus.label`, `summary.surplus`, `summary.completion`, `summary.completionBar`, `summary.difference`, `summary.revenue.card`, `summary.revenue.body`, `summary.revenue`, the same for `expenses`, `summary.category.<id>`, `home.custody.<id>`, `home.custodyBalance.<id>`, `home.entriesHeading.<id>`, `home.entriesEmpty.<id>`, `entries.row.<id>`, `home.moreEntries.<id>`; `web.view.summary` keeps Hide details |
 
 ## The look
 

@@ -136,3 +136,59 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
   .shell .sash, .brand span, .who, .status .host { display: none; }
   .content { padding-inline: 14px; }
 }
+
+/* The project the person works in (redix-api #165): its button in the top bar lists their projects; its name heads the side menu. */
+.project { anchor-name: --project; display: inline-flex; align-items: center; gap: 6px; font: inherit; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 4px 8px; cursor: pointer; }
+.project:hover, .project:focus-visible { background: var(--select); } .caret { color: var(--quiet); font-size: 10px; }
+.menu-pop { position-anchor: --project; position-area: block-end span-inline-end; position-try-fallbacks: flip-inline; inset: auto; margin: 4px 0 0; padding: 6px; min-width: 260px;
+  max-height: calc(100vh - var(--top) - 24px); overflow: auto; box-sizing: border-box;
+  background: var(--content); color: var(--text); border: 1px solid var(--chrome-line); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.menu-pop h4 { margin: 4px 8px 6px; font-size: 12px; font-weight: 500; color: var(--quiet); }
+.menu-pop .choice, .menu-pop .parked { display: flex; width: 100%; box-sizing: border-box; padding: 7px 8px; }
+.choice { align-items: center; gap: 8px; font: inherit; text-align: start; border: 0; border-radius: 4px; background: transparent; color: var(--text); cursor: pointer; }
+.choice:hover:not(:disabled) { background: var(--select); } .choice[aria-current="true"] { font-weight: 600; } .choice:disabled { color: var(--faint); cursor: not-allowed; }
+.choice .state { margin-inline-start: auto; } .choice small { color: var(--quiet); }
+.parked { color: var(--faint); cursor: not-allowed; }
+.side-project { overflow: hidden; text-overflow: ellipsis; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.cards .choice { flex-direction: column; align-items: flex-start; padding: 12px; border: 1px solid var(--chrome-line); background: var(--chrome); }
+.cards .choice .state { margin-inline-start: 0; }
+
+/* The home: the summary at the start, custody and the newest entries beside it; one column on a phone. */
+.home-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-block-start: 18px; margin-block-end: 14px; }
+.home-head h2 { margin: 0; font-size: 16px; font-weight: 600; } .home-head .role { color: var(--quiet); }
+.home-head .end { margin-inline-start: auto; display: flex; gap: 8px; }
+.quiet-button { display: inline-flex; align-items: center; font: inherit; height: 30px; padding-inline: 12px; border: 1px solid var(--chrome-line); border-radius: 5px; background: transparent; color: var(--quiet); cursor: pointer; }
+.quiet-button:hover { background: var(--select); color: var(--text); }
+.primary.small { height: 30px; padding-inline: 14px; } .primary:disabled { background: var(--chrome-line); color: var(--faint); cursor: not-allowed; }
+.home { display: grid; grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.card { border: 1px solid var(--chrome-line); border-radius: 8px; background: var(--chrome); padding: 14px; }
+.summary { display: flex; flex-direction: column; gap: 10px; }
+.when-hidden { display: none; }
+.shell:has([id="web.view.summary"]:not(:checked)) .summary { display: none; }
+.shell:has([id="web.view.summary"]:not(:checked)) .home { grid-template-columns: minmax(0, 1fr); }
+.shell:has([id="web.view.summary"]:not(:checked)) .when-shown { display: none; } .shell:has([id="web.view.summary"]:not(:checked)) .when-hidden { display: inline; }
+.pending { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 6px; background: var(--select); }
+.pending small { color: var(--quiet); font-size: 12px; }
+.label { color: var(--quiet); font-size: 12px; }
+.surplus { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; } .surplus small { font-size: 13px; font-weight: 500; color: var(--quiet); }
+progress.bar { width: 100%; height: 6px; appearance: none; border: 0; border-radius: 3px; background: var(--chrome-line); accent-color: var(--accent); }
+progress.bar::-webkit-progress-bar { background: var(--chrome-line); border-radius: 3px; } progress.bar::-webkit-progress-value { background: var(--accent); border-radius: 3px; }
+progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
+.tile { border: 1px solid var(--chrome-line); border-radius: 6px; background: var(--content); }
+.tile[open] { grid-column: 1 / -1; border-color: var(--accent); }
+.tile summary { display: flex; flex-direction: column; gap: 2px; padding: 10px; cursor: pointer; } .tile summary b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.shares { list-style: none; margin: 0; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+.shares li { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; } .shares .figure { font-variant-numeric: tabular-nums; } .shares .bar { grid-column: 1 / -1; height: 4px; }
+.side-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.custody { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; } .custody b { margin-inline-start: auto; font-size: 15px; font-variant-numeric: tabular-nums; }
+.latest-head { margin: 0; font-size: 14px; font-weight: 600; } .more { align-self: center; font-size: 12.5px; }
+.grid-wrap { overflow: auto; border: 1px solid var(--chrome-line); border-radius: 6px; }
+.grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.grid th { text-align: start; font-weight: 500; color: var(--quiet); padding: 6px 10px; border-block-end: 1px solid var(--chrome-line); background: var(--chrome); position: sticky; top: 0; }
+.grid td { padding: 7px 10px; border-block-end: 1px solid var(--chrome-line); } .grid .amount { text-align: end; }
+.state { font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--chrome-line); color: var(--quiet); white-space: nowrap; }
+.state.approved, .state.active { color: var(--ok); border-color: currentColor; } .state.rejected { color: var(--refusal); border-color: currentColor; }
+.hint { color: var(--quiet); }
+@media (max-width: 720px) { .home { grid-template-columns: minmax(0, 1fr); } }

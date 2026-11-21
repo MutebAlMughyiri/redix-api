@@ -56,13 +56,31 @@ templ shell(p page) {
 	</div>
 }
 
-// topBar holds the logo and, once someone is signed in, their name and Sign out (#161 R6).
+// topBar holds the logo and, once someone is signed in, the project they work in - its button lists their projects, as the app's project list
+// does (redix-api #165) - their name and Sign out (#161 R6).
 templ topBar(p page) {
 	<header id="web.topBar" class="top">
 		<div id="web.brand" class="brand">
 			@logo()
 			<span>{ p.words.Of("app.title") }</span>
 		</div>
+		if p.in {
+			<button id="web.project" class="project" type="button" popovertarget="web.projects">
+				if p.inProject() {
+					{ p.project.Name }
+				} else {
+					{ p.words.Of("projects.choose") }
+				}
+				<span class="caret">▾</span>
+			</button>
+			<div id="web.projects" class="menu-pop projects-menu" popover>
+				<h4 id="web.projects.title">{ p.words.Of("projects.choose") }</h4>
+				for _, project := range p.projects {
+					@projectChoice(p, project, "web.projects.")
+				}
+				<span id="projects.new" class="parked" aria-disabled="true">{ p.words.Of("projects.new") }</span>
+			</div>
+		}
 		if p.person != "" {
 			<div class="end">
 				<span id="web.person" class="who">{ p.person }</span>
@@ -81,6 +99,7 @@ templ logo() {
 templ side(p page) {
 	<aside id="web.sideMenu" class="side" aria-label={ p.words.Of("web.sideMenu") }>
 		<div class="side-head">
+			<span id="web.sideProject" class="side-project">{ p.project.Name }</span>
 			<label id="web.fold" class="fold" for="web.view.sideMenu" data-tip={ p.shortcut("web.collapse") }>{ p.foldArrow() }</label>
 		</div>
 		@tree(p)
@@ -126,6 +145,7 @@ templ tabsRow(p page) {
 			<label><input type="checkbox" id="web.view.topBar" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
 			<label><input type="checkbox" id="web.view.statusBar" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
 			<label><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd>Alt+1</kbd></label>
+			<input type="checkbox" id="web.view.summary" name="summary" checked?={ p.view.Summary } hidden/>
 			<input type="hidden" id="web.view.width" name="width" value={ strconv.Itoa(p.view.Width) }/>
 		</form>
 	</div>

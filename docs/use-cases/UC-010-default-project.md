@@ -27,9 +27,9 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A default project is kept for the next session, which opens it (AC-37.1) | `projects.Routes.setDefault`, `auth.Sessions.answer` | `ProjectsTests.AC_37_1_ADefaultProjectIsKeptForTheNextSessionWhichOpensIt` |
-| A default without access is not offered (AC-37.2) | `auth.Sessions.answer` | `ProjectsTests.ADefaultWithoutAccessIsNotOffered` |
-| A default he is inactive in is skipped, not cleared, and comes back when he is active again (AC-37.2, redix-api #126) | `auth.Sessions.answer`, `access.Book.Of` | `InactiveMembersTests.AC_37_2_ADefaultProjectHeIsInactiveInIsSkippedNotClearedAndComesBackWhenHeIsActiveAgain` |
+| A default project is kept for the next session, which opens it (AC-37.1) | `projects.Routes.setDefault`, `projects.DefaultOf` | `ProjectsTests.AC_37_1_ADefaultProjectIsKeptForTheNextSessionWhichOpensIt` |
+| A default without access is not offered (AC-37.2) | `projects.DefaultOf` | `ProjectsTests.ADefaultWithoutAccessIsNotOffered` |
+| A default he is inactive in is skipped, not cleared, and comes back when he is active again (AC-37.2, redix-api #126) | `projects.DefaultOf`, `access.Book.Of` | `InactiveMembersTests.AC_37_2_ADefaultProjectHeIsInactiveInIsSkippedNotClearedAndComesBackWhenHeIsActiveAgain` |
 | A project without access cannot be the default (BR-33) | `access.ReadProject` | `ProjectsTests.AProjectWithoutAccessCannotBeTheDefault` |
 | A project waiting for approval cannot be the default | `access.ReadProject` | `ProjectsTests.AWaitingProjectCannotBeTheDefault` |
 | A finished project can be the default | `access.ReadProject` | `ProjectsTests.AFinishedProjectCanBeTheDefault` |

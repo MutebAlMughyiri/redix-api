@@ -476,17 +476,23 @@ const entryBatch = 500
 var newest = moment.Of(time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC))
 
 // everyRow shows every row a list keeps.
-func everyRow(rowView) bool { return true }
+func everyRow(Row) bool { return true }
 
-// rows is the entries keep keeps of those caller sees, as the lists show them and show keeps (EntriesEndpoints.RowsAsync), newest first: read a
-// batch at a time with that batch's facts, until take are kept, every one when take is 0 (#87).
-func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entry, facts) bool, show func(rowView) bool, take int) ([]rowView, error) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
+// Newest is the newest take entries of projectID that caller sees, as the lists show them: the home's latest entries, on the phone and on the web
+// (redix-api #165). The error is the database's.
+func Newest(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, take int) ([]Row, error) {
+	return rowsOf(ctx, read, projectID, caller, func(store.Entry, facts) bool { return true }, everyRow, take)
+}
+
+// rowsOf is the entries of projectID keep keeps of those caller sees, as the lists show them and show keeps (EntriesEndpoints.RowsAsync), newest
+// first: read a batch at a time with that batch's facts, until take are kept, every one when take is 0 (#87).
+func rowsOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, keep func(store.Entry, facts) bool, show func(Row) bool, take int) ([]Row, error) {
+	c := changes.Change{Ctx: ctx, Q: read, ProjectID: projectID, Access: caller.Access}
 	known, err := sharedFactsOf(c)
 	if err != nil {
 		return nil, err
 	}
-	var views []rowView
+	var views []Row
 	after := store.EntriesBeforeParams{ProjectID: c.ProjectID, CreatedAt: newest, Number: math.MaxInt64, Take: entryBatch}
 	if take > 0 {
 		after.Take = int64(min(take, entryBatch))
@@ -530,13 +536,13 @@ func (s Routes) rows(r *http.Request, caller access.Caller, keep func(store.Entr
 
 // mine is where the caller's own entries stand, newest first (UC-030).
 func (s Routes) mine(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	views, err := s.rows(r, caller, func(entry store.Entry, _ facts) bool { return entry.CreatedByUserID == caller.UserID }, everyRow, 0)
+	views, err := rowsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, func(entry store.Entry, _ facts) bool { return entry.CreatedByUserID == caller.UserID }, everyRow, 0)
 	s.answer(w, r, views, err)
 }
 
 // row is one entry as the lists show it (findings row 201): 404 for one the caller does not see (BR-31, BR-42), or none.
 func (s Routes) row(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	views, err := s.rows(r, caller, func(entry store.Entry, _ facts) bool { return entry.ID == web.ID(r, "entryId") }, everyRow, 1)
+	views, err := rowsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, func(entry store.Entry, _ facts) bool { return entry.ID == web.ID(r, "entryId") }, everyRow, 1)
 	if err == nil && len(views) != 1 {
 		problem.Status(w, r, http.StatusNotFound)
 		return
@@ -556,7 +562,7 @@ func (s Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 	search := searchOf(query["kinds"], query["statuses"], query.Get("text"), query.Get("mine"), query.Get("from"), query.Get("to"), query.Get("number"))
 	attachableOnly := strings.EqualFold(query.Get("attachable"), "true")
 	take, _ := strconv.Atoi(query.Get("take"))
-	kept, err := s.rows(r, caller, func(entry store.Entry, _ facts) bool { return !attachableOnly || attachableBy(entry, caller) }, search.keeps,
+	kept, err := rowsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, func(entry store.Entry, _ facts) bool { return !attachableOnly || attachableBy(entry, caller) }, search.keeps,
 		max(take, 0))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)

@@ -61,21 +61,22 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, book *access.Boo
 	router.Handle("DELETE", "/projects/default", gate.Working(p.removeDefault))
 }
 
-// unitView is one of a project's units (UnitView).
-type unitView struct {
+// Unit is one of a project's units (UnitView).
+type Unit struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 }
 
-// projectView is a project as the person asking sees it (ProjectView): what they hold in it - nothing while inactive there - and their role name.
-type projectView struct {
+// View is a project as the person asking sees it (ProjectView), on the phone and on the web: what they hold in it - nothing while inactive there -
+// and their role name.
+type View struct {
 	ID              uuid.UUID           `json:"id"`
 	Name            string              `json:"name"`
 	StartDate       moment.Date         `json:"startDate"`
 	Status          string              `json:"status"`
 	RejectionReason string              `json:"rejectionReason"`
 	Description     string              `json:"description"`
-	Units           []unitView          `json:"units"`
+	Units           []Unit              `json:"units"`
 	Permissions     []access.Permission `json:"permissions"`
 	RoleName        string              `json:"roleName"`
 	IsInactive      bool                `json:"isInactive"`
@@ -104,12 +105,12 @@ func (s sight) zoneOf(projectID uuid.UUID) string {
 	return zones.Riyadh
 }
 
-func (p Routes) sightOf(ctx context.Context, userID uuid.UUID) (sight, error) {
-	held, err := p.book.Of(ctx, userID)
+// sightOf is what userID holds and is, read through book at now.
+func sightOf(ctx context.Context, read *store.Queries, book *access.Book, now time.Time, userID uuid.UUID) (sight, error) {
+	held, err := book.Of(ctx, userID)
 	if err != nil {
 		return sight{}, err
 	}
-	read := p.database.Queries()
 	named, err := read.RoleNamesOfUser(ctx, userID)
 	if err != nil {
 		return sight{}, err
@@ -127,7 +128,7 @@ func (p Routes) sightOf(ctx context.Context, userID uuid.UUID) (sight, error) {
 		return sight{}, err
 	}
 	s := sight{access: held, roleNames: map[uuid.UUID]string{}, inactive: map[uuid.UUID]bool{}, holding: map[uuid.UUID]bool{}, zones: map[uuid.UUID]string{},
-		now: p.clock.Now()}
+		now: now}
 	for _, row := range chosen {
 		s.zones[row.ProjectID] = row.TimeZone
 	}
@@ -143,16 +144,16 @@ func (p Routes) sightOf(ctx context.Context, userID uuid.UUID) (sight, error) {
 	return s, nil
 }
 
-func (s sight) view(project store.Project, units []store.Unit) projectView {
-	var views []unitView
+func (s sight) view(project store.Project, units []store.Unit) View {
+	var views []Unit
 	for _, unit := range units {
-		views = append(views, unitView{ID: unit.ID, Name: unit.Name})
+		views = append(views, Unit{ID: unit.ID, Name: unit.Name})
 	}
 	permissions := s.access.In(project.ID)
 	if s.inactive[project.ID] {
 		permissions = nil
 	}
-	return projectView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Status: statusNames[project.Status], RejectionReason: project.RejectionReason,
+	return View{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Status: statusNames[project.Status], RejectionReason: project.RejectionReason,
 		Description: project.Description, Units: views, Permissions: permissions, RoleName: s.roleNames[project.ID], IsInactive: s.inactive[project.ID],
 		HoldsEntries: s.holding[project.ID], TimeZone: s.zoneOf(project.ID), UTCOffset: zones.OffsetMinutes(s.zoneOf(project.ID), s.now),
 		UnseenTables: s.access.UnseenIn(project.ID)}
@@ -161,14 +162,23 @@ func (s sight) view(project store.Project, units []store.Unit) projectView {
 // list is the projects the person may read, and those they started or were made inactive in, the active first, the latest start first
 // (ProjectsEndpoints.List).
 func (p Routes) list(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	read := p.database.Queries()
-	seen, err := p.sightOf(r.Context(), caller.UserID)
-	projects, projectsErr := read.AllProjects(r.Context())
-	units, unitsErr := read.AllUnits(r.Context())
-	theirs, theirsErr := read.ProjectsOfUserWithRows(r.Context(), caller.UserID)
-	if err != nil || projectsErr != nil || unitsErr != nil || theirsErr != nil {
+	views, err := List(r.Context(), p.database.Queries(), p.book, p.clock.Now(), caller.UserID)
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// List is the projects userID may read, and those they started or were made inactive in, the active first, the latest start first: the rule both
+// doors call, the app's project list and the web's project switcher (redix-api #165, #80 D7). The error is the database's.
+func List(ctx context.Context, read *store.Queries, book *access.Book, now time.Time, userID uuid.UUID) ([]View, error) {
+	seen, err := sightOf(ctx, read, book, now, userID)
+	projects, projectsErr := read.AllProjects(ctx)
+	units, unitsErr := read.AllUnits(ctx)
+	theirs, theirsErr := read.ProjectsOfUserWithRows(ctx, userID)
+	if err := errors.Join(err, projectsErr, unitsErr, theirsErr); err != nil {
+		return nil, err
 	}
 	unitsOf := map[uuid.UUID][]store.Unit{}
 	for _, unit := range units {
@@ -178,14 +188,14 @@ func (p Routes) list(w http.ResponseWriter, r *http.Request, caller access.Calle
 	for _, id := range theirs {
 		isTheirs[id] = true
 	}
-	var views []projectView
+	var views []View
 	for _, project := range projects {
 		approved := project.Status == active || project.Status == finished
 		if seen.access.Holds(project.ID, access.ReadProject) || (isTheirs[project.ID] && (!approved || seen.inactive[project.ID])) {
 			views = append(views, seen.view(project, unitsOf[project.ID]))
 		}
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // startRequest is a project as the one starting it types it (CreateProjectRequest).
@@ -758,6 +768,17 @@ type defaultProjectView struct {
 	DefaultProjectID string `json:"defaultProjectId"`
 }
 
+// DefaultOf is the project userID chose to open straight into, named only while held may still read it, so one check covers every way of
+// losing it, being made inactive included (AC-37.2, #126); uuid.Nil when there is none: what the app's sign-in names and the web lands in
+// (redix-api #165). The error is the database's.
+func DefaultOf(ctx context.Context, read *store.Queries, userID uuid.UUID, held access.Access) (uuid.UUID, error) {
+	chosen, err := read.DefaultProjectOf(ctx, userID)
+	if err != nil || len(chosen) == 0 || !held.Holds(chosen[0], access.ReadProject) {
+		return uuid.Nil, err
+	}
+	return chosen[0], nil
+}
+
 // setDefault makes the project the one sign-in opens straight into (AC-37.1).
 func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
@@ -793,7 +814,7 @@ func (p Routes) answer(w http.ResponseWriter, r *http.Request, status int, proje
 	read := p.database.Queries()
 	project, err := read.ProjectWithID(r.Context(), projectID)
 	units, unitsErr := read.UnitsOf(r.Context(), projectID)
-	seen, seenErr := p.sightOf(r.Context(), userID)
+	seen, seenErr := sightOf(r.Context(), p.database.Queries(), p.book, p.clock.Now(), userID)
 	if err != nil || unitsErr != nil || seenErr != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return

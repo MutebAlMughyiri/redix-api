@@ -28,10 +28,10 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| A user sees only their projects (AC-36.1) | `projects.Routes.list` | `ProjectsTests.AUserSeesOnlyTheirProjects` |
+| A user sees only their projects (AC-36.1) | `projects.List` | `ProjectsTests.AUserSeesOnlyTheirProjects` |
 | Adding a person needs a well-formed email no other account holds, whatever its case, and a refusal creates nothing (AC-07.8, D1, R9) | `users.RefusalOfEmail`, `users.Routes.create`, the unique index on | `ProjectUsersTests.AC_07_8_AddingAPersonKeepsTheEmailTheManagerTyped`, `AC_07_8_D1_AddingAPersonNeedsAWellFormedEmailAndCreatesNothingWithout`, `AC_07_8_R9_AnEmailAnotherAccountHoldsIsRefusedWhateverItsCase` |
 | The email is checked after the other fields, in the order the form shows them, so an empty form names the username first | `users.Routes.create` | `ProjectUsersTests.AC_07_8_AnEmptyFormNamesTheUsernameFirstAndTheEmailOnlyAfterTheOtherFields_AsTheFormOrdersThem` |
-| Each project carries what the user holds in it (AC-36.2) | `projects.Routes.list` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
+| Each project carries what the user holds in it (AC-36.2) | `projects.List` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
 | A manager sees only their project's people, and none of those people's other projects (BR-33) | `users.Routes.list` | `ProjectUsersTests.AManagerSeesOnlyTheirProjectsPeopleAndNoneOfTheirOtherProjects` |
 | A new login holds what was ticked and `ReadProject`, never the admin's permission | `users.Routes.create` | `ProjectUsersTests.AManagerCreatesALoginHoldingWhatWasTickedAndSeeingTheProjectWhoMustChangeThePassword`, `ANewLoginCannotBeGivenTheAdminsPermission` |
 | An existing user is added by their exact username, and an unknown one says so | `users.Routes.addExisting` | `ProjectUsersTests.AnExistingUserIsAddedByUsernameSeeingTheProject`, `AnUnknownUsernameSaysSo` |

@@ -38,7 +38,7 @@ func (s Routes) attachable(w http.ResponseWriter, r *http.Request, caller access
 	}
 	vatNumber := query.Get("vatNumber")
 	const riyal = fixed.Number(10000)
-	views, err := s.rows(r, caller, func(entry store.Entry, known facts) bool {
+	views, err := rowsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, func(entry store.Entry, known facts) bool {
 		near := entry.Amount >= total-riyal && entry.Amount <= total+riyal && !entry.EntryDate.Before(date.AddDate(0, 0, -3)) && !entry.EntryDate.After(date.AddDate(0, 0, 3))
 		return attachableBy(entry, caller) && near && vatNumber != "" && known.supplierOf(entry).VatNumber == vatNumber
 	}, everyRow, 0)

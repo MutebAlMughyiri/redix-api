@@ -10,10 +10,14 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
 )
 
@@ -150,7 +154,8 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	has(t, body, `id="web.tabs" class="tabs" role="tablist" hx-swap-oob="true"`)
 	has(t, body, `aria-current="true" hx-swap-oob="true">الإعدادات</a>`)
 	lacks(t, body, `class="tree"`)
-	closed := browser.Send("DELETE", "/tab/settings", nil).Body.String()
+	has(t, browser.Send("DELETE", "/tab/settings", nil).Body.String(), `id="projects.title"`)
+	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
 	if browser.Send("GET", "/tab/entries", nil).Code != http.StatusNotFound {
@@ -244,9 +249,10 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	has(t, signedOut, `<span id="signIn.registerProject" aria-disabled="true">`)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"home", "entries", "approvals", "accounts", "partners", "contracts", "reports", "history"} {
+	for _, key := range []string{"entries", "approvals", "accounts", "partners", "contracts", "reports", "history"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
+	has(t, page, `hx-get="/tab/home"`)
 	has(t, page, `hx-get="/tab/settings"`)
 }
 
@@ -346,7 +352,7 @@ func TestWeb_EveryPageAnswersAFailingDatabaseWith500(t *testing.T) {
 
 func TestWeb_R5_ClosingATabNotOpenChangesNothing(t *testing.T) {
 	browser, _ := signedIn(t, testapi.New(t), "User A")
-	has(t, browser.Send("DELETE", "/tab/settings", nil).Body.String(), "اختر من القائمة الجانبية لتبدأ.")
+	has(t, browser.Send("DELETE", "/tab/settings", nil).Body.String(), `id="projects.title"`)
 }
 
 func TestWeb_R13_ChangingAPasswordWithNoSessionAnswersTheSignInForm(t *testing.T) {
@@ -505,5 +511,213 @@ func TestWeb_AC02_6_AResetIsRefusedWithTheAppsWords(t *testing.T) {
 		}
 		has(t, answered.Body.String(), step.says)
 		has(t, answered.Body.String(), `value="a@example.com"`)
+	}
+}
+
+// working is a project as its manager works in it on the web: approved, with an item, its table, a bank account and a payment method, and a browser
+// the manager signed in on (redix-api #165).
+type working struct {
+	*testapi.API
+	t                                             *testing.T
+	browser                                       *testapi.Browser
+	manager                                       uuid.UUID
+	token, id, path, item, table, account, method string
+}
+
+func newWorking(t *testing.T) working {
+	t.Helper()
+	w := working{API: testapi.New(t), t: t}
+	w.manager = uuid.Must(uuid.NewV7())
+	admin := uuid.Must(uuid.NewV7())
+	for _, id := range []uuid.UUID{w.manager, admin} {
+		w.Exec(`INSERT INTO users (id, username, display_name, mobile, password_hash, must_change_password, failed_sign_ins, locked_until, created_at, email)
+			VALUES (?, ?, 'User A', '', ?, 0, 0, '1900-01-01T00:00:00.0000000Z', '2026-11-01T10:00:00.0000000Z', '')`, id, id.String(), credentials.Hash(password))
+	}
+	w.Exec(`INSERT INTO system_permissions (id, user_id, permission) VALUES (?, ?, 'ApproveProjects')`, uuid.NewString(), admin)
+	w.token = w.Token(w.manager, false)
+	_, answer := w.Ask("POST", "/projects", `{"name":"مشروع A","startDate":"2026-11-01","units":["A1"]}`, w.token)
+	w.id = testapi.Field(answer, "id").(string)
+	w.path = "/projects/" + w.id
+	w.Ask("POST", w.path+"/approve", ``, w.Token(admin, false))
+	w.Ask("POST", w.path+"/accounts", `{"name":"حساب المؤسسة","type":"bank"}`, w.token)
+	_, category := w.Ask("POST", w.path+"/categories", `{"name":"الحديد"}`, w.token)
+	_, item := w.Ask("POST", w.path+"/categories/"+testapi.Field(category, "id").(string)+"/items", `{"name":"التسليح","type":"purchases"}`, w.token)
+	w.item = testapi.Field(item, "id").(string)
+	read := w.Database.Read
+	for query, into := range map[string]*string{
+		"SELECT id FROM subgroups WHERE item_id = '" + w.item + "'":                        &w.table,
+		"SELECT id FROM accounts WHERE project_id = '" + w.id + "'":                        &w.account,
+		"SELECT payment_methods.id FROM payment_methods WHERE project_id = '" + w.id + "'": &w.method,
+	} {
+		if err := read.QueryRow(query).Scan(into); err != nil {
+			t.Fatal(query, err)
+		}
+	}
+	w.browser = w.Browser()
+	if signing := w.browser.Send("POST", "/sign-in", url.Values{"username": {w.manager.String()}, "password": {password}}); signing.Code != http.StatusOK {
+		t.Fatalf("sign-in: %d", signing.Code)
+	}
+	return w
+}
+
+// sent records an entry of amount into the item's table and sends it for approval; it is the entry's id.
+func (w working) sent(amount int) string {
+	w.t.Helper()
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + w.item + `","tableId":"` + w.table + `","date":"2026-11-10","amount":` + strconv.Itoa(amount) + `,"accountId":"` +
+		w.account + `","paymentMethodId":"` + w.method + `","description":"","columnValues":{},"submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		w.t.Fatalf("recording: %d %v", code, answer)
+	}
+	return id
+}
+
+// home is the home the manager's browser shows after choosing the project.
+func (w working) home() string {
+	w.t.Helper()
+	chosen := w.browser.Send("POST", "/project/"+w.id, nil)
+	if chosen.Code != http.StatusOK {
+		w.t.Fatalf("choosing the project: %d", chosen.Code)
+	}
+	return chosen.Body.String()
+}
+
+func TestWeb_R165_WithNoDefaultProjectTheHomeListsTheProjectsAndChoosingOneOpensItsHome(t *testing.T) {
+	w := newWorking(t)
+	first := w.browser.Send("GET", "/", nil).Body.String()
+	has(t, first, `id="projects.card.`+w.id+`"`)
+	has(t, first, `hx-post="/project/`+w.id+`"`)
+	has(t, first, "اختر المشروع")
+	lacks(t, first, `id="home.title"`)
+	chosen := w.browser.Send("POST", "/project/"+w.id, nil)
+	if chosen.Header().Get("HX-Retarget") != "[id='web.shell']" {
+		t.Errorf("choosing a project answers the whole shell: %v", chosen.Header())
+	}
+	has(t, chosen.Body.String(), `<h2 id="home.title">مشروع A</h2>`)
+	has(t, chosen.Body.String(), `<span id="web.sideProject" class="side-project">مشروع A</span>`)
+	if w.browser.Cookie("redix_project") != w.id {
+		t.Errorf("the project is kept: %q", w.browser.Cookie("redix_project"))
+	}
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<h2 id="home.title">مشروع A</h2>`)
+}
+
+func TestWeb_R165_AC37_1_TheDefaultProjectOpensStraightIntoItsHome(t *testing.T) {
+	w := newWorking(t)
+	if code, _ := w.Ask("POST", w.path+"/default", ``, w.token); code >= 300 {
+		t.Fatalf("default: %d", code)
+	}
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<h2 id="home.title">مشروع A</h2>`)
+}
+
+func TestWeb_R165_UC049_TheSummaryAndTheNewestEntriesAreTheApps(t *testing.T) {
+	w := newWorking(t)
+	approved, waiting := w.sent(100), w.sent(50)
+	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+approved+`"]}`, w.token); code != http.StatusOK {
+		t.Fatalf("approve: %d %v", code, answer)
+	}
+	home := w.home()
+	_, summary := w.Ask("GET", w.path+"/summary", ``, w.token)
+	if testapi.Field(summary, "surplus") != -100.0 {
+		t.Fatalf("the app's surplus: %v", testapi.Field(summary, "surplus"))
+	}
+	has(t, home, `<span id="summary.surplus" class="surplus">(100.00) <small>ر.س</small></span>`)
+	has(t, home, `<b id="summary.expenses">100.00</b>`)
+	has(t, home, `<strong>بانتظار اعتمادك: 1</strong>`)
+	has(t, home, `id="entries.row.`+approved+`"`)
+	has(t, home, `id="entries.row.`+waiting+`"`)
+	has(t, home, `<span class="state approved">معتمد</span>`)
+	has(t, home, `<span class="state pendingApproval">بانتظار الاعتماد</span>`)
+	has(t, home, `<td class="amount">50.00</td>`)
+	has(t, home, `id="home.addEntry.`+w.id+`" class="primary small" type="button" disabled`)
+}
+
+func TestWeb_R165_AnEmptyProjectSaysSoAndShowsNoWaiting(t *testing.T) {
+	home := newWorking(t).home()
+	has(t, home, "لا قيود بعد.")
+	lacks(t, home, `id="summary.pending"`)
+	has(t, home, `<span id="summary.surplus" class="surplus">0.00 <small>ر.س</small></span>`)
+}
+
+func TestWeb_R165_MyCustodyShowsWhatIHold(t *testing.T) {
+	w := newWorking(t)
+	if code, answer := w.Ask("POST", w.path+"/accounts", `{"name":"عهدة مستخدم أ","type":"cashCustody","custodianId":"`+w.manager.String()+`"}`, w.token); code >= 300 {
+		t.Fatalf("custody: %d %v", code, answer)
+	}
+	var id string
+	if err := w.Database.Read.QueryRow("SELECT id FROM accounts WHERE type = 1 AND project_id = ?", w.id).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	home := w.home()
+	has(t, home, `id="home.custody.`+id+`"`)
+	has(t, home, `<b id="home.custodyBalance.`+id+`">0.00 ر.س</b>`)
+	lacks(t, home, `id="home.custody.`+w.account+`"`)
+}
+
+func TestWeb_R165_WhatWaitsShowsOnlyToWhoeverMayApprove(t *testing.T) {
+	w := newWorking(t)
+	w.sent(50)
+	member, _ := w.Person("User B")
+	if code, answer := w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token); code >= 300 {
+		t.Fatalf("adding: %d %v", code, answer)
+	}
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	home := browser.Send("POST", "/project/"+w.id, nil).Body.String()
+	has(t, home, `id="summary.card"`)
+	lacks(t, home, `id="summary.pending"`)
+	has(t, w.home(), `id="summary.pending"`)
+}
+
+func TestWeb_R165_AProjectOneMayNotOpenIsNotChosen(t *testing.T) {
+	w := newWorking(t)
+	if code := w.browser.Send("POST", "/project/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("a project not theirs: %d", code)
+	}
+	browser, _ := signedIn(t, w.API, "User B")
+	if code := browser.Send("POST", "/project/"+w.id, nil).Code; code != http.StatusNotFound {
+		t.Errorf("another's project: %d", code)
+	}
+}
+
+func TestWeb_R165_HideDetailsIsKeptWithTheLook(t *testing.T) {
+	w := newWorking(t)
+	has(t, w.home(), `<input type="checkbox" id="web.view.summary" name="summary" checked hidden>`)
+	w.browser.Send("POST", "/view", url.Values{"top": {"on"}, "status": {"on"}, "side": {"on"}, "width": {"248"}})
+	page := w.browser.Send("GET", "/", nil).Body.String()
+	has(t, page, `<input type="checkbox" id="web.view.summary" name="summary" hidden>`)
+	has(t, page, `<label id="home.collapse" class="quiet-button" for="web.view.summary">`)
+}
+
+func TestWeb_R165_TheHomeAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	w.sent(50)
+	w.home()
+	for _, step := range []struct{ method, path string }{{"GET", "/"}, {"GET", "/tab/home"}, {"POST", "/project/" + w.id}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, step.method, step.path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", step.method, step.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+func TestWeb_R165_EveryIdOnTheHomeIsTheOnlyOne(t *testing.T) {
+	w := newWorking(t)
+	w.sent(50)
+	w.home()
+	page := w.browser.Send("GET", "/", nil).Body.String()
+	seen := map[string]bool{}
+	for _, id := range regexp.MustCompile(` id="([^"]+)"`).FindAllStringSubmatch(page, -1) {
+		if seen[id[1]] {
+			t.Errorf("the id %q is on two elements", id[1])
+		}
+		seen[id[1]] = true
+	}
+	if len(seen) < 40 {
+		t.Errorf("only %d ids", len(seen))
 	}
 }

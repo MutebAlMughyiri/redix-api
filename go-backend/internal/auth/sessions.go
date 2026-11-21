@@ -20,6 +20,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 	"github.com/google/uuid"
 )
@@ -306,19 +307,19 @@ func renewDevice(ctx context.Context, q *store.Queries, device store.Device) err
 	})
 }
 
-// answer is opened's session with a new access token (Session.OfAsync). The default project is named only while the user may still read it, so one
-// check covers every way of losing it, being made inactive included (AC-37.2, #126).
+// answer is opened's session with a new access token (Session.OfAsync), naming the default project as projects.DefaultOf decides it; one who
+// holds Read project everywhere and chose none is answered the zero id, as .NET answered them.
 func (s Sessions) answer(w http.ResponseWriter, r *http.Request, opened Opened) {
 	user, device := opened.User, opened.Device
 	held, err := s.book.Of(r.Context(), user.ID)
-	chosen, chosenErr := s.database.Queries().DefaultProjectOf(r.Context(), user.ID)
-	if err != nil || chosenErr != nil {
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	defaultProject := uuid.Nil
-	if len(chosen) > 0 {
-		defaultProject = chosen[0]
+	defaultProject, err := projects.DefaultOf(r.Context(), s.database.Queries(), user.ID, held)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
 	}
 	defaultProjectID := ""
 	if held.Holds(defaultProject, access.ReadProject) {

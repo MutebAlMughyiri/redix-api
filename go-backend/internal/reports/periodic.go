@@ -52,7 +52,7 @@ type snapshot struct {
 	OtherRevenue             fixed.Total          `json:"otherRevenue"`
 	Surplus                  fixed.Total          `json:"surplus"`
 	SurplusWithoutSales      fixed.Total          `json:"surplusWithoutSales"`
-	Categories               []categoryTotalView  `json:"categories"`
+	Categories               []CategoryTotal      `json:"categories"`
 	Accounts                 []reportAccount      `json:"accounts"`
 	AccountsTotal            fixed.Total          `json:"accountsTotal"`
 	ReconciliationDifference fixed.Total          `json:"reconciliationDifference"`
@@ -61,7 +61,7 @@ type snapshot struct {
 	CapitalTotal             fixed.Total          `json:"capitalTotal"`
 	Partners                 []reportPartner      `json:"partners"`
 	Items                    []entries.ItemReport `json:"items"`
-	RevenueCategories        []categoryTotalView  `json:"revenueCategories"`
+	RevenueCategories        []CategoryTotal      `json:"revenueCategories"`
 	PendingRevenueCount      int64                `json:"pendingRevenueCount"`
 	PendingRevenueAmount     fixed.Total          `json:"pendingRevenueAmount"`
 	ExpensesDifference       fixed.Total          `json:"expensesDifference"`

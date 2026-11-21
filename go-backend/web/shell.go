@@ -84,6 +84,7 @@ func (s site) turn(w http.ResponseWriter, r *http.Request, change func(view) vie
 func (s site) keepView(w http.ResponseWriter, r *http.Request) {
 	v := viewOf(r)
 	v.Top, v.Status, v.Side = r.PostFormValue("top") == "on", r.PostFormValue("status") == "on", r.PostFormValue("side") == "on"
+	v.Summary = r.PostFormValue("summary") == "on"
 	if width, err := strconv.Atoi(r.PostFormValue("width")); err == nil {
 		v.Width = min(max(width, narrowest), widest)
 	}

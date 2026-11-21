@@ -111,10 +111,10 @@ type partnerMoney = struct {
 	amount float64
 }
 
-func category(name string, kind structure.ItemType, items ...entries.ItemReport) categoryTotalView {
-	line := categoryTotalView{ID: uuid.New(), Name: name, Items: []itemTotalView{}}
+func category(name string, kind structure.ItemType, items ...entries.ItemReport) CategoryTotal {
+	line := CategoryTotal{ID: uuid.New(), Name: name, Items: []ItemTotal{}}
 	for _, one := range items {
-		line.Items = append(line.Items, itemTotalView{ID: one.ItemID, Name: one.ItemName, Total: one.Total, Type: kind})
+		line.Items = append(line.Items, ItemTotal{ID: one.ItemID, Name: one.ItemName, Total: one.Total, Type: kind})
 		line.Total = line.Total.Plus(one.Total)
 	}
 	return line
@@ -304,7 +304,7 @@ func TestAC_46_7_UC_109_TheRevenueSideIsEachRevenueCategoryInTheStructuresOrderR
 	sales := item("البيع", "فلوس البيع المودعة بالحساب", revenueGroup("", row(1000, "S-1")))
 	sales.Type = structure.Sale
 	report := reportOf(capital, refunds, sales)
-	report.RevenueCategories = []categoryTotalView{category("رأس المال", structure.Capital, capital), category("استرجاع ضرائب", structure.VatRefund, refunds),
+	report.RevenueCategories = []CategoryTotal{category("رأس المال", structure.Capital, capital), category("استرجاع ضرائب", structure.VatRefund, refunds),
 		category("فلوس البيع المودعة بالحساب", structure.Sale, sales)}
 	book := periodicWorkbook(t, report)
 	book.want(book.text("استرجاع الضرائب", "D2"), "المبلغ", "the refunds' amount")
@@ -329,8 +329,8 @@ func TestR129_TheSheetsFollowTheSummarysReadingOrderAndTheHiddenListsSheetIsLast
 	tiles := item("بلاط", "تكلفة التشطيب", subgroup("", row(30, "B1")))
 	paint := item("بوية", "تكلفة التشطيب", subgroup("", row(20, "P1")))
 	report := reportOf(paint, fees, capital, tiles)
-	report.RevenueCategories = []categoryTotalView{category("رأس المال", structure.Capital, capital)}
-	report.Categories = []categoryTotalView{category("الرسوم والفواتير", structure.Both, fees), category("تكلفة التشطيب", structure.Both, tiles, paint)}
+	report.RevenueCategories = []CategoryTotal{category("رأس المال", structure.Capital, capital)}
+	report.Categories = []CategoryTotal{category("الرسوم والفواتير", structure.Both, fees), category("تكلفة التشطيب", structure.Both, tiles, paint)}
 	book := periodicWorkbook(t, report)
 	book.want(strings.Join(book.file.GetSheetList(), "|"), "الخلاصة|رأس المال|الرسوم|بلاط|بوية|القوائم", "the sheets")
 	for _, sheet := range book.file.GetSheetList() {
@@ -344,7 +344,7 @@ func TestR129_EachSummaryLinesNameOpensItsSheetAndEachSheetLinksBackOutsideWhatP
 	tiles := item("بلاط", "تكلفة التشطيب", subgroup("", row(30, "B1")))
 	paint := item("بوية", "تكلفة التشطيب", subgroup("", row(20, "P1")))
 	report := reportOf(fees, tiles, paint)
-	report.Categories = []categoryTotalView{category("الرسوم والفواتير", structure.Both, fees), category("تكلفة التشطيب", structure.Both, tiles, paint)}
+	report.Categories = []CategoryTotal{category("الرسوم والفواتير", structure.Both, fees), category("تكلفة التشطيب", structure.Both, tiles, paint)}
 	book := periodicWorkbook(t, report)
 	book.want(book.text(summaryName, "D10"), "الرسوم والفواتير", "D10")
 	book.want(book.link(summaryName, "D10"), "'الرسوم'!A1", "a category of one item opens its sheet")
@@ -393,7 +393,7 @@ func TestAC_46_5_ASheetOfOneTableHasNoGrandTotalNorPercentageAndTheSummaryPoints
 	iron := item("حديد", "العظم", subgroup("", row(300, "H1")))
 	iron.ShowsTablePercentages = true
 	report := reportOf(iron)
-	report.Categories = []categoryTotalView{category("الحديد", structure.Both, iron)}
+	report.Categories = []CategoryTotal{category("الحديد", structure.Both, iron)}
 	book := periodicWorkbook(t, report)
 	if book.holds("حديد", func(text string) bool {
 		return text == "اجمالي الكل" || text == "النسبة" || text == "نسبة الكل"
@@ -407,7 +407,7 @@ func TestAC_46_5_ASheetOfOneTableHasNoGrandTotalNorPercentageAndTheSummaryPoints
 func TestAC_46_6_UC_109_RasAlMalIsAnItemWhoseTablesAreItsPartnersEachOnesShareUnderTheirTotalAndTheWholeCapitalUnderThem(t *testing.T) {
 	capital := capitalOf(partnerMoney{"سالم", 150}, partnerMoney{"خالد", 50})
 	report := reportOf(capital)
-	report.RevenueCategories = []categoryTotalView{category("رأس المال", structure.Capital, capital)}
+	report.RevenueCategories = []CategoryTotal{category("رأس المال", structure.Capital, capital)}
 	book := periodicWorkbook(t, report)
 	const sheet = "رأس المال"
 	book.want(book.text(sheet, "A1"), "سالم", "A1")
@@ -464,7 +464,7 @@ func TestAC_46_10_ACategoryOfOneItemIsOneLineAndOnlyACategoryOfMoreItemsHasADeta
 	tiles := item("بلاط", "تكلفة التشطيب", subgroup("", row(30, "B1")))
 	paint := item("بوية", "تكلفة التشطيب", subgroup("", row(20, "P1")))
 	report := reportOf(fees, tiles, paint)
-	report.Categories = []categoryTotalView{category("الرسوم والفواتير", structure.Both, fees), category("تكلفة التشطيب", structure.Both, tiles, paint)}
+	report.Categories = []CategoryTotal{category("الرسوم والفواتير", structure.Both, fees), category("تكلفة التشطيب", structure.Both, tiles, paint)}
 	book := periodicWorkbook(t, report)
 	book.want(book.formula(summaryName, "E10"), "'الرسوم'!G11", "E10")
 	book.want(book.number(summaryName, "E10"), 120.0, "E10")

@@ -274,8 +274,8 @@ func (f facts) firstFile(entry store.Entry) store.EntryFilesOfRow {
 	return store.EntryFilesOfRow{}
 }
 
-// rowView is an entry on a list (EntryRowView).
-type rowView struct {
+// Row is an entry on a list (EntryRowView), the app's and the web's.
+type Row struct {
 	ID                uuid.UUID    `json:"id"`
 	Number            int64        `json:"number"`
 	Kind              named        `json:"kind"`
@@ -296,9 +296,9 @@ type rowView struct {
 	AccountShortBy    fixed.Total  `json:"accountShortBy"`
 }
 
-func (f facts) row(entry store.Entry, userID uuid.UUID) rowView {
+func (f facts) row(entry store.Entry, userID uuid.UUID) Row {
 	supplier := f.supplierOf(entry)
-	return rowView{ID: entry.ID, Number: entry.Number, Kind: kindOf(entry.Kind), Status: statusOf(entry.Status), EntryDate: entry.EntryDate, Amount: entry.Amount,
+	return Row{ID: entry.ID, Number: entry.Number, Kind: kindOf(entry.Kind), Status: statusOf(entry.Status), EntryDate: entry.EntryDate, Amount: entry.Amount,
 		ItemName: f.itemNameOf(entry), SupplierName: supplier.Name, SupplierVatNumber: supplier.VatNumber, InvoiceNumber: f.invoices[entry.ID],
 		AuthorName: f.authors[entry.CreatedByUserID], IsMine: entry.CreatedByUserID == userID, PartnerName: f.partners[f.capital[entry.ID]],
 		Description: entry.Description, AccountName: f.accounts[entry.AccountID], PaymentMethodName: f.paymentMethods[f.expenses[entry.ID].PaymentMethodID],
@@ -433,7 +433,7 @@ func searchOf(kinds, statuses []string, text, mine, from, to, number string) sea
 	return s
 }
 
-func (s search) keeps(row rowView) bool {
+func (s search) keeps(row Row) bool {
 	if s.narrowsNothing {
 		return true
 	}

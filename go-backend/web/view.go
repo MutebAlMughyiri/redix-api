@@ -11,15 +11,17 @@ import (
 	"strconv"
 
 	"github.com/a-h/templ"
+	"github.com/google/uuid"
 )
 
-// view is how a person left the shell: its bars, its side menu and that menu's width, and its open tabs, kept in cookies and drawn by the server,
-// so nothing flashes on the next open (#161 R18).
+// view is how a person left the shell: its bars, its side menu and that menu's width, the home's summary, its open tabs, and the project they
+// work in, kept in cookies and drawn by the server, so nothing flashes on the next open (#161 R18, redix-api #165).
 type view struct {
-	Top, Status, Side bool
-	Width             int
-	Tabs              []string
-	Active            string
+	Top, Status, Side, Summary bool
+	Width                      int
+	Tabs                       []string
+	Active                     string
+	Project                    uuid.UUID
 }
 
 const (
@@ -28,16 +30,23 @@ const (
 	// line was dragged, the drag's save leaving before the tab's answer came back.
 	lookCookie = "redix_view"
 	tabsCookie = "redix_tabs"
+	// projectCookie keeps the project a person chose to work in, as the app keeps the project it opened (redix-api #165).
+	projectCookie = "redix_project"
 	// narrowest and widest are the side menu's width limits; the content keeps the rest (#161 R10).
 	narrowest, widest = 180, 480
 )
 
-// viewOf is the view r's cookies keep; every bar and the side menu shown until a person hides them. A tab no feature opens is dropped.
+// viewOf is the view r's cookies keep; every bar, the side menu and the home's summary shown until a person hides them, and Home open first, as
+// the app opens on a project's home (redix-api #165). A tab no feature opens is dropped.
 func viewOf(r *http.Request) view {
-	look := preference(r, lookCookie, url.Values{"top": {"1"}, "status": {"1"}, "side": {"1"}, "width": {"248"}})
-	tabs := preference(r, tabsCookie, url.Values{})
+	look := preference(r, lookCookie, url.Values{"top": {"1"}, "status": {"1"}, "side": {"1"}, "summary": {"1"}, "width": {"248"}})
+	tabs := preference(r, tabsCookie, url.Values{"tab": {"home"}, "active": {"home"}})
 	width, _ := strconv.Atoi(look.Get("width"))
-	v := view{Top: look.Get("top") == "1", Status: look.Get("status") == "1", Side: look.Get("side") == "1", Width: min(max(width, narrowest), widest)}
+	v := view{Top: look.Get("top") == "1", Status: look.Get("status") == "1", Side: look.Get("side") == "1", Summary: look.Get("summary") != "0",
+		Width: min(max(width, narrowest), widest)}
+	if chosen, err := r.Cookie(projectCookie); err == nil {
+		v.Project, _ = uuid.Parse(chosen.Value)
+	}
 	for _, name := range tabs["tab"] {
 		if _, built := contents[name]; built && !slices.Contains(v.Tabs, name) {
 			v.Tabs = append(v.Tabs, name)
@@ -61,8 +70,12 @@ func preference(r *http.Request, name string, absent url.Values) url.Values {
 
 // keepLook sets v's bars, side menu and width in their cookie.
 func (v view) keepLook(w http.ResponseWriter) {
-	setPreference(w, lookCookie, url.Values{"top": {flag(v.Top)}, "status": {flag(v.Status)}, "side": {flag(v.Side)}, "width": {strconv.Itoa(v.Width)}}.Encode())
+	setPreference(w, lookCookie, url.Values{"top": {flag(v.Top)}, "status": {flag(v.Status)}, "side": {flag(v.Side)}, "summary": {flag(v.Summary)},
+		"width": {strconv.Itoa(v.Width)}}.Encode())
 }
+
+// keepProject sets the project v works in in its cookie.
+func (v view) keepProject(w http.ResponseWriter) { setPreference(w, projectCookie, v.Project.String()) }
 
 // keepTabs sets v's open tabs in their cookie.
 func (v view) keepTabs(w http.ResponseWriter) {

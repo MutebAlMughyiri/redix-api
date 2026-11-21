@@ -71,8 +71,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", project+"/reconciliations", gate.Changes(access.MoveMoney, access.Whole(s.enter)))
 }
 
-// accountView is an account as the app shows it (AccountView).
-type accountView struct {
+// View is an account as the lists show it, on the phone and on the web (AccountView).
+type View struct {
 	ID            uuid.UUID   `json:"id"`
 	Type          AccountType `json:"type"`
 	Name          string      `json:"name"`
@@ -88,30 +88,39 @@ type accountView struct {
 // from - the active ones, all of them with ChargeAnyAccount, otherwise only those they hold (BRS open question 4).
 func (s Routes) list(offeredOnly bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		read, projectID := s.database.Queries(), web.ID(r, "projectId")
-		accounts, err := read.AccountsOf(r.Context(), projectID)
-		balances, balancesErr := Balances(r.Context(), read, projectID, caller.Access.Unseen(projectID))
-		used, usedErr := read.AccountsUsed(r.Context(), projectID)
-		if err != nil || balancesErr != nil || usedErr != nil {
+		views, err := ListOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, offeredOnly)
+		if err != nil {
 			problem.Status(w, r, http.StatusInternalServerError)
 			return
 		}
-		chargesAny := caller.Access.Holds(projectID, access.ChargeAnyAccount)
-		var views []accountView
-		for _, account := range accounts {
-			mine := account.CustodianID == caller.UserID && account.CustodianID != uuid.Nil
-			if offeredOnly && !(account.IsActive && (chargesAny || mine)) {
-				continue
-			}
-			view := accountView{ID: account.ID, Type: AccountType(account.Type), Name: account.Name, Balance: balances[account.ID],
-				CustodianName: account.CustodianName, IsMine: mine, IsActive: account.IsActive, IsUsed: slices.Contains(used, account.ID)}
-			if account.CustodianID != uuid.Nil {
-				view.CustodianID = account.CustodianID.String()
-			}
-			views = append(views, view)
-		}
 		web.JSON(w, r, http.StatusOK, views)
 	}
+}
+
+// ListOf is projectID's accounts as list answers them, for caller: the rule both doors call, the app's routes and the web's home, which shows
+// the ones caller holds (redix-api #165, #80 D7). The error is the database's.
+func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, offeredOnly bool) ([]View, error) {
+	accounts, err := read.AccountsOf(ctx, projectID)
+	balances, balancesErr := Balances(ctx, read, projectID, caller.Access.Unseen(projectID))
+	used, usedErr := read.AccountsUsed(ctx, projectID)
+	if err := errors.Join(err, balancesErr, usedErr); err != nil {
+		return nil, err
+	}
+	chargesAny := caller.Access.Holds(projectID, access.ChargeAnyAccount)
+	var views []View
+	for _, account := range accounts {
+		mine := account.CustodianID == caller.UserID && account.CustodianID != uuid.Nil
+		if offeredOnly && !(account.IsActive && (chargesAny || mine)) {
+			continue
+		}
+		view := View{ID: account.ID, Type: AccountType(account.Type), Name: account.Name, Balance: balances[account.ID],
+			CustodianName: account.CustodianName, IsMine: mine, IsActive: account.IsActive, IsUsed: slices.Contains(used, account.ID)}
+		if account.CustodianID != uuid.Nil {
+			view.CustodianID = account.CustodianID.String()
+		}
+		views = append(views, view)
+	}
+	return views, nil
 }
 
 // refused answers why an account named name, of its type, held by custodianID, cannot be kept (Account.RefusalOf): invalidName,

@@ -112,5 +112,5 @@ func Routes(parts Parts) Doors {
 	projectfile.Map(router, gate, database, now)
 	archive.Map(router, gate, database, now)
 	sync.Map(router, gate)
-	return Doors{API: router, Pages: site.Routes(site.Parts{Database: database, Sessions: sessions, Codes: codes, EmailCodes: emailCodes, Gate: gate, Clock: now})}
+	return Doors{API: router, Pages: site.Routes(site.Parts{Database: database, Sessions: sessions, Codes: codes, EmailCodes: emailCodes, Gate: gate, Book: book, Clock: now})}
 }

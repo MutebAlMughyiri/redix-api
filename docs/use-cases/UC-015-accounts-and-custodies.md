@@ -10,7 +10,7 @@
 
 An account belongs to one project (BR-33). Its type is set when it is added and never changes. A cash custody must have a custodian, who must be in the project; a bank account may have one, as when a field supervisor carries the card.
 
-`account_custodians` says who holds what, one row per account at most, and no row means nobody. It answers BRS open question 4: Field spends only from accounts they hold. `accounts.Routes.list`, asked for the offered ones, is that rule, and `GET .../accounts/offered` serves it. Finance holds `ChargeAnyAccount`, so it is offered every active account.
+`account_custodians` says who holds what, one row per account at most, and no row means nobody. It answers BRS open question 4: Field spends only from accounts they hold. `accounts.ListOf`, asked for the offered ones, is that rule, and `GET .../accounts/offered` serves it. Finance holds `ChargeAnyAccount`, so it is offered every active account.
 
 `balance` is what the account's approved entries and transfers moved, by their sign (`AccountMoney`). An account has no opening balance since redix-app #89 (10 Nov 2026), the owner's formula: revenue less expenses equals the total of actual balances.
 
@@ -54,10 +54,10 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | An edit changes the name and the custodian; the type never changes | `accounts.Routes.edit`, `accounts.handTo` | `AccountsTests.AnEditChangesTheNameTheOpeningBalanceAndTheCustodian`, `AnEditCanLeaveABankAccountWithNobody` |
 | A changed opening balance is in the History table, old and new. **Retired with the opening balance (redix-app #89, 10 Nov 2026):** money enters an account only through entries and transfers | - | - |
 | An account an entry names still changes its name | `accounts.Routes.edit` | `AccountsTests.AnAccountWithAnEntryStillChangesItsName` |
-| A disabled account leaves entry and stays on the list (BR-15) | `accounts.Routes.list` | `AccountsTests.ADisabledAccountLeavesEntryAndStaysOnTheList`, `EnablingBringsAnAccountBackIntoEntry` |
-| Banks come first, then in the order added | `accounts.Routes.list` | `AccountsTests.BanksComeFirstThenInTheOrderTheyWereAdded` |
-| A custodian sees their custody and every other account, and changes none (AC-22.1, BR-31) | `accounts.Routes.list`, `access.ManageSettings` | `AccountsTests.ACustodianSeesTheirCustodyAndEveryOtherAccountWithoutChangingThem` |
-| Field is offered only what they hold, and only while it is active (open question 4) | `accounts.Routes.list` | `AccountsTests.FieldIsOfferedOnlyTheAccountsTheyHold`, `FieldHoldingNothingIsOfferedNothing`, `FieldIsNotOfferedADisabledAccountTheyHold` |
+| A disabled account leaves entry and stays on the list (BR-15) | `accounts.ListOf` | `AccountsTests.ADisabledAccountLeavesEntryAndStaysOnTheList`, `EnablingBringsAnAccountBackIntoEntry` |
+| Banks come first, then in the order added | `accounts.ListOf` | `AccountsTests.BanksComeFirstThenInTheOrderTheyWereAdded` |
+| A custodian sees their custody and every other account, and changes none (AC-22.1, BR-31) | `accounts.ListOf`, `access.ManageSettings` | `AccountsTests.ACustodianSeesTheirCustodyAndEveryOtherAccountWithoutChangingThem` |
+| Field is offered only what they hold, and only while it is active (open question 4) | `accounts.ListOf` | `AccountsTests.FieldIsOfferedOnlyTheAccountsTheyHold`, `FieldHoldingNothingIsOfferedNothing`, `FieldIsNotOfferedADisabledAccountTheyHold` |
 | Finance is offered every active account | `access.ChargeAnyAccount` | `AccountsTests.FinanceIsOfferedEveryActiveAccount`, `FieldIsOfferedOnlyTheAccountsTheyHold` |
 | One project's accounts are never another's (BR-33) | `access.Gate.Needs`, `accounts.Routes.account` | `AccountsTests.OneProjectsAccountsAreNeverAnothers` |
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AccountsTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |

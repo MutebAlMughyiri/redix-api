@@ -20,6 +20,6 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | Nothing changed answers nothing | `sync.Map` | `SyncTests.NothingChangedAnswersNoLists` |
 | AC-05.1: an item Finance added reaches the field at the next sync, in its offered lists and in Add entry's table list (`entry-tables`), with no online visit to Add entry first | `sync.read` | `SyncTests.AC_05_1_AnItemFinanceAddedReachesTheFieldAtTheNextSync` |
 | A row leaving a list changes the stamp too | `sync.Map` | `SyncTests.ARowThatLeftAListChangesTheStampToo` |
-| The field keeps only the accounts they may charge | `accounts.Routes.list` | `SyncTests.TheFieldKeepsOnlyTheAccountsTheyMayCharge` |
+| The field keeps only the accounts they may charge | `accounts.ListOf` | `SyncTests.TheFieldKeepsOnlyTheAccountsTheyMayCharge` |
 | Each person keeps only their own entries' status | `entries.Routes.mine` | `SyncTests.EachPersonKeepsOnlyTheStatusOfTheirOwnEntries` |
 | Someone outside the project gets nothing | The `ReadProject` policy | `SyncTests.SomeoneOutsideTheProjectGetsNothing` |

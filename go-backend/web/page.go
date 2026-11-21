@@ -7,11 +7,14 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/a-h/templ"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
 )
 
 // page is one drawing of the shell: who asks, in which language, and what its parts show.
@@ -23,6 +26,12 @@ type page struct {
 	assets   assets
 	// person is the signed-in person's name; "" before anyone signs in.
 	person string
+	// caller is who is signed in, and what they hold; the zero caller before anyone is.
+	caller access.Caller
+	// projects are the projects the caller may read or started, as the app's project list shows them (redix-api #165).
+	projects []projects.View
+	// project is the project the caller works in, the one the top bar names; the zero view while they choose one.
+	project projects.View
 	// in shows the side menu and the tabs: someone is signed in with no temporary password left to change (AC-02.1).
 	in bool
 	// arriving plays the parts' motion once, in the answer to signing in (#161 R6).
@@ -35,12 +44,16 @@ type page struct {
 // words are one language's words by key (translations); a key with no word shows itself, so a missing word is seen, never hidden.
 type words map[string]string
 
-// Of is key's word.
-func (w words) Of(key string) string {
-	if word, found := w[key]; found {
-		return word
+// Of is key's word, each {n} in it filled with fill[n], as the app fills a word: «بانتظار اعتمادك: {0}».
+func (w words) Of(key string, fill ...string) string {
+	word, found := w[key]
+	if !found {
+		return key
 	}
-	return key
+	for n, value := range fill {
+		word = strings.ReplaceAll(word, "{"+strconv.Itoa(n)+"}", value)
+	}
+	return word
 }
 
 // languageCookie keeps the language a person chose (#80 D11).
@@ -74,8 +87,8 @@ func (s site) page(r *http.Request) (page, error) {
 	return p, nil
 }
 
-// open is p for caller: their name, and the shell's parts with the active tab, or the change-password form while a temporary password is left to
-// change (AC-02.1, #161 R13). The error is the database's.
+// open is p for caller: their name, their projects and the one they work in, and the shell's parts with the active tab; or the change-password
+// form while a temporary password is left to change (AC-02.1, #161 R13). The error is the database's.
 func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) {
 	user, err := s.Database.Queries().UserWithID(r.Context(), caller.UserID)
 	if err != nil {
@@ -86,11 +99,17 @@ func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) 
 		p.content = changePasswordForm(p, "", caller.Username)
 		return p, nil
 	}
-	p.in = true
-	if tab, opened := contents[p.view.Active]; opened {
-		p.content = tab(p)
+	p.in, p.caller = true, caller
+	if p.projects, err = projects.List(r.Context(), s.Database.Queries(), s.Book, s.Clock.Now(), caller.UserID); err != nil {
+		return p, err
 	}
-	return p, nil
+	if p.project, err = s.projectOf(r, p); err != nil {
+		return p, err
+	}
+	if tab, opened := contents[p.view.Active]; opened {
+		p.content, err = tab(s, r, p)
+	}
+	return p, err
 }
 
 // direction is the way p's language reads.
@@ -123,6 +142,9 @@ func (p page) shortcut(key string) string { return p.words.Of(key) + " \u2068(Al
 // menuItem is an item of the side menu: its tab's name and its title's word.
 type menuItem struct{ name, title string }
 
+// tab draws a built feature's tab for p's caller in their project. The error is the database's.
+type tab func(s site, r *http.Request, p page) (templ.Component, error)
+
 // built says whether a feature opens item's tab; an item none opens stands gray (#161 R15).
 func (item menuItem) built() bool {
 	_, built := contents[item.name]
@@ -136,7 +158,10 @@ var sideMenu = []menuItem{
 }
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
-var contents = map[string]func(page) templ.Component{"settings": settingsTab}
+var contents = map[string]tab{
+	"home":     site.homeTab,
+	"settings": func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
+}
 
 // openTabs are the open tabs' items, in the order they were opened.
 func (p page) openTabs() []menuItem {

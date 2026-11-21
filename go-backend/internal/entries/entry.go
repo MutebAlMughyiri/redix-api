@@ -39,6 +39,14 @@ type named struct {
 // MarshalJSON writes the value by its name in its enum.
 func (n named) MarshalJSON() ([]byte, error) { return n.enum.Write(n.value) }
 
+// Name is the value's name in its enum, as the API writes it: "pendingApproval"; the web shows the word keyed by it (redix-api #165).
+func (n named) Name() string {
+	if n.value < 0 || n.value >= int64(len(n.enum)) {
+		return ""
+	}
+	return n.enum[n.value]
+}
+
 func kindOf(value int64) named   { return named{value, ledger.Kinds} }
 func statusOf(value int64) named { return named{value, ledger.Statuses} }
 

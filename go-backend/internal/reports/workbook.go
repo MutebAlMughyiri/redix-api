@@ -122,7 +122,7 @@ func fillSummary(sheet *statement.Worksheet, report snapshot, sheets map[uuid.UU
 	withoutSales := revenue + 2
 	surplus := withoutSales + 2
 	details := detailsOf(sheet, append(slices.Clone(report.Categories), report.RevenueCategories...), sheets, [2]int{surplus, expensesTotal})
-	valueOf := func(category categoryTotalView) string {
+	valueOf := func(category CategoryTotal) string {
 		if len(category.Items) > 1 {
 			return details[category.ID]
 		}
@@ -131,7 +131,7 @@ func fillSummary(sheet *statement.Worksheet, report snapshot, sheets map[uuid.UU
 		}
 		return "0"
 	}
-	categoryLine := func(row, column int, category categoryTotalView) statement.Range {
+	categoryLine := func(row, column int, category CategoryTotal) statement.Range {
 		line := figured(sheet, row, column, category.Name, valueOf(category))
 		if len(category.Items) == 1 {
 			linkToSheetOf(line, category.Items[0].ID, sheets)
@@ -142,7 +142,7 @@ func fillSummary(sheet *statement.Worksheet, report snapshot, sheets map[uuid.UU
 	for _, category := range report.RevenueCategories {
 		line := categoryLine(row, revenueSide, category)
 		row++
-		if !slices.ContainsFunc(category.Items, func(item itemTotalView) bool { return item.Type != structure.Sale }) {
+		if !slices.ContainsFunc(category.Items, func(item ItemTotal) bool { return item.Type != structure.Sale }) {
 			line.AsMutedTotal()
 		} else {
 			line.AsBody()
@@ -189,7 +189,7 @@ func fillSummary(sheet *statement.Worksheet, report snapshot, sheets map[uuid.UU
 // detailsOf writes a block per category of more than one item among categories, each item pointing at its sheet's total and its name opening the
 // sheet, under whichever side of the summary ends higher, starting from bottoms: the last row of the revenue side, then of the expenses side. It
 // answers the address of each block's total.
-func detailsOf(sheet *statement.Worksheet, categories []categoryTotalView, sheets map[uuid.UUID]statement.Placed, bottoms [2]int) map[uuid.UUID]string {
+func detailsOf(sheet *statement.Worksheet, categories []CategoryTotal, sheets map[uuid.UUID]statement.Placed, bottoms [2]int) map[uuid.UUID]string {
 	totals := map[uuid.UUID]string{}
 	for _, category := range categories {
 		if len(category.Items) <= 1 {

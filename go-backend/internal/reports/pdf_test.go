@@ -130,7 +130,7 @@ func TestFR31_TheContractsPdfShowsEachContractsValuePaidAndWhatIsLeftAndAnOverru
 
 func TestAC_45_2_TheSummaryPageCarriesTheReportsFigures(t *testing.T) {
 	report := reportOf(item("بلاط", "التشطيب", subgroup("", row(115, "B1"))))
-	report.Categories = []categoryTotalView{category("التشطيب", structure.Both, report.Items[0])}
+	report.Categories = []CategoryTotal{category("التشطيب", structure.Both, report.Items[0])}
 	report.Accounts = []reportAccount{{Name: "حساب المؤسسة", Balance: countedOf(885)}}
 	report.AccountsTotal, report.PreviousExpenses, report.ExpensesDifference = countedOf(885), countedOf(15), countedOf(100)
 	report.PendingCount, report.PendingAmount = 2, countedOf(7.5)

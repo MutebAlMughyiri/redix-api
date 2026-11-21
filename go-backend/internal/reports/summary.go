@@ -98,36 +98,38 @@ func ItemTotals(ctx context.Context, q *store.Queries, projectID uuid.UUID, unse
 	return totals, err
 }
 
-type itemTotalView struct {
+// ItemTotal is what an item came to, as the summary and a periodic report show it.
+type ItemTotal struct {
 	ID    uuid.UUID          `json:"id"`
 	Name  string             `json:"name"`
 	Total fixed.Total        `json:"total"`
 	Type  structure.ItemType `json:"type"`
 }
 
-type categoryTotalView struct {
-	ID    uuid.UUID       `json:"id"`
-	Name  string          `json:"name"`
-	Total fixed.Total     `json:"total"`
-	Items []itemTotalView `json:"items"`
+// CategoryTotal is what a category came to, with its items'.
+type CategoryTotal struct {
+	ID    uuid.UUID   `json:"id"`
+	Name  string      `json:"name"`
+	Total fixed.Total `json:"total"`
+	Items []ItemTotal `json:"items"`
 }
 
 // categoriesOf is each category's total with its items', the expenses' side and the revenue's, the capital among the revenue (redix-api #109): the
 // one owner of the categories the summary and a periodic report show.
-func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, unseen string) ([]categoryTotalView, []categoryTotalView, error) {
+func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, unseen string) ([]CategoryTotal, []CategoryTotal, error) {
 	totals, err := ItemTotals(ctx, q, projectID, unseen)
 	categories, categoriesErr := q.CategoriesOf(ctx, projectID)
 	items, itemsErr := q.ItemsOf(ctx, projectID)
 	if err := errors.Join(err, categoriesErr, itemsErr); err != nil {
 		return nil, nil, err
 	}
-	side := func(isRevenue bool) []categoryTotalView {
-		var lines []categoryTotalView
+	side := func(isRevenue bool) []CategoryTotal {
+		var lines []CategoryTotal
 		for _, category := range categories {
-			line := categoryTotalView{ID: category.ID, Name: category.Name}
+			line := CategoryTotal{ID: category.ID, Name: category.Name}
 			for _, item := range items {
 				if item.CategoryID == category.ID && structure.ItemType(item.Type).IsRevenue() == isRevenue {
-					line.Items = append(line.Items, itemTotalView{ID: item.ID, Name: item.Name, Total: totals[item.ID], Type: structure.ItemType(item.Type)})
+					line.Items = append(line.Items, ItemTotal{ID: item.ID, Name: item.Name, Total: totals[item.ID], Type: structure.ItemType(item.Type)})
 					line.Total = line.Total.Plus(totals[item.ID])
 				}
 			}
@@ -140,32 +142,38 @@ func categoriesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, un
 	return side(false), side(true), nil
 }
 
-// summaryView is what GET /projects/{projectId}/summary answers (UC-049).
-type summaryView struct {
-	Revenue                  fixed.Total         `json:"revenue"`
-	Expenses                 fixed.Total         `json:"expenses"`
-	Surplus                  fixed.Total         `json:"surplus"`
-	WasReconciled            bool                `json:"wasReconciled"`
-	ReconciliationDifference fixed.Total         `json:"reconciliationDifference"`
-	Waiting                  Waiting             `json:"waiting"`
-	CompletionPercent        fixed.Written       `json:"completionPercent"`
-	Categories               []categoryTotalView `json:"categories"`
-	RevenueCategories        []categoryTotalView `json:"revenueCategories"`
+// Summary is a project's figures at a glance, what GET /projects/{projectId}/summary answers and the web's home shows (UC-049).
+type Summary struct {
+	Revenue                  fixed.Total     `json:"revenue"`
+	Expenses                 fixed.Total     `json:"expenses"`
+	Surplus                  fixed.Total     `json:"surplus"`
+	WasReconciled            bool            `json:"wasReconciled"`
+	ReconciliationDifference fixed.Total     `json:"reconciliationDifference"`
+	Waiting                  Waiting         `json:"waiting"`
+	CompletionPercent        fixed.Written   `json:"completionPercent"`
+	Categories               []CategoryTotal `json:"categories"`
+	RevenueCategories        []CategoryTotal `json:"revenueCategories"`
 }
 
 // summary is revenue, expenses, the surplus, the reconciliation difference, what waits, each category's total with its items' - the capital among
 // the revenue (redix-api #109) - and the completion (UC-049, UC-063), read on every request so an approval shows at once (AC-34.1).
 func (s Routes) summary(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	unseen := caller.Access.Unseen(projectID)
-	figures, err := accounts.FiguresOf(r.Context(), read, projectID, unseen)
-	at, difference, reconciledErr := accounts.Reconciled(r.Context(), read, projectID)
-	waiting, waitingErr := WaitingOf(r.Context(), read, projectID, unseen)
-	expenses, revenue, categoriesErr := categoriesOf(r.Context(), read, projectID, unseen)
-	if errors.Join(err, reconciledErr, waitingErr, categoriesErr) != nil {
+	projectID := web.ID(r, "projectId")
+	summary, err := SummaryOf(r.Context(), s.database.Queries(), projectID, caller.Access.Unseen(projectID))
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	web.JSON(w, r, http.StatusOK, summaryView{figures.Revenue(), figures.Expenses, figures.Surplus(), !at.IsZero(), difference, waiting,
-		fixed.Percent(figures.Expenses.Number(), figures.Revenue().Number(), 2, false), expenses, revenue})
+	web.JSON(w, r, http.StatusOK, summary)
+}
+
+// SummaryOf is the project's summary, but the entries of the tables in unseen (#106 R6): the rule both doors call, the app's route and the web's
+// home (redix-api #165, #80 D7). The error is the database's.
+func SummaryOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, unseen string) (Summary, error) {
+	figures, err := accounts.FiguresOf(ctx, read, projectID, unseen)
+	at, difference, reconciledErr := accounts.Reconciled(ctx, read, projectID)
+	waiting, waitingErr := WaitingOf(ctx, read, projectID, unseen)
+	expenses, revenue, categoriesErr := categoriesOf(ctx, read, projectID, unseen)
+	return Summary{figures.Revenue(), figures.Expenses, figures.Surplus(), !at.IsZero(), difference, waiting,
+		fixed.Percent(figures.Expenses.Number(), figures.Revenue().Number(), 2, false), expenses, revenue}, errors.Join(err, reconciledErr, waitingErr, categoriesErr)
 }

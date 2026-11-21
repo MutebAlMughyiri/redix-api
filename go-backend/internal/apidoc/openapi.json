@@ -90,7 +90,7 @@
         ],
         "type": "object"
       },
-      "accounts.accountView": {
+      "accounts.View": {
         "properties": {
           "balance": {
             "description": "A sum kept to four decimals.",
@@ -973,6 +973,89 @@
         ],
         "type": "object"
       },
+      "entries.Row": {
+        "properties": {
+          "accountName": {
+            "type": "string"
+          },
+          "accountShortBy": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "amount": {
+            "description": "A figure kept to four decimals.",
+            "type": "number"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "entryDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoiceNumber": {
+            "type": "string"
+          },
+          "isMine": {
+            "type": "boolean"
+          },
+          "itemName": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "partnerName": {
+            "type": "string"
+          },
+          "paymentMethodName": {
+            "type": "string"
+          },
+          "rejectionReason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "supplierName": {
+            "type": "string"
+          },
+          "supplierVatNumber": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountName",
+          "accountShortBy",
+          "amount",
+          "authorName",
+          "description",
+          "entryDate",
+          "id",
+          "invoiceNumber",
+          "isMine",
+          "itemName",
+          "kind",
+          "number",
+          "partnerName",
+          "paymentMethodName",
+          "rejectionReason",
+          "status",
+          "supplierName",
+          "supplierVatNumber"
+        ],
+        "type": "object"
+      },
       "entries.TableReport": {
         "properties": {
           "amountName": {
@@ -1714,89 +1797,6 @@
         ],
         "type": "object"
       },
-      "entries.rowView": {
-        "properties": {
-          "accountName": {
-            "type": "string"
-          },
-          "accountShortBy": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "amount": {
-            "description": "A figure kept to four decimals.",
-            "type": "number"
-          },
-          "authorName": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "entryDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "invoiceNumber": {
-            "type": "string"
-          },
-          "isMine": {
-            "type": "boolean"
-          },
-          "itemName": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "number": {
-            "type": "integer"
-          },
-          "partnerName": {
-            "type": "string"
-          },
-          "paymentMethodName": {
-            "type": "string"
-          },
-          "rejectionReason": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "supplierName": {
-            "type": "string"
-          },
-          "supplierVatNumber": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "accountName",
-          "accountShortBy",
-          "amount",
-          "authorName",
-          "description",
-          "entryDate",
-          "id",
-          "invoiceNumber",
-          "isMine",
-          "itemName",
-          "kind",
-          "number",
-          "partnerName",
-          "paymentMethodName",
-          "rejectionReason",
-          "status",
-          "supplierName",
-          "supplierVatNumber"
-        ],
-        "type": "object"
-      },
       "entries.statusView": {
         "properties": {
           "id": {
@@ -2062,40 +2062,23 @@
         ],
         "type": "object"
       },
-      "projects.addUnitRequest": {
+      "projects.Unit": {
         "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
           "name": {
             "type": "string"
           }
         },
         "required": [
+          "id",
           "name"
         ],
         "type": "object"
       },
-      "projects.defaultProjectView": {
-        "properties": {
-          "defaultProjectId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "defaultProjectId"
-        ],
-        "type": "object"
-      },
-      "projects.describeProjectRequest": {
-        "properties": {
-          "description": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "description"
-        ],
-        "type": "object"
-      },
-      "projects.projectView": {
+      "projects.View": {
         "properties": {
           "description": {
             "type": "string"
@@ -2137,7 +2120,7 @@
           },
           "units": {
             "items": {
-              "$ref": "#/components/schemas/projects.unitView"
+              "$ref": "#/components/schemas/projects.Unit"
             },
             "type": "array"
           },
@@ -2167,6 +2150,39 @@
           "units",
           "unseenTables",
           "utcOffsetMinutes"
+        ],
+        "type": "object"
+      },
+      "projects.addUnitRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "projects.defaultProjectView": {
+        "properties": {
+          "defaultProjectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "defaultProjectId"
+        ],
+        "type": "object"
+      },
+      "projects.describeProjectRequest": {
+        "properties": {
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description"
         ],
         "type": "object"
       },
@@ -2346,22 +2362,6 @@
         ],
         "type": "object"
       },
-      "projects.unitView": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ],
-        "type": "object"
-      },
       "projects.zoneView": {
         "properties": {
           "name": {
@@ -2381,53 +2381,7 @@
         ],
         "type": "object"
       },
-      "reports.Report": {
-        "properties": {
-          "expenses": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "issuedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "number": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "expenses",
-          "issuedAt",
-          "number"
-        ],
-        "type": "object"
-      },
-      "reports.Waiting": {
-        "properties": {
-          "expensesAmount": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "expensesCount": {
-            "type": "integer"
-          },
-          "revenueAmount": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "revenueCount": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "expensesAmount",
-          "expensesCount",
-          "revenueAmount",
-          "revenueCount"
-        ],
-        "type": "object"
-      },
-      "reports.categoryTotalView": {
+      "reports.CategoryTotal": {
         "properties": {
           "id": {
             "format": "uuid",
@@ -2435,7 +2389,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/reports.itemTotalView"
+              "$ref": "#/components/schemas/reports.ItemTotal"
             },
             "type": "array"
           },
@@ -2455,7 +2409,7 @@
         ],
         "type": "object"
       },
-      "reports.itemTotalView": {
+      "reports.ItemTotal": {
         "properties": {
           "id": {
             "format": "uuid",
@@ -2486,6 +2440,106 @@
           "name",
           "total",
           "type"
+        ],
+        "type": "object"
+      },
+      "reports.Report": {
+        "properties": {
+          "expenses": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "issuedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expenses",
+          "issuedAt",
+          "number"
+        ],
+        "type": "object"
+      },
+      "reports.Summary": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/reports.CategoryTotal"
+            },
+            "type": "array"
+          },
+          "completionPercent": {
+            "description": "A figure as it was written.",
+            "type": "number"
+          },
+          "expenses": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "reconciliationDifference": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "revenue": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "revenueCategories": {
+            "items": {
+              "$ref": "#/components/schemas/reports.CategoryTotal"
+            },
+            "type": "array"
+          },
+          "surplus": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "waiting": {
+            "$ref": "#/components/schemas/reports.Waiting"
+          },
+          "wasReconciled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "categories",
+          "completionPercent",
+          "expenses",
+          "reconciliationDifference",
+          "revenue",
+          "revenueCategories",
+          "surplus",
+          "waiting",
+          "wasReconciled"
+        ],
+        "type": "object"
+      },
+      "reports.Waiting": {
+        "properties": {
+          "expensesAmount": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "expensesCount": {
+            "type": "integer"
+          },
+          "revenueAmount": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "revenueCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expensesAmount",
+          "expensesCount",
+          "revenueAmount",
+          "revenueCount"
         ],
         "type": "object"
       },
@@ -2576,7 +2630,7 @@
           },
           "categories": {
             "items": {
-              "$ref": "#/components/schemas/reports.categoryTotalView"
+              "$ref": "#/components/schemas/reports.CategoryTotal"
             },
             "type": "array"
           },
@@ -2642,7 +2696,7 @@
           },
           "revenueCategories": {
             "items": {
-              "$ref": "#/components/schemas/reports.categoryTotalView"
+              "$ref": "#/components/schemas/reports.CategoryTotal"
             },
             "type": "array"
           },
@@ -2694,60 +2748,6 @@
           "surplus",
           "surplusWithoutSales",
           "vatRefunds"
-        ],
-        "type": "object"
-      },
-      "reports.summaryView": {
-        "properties": {
-          "categories": {
-            "items": {
-              "$ref": "#/components/schemas/reports.categoryTotalView"
-            },
-            "type": "array"
-          },
-          "completionPercent": {
-            "description": "A figure as it was written.",
-            "type": "number"
-          },
-          "expenses": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "reconciliationDifference": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "revenue": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "revenueCategories": {
-            "items": {
-              "$ref": "#/components/schemas/reports.categoryTotalView"
-            },
-            "type": "array"
-          },
-          "surplus": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "waiting": {
-            "$ref": "#/components/schemas/reports.Waiting"
-          },
-          "wasReconciled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "categories",
-          "completionPercent",
-          "expenses",
-          "reconciliationDifference",
-          "revenue",
-          "revenueCategories",
-          "surplus",
-          "waiting",
-          "wasReconciled"
         ],
         "type": "object"
       },
@@ -4375,7 +4375,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/projects.projectView"
+                    "$ref": "#/components/schemas/projects.View"
                   },
                   "type": "array"
                 }
@@ -4416,7 +4416,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -4498,7 +4498,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -4605,7 +4605,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -4678,7 +4678,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/accounts.accountView"
+                    "$ref": "#/components/schemas/accounts.View"
                   },
                   "type": "array"
                 }
@@ -4859,7 +4859,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/accounts.accountView"
+                    "$ref": "#/components/schemas/accounts.View"
                   },
                   "type": "array"
                 }
@@ -6001,7 +6001,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -6711,7 +6711,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -7011,7 +7011,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.rowView"
+                    "$ref": "#/components/schemas/entries.Row"
                   },
                   "type": "array"
                 }
@@ -7207,7 +7207,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.rowView"
+                    "$ref": "#/components/schemas/entries.Row"
                   },
                   "type": "array"
                 }
@@ -7262,7 +7262,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.rowView"
+                    "$ref": "#/components/schemas/entries.Row"
                   },
                   "type": "array"
                 }
@@ -7841,7 +7841,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/entries.rowView"
+                  "$ref": "#/components/schemas/entries.Row"
                 }
               }
             },
@@ -11025,7 +11025,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/reports.summaryView"
+                  "$ref": "#/components/schemas/reports.Summary"
                 }
               }
             },
@@ -11520,7 +11520,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -11647,7 +11647,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -11728,7 +11728,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
@@ -11807,7 +11807,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/projects.projectView"
+                  "$ref": "#/components/schemas/projects.View"
                 }
               }
             },
