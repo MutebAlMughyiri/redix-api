@@ -842,3 +842,39 @@ func TestWeb_R164_EveryIdOnTheRegisterFormIsTheOnlyOneAndNoneIsTheFrames(t *test
 		t.Errorf("only %d ids", len(seen))
 	}
 }
+
+func TestWeb_R165_AC37_1_TheStarMakesAProjectTheDefaultAndAgainClearsIt(t *testing.T) {
+	w := newWorking(t)
+	starred := w.browser.Send("POST", "/project/"+w.id+"/default", nil)
+	if starred.Code != http.StatusOK {
+		t.Fatalf("starring: %d", starred.Code)
+	}
+	has(t, starred.Body.String(), `aria-pressed="true"`)
+	has(t, starred.Body.String(), `<p id="web.projects.notice" class="notice" role="status">مشروع A هو مشروعك الافتراضي الآن، ويُفتح عند الدخول.</p>`)
+	lacks(t, starred.Body.String(), `id="web.shell"`)
+	again := w.Browser()
+	again.Send("POST", "/sign-in", url.Values{"username": {w.manager.String()}, "password": {password}})
+	has(t, again.Send("GET", "/", nil).Body.String(), `<h2 id="home.title">مشروع A</h2>`)
+	cleared := w.browser.Send("POST", "/project/"+w.id+"/default", nil).Body.String()
+	has(t, cleared, `aria-pressed="false"`)
+	lacks(t, cleared, `id="web.projects.notice"`)
+	if got := w.Count(`SELECT count(*) FROM user_default_projects`); got != 0 {
+		t.Errorf("the default is cleared: %d left", got)
+	}
+	if code := w.browser.Send("POST", "/project/"+uuid.NewString()+"/default", nil).Code; code != http.StatusNotFound {
+		t.Errorf("starring a project not theirs: %d", code)
+	}
+}
+
+func TestWeb_R165_StarringAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/project/"+w.id+"/default", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("starring with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+}

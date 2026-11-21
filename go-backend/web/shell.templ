@@ -74,11 +74,7 @@ templ topBar(p page) {
 				<span class="caret">▾</span>
 			</button>
 			<div id="web.projects" class="menu-pop projects-menu" popover>
-				<h4 id="web.projects.title">{ p.words.Of("projects.choose") }</h4>
-				for _, project := range p.projects {
-					@projectChoice(p, project, "web.projects.")
-				}
-				<span id="projects.new" class="parked" aria-disabled="true">{ p.words.Of("projects.new") }</span>
+				@projectMenu(p, "")
 			</div>
 		}
 		if p.person != "" {

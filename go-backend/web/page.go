@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
+	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -32,6 +33,8 @@ type page struct {
 	projects []projects.View
 	// project is the project the caller works in, the one the top bar names; the zero view while they choose one.
 	project projects.View
+	// defaultProject is the project the caller's sign-in opens straight into, starred in their list; uuid.Nil when none is (AC-37.1).
+	defaultProject uuid.UUID
 	// in shows the side menu and the tabs: someone is signed in with no temporary password left to change (AC-02.1).
 	in bool
 	// arriving plays the parts' motion once, in the answer to signing in (#161 R6).
@@ -103,9 +106,10 @@ func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) 
 	if p.projects, err = projects.List(r.Context(), s.Database.Queries(), s.Book, s.Clock.Now(), caller.UserID); err != nil {
 		return p, err
 	}
-	if p.project, err = s.projectOf(r, p); err != nil {
+	if p.defaultProject, err = projects.DefaultOf(r.Context(), s.Database.Queries(), caller.UserID, caller.Access); err != nil {
 		return p, err
 	}
+	p.project = p.projectOf()
 	if tab, opened := contents[p.view.Active]; opened {
 		p.content, err = tab(s, r, p)
 	}

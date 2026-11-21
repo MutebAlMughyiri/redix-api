@@ -791,12 +791,7 @@ func DefaultOf(ctx context.Context, read *store.Queries, userID uuid.UUID, held 
 // setDefault makes the project the one sign-in opens straight into (AC-37.1).
 func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	projectID := web.ID(r, "projectId")
-	err := p.database.InTx(r.Context(), func(q *store.Queries) error {
-		if _, err := changes.Found(q.ProjectWithID(r.Context(), projectID)); err != nil {
-			return err
-		}
-		return q.SetDefaultProject(r.Context(), store.SetDefaultProjectParams{UserID: caller.UserID, ProjectID: projectID})
-	})
+	err := SetDefault(r.Context(), p.database, caller.UserID, projectID)
 	if errors.Is(err, changes.NotFound) {
 		problem.Status(w, r, http.StatusNotFound)
 		return
@@ -810,12 +805,27 @@ func (p Routes) setDefault(w http.ResponseWriter, r *http.Request, caller access
 
 // removeDefault lets sign-in open the project list again.
 func (p Routes) removeDefault(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	err := p.database.InTx(r.Context(), func(q *store.Queries) error { return q.RemoveDefaultProject(r.Context(), caller.UserID) })
-	if err != nil {
+	if err := RemoveDefault(r.Context(), p.database, caller.UserID); err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
 	web.JSON(w, r, http.StatusOK, defaultProjectView{})
+}
+
+// SetDefault makes projectID the project userID's sign-in opens straight into (AC-37.1): the rule both doors call, the app's star and the web's
+// (redix-api #165). changes.NotFound for a project there is none of; any other error is the database's.
+func SetDefault(ctx context.Context, database db.DB, userID, projectID uuid.UUID) error {
+	return database.InTx(ctx, func(q *store.Queries) error {
+		if _, err := changes.Found(q.ProjectWithID(ctx, projectID)); err != nil {
+			return err
+		}
+		return q.SetDefaultProject(ctx, store.SetDefaultProjectParams{UserID: userID, ProjectID: projectID})
+	})
+}
+
+// RemoveDefault lets userID's sign-in open the project list again (AC-37.1), on either door. The error is the database's.
+func RemoveDefault(ctx context.Context, database db.DB, userID uuid.UUID) error {
+	return database.InTx(ctx, func(q *store.Queries) error { return q.RemoveDefaultProject(ctx, userID) })
 }
 
 // answer is the project as userID sees it (ProjectsEndpoints.ViewOfAsync).

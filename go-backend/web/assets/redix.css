@@ -204,3 +204,9 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .chips { display: flex; flex-wrap: wrap; gap: 6px; } .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border: 1px solid var(--chrome-line); border-radius: 999px; font-size: 12.5px; }
 [dir="rtl"] .chip { padding: 2px 10px 2px 4px; } .chip .remove { font: inherit; border: 0; background: transparent; color: var(--quiet); cursor: pointer; border-radius: 999px; padding: 0 5px; }
 .chip .remove:hover { background: var(--select); color: var(--text); }
+
+/* The default project's star beside each project of the top bar's list (AC-37.1, redix-api #165). */
+.menu-row { display: flex; align-items: center; gap: 2px; } .menu-row .choice { flex: 1; width: auto; min-width: 0; }
+.star { font: inherit; font-size: 15px; line-height: 1; border: 0; border-radius: 4px; background: transparent; color: var(--quiet); padding: 4px 6px; cursor: pointer; }
+.star:hover { background: var(--select); } .star[aria-pressed="true"] { color: var(--accent); }
+.menu-pop .notice { margin: 0 8px 6px; }

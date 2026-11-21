@@ -139,6 +139,40 @@ templ projectList(p page) {
 	</div>
 }
 
+// projectMenu is the top bar's list of the caller's projects, each with its star, the default one filled (AC-37.1); notice says what a star just
+// did. A star answers this list in place, so it stays open.
+templ projectMenu(p page, notice string) {
+	<h4 id="web.projects.title">{ p.words.Of("projects.choose") }</h4>
+	if notice != "" {
+		<p id="web.projects.notice" class="notice" role="status">{ notice }</p>
+	}
+	for _, project := range p.projects {
+		<div class="menu-row">
+			@projectChoice(p, project, "web.projects.")
+			if mayOpen(project) {
+				<button
+					id={ "projects.star." + project.ID.String() }
+					class="star"
+					type="button"
+					title={ p.words.Of("projects.defaultProject") }
+					aria-label={ p.words.Of("projects.defaultProject") }
+					aria-pressed={ strconv.FormatBool(project.ID == p.defaultProject) }
+					hx-post={ "/project/" + project.ID.String() + "/default" }
+					hx-target="[id='web.projects']"
+					hx-swap="innerHTML"
+				>
+					if project.ID == p.defaultProject {
+						★
+					} else {
+						☆
+					}
+				</button>
+			}
+		</div>
+	}
+	<span id="projects.new" class="parked" aria-disabled="true">{ p.words.Of("projects.new") }</span>
+}
+
 // projectChoice is one project to choose, its status beside its name; choosing it opens its home in the whole shell.
 templ projectChoice(p page, project projects.View, idPrefix string) {
 	<button
