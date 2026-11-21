@@ -67,16 +67,20 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 ## On the web: Partners (redix-api #169)
 
-The web's Partners is the app's screen in the shell: the capital total from `partners.Capital`, the function `GET /projects/{id}/capital` calls too, everyone who reads the project seeing it; then each partner the person sees (BR-31), the largest balance first, with their login - or that they have none, from `partners.ListOf`, the function `GET /projects/{id}/partners` calls too - their share, written to ten decimals as the app writes it, and their balance. A row opens the partner in the details panel with their approved movements, newest first, from `partners.MovementsOf`, the function `GET /projects/{id}/partners/{partnerId}/movements` calls too; a movement's receipt stays off the web (#80 D2). Its pages are in `go-backend/web` (`partners.go`, `partners.templ`).
+The web's Partners is the app's screen in the shell: the capital total from `partners.Capital`, the function `GET /projects/{id}/capital` calls too, everyone who reads the project seeing it; then each partner the person sees (BR-31), the largest balance first, with their login - or that they have none, from `partners.ListOf`, the function `GET /projects/{id}/partners` calls too - their share, written to ten decimals as the app writes it, and their balance. A row opens the partner in the details panel with their approved movements, newest first, from `partners.MovementsOf`, the function `GET /projects/{id}/partners/{partnerId}/movements` calls too; a movement's receipt stays off the web (#80 D2). Whoever manages the project's settings adds a partner from the head and edits or deletes one in the panel, as the app's dialogs ask: the name and their own login among the members, kept through `partners.Create` and `partners.Edit`; Delete asked first, gray with its reason while the partner holds capital or waits, through `partners.Delete` - the rules `POST`, `PUT` and `DELETE /projects/{id}/partners…` call too. Its pages are in `go-backend/web` (`partners.go`, `partners.templ`).
 
 | Page | Purpose | Answers |
 | --- | --- | --- |
 | `GET /tab/partners` | Partners, with the capital total | `200` the tab's content |
+| `GET /details/partner/new`, `GET /details/partner/{id}?asking=edit` | New partner's or Edit's form in the details panel; `?asking=delete` asks before Delete | `200` the form; `404` without ManageSettings |
+| `POST /partner`, `POST /partner/{id}/edit`, `POST /partner/{id}/delete` | Keeps the form (`name`, `login`), or deletes the partner | `200` the panel showing the partner, or that they were deleted, Partners beside it; or the panel saying why not; `403` without ManageSettings; `404` for an action there is none of |
 | `GET /details/partner/{id}` | A partner and their movements in the details panel | `200` the panel; `404` for a partner the person does not see, or none |
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | Partners lists the capital and each partner's login, share and balance, the largest first; a partner's movements open in the panel (UC-040, BR-05, BR-28); a failing database answers 500 | `partners.Capital`, `partners.ListOf`, `partners.MovementsOf` | `TestWeb_R169_UC040_PartnersListsTheCapitalAndEachPartnersShare` |
+| New partner, Edit and Delete as the app's: a name 1 to 100 letters, a login another partner holds refused; Delete only at zero capital with nothing waiting (redix-api #100) | `partners.Create`, `partners.Edit`, `partners.Delete` | `TestWeb_R169_UC016_NewPartnerEditAndDeleteAsTheAppsDialogs` |
+| A partner's changes need ManageSettings; a finished project changes nothing (AC-04.1); a failing database answers 500 | `web.site.keepPartner` | `TestWeb_R169_APartnersChangesAreGatedAsTheAppsRoutesAre` |
 
 ## Left to later use cases
 

@@ -2064,3 +2064,96 @@ func TestWeb_R169_UC040_PartnersListsTheCapitalAndEachPartnersShare(t *testing.T
 		}
 	}
 }
+
+func TestWeb_R169_UC016_NewPartnerEditAndDeleteAsTheAppsDialogs(t *testing.T) {
+	w := newWorking(t)
+	holding := w.partner("شريك أ", "")
+	w.capitalIn(holding, 300, "")
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/partners", nil).Body.String(), `hx-get="/details/partner/new"`)
+	form := w.browser.Send("GET", "/details/partner/new", nil).Body.String()
+	has(t, form, `<option id="partners.login.option.`+w.manager.String()+`" value="`+w.manager.String()+`">User A</option>`)
+	has(t, w.browser.Send("POST", "/partner", url.Values{"name": {" "}}).Body.String(), "أدخل اسماً من 1 إلى 100 حرف.")
+	added := w.browser.Send("POST", "/partner", url.Values{"name": {"شريك ج"}, "login": {w.manager.String()}}).Body.String()
+	has(t, added, `<h3 id="partner.title">شريك ج</h3>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	has(t, w.browser.Send("POST", "/partner", url.Values{"name": {"شريك د"}, "login": {w.manager.String()}}).Body.String(), "حساب الدخول هذا لشريك آخر في هذا المشروع.")
+	newcomer := w.partnerNamed("شريك ج")
+	has(t, w.browser.Send("GET", "/details/partner/"+newcomer+"?asking=edit", nil).Body.String(), `value="شريك ج"`)
+	has(t, w.browser.Send("POST", "/partner/"+newcomer+"/edit", url.Values{"name": {"شريك ج الجديد"}, "login": {""}}).Body.String(), `<h3 id="partner.title">شريك ج الجديد</h3>`)
+	held := w.browser.Send("GET", "/details/partner/"+holding, nil).Body.String()
+	has(t, held, `id="partners.delete" class="quiet-button" type="button" disabled`)
+	has(t, held, "لا يُحذف الشريك إلا ورأس ماله صفر ولا ينتظر له قيد.")
+	has(t, w.browser.Send("GET", "/details/partner/"+newcomer+"?asking=delete", nil).Body.String(), "حذف الشريك؟")
+	deleted := w.browser.Send("POST", "/partner/"+newcomer+"/delete", nil).Body.String()
+	has(t, deleted, `<h3 id="partner.title">تم حذف الشريك.</h3>`)
+	lacks(t, deleted, `id="partners.row.`+newcomer+`"`)
+	has(t, w.browser.Send("POST", "/partner/"+holding+"/delete", nil).Body.String(), `<p id="partner.refusal" class="refusal details-say" role="alert">لا يُحذف الشريك`)
+	if code := w.browser.Send("POST", "/partner/"+holding+"/archive", nil).Code; code != http.StatusNotFound {
+		t.Errorf("an action there is none of: %d", code)
+	}
+	if code := w.browser.Send("POST", "/partner/"+uuid.NewString()+"/edit", url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+		t.Errorf("a partner not in the project: %d", code)
+	}
+}
+
+// partnerNamed is the id of the project's partner called name.
+func (w working) partnerNamed(name string) string {
+	w.t.Helper()
+	var id string
+	if err := w.Database.Read.QueryRow("SELECT id FROM partners WHERE project_id = ? AND name = ?", w.id, name).Scan(&id); err != nil {
+		w.t.Fatal(err)
+	}
+	return id
+}
+
+func TestWeb_R169_APartnersChangesAreGatedAsTheAppsRoutesAre(t *testing.T) {
+	w := newWorking(t)
+	partner := w.partner("شريك أ", "")
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	if code := browser.Send("GET", "/details/partner/new", nil).Code; code != http.StatusNotFound {
+		t.Errorf("New partner without ManageSettings: %d", code)
+	}
+	if code := browser.Send("POST", "/partner", url.Values{"name": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("adding without ManageSettings: %d", code)
+	}
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/partner", url.Values{"name": {"شريك ب"}})
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("adding with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	for _, action := range []string{"edit", "delete"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "POST", "/partner/"+partner+"/"+action, url.Values{"name": {"شريك أ"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", action, n, answered.Code)
+			}
+		}
+	}
+	partner = w.partner("شريك ب", "")
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/details/partner/"+partner+"?asking=edit", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("Edit with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/partner/"+partner+"/edit", url.Values{"name": {"بعد الإغلاق"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+}

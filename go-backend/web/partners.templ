@@ -4,8 +4,12 @@
 package web
 
 import (
+	"strconv"
 	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
@@ -15,6 +19,17 @@ import (
 templ partnersList(p page, shown partnersShown) {
 	<div class="view-head">
 		<h2 id="partners.title">{ p.words.Of("partners.title") }</h2>
+		<span id="partners.actions" class="head-actions">
+			<button
+				id="partners.add"
+				class="primary small"
+				type="button"
+				disabled?={ !p.mayKeepPartners() }
+				title={ p.words.Of("permissions.manageSettings") }
+				hx-get="/details/partner/new"
+				hx-target="[id='web.details']"
+			>{ p.words.Of("partners.new") }</button>
+		</span>
 	</div>
 	<section id="partners.total.card" class="card">
 		<dl class="facts">
@@ -59,12 +74,18 @@ templ partnersList(p page, shown partnersShown) {
 // partnerPanel is a partner in the details panel: their balance and share on one line, as the app's row shows them, and their approved
 // movements, newest first, each with its kind, date, account and amount, as the app's movements screen lists them; a movement's receipt stays
 // off the web (D1).
-templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movements []partners.Movement) {
+templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movements []partners.Movement, said said) {
 	<div class="details-head">
 		<h3 id="partner.title">{ line.Name }</h3>
 		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
 	</div>
 	<p id="partner.figures" class="details-say"><b id="partner.balance" class="money">{ statement.Money(line.Balance.Number()) }</b> · <span id="partner.share">{ shareOf(line) }</span></p>
+	if said.refusal != "" {
+		<p id="partner.refusal" class="refusal details-say" role="alert">{ p.words.Of(said.refusal) }</p>
+	}
+	if partner, found := shown.partnerOf(line.ID); found && p.mayKeepPartners() {
+		@partnerActions(p, partner, said.asking == "delete")
+	}
 	<p id="partner.movements.label" class="section-title details-say">{ p.words.Of("capital.movements") }</p>
 	if len(movements) == 0 {
 		<p id="partner.noMovements" class="hint details-say">{ p.words.Of("capital.noMovements") }</p>
@@ -85,4 +106,98 @@ templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movem
 			}
 		</ul>
 	}
+}
+
+// partnerActions are what whoever manages the settings may do to a partner in the panel: Edit, and Delete - asked first, saying their movements
+// stay and which of the caller's drafts go with them; gray with its reason while the partner holds capital or waits, others' drafts named.
+templ partnerActions(p page, partner partners.View, asking bool) {
+	if asking && partner.MayDelete {
+		<div id="partner.ask" class="details-say ask">
+			<span id="partner.askQuestion">{ p.words.Of("partners.deleteQuestion") + " " + p.words.Of("partners.deleteKeepsMovements") }</span>
+			if len(partner.MyDrafts) > 0 {
+				<small id="partner.askDrafts">{ p.words.Of("partners.deleteRemovesMyDrafts") }</small>
+			}
+			<button id="partner.deleteConfirm" class="primary small danger" type="button" hx-post={ "/partner/" + partner.ID.String() + "/delete" } hx-target="[id='web.details']">{ p.words.Of("partners.delete") }</button>
+			<button id="partner.deleteCancel" class="quiet-button" type="button" hx-get={ "/details/partner/" + partner.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+		</div>
+	} else {
+		<div id="partner.actions" class="details-actions">
+			<button id="partners.edit" class="quiet-button" type="button" hx-get={ "/details/partner/" + partner.ID.String() + "?asking=edit" } hx-target="[id='web.details']">{ p.words.Of("partners.edit") }</button>
+			<button
+				id="partners.delete"
+				class="quiet-button"
+				type="button"
+				disabled?={ !partner.MayDelete }
+				hx-get={ "/details/partner/" + partner.ID.String() + "?asking=delete" }
+				hx-target="[id='web.details']"
+			>{ p.words.Of("partners.delete") }</button>
+		</div>
+		if !partner.MayDelete {
+			<p id="partners.deleteReason" class="hint details-say">{ p.words.Of("partners.partnerNotDeletable") }</p>
+		}
+		for at, author := range partner.OthersDrafts {
+			<p id={ "partners.draftsBy." + strconv.Itoa(at) } class="hint details-say">{ p.words.Of("partners.draftsBy", author) }</p>
+		}
+	}
+}
+
+// partnerForm is New partner or Edit in the details panel, as the app's partner dialog asks it: the name, and their own login among the
+// project's members - none for a partner without one -, with its hint; and why it could not be kept.
+templ partnerForm(p page, editing partners.View, name string, login uuid.UUID, members []store.MembersRow, refusal string) {
+	<div class="details-head">
+		<h3 id="partner.title">
+			if editing.ID == uuid.Nil {
+				{ p.words.Of("partners.new") }
+			} else {
+				{ p.words.Of("partners.edit") }
+			}
+		</h3>
+		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form
+		id="partner.form"
+		class="details-form"
+		if editing.ID == uuid.Nil {
+			hx-post="/partner"
+		} else {
+			hx-post={ "/partner/" + editing.ID.String() + "/edit" }
+		}
+		hx-target="[id='web.details']"
+	>
+		<div class="field">
+			<label id="partners.partnerName.label" for="partners.partnerName">{ p.words.Of("partners.name") }</label>
+			<input id="partners.partnerName" name="name" required value={ name } autofocus/>
+		</div>
+		<div class="field">
+			<label id="partners.login.label" for="partners.login">{ p.words.Of("partners.login") }</label>
+			<select id="partners.login" name="login">
+				<option id="partners.login.option.none" value="">{ p.words.Of("partners.noLogin") }</option>
+				for _, member := range members {
+					<option id={ "partners.login.option." + member.ID.String() } value={ member.ID.String() } selected?={ member.ID == login }>{ member.DisplayName }</option>
+				}
+			</select>
+			<small id="partners.loginHint" class="hint">{ p.words.Of("partners.loginHint") }</small>
+		</div>
+		if refusal != "" {
+			<p id="partner.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="partner.formActions" class="details-actions">
+			<button id="partner.save" class="primary small" type="submit">{ p.words.Of("partners.save") }</button>
+		</span>
+	</form>
+}
+
+// partnerGone is the details panel once its partner was deleted, saying so.
+templ partnerGone(p page) {
+	<div class="details-head">
+		<h3 id="partner.title">{ p.words.Of("partners.deleted") }</h3>
+		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+}
+
+// partnersBeside is Partners again, carried out of band beside the panel, once a partner was added, changed or deleted.
+templ partnersBeside(p page, shown partnersShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@partnersList(p, shown)
+	</div>
 }

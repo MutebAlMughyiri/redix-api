@@ -182,15 +182,20 @@ func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	name, ok := naming.Named(typed.Name)
-	if !ok {
-		problem.Refuse(w, r, http.StatusBadRequest, naming.Invalid)
-		return
-	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		_, err := Add(c, name, typed.UserID)
+		_, err := Create(c, typed.Name, typed.UserID)
 		return err
 	})
+}
+
+// Create adds the partner typed as name, with login as their own login unless it is uuid.Nil, as add answers it: invalidName for a name not 1 to
+// 100 letters, then the refusals of Add. The rule both doors call, the app's route and the web's New partner (redix-api #169).
+func Create(c changes.Change, name string, login uuid.UUID) (uuid.UUID, error) {
+	named, ok := naming.Named(name)
+	if !ok {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	return Add(c, named, login)
 }
 
 // Add adds the partner named name, with login as their own login unless it is uuid.Nil, as the last table of the change's project's capital item
@@ -240,13 +245,13 @@ func orRefused(err error, code string) error {
 	return changes.Refuse(http.StatusBadRequest, code)
 }
 
-// kept is the route's partner while not deleted: notFound otherwise.
-func kept(c changes.Change, r *http.Request) (store.Partner, error) {
+// keptOf is the partner partnerID of c's project while not deleted: changes.NotFound otherwise.
+func keptOf(c changes.Change, partnerID uuid.UUID) (store.Partner, error) {
 	partners, err := c.Q.PartnersOf(c.Ctx, c.ProjectID)
 	if err != nil {
 		return store.Partner{}, err
 	}
-	at := slices.IndexFunc(partners, func(partner store.Partner) bool { return partner.ID == web.ID(r, "partnerId") && !partner.IsDeleted })
+	at := slices.IndexFunc(partners, func(partner store.Partner) bool { return partner.ID == partnerID && !partner.IsDeleted })
 	if at < 0 {
 		return store.Partner{}, changes.NotFound
 	}
@@ -259,26 +264,31 @@ func (s Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Calle
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	name, ok := naming.Named(typed.Name)
+	partnerID := web.ID(r, "partnerId")
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Edit(c, partnerID, typed.Name, typed.UserID) })
+}
+
+// Edit names the partner partnerID of c's project name and makes login their own login, uuid.Nil none, as edit answers it: invalidName,
+// changes.NotFound for a partner not kept, then the refusals of a login. The rule both doors call, the app's route and the web's Edit (redix-api
+// #169).
+func Edit(c changes.Change, partnerID uuid.UUID, name string, login uuid.UUID) error {
+	named, ok := naming.Named(name)
 	if !ok {
-		problem.Refuse(w, r, http.StatusBadRequest, naming.Invalid)
-		return
+		return changes.Refuse(http.StatusBadRequest, naming.Invalid)
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		before, err := kept(c, r)
-		if err != nil {
-			return err
-		}
-		if code, err := refusalOfLogin(c, before.ID, typed.UserID); err != nil || code != "" {
-			return orRefused(err, code)
-		}
-		after := before
-		after.Name = name
-		if err := c.Save("Partners", after.ID, false, fields(before), fields(after), func() error { return c.Q.SavePartner(c.Ctx, store.SavePartnerParams(after)) }); err != nil {
-			return err
-		}
-		return linkTo(c, after.ID, typed.UserID)
-	})
+	before, err := keptOf(c, partnerID)
+	if err != nil {
+		return err
+	}
+	if code, err := refusalOfLogin(c, before.ID, login); err != nil || code != "" {
+		return orRefused(err, code)
+	}
+	after := before
+	after.Name = named
+	if err := c.Save("Partners", after.ID, false, fields(before), fields(after), func() error { return c.Q.SavePartner(c.Ctx, store.SavePartnerParams(after)) }); err != nil {
+		return err
+	}
+	return linkTo(c, after.ID, login)
 }
 
 // linkTo makes userID the partner's own login, uuid.Nil none (Partner.LinkTo), its line an update whatever became of its row.
@@ -309,42 +319,47 @@ func linkTo(c changes.Change, partnerID, userID uuid.UUID) error {
 // delete deletes a partner softly (redix-api #100): they leave every place a new movement starts, their movements staying in the books and their
 // login theirs no more; only as deletable says, otherwise partnerNotDeletable (409). The caller's own drafts naming them go with them.
 func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		partner, err := kept(c, r)
-		if err != nil {
-			return err
-		}
-		partners, err := c.Q.PartnersOf(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		movements, err := c.Q.CapitalMovements(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		if !deletable(partners, movements, caller, c.ProjectID)[partner.ID] {
-			return changes.Refuse(http.StatusConflict, "partnerNotDeletable")
-		}
-		for _, row := range movements {
-			if row.PartnerID == partner.ID && row.Status == ledger.Draft {
-				entry := store.Entry{ID: row.ID, ProjectID: row.ProjectID, Kind: row.Kind, Status: row.Status, EntryDate: row.EntryDate, Amount: row.Amount,
-					AccountID: row.AccountID, Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedAt: row.CreatedAt, ApprovedAt: row.ApprovedAt,
-					ColumnValues: row.ColumnValues, Number: row.Number}
-				if err := entries.Delete(c, entry); err != nil {
-					return err
-				}
+	partnerID := web.ID(r, "partnerId")
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Delete(c, caller, partnerID) })
+}
+
+// Delete deletes the partner partnerID of c's project softly as caller, as delete answers it (redix-api #100): changes.NotFound for a partner not
+// kept, partnerNotDeletable (409) unless deletable says so. The rule both doors call, the app's route and the web's Delete (redix-api #169).
+func Delete(c changes.Change, caller access.Caller, partnerID uuid.UUID) error {
+	partner, err := keptOf(c, partnerID)
+	if err != nil {
+		return err
+	}
+	partners, err := c.Q.PartnersOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return err
+	}
+	movements, err := c.Q.CapitalMovements(c.Ctx, c.ProjectID)
+	if err != nil {
+		return err
+	}
+	if !deletable(partners, movements, caller, c.ProjectID)[partner.ID] {
+		return changes.Refuse(http.StatusConflict, "partnerNotDeletable")
+	}
+	for _, row := range movements {
+		if row.PartnerID == partner.ID && row.Status == ledger.Draft {
+			entry := store.Entry{ID: row.ID, ProjectID: row.ProjectID, Kind: row.Kind, Status: row.Status, EntryDate: row.EntryDate, Amount: row.Amount,
+				AccountID: row.AccountID, Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedAt: row.CreatedAt, ApprovedAt: row.ApprovedAt,
+				ColumnValues: row.ColumnValues, Number: row.Number}
+			if err := entries.Delete(c, entry); err != nil {
+				return err
 			}
 		}
-		after := partner
-		after.IsDeleted = true
-		if err := c.Q.SavePartner(c.Ctx, store.SavePartnerParams(after)); err != nil {
-			return err
-		}
-		if err := c.Q.RemovePartnerLogin(c.Ctx, partner.ID); err != nil {
-			return err
-		}
-		return c.Record(history.Delete, "Partners", partner.ID, map[string]any{"IsDeleted": false}, map[string]any{"IsDeleted": true})
-	})
+	}
+	after := partner
+	after.IsDeleted = true
+	if err := c.Q.SavePartner(c.Ctx, store.SavePartnerParams(after)); err != nil {
+		return err
+	}
+	if err := c.Q.RemovePartnerLogin(c.Ctx, partner.ID); err != nil {
+		return err
+	}
+	return c.Record(history.Delete, "Partners", partner.ID, map[string]any{"IsDeleted": false}, map[string]any{"IsDeleted": true})
 }
 
 // CapitalLine is one partner's capital and share of the whole (CapitalLineView).
