@@ -2798,6 +2798,33 @@
         "required": [],
         "type": "object"
       },
+      "structure.CategoryView": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/structure.ItemView"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "isActive",
+          "items",
+          "name"
+        ],
+        "type": "object"
+      },
       "structure.ChoiceView": {
         "properties": {
           "id": {
@@ -2882,6 +2909,66 @@
         ],
         "type": "object"
       },
+      "structure.ItemView": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "showsTablePercentages": {
+            "type": "boolean"
+          },
+          "subgroups": {
+            "items": {
+              "$ref": "#/components/schemas/structure.SubgroupView"
+            },
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "purchases",
+              "contractorPayments",
+              "both",
+              "sale",
+              "vatRefund",
+              "otherRevenue",
+              "capital"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "isActive",
+          "name",
+          "showsTablePercentages",
+          "subgroups",
+          "type"
+        ],
+        "type": "object"
+      },
+      "structure.SubgroupView": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
       "structure.addItemRequest": {
         "properties": {
           "name": {
@@ -2945,33 +3032,6 @@
           "isRequired",
           "name",
           "showInReports"
-        ],
-        "type": "object"
-      },
-      "structure.categoryView": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/structure.itemView"
-            },
-            "type": "array"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "isActive",
-          "items",
-          "name"
         ],
         "type": "object"
       },
@@ -3106,50 +3166,6 @@
         ],
         "type": "object"
       },
-      "structure.itemView": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "name": {
-            "type": "string"
-          },
-          "showsTablePercentages": {
-            "type": "boolean"
-          },
-          "subgroups": {
-            "items": {
-              "$ref": "#/components/schemas/structure.subgroupView"
-            },
-            "type": "array"
-          },
-          "type": {
-            "enum": [
-              "purchases",
-              "contractorPayments",
-              "both",
-              "sale",
-              "vatRefund",
-              "otherRevenue",
-              "capital"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "isActive",
-          "name",
-          "showsTablePercentages",
-          "subgroups",
-          "type"
-        ],
-        "type": "object"
-      },
       "structure.reorderRequest": {
         "properties": {
           "ids": {
@@ -3181,22 +3197,6 @@
         "required": [
           "applyToAllItems",
           "ids"
-        ],
-        "type": "object"
-      },
-      "structure.subgroupView": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
         ],
         "type": "object"
       },
@@ -5563,7 +5563,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/structure.categoryView"
+                    "$ref": "#/components/schemas/structure.CategoryView"
                   },
                   "type": "array"
                 }
@@ -5615,7 +5615,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/structure.categoryView"
+                  "$ref": "#/components/schemas/structure.CategoryView"
                 }
               }
             },
@@ -5675,7 +5675,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/structure.categoryView"
+                    "$ref": "#/components/schemas/structure.CategoryView"
                   },
                   "type": "array"
                 }
@@ -5945,7 +5945,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/structure.itemView"
+                  "$ref": "#/components/schemas/structure.ItemView"
                 }
               }
             },

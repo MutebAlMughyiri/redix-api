@@ -63,6 +63,23 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | One project's suppliers are never another's (BR-33) | `access.Gate.Needs`, the `SupplierOf` query, by id and project | `OneProjectsSuppliersAreNeverAnothers` |
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 
+## On the web: Suppliers (redix-api #170)
+
+The web's Suppliers is the app's screen in the shell, its item in the side menu between Partners and Contracts: every supplier of the register, disabled ones included, by name, from `suppliers.ListOf`, the function `GET /projects/{id}/suppliers` calls too, everyone who reads the project seeing it. Each row says what the app's row says - its name, quiet once disabled, then that it is disabled or waits for approval, its VAT number and its default item -, and the search finds a name, a VAT number, a mobile or a default item, as the app's does. A row opens the supplier in the details panel with its VAT number, mobile and default item. Whoever manages the project's settings, in a project not finished, adds a supplier from the head - New supplier stands gray with its reason for anyone else - and edits, disables or enables one in the panel, as the app's dialog and row menu do: the name, the VAT number - naming the supplier that already holds it -, the mobile, and the purchase item its expenses usually go to, from `structure.OfferedOf`, the function `GET /projects/{id}/categories/offered` calls too; kept through `suppliers.Add`, `suppliers.Edit` and `suppliers.Activate`, the rules `POST`, `PUT …/{supplierId}` and `…/disable|enable` call too. A default item since disabled stays offered on Edit, so saving keeps it. Its pages are in `go-backend/web` (`suppliers.go`, `suppliers.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/suppliers?text=` | Suppliers, searched | `200` the tab's content |
+| `GET /details/supplier/{id}` | A supplier in the details panel; `?asking=edit` Edit's form | `200` the panel; `404` for a supplier the register does not hold |
+| `GET /details/supplier/new` | New supplier's form in the details panel | `200` the form; `404` without ManageSettings |
+| `POST /supplier`, `POST /supplier/{id}/edit`, `POST /supplier/{id}/disable`, `POST /supplier/{id}/enable` | Keeps the form (`name`, `vatNumber`, `mobile`, `defaultItem`), or disables or enables the supplier | `200` the panel showing the supplier, Suppliers beside it; or the form or the panel saying why not; `403` without ManageSettings; `404` for an action there is none of |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Suppliers lists the register, disabled suppliers included, each row as the app's says it; the search finds a name, VAT number, mobile or default item | `suppliers.ListOf`, `web.supplierDetails`, `web.searchHolds` | `TestWeb_R170_UC017_SuppliersListsTheRegisterAsTheAppsScreen` |
+| New supplier, Edit, Disable and Enable as the app's: a name 1 to 100 letters, a VAT number of at most 20 digits another supplier does not hold (BR-16), a mobile; the general cash supplier is never disabled (BR-15) | `suppliers.Add`, `suppliers.Edit`, `suppliers.Activate`, `structure.OfferedOf` | `TestWeb_R170_UC017_NewSupplierEditDisableAndEnableAsTheAppsDialog` |
+| A supplier's changes need ManageSettings; a finished project changes nothing (AC-04.1); a failing database answers 500 | `web.site.keepSupplier` | `TestWeb_R170_ASuppliersChangesAreGatedAsTheAppsRoutesAre` |
+
 ## Left to later use cases
 
 | What | Use case |

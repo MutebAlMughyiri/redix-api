@@ -2194,3 +2194,124 @@ func TestWeb_R169_ThePartnerHistoryTellsEachLineAsTheAppsDoes(t *testing.T) {
 		}
 	}
 }
+
+// supplier adds the supplier body types to the working project through the app's route; it is the supplier's id.
+func (w working) supplier(body string) string {
+	w.t.Helper()
+	code, answer := w.Ask("POST", w.path+"/suppliers", body, w.token)
+	if code >= 300 {
+		w.t.Fatalf("the supplier: %d %v", code, answer)
+	}
+	return testapi.Field(answer, "id").(string)
+}
+
+func TestWeb_R170_UC017_SuppliersListsTheRegisterAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	steel := w.supplier(`{"name":"مؤسسة الحديد","vatNumber":"300111","mobile":"0500000001","defaultItemId":"` + w.item + `"}`)
+	gone := w.supplier(`{"name":"مؤسسة قديمة"}`)
+	w.Ask("POST", w.path+"/suppliers/"+gone+"/disable", ``, w.token)
+	member, memberToken := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	w.Ask("POST", w.path+"/users/"+member.String()+"/permissions/AddSupplier", ``, w.token)
+	_, waiting := w.Ask("POST", w.path+"/suppliers", `{"name":"مورد من الموقع"}`, memberToken)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `id="web.item.suppliers"`)
+	list := w.browser.Send("GET", "/tab/suppliers", nil).Body.String()
+	has(t, list, `<small id="suppliers.details.`+steel+`" class="hint">300111 · التسليح</small>`)
+	has(t, list, `<tr id="suppliers.row.`+gone+`" class="disabled"`)
+	has(t, list, `<small id="suppliers.details.`+gone+`" class="hint">معطّل</small>`)
+	has(t, list, "مورد نقدي عام")
+	has(t, list, `<small id="suppliers.details.`+testapi.Field(waiting, "id").(string)+`" class="hint">بانتظار الاعتماد</small>`)
+	has(t, list, `<button id="suppliers.add" class="primary small" type="button" title="`)
+	found := w.browser.Send("GET", "/tab/suppliers?text=0500000001", nil).Body.String()
+	has(t, found, "مؤسسة الحديد")
+	lacks(t, found, "مؤسسة قديمة")
+	has(t, w.browser.Send("GET", "/tab/suppliers?text=لا+أحد", nil).Body.String(), `<p id="suppliers.empty" class="empty">لا يوجد موردون.</p>`)
+	panel := w.browser.Send("GET", "/details/supplier/"+steel, nil).Body.String()
+	for _, part := range []string{`<h3 id="supplier.title">مؤسسة الحديد</h3>`, `<dd id="supplier.vatNumber">300111</dd>`, `<dd id="supplier.mobile"><bdi>0500000001</bdi></dd>`,
+		`<dd id="supplier.defaultItem">التسليح</dd>`, `id="suppliers.edit"`, `id="suppliers.disable"`} {
+		has(t, panel, part)
+	}
+	has(t, w.browser.Send("GET", "/details/supplier/"+gone, nil).Body.String(), `<dd id="supplier.defaultItem">بدون بند افتراضي</dd>`)
+	if code := w.browser.Send("GET", "/details/supplier/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("a supplier not in the register: %d", code)
+	}
+}
+
+func TestWeb_R170_UC017_NewSupplierEditDisableAndEnableAsTheAppsDialog(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	form := w.browser.Send("GET", "/details/supplier/new", nil).Body.String()
+	has(t, form, `<option id="suppliers.defaultItem.option.`+w.item+`" value="`+w.item+`">التسليح</option>`)
+	has(t, w.browser.Send("POST", "/supplier", url.Values{"name": {" "}}).Body.String(), "أدخل اسماً من 1 إلى 100 حرف.")
+	has(t, w.browser.Send("POST", "/supplier", url.Values{"name": {"مؤسسة أ"}, "vatNumber": {"30a"}}).Body.String(), "الرقم الضريبي رقم من 20 خانة على الأكثر.")
+	added := w.browser.Send("POST", "/supplier", url.Values{"name": {"مؤسسة أ"}, "vatNumber": {"300222"}}).Body.String()
+	has(t, added, `<h3 id="supplier.title">مؤسسة أ</h3>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	taken := w.browser.Send("POST", "/supplier", url.Values{"name": {"مؤسسة ب"}, "vatNumber": {"300222"}}).Body.String()
+	has(t, taken, "هذا الرقم الضريبي لمورد آخر.")
+	has(t, taken, `<small id="suppliers.holder" class="hint">المورد الموجود: مؤسسة أ</small>`)
+	var first string
+	if err := w.Database.Read.QueryRow("SELECT id FROM suppliers WHERE name = ?", "مؤسسة أ").Scan(&first); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("GET", "/details/supplier/"+first+"?asking=edit", nil).Body.String(), `value="300222"`)
+	edited := w.browser.Send("POST", "/supplier/"+first+"/edit", url.Values{"name": {"مؤسسة أ الجديدة"}, "vatNumber": {"300222"}, "defaultItem": {w.item}}).Body.String()
+	has(t, edited, `<h3 id="supplier.title">مؤسسة أ الجديدة</h3>`)
+	has(t, edited, `<dd id="supplier.defaultItem">التسليح</dd>`)
+	has(t, w.browser.Send("POST", "/supplier/"+first+"/edit", url.Values{"name": {"مؤسسة أ"}, "mobile": {"x"}}).Body.String(), `<p id="supplier.refusal" class="refusal" role="alert">اكتب رقم الجوال`)
+	disabled := w.browser.Send("POST", "/supplier/"+first+"/disable", nil).Body.String()
+	has(t, disabled, `<p id="supplier.details" class="hint details-foot">معطّل · 300222 · التسليح</p>`)
+	has(t, disabled, `id="suppliers.enable"`)
+	has(t, w.browser.Send("POST", "/supplier/"+first+"/enable", nil).Body.String(), `id="suppliers.disable"`)
+	var cash string
+	if err := w.Database.Read.QueryRow("SELECT id FROM suppliers WHERE is_general_cash").Scan(&cash); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("POST", "/supplier/"+cash+"/disable", nil).Body.String(), `<p id="supplier.refusal" class="refusal details-say" role="alert">يبقى المورد النقدي العام`)
+	w.Ask("POST", w.path+"/items/"+w.item+"/disable", ``, w.token)
+	kept := w.browser.Send("GET", "/details/supplier/"+first+"?asking=edit", nil).Body.String()
+	has(t, kept, `<option id="suppliers.defaultItem.option.`+w.item+`" value="`+w.item+`" selected>التسليح</option>`)
+	for _, path := range []string{"/supplier/" + first + "/archive", "/supplier/" + uuid.NewString() + "/edit"} {
+		if code := w.browser.Send("POST", path, url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+}
+
+func TestWeb_R170_ASuppliersChangesAreGatedAsTheAppsRoutesAre(t *testing.T) {
+	w := newWorking(t)
+	supplier := w.supplier(`{"name":"مؤسسة أ"}`)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	list := browser.Send("GET", "/tab/suppliers", nil).Body.String()
+	has(t, list, `<button id="suppliers.add" class="primary small" type="button" disabled`)
+	lacks(t, browser.Send("GET", "/details/supplier/"+supplier, nil).Body.String(), `id="suppliers.edit"`)
+	if code := browser.Send("GET", "/details/supplier/new", nil).Code; code != http.StatusNotFound {
+		t.Errorf("New supplier without ManageSettings: %d", code)
+	}
+	if code := browser.Send("POST", "/supplier", url.Values{"name": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("adding without ManageSettings: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"POST", "/supplier"}, {"POST", "/supplier/" + supplier + "/edit"}, {"POST", "/supplier/" + supplier + "/disable"},
+		{"GET", "/details/supplier/" + supplier}, {"GET", "/details/supplier/" + supplier + "?asking=edit"}, {"GET", "/details/supplier/new"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"مؤسسة ج"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/supplier/"+supplier+"/edit", url.Values{"name": {"بعد الإغلاق"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+	lacks(t, w.browser.Send("GET", "/details/supplier/"+supplier, nil).Body.String(), `id="suppliers.edit"`)
+}

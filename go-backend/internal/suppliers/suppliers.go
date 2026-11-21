@@ -100,17 +100,30 @@ func viewOf(row store.SuppliersOfRow, counted bool) View {
 
 // list is every supplier of the project, disabled ones included, by name.
 func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	rows, err := s.database.Queries().SuppliersOf(r.Context(), store.SuppliersOfParams{ProjectID: web.ID(r, "projectId")})
+	views, err := ListOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// ListOf is every supplier of projectID, disabled ones included, by name, as list answers them: the rule both doors call, the app's route and
+// the web's Suppliers (redix-api #170). The error is the database's.
+func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID) ([]View, error) {
+	rows, err := read.SuppliersOf(ctx, store.SuppliersOfParams{ProjectID: projectID})
+	if err != nil {
+		return nil, err
 	}
 	var views []View
 	for _, row := range rows {
 		views = append(views, viewOf(row, false))
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
+
+// Pending says whether the supplier waits for whoever keeps the settings: added from the field, until the first expense on it is approved.
+func (v View) Pending() bool { return int64(v.Status) == pendingApproval }
 
 // search is what the caller's entry may pick (AC-43.1): the active suppliers that are approved, that they added, or any waiting one for whoever
 // keeps the settings, whose name - read as spelling reads it - or VAT number holds text; those on most of the caller's purchases first, then by
@@ -284,36 +297,45 @@ func (s Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Calle
 	if !web.Read(w, r, &request) {
 		return
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		before, err := changes.Found(c.Q.SupplierOf(c.Ctx, store.SupplierOfParams{ID: web.ID(r, "supplierId"), ProjectID: c.ProjectID}))
-		if err != nil {
-			return err
-		}
-		if err := refusalOf(c, before.ID, request); err != nil {
-			return err
-		}
-		if err := save(c, before, typedInto(before, request)); err != nil {
-			return err
-		}
-		return defaultTo(c, before.ID, request.DefaultItemID)
-	})
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Edit(c, web.ID(r, "supplierId"), request) })
+}
+
+// Edit changes the supplier supplierID of the change's project as request types it, as edit does: the rule both doors call, the app's route
+// and the web's Suppliers (redix-api #170). notFound (404) for one the project does not hold, refused as Add is.
+func Edit(c changes.Change, supplierID uuid.UUID, request Request) error {
+	before, err := changes.Found(c.Q.SupplierOf(c.Ctx, store.SupplierOfParams{ID: supplierID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
+	}
+	if err := refusalOf(c, before.ID, request); err != nil {
+		return err
+	}
+	if err := save(c, before, typedInto(before, request)); err != nil {
+		return err
+	}
+	return defaultTo(c, before.ID, request.DefaultItemID)
 }
 
 // activate disables a supplier, so it leaves entry and stays in the reports (BR-15), or brings it back: generalCashSupplier (409) for disabling
 // the general cash supplier, which an expense with no supplier picks.
 func (s Routes) activate(active bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		s.writer.Done(w, r, caller, func(c changes.Change) error {
-			before, err := changes.Found(c.Q.SupplierOf(c.Ctx, store.SupplierOfParams{ID: web.ID(r, "supplierId"), ProjectID: c.ProjectID}))
-			if err != nil {
-				return err
-			}
-			if before.IsGeneralCash && !active {
-				return changes.Refuse(http.StatusConflict, "generalCashSupplier")
-			}
-			after := before
-			after.IsActive = active
-			return save(c, before, after)
-		})
+		s.writer.Done(w, r, caller, func(c changes.Change) error { return Activate(c, web.ID(r, "supplierId"), active) })
 	}
+}
+
+// Activate disables the supplier supplierID of the change's project, or brings it back, as activate does: the rule both doors call, the app's
+// routes and the web's Suppliers (redix-api #170). notFound (404) for one the project does not hold; generalCashSupplier (409) for disabling the
+// general cash supplier.
+func Activate(c changes.Change, supplierID uuid.UUID, active bool) error {
+	before, err := changes.Found(c.Q.SupplierOf(c.Ctx, store.SupplierOfParams{ID: supplierID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
+	}
+	if before.IsGeneralCash && !active {
+		return changes.Refuse(http.StatusConflict, "generalCashSupplier")
+	}
+	after := before
+	after.IsActive = active
+	return save(c, before, after)
 }

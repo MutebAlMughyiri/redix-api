@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -155,7 +156,7 @@ func (item menuItem) built() bool {
 // sideMenu is the side menu's items, in the order the app's drawer lists them (#161, the shell).
 var sideMenu = []menuItem{
 	{"home", "web.home"}, {"entries", "entries.title"}, {"approvals", "approvals.title"}, {"accounts", "accounts.title"}, {"partners", "partners.title"},
-	{"contracts", "contracts.title"}, {"reports", "reports.title"}, {"history", "history.projectTitle"}, {"settings", "sharedSettings.title"},
+	{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"history", "history.projectTitle"}, {"settings", "sharedSettings.title"},
 }
 
 // menuNeeds is the permission a side-menu item needs, as the app shows its screen only to whoever holds it; an item missing here needs none.
@@ -180,6 +181,7 @@ var contents = map[string]tab{
 	"approvals":       site.approvalsTab,
 	"accounts":        site.accountsTab,
 	"partners":        site.partnersTab,
+	"suppliers":       site.suppliersTab,
 	"partnerHistory":  site.partnerHistoryTab,
 	"reconcile":       site.countTab,
 	"accountHistory":  site.accountHistoryTab,
@@ -223,6 +225,13 @@ const listKeys = selectRow + `const row = event.target.closest('tr[hx-get]'); if
 	`event.preventDefault(); next.focus(); if (document.getElementById('web.details').hasChildNodes()) { next.click() } else { select(next) }`
 
 // listSelects marks the row a click shows as the selected one.
+// searchHolds says whether a list's search keeps a row: nothing typed keeps every row, and otherwise one of its fields holds text, whatever the
+// letters' case - as the app's ListSearch keeps it. Every list the web searches in the page asks it.
+func searchHolds(text string, fields ...string) bool {
+	text = strings.ToLower(text)
+	return text == "" || slices.ContainsFunc(fields, func(field string) bool { return strings.Contains(strings.ToLower(field), text) })
+}
+
 const listSelects = selectRow + `const row = event.target.closest('tr[hx-get]'); if (row) select(row)`
 
 // logoSVG is REDIX's mark, written once: drawn in the top bar, and the browser tab's icon.

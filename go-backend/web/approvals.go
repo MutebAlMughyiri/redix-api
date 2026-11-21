@@ -7,7 +7,6 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -42,9 +41,8 @@ func (a approvals) keeps(entry entries.Pending, filter approvalFilter) bool {
 	if filter.kind != "" && entry.Kind.Name() != filter.kind {
 		return false
 	}
-	text := strings.ToLower(a.text)
-	return text == "" || slices.ContainsFunc([]string{strconv.FormatInt(entry.Number, 10), entry.ItemName, entry.SupplierName, entry.AuthorName, entry.InvoiceNumber,
-		entry.Description, statement.Money(entry.Amount)}, func(field string) bool { return strings.Contains(strings.ToLower(field), text) })
+	return searchHolds(a.text, strconv.FormatInt(entry.Number, 10), entry.ItemName, entry.SupplierName, entry.AuthorName, entry.InvoiceNumber,
+		entry.Description, statement.Money(entry.Amount))
 }
 
 // shown is what the filter and the search keep, oldest first.

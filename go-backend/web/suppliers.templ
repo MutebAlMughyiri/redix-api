@@ -1,0 +1,173 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
+)
+
+// suppliersList is Suppliers as the app's screen shows it (UC-017): New supplier, gray with its reason for whoever may not keep the settings, a
+// search, then each supplier - its name, quiet once disabled, and what the register says about it.
+templ suppliersList(p page, shown suppliersShown) {
+	<div class="view-head">
+		<h2 id="suppliers.title">{ p.words.Of("suppliers.title") }</h2>
+		<span id="suppliers.actions" class="head-actions">
+			<button
+				id="suppliers.add"
+				class="primary small"
+				type="button"
+				disabled?={ !p.mayKeepSuppliers() }
+				title={ p.words.Of("permissions.manageSettings") }
+				hx-get="/details/supplier/new"
+				hx-target="[id='web.details']"
+			>{ p.words.Of("suppliers.new") }</button>
+		</span>
+	</div>
+	<form id="suppliers.filters" class="filters" hx-get="/tab/suppliers" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="suppliers.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("suppliers.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("suppliers.title")) } value={ shown.text }/>
+	</form>
+	if len(shown.shown()) == 0 {
+		<p id="suppliers.empty" class="empty">{ p.words.Of("suppliers.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id="suppliers.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<tbody>
+					for _, supplier := range shown.shown() {
+						<tr
+							id={ "suppliers.row." + supplier.ID.String() }
+							class={ templ.KV("disabled", !supplier.IsActive) }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/supplier/" + supplier.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "suppliers.supplier." + supplier.ID.String() }>
+								<span id={ "suppliers.name." + supplier.ID.String() }>{ supplier.Name }</span>
+								<small id={ "suppliers.details." + supplier.ID.String() } class="hint">{ supplierDetails(p, supplier) }</small>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// supplierPanel is a supplier in the details panel: its VAT number, mobile and default item, what the register says about it, why its change
+// was refused, and - for whoever keeps the settings - Edit, and Disable or Enable, as the app's row menu offers them.
+templ supplierPanel(p page, supplier suppliers.View, refusal string) {
+	<div class="details-head">
+		<h3 id="supplier.title">{ supplier.Name }</h3>
+		<button id="supplier.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl class="facts">
+		if supplier.VatNumber != "" {
+			<dt id="supplier.vatNumber.label">{ p.words.Of("suppliers.vatNumber") }</dt>
+			<dd id="supplier.vatNumber">{ supplier.VatNumber }</dd>
+		}
+		if supplier.Mobile != "" {
+			<dt id="supplier.mobile.label">{ p.words.Of("suppliers.mobile") }</dt>
+			<dd id="supplier.mobile"><bdi>{ supplier.Mobile }</bdi></dd>
+		}
+		<dt id="supplier.defaultItem.label">{ p.words.Of("suppliers.defaultItem") }</dt>
+		if supplier.DefaultItemName != "" {
+			<dd id="supplier.defaultItem">{ supplier.DefaultItemName }</dd>
+		} else {
+			<dd id="supplier.defaultItem">{ p.words.Of("suppliers.noDefaultItem") }</dd>
+		}
+	</dl>
+	<p id="supplier.details" class="hint details-foot">{ supplierDetails(p, supplier) }</p>
+	if refusal != "" {
+		<p id="supplier.refusal" class="refusal details-say" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	if p.mayKeepSuppliers() {
+		<div id="supplier.actions" class="details-actions">
+			<button id="suppliers.edit" class="quiet-button" type="button" hx-get={ "/details/supplier/" + supplier.ID.String() + "?asking=edit" } hx-target="[id='web.details']">{ p.words.Of("suppliers.edit") }</button>
+			if supplier.IsActive {
+				<button id="suppliers.disable" class="quiet-button" type="button" hx-post={ "/supplier/" + supplier.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("suppliers.disable") }</button>
+			} else {
+				<button id="suppliers.enable" class="quiet-button" type="button" hx-post={ "/supplier/" + supplier.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("suppliers.enable") }</button>
+			}
+		</div>
+	}
+}
+
+// supplierForm is New supplier or Edit in the details panel, as the app's supplier dialog asks it: the name, the VAT number - naming the
+// supplier that already holds it -, the mobile, and the purchase item its expenses usually go to, or none; and why it could not be kept.
+templ supplierForm(p page, editing suppliers.View, typed supplierTyped, items []structure.CategoryView, refusal, holder string) {
+	<div class="details-head">
+		<h3 id="supplier.title">
+			if editing.ID == uuid.Nil {
+				{ p.words.Of("suppliers.new") }
+			} else {
+				{ p.words.Of("suppliers.edit") }
+			}
+		</h3>
+		<button id="supplier.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form
+		id="supplier.form"
+		class="details-form"
+		if editing.ID == uuid.Nil {
+			hx-post="/supplier"
+		} else {
+			hx-post={ "/supplier/" + editing.ID.String() + "/edit" }
+		}
+		hx-target="[id='web.details']"
+	>
+		<div class="field">
+			<label id="suppliers.supplierName.label" for="suppliers.supplierName">{ p.words.Of("suppliers.name") }</label>
+			<input id="suppliers.supplierName" name="name" required value={ typed.name } autofocus/>
+		</div>
+		<div class="field">
+			<label id="suppliers.vatNumber.label" for="suppliers.vatNumber">{ p.words.Of("suppliers.vatNumber") }</label>
+			<input id="suppliers.vatNumber" name="vatNumber" inputmode="numeric" value={ typed.vatNumber }/>
+			if holder != "" {
+				<small id="suppliers.holder" class="hint">{ p.words.Of("suppliers.holder") + " " + holder }</small>
+			}
+		</div>
+		<div class="field">
+			<label id="suppliers.mobile.label" for="suppliers.mobile">{ p.words.Of("suppliers.mobile") }</label>
+			<input id="suppliers.mobile" name="mobile" type="tel" value={ typed.mobile }/>
+		</div>
+		<div class="field">
+			<label id="suppliers.defaultItem.label" for="suppliers.defaultItem">{ p.words.Of("suppliers.defaultItem") }</label>
+			<select id="suppliers.defaultItem" name="defaultItem">
+				<option id="suppliers.defaultItem.option.none" value="">{ p.words.Of("suppliers.noDefaultItem") }</option>
+				if keepsUnoffered(items, editing, typed) {
+					<option id={ "suppliers.defaultItem.option." + editing.DefaultItemID } value={ editing.DefaultItemID } selected>{ editing.DefaultItemName }</option>
+				}
+				for _, category := range items {
+					<optgroup id={ "suppliers.defaultItem.category." + category.ID.String() } label={ category.Name }>
+						for _, item := range category.Items {
+							<option id={ "suppliers.defaultItem.option." + item.ID.String() } value={ item.ID.String() } selected?={ item.ID == typed.defaultItem }>{ item.Name }</option>
+						}
+					</optgroup>
+				}
+			</select>
+		</div>
+		if refusal != "" {
+			<p id="supplier.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="supplier.formActions" class="details-actions">
+			<button id="supplier.save" class="primary small" type="submit">
+				if editing.ID == uuid.Nil {
+					{ p.words.Of("suppliers.new") }
+				} else {
+					{ p.words.Of("suppliers.save") }
+				}
+			</button>
+		</span>
+	</form>
+}
+
+// suppliersBeside is Suppliers again, carried out of band beside the panel, once a supplier was added or changed.
+templ suppliersBeside(p page, shown suppliersShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@suppliersList(p, shown)
+	</div>
+}

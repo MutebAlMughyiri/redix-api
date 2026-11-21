@@ -77,48 +77,48 @@ type reorderRequest struct {
 	IDs []uuid.UUID `json:"ids"`
 }
 
-// categoryView is a category as the app shows it (CategoryView).
-type categoryView struct {
+// CategoryView is a category as the app shows it (CategoryView), and the web's item choices (redix-api #170).
+type CategoryView struct {
 	ID       uuid.UUID  `json:"id"`
 	Name     string     `json:"name"`
 	IsActive bool       `json:"isActive"`
-	Items    []itemView `json:"items"`
+	Items    []ItemView `json:"items"`
 }
 
-// itemView is an item as the app shows it (ItemView): its subgroups in order, the general one first, whose name is empty.
-type itemView struct {
+// ItemView is an item as the app shows it (ItemView): its subgroups in order, the general one first, whose name is empty.
+type ItemView struct {
 	ID                    uuid.UUID      `json:"id"`
 	Name                  string         `json:"name"`
 	Type                  ItemType       `json:"type"`
 	IsActive              bool           `json:"isActive"`
-	Subgroups             []subgroupView `json:"subgroups"`
+	Subgroups             []SubgroupView `json:"subgroups"`
 	ShowsTablePercentages bool           `json:"showsTablePercentages"`
 }
 
-type subgroupView struct {
+// SubgroupView is one of an item's subgroups, as the app shows it.
+type SubgroupView struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 }
 
-func itemViewOf(item store.Item, subgroups []store.Subgroup) itemView {
-	var views []subgroupView
+func itemViewOf(item store.Item, subgroups []store.Subgroup) ItemView {
+	var views []SubgroupView
 	for _, subgroup := range subgroups {
 		if subgroup.ItemID == item.ID {
-			views = append(views, subgroupView{ID: subgroup.ID, Name: subgroup.Name})
+			views = append(views, SubgroupView{ID: subgroup.ID, Name: subgroup.Name})
 		}
 	}
-	return itemView{ID: item.ID, Name: item.Name, Type: ItemType(item.Type), IsActive: item.IsActive, Subgroups: views, ShowsTablePercentages: item.ShowsTablePercentages}
+	return ItemView{ID: item.ID, Name: item.Name, Type: ItemType(item.Type), IsActive: item.IsActive, Subgroups: views, ShowsTablePercentages: item.ShowsTablePercentages}
 }
 
-// categories is the route project's categories, each with those of its items offers keeps, in the order of the periodic report (AC-39.1).
-func (s Routes) categories(r *http.Request, offers func(category store.Category, item store.Item) bool) ([]categoryView, error) {
-	read, projectID := s.database.Queries(), web.ID(r, "projectId")
-	categories, err := read.CategoriesOf(r.Context(), projectID)
-	items, itemsErr := read.ItemsOf(r.Context(), projectID)
-	subgroups, subgroupsErr := read.SubgroupsOf(r.Context(), projectID)
-	var views []categoryView
+// categories is projectID's categories, each with those of its items offers keeps, in the order of the periodic report (AC-39.1).
+func categories(ctx context.Context, read *store.Queries, projectID uuid.UUID, offers func(category store.Category, item store.Item) bool) ([]CategoryView, error) {
+	categories, err := read.CategoriesOf(ctx, projectID)
+	items, itemsErr := read.ItemsOf(ctx, projectID)
+	subgroups, subgroupsErr := read.SubgroupsOf(ctx, projectID)
+	var views []CategoryView
 	for _, category := range categories {
-		view := categoryView{ID: category.ID, Name: category.Name, IsActive: category.IsActive}
+		view := CategoryView{ID: category.ID, Name: category.Name, IsActive: category.IsActive}
 		for _, item := range items {
 			if item.CategoryID == category.ID && offers(category, item) {
 				view.Items = append(view.Items, itemViewOf(item, subgroups))
@@ -131,7 +131,7 @@ func (s Routes) categories(r *http.Request, offers func(category store.Category,
 
 // list is every category and item of the project, disabled ones included.
 func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	views, err := s.categories(r, func(store.Category, store.Item) bool { return true })
+	views, err := categories(r.Context(), s.database.Queries(), web.ID(r, "projectId"), func(store.Category, store.Item) bool { return true })
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
@@ -147,20 +147,27 @@ func (s Routes) offered(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		problem.Status(w, r, http.StatusBadRequest)
 		return
 	}
-	views, err := s.categories(r, func(category store.Category, item store.Item) bool {
-		return category.IsActive && item.IsActive && ItemType(item.Type).OfferedFor(ItemType(kind))
-	})
+	offering, err := OfferedOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), ItemType(kind))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var offering []categoryView
+	web.JSON(w, r, http.StatusOK, offering)
+}
+
+// OfferedOf is what an entry of kind may choose from in projectID, as offered answers it: the rule both doors call, the app's route and the web's
+// item choices (redix-api #170). The error is the database's.
+func OfferedOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, kind ItemType) ([]CategoryView, error) {
+	views, err := categories(ctx, read, projectID, func(category store.Category, item store.Item) bool {
+		return category.IsActive && item.IsActive && ItemType(item.Type).OfferedFor(kind)
+	})
+	var offering []CategoryView
 	for _, view := range views {
 		if len(view.Items) > 0 {
 			offering = append(offering, view)
 		}
 	}
-	web.JSON(w, r, http.StatusOK, offering)
+	return offering, err
 }
 
 // AddCategory adds the category named name at the end of the change's project's list (FR-39, CategoriesEndpoints.AddCategoryAsync): the one way
@@ -187,7 +194,7 @@ func (s Routes) addCategory(w http.ResponseWriter, r *http.Request, caller acces
 	})
 	if added {
 		w.Header().Set("Location", "/projects/"+category.ProjectID.String()+"/categories/"+category.ID.String())
-		web.JSON(w, r, http.StatusCreated, categoryView{ID: category.ID, Name: category.Name, IsActive: true})
+		web.JSON(w, r, http.StatusCreated, CategoryView{ID: category.ID, Name: category.Name, IsActive: true})
 	}
 }
 
