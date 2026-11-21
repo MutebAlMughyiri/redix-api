@@ -75,13 +75,13 @@ func (s site) entryDetails(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	draw(w, r, http.StatusOK, entryPanel(p, row, said{asking: r.URL.Query().Get("asking") == "remove"}))
+	draw(w, r, http.StatusOK, entryPanel(p, row, said{asking: r.URL.Query().Get("asking")}))
 }
 
-// said is what the details panel says beside an entry: what an action just did, why it could not, or the question Remove asks first.
+// said is what the details panel says beside an entry: what an action just did, why it could not, or what an action asks first - "remove" its
+// question, "reject" its reason.
 type said struct {
-	notice, refusal string
-	asking          bool
+	notice, refusal, asking string
 }
 
 // entryAction runs an action on the entry the path names - approve, send or remove - through the rule the app's route runs, behind the same gate,
@@ -119,13 +119,18 @@ func (s site) entryAction(w http.ResponseWriter, r *http.Request) {
 			return err
 		case "send":
 			return entries.Submit(c, p.caller, entryID)
+		case "reject":
+			return entries.Reject(c, p.caller, entryID, rejectionReason(r))
 		default:
 			return entries.Remove(c, p.caller, entryID)
 		}
 	})
 	var refused changes.Refusal
 	if errors.As(err, &refused) {
-		shown, err = said{refusal: refusalWord(refused)}, nil
+		shown, err = said{refusal: refusalWord(refused, action)}, nil
+	}
+	if action == "reject" && shown.refusal == "approvals.reasonRequired" {
+		shown.asking = "reject"
 	}
 	if err != nil {
 		failed(w)
@@ -150,20 +155,34 @@ func (s site) answerEntry(w http.ResponseWriter, r *http.Request, p page, entryI
 }
 
 // actionNeeds is the permission each of an entry's actions needs before its own rule runs, as the app's route gate asks it (access.Gate.Changes):
-// approving needs ApproveEntries, sending RecordEntries, and removing only that the project is read, the entry deciding the rest.
-var actionNeeds = map[string]access.Permission{"approve": access.ApproveEntries, "send": access.RecordEntries, "remove": access.ReadProject}
+// approving and rejecting need ApproveEntries, sending RecordEntries, and removing only that the project is read, the entry deciding the rest.
+var actionNeeds = map[string]access.Permission{"approve": access.ApproveEntries, "reject": access.ApproveEntries, "send": access.RecordEntries,
+	"remove": access.ReadProject}
 
 // refusalWord is the word of a refusal of an entry's action, as the app says it: an entry no longer there, one the caller may not take away, or
-// the refusal's own code.
-func refusalWord(refused changes.Refusal) string {
+// the refusal's own code - under Approvals' words for a rejection, as the app's reason sheet says it.
+func refusalWord(refused changes.Refusal, action string) string {
 	switch {
 	case refused.Status == http.StatusNotFound:
 		return "approvals.unknownEntry"
 	case refused.Code == "":
 		return "entries.notYours"
+	case action == "reject":
+		return "approvals." + refused.Code
 	default:
 		return "entries." + refused.Code
 	}
+}
+
+// quickReasons are the reasons the app's reason sheet offers a rejection, by their words.
+var quickReasons = []string{"approvals.reasonUnclear", "approvals.reasonAmount", "approvals.reasonItem", "approvals.reasonDuplicate"}
+
+// rowID is the id of an entry's row in the list in front: Approvals' card, or the Entries' and the home's row, which an action's answer finds.
+func (p page) rowID(entryID uuid.UUID) string {
+	if p.view.Active == "approvals" {
+		return "approvals.card." + entryID.String()
+	}
+	return "entries.row." + entryID.String()
 }
 
 // mayChange says whether p's caller may change row, as the entry's own rule decides it (entries.Row.Changeable); never in a finished project.

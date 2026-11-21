@@ -309,8 +309,8 @@ func (f facts) row(entry store.Entry, userID uuid.UUID) Row {
 		AccountShortBy: f.accountShortByOf(entry)}
 }
 
-// pendingView is an entry in Finance's inbox (PendingEntryView).
-type pendingView struct {
+// Pending is an entry in Finance's inbox (PendingEntryView), as the app's Approvals and the web's list it (redix-api #167).
+type Pending struct {
 	ID             uuid.UUID    `json:"id"`
 	Number         int64        `json:"number"`
 	Kind           named        `json:"kind"`
@@ -331,9 +331,9 @@ type pendingView struct {
 	AccountShortBy fixed.Total  `json:"accountShortBy"`
 }
 
-func (f facts) pending(entry store.Entry) pendingView {
+func (f facts) pending(entry store.Entry) Pending {
 	file := f.firstFile(entry)
-	view := pendingView{ID: entry.ID, Number: entry.Number, Kind: kindOf(entry.Kind), EntryDate: entry.EntryDate, Amount: entry.Amount, ItemName: f.itemNameOf(entry),
+	view := Pending{ID: entry.ID, Number: entry.Number, Kind: kindOf(entry.Kind), EntryDate: entry.EntryDate, Amount: entry.Amount, ItemName: f.itemNameOf(entry),
 		SupplierName: f.supplierOf(entry).Name, InvoiceNumber: f.invoices[entry.ID], AccountName: f.accounts[entry.AccountID], Description: entry.Description,
 		ContentType: file.ContentType, FileName: file.FileName, AuthorName: f.authors[entry.CreatedByUserID], PartnerName: f.partners[f.capital[entry.ID]],
 		AccountBalance: f.balances[entry.AccountID], AccountWaiting: f.accountWaitingOf(entry), AccountShortBy: f.accountShortByOf(entry)}

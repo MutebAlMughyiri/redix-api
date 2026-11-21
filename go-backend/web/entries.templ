@@ -129,7 +129,9 @@ templ entryPanel(p page, row entries.Row, shown said) {
 	if shown.refusal != "" {
 		<p id="entry.refusal" class="refusal details-say" role="alert">{ p.words.Of(shown.refusal) }</p>
 	}
-	if shown.asking && p.mayRemove(row) {
+	if shown.asking == "reject" && row.Status.Name() == "pendingApproval" && !p.finished() && p.may(access.ApproveEntries) {
+		@rejectForm(p, row)
+	} else if shown.asking == "remove" && p.mayRemove(row) {
 		<div id="entry.ask" class="details-say ask">
 			<span>
 				if row.Status.Name() == "approved" {
@@ -153,6 +155,15 @@ templ entryPanel(p page, row entries.Row, shown said) {
 					hx-post={ "/entry/" + row.ID.String() + "/approve" }
 					hx-target="[id='web.details']"
 				>{ p.words.Of("approvals.approve") }</button>
+				<button
+					id="entry.reject"
+					class="quiet-button"
+					type="button"
+					disabled?={ p.finished() || !p.may(access.ApproveEntries) }
+					title={ p.words.Of("permissions.approveEntries") }
+					hx-get={ "/details/entry/" + row.ID.String() + "?asking=reject" }
+					hx-target="[id='web.details']"
+				>{ p.words.Of("approvals.reject") }</button>
 			}
 			if row.Status.Name() == "draft" && p.mayChange(row) {
 				<button id="entry.send" class="primary small" type="button" hx-post={ "/entry/" + row.ID.String() + "/send" } hx-target="[id='web.details']">{ p.words.Of("entries.send") }</button>
@@ -180,13 +191,37 @@ templ entryGone(p page, entryID uuid.UUID, shown said) {
 		<h3 id="entry.title">{ p.words.Of(shown.notice) }</h3>
 		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
 	</div>
-	<template><tr id={ "entries.row." + entryID.String() } hx-swap-oob="delete"></tr></template>
+	<template><tr id={ p.rowID(entryID) } hx-swap-oob="delete"></tr></template>
+}
+
+// rejectForm is Reject's reason in the details panel, as the app's reason sheet asks it: its four quick reasons, a reason typed - which goes to
+// who entered the entry, to fix and send again - and Reject.
+templ rejectForm(p page, row entries.Row) {
+	<form id="reasonSheet.form" class="details-say ask reason" hx-post={ "/entry/" + row.ID.String() + "/reject" } hx-target="[id='web.details']">
+		<span id="reasonSheet.title">{ p.words.Of("approvals.rejectTitle") }</span>
+		<fieldset class="picks">
+			<legend id="reasonSheet.quickReasonHeading">{ p.words.Of("approvals.quickReason") }</legend>
+			for at, reason := range quickReasons {
+				<label id={ "reasonSheet.quickReason." + strconv.Itoa(at) } class="pick"><input type="radio" name="quick" value={ p.words.Of(reason) }/>{ p.words.Of(reason) }</label>
+			}
+		</fieldset>
+		<textarea id="reasonSheet.reason" name="reason" maxlength="500" aria-label={ p.words.Of("approvals.reason") } placeholder={ p.words.Of("approvals.reason") }></textarea>
+		<small id="reasonSheet.about" class="hint">{ p.words.Of("approvals.reasonHint") }</small>
+		<span class="details-actions">
+			<button id="reasonSheet.send" class="primary small danger" type="submit">{ p.words.Of("approvals.rejectSend") }</button>
+			<button id="entry.rejectCancel" class="quiet-button" type="button" hx-get={ "/details/entry/" + row.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+		</span>
+	</form>
 }
 
 // rowBeside is an entry's row carried beside the panel, out of band, in a template: a row outside a table is dropped by the browser's parser,
 // and htmx swaps what a template holds.
 templ rowBeside(p page, row entries.Row) {
 	<template>
-		@entryRow(p, row, true)
+		if p.view.Active != "approvals" {
+			@entryRow(p, row, true)
+		} else if row.Status.Name() != "pendingApproval" {
+			<tr id={ p.rowID(row.ID) } hx-swap-oob="delete"></tr>
+		}
 	</template>
 }

@@ -911,6 +911,91 @@
         ],
         "type": "object"
       },
+      "entries.Pending": {
+        "properties": {
+          "accountBalance": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "accountName": {
+            "type": "string"
+          },
+          "accountShortBy": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "accountWaiting": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "amount": {
+            "description": "A figure kept to four decimals.",
+            "type": "number"
+          },
+          "attachmentId": {
+            "type": "string"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "entryDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoiceNumber": {
+            "type": "string"
+          },
+          "itemName": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "partnerName": {
+            "type": "string"
+          },
+          "supplierName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountBalance",
+          "accountName",
+          "accountShortBy",
+          "accountWaiting",
+          "amount",
+          "attachmentId",
+          "authorName",
+          "contentType",
+          "description",
+          "entryDate",
+          "fileName",
+          "id",
+          "invoiceNumber",
+          "itemName",
+          "kind",
+          "number",
+          "partnerName",
+          "supplierName"
+        ],
+        "type": "object"
+      },
       "entries.ReportChoice": {
         "properties": {
           "name": {
@@ -1641,91 +1726,6 @@
           "login",
           "nameWas",
           "partner"
-        ],
-        "type": "object"
-      },
-      "entries.pendingView": {
-        "properties": {
-          "accountBalance": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "accountName": {
-            "type": "string"
-          },
-          "accountShortBy": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "accountWaiting": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "amount": {
-            "description": "A figure kept to four decimals.",
-            "type": "number"
-          },
-          "attachmentId": {
-            "type": "string"
-          },
-          "authorName": {
-            "type": "string"
-          },
-          "contentType": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "entryDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "fileName": {
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "invoiceNumber": {
-            "type": "string"
-          },
-          "itemName": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "number": {
-            "type": "integer"
-          },
-          "partnerName": {
-            "type": "string"
-          },
-          "supplierName": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "accountBalance",
-          "accountName",
-          "accountShortBy",
-          "accountWaiting",
-          "amount",
-          "attachmentId",
-          "authorName",
-          "contentType",
-          "description",
-          "entryDate",
-          "fileName",
-          "id",
-          "invoiceNumber",
-          "itemName",
-          "kind",
-          "number",
-          "partnerName",
-          "supplierName"
         ],
         "type": "object"
       },
@@ -7347,7 +7347,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.pendingView"
+                    "$ref": "#/components/schemas/entries.Pending"
                   },
                   "type": "array"
                 }

@@ -112,13 +112,15 @@ templ side(p page) {
 templ tree(p page) {
 	<ul id="web.tree" class="tree">
 		for _, item := range sideMenu {
-			<li>
-				if item.built() {
+			if p.offers(item.name) {
+				<li>
+					if item.built() {
 					@itemLink(p, item, false)
 				} else {
-					<span id={ "web.item." + item.name } class="parked" aria-disabled="true">{ p.words.Of(item.title) }</span>
-				}
-			</li>
+						<span id={ "web.item." + item.name } class="parked" aria-disabled="true">{ p.words.Of(item.title) }</span>
+					}
+				</li>
+			}
 		}
 	</ul>
 }
@@ -131,7 +133,7 @@ templ itemLink(p page, item menuItem, outOfBand bool) {
 // itemLinks are every built item's link, carried beside a tab's content so the one in front is marked; the items themselves stay in place.
 templ itemLinks(p page) {
 	for _, item := range sideMenu {
-		if item.built() {
+		if item.built() && p.offers(item.name) {
 			@itemLink(p, item, true)
 		}
 	}

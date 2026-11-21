@@ -107,7 +107,7 @@ func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) 
 		return p, err
 	}
 	p.project = p.projectOf()
-	if tab, opened := contents[p.view.Active]; opened {
+	if tab, opened := contents[p.view.Active]; opened && p.offers(p.view.Active) {
 		p.content, err = tab(s, r, p)
 	}
 	return p, err
@@ -158,6 +158,16 @@ var sideMenu = []menuItem{
 	{"contracts", "contracts.title"}, {"reports", "reports.title"}, {"history", "history.projectTitle"}, {"settings", "sharedSettings.title"},
 }
 
+// menuNeeds is the permission a side-menu item needs, as the app shows its screen only to whoever holds it; an item missing here needs none.
+var menuNeeds = map[string]access.Permission{"approvals": access.ApproveEntries}
+
+// offers says whether p's caller may use the tab named name: the side menu and the open tabs leave out one they may not, and its content is not
+// drawn, even asked for by its address, as the app hides its screen (REDIX rule of 7 Nov).
+func (p page) offers(name string) bool {
+	needs, guarded := menuNeeds[name]
+	return !guarded || p.may(needs)
+}
+
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
 // details panel (redix-api #166).
 var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}}
@@ -167,6 +177,7 @@ var contents = map[string]tab{
 	"home":        site.homeTab,
 	"entries":     site.entriesTab,
 	"addEntry":    site.addEntryTab,
+	"approvals":   site.approvalsTab,
 	"changeEntry": site.changeEntryTab,
 	"settings":    func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
 }
@@ -176,7 +187,7 @@ func (p page) openTabs() []menuItem {
 	var open []menuItem
 	for _, name := range p.view.Tabs {
 		for _, item := range slices.Concat(sideMenu, pageTabs) {
-			if item.name == name {
+			if item.name == name && p.offers(name) {
 				open = append(open, item)
 			}
 		}

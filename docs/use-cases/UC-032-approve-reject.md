@@ -27,3 +27,22 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | AC-44.1: approving the first expense on a pending supplier approves it too, and rejecting leaves it | `entries.Routes.approve` | `ApprovalsTests.AC_44_1_ApprovingTheFirstExpenseOnAPendingSupplierApprovesItToo`, `AC_44_1_RejectingItLeavesTheSupplierPending` |
 | A credit note waits for its invoice, or goes with it. **Retired by redix-api #119:** a credit note is a plain minus row naming no bill, approved on its own (BR-18) | - | - |
 | Each step is recorded, with who and why | the `entry_decisions` table, `history.Write` | `ApprovalsTests.EachSendingAndDecisionIsRecordedWithWhoAndWhy` |
+
+## On the web: Approvals (redix-api #167)
+
+The web's Approvals is the app's screen in the shell, its side-menu item left out for whoever does not approve entries. It lists what waits from `entries.PendingOf`, the function `GET /projects/{id}/entries/pending` calls too: All, Purchases and Contractor payments with their counts, a search, and each entry with its item and supplier, who entered it from which account, and an account that falls short saying so. Ticking entries shows Approve selected, which runs `entries.ApproveEach`; a row opens the entry in the details panel, where Approve and Reject stand. Reject asks the reason as the app's reason sheet does, with its four quick reasons, and runs `entries.Reject`, the rule `POST /projects/{id}/entries/{entryId}/reject` calls too. An entry decided from the panel leaves the list beside it. Its pages are in `go-backend/web` (`approvals.go`, `approvals.templ`; the panel in `entries.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/approvals?filter=&text=` | Approvals, filtered and searched | `200` the tab's content |
+| `POST /approvals/approve` | Approves the ticked entries (`entry`, many) | `200` Approvals again, saying beside each entry not approved why; `403` without ApproveEntries or in a finished project |
+| `GET /details/entry/{id}?asking=reject` | Reject's reason in the details panel | `200` the panel |
+| `POST /entry/{id}/reject` | Rejects with the reason typed, or the quick reason chosen | `200` the panel, the row leaving Approvals; the reason asked again when there is none; `403` without ApproveEntries |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Approvals lists what waits that the person sees, filtered by kind and searched as the app's (AC-18.1) | `entries.PendingOf`, `web.approvals.keeps` | `TestWeb_R167_UC032_ApprovalsListsWhatWaitsFilteredAndSearchedAsTheAppsDo` |
+| Approve selected approves the ticked entries, each on its own (FR-19, AC-19.2) | `entries.ApproveEach` | `TestWeb_R167_FR19_ApproveSelectedApprovesTheTickedOnes` |
+| Reject needs a reason, typed or quick; the entry returns to who entered it and leaves Approvals (AC-19.1) | `entries.Reject` | `TestWeb_R167_AC19_1_RejectAsksItsReasonAndTheRowLeavesApprovals` |
+| Approvals is left out for whoever may not approve, and its actions refused (REDIX rule of 7 Nov) | `web.page.offers`, `web.actionNeeds` | `TestWeb_R167_R7_ApprovalsIsLeftOutForWhoeverMayNotApprove` |
+| A failing database answers 500 and keeps nothing | `changes.Writer.Run` | `TestWeb_R167_ApprovalsAnswersAFailingDatabaseWith500` |

@@ -443,31 +443,35 @@ func (s Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	entry, found := s.entry(w, r, caller)
-	if !found {
-		return
+	entryID := web.ID(r, "entryId")
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return Reject(c, caller, entryID, typed.Reason) })
+}
+
+// Reject rejects the entry entryID of c's project as caller, saying why, as reject answers it (AC-19.1): the rule both doors call, the app's
+// route and the web's details panel (redix-api #167). changes.NotFound for an entry caller does not see; reasonRequired (400) for no reason or
+// one too long; entryNotPending (409) for one already decided.
+func Reject(c changes.Change, caller access.Caller, entryID uuid.UUID, reason string) error {
+	entry, err := seenEntry(c, caller, entryID)
+	if err != nil {
+		return err
 	}
-	reason := strings.TrimSpace(typed.Reason)
+	reason = strings.TrimSpace(reason)
 	if reason == "" || tooLong(reason, approvalReasonMaxLength) {
-		problem.Refuse(w, r, http.StatusBadRequest, "reasonRequired")
-		return
+		return changes.Refuse(http.StatusBadRequest, "reasonRequired")
 	}
 	if entry.Status != ledger.PendingApproval {
-		problem.Refuse(w, r, http.StatusConflict, "entryNotPending")
-		return
+		return changes.Refuse(http.StatusConflict, "entryNotPending")
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		if err := setStatus(c, entry, ledger.Rejected, history.Reject); err != nil {
-			return err
-		}
-		if err := c.Q.AddDecision(c.Ctx, store.AddDecisionParams{EntryID: entry.ID, Action: rejectedBy, UserID: c.Actor, At: c.Now, Reason: reason}); err != nil {
-			return err
-		}
-		if entry.CreatedByUserID == c.Actor {
-			return nil
-		}
-		return tell(c, entry, entry.CreatedByUserID, notifications.EntryRejected)
-	})
+	if err := setStatus(c, entry, ledger.Rejected, history.Reject); err != nil {
+		return err
+	}
+	if err := c.Q.AddDecision(c.Ctx, store.AddDecisionParams{EntryID: entry.ID, Action: rejectedBy, UserID: c.Actor, At: c.Now, Reason: reason}); err != nil {
+		return err
+	}
+	if entry.CreatedByUserID == c.Actor {
+		return nil
+	}
+	return tell(c, entry, entry.CreatedByUserID, notifications.EntryRejected)
 }
 
 // seenBy is the project's entries caller may see, newest first, never a removed one, with their facts.
@@ -663,22 +667,31 @@ func (s Routes) answerView(w http.ResponseWriter, r *http.Request, entryID uuid.
 
 // pending is what waits for a decision in the project, oldest first, each with its file when it has one (AC-18.1).
 func (s Routes) pending(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
-	waiting, err := c.Q.PendingEntriesOf(c.Ctx, c.ProjectID)
+	views, err := PendingOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// PendingOf is what waits for a decision in projectID that caller sees, oldest first, as pending answers it (AC-18.1): the rule both doors
+// call, the app's route and the web's Approvals (redix-api #167). The error is the database's.
+func PendingOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller) ([]Pending, error) {
+	c := changes.Change{Ctx: ctx, Q: read, ProjectID: projectID, Access: caller.Access}
+	waiting, err := c.Q.PendingEntriesOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return nil, err
 	}
 	known, err := factsOf(c, waiting)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-	var views []pendingView
+	var views []Pending
 	for _, entry := range waiting {
 		if known.tableSeen(caller.Access, c.ProjectID, entry.ID) {
 			views = append(views, known.pending(entry))
 		}
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }

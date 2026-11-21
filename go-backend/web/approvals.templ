@@ -1,0 +1,89 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+)
+
+// approvalsList is Approvals as the app's screen lists them (UC-032, redix-api #167): the filters with their counts and the search; then what
+// waits, oldest first, each with a tick, its item and supplier, who entered it from which account, an account that falls short saying so, why
+// it could not be approved; Approve selected in the head, shown while something is ticked (D1).
+templ approvalsList(p page, shown approvals) {
+	<div id="approvals.page" class="approvals">
+		<div class="view-head">
+			<h2 id="approvals.title">{ p.words.Of("approvals.title") }</h2>
+			<span class="head-actions">
+				<button id="approvals.approveSelected" class="primary small" type="submit" form="approvals.form" disabled?={ p.finished() }>{ p.words.Of("approvals.approveSelected") }</button>
+			</span>
+		</div>
+		<form
+			id="approvals.filters"
+			class="filters"
+			hx-get="/tab/approvals"
+			hx-target="[id='web.content']"
+			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+		>
+			<input id="approvals.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } value={ shown.text }/>
+			<fieldset id="approvals.filterChoice" class="picks">
+				for _, filter := range approvalFilters {
+					<label id={ "approvals." + filter.name } class="pick"><input type="radio" name="filter" value={ filter.name } checked?={ filter == shown.filter }/>{ p.words.Of(filter.word) + " · " + shown.count(filter) }</label>
+				}
+			</fieldset>
+		</form>
+		if len(shown.shown()) == 0 {
+			<p id="approvals.empty" class="empty">{ p.words.Of("approvals.empty") }</p>
+		} else {
+			<form id="approvals.form" hx-post="/approvals/approve" hx-target="[id='web.content']" hx-include="[id='approvals.filters']">
+				<div class="grid-wrap">
+					<table class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+						<thead>
+							<tr>
+								<th class="tick"></th>
+								<th>{ p.words.Of("entries.number") }</th>
+								<th>{ p.words.Of("expenses.date") }</th>
+								<th>{ p.words.Of("contracts.item") }</th>
+								<th>{ p.words.Of("approvals.enteredBy") }</th>
+								<th class="amount">{ p.words.Of("expenses.amount") }</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, entry := range shown.shown() {
+								<tr
+									id={ "approvals.card." + entry.ID.String() }
+									tabindex="0"
+									aria-selected="false"
+									hx-get={ "/details/entry/" + entry.ID.String() }
+									hx-target="[id='web.details']"
+									hx-trigger="click[target.tagName!='INPUT']"
+								>
+									<td class="tick"><input id={ "approvals.select." + entry.ID.String() } type="checkbox" name="entry" value={ entry.ID.String() } aria-label={ p.words.Of("approvals.approveSelected") }/></td>
+									<td>{ strconv.FormatInt(entry.Number, 10) }</td>
+									<td>{ entry.EntryDate.Format(time.DateOnly) }</td>
+									<td>
+										<span id={ "approvals.item." + entry.ID.String() }>{ entry.ItemName }</span>
+										if entry.SupplierName != "" {
+											<small id={ "approvals.supplier." + entry.ID.String() } class="hint">{ entry.SupplierName }</small>
+										}
+										if entry.AccountShortBy.Number() > 0 {
+											<small id={ "approvals.short." + entry.ID.String() } class="short">{ p.words.Of("approvals.accountShort", entry.AccountName, statement.Money(entry.AccountBalance.Number()), statement.Money(entry.AccountWaiting.Number()), statement.Money(entry.AccountShortBy.Number())) }</small>
+										}
+										if shown.failed[entry.ID] != "" {
+											<small id={ "approvals.failed." + entry.ID.String() } class="short">{ p.words.Of(shown.failed[entry.ID]) }</small>
+										}
+									</td>
+									<td id={ "approvals.enteredBy." + entry.ID.String() }>{ entry.AuthorName + " · " + entry.AccountName }</td>
+									<td id={ "approvals.amount." + entry.ID.String() } class="amount">{ statement.Money(entry.Amount) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</form>
+		}
+	</div>
+}

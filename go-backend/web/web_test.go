@@ -158,7 +158,7 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
-	if browser.Send("GET", "/tab/approvals", nil).Code != http.StatusNotFound {
+	if browser.Send("GET", "/tab/accounts", nil).Code != http.StatusNotFound {
 		t.Error("an item whose feature is not built opens no tab")
 	}
 }
@@ -247,7 +247,7 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"approvals", "accounts", "partners", "contracts", "reports", "history"} {
+	for _, key := range []string{"accounts", "partners", "contracts", "reports", "history"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
@@ -1360,5 +1360,105 @@ func TestWeb_R290_ForgotPasswordAndRegisterShareTheAppsPerAddressWindows(t *test
 	has(t, refused.Body.String(), "محاولات كثيرة. حاول مرة أخرى لاحقاً.")
 	if got := api.Count(`SELECT count(*) FROM users WHERE username = 'manager.g'`); got != 0 {
 		t.Errorf("a refused registration keeps nothing: %d", got)
+	}
+}
+
+func TestWeb_R167_UC032_ApprovalsListsWhatWaitsFilteredAndSearchedAsTheAppsDo(t *testing.T) {
+	w := newWorking(t)
+	first, second, decided := w.sent(40), w.sent(70), w.approved(90)
+	w.home()
+	list := w.browser.Send("GET", "/tab/approvals", nil).Body.String()
+	has(t, list, `id="approvals.card.`+first+`"`)
+	has(t, list, `id="approvals.card.`+second+`"`)
+	lacks(t, list, `id="approvals.card.`+decided+`"`)
+	has(t, list, "الكل · 2")
+	has(t, w.browser.Send("GET", "/tab/approvals?filter=contractorPayments", nil).Body.String(), `<p id="approvals.empty" class="empty">لا شيء بانتظار الاعتماد.</p>`)
+	searched := w.browser.Send("GET", "/tab/approvals?text=70", nil).Body.String()
+	has(t, searched, `id="approvals.card.`+second+`"`)
+	lacks(t, searched, `id="approvals.card.`+first+`"`)
+}
+
+func TestWeb_R167_FR19_ApproveSelectedApprovesTheTickedOnes(t *testing.T) {
+	w := newWorking(t)
+	first, second := w.sent(40), w.sent(70)
+	w.home()
+	w.browser.Send("GET", "/tab/approvals", nil)
+	answered := w.browser.Send("POST", "/approvals/approve", url.Values{"entry": {first, uuid.NewString()}})
+	if answered.Code != http.StatusOK {
+		t.Fatalf("approving the ticked ones: %d", answered.Code)
+	}
+	lacks(t, answered.Body.String(), `id="approvals.card.`+first+`"`)
+	has(t, answered.Body.String(), `id="approvals.card.`+second+`"`)
+	if w.statusOf(first) != 2 || w.statusOf(second) != 1 {
+		t.Errorf("the ticked one is approved, the other waits: %d %d", w.statusOf(first), w.statusOf(second))
+	}
+}
+
+func TestWeb_R167_AC19_1_RejectAsksItsReasonAndTheRowLeavesApprovals(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	w.home()
+	w.browser.Send("GET", "/tab/approvals", nil)
+	has(t, w.browser.Send("GET", "/details/entry/"+id, nil).Body.String(), `hx-get="/details/entry/`+id+`?asking=reject"`)
+	asking := w.browser.Send("GET", "/details/entry/"+id+"?asking=reject", nil).Body.String()
+	has(t, asking, `id="reasonSheet.reason"`)
+	has(t, asking, `value="صورة الفاتورة غير واضحة"`)
+	none := w.browser.Send("POST", "/entry/"+id+"/reject", url.Values{"reason": {"  "}}).Body.String()
+	has(t, none, "اذكر سبب الرفض.")
+	has(t, none, `id="reasonSheet.reason"`)
+	rejected := w.browser.Send("POST", "/entry/"+id+"/reject", url.Values{"quick": {"فاتورة مكررة"}}).Body.String()
+	has(t, rejected, `<dd id="entry.reason" class="refused">فاتورة مكررة</dd>`)
+	has(t, rejected, `<tr id="approvals.card.`+id+`" hx-swap-oob="delete"></tr>`)
+	if w.statusOf(id) != 3 {
+		t.Errorf("the entry is rejected: %d", w.statusOf(id))
+	}
+}
+
+func TestWeb_R167_R7_ApprovalsIsLeftOutForWhoeverMayNotApprove(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	shell := browser.Send("POST", "/project/"+w.id, nil).Body.String()
+	lacks(t, shell, `id="web.item.approvals"`)
+	opened := browser.Send("GET", "/tab/approvals", nil).Body.String()
+	lacks(t, opened, `id="approvals.card.`+id+`"`)
+	lacks(t, opened, `id="web.tab.approvals"`)
+	if code := browser.Send("POST", "/approvals/approve", url.Values{"entry": {id}}).Code; code != http.StatusForbidden {
+		t.Errorf("approving the ticked ones without the permission: %d", code)
+	}
+	if code := browser.Send("POST", "/entry/"+id+"/reject", url.Values{"reason": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("rejecting without the permission: %d", code)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `id="web.item.approvals"`)
+}
+
+func TestWeb_R167_ApprovalsAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	id := w.sent(40)
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/approvals", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("listing with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/approvals/approve", url.Values{"entry": {id}})
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("approving with the database failing at its call %d answers %d", n, answered.Code)
+		}
+		if w.statusOf(id) != 1 {
+			t.Fatalf("an approval failing at its call %d keeps nothing: %d", n, w.statusOf(id))
+		}
 	}
 }
