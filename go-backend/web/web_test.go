@@ -1010,3 +1010,7 @@ func TestWeb_R166_ThePanelAnswersAFailingDatabaseWith500(t *testing.T) {
 		}
 	}
 }
+
+func TestWeb_R166_NewContentIsSettledAtOnceSoItsTriggersHearTheFirstKey(t *testing.T) {
+	has(t, testapi.New(t).Browser().Send("GET", "/", nil).Body.String(), `&#34;defaultSettleDelay&#34;:0}`)
+}

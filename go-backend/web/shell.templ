@@ -5,8 +5,10 @@ package web
 
 import "strconv"
 
-// htmxConfig has htmx swap a refusal, answered 422 with its form, and keep its own styles out of the page (#161 S4).
-const htmxConfig = `{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}],"includeIndicatorStyles":false}`
+// htmxConfig has htmx swap a refusal, answered 422 with its form, and keep its own styles out of the page (#161 S4); and settle new content at once:
+// htmx binds a swapped part's own triggers when it settles, 20 ms later by default, for transitions the shell has none of, and a person or a test
+// typing into a list's filters within those 20 ms was not heard (redix-api #166).
+const htmxConfig = `{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}],"includeIndicatorStyles":false,"defaultSettleDelay":0}`
 
 // document is the whole page: the shell in its language, the stylesheet, and htmx, the one script (#80 R19). Its keydown is the one handler of the
 // shell's own keys: Alt+1 folds and unfolds the side menu from anywhere, as its arrows do, by the key's place, so an Arabic keyboard's 1 counts
