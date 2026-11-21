@@ -7,8 +7,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -16,6 +14,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
 )
 
 // page is one drawing of the shell: who asks, in which language, and what its parts show.
@@ -47,16 +46,13 @@ type page struct {
 // words are one language's words by key (translations); a key with no word shows itself, so a missing word is seen, never hidden.
 type words map[string]string
 
-// Of is key's word, each {n} in it filled with fill[n], as the app fills a word: «بانتظار اعتمادك: {0}».
+// Of is key's word, each {n} in it filled with fill[n] (translations.Fill).
 func (w words) Of(key string, fill ...string) string {
 	word, found := w[key]
 	if !found {
 		return key
 	}
-	for n, value := range fill {
-		word = strings.ReplaceAll(word, "{"+strconv.Itoa(n)+"}", value)
-	}
-	return word
+	return translations.Fill(word, fill...)
 }
 
 // languageCookie keeps the language a person chose (#80 D11).

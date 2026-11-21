@@ -18,6 +18,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
 	"github.com/google/uuid"
 )
 
@@ -81,5 +82,5 @@ func Send(ctx context.Context, database db.DB, sender Sender, to, language, subj
 	if words[subjectKey] == "" || words[bodyKey] == "" {
 		return fmt.Errorf("email: no words %s and %s in %s", subjectKey, bodyKey, language)
 	}
-	return sender.Deliver(ctx, to, words[subjectKey], strings.ReplaceAll(words[bodyKey], "{0}", code))
+	return sender.Deliver(ctx, to, words[subjectKey], translations.Fill(words[bodyKey], code))
 }
