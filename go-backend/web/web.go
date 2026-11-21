@@ -8,6 +8,7 @@ package web
 
 import (
 	"net/http"
+	"runtime/debug"
 
 	"github.com/a-h/templ"
 
@@ -19,6 +20,19 @@ import (
 
 // Version is the web's version, SemVer, raised by hand with each release as pubspec raises the app's (#161 S12).
 const Version = "1.0.0"
+
+// build is the web's build beside its version, " (b6ef37d)": the commit this program was built from, which Go stamps into every build made in
+// the repository, so a tester tells one deploy from the next with no step to forget (the owner, 21 Nov 2026: "add web build number to the login
+// page"). "" in a build with no commit stamped, as a test's.
+var build = func() string {
+	info, _ := debug.ReadBuildInfo()
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.revision" {
+			return " (" + setting.Value[:min(7, len(setting.Value))] + ")"
+		}
+	}
+	return ""
+}()
 
 // Parts are what the pages run on: the same database, sessions and gate as the app's API.
 type Parts struct {

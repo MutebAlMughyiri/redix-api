@@ -147,7 +147,7 @@ templ tabs(p page, outOfBand bool) {
 templ statusBar(p page) {
 	<footer id="web.statusBar" class="status">
 		<span id="web.host" class="host"><span class="dot"></span>{ p.host }</span>
-		<span id="appVersion.line" class="end">{ p.words.Of("app.version") + " " + Version }</span>
+		<span id="appVersion.line" class="end">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></span>
 	</footer>
 }
 

@@ -403,3 +403,8 @@ func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *tes
 	has(t, page, `style="--side-w: 300px;"`)
 	has(t, page, `id="web.tab.settings" class="tab" role="tab" aria-selected="true"`)
 }
+
+func TestWeb_R2_TheVersionLineCarriesTheBuildKeptWholeInArabic(t *testing.T) {
+	body := testapi.New(t).Browser().Send("GET", "/", nil).Body.String()
+	has(t, body, `<span id="appVersion.line" class="end">الإصدار 1.0.0<bdi></bdi></span>`)
+}
