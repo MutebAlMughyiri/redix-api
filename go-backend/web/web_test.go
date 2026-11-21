@@ -1577,3 +1577,21 @@ func TestWeb_R164_UC006_ASignedInPersonRegistersAProjectTheyManage(t *testing.T)
 		}
 	}
 }
+
+func TestWeb_R166_D1_AnEntryWithAFileSaysItHasOne(t *testing.T) {
+	w := newWorking(t)
+	code, uploaded := w.AskWithFile(w.path+"/attachments", "invoice-31.pdf", []byte("%PDF-1.4 invoice"), w.token, nil)
+	if code >= 300 {
+		t.Fatalf("uploading: %d %v", code, uploaded)
+	}
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + w.item + `","tableId":"` + w.table + `","date":"2026-11-10","amount":60,"accountId":"` + w.account +
+		`","paymentMethodId":"` + w.method + `","description":"","columnValues":{},"attachmentId":"` + uploaded["id"].(string) + `","submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		t.Fatalf("recording: %d %v", code, answer)
+	}
+	w.home()
+	panel := w.browser.Send("GET", "/details/entry/"+id, nil).Body.String()
+	has(t, panel, `<dt>فاتورة</dt><dd id="entry.file.0" class="file">invoice-31.pdf</dd>`)
+	lacks(t, w.browser.Send("GET", "/details/entry/"+w.sent(40), nil).Body.String(), `id="entry.file.0"`)
+}

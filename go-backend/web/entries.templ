@@ -109,6 +109,10 @@ templ entryPanel(p page, row entries.Row, shown said) {
 			<dt>{ p.words.Of("entries.fileInvoice") }</dt>
 			<dd id="entry.invoice">{ row.InvoiceNumber }</dd>
 		}
+		for at, file := range row.Files {
+			<dt>{ p.words.Of(fileWord(file.Role)) }</dt>
+			<dd id={ "entry.file." + strconv.Itoa(at) } class="file">{ file.Name }</dd>
+		}
 		<dt>{ p.words.Of("expenses.amount") }</dt>
 		<dd id="entry.amount" class="money">{ statement.Money(row.Amount) }</dd>
 		if row.PaymentMethodName != "" {

@@ -567,6 +567,9 @@ func rowsOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, calle
 			view := known.row(entry, caller.UserID)
 			_, refused := refusalOfChange(entry, caller)
 			view.Changeable = refused == ""
+			for _, file := range known.files[entry.ID] {
+				view.Files = append(view.Files, File{Role: named{file.Role, roles}.Name(), Name: file.FileName})
+			}
 			if entry.Status == ledger.Rejected {
 				view.RejectionReason = lastReason[entry.ID]
 			}

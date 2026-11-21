@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -172,6 +173,11 @@ func refusalWord(refused changes.Refusal, action string) string {
 	default:
 		return "entries." + refused.Code
 	}
+}
+
+// fileWord is the word of a file's role, as the app's entry names its files: فاتورة, سند استلام, إيصال تحويل, ملف.
+func fileWord(role string) string {
+	return "entries.file" + strings.ToUpper(role[:1]) + role[1:]
 }
 
 // quickReasons are the reasons the app's reason sheet offers a rejection, by their words.
