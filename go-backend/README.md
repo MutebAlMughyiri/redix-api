@@ -71,11 +71,11 @@ instance's data stays on the server, copied by hand (below).
 
 The server runs three instances of the API, each a `redix@` service with its own settings file, name, port and folder (R25):
 
-| Instance | Name | Port | Settings | Data |
+| Instance | Name | Ports | Settings | Data |
 | --- | --- | --- | --- | --- |
-| prod | the domain | 8443, and 80, which proves the three names to Let's Encrypt | `/etc/redix/prod.env` | `/var/lib/redix/prod` |
-| qa | qa.&lt;domain&gt; | 8444 | `/etc/redix/qa.env` | `/var/lib/redix/qa` |
-| dev | dev.&lt;domain&gt; | 8445 | `/etc/redix/dev.env` | `/var/lib/redix/dev` |
+| prod | the domain | API 8443, and 80, which proves the three names to Let's Encrypt; web 443, closed until opened | `/etc/redix/prod.env` | `/var/lib/redix/prod` |
+| qa | qa.&lt;domain&gt; | API 8444; web 9444, closed until opened | `/etc/redix/qa.env` | `/var/lib/redix/qa` |
+| dev | dev.&lt;domain&gt; | API 8445; web 9445 | `/etc/redix/dev.env` | `/var/lib/redix/dev` |
 
 Only one process can hold port 80, so qa and dev keep their certificates in `/var/lib/redix/certificates` with production's, where
 production's port 80 reads the token Let's Encrypt asks for (D-R25).
