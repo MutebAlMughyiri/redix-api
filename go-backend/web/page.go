@@ -158,15 +158,17 @@ var sideMenu = []menuItem{
 	{"contracts", "contracts.title"}, {"reports", "reports.title"}, {"history", "history.projectTitle"}, {"settings", "sharedSettings.title"},
 }
 
-// pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button (redix-api #166).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}}
+// pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
+// details panel (redix-api #166).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
-	"home":     site.homeTab,
-	"entries":  site.entriesTab,
-	"addEntry": site.addEntryTab,
-	"settings": func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
+	"home":        site.homeTab,
+	"entries":     site.entriesTab,
+	"addEntry":    site.addEntryTab,
+	"changeEntry": site.changeEntryTab,
+	"settings":    func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
 }
 
 // openTabs are the open tabs' items, in the order they were opened.

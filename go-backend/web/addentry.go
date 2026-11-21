@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 // entryForm is Add entry as the app's screen offers it (UC-022, redix-api #166): the tables the caller may enter into and the one chosen, its
 // columns, the payment methods, the accounts and the suppliers it may use, what was typed, and what the last save said.
 type entryForm struct {
+	editing   entries.Row
 	tables    []entries.OfferedCategory
 	item      entries.OfferedItem
 	table     entries.OfferedTable
@@ -41,6 +43,33 @@ type entryForm struct {
 	typed     url.Values
 	said      said
 	refused   string
+}
+
+// title is the form's title: Add entry, or the change of the entry it edits - Fix for a rejected one - as the app's screen is titled.
+func (f entryForm) title() string {
+	switch {
+	case f.editing.ID == uuid.Nil:
+		return "entries.new"
+	case f.editing.Status.Name() == "rejected":
+		return "entries.fix"
+	}
+	return "entries.edit"
+}
+
+// tab is the tab the form lives in, which draws it again as it changes: Add entry's, or Change's.
+func (f entryForm) tab() string {
+	if f.editing.ID == uuid.Nil {
+		return "/tab/addEntry"
+	}
+	return "/tab/changeEntry"
+}
+
+// action is where the form is saved: a new entry, or the entry it edits.
+func (f entryForm) action() string {
+	if f.editing.ID == uuid.Nil {
+		return "/entry"
+	}
+	return "/entry/" + f.editing.ID.String()
 }
 
 // asksContract says whether the chosen table is a contract's, which asks whether a payment is inside it (FR-13).
@@ -203,6 +232,62 @@ func (s site) addEntryTab(r *http.Request, p page) (templ.Component, error) {
 	return addEntry(p, form), err
 }
 
+// changeEntryTab is Change or Fix in its own tab: Add entry filled with the entry the query names as it stands (entries.Typed), then drawn
+// again with what was typed as it changes, as Add entry is (redix-api #166). An entry that is gone, or one the caller may not change, says so.
+func (s site) changeEntryTab(r *http.Request, p page) (templ.Component, error) {
+	typed := r.URL.Query()
+	entryID, _ := uuid.Parse(typed.Get("entry"))
+	row, found, err := entries.RowOf(r.Context(), s.Database.Queries(), p.project.ID, p.caller, entryID)
+	if err != nil || !found || !p.mayChange(row) {
+		return entryNotChangeable(p), err
+	}
+	if typed.Get("table") == "" {
+		c := changes.Change{Ctx: r.Context(), Q: s.Database.Queries(), ProjectID: p.project.ID, Actor: p.caller.UserID, Access: p.caller.Access}
+		saved, err := entries.Typed(c, p.caller, entryID)
+		if err != nil {
+			return nil, err
+		}
+		typed = valuesOf(saved)
+	}
+	form, err := s.entryFormOf(r.Context(), p, typed)
+	form.editing = row
+	return addEntry(p, form), err
+}
+
+// valuesOf is an entry's request as the form's fields hold it.
+func valuesOf(saved entries.Request) url.Values {
+	amount := strings.TrimRight(strings.TrimRight(saved.Amount.String(), "0"), ".")
+	values := url.Values{"table": {saved.ItemID.String() + ":" + saved.TableID.String()}, "description": {saved.Description},
+		"date": {saved.Date.Format(time.DateOnly)}, "amount": {amount}, "method": {saved.PaymentMethodID.String()}, "account": {saved.AccountID.String()},
+		"supplier": {saved.SupplierID.String()}, "outside": {strconv.FormatBool(saved.IsOutsideContract)}}
+	for _, key := range saved.ColumnValues.Keys {
+		values.Set("column."+key, saved.ColumnValues.Values[key])
+	}
+	return values
+}
+
+// changeEntry changes the entry the path names to the form, through the checks the app's route makes (entries.Change), as a draft or sent for
+// approval as the button pressed says (UC-033, redix-api #166).
+func (s site) changeEntry(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	entryID, _ := uuid.Parse(r.PathValue("id"))
+	row, found, err := entries.RowOf(r.Context(), s.Database.Queries(), p.project.ID, p.caller, entryID)
+	if err != nil {
+		failed(w)
+		return
+	}
+	if !found || !p.inProject() || r.ParseForm() != nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.save(w, r, p, row, func(c changes.Change, typed entries.Request) error {
+		return entries.Change(c, p.caller, entryID, typed)
+	})
+}
+
 // recordEntry records the form as a new entry through the rule the app's route and a project file's load run (entries.Record), as a draft or
 // sent for approval as the button pressed says: the form again, empty but for its table, method and account, saying it was kept, with the
 // new entry in the details panel; or the form as typed, saying why not and marking the column refused (UC-022, redix-api #166). A finished
@@ -216,7 +301,18 @@ func (s site) recordEntry(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	s.save(w, r, p, entries.Row{}, func(c changes.Change, typed entries.Request) error {
+		_, err := entries.Record(c, typed, true)
+		return err
+	})
+}
+
+// save saves the form posted to r through keep in one change, as the change of editing or as a new entry when editing is none: the form again
+// saying it was kept, with the entry in the details panel - a new entry's form empty but for its table, method, account and date; or the form
+// as typed, saying why not and marking the column refused. A finished project saves nothing, as the app's route refuses it at its gate (AC-04.1).
+func (s site) save(w http.ResponseWriter, r *http.Request, p page, editing entries.Row, keep func(changes.Change, entries.Request) error) {
 	form, err := s.entryFormOf(r.Context(), p, r.PostForm)
+	form.editing = editing
 	if err != nil {
 		failed(w)
 		return
@@ -228,10 +324,12 @@ func (s site) recordEntry(w http.ResponseWriter, r *http.Request) {
 		draw(w, r, http.StatusOK, addEntry(p, form))
 		return
 	}
-	send, entryID := r.PostForm.Get("submit") == "send", uuid.Must(uuid.NewV7())
+	send, entryID := r.PostForm.Get("submit") == "send", editing.ID
+	if entryID == uuid.Nil {
+		entryID = uuid.Must(uuid.NewV7())
+	}
 	err = changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) error {
-		_, err := entries.Record(c, form.request(entryID, send), true)
-		return err
+		return keep(c, form.request(entryID, send))
 	})
 	var refused changes.Refusal
 	if errors.As(err, &refused) {
@@ -246,19 +344,23 @@ func (s site) recordEntry(w http.ResponseWriter, r *http.Request) {
 		failed(w)
 		return
 	}
-	kept := url.Values{"table": {r.PostForm.Get("table")}, "method": {r.PostForm.Get("method")}, "account": {r.PostForm.Get("account")}, "date": {r.PostForm.Get("date")}}
-	if form, err = s.entryFormOf(r.Context(), p, kept); err != nil {
-		failed(w)
-		return
-	}
-	form.said.notice = "expenses.saved"
-	if send {
-		form.said.notice = "expenses.sent"
-	}
 	row, _, err := entries.RowOf(r.Context(), s.Database.Queries(), p.project.ID, p.caller, entryID)
 	if err != nil {
 		failed(w)
 		return
+	}
+	if editing.ID == uuid.Nil {
+		kept := url.Values{"table": {r.PostForm.Get("table")}, "method": {r.PostForm.Get("method")}, "account": {r.PostForm.Get("account")}, "date": {r.PostForm.Get("date")}}
+		if form, err = s.entryFormOf(r.Context(), p, kept); err != nil {
+			failed(w)
+			return
+		}
+	} else {
+		form.editing = row
+	}
+	form.said = said{notice: "expenses.saved"}
+	if send {
+		form.said.notice = "expenses.sent"
 	}
 	draw(w, r, http.StatusOK, addEntry(p, form), panelBeside(p, row))
 }

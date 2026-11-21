@@ -44,3 +44,19 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | D3: nothing is reversed any more | No route | `RemoveApprovedEntryTests.D3_NothingIsReversedAnyMore` |
 | D5: an entry reversed before reads as an ordinary approved entry | `AccountHistory`, `PartnerHistory` | `RemoveApprovedEntryTests.D5_AnEntryReversedBeforeReadsAsAnOrdinaryApprovedEntry` |
 | A description longer than 2,000 characters answers `invalidDescription`; one of 2,000 is kept (redix-api #129) | `entries.Routes.describe`, `entries.descriptionMaxLength` | `EntryChangesTests.NotesLongerThanTheLimitAreRefusedAndNotesOfTheLimitAreKept` |
+
+## On the web: Change and Fix (redix-api #166)
+
+An entry the person may change shows Change in the details panel, Fix for a rejected one (`entries.Row.Changeable`, from `refusalOfChange`). It opens Add entry's form in a tab of its own, filled with the entry as it stands (`entries.Typed`: its table, fields, columns, payment and supplier; a credit note's amount without its minus), drawn again as it changes as Add entry is. Saving goes through `entries.Change`: the checks the app's route makes, then every check a new entry passes. The route makes the same checks in its own body, since the API document's generator reads a route's calls five functions deep and would not reach the refusals of `entryOf` through one more. Its pages are in `go-backend/web` (`addentry.go`, `addentry.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/changeEntry?entry={id}` | Change or Fix, filled with the entry; then drawn again with what was typed | `200` the tab's content; for an entry gone or one the person may not change, a line saying so |
+| `POST /entry/{id}` | Saves the change, `submit=draft` or `submit=send` | `200` the form saying it was kept, the entry in the details panel; or as typed, saying why not; `404` for an entry the person does not see |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Change fills the form with the entry and saves through the app's rule (UC-033) | `entries.Typed`, `entries.Change` | `TestWeb_R166_UC033_ChangeFillsTheFormAndSavesThroughTheAppsRule` |
+| An approved entry is not changed (BR-11) | `entries.refusalOfChange` | `TestWeb_R166_UC033_AnApprovedEntryIsNotChanged` |
+| A rejected entry opens as Fix, its columns filled | `web.entryForm.title`, `entries.Typed` | `TestWeb_R166_UC033_FixFillsARejectedEntryWithItsColumns` |
+| A failing database answers 500 and keeps nothing | `changes.Writer.Run` | `TestWeb_R166_ChangeAnswersAFailingDatabaseWith500` |

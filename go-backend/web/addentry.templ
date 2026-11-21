@@ -4,6 +4,8 @@
 package web
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
@@ -15,15 +17,21 @@ import (
 // Save draft and Send. Changing the table, the method or the supplier search draws it again with what was typed.
 templ addEntry(p page, form entryForm) {
 	<div class="view-head">
-		<h2 id="addEntry.title">{ p.words.Of("entries.new") }</h2>
+		<h2 id="addEntry.title">{ p.words.Of(form.title()) }</h2>
+		if form.editing.ID != uuid.Nil {
+			<span id="addEntry.number" class="hint">{ p.words.Of("entries.numberOf", strconv.FormatInt(form.editing.Number, 10)) }</span>
+		}
 	</div>
 	if form.table.ID == uuid.Nil {
 		<p id="addEntry.message" class="hint">{ p.words.Of("entries.noTableMatch") }</p>
 	} else {
-		<form id="addEntry.form" class="entry-form" hx-post="/entry" hx-target="[id='web.content']" hx-sync="this:drop">
+		<form id="addEntry.form" class="entry-form" hx-post={ form.action() } hx-target="[id='web.content']" hx-sync="this:drop">
+			if form.editing.ID != uuid.Nil {
+				<input type="hidden" name="entry" value={ form.editing.ID.String() }/>
+			}
 			<div class="field wide">
 				<label for="addEntry.table">{ p.words.Of("entries.table") }</label>
-				<select id="addEntry.table" name="table" hx-get="/tab/addEntry" hx-include="closest form" hx-target="[id='web.content']">
+				<select id="addEntry.table" name="table" hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']">
 					for _, category := range form.tables {
 						<optgroup label={ category.Name }>
 							for _, item := range category.Items {
@@ -58,7 +66,7 @@ templ addEntry(p page, form entryForm) {
 				<div class="field wide">
 					<label for="addEntry.supplier">{ p.words.Of("expenses.supplier") }</label>
 					<span class="pair">
-						<input id="addEntry.supplierSearch" class="search" type="search" name="supplierText" value={ form.typed.Get("supplierText") } placeholder={ p.words.Of("common.search") } aria-label={ p.words.Of("common.search") } hx-get="/tab/addEntry" hx-include="closest form" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms"/>
+						<input id="addEntry.supplierSearch" class="search" type="search" name="supplierText" value={ form.typed.Get("supplierText") } placeholder={ p.words.Of("common.search") } aria-label={ p.words.Of("common.search") } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms"/>
 						<select id="addEntry.supplier" name="supplier">
 							<option value=""></option>
 							for _, supplier := range form.suppliers {
@@ -78,7 +86,7 @@ templ addEntry(p page, form entryForm) {
 				<fieldset id="payment.methodChoice" class="picks wide">
 					<legend>{ p.words.Of("expenses.paymentMethod") }</legend>
 					for _, method := range form.methods {
-						<label id={ "payment.method." + method.ID.String() } class="pick"><input type="radio" name="method" value={ method.ID.String() } checked?={ method.ID == form.method } hx-get="/tab/addEntry" hx-include="closest form" hx-target="[id='web.content']"/>{ method.Name }</label>
+						<label id={ "payment.method." + method.ID.String() } class="pick"><input type="radio" name="method" value={ method.ID.String() } checked?={ method.ID == form.method } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']"/>{ method.Name }</label>
 					}
 				</fieldset>
 			}
@@ -133,4 +141,12 @@ templ panelBeside(p page, row entries.Row) {
 	@detailsPanel(true) {
 		@entryPanel(p, row, said{})
 	}
+}
+
+// entryNotChangeable is Change's tab for an entry that is gone, or that the caller may no longer change.
+templ entryNotChangeable(p page) {
+	<div class="view-head">
+		<h2 id="addEntry.title">{ p.words.Of("entries.edit") }</h2>
+	</div>
+	<p id="addEntry.message" class="hint">{ p.words.Of("approvals.unknownEntry") }</p>
 }

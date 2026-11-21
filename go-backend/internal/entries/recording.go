@@ -58,7 +58,15 @@ func (s Routes) record(w http.ResponseWriter, r *http.Request, caller access.Cal
 		}
 		return
 	}
-	s.save(w, r, caller, typed, store.Entry{})
+	var answer any
+	if s.writer.Write(w, r, caller, func(c changes.Change) error {
+		recorded, err := kept(c, typed, store.Entry{})
+		answer = recorded
+		return err
+	}) {
+		w.Header().Set("Location", "/projects/"+projectID.String()+"/entries/"+typed.ID.String())
+		web.JSON(w, r, http.StatusCreated, answer)
+	}
 }
 
 // statusView is where an entry stands (EntryStatusView): what answers an upload sent again.
@@ -85,7 +93,31 @@ func (s Routes) change(w http.ResponseWriter, r *http.Request, caller access.Cal
 		return
 	}
 	typed.ID = existing.ID
-	s.save(w, r, caller, typed, existing)
+	var answer any
+	if s.writer.Write(w, r, caller, func(c changes.Change) error {
+		changed, err := kept(c, typed, existing)
+		answer = changed
+		return err
+	}) {
+		web.JSON(w, r, http.StatusOK, answer)
+	}
+}
+
+// Change changes the entry entryID of c's project to typed as caller, through the checks change makes (UC-033): changes.NotFound for an entry
+// caller does not see, the refusals of refusalOfChange, then every check a new entry passes. The web's Change calls it (redix-api #166); the
+// route makes the same checks in its own body, since the API document's generator reads a route's calls five functions deep and would not
+// reach the refusals of entryOf through one more.
+func Change(c changes.Change, caller access.Caller, entryID uuid.UUID, typed Request) error {
+	existing, err := seenEntry(c, caller, entryID)
+	if err != nil {
+		return err
+	}
+	if status, code := refusalOfChange(existing, caller); code != "" {
+		return changes.Refuse(status, code)
+	}
+	typed.ID = existing.ID
+	_, err = kept(c, typed, existing)
+	return err
 }
 
 // refusalOfChange is why caller cannot change entry (EntryChanges.RefusalOf): entryApproved (409), since what is approved never changes (BR-11);
@@ -108,38 +140,61 @@ func mayHandle(entry store.Entry, caller access.Caller) bool {
 	return entry.CreatedByUserID == caller.UserID || (entry.Status != ledger.Draft && caller.Access.Holds(entry.ProjectID, access.ManageAnyEntry))
 }
 
-// save keeps typed as a new entry, or in place of existing (EntryRecording.SaveAsync): unknownTable (400) for a table the caller is not offered,
-// then the refusals of refusal, naming the column; 201 with what was kept for a new entry, 200 for a changed one.
-func (s Routes) save(w http.ResponseWriter, r *http.Request, caller access.Caller, typed Request, existing store.Entry) {
-	var answer any
-	if !s.writer.Write(w, r, caller, func(c changes.Change) error {
-		t, err := tableOf(c, typed)
-		if err != nil {
-			return err
-		}
-		entry, amount, err := entryOf(c, typed, t, existing.ID)
-		if err != nil {
-			return err
-		}
-		if existing.ID == uuid.Nil {
-			err = add(c, entry, typed, t, true)
-		} else {
-			entry, err = replace(c, existing, entry, typed, t)
-		}
-		if err != nil {
-			return err
-		}
-		answer, err = t.form.answer(c, typed, entry, amount)
-		return err
-	}) {
-		return
+// kept keeps typed as a new entry, or in place of existing, and is what its table answers for it (EntryRecording.SaveAsync): unknownTable (400)
+// for a table the caller is not offered, then the refusals of refusal, naming the column.
+func kept(c changes.Change, typed Request, existing store.Entry) (any, error) {
+	t, err := tableOf(c, typed)
+	if err != nil {
+		return nil, err
+	}
+	entry, amount, err := entryOf(c, typed, t, existing.ID)
+	if err != nil {
+		return nil, err
 	}
 	if existing.ID == uuid.Nil {
-		w.Header().Set("Location", "/projects/"+web.ID(r, "projectId").String()+"/entries/"+typed.ID.String())
-		web.JSON(w, r, http.StatusCreated, answer)
-		return
+		err = add(c, entry, typed, t, true)
+	} else {
+		entry, err = replace(c, existing, entry, typed, t)
 	}
-	web.JSON(w, r, http.StatusOK, answer)
+	if err != nil {
+		return nil, err
+	}
+	return t.form.answer(c, typed, entry, amount)
+}
+
+// Typed is the entry entryID of c's project as caller would type it again: the request that records it as it stands, its amount as typed - a
+// credit note's without its minus, as Add entry shows it - which the web's Change fills Add entry with (redix-api #166). changes.NotFound for an
+// entry caller does not see; otherwise the error is the database's.
+func Typed(c changes.Change, caller access.Caller, entryID uuid.UUID) (Request, error) {
+	entry, err := seenEntry(c, caller, entryID)
+	if err != nil {
+		return Request{}, err
+	}
+	known, err := factsOf(c, []store.Entry{entry})
+	if err != nil {
+		return Request{}, err
+	}
+	itemID, err := itemOf(c, entry, known)
+	if err != nil {
+		return Request{}, err
+	}
+	values := web.Ordered{}
+	if err := values.UnmarshalJSON([]byte(entry.ColumnValues)); err != nil {
+		return Request{}, err
+	}
+	amount, _ := fixed.TypedIn(entry.Amount.String())
+	typed := Request{ID: entry.ID, ItemID: itemID, TableID: known.tableOf(entry), Date: entry.EntryDate, Amount: amount, AccountID: entry.AccountID,
+		PaymentMethodID: known.expenses[entry.ID].PaymentMethodID, Description: entry.Description, ColumnValues: values,
+		SupplierID: known.purchases[entry.ID].SupplierID, IsOutsideContract: known.payments[entry.ID].IsOutsideContract}
+	t, err := tableOf(c, typed)
+	var refused changes.Refusal
+	if err != nil && !errors.As(err, &refused) {
+		return Request{}, err
+	}
+	if err == nil && t.sign(typed) == structure.Minus && entry.Amount < 0 {
+		typed.Amount, _ = fixed.TypedIn((-entry.Amount).String())
+	}
+	return typed, nil
 }
 
 // Record records typed as a new entry of the change's project through every check Add entry passes, sent for approval when typed.Submit

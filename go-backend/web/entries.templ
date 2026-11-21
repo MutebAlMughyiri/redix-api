@@ -158,7 +158,7 @@ templ entryPanel(p page, row entries.Row, shown said) {
 				<button id="entry.send" class="primary small" type="button" hx-post={ "/entry/" + row.ID.String() + "/send" } hx-target="[id='web.details']">{ p.words.Of("entries.send") }</button>
 			}
 			if p.mayChange(row) {
-				<button id="entry.change" class="quiet-button" type="button" disabled>
+				<button id="entry.change" class="quiet-button" type="button" hx-get={ "/tab/changeEntry?entry=" + row.ID.String() } hx-target="[id='web.content']">
 					if row.Status.Name() == "rejected" {
 						{ p.words.Of("entries.fix") }
 					} else {

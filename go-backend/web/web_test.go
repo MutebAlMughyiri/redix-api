@@ -1220,3 +1220,88 @@ func TestWeb_R166_AddEntryAnswersAFailingDatabaseWith500(t *testing.T) {
 		}
 	}
 }
+
+// amountOf is the entry's amount as kept, as the lists write it.
+func (w working) amountOf(id string) string {
+	w.t.Helper()
+	var amount string
+	if err := w.Database.Read.QueryRow("SELECT amount FROM entries WHERE id = ?", id).Scan(&amount); err != nil {
+		w.t.Fatal(err)
+	}
+	return amount
+}
+
+func TestWeb_R166_UC033_ChangeFillsTheFormAndSavesThroughTheAppsRule(t *testing.T) {
+	w := newWorking(t)
+	draft := w.drafted(30)
+	w.home()
+	has(t, w.browser.Send("GET", "/details/entry/"+draft, nil).Body.String(), `hx-get="/tab/changeEntry?entry=`+draft+`"`)
+	form := w.browser.Send("GET", "/tab/changeEntry?entry="+draft, nil).Body.String()
+	has(t, form, `<h2 id="addEntry.title">تعديل</h2>`)
+	has(t, form, `<option value="`+w.item+":"+w.table+`" selected>التسليح</option>`)
+	has(t, form, `<input id="addEntry.amount" name="amount" inputmode="decimal" value="30">`)
+	has(t, form, `hx-post="/entry/`+draft+`"`)
+	changed := w.browser.Send("POST", "/entry/"+draft, w.typedEntry("45", true)).Body.String()
+	has(t, changed, "أُرسل للاعتماد.")
+	if w.statusOf(draft) != 1 || !strings.HasPrefix(w.amountOf(draft), "45") {
+		t.Errorf("the draft is changed and sent: status %d, amount %s", w.statusOf(draft), w.amountOf(draft))
+	}
+}
+
+func TestWeb_R166_UC033_AnApprovedEntryIsNotChanged(t *testing.T) {
+	w := newWorking(t)
+	approved := w.approved(70)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/changeEntry?entry="+approved, nil).Body.String(), "هذا القيد لم يعد هنا.")
+	has(t, w.browser.Send("POST", "/entry/"+approved, w.typedEntry("45", true)).Body.String(), "فلم يُطبَّق تعديلك.")
+	if !strings.HasPrefix(w.amountOf(approved), "70") {
+		t.Errorf("an approved entry keeps its amount: %s", w.amountOf(approved))
+	}
+	if code := w.browser.Send("POST", "/entry/"+uuid.NewString(), w.typedEntry("45", true)).Code; code != http.StatusNotFound {
+		t.Errorf("changing an entry there is none of: %d", code)
+	}
+}
+
+func TestWeb_R166_ChangeAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	draft := w.drafted(30)
+	w.home()
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/changeEntry?entry="+draft, nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("drawing Change with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/entry/"+draft, w.typedEntry("45", true))
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("changing with the database failing at its call %d answers %d", n, answered.Code)
+		}
+		if w.statusOf(draft) != 0 {
+			t.Fatalf("a change failing at its call %d keeps nothing: %d", n, w.statusOf(draft))
+		}
+	}
+}
+
+func TestWeb_R166_UC033_FixFillsARejectedEntryWithItsColumns(t *testing.T) {
+	w := newWorking(t)
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + w.item + `","tableId":"` + w.table + `","date":"2026-11-10","amount":60,"accountId":"` + w.account +
+		`","paymentMethodId":"` + w.method + `","description":"","columnValues":{"quantity":"3"},"submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		t.Fatalf("recording: %d %v", code, answer)
+	}
+	if code, answer := w.Ask("POST", w.path+"/entries/"+id+"/reject", `{"reason":"الفاتورة غير واضحة"}`, w.token); code >= 300 {
+		t.Fatalf("rejecting: %d %v", code, answer)
+	}
+	w.home()
+	form := w.browser.Send("GET", "/tab/changeEntry?entry="+id, nil).Body.String()
+	has(t, form, `<h2 id="addEntry.title">تعديل وإعادة إرسال</h2>`)
+	has(t, form, `<input id="addEntry.column.quantity" name="column.quantity" inputmode="decimal" value="3">`)
+}

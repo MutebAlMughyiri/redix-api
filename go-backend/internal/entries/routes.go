@@ -145,6 +145,24 @@ func Submit(c changes.Change, caller access.Caller, entryID uuid.UUID) error {
 	return sendOff(c, after, true)
 }
 
+// itemOf is the item entry went into, as known holds it: an expense's or a revenue's, or the project's capital item for a partner's money.
+func itemOf(c changes.Change, entry store.Entry, known facts) (uuid.UUID, error) {
+	itemID := known.expenses[entry.ID].ItemID
+	if row, isRevenue := known.revenues[entry.ID]; isRevenue {
+		itemID = row.ItemID
+	}
+	if entry.Kind != ledger.CapitalIn && entry.Kind != ledger.CapitalOut {
+		return itemID, nil
+	}
+	items, err := c.Q.ItemsOf(c.Ctx, entry.ProjectID)
+	for _, item := range items {
+		if item.Type == int64(structure.Capital) {
+			itemID = item.ID
+		}
+	}
+	return itemID, err
+}
+
 // missingOfEntry is the required columns the entry gives no value, among those of its item its kind is asked (EntriesEndpoints.MissingOfAsync): an
 // expense's or revenue's item, or the project's capital item for a partner's money.
 func missingOfEntry(c changes.Change, entry store.Entry) ([]string, error) {
@@ -152,18 +170,9 @@ func missingOfEntry(c changes.Change, entry store.Entry) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	itemID := known.expenses[entry.ID].ItemID
-	if row, isRevenue := known.revenues[entry.ID]; isRevenue {
-		itemID = row.ItemID
-	}
-	items, err := c.Q.ItemsOf(c.Ctx, entry.ProjectID)
+	itemID, err := itemOf(c, entry, known)
 	if err != nil {
 		return nil, err
-	}
-	for _, item := range items {
-		if (entry.Kind == ledger.CapitalIn || entry.Kind == ledger.CapitalOut) && item.Type == int64(structure.Capital) {
-			itemID = item.ID
-		}
 	}
 	columns, err := c.Q.ColumnsOfItem(c.Ctx, itemID)
 	if err != nil {
