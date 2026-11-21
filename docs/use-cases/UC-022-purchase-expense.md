@@ -71,6 +71,7 @@ The web's Add entry is the app's screen in a tab of its own, opened by Entries' 
 | Page | Purpose | Answers |
 | --- | --- | --- |
 | `GET /tab/addEntry?table=&method=&supplierText=&…` | Add entry, drawn with what was typed | `200` the tab's content |
+| `GET /entry-figures?table=&amount=&outside=&entry=` | A contract payment's figures as the form stands, drawn again as the amount or inside and outside change | `200` the figures |
 | `POST /entry` | Records the form, `submit=draft` or `submit=send` | `200` the form again: emptied and saying it was kept, the new entry in the details panel; or as typed, saying why not and marking the column refused |
 
 | Rule | Enforced by | Proved by |
@@ -78,3 +79,4 @@ The web's Add entry is the app's screen in a tab of its own, opened by Entries' 
 | Add entry offers the caller's tables, methods and accounts, records through the app's rule, and shows the new entry (UC-022, FR-41) | `entries.Record`, `web.site.recordEntry` | `TestWeb_R166_UC022_AddEntryRecordsThroughTheAppsRuleAndShowsTheEntry` |
 | What cannot be saved says why and keeps what was typed: an amount that is no number, a refusal of the API's (BR-12); a finished project records nothing (AC-04.1) | `web.entryForm.whatIsWrong`, `entries.Record` | `TestWeb_R166_UC022_AddEntrySaysWhyNotAndKeepsWhatWasTyped` |
 | A failing database answers 500 and keeps nothing | `changes.Writer.Run` | `TestWeb_R166_AddEntryAnswersAFailingDatabaseWith500` |
+| A contract payment shows the contract's value, what is paid and what remains after it; past the value it warns and still saves, saying the contract is overrun; outside the contract it takes nothing from what remains (BR-07, FR-13) | `contracts.StandingOf`, the one owner a payment's answer asks too | `TestWeb_R166_BR07_AContractPaymentShowsTheContractsFiguresAsTheAmountChanges` |

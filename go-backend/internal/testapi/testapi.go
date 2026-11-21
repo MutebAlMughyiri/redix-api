@@ -52,16 +52,23 @@ type API struct {
 	failure  *dbtest.Failure
 }
 
-// New is the API on a fresh database of t's own.
+// New is the API on a fresh database of t's own, its per-address windows too wide for any test to reach.
 func New(t *testing.T) *API {
+	t.Helper()
+	return Limited(t, 100000)
+}
+
+// Limited is the API on a fresh database of t's own whose per-address windows - email codes and registrations - take perHour requests an hour
+// each, for a test that reaches them (findings row 290).
+func Limited(t *testing.T, perHour int) *API {
 	t.Helper()
 	database, failure := dbtest.Open(t, filepath.Join(t.TempDir(), "redix.db"))
 	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
 	emails := &Emails{}
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	doors := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: 100000,
+	doors := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: perHour,
 		AttachmentsFolder: filepath.Join(t.TempDir(), "attachments"), TypstPath: typstPath(),
-		RegistrationsPerHour: 100000, Documented: true, Log: quiet})
+		RegistrationsPerHour: perHour, Documented: true, Log: quiet})
 	failures, err := incidents.Open(filepath.Join(t.TempDir(), "incidents.db"))
 	if err != nil {
 		t.Fatal(err)

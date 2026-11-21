@@ -67,6 +67,28 @@ func Overrun(contract store.Contract, paid fixed.Total) bool {
 	return !contract.IsOpenValue && paid.Number() > contract.Value
 }
 
+// Standing is what a contract stands at with a payment counted inside it on top of what the ledger holds of it: what was paid, what waits, what
+// remains after the payment, and whether it goes beyond the value (ContractorPaymentView, BR-07).
+type Standing struct {
+	Paid, Pending, RemainingAfter fixed.Total
+	IsOverrun                     bool
+}
+
+// StandingOf is how contract stands with payment counted inside it on top of held, nothing for a payment outside it: the one owner of a payment's
+// answer and of the web's Add entry figures (redix-api #166).
+func StandingOf(contract store.Contract, held Money, payment fixed.Total) Standing {
+	counted := held.Paid.Plus(held.Pending).Plus(payment)
+	return Standing{Paid: held.Paid, Pending: held.Pending, RemainingAfter: Remaining(contract, counted), IsOverrun: Overrun(contract, counted)}
+}
+
+// StandingIn is the contract contractID of projectID and how it stands with payment counted inside it, leaving out the entry leftOut, the one
+// being changed. The error is the database's.
+func StandingIn(ctx context.Context, q *store.Queries, projectID, contractID, leftOut uuid.UUID, payment fixed.Total) (store.Contract, Standing, error) {
+	contract, err := q.ContractOf(ctx, store.ContractOfParams{ID: contractID, ProjectID: projectID})
+	money, moneyErr := MoneyOf(ctx, q, projectID, leftOut)
+	return contract, StandingOf(contract, money[contractID], payment), errors.Join(err, moneyErr)
+}
+
 // Routes keeps a project's contracts.
 type Routes struct {
 	database db.DB

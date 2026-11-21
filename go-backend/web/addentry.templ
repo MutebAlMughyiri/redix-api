@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 )
 
@@ -53,13 +54,15 @@ templ addEntry(p page, form entryForm) {
 			</div>
 			<div class="field">
 				<label for="addEntry.amount">{ p.words.Of("expenses.amount") }</label>
-				<input id="addEntry.amount" name="amount" inputmode="decimal" value={ form.typed.Get("amount") } aria-invalid?={ form.said.refusal == "expenses.invalidAmount" }/>
+				<input id="addEntry.amount" name="amount" inputmode="decimal" value={ form.typed.Get("amount") } aria-invalid?={ form.said.refusal == "expenses.invalidAmount" } { form.figuresFollow()... }/>
 			</div>
 			if form.asksContract() {
+				@contractFigures(p, form)
 				<fieldset id="addEntry.kind" class="picks wide">
 					<legend>{ p.words.Of("contractorPayments.kind") }</legend>
-					<label id="addEntry.inside" class="pick"><input type="radio" name="outside" value="false" checked?={ form.typed.Get("outside") != "true" }/>{ p.words.Of("contractorPayments.inside") }</label>
-					<label id="addEntry.outside" class="pick"><input type="radio" name="outside" value="true" checked?={ form.typed.Get("outside") == "true" }/>{ p.words.Of("contractorPayments.outside") }</label>
+					<label id="addEntry.inside" class="pick"><input type="radio" name="outside" value="false" checked?={ form.typed.Get("outside") != "true" } { form.figuresFollow()... }/>{ p.words.Of("contractorPayments.inside") }</label>
+					<label id="addEntry.outside" class="pick"><input type="radio" name="outside" value="true" checked?={ form.typed.Get("outside") == "true" } { form.figuresFollow()... }/>{ p.words.Of("contractorPayments.outside") }</label>
+					<small id="addEntry.outsideExplain" class="hint">{ p.words.Of("contractorPayments.outsideExplain") }</small>
 				</fieldset>
 			}
 			if form.asksSupplier() {
@@ -150,3 +153,35 @@ templ entryNotChangeable(p page) {
 	</div>
 	<p id="addEntry.message" class="hint">{ p.words.Of("approvals.unknownEntry") }</p>
 }
+
+// contractFigures is a contract payment's figures as the app's ContractFigures shows them: the value - open for a contract of no set value -, what
+// is paid, what remains after this payment, what waits beside it, a bar of how far the contract is reached, and a warning when the payment goes
+// beyond the value, which still saves (BR-07).
+templ contractFigures(p page, form entryForm) {
+	<div id="addEntry.figures" class="figures wide">
+		<dl class="facts">
+			<dt>{ p.words.Of("contracts.value") }</dt>
+			if form.contract.IsOpenValue {
+				<dd id="addEntry.value">{ p.words.Of("contracts.open") }</dd>
+			} else {
+				<dd id="addEntry.value" class="money">{ statement.Money(form.contract.Value) }</dd>
+			}
+			<dt>{ p.words.Of("contracts.paid") }</dt>
+			<dd id="addEntry.paid" class="money">{ statement.Money(form.standing.Paid.Number()) }</dd>
+			if !form.contract.IsOpenValue {
+				<dt>{ p.words.Of("contractorPayments.remainingAfter") }</dt>
+				<dd id="addEntry.remaining" class={ "money", templ.KV("refused", form.standing.IsOverrun) }>{ statement.Money(form.standing.RemainingAfter.Number()) }</dd>
+			}
+		</dl>
+		if form.standing.Pending.Number() != 0 {
+			<p id="addEntry.pending" class="hint">{ p.words.Of("contracts.pending") + " " + statement.Money(form.standing.Pending.Number()) }</p>
+		}
+		if !form.contract.IsOpenValue {
+			<progress id="addEntry.progress" class="bar" max="100" value={ form.progress() }></progress>
+		}
+		if form.standing.IsOverrun {
+			<p id="addEntry.overrun" class="refusal">{ p.words.Of("contractorPayments.overrun") }</p>
+		}
+	</div>
+}
+

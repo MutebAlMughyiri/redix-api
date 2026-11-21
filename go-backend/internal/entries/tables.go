@@ -207,13 +207,13 @@ type paymentView struct {
 
 func (f contractForm) answer(c changes.Change, r Request, entry store.Entry, amount fixed.Total) (any, error) {
 	money, err := contracts.MoneyOf(c.Ctx, c.Q, c.ProjectID, entry.ID)
-	held := money[f.contract.ID]
-	counted := held.Paid.Plus(held.Pending)
-	if !r.IsOutsideContract {
-		counted = counted.Plus(amount)
+	payment := amount
+	if r.IsOutsideContract {
+		payment = fixed.Total{}
 	}
-	return paymentView{ID: entry.ID, Status: statusOf(entry.Status), Amount: amount, Paid: held.Paid, Pending: held.Pending,
-		RemainingAfter: contracts.Remaining(f.contract, counted), IsOverrun: contracts.Overrun(f.contract, counted)}, err
+	standing := contracts.StandingOf(f.contract, money[f.contract.ID], payment)
+	return paymentView{ID: entry.ID, Status: statusOf(entry.Status), Amount: amount, Paid: standing.Paid, Pending: standing.Pending,
+		RemainingAfter: standing.RemainingAfter, IsOverrun: standing.IsOverrun}, err
 }
 
 // revenueForm is a revenue item's group (RevenueTable, FR-38, redix-api #101): money coming in.

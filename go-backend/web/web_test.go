@@ -1305,3 +1305,60 @@ func TestWeb_R166_UC033_FixFillsARejectedEntryWithItsColumns(t *testing.T) {
 	has(t, form, `<h2 id="addEntry.title">تعديل وإعادة إرسال</h2>`)
 	has(t, form, `<input id="addEntry.column.quantity" name="column.quantity" inputmode="decimal" value="3">`)
 }
+
+func TestWeb_R166_BR07_AContractPaymentShowsTheContractsFiguresAsTheAmountChanges(t *testing.T) {
+	w := newWorking(t)
+	_, supplier := w.Ask("POST", w.path+"/suppliers", `{"name":"مؤسسة الإتقان"}`, w.token)
+	w.Ask("PUT", w.path+"/items/"+w.item+"/type", `{"type":"both"}`, w.token)
+	if code, answer := w.Ask("POST", w.path+"/contracts", `{"supplierId":"`+testapi.Field(supplier, "id").(string)+`","itemId":"`+w.item+`","value":1000,"isOpenValue":false}`,
+		w.token); code >= 300 {
+		t.Fatalf("the contract: %d %v", code, answer)
+	}
+	var contract string
+	if err := w.Database.Read.QueryRow("SELECT id FROM contracts").Scan(&contract); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	table := w.item + ":" + contract
+	form := w.browser.Send("GET", "/tab/addEntry?table="+table, nil).Body.String()
+	has(t, form, `<dd id="addEntry.value" class="money">1,000.00</dd>`)
+	has(t, form, `<dd id="addEntry.remaining" class="money">1,000.00</dd>`)
+	has(t, form, `hx-get="/entry-figures"`)
+	over := w.browser.Send("GET", "/entry-figures?table="+table+"&amount=1200", nil).Body.String()
+	has(t, over, `id="addEntry.overrun"`)
+	has(t, over, `<dd id="addEntry.remaining" class="money refused">(200.00)</dd>`)
+	has(t, over, `<progress id="addEntry.progress" class="bar" max="100" value="100">`)
+	outside := w.browser.Send("GET", "/entry-figures?table="+table+"&amount=1200&outside=true", nil).Body.String()
+	has(t, outside, `<dd id="addEntry.remaining" class="money">1,000.00</dd>`)
+	lacks(t, outside, `id="addEntry.overrun"`)
+	half := w.browser.Send("GET", "/entry-figures?table="+table+"&amount=500", nil).Body.String()
+	has(t, half, `<dd id="addEntry.remaining" class="money">500.00</dd>`)
+	has(t, half, `value="50"`)
+	typed := url.Values{"table": {table}, "date": {"2026-11-10"}, "amount": {"1200"}, "method": {w.method}, "account": {w.account}, "submit": {"send"}}
+	has(t, w.browser.Send("POST", "/entry", typed).Body.String(), "حُفظت، والعقد متجاوَز.")
+}
+
+func TestWeb_R290_ForgotPasswordAndRegisterShareTheAppsPerAddressWindows(t *testing.T) {
+	api := testapi.Limited(t, 2)
+	api.Send("POST", "/auth/forgot-password", `{"login":"someone"}`)
+	browser := api.Browser()
+	if second := browser.Send("POST", "/forgot-password", url.Values{"login": {"another"}}); second.Code != http.StatusOK {
+		t.Fatalf("the second ask from the address: %d", second.Code)
+	}
+	third := browser.Send("POST", "/forgot-password", url.Values{"login": {"a third"}})
+	if third.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("the third ask from the address is refused: %d", third.Code)
+	}
+	has(t, third.Body.String(), "طلبات كثيرة. حاول بعد قليل.")
+	for _, username := range []string{"manager.e", "manager.f"} {
+		browser.Send("POST", "/register", registration(username))
+	}
+	refused := browser.Send("POST", "/register", registration("manager.g"))
+	if refused.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("the third registration from the address is refused: %d", refused.Code)
+	}
+	has(t, refused.Body.String(), "محاولات كثيرة. حاول مرة أخرى لاحقاً.")
+	if got := api.Count(`SELECT count(*) FROM users WHERE username = 'manager.g'`); got != 0 {
+		t.Errorf("a refused registration keeps nothing: %d", got)
+	}
+}

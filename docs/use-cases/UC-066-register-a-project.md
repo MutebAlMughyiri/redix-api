@@ -52,5 +52,6 @@ The sign-in's «تسجيل مشروع جديد» opens the same registration in 
 | --- | --- | --- |
 | The sign-in's link opens the form; Cancel goes back | `web.signInForm`, `web.site.registerForm` | `TestWeb_R164_TheSignInsRegisterLinkOpensItsFormAndCancelGoesBack` |
 | A registration waits for the admin with its units, and its manager signs in with the password they chose (UC-066) | `projects.Register` | `TestWeb_R164_UC066_ARegistrationWaitsForTheAdminAndTheSignInSaysSo` |
+| One address registers only so often an hour, the app's registrations counted with the web's; the one past it keeps nothing | `limits.Window.AllowsCaller` | `TestWeb_R290_ForgotPasswordAndRegisterShareTheAppsPerAddressWindows` |
 | A refusal answers the app's words and keeps what was typed but the password | `web.site.register` | `TestWeb_R164_ARefusalAnswersTheFormWithTheAppsWordsAndKeepsWhatWasTyped` |
 | Add and Remove answer the list alone; a blank is not added | `web.site.listed` | `TestWeb_R164_AddAndRemoveAnswerTheListAlone` |

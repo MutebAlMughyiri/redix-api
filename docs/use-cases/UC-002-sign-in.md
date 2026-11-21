@@ -90,7 +90,7 @@ The web signs a person in through the same rules, `auth.Sessions.SignIn`, `Renew
 | "Forgot your password?" opens its form in the sign-in's place, and Cancel goes back | `web.signInForm`, `web.site.forgotPassword`, `web.site.signInAgain` | `TestWeb_AC02_6_ForgotPasswordOpensFromTheSignInAndCancelGoesBack` |
 | A username or an email and Send email a code; the code and a new password, typed twice, reset it, and the sign-in says so; a refusal answers the app's words (AC-02.6) | `web.site.sendResetCode`, `web.site.resetWithCode`, `auth.Codes.SendResetCode`, `auth.Codes.ResetWithCode` | `TestWeb_AC02_6_AForgottenPasswordIsResetWithTheEmailedCodeThenTheSignInSaysSo`, `TestWeb_AC02_6_AResetIsRefusedWithTheAppsWords` |
 | Asking answers the same whatever the login names, and sends nothing for an unknown one (AC-02.7) | `web.site.sendResetCode`, `auth.Codes.SendResetCode` | `TestWeb_AC02_7_AnUnknownLoginIsAnsweredAsAKnownOneAndNothingIsSent` |
-| One login asks five times an hour and one address only so often, the app's asks counted with the web's; a refusal keeps the code's fields (AC-02.8, D4) | `auth.Codes.MayAskReset`, `limits.Window.AllowsCaller` | `TestWeb_AC02_8_OneLoginAsksFiveTimesAnHourTheAppsAsksCountedWithTheWebs` |
+| One login asks five times an hour and one address only so often, the app's asks counted with the web's; a refusal keeps the code's fields (AC-02.8, D4) | `auth.Codes.MayAskReset`, `limits.Window.AllowsCaller` | `TestWeb_AC02_8_OneLoginAsksFiveTimesAnHourTheAppsAsksCountedWithTheWebs`, `TestWeb_R290_ForgotPasswordAndRegisterShareTheAppsPerAddressWindows` |
 
 ## Left to later use cases
 

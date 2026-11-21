@@ -18,6 +18,8 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -40,6 +42,8 @@ type entryForm struct {
 	method    uuid.UUID
 	accounts  []accounts.View
 	suppliers []suppliers.View
+	contract  store.Contract
+	standing  contracts.Standing
 	typed     url.Values
 	said      said
 	refused   string
@@ -149,7 +153,48 @@ func (s site) entryFormOf(ctx context.Context, p page, typed url.Values) (entryF
 	if form.asksSupplier() {
 		form.suppliers, err = suppliers.Search(ctx, read, p.project.ID, p.caller, typed.Get("supplierText"))
 	}
+	if form.asksContract() && err == nil {
+		payment, _ := fixed.TypedIn(typed.Get("amount"))
+		if typed.Get("outside") == "true" {
+			payment = fixed.Typed{}
+		}
+		leftOut, _ := uuid.Parse(typed.Get("entry"))
+		form.contract, form.standing, err = contracts.StandingIn(ctx, read, p.project.ID, form.table.ID, leftOut, payment.Total())
+	}
 	return form, err
+}
+
+// progress is how far the contract is reached with this payment, as a percent from 0 to 100, as the app's bar draws it: full for a contract of
+// no value.
+func (f entryForm) progress() string {
+	if f.contract.Value <= 0 {
+		return "100"
+	}
+	reached := f.contract.Value - f.standing.RemainingAfter.Number()
+	return strconv.FormatInt(min(max(int64(reached)*100/int64(f.contract.Value), 0), 100), 10)
+}
+
+// figuresFollow makes a contract payment's field draw the contract's figures again as it changes, as the app's figures follow what is typed.
+func (f entryForm) figuresFollow() templ.Attributes {
+	if !f.asksContract() {
+		return templ.Attributes{}
+	}
+	return templ.Attributes{"hx-get": "/entry-figures", "hx-include": "closest form", "hx-trigger": "change", "hx-target": "[id='addEntry.figures']", "hx-swap": "outerHTML"}
+}
+
+// entryFigures is a contract payment's figures as the form now stands: the contract's value, what is paid, what remains after this payment, what
+// waits, and whether it goes beyond the value (BR-07, redix-api #166).
+func (s site) entryFigures(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	form, err := s.entryFormOf(r.Context(), p, r.URL.Query())
+	if err != nil {
+		failed(w)
+		return
+	}
+	draw(w, r, http.StatusOK, contractFigures(p, form))
 }
 
 // account is the account the form pays from: the one typed when the form still offers it, the first offered otherwise.
@@ -248,6 +293,7 @@ func (s site) changeEntryTab(r *http.Request, p page) (templ.Component, error) {
 			return nil, err
 		}
 		typed = valuesOf(saved)
+		typed.Set("entry", entryID.String())
 	}
 	form, err := s.entryFormOf(r.Context(), p, typed)
 	form.editing = row
@@ -349,6 +395,7 @@ func (s site) save(w http.ResponseWriter, r *http.Request, p page, editing entri
 		failed(w)
 		return
 	}
+	overrun := form.standing.IsOverrun
 	if editing.ID == uuid.Nil {
 		kept := url.Values{"table": {r.PostForm.Get("table")}, "method": {r.PostForm.Get("method")}, "account": {r.PostForm.Get("account")}, "date": {r.PostForm.Get("date")}}
 		if form, err = s.entryFormOf(r.Context(), p, kept); err != nil {
@@ -361,6 +408,9 @@ func (s site) save(w http.ResponseWriter, r *http.Request, p page, editing entri
 	form.said = said{notice: "expenses.saved"}
 	if send {
 		form.said.notice = "expenses.sent"
+	}
+	if overrun {
+		form.said.notice = "contractorPayments.savedOverrun"
 	}
 	draw(w, r, http.StatusOK, addEntry(p, form), panelBeside(p, row))
 }
