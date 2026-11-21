@@ -29,6 +29,7 @@ templ partnersList(p page, shown partnersShown) {
 				hx-get="/details/partner/new"
 				hx-target="[id='web.details']"
 			>{ p.words.Of("partners.new") }</button>
+			<button id="partners.history" class="quiet-button" type="button" hx-get="/tab/partnerHistory" hx-target="[id='web.content']">{ p.words.Of("partners.history") }</button>
 		</span>
 	</div>
 	<section id="partners.total.card" class="card">
@@ -200,4 +201,32 @@ templ partnersBeside(p page, shown partnersShown) {
 	<div id="web.content" hx-swap-oob="innerHTML">
 		@partnersList(p, shown)
 	</div>
+}
+
+// partnerHistoryPage is the partner history as the app's screen shows it: a search, the partner and the person to narrow by, then each line,
+// newest first, with Show more while there is more.
+templ partnerHistoryPage(p page, shown history, listed partnersShown) {
+	<div class="view-head">
+		<h2 id="partnerHistory.title">{ p.words.Of("partners.history") }</h2>
+	</div>
+	<form
+		id="partnerHistory.filters"
+		class="filters"
+		hx-get="/tab/partnerHistory"
+		hx-target="[id='web.content']"
+		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+	>
+		<input id="partnerHistory.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("partners.history")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("partners.history")) } value={ shown.query.Get("text") }/>
+		<label id="partnerHistory.partnerChoice.label" class="pick-select">
+			{ p.words.Of("entryShare.partner") }
+			<select id="partnerHistory.partnerChoice" name="partner">
+				<option id="partnerHistory.partnerChoice.option.none" value="">{ p.words.Of("history.all") }</option>
+				for _, line := range listed.lines {
+					<option id={ "partnerHistory.partner." + line.ID.String() } value={ line.ID.String() } selected?={ line.ID.String() == shown.query.Get("partner") }>{ line.Name }</option>
+				}
+			</select>
+		</label>
+		@historyPerson(p, shown)
+	</form>
+	@historyList(p, shown)
 }

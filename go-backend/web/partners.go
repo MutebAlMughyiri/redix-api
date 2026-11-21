@@ -225,3 +225,19 @@ func (s site) keepPartner(w http.ResponseWriter, r *http.Request) {
 	}
 	draw(w, r, http.StatusOK, partnerPanel(p, shown, line, movements, said{refusal: refusal}), partnersBeside(p, shown))
 }
+
+// partnerHistoryTab is the partner history in its tab (redix-app #101, redix-api #169): partners added, changed and deleted, and approved
+// movements, for the partners the caller sees (BR-31), newest first, searched and narrowed by partner and person as the app's.
+func (s site) partnerHistoryTab(r *http.Request, p page) (templ.Component, error) {
+	shown, err := s.partnerHistoryOf(r.Context(), p, r.URL.Query())
+	if err != nil {
+		return nil, err
+	}
+	listed, err := s.partnersOf(r.Context(), p)
+	return partnerHistoryPage(p, shown, listed), err
+}
+
+// partnerHistoryMore is the next page of the partner history, added after the last line.
+func (s site) partnerHistoryMore(w http.ResponseWriter, r *http.Request) {
+	s.historyMore(w, r, "partnerHistory", s.partnerHistoryOf)
+}

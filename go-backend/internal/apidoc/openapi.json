@@ -1001,6 +1001,51 @@
         ],
         "type": "object"
       },
+      "entries.PartnerLine": {
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "amount": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "login": {
+            "type": "string"
+          },
+          "nameWas": {
+            "type": "string"
+          },
+          "partner": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account",
+          "amount",
+          "at",
+          "by",
+          "id",
+          "kind",
+          "login",
+          "nameWas",
+          "partner"
+        ],
+        "type": "object"
+      },
       "entries.Pending": {
         "properties": {
           "accountBalance": {
@@ -1681,51 +1726,6 @@
           "by",
           "id",
           "kind"
-        ],
-        "type": "object"
-      },
-      "entries.partnerLine": {
-        "properties": {
-          "account": {
-            "type": "string"
-          },
-          "amount": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "by": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "login": {
-            "type": "string"
-          },
-          "nameWas": {
-            "type": "string"
-          },
-          "partner": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "account",
-          "amount",
-          "at",
-          "by",
-          "id",
-          "kind",
-          "login",
-          "nameWas",
-          "partner"
         ],
         "type": "object"
       },
@@ -9156,7 +9156,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.partnerLine"
+                    "$ref": "#/components/schemas/entries.PartnerLine"
                   },
                   "type": "array"
                 }

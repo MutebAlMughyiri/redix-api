@@ -292,7 +292,8 @@ func AccountHistoryOf(ctx context.Context, read *store.Queries, projectID uuid.U
 // What a line of the partner history says was done (PartnerHistoryKind).
 var partnerKinds = web.Enum{"partnerCreated", "partnerChanged", "partnerAccount", "partnerDeleted", "capitalIn", "capitalOut"}
 
-type partnerLine struct {
+// PartnerLine is a line of the partner history, as the app's and the web's list it (redix-api #169).
+type PartnerLine struct {
 	ID      int64         `json:"id"`
 	At      moment.Moment `json:"at"`
 	By      string        `json:"by"`
@@ -304,7 +305,7 @@ type partnerLine struct {
 	Login   string        `json:"login"`
 }
 
-func (l partnerLine) holds(text string) bool {
+func (l PartnerLine) holds(text string) bool {
 	return spelling.Holds(text, l.Amount.Number(), l.By, l.Partner, l.Account, l.NameWas, l.Login)
 }
 
@@ -312,11 +313,21 @@ func (l partnerLine) holds(text string) bool {
 // movements once approved or reversed, for the partners the caller sees (BR-31); partner keeps one partner's lines, unknownPartner (400) for one
 // not in the project or not seen.
 func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
+	lines, err := PartnerHistoryOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, r.URL.Query())
+	if changes.Answered(w, r, err) {
+		return
+	}
+	web.JSON(w, r, http.StatusOK, lines)
+}
+
+// PartnerHistoryOf is a page of projectID's partner history as caller sees it, as partnerHistory answers it, paged and narrowed by query's
+// partner, by, before and text: the rule both doors call, the app's route and the web's (redix-api #169). unknownPartner (400) for a partner not
+// in the project or not seen; otherwise the error is the database's.
+func PartnerHistoryOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, query url.Values) ([]PartnerLine, error) {
+	c := changes.Change{Ctx: ctx, Q: read, ProjectID: projectID}
 	partners, err := c.Q.PartnersOf(c.Ctx, c.ProjectID)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 	seesAll, chosen := caller.Access.Holds(c.ProjectID, access.SeeAllCapital), caller.Access.ChosenIn(c.ProjectID)
 	if !caller.Access.Holds(c.ProjectID, access.SeeChosenCapital) {
@@ -328,18 +339,16 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 			shown = append(shown, partner.ID)
 		}
 	}
-	if partnerID, _ := uuid.Parse(r.URL.Query().Get("partner")); partnerID != uuid.Nil {
+	if partnerID, _ := uuid.Parse(query.Get("partner")); partnerID != uuid.Nil {
 		if !slices.Contains(shown, partnerID) {
-			problem.Refuse(w, r, http.StatusBadRequest, "unknownPartner")
-			return
+			return nil, changes.Refuse(http.StatusBadRequest, "unknownPartner")
 		}
 		shown = []uuid.UUID{partnerID}
 	}
 	known, err := namesOf(c)
 	movements, movementsErr := c.Q.CapitalEntriesOf(c.Ctx, db.IDList(shown))
-	if err != nil || movementsErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if err := errors.Join(err, movementsErr); err != nil {
+		return nil, err
 	}
 	var records [][2]string
 	for _, partner := range shown {
@@ -362,8 +371,8 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 		partnerRow := (row.TableName == "Partners" || (row.TableName == "PartnerUsers" && row.Action == "Update")) && slices.Contains(shown, row.RecordID)
 		return partnerRow || (row.TableName == "Entries" && (row.Action == string(history.Approve) || row.Action == string(history.Reverse)) && isMovement)
 	}
-	lines, err := page(r.URL.Query(), recordLines(c, records), eachAbout(c, known, movementsOf, keep, func(row store.History) partnerLine {
-		line := partnerLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, partnerKinds}}
+	return page(query, recordLines(c, records), eachAbout(c, known, movementsOf, keep, func(row store.History) PartnerLine {
+		line := PartnerLine{ID: row.ID, At: row.At, By: known.authors[row.UserID], Kind: named{0, partnerKinds}}
 		if row.TableName != "Entries" {
 			switch {
 			case row.Action == "Create":
@@ -385,11 +394,6 @@ func (s Routes) partnerHistory(w http.ResponseWriter, r *http.Request, caller ac
 		line.Partner, line.Account, line.Amount = known.partners[known.capital[entry.ID]], known.accounts[entry.AccountID], fixed.Counted(entry.Amount)
 		return line
 	}))
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	web.JSON(w, r, http.StatusOK, lines)
 }
 
 // What a line of the approval history says was decided (ApprovalHistoryKind).

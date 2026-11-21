@@ -166,3 +166,41 @@ func accountLineValues(p page, line entries.AccountLine) []string {
 	}
 	return []string{line.Account}
 }
+
+// partnerHistoryOf is the page of the partner history query asks, through the rule the app's route answers (entries.PartnerHistoryOf): each line
+// as the app's says it, an approved movement's saying who approved it. A partner the caller does not see lists nothing. The error is the
+// database's.
+func (s site) partnerHistoryOf(ctx context.Context, p page, query url.Values) (history, error) {
+	shown, err := s.historyOf(ctx, p, "partnerHistory", "/partner-history", query)
+	lines, linesErr := entries.PartnerHistoryOf(ctx, s.Database.Queries(), p.project.ID, p.caller, query)
+	var refused changes.Refusal
+	if errors.As(linesErr, &refused) {
+		linesErr = nil
+	}
+	shown.full = len(lines) == entries.PageSize
+	for _, line := range lines {
+		kind := line.Kind.Name()
+		shown.rows = append(shown.rows, historyRow{id: line.ID, kind: kind, what: p.words.Of("history."+kind, partnerLineValues(p, line)...),
+			who: shown.when(p, line.By, kind == "capitalIn" || kind == "capitalOut", line.At)})
+	}
+	return shown, errors.Join(err, linesErr)
+}
+
+// partnerLineValues are what fills a partner history line's word, as the app's PartnerHistoryKind fills it.
+func partnerLineValues(p page, line entries.PartnerLine) []string {
+	switch line.Kind.Name() {
+	case "partnerChanged":
+		if line.NameWas == "" {
+			return []string{line.Partner, ""}
+		}
+		return []string{line.Partner, p.words.Of("history.nameWas", line.NameWas)}
+	case "partnerAccount":
+		if line.Login == "" {
+			return []string{line.Partner, p.words.Of("partners.noLogin")}
+		}
+		return []string{line.Partner, line.Login}
+	case "capitalIn", "capitalOut":
+		return []string{statement.Money(line.Amount.Number()), line.Partner, line.Account}
+	}
+	return []string{line.Partner}
+}

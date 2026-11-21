@@ -2157,3 +2157,40 @@ func TestWeb_R169_APartnersChangesAreGatedAsTheAppsRoutesAre(t *testing.T) {
 	}
 	has(t, w.browser.Send("POST", "/partner/"+partner+"/edit", url.Values{"name": {"بعد الإغلاق"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
 }
+
+func TestWeb_R169_ThePartnerHistoryTellsEachLineAsTheAppsDoes(t *testing.T) {
+	w := newWorking(t)
+	first, second := w.partner("شريك أ", ""), w.partner("شريك ب", "")
+	w.Ask("PUT", w.path+"/partners/"+first, `{"name":"الشريك الأول"}`, w.token)
+	w.Ask("PUT", w.path+"/partners/"+first, `{"name":"الشريك الأول","userId":"`+w.manager.String()+`"}`, w.token)
+	w.capitalIn(first, 600, "")
+	w.Ask("DELETE", w.path+"/partners/"+second, ``, w.token)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/partners", nil).Body.String(), `hx-get="/tab/partnerHistory"`)
+	history := w.browser.Send("GET", "/tab/partnerHistory", nil).Body.String()
+	for _, line := range []string{
+		`class="decision partnerCreated">إضافة الشريك شريك ب</td>`,
+		`class="decision partnerChanged">تعديل الشريك الشريك الأول: الاسم كان شريك أ</td>`,
+		`class="decision partnerAccount">حساب الشريك الشريك الأول: User A</td>`,
+		`class="decision capitalIn">رأس مال 600.00 من الشريك الأول إلى حساب المؤسسة</td>`,
+		`class="decision partnerDeleted">حذف الشريك شريك ب</td>`,
+		`class="who">اعتمده User A · 2026-11-16 13:00</td>`,
+	} {
+		has(t, history, line)
+	}
+	one := w.browser.Send("GET", "/tab/partnerHistory?partner="+first, nil).Body.String()
+	has(t, one, "رأس مال 600.00")
+	lacks(t, one, "شريك ب")
+	has(t, w.browser.Send("GET", "/tab/partnerHistory?partner="+uuid.NewString(), nil).Body.String(), `id="partnerHistory.empty"`)
+	for _, path := range []string{"/tab/partnerHistory", "/partner-history?before=999999"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+}
