@@ -59,13 +59,17 @@ func (w *Window) Allow(key string) bool {
 // PerAddress lets a request through within the window for its caller's address, and answers 429 past it, as RequireRateLimiting did.
 func (w *Window) PerAddress(next http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, r *http.Request) {
-		if !w.Allow(clientOf(r)) {
+		if !w.AllowsCaller(r) {
 			problem.Status(writer, r, http.StatusTooManyRequests)
 			return
 		}
 		next(writer, r)
 	}
 }
+
+// AllowsCaller counts one ask by r's caller, by its address, and says whether it is within the window's permits: the check PerAddress makes, for a
+// door that answers a refusal its own way, as the web's pages do (redix-api #161).
+func (w *Window) AllowsCaller(r *http.Request) bool { return w.Allow(clientOf(r)) }
 
 // clientOf is the address a request came from (G14): the connection's own. The API answers the internet itself, with no proxy in front
 // (#145 D1), so a forwarded header is anyone's to write and is never read.

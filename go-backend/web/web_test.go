@@ -242,7 +242,6 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	signedOut := api.Browser().Send("GET", "/", nil).Body.String()
 	has(t, signedOut, `<span id="signIn.registerProject" aria-disabled="true">`)
-	has(t, signedOut, `<span id="auth.forgotPassword" aria-disabled="true">`)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
 	for _, key := range []string{"home", "entries", "approvals", "accounts", "partners", "contracts", "reports", "history"} {
@@ -321,12 +320,16 @@ func TestWeb_EveryPageAnswersAFailingDatabaseWith500(t *testing.T) {
 			t.Errorf("signing in with the database failing at its call %d answers %d", n, answered.Code)
 		}
 	}
+	if answered, _ := api.Browser().SendFailing(1, "POST", "/forgot-password", url.Values{"login": {"nobody"}}); answered.Code != http.StatusInternalServerError {
+		t.Errorf("asking for a code with the database failing before the answer answers %d", answered.Code)
+	}
 	browser, _ := signedIn(t, api, "User B")
 	for _, step := range []struct {
 		method, path string
 		form         url.Values
 	}{
-		{"GET", "/", nil}, {"GET", "/tab/settings", nil}, {"DELETE", "/tab/settings", nil},
+		{"GET", "/", nil}, {"GET", "/tab/settings", nil}, {"DELETE", "/tab/settings", nil}, {"GET", "/sign-in", nil}, {"GET", "/forgot-password", nil},
+		{"POST", "/reset-with-code", url.Values{"login": {"nobody"}, "code": {"000000"}, "new": {"Reset-chosen-4"}, "confirm": {"Reset-chosen-4"}}},
 		{"POST", "/change-password", url.Values{"current": {password}, "new": {"Chosen-new-3"}, "confirm": {"Chosen-new-3"}}}, {"POST", "/sign-out", nil},
 	} {
 		for n := int64(1); ; n++ {
@@ -360,6 +363,7 @@ func TestWeb_EveryElementsIdIsTheOnlyOneOnItsPage(t *testing.T) {
 	browser, _ := signedIn(t, api, "User A")
 	browser.Send("GET", "/tab/settings", nil)
 	pages["signed in"] = browser.Send("GET", "/", nil).Body.String()
+	pages["forgot password, a code sent"] = pages["signed out"] + api.Browser().Send("POST", "/forgot-password", url.Values{"login": {"nobody"}}).Body.String()
 	for name, page := range pages {
 		seen := map[string]bool{}
 		for _, id := range regexp.MustCompile(` id="([^"]+)"`).FindAllStringSubmatch(page, -1) {
@@ -407,4 +411,99 @@ func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *tes
 func TestWeb_R2_TheVersionLineCarriesTheBuildKeptWholeInArabic(t *testing.T) {
 	body := testapi.New(t).Browser().Send("GET", "/", nil).Body.String()
 	has(t, body, `<span id="appVersion.line" class="end">الإصدار 1.0.0<bdi></bdi></span>`)
+}
+
+// withEmail gives name an account with address as its email, as confirming one would, and is their username.
+func withEmail(t *testing.T, api *testapi.API, name, address string) string {
+	t.Helper()
+	id, _ := api.Person(name)
+	api.Exec("UPDATE users SET email = ? WHERE username = ?", address, id.String())
+	return id.String()
+}
+
+func TestWeb_AC02_6_ForgotPasswordOpensFromTheSignInAndCancelGoesBack(t *testing.T) {
+	browser := testapi.New(t).Browser()
+	has(t, browser.Send("GET", "/", nil).Body.String(), `<a id="auth.forgotPassword" href="#" hx-get="/forgot-password"`)
+	form := browser.Send("GET", "/forgot-password", nil).Body.String()
+	for _, key := range []string{"forgotPassword.title", "forgotPassword.login", "forgotPassword.send", "forgotPassword.message", "forgotPassword.cancel"} {
+		has(t, form, `id="`+key+`"`)
+	}
+	has(t, form, "اسم المستخدم أو البريد")
+	lacks(t, form, `id="forgotPassword.code"`)
+	has(t, browser.Send("GET", "/sign-in", nil).Body.String(), `id="signIn.username"`)
+}
+
+func TestWeb_AC02_6_AForgottenPasswordIsResetWithTheEmailedCodeThenTheSignInSaysSo(t *testing.T) {
+	api := testapi.New(t)
+	username := withEmail(t, api, "User A", "a@example.com")
+	browser := api.Browser()
+	sent := browser.Send("POST", "/forgot-password", url.Values{"login": {" a@example.com "}})
+	if sent.Code != http.StatusOK {
+		t.Fatalf("send: %d", sent.Code)
+	}
+	for _, key := range []string{"forgotPassword.sent", "forgotPassword.code", "forgotPassword.new", "forgotPassword.confirm", "forgotPassword.reset"} {
+		has(t, sent.Body.String(), `id="`+key+`"`)
+	}
+	has(t, sent.Body.String(), "إن كان للحساب بريد، أرسلنا إليه رمزًا صالحًا 15 دقيقة.")
+	code := api.Emails.LastCodeTo("a@example.com")
+	reset := browser.Send("POST", "/reset-with-code", url.Values{"login": {"a@example.com"}, "code": {code}, "new": {"Reset-chosen-4"}, "confirm": {"Reset-chosen-4"}})
+	has(t, reset.Body.String(), `<p id="signIn.notice" class="notice" role="status">تغيّرت كلمة المرور. سجّل الدخول.</p>`)
+	if signing := api.Browser().Send("POST", "/sign-in", url.Values{"username": {username}, "password": {"Reset-chosen-4"}}); signing.Code != http.StatusOK {
+		t.Errorf("the new password signs in: %d", signing.Code)
+	}
+	again := browser.Send("POST", "/reset-with-code", url.Values{"login": {"a@example.com"}, "code": {code}, "new": {"Reset-chosen-5"}, "confirm": {"Reset-chosen-5"}})
+	if again.Code != http.StatusUnprocessableEntity {
+		t.Errorf("a used code is refused: %d", again.Code)
+	}
+	has(t, again.Body.String(), "الرمز غير صحيح أو انتهت صلاحيته.")
+}
+
+func TestWeb_AC02_7_AnUnknownLoginIsAnsweredAsAKnownOneAndNothingIsSent(t *testing.T) {
+	api := testapi.New(t)
+	answered := api.Browser().Send("POST", "/forgot-password", url.Values{"login": {"nobody"}})
+	if answered.Code != http.StatusOK || api.Emails.Count() != 0 {
+		t.Errorf("%d, %d emails", answered.Code, api.Emails.Count())
+	}
+	has(t, answered.Body.String(), `id="forgotPassword.sent"`)
+}
+
+func TestWeb_AC02_8_OneLoginAsksFiveTimesAnHourTheAppsAsksCountedWithTheWebs(t *testing.T) {
+	api := testapi.New(t)
+	for range 4 {
+		api.Send("POST", "/auth/forgot-password", `{"login":"someone"}`)
+	}
+	browser := api.Browser()
+	if fifth := browser.Send("POST", "/forgot-password", url.Values{"login": {"SOMEONE"}}); fifth.Code != http.StatusOK {
+		t.Fatalf("the fifth ask: %d", fifth.Code)
+	}
+	sixth := browser.Send("POST", "/forgot-password", url.Values{"login": {"someone"}, "sent": {"true"}})
+	if sixth.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("the sixth ask is refused: %d", sixth.Code)
+	}
+	has(t, sixth.Body.String(), "طلبات كثيرة. حاول بعد قليل.")
+	has(t, sixth.Body.String(), `id="forgotPassword.code"`)
+}
+
+func TestWeb_AC02_6_AResetIsRefusedWithTheAppsWords(t *testing.T) {
+	api := testapi.New(t)
+	withEmail(t, api, "User A", "a@example.com")
+	browser := api.Browser()
+	browser.Send("POST", "/forgot-password", url.Values{"login": {"a@example.com"}})
+	code := api.Emails.LastCodeTo("a@example.com")
+	for _, step := range []struct {
+		form url.Values
+		says string
+	}{
+		{url.Values{"code": {code}, "new": {"Reset-chosen-4"}, "confirm": {"Reset-chosen-5"}}, "كلمتا المرور الجديدتان غير متطابقتين."},
+		{url.Values{"code": {code}, "new": {"short"}, "confirm": {"short"}}, "استخدم 8 أحرف على الأقل فيها حرف ورقم، وليست اسم المستخدم."},
+		{url.Values{"code": {"000000"}, "new": {"Reset-chosen-4"}, "confirm": {"Reset-chosen-4"}}, "الرمز غير صحيح أو انتهت صلاحيته."},
+	} {
+		step.form.Set("login", "a@example.com")
+		answered := browser.Send("POST", "/reset-with-code", step.form)
+		if answered.Code != http.StatusUnprocessableEntity {
+			t.Errorf("%q: %d", step.says, answered.Code)
+		}
+		has(t, answered.Body.String(), step.says)
+		has(t, answered.Body.String(), `value="a@example.com"`)
+	}
 }

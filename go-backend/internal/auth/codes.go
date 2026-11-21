@@ -54,10 +54,15 @@ type Codes struct {
 	log      *slog.Logger
 }
 
+// NewCodes is the codes of database, emailed through sender and their failures logged to log; one login asks for a reset code at most five
+// times an hour, whichever door it asks at (redix-api #161).
+func NewCodes(database db.DB, clock clock.Clock, sender email.Sender, log *slog.Logger) Codes {
+	return Codes{database: database, clock: clock, sender: sender, perLogin: limits.PerHour(asksPerLoginAnHour, clock), log: log}
+}
+
 // MapCodes routes POST /auth/forgot-password, limited per address and per login, and /auth/reset-with-code, both open with no session; and
 // POST /me/email, limited per address, and /me/email/confirm, for a working session. perAddress allows REDIX_EmailCodes__PermitsPerHour an hour.
-func MapCodes(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock, sender email.Sender, perAddress *limits.Window, log *slog.Logger) {
-	c := Codes{database: database, clock: clock, sender: sender, perLogin: limits.PerHour(asksPerLoginAnHour, clock), log: log}
+func MapCodes(router *web.Router, gate *access.Gate, c Codes, perAddress *limits.Window) {
 	router.Handle("POST", "/auth/forgot-password", perAddress.PerAddress(c.forgotPassword))
 	router.Handle("POST", "/auth/reset-with-code", c.resetWithCode)
 	// Sends a six-digit code to the new address, in the language asked; the email changes only once the code confirms it (UC-010).
@@ -79,14 +84,26 @@ func (c Codes) forgotPassword(w http.ResponseWriter, r *http.Request) {
 	if !web.Read(w, r, &request) {
 		return
 	}
-	if !c.perLogin.Allow(strings.ToUpper(strings.TrimSpace(request.Login))) {
+	if !c.MayAskReset(request.Login) {
 		problem.Status(w, r, http.StatusTooManyRequests)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
 	_ = http.NewResponseController(w).Flush()
-	ctx := context.WithoutCancel(r.Context())
-	user, found, err := c.accountOf(ctx, request.Login)
+	c.SendResetCode(context.WithoutCancel(r.Context()), request.Login, web.Language(r))
+}
+
+// MayAskReset counts an ask for a reset code by login, and says whether it is within the five one login may ask an hour, whatever the address
+// (EmailCode.AsksPerLoginAnHour): the limit both doors share (redix-api #161).
+func (c Codes) MayAskReset(login string) bool {
+	return c.perLogin.Allow(strings.ToUpper(strings.TrimSpace(login)))
+}
+
+// SendResetCode emails a reset code in language to the account login names, when it names one with an email: the rule forgotPassword answers the
+// app with, which the web's Forgot password shares (redix-api #161). It answers nothing either way, so no answer says which accounts exist; a
+// failure is logged.
+func (c Codes) SendResetCode(ctx context.Context, login, language string) {
+	user, found, err := c.accountOf(ctx, login)
 	if err != nil {
 		c.log.Error("a reset code was not sent", "error", err)
 		return
@@ -96,7 +113,7 @@ func (c Codes) forgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	code, err := c.make(ctx, user.ID, resetPassword, user.Email)
 	if err == nil {
-		err = email.Send(ctx, c.database, c.sender, user.Email, web.Language(r), "email.resetSubject", "email.resetBody", code)
+		err = email.Send(ctx, c.database, c.sender, user.Email, language, "email.resetSubject", "email.resetBody", code)
 	}
 	if err != nil {
 		c.log.Error("a reset code was not sent", "userId", user.ID, "error", err)
@@ -117,35 +134,46 @@ func (c Codes) resetWithCode(w http.ResponseWriter, r *http.Request) {
 	if !web.Read(w, r, &request) {
 		return
 	}
-	now := moment.Of(c.clock.Now())
-	user, _, err := c.accountOf(r.Context(), request.Login)
+	refusal, err := c.ResetWithCode(r.Context(), request.Login, request.Code, request.NewPassword)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	code, ok := c.codeOf(w, r, user.ID, resetPassword, request.Code, now)
-	if !ok {
-		return
-	}
-	if !users.KeepsPolicy(request.NewPassword, user.Username) {
-		problem.Refuse(w, r, http.StatusBadRequest, weakPassword)
-		return
-	}
-	err = c.database.InTx(r.Context(), func(q *store.Queries) error {
-		if err := q.SpendCode(r.Context(), store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
-			return err
-		}
-		reset, err := users.ResetPassword(r.Context(), q, user, request.NewPassword, false)
-		if err != nil {
-			return err
-		}
-		return history.Write(r.Context(), q, now, user.ID, history.ResetPassword, users.Change(user, reset))
-	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
+	if refusal != "" {
+		problem.Refuse(w, r, http.StatusBadRequest, refusal)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ResetWithCode sets newPassword on the account login names, with the code the email brought: the rule resetWithCode answers the app with, which
+// the web's Forgot password shares (redix-api #161). It refuses codeWrong or weakPassword as resetWithCode describes; the error is the database's.
+func (c Codes) ResetWithCode(ctx context.Context, login, typed, newPassword string) (string, error) {
+	now := moment.Of(c.clock.Now())
+	user, _, err := c.accountOf(ctx, login)
+	if err != nil {
+		return "", err
+	}
+	code, ok, err := c.check(ctx, user.ID, resetPassword, strings.TrimSpace(typed), now)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return codeWrong, nil
+	}
+	if !users.KeepsPolicy(newPassword, user.Username) {
+		return weakPassword, nil
+	}
+	return "", c.database.InTx(ctx, func(q *store.Queries) error {
+		if err := q.SpendCode(ctx, store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
+			return err
+		}
+		reset, err := users.ResetPassword(ctx, q, user, newPassword, false)
+		if err != nil {
+			return err
+		}
+		return history.Write(ctx, q, now, user.ID, history.ResetPassword, users.Change(user, reset))
+	})
 }
 
 // changeEmailRequest is the body POST /me/email reads (UC-010).
@@ -271,7 +299,7 @@ func (c Codes) codeOf(w http.ResponseWriter, r *http.Request, userID uuid.UUID, 
 		return code, false
 	}
 	if !ok {
-		problem.Refuse(w, r, http.StatusBadRequest, "codeWrong")
+		problem.Refuse(w, r, http.StatusBadRequest, codeWrong)
 	}
 	return code, ok
 }

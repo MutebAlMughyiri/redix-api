@@ -18,12 +18,13 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 )
 
-// The refusals a sign-in or a password change answers with.
+// The refusals a sign-in, a password change or an emailed code answers with.
 const (
 	invalidCredentials = "invalidCredentials"
 	accountLocked      = "accountLocked"
 	weakPassword       = "weakPassword"
 	sessionExpired     = "sessionExpired"
+	codeWrong          = "codeWrong"
 )
 
 const (

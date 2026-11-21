@@ -85,9 +85,10 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .setting { max-width: 520px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; border-block: 1px solid var(--chrome-line); }
 .setting h3 { margin: 0; font-size: 14px; font-weight: 500; }
 
-/* The sign-in and change-password forms, inside the content area. */
+/* The sign-in, change-password and forgot-password forms, inside the content area, each in one box. */
 .signin { height: 100%; display: grid; place-items: center; }
-.signin form { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 14px; padding: 24px; border: 1px solid var(--chrome-line); border-radius: 8px; background: var(--chrome); }
+.signin > * { width: 100%; max-width: 340px; padding: 24px; border: 1px solid var(--chrome-line); border-radius: 8px; background: var(--chrome); }
+.signin > *, .signin form { display: flex; flex-direction: column; gap: 14px; }
 .signin h1 { margin: 0; font-size: 18px; font-weight: 600; }
 .signin .hint { margin: 0; color: var(--quiet); }
 .field { display: flex; flex-direction: column; gap: 5px; }
@@ -96,13 +97,17 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
 .refusal { margin: 0; padding: 8px 10px; border-radius: 5px; background: var(--refusal-bg); color: var(--refusal); font-size: 12.5px; }
 .primary { font: inherit; font-weight: 600; height: 34px; border: 0; border-radius: 5px; background: var(--accent); color: var(--on-accent); cursor: pointer; }
-.parked-links { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
-.parked-links span { color: var(--faint); cursor: not-allowed; }
+.secondary { font: inherit; font-weight: 600; height: 34px; border: 1px solid var(--accent); border-radius: 5px; background: transparent; color: var(--accent); cursor: pointer; }
+.notice { margin: 0; padding: 8px 10px; border-radius: 5px; background: var(--select); color: var(--text); font-size: 12.5px; }
+.form-links { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.form-links span { color: var(--faint); cursor: not-allowed; }
+.form-links a { color: var(--accent); text-decoration: none; }
+.form-links a:hover { text-decoration: underline; }
 .language { display: flex; gap: 10px; }
 .language a { color: var(--quiet); text-decoration: none; padding-block: 2px; border-block-end: 2px solid transparent; }
 .language a[aria-current="true"] { color: var(--text); border-block-end-color: var(--accent); }
 .form-language { display: flex; justify-content: center; padding-block-start: 12px; border-block-start: 1px solid var(--chrome-line); }
-.primary:focus-visible, .tab-title:focus-visible, .tab .close:focus-visible, .tree a:focus-visible, .signout:focus-visible, .view-button:focus-visible, .language a:focus-visible {
+.primary:focus-visible, .secondary:focus-visible, .form-links a:focus-visible, .tab-title:focus-visible, .tab .close:focus-visible, .tree a:focus-visible, .signout:focus-visible, .view-button:focus-visible, .language a:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* The status bar. */

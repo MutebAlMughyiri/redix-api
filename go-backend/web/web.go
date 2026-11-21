@@ -16,6 +16,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 )
 
 // Version is the web's version, SemVer, raised by hand with each release as pubspec raises the app's (#161 S12).
@@ -34,12 +35,15 @@ var build = func() string {
 	return ""
 }()
 
-// Parts are what the pages run on: the same database, sessions and gate as the app's API.
+// Parts are what the pages run on: the same database, sessions, codes and gate as the app's API, and the same window that caps how often one
+// address asks for an emailed code.
 type Parts struct {
-	Database db.DB
-	Sessions auth.Sessions
-	Gate     *access.Gate
-	Clock    clock.Clock
+	Database   db.DB
+	Sessions   auth.Sessions
+	Codes      auth.Codes
+	EmailCodes *limits.Window
+	Gate       *access.Gate
+	Clock      clock.Clock
 }
 
 // site draws the pages.
@@ -54,7 +58,11 @@ func Routes(parts Parts) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("GET /assets/{file}", s.assets.serve)
+	mux.HandleFunc("GET /sign-in", s.signInAgain)
 	mux.HandleFunc("POST /sign-in", s.signIn)
+	mux.HandleFunc("GET /forgot-password", s.forgotPassword)
+	mux.HandleFunc("POST /forgot-password", s.sendResetCode)
+	mux.HandleFunc("POST /reset-with-code", s.resetWithCode)
 	mux.HandleFunc("POST /change-password", s.changePassword)
 	mux.HandleFunc("POST /sign-out", s.signOut)
 	mux.HandleFunc("GET /tab/{name}", s.openTab)

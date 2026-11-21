@@ -27,7 +27,9 @@ type page struct {
 	in bool
 	// arriving plays the parts' motion once, in the answer to signing in (#161 R6).
 	arriving bool
-	content  templ.Component
+	// notice is the word key the sign-in form says above its fields, once, in the answer that brought it: after a reset, auth.passwordReset.
+	notice  string
+	content templ.Component
 }
 
 // words are one language's words by key (translations); a key with no word shows itself, so a missing word is seen, never hidden.

@@ -75,6 +75,7 @@ func Routes(parts Parts) Doors {
 	book := access.NewBook(database)
 	gate := access.NewGate(tokens, database, book, parts.Log)
 	sessions := auth.NewSessions(database, tokens, book, now)
+	codes, emailCodes := auth.NewCodes(database, now, parts.Sender, parts.Log), limits.PerHour(parts.EmailCodesPerHour, now)
 
 	router := web.NewRouter(parts.WebFolder)
 	// Healthy while the API runs and reaches its database, otherwise 503 Unhealthy (UC-001).
@@ -94,7 +95,7 @@ func Routes(parts Parts) Doors {
 	}
 	config.Map(router, database)
 	auth.MapSessions(router, gate, sessions)
-	auth.MapCodes(router, gate, database, now, parts.Sender, limits.PerHour(parts.EmailCodesPerHour, now), parts.Log)
+	auth.MapCodes(router, gate, codes, emailCodes)
 	users.Map(router, gate, database, now)
 	projects.Map(router, gate, database, book, now, limits.PerHour(parts.RegistrationsPerHour, now))
 	structure.Map(router, gate, database, now)
@@ -111,5 +112,5 @@ func Routes(parts Parts) Doors {
 	projectfile.Map(router, gate, database, now)
 	archive.Map(router, gate, database, now)
 	sync.Map(router, gate)
-	return Doors{API: router, Pages: site.Routes(site.Parts{Database: database, Sessions: sessions, Gate: gate, Clock: now})}
+	return Doors{API: router, Pages: site.Routes(site.Parts{Database: database, Sessions: sessions, Codes: codes, EmailCodes: emailCodes, Gate: gate, Clock: now})}
 }

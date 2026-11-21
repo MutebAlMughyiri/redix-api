@@ -10,11 +10,12 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 
 | File | Holds |
 | --- | --- |
-| `web/shell.templ` | The page, the frame, the side menu, the tabs and the View menu, the sign-in and change-password forms, Settings |
+| `web/shell.templ` | The page, the frame, the side menu, the tabs and the View menu, the sign-in, change-password and forgot-password forms, Settings |
 | `web/assets/redix.css` | The one stylesheet: the colour tokens, light and dark, and every part's look |
 | `web/assets/htmx.min.js` | htmx 2.0.11, the one script |
 | `web/page.go` | One drawing of the shell; the side menu's items and which of them a built feature opens |
 | `web/session.go` | The session's cookies, and the sign-in, change-password and sign-out pages |
+| `web/reset.go` | Forgot password: the form, asking for a code, and the reset |
 | `web/shell.go` | The page, the tabs, the View menu's choices, the language |
 | `web/view.go` | The shell's choices, kept in a cookie |
 | `web/assets.go` | The embedded files, gzipped once, served under their hash and kept a year |
@@ -49,7 +50,8 @@ Every element a test clicks or reads has an id, so automation finds it as the ap
 | Side menu | `web.sideMenu`, `web.fold`, `web.tree`, `web.item.<name>` for home, entries, approvals, accounts, partners, contracts, reports, history and settings, `web.sideLine` |
 | Tabs | `web.unfold`, `web.tabs`, `web.tab.<name>`, `web.tab.<name>.title`, `web.tab.<name>.close`, `web.pickFromMenu` |
 | View menu | `web.view`, `web.viewMenu`, `web.view.topBar`, `web.view.statusBar`, `web.view.sideMenu`, `web.view.width` |
-| Sign-in | `signIn.form`, `signIn.title`, `signIn.hint`, `signIn.username`, `signIn.password`, `signIn.message`, `signIn.submit`, `signIn.registerProject`, `auth.forgotPassword` |
+| Sign-in | `signIn.form`, `signIn.title`, `signIn.hint`, `signIn.notice`, `signIn.username`, `signIn.password`, `signIn.message`, `signIn.submit`, `signIn.registerProject`, `auth.forgotPassword` |
+| Forgot password | `forgotPassword.title`, `forgotPassword.message`, `forgotPassword.sendForm`, `forgotPassword.login`, `forgotPassword.send`, `forgotPassword.sent`, `forgotPassword.form`, `forgotPassword.code`, `forgotPassword.new`, `forgotPassword.confirm`, `forgotPassword.reset`, `forgotPassword.cancel` |
 | Change password | `changePassword.form`, `changePassword.title`, `changePassword.hint`, `changePassword.current`, `changePassword.new`, `changePassword.confirm`, `changePassword.message`, `changePassword.submit` |
 | Settings | `sharedSettings.title`, `web.setting.language`, `myAccount.language`, `web.language`, `myAccount.arabic`, `myAccount.english` |
 
@@ -60,7 +62,7 @@ The device's own font (`system-ui`), no web font. 13 px in the shell; a scale of
 | Token | Light | Dark | For |
 | --- | --- | --- | --- |
 | `--accent` | `#006A67` | `#80D5D0` | The app's primary: the selected item, the focus, Sign in |
-| `--select` | `#CDEDEA` | `#1F3B39` | A selected or hovered item |
+| `--select` | `#CDEDEA` | `#1F3B39` | A selected or hovered item, and a notice such as "a code was sent" |
 | `--chrome` | `#EFF5F3` | `#1B2120` | The frame: bars, side menu, tabs |
 | `--chrome-line` | `#D5DEDC` | `#2C3533` | The frame's lines |
 | `--content` | `#FBFDFC` | `#141918` | The content area |
