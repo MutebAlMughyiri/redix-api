@@ -7,6 +7,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -4364,6 +4366,139 @@ func TestWeb_R175_UC064_DocumentsNeedASessionAndAnswerAFailingDatabase(t *testin
 	}
 	for _, ask := range []struct{ method, path string }{{"GET", "/tab/documents"}, {"GET", "/details/document/new"}, {"GET", "/details/document/" + documentID},
 		{"GET", "/attachment/" + attachmentID}, {"POST", "/document/" + documentID + "/remove"}, {"POST", "/document/new/add"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+// projectFile is a project file of the working project holding no rows and one actual balance of its account, written as balance.
+func projectFile(balance string) []byte {
+	return fmt.Appendf(nil, `{"format":"redix.project","version":1,"project":"مشروع A","report":{"number":0},
+		"accounts":[{"name":"حساب المؤسسة","actualBalance":%s}],"lists":[],"categories":[]}`, balance)
+}
+
+func TestWeb_R175_UC071_LoadFileLoadsAProjectFileAndListsEveryRefusedRowAsTheApp(t *testing.T) {
+	w := newWorking(t)
+	page := w.home()
+	has(t, page, `hx-get="/tab/loadFile"`)
+	has(t, page, `<a id="web.item.archive" href="/project-file/archive" download>`)
+	has(t, page, `hx-get="/tab/retrieve"`)
+	tab := w.browser.Send("GET", "/tab/loadFile", nil).Body.String()
+	has(t, tab, `<p id="loadFile.what" class="hint">تُضاف الجداول الناقصة`)
+	has(t, tab, `<button id="loadFile.load" class="primary small" type="submit">`)
+	lacks(t, tab, `id="loadFile.gray"`)
+	has(t, w.browser.Send("POST", "/load-file", nil).Body.String(), "اختر ملف المستند أولاً.")
+	has(t, w.browser.SendFile("/load-file", "project.json", []byte(`{"format":"other"}`), nil).Body.String(), `id="loadFile.refusal"`)
+	refused := w.browser.SendFile("/load-file", "project.json", projectFile(`"ten"`), nil).Body.String()
+	has(t, refused, "لم يُحفظ شيء. صحّح هذه الأسطر في الملف ثم حمّله مرة أخرى:")
+	has(t, refused, `<small id="loadFile.reason.0" class="hint">اكتب كل رصيد رقماً بخانتين عشريتين كحد أقصى.</small>`)
+	if kept := w.Count("SELECT count(*) FROM reconciliations WHERE project_id = ?", w.id); kept != 0 {
+		t.Errorf("reconciliations kept after a refusal: %d", kept)
+	}
+	has(t, w.browser.SendFile("/load-file", "project.json", projectFile(`10.5`), nil).Body.String(),
+		`<p id="loadFile.done" class="notice" role="status">حُمّل الملف: 0 قيدًا في 0 جدولًا، والأرصدة الفعلية.</p>`)
+	if kept := w.Count("SELECT count(*) FROM reconciliations WHERE project_id = ?", w.id); kept != 1 {
+		t.Errorf("reconciliations kept after the load: %d", kept)
+	}
+	w.sent(100)
+	w.home()
+	holding := w.browser.Send("GET", "/tab/loadFile", nil).Body.String()
+	has(t, holding, `<button id="loadFile.load" class="primary small" type="submit" disabled>`)
+	has(t, holding, `<p id="loadFile.gray" class="hint">`)
+	has(t, w.browser.SendFile("/load-file", "project.json", projectFile(`10.5`), nil).Body.String(), `id="loadFile.refusal"`)
+	reader := w.memberBrowser(w.member("User B", ""))
+	read := reader.Send("GET", "/", nil).Body.String()
+	for _, item := range []string{"loadFile", "archive", "retrieve"} {
+		lacks(t, read, `id="web.item.`+item+`"`)
+	}
+	if code := reader.Send("GET", "/project-file/archive", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Archive without ManageProjectFiles: %d", code)
+	}
+	for _, path := range []string{"/load-file", "/retrieve/preview"} {
+		if code := reader.Send("POST", path, nil).Code; code != http.StatusForbidden {
+			t.Errorf("POST %s without ManageProjectFiles: %d", path, code)
+		}
+	}
+}
+
+func TestWeb_R175_UC073_ArchiveHandsTheFileOverAndRetrievePreviewsThenRetrievesIt(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	archived := w.browser.Send("GET", "/project-file/archive", nil)
+	if archived.Code != http.StatusOK || !strings.Contains(archived.Header().Get("Content-Disposition"), url.PathEscape("مشروع A - أرشيف 2026-11-16 13.00.json")) {
+		t.Fatalf("the archive: %d %q", archived.Code, archived.Header().Get("Content-Disposition"))
+	}
+	if lines := w.Count("SELECT count(*) FROM history WHERE action = 'Archive'"); lines != 1 {
+		t.Errorf("History lines for the archive: %d", lines)
+	}
+	archive := archived.Body.Bytes()
+	w.sent(100)
+	has(t, w.browser.Send("GET", "/tab/retrieve", nil).Body.String(), `hx-post="/retrieve/preview" hx-encoding="multipart/form-data" hx-target="[id='retrieve.answer']" hx-trigger="change"`)
+	has(t, w.browser.Send("POST", "/retrieve/preview", nil).Body.String(), "اختر ملف المستند أولاً.")
+	has(t, w.browser.SendFile("/retrieve/preview", "other.json", []byte(`{}`), nil).Body.String(), "هذا الملف ليس أرشيف مشروع؛ لم يُسترجع شيء")
+	var other map[string]any
+	if err := json.Unmarshal(archive, &other); err != nil {
+		t.Fatal(err)
+	}
+	other["project"] = map[string]any{"id": uuid.Must(uuid.NewV7()).String(), "name": "مشروع آخر"}
+	otherArchive, err := json.Marshal(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.SendFile("/retrieve/preview", "other.json", otherArchive, nil).Body.String(), "هذا أرشيف مشروع مشروع آخر، لا هذا المشروع؛ لم يُسترجع شيء")
+	preview := w.browser.SendFile("/retrieve/preview", "archive.json", archive, nil).Body.String()
+	has(t, preview, `<p id="retrieve.question" class="section-title">استرجاع مشروع A من أرشيف 2026-11-16 13:00؟</p>`)
+	has(t, preview, `<p id="retrieve.takenBy" class="hint">أخذه User A.</p>`)
+	has(t, preview, `<li id="retrieve.part.entries">القيود: الآن 1 · بعد الاسترجاع 0</li>`)
+	has(t, preview, `<button id="retrieve.confirm" class="primary small" type="button" hx-post="/retrieve/archive"`)
+	if kept := w.Count("SELECT count(*) FROM entries WHERE project_id = ?", w.id); kept != 1 {
+		t.Errorf("entries after the preview: %d", kept)
+	}
+	done := w.browser.SendFile("/retrieve/archive", "archive.json", archive, nil).Body.String()
+	has(t, done, `<p id="retrieve.done" class="notice" role="status">استُرجع المشروع من أرشيف 2026-11-16 13:00: 0 قيد`)
+	if kept := w.Count("SELECT count(*) FROM entries WHERE project_id = ?", w.id); kept != 0 {
+		t.Errorf("entries after the retrieve: %d", kept)
+	}
+	if code := w.browser.SendFile("/retrieve/other", "archive.json", archive, nil).Code; code != http.StatusNotFound {
+		t.Errorf("a step there is none of: %d", code)
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	w.home()
+	finished := w.browser.Send("GET", "/tab/retrieve", nil).Body.String()
+	has(t, finished, `<input id="retrieve.file" name="file" type="file" accept=".json" disabled>`)
+	has(t, finished, `<p id="retrieve.gray" class="hint">المشروع منتهٍ فلا يُسترجع</p>`)
+	has(t, w.browser.SendFile("/retrieve/archive", "archive.json", archive, nil).Body.String(), "المشروع منتهٍ فلا يُسترجع")
+	has(t, w.browser.Send("GET", "/tab/loadFile", nil).Body.String(), `<button id="loadFile.load" class="primary small" type="submit" disabled>`)
+	if code := w.browser.Send("GET", "/project-file/archive", nil).Code; code != http.StatusOK {
+		t.Errorf("a finished project's archive: %d", code)
+	}
+}
+
+func TestWeb_R175_ProjectFilesNeedASessionAndAnswerAFailingDatabase(t *testing.T) {
+	w := newWorking(t)
+	outside := w.Browser()
+	for _, ask := range []struct{ method, path string }{{"POST", "/load-file"}, {"GET", "/project-file/archive"}, {"POST", "/retrieve/preview"}} {
+		has(t, outside.Send(ask.method, ask.path, nil).Body.String(), `id="signIn.username"`)
+	}
+	person, _ := w.Person("User C")
+	elsewhere := w.Browser()
+	elsewhere.Send("POST", "/sign-in", url.Values{"username": {person.String()}, "password": {password}})
+	for _, ask := range []struct{ method, path string }{{"POST", "/load-file"}, {"GET", "/project-file/archive"}, {"POST", "/retrieve/preview"}} {
+		if code := elsewhere.Send(ask.method, ask.path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s %s with no project open: %d", ask.method, ask.path, code)
+		}
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/project-file/archive"}, {"POST", "/retrieve/preview"}, {"POST", "/load-file"}} {
 		for n := int64(1); ; n++ {
 			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, nil)
 			if !failed {

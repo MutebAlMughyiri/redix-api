@@ -25,7 +25,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/reports"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/settings"
@@ -48,28 +47,37 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", "/projects/{projectId:guid}/project-file", gate.Changes(access.ManageProjectFiles, s.load))
 }
 
-// owner is whose rule refused a part of a project file, which says whose words the app shows for its code (ProjectFileOwner, D14).
-type owner string
+// Owner is whose rule refused a part of a project file, which says whose words the app shows for its code (ProjectFileOwner, D14).
+type Owner string
 
 const (
-	ownerFile           owner = "file"
-	ownerEntry          owner = "entry"
-	ownerStructure      owner = "structure"
-	ownerContract       owner = "contract"
-	ownerPartner        owner = "partner"
-	ownerSupplier       owner = "supplier"
-	ownerPaymentMethod  owner = "paymentMethod"
-	ownerReconciliation owner = "reconciliation"
+	// OwnerFile is the file itself, read as a project: an account the project lacks, a file named in a row, a choice the lists do not hold, a
+	// report the project issued already.
+	OwnerFile Owner = "file"
+	// OwnerEntry is Add entry, which every row goes through (AC-53.4).
+	OwnerEntry Owner = "entry"
+	// OwnerStructure is the structure: a category, an item or a subgroup.
+	OwnerStructure Owner = "structure"
+	// OwnerContract is a contract.
+	OwnerContract Owner = "contract"
+	// OwnerPartner is a partner.
+	OwnerPartner Owner = "partner"
+	// OwnerSupplier is a supplier of the register.
+	OwnerSupplier Owner = "supplier"
+	// OwnerPaymentMethod is a payment method.
+	OwnerPaymentMethod Owner = "paymentMethod"
+	// OwnerReconciliation is the reconciliation of the actual balances.
+	OwnerReconciliation Owner = "reconciliation"
 )
 
-// refusal is one refusal of a load (ProjectFileRefusal, AC-53.5, D14): where it is, by the file's category, item and table and the row's place
+// Refusal is one refusal of a load (ProjectFileRefusal, AC-53.5, D14): where it is, by the file's category, item and table and the row's place
 // counted from 1 (0 for the part itself), whose rule refused it and its code, with the column, the value and the column's name a code names.
-type refusal struct {
+type Refusal struct {
 	Category  string `json:"category"`
 	Item      string `json:"item"`
 	Table     string `json:"table"`
 	Row       int    `json:"row"`
-	Owner     owner  `json:"owner"`
+	Owner     Owner  `json:"owner"`
 	Code      string `json:"code"`
 	ColumnKey string `json:"columnKey"`
 	Value     string `json:"value"`
@@ -89,8 +97,8 @@ type place struct {
 	tableID  uuid.UUID
 }
 
-func (p place) refusal(row int, by owner, code string) refusal {
-	return refusal{Category: p.category, Item: p.item.Name, Table: p.table.Name, Row: row, Owner: by, Code: code}
+func (p place) refusal(row int, by Owner, code string) Refusal {
+	return Refusal{Category: p.category, Item: p.item.Name, Table: p.table.Name, Row: row, Owner: by, Code: code}
 }
 
 // load loads a project file into an approved project that holds no entry yet (FR-53, D4). A file that is not a project file answers
@@ -105,82 +113,89 @@ func (s Routes) load(w http.ResponseWriter, r *http.Request, caller access.Calle
 	if !sent {
 		return
 	}
-	projectFile, code := read(content)
-	if code != "" {
-		problem.Refuse(w, r, http.StatusBadRequest, code)
-		return
-	}
-	holds, err := s.database.Queries().ProjectHoldsEntries(r.Context(), web.ID(r, "projectId"))
-	switch {
-	case err != nil:
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	case holds:
-		problem.Refuse(w, r, http.StatusConflict, "projectHasEntries")
-		return
-	}
-	var loaded struct {
-		Entries int   `json:"entries"`
-		Tables  int   `json:"tables"`
-		Report  int64 `json:"report"`
-	}
-	if !s.writer.Write(w, r, caller, func(c changes.Change) error {
-		var refused []refusal
-		issued, err := c.Q.PeriodicReportSnapshot(c.Ctx, store.PeriodicReportSnapshotParams{ProjectID: c.ProjectID, Number: projectFile.Report.Number})
-		if err != nil {
-			return err
-		}
-		if projectFile.Report.Number > 0 && len(issued) > 0 {
-			refused = append(refused, refusal{Owner: ownerFile, Code: "reportAlreadyIssued", Value: strconv.FormatInt(projectFile.Report.Number, 10)})
-		}
-		known, err := registersOf(c, projectFile, &refused)
-		if err != nil {
-			return err
-		}
-		places, err := placesOf(c, projectFile, &refused)
-		if err != nil {
-			return err
-		}
-		balances := balancesOf(projectFile, known, &refused)
-		kept, err := record(c, places, projectFile, known, &refused)
-		if err != nil {
-			return err
-		}
-		if len(refused) > 0 {
-			return changes.RefuseOver(http.StatusBadRequest, "rowsRefused", "rows", refused)
-		}
-		zone, err := zones.Of(c.Ctx, c.Q, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		approvedAt := c.Now
-		if at, _ := projectFile.Report.at(zone); projectFile.Report.Number > 0 {
-			approvedAt = at
-		}
-		tables := map[uuid.UUID]bool{}
-		for _, row := range kept {
-			if err := entries.Approve(c, row.entry, approvedAt); err != nil {
-				return err
-			}
-			tables[row.tableID] = true
-		}
-		if len(projectFile.Accounts) > 0 {
-			if code, err := codeOf(accounts.Enter(c, balances)); err != nil || code != "" {
-				return orRefused(err, []refusal{{Owner: ownerReconciliation, Code: code}})
-			}
-		}
-		if projectFile.Report.Number > 0 {
-			at, _ := projectFile.Report.at(zone)
-			if _, err := reports.Issue(c, projectFile.Report.Number, at); err != nil {
-				return err
-			}
-		}
-		loaded.Entries, loaded.Tables, loaded.Report = len(kept), len(tables), projectFile.Report.Number
-		return nil
+	var loaded Loaded
+	if s.writer.Write(w, r, caller, func(c changes.Change) (err error) {
+		loaded, err = Load(c, content)
+		return err
 	}) {
-		return
+		web.JSON(w, r, http.StatusOK, loaded)
 	}
-	web.JSON(w, r, http.StatusOK, loaded)
+}
+
+// Loaded is what a load answers: how many entries it recorded, in how many tables, and the number of the report it issued, 0 for none
+// (AC-53.7).
+type Loaded struct {
+	Entries int   `json:"entries"`
+	Tables  int   `json:"tables"`
+	Report  int64 `json:"report"`
+}
+
+// Load loads the project file content holds into c's project, as the route's description says (FR-53, D4): refused as notAProjectFile or
+// newerVersion (400, AC-53.9), projectHasEntries (409, AC-53.3), or rowsRefused with every refused row under rows (400, AC-53.5), and nothing
+// is saved; what it loaded.
+func Load(c changes.Change, content []byte) (Loaded, error) {
+	projectFile, err := read(content)
+	if err != nil {
+		return Loaded{}, err
+	}
+	holds, err := c.Q.ProjectHoldsEntries(c.Ctx, c.ProjectID)
+	if err != nil {
+		return Loaded{}, err
+	}
+	if holds {
+		return Loaded{}, changes.Refuse(http.StatusConflict, "projectHasEntries")
+	}
+	var refused []Refusal
+	issued, err := c.Q.PeriodicReportSnapshot(c.Ctx, store.PeriodicReportSnapshotParams{ProjectID: c.ProjectID, Number: projectFile.Report.Number})
+	if err != nil {
+		return Loaded{}, err
+	}
+	if projectFile.Report.Number > 0 && len(issued) > 0 {
+		refused = append(refused, Refusal{Owner: OwnerFile, Code: "reportAlreadyIssued", Value: strconv.FormatInt(projectFile.Report.Number, 10)})
+	}
+	known, err := registersOf(c, projectFile, &refused)
+	if err != nil {
+		return Loaded{}, err
+	}
+	places, err := placesOf(c, projectFile, &refused)
+	if err != nil {
+		return Loaded{}, err
+	}
+	balances := balancesOf(projectFile, known, &refused)
+	kept, err := record(c, places, projectFile, known, &refused)
+	if err != nil {
+		return Loaded{}, err
+	}
+	if len(refused) > 0 {
+		return Loaded{}, changes.RefuseOver(http.StatusBadRequest, "rowsRefused", "rows", refused)
+	}
+	zone, err := zones.Of(c.Ctx, c.Q, c.ProjectID)
+	if err != nil {
+		return Loaded{}, err
+	}
+	approvedAt := c.Now
+	if at, _ := projectFile.Report.at(zone); projectFile.Report.Number > 0 {
+		approvedAt = at
+	}
+	tables := map[uuid.UUID]bool{}
+	for _, row := range kept {
+		if err := entries.Approve(c, row.entry, approvedAt); err != nil {
+			return Loaded{}, err
+		}
+		tables[row.tableID] = true
+	}
+	if len(projectFile.Accounts) > 0 {
+		if code, err := codeOf(accounts.Enter(c, balances)); err != nil || code != "" {
+			return Loaded{}, orRefused(err, []Refusal{{Owner: OwnerReconciliation, Code: code}})
+		}
+	}
+	if projectFile.Report.Number > 0 {
+		at, _ := projectFile.Report.at(zone)
+		if _, err := reports.Issue(c, projectFile.Report.Number, at); err != nil {
+			return Loaded{}, err
+		}
+	}
+	return Loaded{Entries: len(kept), Tables: len(tables), Report: projectFile.Report.Number}, nil
 }
 
 // codeOf is the code of an owner's refusal, "" when it did not refuse; any other failure stays an error.
@@ -192,7 +207,7 @@ func codeOf(err error) (string, error) {
 }
 
 // orRefused is err, or the load refused over rows.
-func orRefused(err error, rows []refusal) error {
+func orRefused(err error, rows []Refusal) error {
 	if err != nil {
 		return err
 	}
@@ -203,7 +218,7 @@ func orRefused(err error, rows []refusal) error {
 // lacks are added through their owners (D6). An account is never added: the file carries no type or custodian.
 //
 //apidoc:gathers
-func registersOf(c changes.Change, projectFile file, refused *[]refusal) (registers, error) {
+func registersOf(c changes.Change, projectFile file, refused *[]Refusal) (registers, error) {
 	known := registers{accounts: map[string]uuid.UUID{}, suppliers: map[string]uuid.UUID{}, paymentMethods: map[string]uuid.UUID{}}
 	supplierRows, err := c.Q.SuppliersOf(c.Ctx, store.SuppliersOfParams{ProjectID: c.ProjectID})
 	if err != nil {
@@ -224,7 +239,7 @@ func registersOf(c changes.Change, projectFile file, refused *[]refusal) (regist
 		case err != nil:
 			return known, err
 		case code != "":
-			*refused = append(*refused, refusal{Owner: ownerSupplier, Code: code, Value: name})
+			*refused = append(*refused, Refusal{Owner: OwnerSupplier, Code: code, Value: name})
 		default:
 			known.suppliers[added.Name] = added.ID
 		}
@@ -243,7 +258,7 @@ func registersOf(c changes.Change, projectFile file, refused *[]refusal) (regist
 			continue
 		}
 		if _, named := naming.Named(name); !named {
-			*refused = append(*refused, refusal{Owner: ownerPaymentMethod, Code: naming.Invalid, Value: name})
+			*refused = append(*refused, Refusal{Owner: OwnerPaymentMethod, Code: naming.Invalid, Value: name})
 			continue
 		}
 		if known.paymentMethods[name], err = settings.AddPaymentMethod(c, name, settings.EveryAccount); err != nil {
@@ -277,12 +292,12 @@ func labelsOf(projectFile file, key string) []string {
 // gives after «دفعات», or a partner (D6). A part its owner refuses is listed, and its rows with it.
 //
 //apidoc:gathers
-func placesOf(c changes.Change, projectFile file, refused *[]refusal) ([]place, error) {
+func placesOf(c changes.Change, projectFile file, refused *[]Refusal) ([]place, error) {
 	var places []place
 	for _, fileCategory := range projectFile.Categories {
 		categoryName, named := naming.Named(fileCategory.Name)
 		if !named {
-			*refused = append(*refused, refusal{Category: fileCategory.Name, Owner: ownerStructure, Code: naming.Invalid})
+			*refused = append(*refused, Refusal{Category: fileCategory.Name, Owner: OwnerStructure, Code: naming.Invalid})
 			continue
 		}
 		categoryID, err := categoryOf(c, categoryName)
@@ -295,7 +310,7 @@ func placesOf(c changes.Change, projectFile file, refused *[]refusal) ([]place, 
 				return nil, err
 			}
 			if code != "" {
-				*refused = append(*refused, refusal{Category: categoryName, Item: fileItem.Name, Owner: ownerStructure, Code: code})
+				*refused = append(*refused, Refusal{Category: categoryName, Item: fileItem.Name, Owner: OwnerStructure, Code: code})
 				continue
 			}
 			for _, table := range fileItem.Tables {
@@ -354,10 +369,10 @@ func itemOf(c changes.Change, categoryID uuid.UUID, fileItem fileItem) (store.It
 }
 
 // tableOf is the table of item that table is, found by name or added through its owner; that owner and its refusal otherwise.
-func tableOf(c changes.Change, item store.Item, table fileTable) (owner, uuid.UUID, string, error) {
+func tableOf(c changes.Change, item store.Item, table fileTable) (Owner, uuid.UUID, string, error) {
 	name, named := naming.Named(table.Name)
 	if !named {
-		return ownerStructure, uuid.Nil, naming.Invalid, nil
+		return OwnerStructure, uuid.Nil, naming.Invalid, nil
 	}
 	switch table.Kind {
 	case structure.ContractorPayments:
@@ -370,23 +385,23 @@ func tableOf(c changes.Change, item store.Item, table fileTable) (owner, uuid.UU
 }
 
 // subgroupOf is the subgroup of item named name, the item's own table when name is the item's, found or added through its owner.
-func subgroupOf(c changes.Change, item store.Item, name string) (owner, uuid.UUID, string, error) {
+func subgroupOf(c changes.Change, item store.Item, name string) (Owner, uuid.UUID, string, error) {
 	subgroupName := name
 	if name == item.Name {
 		subgroupName = ""
 	}
 	subgroups, err := c.Q.SubgroupsOfItem(c.Ctx, item.ID)
 	if err != nil {
-		return ownerStructure, uuid.Nil, "", err
+		return OwnerStructure, uuid.Nil, "", err
 	}
 	for _, subgroup := range subgroups {
 		if subgroup.Name == subgroupName {
-			return ownerStructure, subgroup.ID, "", nil
+			return OwnerStructure, subgroup.ID, "", nil
 		}
 	}
 	added, err := structure.AddSubgroup(c, item, name)
 	code, err := codeOf(err)
-	return ownerStructure, added, code, err
+	return OwnerStructure, added, code, err
 }
 
 // contractTitlePrefix starts the name of a contract's table of payments, the contractor's name after it (Contract.TableTitlePrefix).
@@ -394,14 +409,14 @@ const contractTitlePrefix = "دفعات "
 
 // contractOf is the item's contract with contractor, or one added for the value agreed, an open value when the file holds none (D6); the
 // contractor is added as a supplier when the project lacks one of that name.
-func contractOf(c changes.Change, item store.Item, contractor string, agreed json.RawMessage) (owner, uuid.UUID, string, error) {
+func contractOf(c changes.Change, item store.Item, contractor string, agreed json.RawMessage) (Owner, uuid.UUID, string, error) {
 	held, err := c.Q.ContractsOfItem(c.Ctx, item.ID)
 	if err != nil {
-		return ownerContract, uuid.Nil, "", err
+		return OwnerContract, uuid.Nil, "", err
 	}
 	supplierRows, err := c.Q.SuppliersOf(c.Ctx, store.SuppliersOfParams{ProjectID: c.ProjectID})
 	if err != nil {
-		return ownerContract, uuid.Nil, "", err
+		return OwnerContract, uuid.Nil, "", err
 	}
 	supplierID := uuid.Nil
 	for _, row := range supplierRows {
@@ -411,13 +426,13 @@ func contractOf(c changes.Change, item store.Item, contractor string, agreed jso
 	}
 	for _, contract := range held {
 		if slices.ContainsFunc(supplierRows, func(row store.SuppliersOfRow) bool { return row.ID == contract.SupplierID && row.Name == contractor }) {
-			return ownerContract, contract.ID, "", nil
+			return OwnerContract, contract.ID, "", nil
 		}
 	}
 	if supplierID == uuid.Nil {
 		added, err := suppliers.Add(c, suppliers.Request{Name: contractor})
 		if code, err := codeOf(err); err != nil || code != "" {
-			return ownerSupplier, uuid.Nil, code, err
+			return OwnerSupplier, uuid.Nil, code, err
 		}
 		supplierID = added.ID
 	}
@@ -427,40 +442,40 @@ func contractOf(c changes.Change, item store.Item, contractor string, agreed jso
 	}
 	added, err := contracts.Add(c, supplierID, item.ID, terms)
 	code, err := codeOf(err)
-	return ownerContract, added, code, err
+	return OwnerContract, added, code, err
 }
 
 // partnerOf is the project's partner named name, or one added with no login (D6).
-func partnerOf(c changes.Change, name string) (owner, uuid.UUID, string, error) {
+func partnerOf(c changes.Change, name string) (Owner, uuid.UUID, string, error) {
 	held, err := c.Q.PartnersOf(c.Ctx, c.ProjectID)
 	if err != nil {
-		return ownerPartner, uuid.Nil, "", err
+		return OwnerPartner, uuid.Nil, "", err
 	}
 	for _, partner := range held {
 		if partner.Name == name && !partner.IsDeleted {
-			return ownerPartner, partner.ID, "", nil
+			return OwnerPartner, partner.ID, "", nil
 		}
 	}
 	added, err := partners.Add(c, name, uuid.Nil)
 	code, err := codeOf(err)
-	return ownerPartner, added, code, err
+	return OwnerPartner, added, code, err
 }
 
 // balancesOf is what each account of the file really held, by the project's account of its name (D8); an account the project lacks is listed as
 // accountNotInProject (D6).
 //
 //apidoc:gathers
-func balancesOf(projectFile file, known registers, refused *[]refusal) []accounts.Actual {
+func balancesOf(projectFile file, known registers, refused *[]Refusal) []accounts.Actual {
 	var balances []accounts.Actual
 	for _, account := range projectFile.Accounts {
 		accountID, found := known.accounts[strings.TrimSpace(account.Name)]
 		if !found {
-			*refused = append(*refused, refusal{Owner: ownerFile, Code: "accountNotInProject", Value: account.Name})
+			*refused = append(*refused, Refusal{Owner: OwnerFile, Code: "accountNotInProject", Value: account.Name})
 			continue
 		}
 		var held fixed.Typed
 		if len(account.ActualBalance) > 0 && json.Unmarshal(account.ActualBalance, &held) != nil {
-			*refused = append(*refused, refusal{Owner: ownerReconciliation, Code: "invalidAmount", Value: account.Name})
+			*refused = append(*refused, Refusal{Owner: OwnerReconciliation, Code: "invalidAmount", Value: account.Name})
 			continue
 		}
 		balances = append(balances, accounts.Actual{AccountID: accountID, ActualBalance: held})
@@ -486,7 +501,7 @@ type asked struct {
 // The rows are recorded by their date, then in the file's order, so each «رقم القيد» follows the calendar (redix-api #128 D6).
 //
 //apidoc:gathers
-func record(c changes.Change, places []place, projectFile file, known registers, refused *[]refusal) ([]kept, error) {
+func record(c changes.Change, places []place, projectFile file, known registers, refused *[]Refusal) ([]kept, error) {
 	options := map[string][2]string{}
 	for _, list := range projectFile.Lists {
 		for _, option := range list.Options {
@@ -502,7 +517,7 @@ func record(c changes.Change, places []place, projectFile file, known registers,
 	}
 	type found struct {
 		inFile  int
-		refusal refusal
+		refusal Refusal
 	}
 	var rows []asked
 	var refusals []found
@@ -512,14 +527,14 @@ func record(c changes.Change, places []place, projectFile file, known registers,
 		if code, err := codeOf(err); err != nil {
 			return nil, err
 		} else if code != "" {
-			refusals = append(refusals, found{inFile, at.refusal(0, ownerEntry, code)})
+			refusals = append(refusals, found{inFile, at.refusal(0, OwnerEntry, code)})
 			inFile++
 			continue
 		}
 		for index, row := range at.table.Rows {
 			request, refused := requestOf(row, at, columns, options, known, [2]string{inside, outside})
 			if refused.Code != "" {
-				refused.Category, refused.Item, refused.Table, refused.Row, refused.Owner = at.category, at.item.Name, at.table.Name, index+1, ownerFile
+				refused.Category, refused.Item, refused.Table, refused.Row, refused.Owner = at.category, at.item.Name, at.table.Name, index+1, OwnerFile
 				refusals = append(refusals, found{inFile, refused})
 			} else {
 				rows = append(rows, asked{inFile: inFile, number: index + 1, at: at, request: request})
@@ -535,7 +550,7 @@ func record(c changes.Change, places []place, projectFile file, known registers,
 		switch {
 		case errors.As(err, &refusedEntry):
 			columnKey, _ := refusedEntry.Detail.(string)
-			at := row.at.refusal(row.number, ownerEntry, refusedEntry.Code)
+			at := row.at.refusal(row.number, OwnerEntry, refusedEntry.Code)
 			at.ColumnKey = columnKey
 			refusals = append(refusals, found{row.inFile, at})
 		case err != nil:
@@ -555,10 +570,10 @@ func record(c changes.Change, places []place, projectFile file, known registers,
 // label. An option the file's lists do not hold, or a choice the table's list does not have, answers unknownChoice, naming the value and the
 // column (G4); an account the project lacks accountNotInProject (D6); a file named attachmentNotInFile, since a file carries none (G3).
 // Everything else is Add entry's to check.
-func requestOf(row fileRow, at place, columns []store.ItemColumn, options map[string][2]string, known registers, places [2]string) (entries.Request, refusal) {
+func requestOf(row fileRow, at place, columns []store.ItemColumn, options map[string][2]string, known registers, places [2]string) (entries.Request, Refusal) {
 	request := entries.Request{ID: uuid.Must(uuid.NewV7()), ItemID: at.item.ID, TableID: at.tableID, Submit: true, ColumnValues: web.Ordered{Values: map[string]string{}}}
-	refuse := func(code, key, value, column string) (entries.Request, refusal) {
-		return entries.Request{}, refusal{Code: code, ColumnKey: key, Value: value, Column: column}
+	refuse := func(code, key, value, column string) (entries.Request, Refusal) {
+		return entries.Request{}, Refusal{Code: code, ColumnKey: key, Value: value, Column: column}
 	}
 	for _, key := range row.keys {
 		column := fileColumn{Key: key}
@@ -622,5 +637,5 @@ func requestOf(row fileRow, at place, columns []store.ItemColumn, options map[st
 			request.ColumnValues.Values[key] = value
 		}
 	}
-	return request, refusal{}
+	return request, Refusal{}
 }

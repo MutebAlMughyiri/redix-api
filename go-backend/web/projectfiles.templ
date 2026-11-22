@@ -1,0 +1,98 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"strconv"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/archive"
+)
+
+// loadFileView is Load file, as the app's question asks it (UC-071): what loading does, the project file to choose, and Load, gray with its
+// reason in a finished project or one holding entries; then what it loaded, or why not, with every refused row - its place and why - as the
+// app's Refused screen lists them.
+templ loadFileView(p page, answer loaded) {
+	<div class="view-head">
+		<h2 id="loadFile.title">{ p.words.Of("projects.loadFile") }</h2>
+	</div>
+	<form id="loadFile.form" class="page-form" hx-post="/load-file" hx-encoding="multipart/form-data" hx-target="[id='web.content']">
+		<p id="loadFile.what" class="hint">{ p.words.Of("projects.loadFileWhat") }</p>
+		<div class="field">
+			<label id="loadFile.file.label" for="loadFile.file">{ p.words.Of("documents.file") }</label>
+			<input id="loadFile.file" name="file" type="file" accept=".json" disabled?={ !p.mayLoadFile() }/>
+		</div>
+		if gray := p.loadFileGray(); gray != "" {
+			<p id="loadFile.gray" class="hint">{ p.words.Of(gray) }</p>
+		}
+		<span id="loadFile.actions" class="head-actions">
+			<button id="loadFile.load" class="primary small" type="submit" disabled?={ !p.mayLoadFile() }>{ p.words.Of("projects.loadFile") }</button>
+		</span>
+	</form>
+	if answer.notice != "" {
+		<p id="loadFile.done" class="notice" role="status">{ answer.notice }</p>
+	}
+	if answer.refusal != "" {
+		<p id="loadFile.refusal" class="refusal" role="alert">{ p.words.Of(answer.refusal) }</p>
+	}
+	if len(answer.rows) > 0 {
+		<div class="grid-wrap">
+			<table id="loadFile.refusals" class="grid">
+				<tbody>
+					for at, refused := range answer.rows {
+						<tr id={ "loadFile.refusalRow." + strconv.Itoa(at) }>
+							<td id={ "loadFile.refused." + strconv.Itoa(at) }>
+								<span id={ "loadFile.place." + strconv.Itoa(at) }>{ placeOf(refused) }</span>
+								<small id={ "loadFile.reason." + strconv.Itoa(at) } class="hint">{ reasonOf(p, refused) }</small>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// retrieveView is Retrieve (UC-073): the archive to choose, gray with its reason in a finished project; choosing one asks the API what
+// retrieving it would do, which the answer below shows; and, once retrieved, what it brought.
+templ retrieveView(p page, answer retrieved) {
+	<div class="view-head">
+		<h2 id="retrieve.title">{ p.words.Of("projects.retrieve") }</h2>
+	</div>
+	<form id="retrieve.form" class="page-form" hx-post="/retrieve/preview" hx-encoding="multipart/form-data" hx-target="[id='retrieve.answer']" hx-trigger="change">
+		<div class="field">
+			<label id="retrieve.file.label" for="retrieve.file">{ p.words.Of("documents.file") }</label>
+			<input id="retrieve.file" name="file" type="file" accept=".json" disabled?={ !p.mayRetrieve() }/>
+		</div>
+		if p.finished() {
+			<p id="retrieve.gray" class="hint">{ p.words.Of("projects.retrieve.projectFinished") }</p>
+		}
+		<div id="retrieve.answer">
+			@retrieveAnswer(p, answer)
+		</div>
+	</form>
+}
+
+// retrieveAnswer is what Retrieve says under its file: what it retrieved; why the archive was refused, naming another project's; or its
+// preview, as the app's question asks: when it was taken and by whom, each part now and after, what stays, and Retrieve, sending the same file
+// again.
+templ retrieveAnswer(p page, answer retrieved) {
+	switch {
+		case answer.notice != "":
+			<p id="retrieve.done" class="notice" role="status">{ answer.notice }</p>
+		case answer.refusal != "":
+			<p id="retrieve.refusal" class="refusal" role="alert">{ p.words.Of(answer.refusal, answer.over) }</p>
+		case answer.preview.Now != nil:
+			<p id="retrieve.question" class="section-title">{ p.words.Of("projects.retrieveConfirm", p.project.Name, answer.when) }</p>
+			<p id="retrieve.takenBy" class="hint">{ p.words.Of("projects.retrieveTakenBy", answer.preview.ArchivedBy) }</p>
+			<ul id="retrieve.parts" class="plain-list">
+				for _, part := range archive.Parts {
+					<li id={ "retrieve.part." + part }>{ partLine(p, answer.preview, part) }</li>
+				}
+			</ul>
+			<p id="retrieve.what" class="hint">{ p.words.Of("projects.retrieveWhat") }</p>
+			<span id="retrieve.actions" class="head-actions">
+				<button id="retrieve.confirm" class="primary small" type="button" hx-post="/retrieve/archive" hx-encoding="multipart/form-data" hx-target="[id='web.content']">{ p.words.Of("projects.retrieve") }</button>
+			</span>
+	}
+}

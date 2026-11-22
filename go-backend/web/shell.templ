@@ -127,13 +127,15 @@ templ side(p page) {
 	</aside>
 }
 
-// tree is the side menu's items: one whose feature is built opens its tab, the others stand gray (#161 R15).
+// tree is the side menu's items: one whose feature is built opens its tab, one that hands a file over hands it, the others stand gray (#161 R15).
 templ tree(p page) {
 	<ul id="web.tree" class="tree">
 		for _, item := range sideMenu {
 			if p.offers(item.name) {
 				<li id={ "web.tree." + item.name }>
-					if item.built() {
+					if path, hands := handsOver[item.name]; hands {
+						<a id={ "web.item." + item.name } href={ templ.SafeURL(path) } download>{ p.words.Of(item.title) }</a>
+					} else if item.built() {
 					@itemLink(p, item, false)
 				} else {
 						<span id={ "web.item." + item.name } class="parked" aria-disabled="true">{ p.words.Of(item.title) }</span>

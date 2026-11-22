@@ -80,3 +80,16 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | #125: an actual balance that is not an amount is `invalidAmount`, owned by the reconciliation and naming its account, where it was read as 0; nothing is saved | `projectfile.Routes.load` | `TestAnActualBalanceThatIsNotAnAmountIsRefusedNamingItsAccountAndNothingIsSaved` |
 | AC-53.9: the route refuses a file that is not a project file, or is newer, and nothing changes | `projectfile.read`, `projectfile.Routes.load` | `ProjectFileTests.AC_53_9_TheRouteRefusesAFileThatIsNotAProjectFileOrIsNewerAndNothingChanges` |
 | AC-29.3: a file whose report the project already issued is `reportAlreadyIssued`, listed before anything is saved; one whose number it has not issued loads beside the reports before it | `projectfile.Routes.load` | `ProjectFileTests.AC_29_3_AFileWhoseReportTheProjectAlreadyIssuedIsRefusedBeforeAnythingIsSaved`, `AC_29_3_AFileWhoseReportNumberTheProjectHasNotIssuedLoadsBesideTheReportsBeforeIt` |
+
+## On the web: Load file (redix-api #175 D3)
+
+Load file is the app's card button as an item of the side menu, for whoever holds ManageProjectFiles, opening its tab: what loading does, in the words of the app's question, the project file to choose, and Load, gray with its reason in a finished project or one holding entries, as the app grays its button. Load sends the file through `projectfile.Load`, the rule `POST /projects/{id}/project-file` runs, and the tab says what it loaded, as the app's bar does, or why not in the app's words; a file refused over its rows lists every one of them - its item, its table and its row, and why in the words of the rule that refused it - as the app's Refused screen lists them. Its pages are in `go-backend/web` (`projectfiles.go`, `projectfiles.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/loadFile` | Load file | `200` the tab's content |
+| `POST /load-file` | Loads the form's `file` | `200` Load file saying what it loaded, or why not with every refused row; `403` without ManageProjectFiles; `404` with no project open |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Load file loads a project file into a project holding no entry, and lists every refused row with its place and its owner's words, nothing saved; it stands gray in a finished project or one holding entries, and whoever lacks ManageProjectFiles sees no Load file (AC-53.3, AC-53.5, AC-73.8) | `projectfile.Load` | `TestWeb_R175_UC071_LoadFileLoadsAProjectFileAndListsEveryRefusedRowAsTheApp` |

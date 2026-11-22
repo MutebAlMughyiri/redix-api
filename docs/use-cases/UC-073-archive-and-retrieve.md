@@ -64,3 +64,18 @@ One JSON file. The app names it «{project} - أرشيف {yyyy-MM-dd HH.mm}.json
 | AC-73.7: every table of the database is the project's own, kept, or shared with its reason | `archive.tables`, `archive.shared` | `TestAC73_7_EveryTableOfTheDatabaseIsTheProjectsKeptOrShared` |
 | AC-73.8: without `ManageProjectFiles` neither the archive, the retrieve nor UC-071's load answers | `archive.Map`, `projectfile.Map` | `TestAC73_8_WithoutManageProjectFilesNoRouteOfTheProjectsFilesAnswers` |
 | redix-api #141 D1: the database failing at any call of the archive or the retrieve answers 500 and changes nothing | `archive` | `TestAFailingDatabaseAtAnyCallOfTheArchiveOrTheRetrieveAnswers500AndChangesNothing` |
+
+## On the web: Archive and Retrieve (redix-api #175 D3)
+
+Archive and Retrieve are the app's card buttons as items of the side menu, for whoever holds ManageProjectFiles. Archive hands the project's archive over at once, as the app's button hands it to the phone, through `archive.Take`, the rule `GET /projects/{id}/archive/json` runs, named as the app names it, «{project} - أرشيف {date time}» by the project's clock. Retrieve opens its tab: choosing an archive asks `archive.Retrieve` what retrieving it would do, the preview `POST /projects/{id}/retrieve?preview=true` answers, which the tab shows as the app's question does - when it was taken and by whom, each part now and after, what stays - with Retrieve, which sends the same file again and retrieves it, saying when the archive was taken and how many entries the project holds now. A file that is no archive, one of another project, naming it, or of a newer release is refused in the app's words, and a finished project retrieves nothing, its file gray (R17). Its pages are in `go-backend/web` (`projectfiles.go`, `projectfiles.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /project-file/archive` | The project's archive | `200` the file; `404` without ManageProjectFiles, or with no project open |
+| `GET /tab/retrieve` | Retrieve | `200` the tab's content |
+| `POST /retrieve/preview` | What retrieving the form's `file` would do | `200` the preview asking to retrieve it, or why not; `403` without ManageProjectFiles; `404` with no project open |
+| `POST /retrieve/archive` | Retrieves the form's `file` | `200` Retrieve saying what it retrieved, or why not; `403` without ManageProjectFiles; `404` with no project open |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Archive hands the archive over with a History line; Retrieve previews an archive, then retrieves it, refusing one that is no archive or another project's, and nothing in a finished project; whoever lacks ManageProjectFiles sees neither (AC-73.1, AC-73.2, AC-73.3, AC-73.5, AC-73.8, R17) | `archive.Take`, `archive.Retrieve` | `TestWeb_R175_UC073_ArchiveHandsTheFileOverAndRetrievePreviewsThenRetrievesIt` |

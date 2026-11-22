@@ -17,7 +17,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
@@ -64,18 +63,25 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 // archive hands over the project's archive (AC-73.1): one JSON file holding every row of its 44 tables, read in one snapshot; a History line,
 // Archive, names who took it (R15).
 func (s Routes) archive(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	archived, err := s.taken(r.Context(), web.ID(r, "projectId"), caller.UserID)
-	var content []byte
-	if err == nil {
-		content, err = encode.Indented(archived, " ")
+	content, projectName, err := Take(r.Context(), s.writer, web.ID(r, "projectId"), caller)
+	if !changes.Answered(w, r, err) {
+		web.SendFile(w, "application/json", projectName+".json", content)
 	}
+}
+
+// Take is projectID's archive taken by caller through writer's database and clock, the file the API hands over, with the project's name
+// (AC-73.1); a History line, Archive, names who took it (R15).
+func Take(ctx context.Context, writer changes.Writer, projectID uuid.UUID, caller access.Caller) ([]byte, string, error) {
+	archived, err := Routes{database: writer.Database, writer: writer}.taken(ctx, projectID, caller.UserID)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return nil, "", err
 	}
-	if s.writer.Write(w, r, caller, func(c changes.Change) error { return c.Record(history.Archive, "Projects", c.ProjectID, nil, nil) }) {
-		web.SendFile(w, "application/json", archived.Project.Name+".json", content)
+	content, err := encode.Indented(archived, " ")
+	if err != nil {
+		return nil, "", err
 	}
+	err = writer.Run(ctx, projectID, caller, func(c changes.Change) error { return c.Record(history.Archive, "Projects", c.ProjectID, nil, nil) })
+	return content, archived.Project.Name, err
 }
 
 // taken is the archive of projectID taken by userID, its rows read in one snapshot.
@@ -104,13 +110,13 @@ func (s Routes) taken(ctx context.Context, projectID, userID uuid.UUID) (file, e
 	return archived, nil
 }
 
-// opened is the archive content holds, or the code a file that is no archive is refused with.
-func opened(content []byte) (file, string) {
+// opened is the archive content holds, or notAnArchive for a file that is none.
+func opened(content []byte) (file, error) {
 	decoder := json.NewDecoder(bytes.NewReader(content))
 	decoder.UseNumber()
 	var archived file
 	if decoder.Decode(&archived) != nil || archived.Format != format || archived.Version != version || archived.Release < 1 {
-		return file{}, "notAnArchive"
+		return file{}, changes.Refuse(http.StatusBadRequest, "notAnArchive")
 	}
-	return archived, ""
+	return archived, nil
 }

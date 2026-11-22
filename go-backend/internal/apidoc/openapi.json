@@ -222,7 +222,7 @@
         ],
         "type": "object"
       },
-      "archive.retrieval": {
+      "archive.Retrieval": {
         "properties": {
           "after": {
             "additionalProperties": {
@@ -2048,6 +2048,25 @@
           "status",
           "code",
           "traceId"
+        ],
+        "type": "object"
+      },
+      "projectfile.Loaded": {
+        "properties": {
+          "entries": {
+            "type": "integer"
+          },
+          "report": {
+            "type": "integer"
+          },
+          "tables": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entries",
+          "report",
+          "tables"
         ],
         "type": "object"
       },
@@ -10827,23 +10846,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "properties": {
-                    "entries": {
-                      "type": "integer"
-                    },
-                    "report": {
-                      "type": "integer"
-                    },
-                    "tables": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "entries",
-                    "report",
-                    "tables"
-                  ],
-                  "type": "object"
+                  "$ref": "#/components/schemas/projectfile.Loaded"
                 }
               }
             },
@@ -11545,7 +11548,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/archive.retrieval"
+                  "$ref": "#/components/schemas/archive.Retrieval"
                 }
               }
             },

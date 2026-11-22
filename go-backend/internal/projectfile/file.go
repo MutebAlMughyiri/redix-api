@@ -9,9 +9,11 @@ package projectfile
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
@@ -141,23 +143,23 @@ func textOf(value json.RawMessage) string {
 // read reads text as a project file (ProjectFile.Read, AC-53.9): one that does not say it is a REDIX project file, or is not laid out as one, a
 // report with no date and time among it, answers notAProjectFile, and one of a version newer than this API reads newerVersion, both before
 // anything else is read.
-func read(text []byte) (file, string) {
+func read(text []byte) (file, error) {
 	var header struct {
 		Format  string `json:"format"`
 		Version int    `json:"version"`
 	}
 	if json.Unmarshal(text, &header) != nil || header.Format != formatName || header.Version < 1 {
-		return file{}, "notAProjectFile"
+		return file{}, changes.Refuse(http.StatusBadRequest, "notAProjectFile")
 	}
 	if header.Version > latestVersion {
-		return file{}, "newerVersion"
+		return file{}, changes.Refuse(http.StatusBadRequest, "newerVersion")
 	}
 	var read file
 	if json.Unmarshal(text, &read) != nil {
-		return file{}, "notAProjectFile"
+		return file{}, changes.Refuse(http.StatusBadRequest, "notAProjectFile")
 	}
 	if _, timed := read.Report.at(zones.Riyadh); read.Report.Number > 0 && !timed {
-		return file{}, "notAProjectFile"
+		return file{}, changes.Refuse(http.StatusBadRequest, "notAProjectFile")
 	}
-	return read, ""
+	return read, nil
 }

@@ -164,7 +164,7 @@ var sideMenu = []menuItem{
 	{"home", "web.home"}, {"entries", "entries.title"}, {"approvals", "approvals.title"}, {"accounts", "accounts.title"}, {"partners", "partners.title"},
 	{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"projectHistory", "history.projectTitle"},
 	{"users", "users.title"}, {"requests", "permissionRequests.listTitle"}, {"categories", "categories.title"}, {"paymentMethods", "paymentMethods.title"},
-	{"projectInfo", "projectInfo.title"}, {"myPermissions", "permissions.mine"}, {"documents", "documents.title"}, {"settings", "sharedSettings.title"},
+	{"loadFile", "projects.loadFile"}, {"archive", "projects.archive"}, {"retrieve", "projects.retrieve"}, {"projectInfo", "projectInfo.title"}, {"myPermissions", "permissions.mine"}, {"documents", "documents.title"}, {"settings", "sharedSettings.title"},
 }
 
 // menuNeeds is the permission a side-menu item needs, as the app shows its screen only to whoever holds it; an item missing here needs none.
@@ -172,7 +172,12 @@ var menuNeeds = map[string]access.Permission{"approvals": access.ApproveEntries,
 	"expenses": access.SeeReports, "revenue": access.SeeReports, "itemReport": access.SeeReports,
 	"periodicReport": access.SeeReports,
 	"projectHistory": access.SeeProjectHistory, "users": access.ManageUsers, "newUser": access.ManageUsers, "userPermissions": access.ManageUsers, "requests": access.ManageUsers, "categories": access.ManageStructure, "itemColumns": access.ManageStructure, "itemTables": access.ManageStructure,
-	"paymentMethods": access.ManageSettings}
+	"paymentMethods": access.ManageSettings, "loadFile": access.ManageProjectFiles, "archive": access.ManageProjectFiles,
+	"retrieve": access.ManageProjectFiles}
+
+// handsOver are the side menu's items that hand a file over rather than open a tab, by the path that hands it: Archive, as the app's button
+// hands the project's archive to the phone (AC-73.1).
+var handsOver = map[string]string{"archive": "/project-file/archive"}
 
 // offers says whether p's caller may use the tab named name: the side menu and the open tabs leave out one they may not, and its content is not
 // drawn, even asked for by its address, as the app hides its screen (REDIX rule of 7 Nov).
@@ -223,6 +228,8 @@ var contents = map[string]tab{
 	"changeEntry":       site.changeEntryTab,
 	"settings":          site.settingsTab,
 	"documents":         site.documentsTab,
+	"loadFile":          site.loadFileTab,
+	"retrieve":          site.retrieveTab,
 	"changePassword":    func(_ site, _ *http.Request, p page) (templ.Component, error) { return changePasswordTab(p), nil },
 }
 
