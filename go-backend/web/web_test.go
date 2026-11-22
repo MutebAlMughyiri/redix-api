@@ -247,11 +247,13 @@ func TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse(t *testing.T) {
 	has(t, browser.Send("GET", "/", nil).Body.String(), `class="shell in"`)
 }
 
-func TestWeb_R14_R15_EveryItemOfTheSideMenuIsBuiltAndOpensItsTab(t *testing.T) {
+func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	lacks(t, page, `class="parked"`)
+	for _, key := range []string{"projectInfo", "myPermissions", "documents"} {
+		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
+	}
 	has(t, page, `hx-get="/tab/home"`)
 	has(t, page, `hx-get="/tab/entries"`)
 	has(t, page, `hx-get="/tab/settings"`)
@@ -2871,4 +2873,105 @@ func TestWeb_D293_TheDetailsPanelFollowsTheTabInFront(t *testing.T) {
 func TestWeb_R10_TheSideLinesPressStartsNoDragOfItsOwn(t *testing.T) {
 	browser, _ := signedIn(t, testapi.New(t), "User A")
 	has(t, browser.Send("GET", "/", nil).Body.String(), `hx-on:pointerdown="event.preventDefault(); this.setPointerCapture(event.pointerId);`)
+}
+
+// member adds the person called name to the working project as the app's Add an existing user does, with roleName; it is their id.
+func (w working) member(name, roleName string) uuid.UUID {
+	w.t.Helper()
+	person, _ := w.Person(name)
+	if code, answer := w.Ask("POST", w.path+"/users/existing", `{"username":"`+person.String()+`"}`, w.token); code >= 300 {
+		w.t.Fatalf("adding %s: %d %v", name, code, answer)
+	}
+	if roleName != "" {
+		w.Ask("PUT", w.path+"/users/"+person.String()+"/role-name", `{"roleName":"`+roleName+`"}`, w.token)
+	}
+	return person
+}
+
+func TestWeb_R173_UC008_UsersListsEveryoneAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "مهندس الموقع")
+	gone := w.member("User C", "")
+	w.Ask("POST", w.path+"/users/"+gone.String()+"/disable", ``, w.token)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/users"`)
+	list := w.browser.Send("GET", "/tab/users", nil).Body.String()
+	has(t, list, `<small id="users.details.`+builder.String()+`" class="hint">`+builder.String()+` · مهندس الموقع</small>`)
+	has(t, list, `<small id="users.permissionsLine.`+builder.String()+`" class="hint">الصلاحيات: 1</small>`)
+	has(t, list, `<span id="users.status.`+gone.String()+`" class="chip">معطّل</span>`)
+	has(t, list, `<button id="users.new" class="primary small" type="button" disabled>`)
+	found := w.browser.Send("GET", "/tab/users?text=مهندس", nil).Body.String()
+	has(t, found, `id="users.row.`+builder.String()+`"`)
+	lacks(t, found, `id="users.row.`+gone.String()+`"`)
+	has(t, w.browser.Send("GET", "/tab/users?text=لا+أحد", nil).Body.String(), `<p id="users.empty" class="empty">لا يوجد مستخدم مطابق.</p>`)
+	panel := w.browser.Send("GET", "/details/user/"+builder.String(), nil).Body.String()
+	has(t, panel, `<h3 id="user.title">User B</h3>`)
+	has(t, panel, `<dd id="user.roleName">مهندس الموقع</dd>`)
+	has(t, panel, `id="users.disable"`)
+	has(t, w.browser.Send("GET", "/details/user/"+gone.String(), nil).Body.String(), `id="users.enable"`)
+	if code := w.browser.Send("GET", "/details/user/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("someone not in the project: %d", code)
+	}
+}
+
+func TestWeb_R173_UC007_EditResetDisableEnableAndAddExistingAsTheAppsDialogs(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	newcomer, _ := w.Person("User D")
+	w.home()
+	has(t, w.browser.Send("GET", "/details/user/existing", nil).Body.String(), `id="users.existingUsername"`)
+	has(t, w.browser.Send("POST", "/user", url.Values{"username": {"nobody-here"}}).Body.String(), "لا يوجد مستخدم بهذا الاسم.")
+	added := w.browser.Send("POST", "/user", url.Values{"username": {newcomer.String()}}).Body.String()
+	has(t, added, `<h3 id="user.title">User D</h3>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	has(t, w.browser.Send("GET", "/details/user/"+builder.String()+"?asking=edit", nil).Body.String(), `<input id="users.editName" name="name" required value="User B" autofocus>`)
+	has(t, w.browser.Send("POST", "/user/"+builder.String()+"/edit", url.Values{"name": {"User B"}, "mobile": {"abc"}}).Body.String(),
+		`<p id="user.refusal" class="refusal" role="alert">اكتب رقم الجوال`)
+	edited := w.browser.Send("POST", "/user/"+builder.String()+"/edit", url.Values{"name": {"المهندس ب"}, "mobile": {""}, "email": {"b@example.com"}, "roleName": {"مشرف"}}).Body.String()
+	has(t, edited, `<h3 id="user.title">المهندس ب</h3>`)
+	has(t, edited, `<dd id="user.roleName">مشرف</dd>`)
+	has(t, w.browser.Send("POST", "/user/"+builder.String()+"/edit", url.Values{"name": {"المهندس ب"}, "email": {"b@example.com"}, "roleName": {strings.Repeat("م", 51)}}).Body.String(),
+		"المسمى الوظيفي 50 حرفاً على الأكثر.")
+	has(t, w.browser.Send("GET", "/details/user/"+builder.String()+"?asking=reset", nil).Body.String(), `id="users.resetPasswordField"`)
+	has(t, w.browser.Send("POST", "/user/"+builder.String()+"/reset", url.Values{"password": {"short"}}).Body.String(), "استخدم 8 أحرف على الأقل")
+	has(t, w.browser.Send("POST", "/user/"+builder.String()+"/reset", url.Values{"password": {"Temporary-77"}}).Body.String(), `<h3 id="user.title">المهندس ب</h3>`)
+	has(t, w.browser.Send("GET", "/details/user/"+builder.String()+"?asking=disable", nil).Body.String(), "تعطيل هذا المستخدم؟")
+	disabled := w.browser.Send("POST", "/user/"+builder.String()+"/disable", nil).Body.String()
+	has(t, disabled, `id="users.enable"`)
+	has(t, disabled, `<span id="users.status.`+builder.String()+`" class="chip">معطّل</span>`)
+	has(t, w.browser.Send("POST", "/user/"+builder.String()+"/enable", nil).Body.String(), `id="users.disable"`)
+	has(t, w.browser.Send("POST", "/user/"+w.manager.String()+"/disable", nil).Body.String(), "يحتاج المشروع إلى شخص واحد على الأقل يدير مستخدميه.")
+	for _, path := range []string{"/user/" + builder.String() + "/archive", "/user/" + uuid.NewString() + "/edit"} {
+		if code := w.browser.Send("POST", path, url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+}
+
+func TestWeb_R173_UsersAreForWhoeverManagesThem(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {builder.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	lacks(t, browser.Send("GET", "/", nil).Body.String(), `id="web.item.users"`)
+	if code := browser.Send("GET", "/details/user/"+builder.String(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("a person's panel without ManageUsers: %d", code)
+	}
+	if code := browser.Send("POST", "/user", url.Values{"username": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("adding without ManageUsers: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/users"}, {"GET", "/details/user/" + builder.String()}, {"POST", "/user/" + builder.String() + "/edit"},
+		{"POST", "/user/" + builder.String() + "/disable"}, {"POST", "/user"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"User B2"}, "username": {builder.String()}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
 }

@@ -1,0 +1,182 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import "github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+
+// usersList is Users as the app's screen shows them (UC-008): New user and Add an existing user, a search, then each person - their name, said
+// disabled when they are, their username, role name and mobile, and how many permissions they hold here.
+templ usersList(p page, shown usersShown) {
+	<div class="view-head">
+		<h2 id="users.title">{ p.words.Of("users.title") }</h2>
+		<span id="users.actions" class="head-actions">
+			<button id="users.new" class="primary small" type="button" disabled>{ p.words.Of("users.new") }</button>
+			<button id="users.addExisting" class="quiet-button" type="button" hx-get="/details/user/existing" hx-target="[id='web.details']">{ p.words.Of("users.addExisting") }</button>
+		</span>
+	</div>
+	<form id="users.filters" class="filters" hx-get="/tab/users" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="users.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("users.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("users.title")) } value={ shown.text }/>
+	</form>
+	if len(shown.shown()) == 0 {
+		<p id="users.empty" class="empty">{ p.words.Of("users.noMatch") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id="users.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<tbody>
+					for _, person := range shown.shown() {
+						<tr
+							id={ "users.row." + person.ID.String() }
+							class={ templ.KV("disabled", heldHere(person).IsInactive) }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/user/" + person.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "users.person." + person.ID.String() }>
+								<span id={ "users.name." + person.ID.String() }>{ person.DisplayName }</span>
+								if heldHere(person).IsInactive {
+									<span id={ "users.status." + person.ID.String() } class="chip">{ p.words.Of("users.disabled") }</span>
+								}
+								<small id={ "users.details." + person.ID.String() } class="hint">{ parts(person.Username, heldHere(person).RoleName, person.Mobile) }</small>
+								<small id={ "users.permissionsLine." + person.ID.String() } class="hint">{ permissionCount(p, person) }</small>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// userPanel is a person in the details panel: their username, role name, mobile and email, how many permissions they hold, why their change was
+// refused; Edit, Permissions, Reset password, and Disable - asked first - or Enable, as the app's row menu offers them.
+templ userPanel(p page, person users.View, said said) {
+	<div class="details-head">
+		<h3 id="user.title">{ person.DisplayName }</h3>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl class="facts">
+		<dt id="user.username.label">{ p.words.Of("users.username") }</dt>
+		<dd id="user.username">{ person.Username }</dd>
+		if heldHere(person).RoleName != "" {
+			<dt id="user.roleName.label">{ p.words.Of("users.roleName") }</dt>
+			<dd id="user.roleName">{ heldHere(person).RoleName }</dd>
+		}
+		if person.Mobile != "" {
+			<dt id="user.mobile.label">{ p.words.Of("users.mobile") }</dt>
+			<dd id="user.mobile"><bdi>{ person.Mobile }</bdi></dd>
+		}
+		if person.Email != "" {
+			<dt id="user.email.label">{ p.words.Of("users.email") }</dt>
+			<dd id="user.email">{ person.Email }</dd>
+		}
+	</dl>
+	<p id="user.permissionsLine" class="hint details-foot">{ permissionCount(p, person) }</p>
+	if said.refusal != "" {
+		<p id="user.refusal" class="refusal details-say" role="alert">{ p.words.Of(said.refusal) }</p>
+	}
+	if said.asking == "disable" && !heldHere(person).IsInactive {
+		<div id="user.ask" class="details-say ask">
+			<span id="user.askQuestion">{ p.words.Of("users.disableQuestion") + " " + p.words.Of("users.disableExplain") }</span>
+			<button id="user.disableConfirm" class="primary small danger" type="button" hx-post={ "/user/" + person.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("users.disable") }</button>
+			<button id="user.disableCancel" class="quiet-button" type="button" hx-get={ "/details/user/" + person.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+		</div>
+	} else {
+		<div id="user.actions" class="details-actions">
+			<button id="users.edit" class="quiet-button" type="button" hx-get={ "/details/user/" + person.ID.String() + "?asking=edit" } hx-target="[id='web.details']">{ p.words.Of("users.edit") }</button>
+			<button id="users.permissions" class="quiet-button" type="button" disabled>{ p.words.Of("permissions.title") }</button>
+			<button id="users.resetPassword" class="quiet-button" type="button" hx-get={ "/details/user/" + person.ID.String() + "?asking=reset" } hx-target="[id='web.details']">{ p.words.Of("users.resetPassword") }</button>
+			if heldHere(person).IsInactive {
+				<button id="users.enable" class="quiet-button" type="button" hx-post={ "/user/" + person.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("users.enable") }</button>
+			} else {
+				<button id="users.disable" class="quiet-button" type="button" hx-get={ "/details/user/" + person.ID.String() + "?asking=disable" } hx-target="[id='web.details']">{ p.words.Of("users.disable") }</button>
+			}
+		</div>
+	}
+}
+
+// userForm is Edit in the details panel, as the app's dialog asks it: the name, mobile and email every project of theirs shares, and the role
+// name they have here; and why it could not be kept.
+templ userForm(p page, person users.View, typed userTyped, refusal string) {
+	<div class="details-head">
+		<h3 id="user.title">{ p.words.Of("users.edit") }</h3>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="user.form" class="details-form" hx-post={ "/user/" + person.ID.String() + "/edit" } hx-target="[id='web.details']">
+		<div class="field">
+			<label id="users.editName.label" for="users.editName">{ p.words.Of("users.name") }</label>
+			<input id="users.editName" name="name" required value={ typed.name } autofocus/>
+		</div>
+		<div class="field">
+			<label id="users.editMobile.label" for="users.editMobile">{ p.words.Of("users.mobile") }</label>
+			<input id="users.editMobile" name="mobile" type="tel" value={ typed.mobile }/>
+		</div>
+		<div class="field">
+			<label id="users.editEmail.label" for="users.editEmail">{ p.words.Of("users.email") }</label>
+			<input id="users.editEmail" name="email" type="email" value={ typed.email }/>
+		</div>
+		<div class="field">
+			<label id="users.editRoleName.label" for="users.editRoleName">{ p.words.Of("users.roleName") }</label>
+			<input id="users.editRoleName" name="roleName" value={ typed.roleName }/>
+		</div>
+		if refusal != "" {
+			<p id="user.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="user.formActions" class="details-actions">
+			<button id="user.save" class="primary small" type="submit">{ p.words.Of("users.save") }</button>
+		</span>
+	</form>
+}
+
+// resetForm is Reset password in the details panel, as the app's dialog asks it: what it does, the temporary password and its rules; and why it
+// could not be kept.
+templ resetForm(p page, person users.View, refusal string) {
+	<div class="details-head">
+		<h3 id="user.title">{ p.words.Of("users.resetPassword") }</h3>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="user.resetForm" class="details-form" hx-post={ "/user/" + person.ID.String() + "/reset" } hx-target="[id='web.details']">
+		<p id="users.resetName" class="hint">{ person.DisplayName }</p>
+		<p id="users.resetExplain" class="hint">{ p.words.Of("users.resetExplain") }</p>
+		<div class="field">
+			<label id="users.resetPasswordField.label" for="users.resetPasswordField">{ p.words.Of("users.temporaryPassword") }</label>
+			<input id="users.resetPasswordField" name="password" type="password" autocomplete="new-password" required autofocus/>
+			<small id="users.resetPasswordField.hint" class="hint">{ p.words.Of("common.passwordRules") }</small>
+		</div>
+		if refusal != "" {
+			<p id="user.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="user.resetActions" class="details-actions">
+			<button id="user.resetSave" class="primary small" type="submit">{ p.words.Of("users.resetPassword") }</button>
+		</span>
+	</form>
+}
+
+// existingForm is Add an existing user in the details panel, as the app's dialog asks it: the username of someone already in REDIX; and why
+// they could not be added.
+templ existingForm(p page, username, refusal string) {
+	<div class="details-head">
+		<h3 id="user.title">{ p.words.Of("users.addExisting") }</h3>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="user.existingForm" class="details-form" hx-post="/user" hx-target="[id='web.details']">
+		<div class="field">
+			<label id="users.existingUsername.label" for="users.existingUsername">{ p.words.Of("users.username") }</label>
+			<input id="users.existingUsername" name="username" required value={ username } autofocus/>
+		</div>
+		if refusal != "" {
+			<p id="user.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="user.existingActions" class="details-actions">
+			<button id="user.add" class="primary small" type="submit">{ p.words.Of("users.add") }</button>
+		</span>
+	</form>
+}
+
+// usersBeside is Users again, carried out of band beside the panel, once a person was added or changed.
+templ usersBeside(p page, shown usersShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@usersList(p, shown)
+	</div>
+}

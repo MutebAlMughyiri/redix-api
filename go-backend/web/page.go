@@ -156,14 +156,17 @@ func (item menuItem) built() bool {
 // sideMenu is the side menu's items, in the order the app's drawer lists them (#161, the shell).
 var sideMenu = []menuItem{
 	{"home", "web.home"}, {"entries", "entries.title"}, {"approvals", "approvals.title"}, {"accounts", "accounts.title"}, {"partners", "partners.title"},
-	{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"projectHistory", "history.projectTitle"}, {"settings", "sharedSettings.title"},
+	{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"projectHistory", "history.projectTitle"},
+	{"users", "users.title"}, {"requests", "permissionRequests.listTitle"}, {"categories", "categories.title"}, {"paymentMethods", "paymentMethods.title"},
+	{"projectInfo", "projectInfo.title"}, {"myPermissions", "permissions.mine"}, {"documents", "documents.title"}, {"settings", "sharedSettings.title"},
 }
 
 // menuNeeds is the permission a side-menu item needs, as the app shows its screen only to whoever holds it; an item missing here needs none.
 var menuNeeds = map[string]access.Permission{"approvals": access.ApproveEntries, "approvalHistory": access.ApproveEntries, "reports": access.SeeReports,
 	"expenses": access.SeeReports, "revenue": access.SeeReports, "itemReport": access.SeeReports,
 	"periodicReport": access.SeeReports,
-	"projectHistory": access.SeeProjectHistory}
+	"projectHistory": access.SeeProjectHistory, "users": access.ManageUsers, "requests": access.ManageUsers, "categories": access.ManageStructure,
+	"paymentMethods": access.ManageSettings}
 
 // offers says whether p's caller may use the tab named name: the side menu and the open tabs leave out one they may not, and its content is not
 // drawn, even asked for by its address, as the app hides its screen (REDIX rule of 7 Nov).
@@ -193,6 +196,7 @@ var contents = map[string]tab{
 	"periodicReport":  site.periodicReportTab,
 	"projectHistory":  site.projectHistoryTab,
 	"myHistory":       site.myHistoryTab,
+	"users":           site.usersTab,
 	"partnerHistory":  site.partnerHistoryTab,
 	"reconcile":       site.countTab,
 	"accountHistory":  site.accountHistoryTab,

@@ -5,7 +5,6 @@ package users
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"net/http"
 	"slices"
@@ -30,12 +29,13 @@ import (
 type Routes struct {
 	database db.DB
 	clock    clock.Clock
+	writer   changes.Writer
 }
 
 // Map routes PUT /users/{userId} and POST /users/{userId}/reset-password for a working session; GET /projects/{projectId}/members for whoever reads
 // the project; and the project's users routes for whoever manages its users.
 func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
-	u := Routes{database: database, clock: clock}
+	u := Routes{database: database, clock: clock, writer: changes.Writer{Database: database, Clock: clock}}
 	u.mapRequests(router, gate)
 	router.Handle("PUT", "/users/{userId:guid}", gate.Working(u.edit))
 	router.Handle("POST", "/users/{userId:guid}/reset-password", gate.Working(u.resetPassword))
@@ -54,8 +54,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("POST", "/projects/{projectId:guid}/users/{userId:guid}/enable", manage(u.enable))
 }
 
-// projectView is what a person holds in one project (UserProjectView).
-type projectView struct {
+// ProjectView is what a person holds in one project (UserProjectView), as the app's and the web's Users read it.
+type ProjectView struct {
 	ProjectID   uuid.UUID           `json:"projectId"`
 	Permissions []access.Permission `json:"permissions"`
 	RoleName    string              `json:"roleName"`
@@ -65,15 +65,15 @@ type projectView struct {
 	UnseenTables []uuid.UUID `json:"unseenTables"`
 }
 
-// userView is a person and what they hold in their projects (UserView).
-type userView struct {
+// View is a person and what they hold in their projects (UserView), as the app's and the web's Users read them (redix-api #173).
+type View struct {
 	ID                 uuid.UUID     `json:"id"`
 	Username           string        `json:"username"`
 	DisplayName        string        `json:"displayName"`
 	Mobile             string        `json:"mobile"`
 	Email              string        `json:"email"`
 	MustChangePassword bool          `json:"mustChangePassword"`
-	Projects           []projectView `json:"projects"`
+	Projects           []ProjectView `json:"projects"`
 }
 
 // memberView is someone active in a project, as a picker lists them (MemberView).
@@ -82,8 +82,8 @@ type memberView struct {
 	DisplayName string    `json:"displayName"`
 }
 
-func viewOf(user store.User, rows []store.UserProject) userView {
-	var projects []projectView
+func viewOf(user store.User, rows []store.UserProject) View {
+	var projects []ProjectView
 	for _, row := range rows {
 		var names []string
 		var partners []uuid.UUID
@@ -98,10 +98,10 @@ func viewOf(user store.User, rows []store.UserProject) userView {
 			}
 		}
 		slices.SortFunc(permissions, func(a, b access.Permission) int { return a.Number() - b.Number() })
-		projects = append(projects, projectView{ProjectID: row.ProjectID, Permissions: permissions, RoleName: row.RoleName, PartnerIDs: partners,
+		projects = append(projects, ProjectView{ProjectID: row.ProjectID, Permissions: permissions, RoleName: row.RoleName, PartnerIDs: partners,
 			IsInactive: row.IsInactive, UnseenTables: unseen})
 	}
-	return userView{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword, Projects: projects}
+	return View{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword, Projects: projects}
 }
 
 // editUserRequest is the body PUT /users/{userId} (UC-007) reads.
@@ -117,18 +117,26 @@ func (u Routes) edit(w http.ResponseWriter, r *http.Request, caller access.Calle
 	if !web.Read(w, r, &request) {
 		return
 	}
-	name, mobile, email := strings.TrimSpace(request.DisplayName), strings.TrimSpace(request.Mobile), strings.TrimSpace(request.Email)
-	u.changeUser(w, r, caller, history.Update, func(user store.User) (int, string, error) {
+	u.changeUser(w, r, caller, func(c changes.Change, userID uuid.UUID) error {
+		return EditDetails(c, caller, userID, request.DisplayName, request.Mobile, request.Email)
+	})
+}
+
+// EditDetails changes the person userID's name, mobile and email as caller, as edit does (UC-007): the rule both doors call, the app's route
+// and the web's Users (redix-api #173). Refused as changeOfUser says, then invalidName, invalidMobile, emailInvalid (400) or emailTaken (409).
+func EditDetails(c changes.Change, caller access.Caller, userID uuid.UUID, displayName, mobile, email string) error {
+	name, mobile, email := strings.TrimSpace(displayName), strings.TrimSpace(mobile), strings.TrimSpace(email)
+	return changeOfUser(c, caller, userID, history.Update, func(user store.User) (int, string, error) {
 		if refusal := RefusalOfDetails(name, mobile); refusal != "" {
 			return http.StatusBadRequest, refusal, nil
 		}
-		return RefusalOfEmail(r.Context(), u.database.Queries(), email, user.ID)
-	}, func(ctx context.Context, q *store.Queries, user store.User) (store.User, error) {
-		if err := q.SetDetails(ctx, store.SetDetailsParams{ID: user.ID, DisplayName: name, Mobile: mobile}); err != nil {
+		return RefusalOfEmail(c.Ctx, c.Q, email, user.ID)
+	}, func(user store.User) (store.User, error) {
+		if err := c.Q.SetDetails(c.Ctx, store.SetDetailsParams{ID: user.ID, DisplayName: name, Mobile: mobile}); err != nil {
 			return user, err
 		}
 		user.DisplayName, user.Mobile = name, mobile
-		return ChangeEmail(ctx, q, user, email)
+		return ChangeEmail(c.Ctx, c.Q, user, email)
 	})
 }
 
@@ -144,62 +152,65 @@ func (u Routes) resetPassword(w http.ResponseWriter, r *http.Request, caller acc
 	if !web.Read(w, r, &request) {
 		return
 	}
-	u.changeUser(w, r, caller, history.ResetPassword, func(user store.User) (int, string, error) {
-		if !KeepsPolicy(request.TemporaryPassword, user.Username) {
-			return http.StatusBadRequest, "weakPassword", nil
-		}
-		return 0, "", nil
-	}, func(ctx context.Context, q *store.Queries, user store.User) (store.User, error) {
-		return ResetPassword(ctx, q, user, request.TemporaryPassword, true)
+	u.changeUser(w, r, caller, func(c changes.Change, userID uuid.UUID) error {
+		return ResetTemporary(c, caller, userID, request.TemporaryPassword)
 	})
 }
 
-// changeUser changes the person the route names, records it, and answers them with all their projects (UsersEndpoints.ChangeAsync): 404 for no
-// such person; otherProject (403) unless the caller manages the users of every project they are in and they are not an admin.
-func (u Routes) changeUser(w http.ResponseWriter, r *http.Request, caller access.Caller, action history.Action,
-	refusalOf func(store.User) (int, string, error), apply func(context.Context, *store.Queries, store.User) (store.User, error)) {
-	read := u.database.Queries()
-	user, err := read.UserWithID(r.Context(), web.ID(r, "userId"))
-	if errors.Is(err, sql.ErrNoRows) {
-		problem.Status(w, r, http.StatusNotFound)
-		return
+// ResetTemporary gives the person userID the temporary password, which they must change at their next sign-in, signing out every device of
+// theirs, as resetPassword does (UC-007): the rule both doors call, the app's route and the web's Users (redix-api #173). Refused as
+// changeOfUser says, then weakPassword (400) for one that does not keep the policy.
+func ResetTemporary(c changes.Change, caller access.Caller, userID uuid.UUID, password string) error {
+	return changeOfUser(c, caller, userID, history.ResetPassword, func(user store.User) (int, string, error) {
+		if !KeepsPolicy(password, user.Username) {
+			return http.StatusBadRequest, "weakPassword", nil
+		}
+		return 0, "", nil
+	}, func(user store.User) (store.User, error) {
+		return ResetPassword(c.Ctx, c.Q, user, password, true)
+	})
+}
+
+// changeUser runs a change to the person the route names and answers them with all their projects (UsersEndpoints.ChangeAsync).
+func (u Routes) changeUser(w http.ResponseWriter, r *http.Request, caller access.Caller, act func(c changes.Change, userID uuid.UUID) error) {
+	userID := web.ID(r, "userId")
+	if !changes.Answered(w, r, u.writer.Run(r.Context(), uuid.Nil, caller, func(c changes.Change) error { return act(c, userID) })) {
+		u.answer(w, r, http.StatusOK, userID, func(q *store.Queries) ([]store.UserProject, error) { return q.ProjectsOfUser(r.Context(), userID) })
 	}
-	mayChange, mayErr := u.mayChange(r.Context(), read, caller, user.ID)
-	if err != nil || mayErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+}
+
+// changeOfUser changes the person userID through apply and records it as action: NotFound for no such person; otherProject (403) unless caller
+// manages the users of every project they are in and they are not an admin; then refusalOf's refusal, a status with its code.
+func changeOfUser(c changes.Change, caller access.Caller, userID uuid.UUID, action history.Action, refusalOf func(store.User) (int, string, error),
+	apply func(store.User) (store.User, error)) error {
+	user, err := changes.Found(c.Q.UserWithID(c.Ctx, userID))
+	if err != nil {
+		return err
+	}
+	mayChange, err := mayChange(c.Ctx, c.Q, caller, user.ID)
+	if err != nil {
+		return err
 	}
 	if !mayChange {
-		problem.Refuse(w, r, http.StatusForbidden, "otherProject")
-		return
+		return changes.Refuse(http.StatusForbidden, "otherProject")
 	}
 	status, refusal, err := refusalOf(user)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return err
 	}
 	if refusal != "" {
-		problem.Refuse(w, r, status, refusal)
-		return
+		return changes.Refuse(status, refusal)
 	}
-	now := moment.Of(u.clock.Now())
-	err = u.database.InTx(r.Context(), func(q *store.Queries) error {
-		changed, err := apply(r.Context(), q, user)
-		if err != nil {
-			return err
-		}
-		return history.Write(r.Context(), q, now, caller.UserID, action, Change(user, changed))
-	})
+	changed, err := apply(user)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return err
 	}
-	u.answer(w, r, http.StatusOK, user.ID, func(q *store.Queries) ([]store.UserProject, error) { return q.ProjectsOfUser(r.Context(), user.ID) })
+	return changeOf(c).record(action, Change(user, changed))
 }
 
 // mayChange says whether the caller may change userID: not an admin, in at least one project, and every one of them one whose users the caller
 // manages (UsersEndpoints.MayChangeAsync).
-func (u Routes) mayChange(ctx context.Context, read *store.Queries, caller access.Caller, userID uuid.UUID) (bool, error) {
+func mayChange(ctx context.Context, read *store.Queries, caller access.Caller, userID uuid.UUID) (bool, error) {
 	if admin, err := read.IsAdmin(ctx, userID); err != nil || admin {
 		return false, err
 	}
@@ -231,20 +242,28 @@ func (u Routes) members(w http.ResponseWriter, r *http.Request, _ access.Caller)
 
 // list is everyone in the project, the inactive last, by name, each with what they hold here (ProjectUsersEndpoints.List).
 func (u Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	projectID := web.ID(r, "projectId")
-	read := u.database.Queries()
-	people, err := read.UsersInProject(r.Context(), projectID)
-	held, heldErr := read.UsersOfProject(r.Context(), projectID)
-	if err != nil || heldErr != nil {
+	views, err := ListOf(r.Context(), u.database.Queries(), web.ID(r, "projectId"))
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var views []userView
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// ListOf is everyone in projectID, the inactive last, by name, each with what they hold there, as list answers them: the rule both doors call, the
+// app's route and the web's Users (redix-api #173). The error is the database's.
+func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID) ([]View, error) {
+	people, err := read.UsersInProject(ctx, projectID)
+	held, heldErr := read.UsersOfProject(ctx, projectID)
+	if err := errors.Join(err, heldErr); err != nil {
+		return nil, err
+	}
+	var views []View
 	for _, person := range people {
 		mine := slices.DeleteFunc(slices.Clone(held), func(row store.UserProject) bool { return row.UserID != person.ID })
 		views = append(views, viewOf(person, mine))
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // createUserRequest is the body POST /projects/{projectId}/users (UC-008) reads.
@@ -370,51 +389,69 @@ func (u Routes) addExisting(w http.ResponseWriter, r *http.Request, caller acces
 		return
 	}
 	projectID := web.ID(r, "projectId")
-	found, err := u.database.Queries().NonAdminNamed(r.Context(), strings.TrimSpace(request.Username))
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
+	var userID uuid.UUID
+	if !u.writer.Write(w, r, caller, func(c changes.Change) (err error) {
+		userID, err = AddExisting(c, request.Username)
+		return err
+	}) {
 		return
+	}
+	u.answerInProject(w, r, http.StatusOK, projectID, userID)
+}
+
+// AddExisting adds the person already in REDIX called username to the change's project with ReadProject, as addExisting does (UC-008): the
+// rule both doors call, the app's route and the web's Users (redix-api #173). unknownUser (404) for nobody of that name, or an admin; someone
+// already in the project stays as they are.
+func AddExisting(c changes.Change, username string) (uuid.UUID, error) {
+	found, err := c.Q.NonAdminNamed(c.Ctx, strings.TrimSpace(username))
+	if err != nil {
+		return uuid.Nil, err
 	}
 	if len(found) == 0 {
-		problem.Refuse(w, r, http.StatusNotFound, "unknownUser")
-		return
+		return uuid.Nil, changes.Refuse(http.StatusNotFound, "unknownUser")
 	}
-	user := found[0]
-	err = u.write(r, caller, func(c change) error {
-		held, err := c.q.PermissionsOf(c.ctx, store.PermissionsOfParams{ProjectID: projectID, UserID: user.ID})
-		if err != nil || len(held) > 0 {
-			return err
-		}
-		return c.addPermission(projectID, user.ID, access.ReadProject)
-	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	held, err := c.Q.PermissionsOf(c.Ctx, store.PermissionsOfParams{ProjectID: c.ProjectID, UserID: found[0].ID})
+	if err != nil || len(held) > 0 {
+		return found[0].ID, err
 	}
-	u.answerInProject(w, r, http.StatusOK, projectID, user.ID)
+	return found[0].ID, changeOf(c).addPermission(c.ProjectID, found[0].ID, access.ReadProject)
 }
 
 // give ticks a permission for someone in the project: 404 when they are not in it, invalidPermission (400) for one that is not a project's.
 func (u Routes) give(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		given, ok := access.Named(r.PathValue("permission"))
-		if !ok || given == access.ApproveProjects {
-			return http.StatusBadRequest, "invalidPermission", nil
-		}
-		return 0, "", func(c change) error { return c.give(projectID, userID, given) }
-	})
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error { return Give(c, userID, r.PathValue("permission")) })
+}
+
+// Give ticks the permission named permission for userID in the change's project, as give does: the rule both doors call, the app's route and
+// the web's Users (redix-api #173). NotFound when they are not in it; invalidPermission (400) for one that is not a project's.
+func Give(c changes.Change, userID uuid.UUID, permission string) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	given, ok := access.Named(permission)
+	if !ok || given == access.ApproveProjects {
+		return changes.Refuse(http.StatusBadRequest, "invalidPermission")
+	}
+	return changeOf(c).give(c.ProjectID, userID, given)
 }
 
 // take removes a permission from someone in the project; taking ReadProject takes them out of it, with every permission, their role name and
 // their being inactive. lastManager (409) when it would leave the project with no active manager of its users.
 func (u Routes) take(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		taking, ok := access.Named(r.PathValue("permission"))
-		if !ok || taking == access.ApproveProjects {
-			return http.StatusBadRequest, "invalidPermission", nil
-		}
-		return 0, "", func(c change) error { return c.take(projectID, userID, taking) }
-	})
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error { return Take(c, userID, r.PathValue("permission")) })
+}
+
+// Take removes the permission named permission from userID in the change's project, as take does: the rule both doors call, the app's route and
+// the web's Users (redix-api #173). NotFound when they are not in it; invalidPermission (400); lastManager (409).
+func Take(c changes.Change, userID uuid.UUID, permission string) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	taking, ok := access.Named(permission)
+	if !ok || taking == access.ApproveProjects {
+		return changes.Refuse(http.StatusBadRequest, "invalidPermission")
+	}
+	return changeOf(c).take(c.ProjectID, userID, taking)
 }
 
 // seeTablesRequest is the tables one tick changes for someone: all of an item's, or one (findings row 280).
@@ -431,62 +468,80 @@ func (u Routes) seeTables(w http.ResponseWriter, r *http.Request, caller access.
 	if !web.Read(w, r, &request) {
 		return
 	}
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		for _, tableID := range request.TableIDs {
-			known, err := isTable(r.Context(), u.database.Queries(), projectID, tableID)
-			switch {
-			case err != nil:
-				return http.StatusInternalServerError, "", nil
-			case !known:
-				return http.StatusNotFound, "", nil
-			}
-		}
-		return 0, "", func(c change) error {
-			apply := c.unsee
-			if request.Seen {
-				apply = c.see
-			}
-			for _, tableID := range request.TableIDs {
-				if err := apply(projectID, userID, tableID); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error {
+		return SeeTables(c, userID, request.Seen, request.TableIDs)
 	})
+}
+
+// SeeTables ticks tableIDs for userID in the change's project when seen, or unticks them, as seeTables does: the rule both doors call, the app's
+// route and the web's Users (redix-api #173). NotFound when they are not in it, or for a table that is neither a group nor a contract of the
+// project, and then nothing changes.
+func SeeTables(c changes.Change, userID uuid.UUID, seen bool, tableIDs []uuid.UUID) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	for _, tableID := range tableIDs {
+		known, err := isTable(c.Ctx, c.Q, c.ProjectID, tableID)
+		if err != nil {
+			return err
+		}
+		if !known {
+			return changes.NotFound
+		}
+	}
+	apply := changeOf(c).unsee
+	if seen {
+		apply = changeOf(c).see
+	}
+	for _, tableID := range tableIDs {
+		if err := apply(c.ProjectID, userID, tableID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // choose shows a partner's capital to someone in the project, ticking SeeChosenCapital: 404 when they are not in it or the partner is not one of
 // the project's (#106).
 func (u Routes) choose(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		partnerID := web.ID(r, "partnerId")
-		kept, err := u.database.Queries().KeptPartnerIDs(r.Context(), store.KeptPartnerIDsParams{ProjectID: projectID, Ids: []uuid.UUID{partnerID}})
-		if err != nil {
-			return http.StatusInternalServerError, "", nil
-		}
-		if len(kept) == 0 {
-			return http.StatusNotFound, "", nil
-		}
-		return 0, "", func(c change) error {
-			if err := c.give(projectID, userID, access.SeeChosenCapital); err != nil {
-				return err
-			}
-			chosen, err := c.q.ChosenOf(c.ctx, store.ChosenOfParams{ProjectID: projectID, UserID: userID})
-			if err != nil || slices.ContainsFunc(chosen, func(row store.ChosenPartner) bool { return row.PartnerID == partnerID }) {
-				return err
-			}
-			return c.choose(projectID, userID, partnerID)
-		}
-	})
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error { return Choose(c, userID, web.ID(r, "partnerId")) })
+}
+
+// Choose shows partnerID's capital to userID in the change's project, ticking SeeChosenCapital, as choose does: the rule both doors call, the
+// app's route and the web's Users (redix-api #173). NotFound when they are not in it or the partner is not one of the project's (#106).
+func Choose(c changes.Change, userID, partnerID uuid.UUID) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	kept, err := c.Q.KeptPartnerIDs(c.Ctx, store.KeptPartnerIDsParams{ProjectID: c.ProjectID, Ids: []uuid.UUID{partnerID}})
+	if err != nil {
+		return err
+	}
+	if len(kept) == 0 {
+		return changes.NotFound
+	}
+	if err := changeOf(c).give(c.ProjectID, userID, access.SeeChosenCapital); err != nil {
+		return err
+	}
+	chosen, err := c.Q.ChosenOf(c.Ctx, store.ChosenOfParams{ProjectID: c.ProjectID, UserID: userID})
+	if err != nil || slices.ContainsFunc(chosen, func(row store.ChosenPartner) bool { return row.PartnerID == partnerID }) {
+		return err
+	}
+	return changeOf(c).choose(c.ProjectID, userID, partnerID)
 }
 
 // unchoose stops showing a partner's capital to someone in the project.
 func (u Routes) unchoose(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		partnerID := web.ID(r, "partnerId")
-		return 0, "", func(c change) error { return c.clearChosen(projectID, userID, partnerID) }
-	})
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error { return Unchoose(c, userID, web.ID(r, "partnerId")) })
+}
+
+// Unchoose stops showing partnerID's capital to userID in the change's project, as unchoose does: the rule both doors call (redix-api #173).
+// NotFound when they are not in it.
+func Unchoose(c changes.Change, userID, partnerID uuid.UUID) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	return changeOf(c).clearChosen(c.ProjectID, userID, partnerID)
 }
 
 // roleNameRequest is the body PUT /projects/{projectId}/users/{userId}/role-name (UC-008) reads.
@@ -500,61 +555,77 @@ func (u Routes) setRoleName(w http.ResponseWriter, r *http.Request, caller acces
 	if !web.Read(w, r, &request) {
 		return
 	}
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		roleName := strings.TrimSpace(request.RoleName)
-		if utf8.RuneCountInString(roleName) > roleNameMaxLength {
-			return http.StatusBadRequest, "invalidRoleName", nil
-		}
-		return 0, "", func(c change) error { return c.nameRole(projectID, userID, roleName) }
-	})
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error { return NameRole(c, userID, request.RoleName) })
+}
+
+// NameRole gives userID in the change's project the free-text role name, "" taking it away, as setRoleName does: the rule both doors call, the
+// app's route and the web's Users (redix-api #173). NotFound when they are not in it; invalidRoleName (400) past 50 characters.
+func NameRole(c changes.Change, userID uuid.UUID, roleName string) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	roleName = strings.TrimSpace(roleName)
+	if utf8.RuneCountInString(roleName) > roleNameMaxLength {
+		return changes.Refuse(http.StatusBadRequest, "invalidRoleName")
+	}
+	return changeOf(c).nameRole(c.ProjectID, userID, roleName)
 }
 
 // disable makes someone inactive in the project (#126): lastManager (409) when they are its only active manager of users.
 func (u Routes) disable(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		last, err := isTheLastManager(r.Context(), u.database.Queries(), projectID, userID)
-		if err != nil {
-			return http.StatusInternalServerError, "", nil
-		}
-		if last {
-			return http.StatusConflict, "lastManager", nil
-		}
-		return 0, "", func(c change) error { return c.disable(projectID, userID) }
-	})
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error { return Disable(c, userID) })
+}
+
+// Disable makes userID inactive in the change's project (#126), as disable does: the rule both doors call, the app's route and the web's Users
+// (redix-api #173). NotFound when they are not in it; lastManager (409) when they are its only active manager of users.
+func Disable(c changes.Change, userID uuid.UUID) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	last, err := isTheLastManager(c.Ctx, c.Q, c.ProjectID, userID)
+	if err != nil {
+		return err
+	}
+	if last {
+		return changes.Refuse(http.StatusConflict, "lastManager")
+	}
+	return changeOf(c).disable(c.ProjectID, userID)
 }
 
 // enable makes someone active in the project again (#126).
 func (u Routes) enable(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	u.member(w, r, caller, func(projectID, userID uuid.UUID) (int, string, func(change) error) {
-		return 0, "", func(c change) error { return c.endInactive(projectID, userID, history.Enable) }
-	})
+	u.member(w, r, caller, func(c changes.Change, userID uuid.UUID) error { return Enable(c, userID) })
 }
 
-// member runs a change to someone in the project: 404 when they are not in it; then decide's refusal - a status with a code, or a bare status with
-// none - or its change, recorded and answered with what they hold here.
-func (u Routes) member(w http.ResponseWriter, r *http.Request, caller access.Caller, decide func(projectID, userID uuid.UUID) (int, string, func(change) error)) {
+// Enable makes userID active in the change's project again (#126), as enable does: the rule both doors call (redix-api #173). NotFound when they
+// are not in it.
+func Enable(c changes.Change, userID uuid.UUID) error {
+	if err := inProject(c, userID); err != nil {
+		return err
+	}
+	return changeOf(c).endInactive(c.ProjectID, userID, history.Enable)
+}
+
+// member runs act on the person the route names in the route's project, through the shared writer, and answers them with what they hold there.
+func (u Routes) member(w http.ResponseWriter, r *http.Request, caller access.Caller, act func(c changes.Change, userID uuid.UUID) error) {
 	projectID, userID := web.ID(r, "projectId"), web.ID(r, "userId")
-	held, err := u.database.Queries().PermissionsOf(r.Context(), store.PermissionsOfParams{ProjectID: projectID, UserID: userID})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	if len(held) == 0 {
-		problem.Status(w, r, http.StatusNotFound)
-		return
-	}
-	status, refusal, apply := decide(projectID, userID)
-	switch {
-	case refusal != "":
-		problem.Refuse(w, r, status, refusal)
-		return
-	case apply == nil:
-		problem.Status(w, r, status)
-		return
-	}
-	if !changes.Answered(w, r, u.write(r, caller, apply)) {
+	if u.writer.Write(w, r, caller, func(c changes.Change) error { return act(c, userID) }) {
 		u.answerInProject(w, r, http.StatusOK, projectID, userID)
 	}
+}
+
+// inProject is NotFound unless userID is in the change's project.
+func inProject(c changes.Change, userID uuid.UUID) error {
+	held, err := c.Q.PermissionsOf(c.Ctx, store.PermissionsOfParams{ProjectID: c.ProjectID, UserID: userID})
+	if err == nil && len(held) == 0 {
+		return changes.NotFound
+	}
+	return err
+}
+
+// changeOf is the users' own change from c, the change both doors run.
+func changeOf(c changes.Change) change {
+	return change{ctx: c.Ctx, q: c.Q, actor: c.Actor, now: c.Now}
 }
 
 // write runs apply in one transaction, as caller, now.

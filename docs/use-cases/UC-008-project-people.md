@@ -43,6 +43,23 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | The people of a project are listed those active there first, by name | `users.Routes.list` | `ProjectUsersTests.R126_ThePeopleOfAProjectAreListedThoseActiveThereFirstByName` |
 | Every permission ticked or unticked is in the History table | `history.Write` | `ProjectUsersTests.EveryPermissionChangeIsInTheHistory` |
 
+## On the web: Users (redix-api #173)
+
+The web's Users is the app's screen in the shell, its item in the side menu for whoever manages the project's users: everyone in the project, the inactive last, by name, from `users.ListOf`, the function `GET /projects/{id}/users` calls too, each with their username, role name and mobile, how many permissions they hold here, and said disabled when they are; the search finds a name, username, mobile or role name, as the app's does. A row opens the person in the details panel. Edit asks what the app's dialog asks and sends it as the app does - the name, mobile and email through `users.EditDetails` only when one changed, then the role name through `users.NameRole` only when it changed; Reset password gives a temporary password through `users.ResetTemporary`; Disable, asked first, and Enable go through `users.Disable` and `users.Enable`; Add an existing user adds someone already in REDIX by username through `users.AddExisting`. These are the rules `PUT /users/{userId}`, `POST /users/{userId}/reset-password`, `…/role-name`, `…/disable|enable` and `…/users/existing` call too, run through the shared changes.Writer; as the app's routes, a finished project's users stay manageable. New user and a person's Permissions come in the next slices of #173. Its pages are in `go-backend/web` (`users.go`, `users.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/users?text=` | Users, searched | `200` the tab's content; the item stays out of the menu without ManageUsers |
+| `GET /details/user/{id}` | A person in the details panel; `?asking=edit`, `reset` or `disable` | `200` the panel or its form; `404` without ManageUsers, or for someone not in the project |
+| `GET /details/user/existing` | Add an existing user's form | `200` the form; `404` without ManageUsers |
+| `POST /user`, `POST /user/{id}/edit`, `…/reset`, `…/disable`, `…/enable` | Adds an existing user (`username`), keeps Edit (`name`, `mobile`, `email`, `roleName`) or Reset password (`password`), or disables or enables the person | `200` the panel showing them, Users beside it; or the form or the panel saying why not; `403` without ManageUsers; `404` for an action there is none of |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Users lists everyone in the project, the inactive last, with their role name and permission count; the search finds name, username, mobile or role name | `users.ListOf`, `web.searchHolds` | `TestWeb_R173_UC008_UsersListsEveryoneAsTheAppsScreen` |
+| Edit, Reset password, Disable, Enable and Add an existing user as the app's: a mobile and an email the rules accept, a role name of at most 50 letters, a password that keeps the policy, never the last manager of the users disabled, an unknown username refused (UC-007, UC-008) | `users.EditDetails`, `users.NameRole`, `users.ResetTemporary`, `users.Disable`, `users.Enable`, `users.AddExisting` | `TestWeb_R173_UC007_EditResetDisableEnableAndAddExistingAsTheAppsDialogs` |
+| Users is for whoever manages the project's users; a failing database answers 500 | `web.site.keepUser`, `web.menuNeeds` | `TestWeb_R173_UsersAreForWhoeverManagesThem` |
+
 ## Left to later use cases
 
 Opening the project list right after sign-in, and the default project (UC-010).

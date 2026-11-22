@@ -3298,6 +3298,88 @@
         ],
         "type": "object"
       },
+      "users.ProjectView": {
+        "properties": {
+          "isInactive": {
+            "type": "boolean"
+          },
+          "partnerIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "projectId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "unseenTables": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "isInactive",
+          "partnerIds",
+          "permissions",
+          "projectId",
+          "roleName",
+          "unseenTables"
+        ],
+        "type": "object"
+      },
+      "users.View": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mobile": {
+            "type": "string"
+          },
+          "mustChangePassword": {
+            "type": "boolean"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/users.ProjectView"
+            },
+            "type": "array"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayName",
+          "email",
+          "id",
+          "mobile",
+          "mustChangePassword",
+          "projects",
+          "username"
+        ],
+        "type": "object"
+      },
       "users.addExistingUserRequest": {
         "properties": {
           "username": {
@@ -3417,49 +3499,6 @@
         ],
         "type": "object"
       },
-      "users.projectView": {
-        "properties": {
-          "isInactive": {
-            "type": "boolean"
-          },
-          "partnerIds": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "permissions": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "projectId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "roleName": {
-            "type": "string"
-          },
-          "unseenTables": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "isInactive",
-          "partnerIds",
-          "permissions",
-          "projectId",
-          "roleName",
-          "unseenTables"
-        ],
-        "type": "object"
-      },
       "users.rejectRequest": {
         "properties": {
           "reason": {
@@ -3566,45 +3605,6 @@
         "required": [
           "seen",
           "tableIds"
-        ],
-        "type": "object"
-      },
-      "users.userView": {
-        "properties": {
-          "displayName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "mobile": {
-            "type": "string"
-          },
-          "mustChangePassword": {
-            "type": "boolean"
-          },
-          "projects": {
-            "items": {
-              "$ref": "#/components/schemas/users.projectView"
-            },
-            "type": "array"
-          },
-          "username": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "displayName",
-          "email",
-          "id",
-          "mobile",
-          "mustChangePassword",
-          "projects",
-          "username"
         ],
         "type": "object"
       },
@@ -12492,7 +12492,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/users.userView"
+                    "$ref": "#/components/schemas/users.View"
                   },
                   "type": "array"
                 }
@@ -12544,7 +12544,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -12616,7 +12616,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -12677,7 +12677,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -12692,6 +12692,16 @@
               }
             },
             "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: lastManager."
           },
           "default": {
             "content": {
@@ -12738,7 +12748,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -12808,7 +12818,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -12876,7 +12886,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -12945,11 +12955,21 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
             "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidPermission."
           },
           "404": {
             "content": {
@@ -13022,11 +13042,21 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
             "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidPermission."
           },
           "404": {
             "content": {
@@ -13093,11 +13123,21 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
             "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidRoleName."
           },
           "404": {
             "content": {
@@ -13164,7 +13204,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -13437,7 +13477,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
@@ -13509,7 +13549,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.userView"
+                  "$ref": "#/components/schemas/users.View"
                 }
               }
             },
