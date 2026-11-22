@@ -302,9 +302,8 @@ func (s site) changeEntryTab(r *http.Request, p page) (templ.Component, error) {
 
 // valuesOf is an entry's request as the form's fields hold it.
 func valuesOf(saved entries.Request) url.Values {
-	amount := strings.TrimRight(strings.TrimRight(saved.Amount.String(), "0"), ".")
 	values := url.Values{"table": {saved.ItemID.String() + ":" + saved.TableID.String()}, "description": {saved.Description},
-		"date": {saved.Date.Format(time.DateOnly)}, "amount": {amount}, "method": {saved.PaymentMethodID.String()}, "account": {saved.AccountID.String()},
+		"date": {saved.Date.Format(time.DateOnly)}, "amount": {saved.Amount.Plain()}, "method": {saved.PaymentMethodID.String()}, "account": {saved.AccountID.String()},
 		"supplier": {saved.SupplierID.String()}, "outside": {strconv.FormatBool(saved.IsOutsideContract)}}
 	for _, key := range saved.ColumnValues.Keys {
 		values.Set("column."+key, saved.ColumnValues.Values[key])

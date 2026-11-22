@@ -182,6 +182,7 @@ var contents = map[string]tab{
 	"accounts":        site.accountsTab,
 	"partners":        site.partnersTab,
 	"suppliers":       site.suppliersTab,
+	"contracts":       site.contractsTab,
 	"partnerHistory":  site.partnerHistoryTab,
 	"reconcile":       site.countTab,
 	"accountHistory":  site.accountHistoryTab,

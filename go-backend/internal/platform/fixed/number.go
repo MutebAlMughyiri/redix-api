@@ -32,6 +32,10 @@ func (n Number) String() string {
 	return fmt.Sprintf("%s%d.%04d", sign, value/scale, value%scale)
 }
 
+// Plain writes the number as a person types it back into a field: no trailing zeros and no point when it is whole, as 700, 12.5, -0.0001. The
+// one writer of a figure a form starts with, Add entry's, the count's and a contract's (redix-api #170).
+func (n Number) Plain() string { return strings.TrimSuffix(strings.TrimRight(n.String(), "0"), ".") }
+
 // Parse reads a decimal such as "700", "12.5" or "-0.0001"; more than four decimals round half away from zero, as SQL Server stores them.
 func Parse(text string) (Number, error) {
 	rat, ok := new(big.Rat).SetString(strings.TrimSpace(text))

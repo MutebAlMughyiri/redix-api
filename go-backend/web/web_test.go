@@ -161,7 +161,7 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
-	if browser.Send("GET", "/tab/contracts", nil).Code != http.StatusNotFound {
+	if browser.Send("GET", "/tab/reports", nil).Code != http.StatusNotFound {
 		t.Error("an item whose feature is not built opens no tab")
 	}
 }
@@ -250,7 +250,7 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"contracts", "reports", "history"} {
+	for _, key := range []string{"reports", "history"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
@@ -2314,4 +2314,164 @@ func TestWeb_R170_ASuppliersChangesAreGatedAsTheAppsRoutesAre(t *testing.T) {
 	}
 	has(t, w.browser.Send("POST", "/supplier/"+supplier+"/edit", url.Values{"name": {"بعد الإغلاق"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
 	lacks(t, w.browser.Send("GET", "/details/supplier/"+supplier, nil).Body.String(), `id="suppliers.edit"`)
+}
+
+// contract makes the working item take contractor payments and gives contractor a contract on it of terms; it is the contract's id.
+func (w working) contract(contractor, terms string) string {
+	w.t.Helper()
+	w.Ask("PUT", w.path+"/items/"+w.item+"/type", `{"type":"both"}`, w.token)
+	if code, answer := w.Ask("POST", w.path+"/contracts", `{"supplierId":"`+contractor+`","itemId":"`+w.item+`",`+terms+`}`, w.token); code >= 300 {
+		w.t.Fatalf("the contract: %d %v", code, answer)
+	}
+	var id string
+	if err := w.Database.Read.QueryRow("SELECT id FROM contracts WHERE supplier_id = ?", contractor).Scan(&id); err != nil {
+		w.t.Fatal(err)
+	}
+	return id
+}
+
+// paid records a payment of amount to contractor inside contract, approved or only sent; it is the entry's id.
+func (w working) paid(contract, contractor string, amount int, approve bool) string {
+	w.t.Helper()
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + w.item + `","tableId":"` + contract + `","date":"2026-11-10","amount":` + strconv.Itoa(amount) + `,"accountId":"` +
+		w.account + `","paymentMethodId":"` + w.method + `","supplierId":"` + contractor + `","description":"","columnValues":{},"submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		w.t.Fatalf("the payment: %d %v", code, answer)
+	}
+	if approve {
+		if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+id+`"]}`, w.token); code != http.StatusOK {
+			w.t.Fatalf("approving the payment: %d %v", code, answer)
+		}
+	}
+	return id
+}
+
+func TestWeb_R170_UC020_ContractsListsEachContractsValuePaidAndRemaining(t *testing.T) {
+	w := newWorking(t)
+	w.funded(100000)
+	builder, other := w.supplier(`{"name":"مقاول أ"}`), w.supplier(`{"name":"مقاول ب"}`)
+	running := w.contract(builder, `"value":1000,"isOpenValue":false,"unitPrice":10,"quantity":100,"notes":"أعمال الأساسات"`)
+	open := w.contract(other, `"value":0,"isOpenValue":true`)
+	w.paid(running, builder, 1200, true)
+	w.paid(running, builder, 300, false)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/contracts"`)
+	list := w.browser.Send("GET", "/tab/contracts", nil).Body.String()
+	for _, part := range []string{
+		`<td id="contracts.valueOf.` + running + `" class="amount">1,000.00</td>`,
+		`<td id="contracts.paid.` + running + `" class="amount">1,200.00</td>`,
+		`<td id="contracts.remaining.` + running + `" class="amount minus">(200.00)</td>`,
+		`<span id="contracts.standingWord.` + running + `" class="chip warn">تجاوز العقد</span>`,
+		`<td id="contracts.valueOf.` + open + `" class="amount">مفتوح</td>`,
+		`<td id="contracts.remaining.` + open + `" class="amount">—</td>`,
+		`<span id="contracts.standingWord.` + open + `" class="chip">عقد مفتوح القيمة</span>`,
+		`الكل · 2`, `متجاوز · 1`, `مفتوح القيمة · 1`,
+	} {
+		has(t, list, part)
+	}
+	overrun := w.browser.Send("GET", "/tab/contracts?filter=overrun", nil).Body.String()
+	has(t, overrun, `id="contracts.row.`+running+`"`)
+	lacks(t, overrun, `id="contracts.row.`+open+`"`)
+	found := w.browser.Send("GET", "/tab/contracts?text=الأساسات", nil).Body.String()
+	lacks(t, found, `id="contracts.row.`+open+`"`)
+	has(t, w.browser.Send("GET", "/tab/contracts?text=لا+شيء", nil).Body.String(), `<p id="contracts.empty" class="empty">لا توجد عقود.</p>`)
+	panel := w.browser.Send("GET", "/details/contract/"+running, nil).Body.String()
+	for _, part := range []string{`<h3 id="contract.title">مقاول أ</h3>`, `<dd id="contract.terms">10 × 100</dd>`, `<dd id="contract.notes">أعمال الأساسات</dd>`,
+		`<p id="contract.pending" class="hint details-say">بانتظار الاعتماد 300.00 · (500.00) بعد الاعتماد</p>`,
+		`<button id="contract.report" class="quiet-button" type="button" disabled>`} {
+		has(t, panel, part)
+	}
+	has(t, w.browser.Send("GET", "/details/contract/"+open, nil).Body.String(), `<p id="contract.standing" class="hint details-foot">عقد مفتوح القيمة</p>`)
+	third := w.supplier(`{"name":"مقاول ج"}`)
+	steady := w.contract(third, `"value":5000,"isOpenValue":false,"unitPrice":25`)
+	w.paid(steady, third, 1000, true)
+	steadyPanel := w.browser.Send("GET", "/details/contract/"+steady, nil).Body.String()
+	has(t, steadyPanel, `<p id="contract.standing" class="hint details-foot">جارٍ</p>`)
+	has(t, steadyPanel, `<dd id="contract.terms">25</dd>`)
+	if code := w.browser.Send("GET", "/details/contract/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("a contract not in the project: %d", code)
+	}
+}
+
+func TestWeb_R170_UC020_NewContractEditDisableAndEnableAsTheAppsDialog(t *testing.T) {
+	w := newWorking(t)
+	builder := w.supplier(`{"name":"مقاول أ"}`)
+	w.Ask("PUT", w.path+"/items/"+w.item+"/type", `{"type":"both"}`, w.token)
+	w.home()
+	form := w.browser.Send("GET", "/details/contract/new", nil).Body.String()
+	has(t, form, `<option id="contracts.item.option.`+w.item+`" value="`+w.item+`">التسليح</option>`)
+	has(t, form, `id="contracts.contractor.option.`+builder+`"`)
+	lacks(t, w.browser.Send("GET", "/details/contract/new?contractorText=لا+أحد&value=", nil).Body.String(), `id="contracts.contractor.option.`+builder+`"`)
+	for _, typed := range []string{"12a", "0"} {
+		has(t, w.browser.Send("POST", "/contract", url.Values{"contractor": {builder}, "item": {w.item}, "value": {typed}}).Body.String(), "أدخل قيمة عقد أكبر من صفر")
+	}
+	has(t, w.browser.Send("POST", "/contract", url.Values{"contractor": {builder}, "item": {w.item}, "value": {"100"}, "quantity": {"x"}}).Body.String(),
+		"أدخل الكمية بالأرقام")
+	has(t, w.browser.Send("POST", "/contract", url.Values{"item": {w.item}, "value": {"100"}}).Body.String(), "اختر مقاولاً من الموردين.")
+	added := w.browser.Send("POST", "/contract", url.Values{"contractor": {builder}, "item": {w.item}, "value": {"5,000"}, "unitPrice": {"50"}, "quantity": {"100"}}).Body.String()
+	has(t, added, `<h3 id="contract.title">مقاول أ</h3>`)
+	has(t, added, `<dd id="contract.value" class="money">5,000.00</dd>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	var contract string
+	if err := w.Database.Read.QueryRow("SELECT id FROM contracts").Scan(&contract); err != nil {
+		t.Fatal(err)
+	}
+	edit := w.browser.Send("GET", "/details/contract/"+contract+"?asking=edit", nil).Body.String()
+	has(t, edit, `<input id="contracts.value" name="value" inputmode="decimal" value="5000">`)
+	has(t, edit, `<option id="contracts.contractor.option.none" value="">مقاول أ</option>`)
+	opened := w.browser.Send("POST", "/contract/"+contract+"/edit", url.Values{"openValue": {"true"}, "value": {""}, "notes": {"مفتوح الآن"}}).Body.String()
+	has(t, opened, `<dd id="contract.value" class="money">مفتوح</dd>`)
+	has(t, opened, `<dd id="contract.item">التسليح</dd>`)
+	w.paid(contract, builder, 100, false)
+	has(t, w.browser.Send("GET", "/details/contract/"+contract+"?asking=edit", nil).Body.String(), `<p id="contracts.parties" class="hint">مقاول أ · التسليح</p>`)
+	other := w.supplier(`{"name":"مقاول ب"}`)
+	has(t, w.browser.Send("POST", "/contract/"+contract+"/edit", url.Values{"contractor": {other}, "openValue": {"true"}, "value": {""}}).Body.String(),
+		"لهذا العقد دفعات، فلا يتغير مقاوله ولا بنده.")
+	disabled := w.browser.Send("POST", "/contract/"+contract+"/disable", nil).Body.String()
+	has(t, disabled, `<p id="contract.standing" class="hint details-foot">معطّل</p>`)
+	has(t, disabled, `id="contracts.enable"`)
+	has(t, w.browser.Send("POST", "/contract/"+contract+"/enable", nil).Body.String(), `id="contracts.disable"`)
+	for _, path := range []string{"/contract/" + contract + "/archive", "/contract/" + uuid.NewString() + "/edit"} {
+		if code := w.browser.Send("POST", path, url.Values{"value": {"1"}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+}
+
+func TestWeb_R170_AContractsChangesAreGatedAsTheAppsRoutesAre(t *testing.T) {
+	w := newWorking(t)
+	builder := w.supplier(`{"name":"مقاول أ"}`)
+	contract := w.contract(builder, `"value":1000,"isOpenValue":false`)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	has(t, browser.Send("GET", "/tab/contracts", nil).Body.String(), `<button id="contracts.add" class="primary small" type="button" disabled`)
+	lacks(t, browser.Send("GET", "/details/contract/"+contract, nil).Body.String(), `id="contracts.edit"`)
+	if code := browser.Send("GET", "/details/contract/new", nil).Code; code != http.StatusNotFound {
+		t.Errorf("New contract without ManageSettings: %d", code)
+	}
+	if code := browser.Send("POST", "/contract", url.Values{"value": {"1"}}).Code; code != http.StatusForbidden {
+		t.Errorf("adding without ManageSettings: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"POST", "/contract"}, {"POST", "/contract/" + contract + "/edit"}, {"POST", "/contract/" + contract + "/disable"},
+		{"GET", "/details/contract/" + contract}, {"GET", "/details/contract/" + contract + "?asking=edit"}, {"GET", "/details/contract/new"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"contractor": {builder}, "item": {w.item}, "value": {"200"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/contract/"+contract+"/edit", url.Values{"value": {"2000"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+	lacks(t, w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String(), `id="contracts.edit"`)
 }

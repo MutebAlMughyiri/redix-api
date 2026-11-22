@@ -1,0 +1,247 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
+)
+
+// contractsList is Contracts as the app's screen shows them (UC-020): New contract, gray with its reason for whoever may not keep the settings;
+// the filters, each with its count, and a search; then each contract - its contractor and item, value, paid, remaining and where it stands.
+templ contractsList(p page, shown contractsShown) {
+	<div class="view-head">
+		<h2 id="contracts.title">{ p.words.Of("contracts.title") }</h2>
+		<span id="contracts.actions" class="head-actions">
+			<button
+				id="contracts.add"
+				class="primary small"
+				type="button"
+				disabled?={ !p.mayKeepContracts() }
+				title={ p.words.Of("permissions.manageSettings") }
+				hx-get="/details/contract/new"
+				hx-target="[id='web.details']"
+			>{ p.words.Of("contracts.new") }</button>
+		</span>
+	</div>
+	<form
+		id="contracts.filters"
+		class="filters"
+		hx-get="/tab/contracts"
+		hx-target="[id='web.content']"
+		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+	>
+		<input id="contracts.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } value={ shown.text }/>
+		<fieldset id="contracts.filterChoice" class="picks">
+			for _, filter := range contractFilters {
+				<label id={ "contracts.filter." + filter.name } class="pick"><input id={ "contracts.filter." + filter.name + ".input" } type="radio" name="filter" value={ filter.name } checked?={ filter.name == shown.filter.name }/>{ p.words.Of(filter.word) + " · " + strconv.Itoa(shown.count(filter)) }</label>
+			}
+		</fieldset>
+	</form>
+	if len(shown.shown()) == 0 {
+		<p id="contracts.empty" class="empty">{ p.words.Of("contracts.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id="contracts.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<thead>
+					<tr>
+						<th id="contracts.head.contractor">{ p.words.Of("contracts.contractor") }</th>
+						<th id="contracts.head.item">{ p.words.Of("contracts.item") }</th>
+						<th id="contracts.head.value" class="amount">{ p.words.Of("contracts.value") }</th>
+						<th id="contracts.head.paid" class="amount">{ p.words.Of("contracts.paid") }</th>
+						<th id="contracts.head.remaining" class="amount">{ p.words.Of("contracts.remaining") }</th>
+						<th id="contracts.head.standing">{ p.words.Of("entries.status") }</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, contract := range shown.shown() {
+						<tr
+							id={ "contracts.row." + contract.ID.String() }
+							class={ templ.KV("disabled", !contract.IsActive) }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/contract/" + contract.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "contracts.name." + contract.ID.String() }>{ contract.SupplierName }</td>
+							<td id={ "contracts.item." + contract.ID.String() }>{ contract.ItemName }</td>
+							<td id={ "contracts.valueOf." + contract.ID.String() } class="amount">{ contractValue(p, contract) }</td>
+							<td id={ "contracts.paid." + contract.ID.String() } class="amount">{ statement.Money(contract.Paid.Number()) }</td>
+							<td id={ "contracts.remaining." + contract.ID.String() } class={ "amount", templ.KV("minus", contract.IsOverrun) }>{ contractRemaining(contract) }</td>
+							<td id={ "contracts.standing." + contract.ID.String() }><span id={ "contracts.standingWord." + contract.ID.String() } class={ "chip", templ.KV("warn", contract.IsOverrun) }>{ p.words.Of(contractStanding(contract)) }</span></td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// contractPanel is a contract in the details panel: its item, value, paid and remaining, what waits for approval, its unit price and quantity,
+// its notes and documents - the files stay off the web (#80 D2) -, why its change was refused; for whoever keeps the settings, Edit, and Disable
+// or Enable, as the app's card menu offers them; and its report and files, gray until Reports (redix-api #171) opens them.
+templ contractPanel(p page, contract contracts.View, refusal string) {
+	<div class="details-head">
+		<h3 id="contract.title">{ contract.SupplierName }</h3>
+		<button id="contract.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl class="facts">
+		<dt id="contract.item.label">{ p.words.Of("contracts.item") }</dt>
+		<dd id="contract.item">{ contract.ItemName }</dd>
+		<dt id="contract.value.label">{ p.words.Of("contracts.value") }</dt>
+		<dd id="contract.value" class="money">{ contractValue(p, contract) }</dd>
+		<dt id="contract.paid.label">{ p.words.Of("contracts.paid") }</dt>
+		<dd id="contract.paid" class="money">{ statement.Money(contract.Paid.Number()) }</dd>
+		<dt id="contract.remaining.label">{ p.words.Of("contracts.remaining") }</dt>
+		<dd id="contract.remaining" class={ "money", templ.KV("minus", contract.IsOverrun) }>{ contractRemaining(contract) }</dd>
+		if contractTerms(contract) != "" {
+			<dt id="contract.terms.label">{ p.words.Of("contracts.unitPrice") }</dt>
+			<dd id="contract.terms">{ contractTerms(contract) }</dd>
+		}
+		if contract.Notes != "" {
+			<dt id="contract.notes.label">{ p.words.Of("contracts.notes") }</dt>
+			<dd id="contract.notes">{ contract.Notes }</dd>
+		}
+		if len(contract.Documents) > 0 {
+			<dt id="contract.documents.label">{ p.words.Of("contracts.documents") }</dt>
+			for _, document := range contract.Documents {
+				<dd id={ "contract.document." + document.ID.String() }>{ document.FileName }</dd>
+			}
+		}
+	</dl>
+	if contract.Pending.Number() != 0 {
+		<p id="contract.pending" class="hint details-say">{ contractWaiting(p, contract) }</p>
+	}
+	<p id="contract.standing" class="hint details-foot">{ p.words.Of(contractStanding(contract)) }</p>
+	if refusal != "" {
+		<p id="contract.refusal" class="refusal details-say" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	<div id="contract.actions" class="details-actions">
+		if p.mayKeepContracts() {
+			<button id="contracts.edit" class="quiet-button" type="button" hx-get={ "/details/contract/" + contract.ID.String() + "?asking=edit" } hx-target="[id='web.details']">{ p.words.Of("contracts.edit") }</button>
+			if contract.IsActive {
+				<button id="contracts.disable" class="quiet-button" type="button" hx-post={ "/contract/" + contract.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("contracts.disable") }</button>
+			} else {
+				<button id="contracts.enable" class="quiet-button" type="button" hx-post={ "/contract/" + contract.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("contracts.enable") }</button>
+			}
+		}
+		<button id="contract.report" class="quiet-button" type="button" disabled>{ p.words.Of("reports.title") }</button>
+		<button id="contracts.file.pdf" class="quiet-button" type="button" disabled>{ p.words.Of("reports.pdf") }</button>
+		<button id="contracts.file.excel" class="quiet-button" type="button" disabled>{ p.words.Of("reports.excel") }</button>
+	</div>
+}
+
+// contractForm is New contract or Edit in the details panel, as the app's contract dialog asks it: the contractor among the suppliers its search
+// finds and the item among those taking contractor payments - for a contract a payment names, only said -, whether it is of open value, its
+// value, unit price, quantity and notes; and why it could not be kept. On Edit, an empty contractor or item keeps the contract's own.
+templ contractForm(p page, editing contracts.View, typed contractTyped, contractors []suppliers.View, items []structure.CategoryView, refusal string) {
+	<div class="details-head">
+		<h3 id="contract.title">
+			if editing.ID == uuid.Nil {
+				{ p.words.Of("contracts.new") }
+			} else {
+				{ p.words.Of("contracts.edit") }
+			}
+		</h3>
+		<button id="contract.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form
+		id="contract.form"
+		class="details-form"
+		if editing.ID == uuid.Nil {
+			hx-post="/contract"
+		} else {
+			hx-post={ "/contract/" + editing.ID.String() + "/edit" }
+		}
+		hx-target="[id='web.details']"
+	>
+		if editing.HasPayments {
+			<p id="contracts.parties" class="hint">{ parts(editing.SupplierName, editing.ItemName) }</p>
+		} else {
+			<div class="field">
+				<label id="contracts.contractor.label" for="contracts.contractor">{ p.words.Of("contracts.contractor") }</label>
+				<span id="contracts.contractorChoice" class="pair">
+					<input
+						id="contracts.contractorSearch"
+						class="search"
+						type="search"
+						name="contractorText"
+						value={ typed.contractorText }
+						placeholder={ p.words.Of("common.search") }
+						aria-label={ p.words.Of("common.search") }
+						if editing.ID == uuid.Nil {
+							hx-get="/details/contract/new"
+						} else {
+							hx-get={ "/details/contract/" + editing.ID.String() + "?asking=edit" }
+						}
+						hx-include="closest form"
+						hx-target="[id='web.details']"
+						hx-trigger="input changed delay:400ms"
+					/>
+					<select id="contracts.contractor" name="contractor">
+						<option id="contracts.contractor.option.none" value="">{ editing.SupplierName }</option>
+						for _, contractor := range contractors {
+							<option id={ "contracts.contractor.option." + contractor.ID.String() } value={ contractor.ID.String() } selected?={ contractor.ID == typed.contractor }>{ contractor.Name }</option>
+						}
+					</select>
+				</span>
+			</div>
+			<div class="field">
+				<label id="contracts.item.label" for="contracts.item">{ p.words.Of("contracts.item") }</label>
+				<select id="contracts.item" name="item">
+					<option id="contracts.item.option.none" value="">{ editing.ItemName }</option>
+					for _, category := range items {
+						<optgroup id={ "contracts.item.category." + category.ID.String() } label={ category.Name }>
+							for _, item := range category.Items {
+								<option id={ "contracts.item.option." + item.ID.String() } value={ item.ID.String() } selected?={ item.ID == typed.item }>{ item.Name }</option>
+							}
+						</optgroup>
+					}
+				</select>
+			</div>
+		}
+		<label id="contracts.openValue" class="pick"><input id="contracts.openValue.input" type="checkbox" name="openValue" value="true" checked?={ typed.openValue }/>{ p.words.Of("contracts.openValue") }</label>
+		<div class="field">
+			<label id="contracts.value.label" for="contracts.value">{ p.words.Of("contracts.contractValue") }</label>
+			<input id="contracts.value" name="value" inputmode="decimal" value={ typed.value }/>
+		</div>
+		<div class="field">
+			<label id="contracts.unitPrice.label" for="contracts.unitPrice">{ p.words.Of("contracts.unitPrice") }</label>
+			<input id="contracts.unitPrice" name="unitPrice" inputmode="decimal" value={ typed.unitPrice }/>
+		</div>
+		<div class="field">
+			<label id="contracts.quantity.label" for="contracts.quantity">{ p.words.Of("contracts.quantity") }</label>
+			<input id="contracts.quantity" name="quantity" inputmode="decimal" value={ typed.quantity }/>
+		</div>
+		<div class="field">
+			<label id="contracts.notes.label" for="contracts.notes">{ p.words.Of("contracts.notes") }</label>
+			<textarea id="contracts.notes" name="notes" rows="3">{ typed.notes }</textarea>
+		</div>
+		if refusal != "" {
+			<p id="contract.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="contract.formActions" class="details-actions">
+			<button id="contract.save" class="primary small" type="submit">
+				if editing.ID == uuid.Nil {
+					{ p.words.Of("contracts.new") }
+				} else {
+					{ p.words.Of("contracts.save") }
+				}
+			</button>
+		</span>
+	</form>
+}
+
+// contractsBeside is Contracts again, carried out of band beside the panel, once a contract was added or changed.
+templ contractsBeside(p page, shown contractsShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@contractsList(p, shown)
+	</div>
+}

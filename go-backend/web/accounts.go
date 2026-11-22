@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -416,7 +415,7 @@ func (s site) countOf(r *http.Request, p page, query url.Values) (count, error) 
 		case query.Has(key):
 			shown.typed[balance.AccountID] = query.Get(key)
 		case balance.WasChecked:
-			shown.typed[balance.AccountID] = strings.TrimRight(strings.TrimRight(balance.ActualBalance.Number().String(), "0"), ".")
+			shown.typed[balance.AccountID] = balance.ActualBalance.Number().Plain()
 		}
 	}
 	return shown, err

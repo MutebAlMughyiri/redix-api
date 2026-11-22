@@ -60,6 +60,23 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A copied project starts with no contracts (AC-05.2) | `structure.Copy` copies only structure | `ACopiedProjectStartsWithNoContracts` |
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 
+## On the web: Contracts (redix-api #170)
+
+The web's Contracts is the app's screen in the shell: every contract, disabled ones included, in the order added, from `contracts.List`, the function `GET /projects/{id}/contracts` calls too, everyone who reads the project seeing them. Each row holds the contractor, the item, the value - open for an open-value contract -, what was paid and what remains - nothing for an open-value contract, in brackets once overrun -, and where it stands, as the app's chip says it: disabled, overrun, open value, not started or running. The filters - all, overrun, open value - each say how many they keep, and the search finds a contractor, an item, the notes or the value, as the app's does. A row opens the contract in the details panel with its terms, its notes, its documents by name - the files stay off the web (#80 D2) - and what waits for approval with what will remain once it is approved. Whoever manages the project's settings, in a project not finished, adds a contract from the head - New contract stands gray with its reason for anyone else - and amends, disables or enables one in the panel, as the app's dialog and card menu do: the contractor among the suppliers the search finds (`suppliers.Search`), the item among those taking contractor payments (`structure.OfferedOf`), open value, the value, unit price, quantity and notes; a contract a payment names only says its contractor and item. A figure that is no number is refused before sending, as the app's dialog refuses it; the rest are `contracts.Add`, `contracts.Amend` and `contracts.Activate`, the rules `POST`, `PUT …/{contractId}` and `…/disable|enable` call too. The contract's report and its PDF and Excel stand gray until Reports (redix-api #171) opens them. Its pages are in `go-backend/web` (`contracts.go`, `contracts.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/contracts?filter=&text=` | Contracts, filtered and searched | `200` the tab's content |
+| `GET /details/contract/{id}` | A contract in the details panel; `?asking=edit` Edit's form, drawn again as its contractor search changes | `200` the panel; `404` for a contract the project does not hold |
+| `GET /details/contract/new` | New contract's form in the details panel, drawn again as its contractor search changes | `200` the form; `404` without ManageSettings |
+| `POST /contract`, `POST /contract/{id}/edit`, `POST /contract/{id}/disable`, `POST /contract/{id}/enable` | Keeps the form (`contractor`, `item`, `openValue`, `value`, `unitPrice`, `quantity`, `notes`; an empty contractor or item keeps the contract's own), or disables or enables the contract | `200` the panel showing the contract, Contracts beside it; or the form or the panel saying why not; `403` without ManageSettings; `404` for an action there is none of |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Contracts lists each contract's value, paid and remaining, an overrun in brackets, open value as open; the filters count and keep as the app's; the search finds contractor, item, notes or value; the panel says what waits and what will remain (BR-04, BR-07) | `contracts.List`, `web.contractStanding`, `web.contractWaiting`, `web.searchHolds` | `TestWeb_R170_UC020_ContractsListsEachContractsValuePaidAndRemaining` |
+| New contract, Edit, Disable and Enable as the app's: a value above zero unless open, figures that are numbers with at most two decimals, an active supplier as contractor; contractor and item fixed once a payment names the contract | `web.contractTyped.terms`, `contracts.Add`, `contracts.Amend`, `contracts.Activate` | `TestWeb_R170_UC020_NewContractEditDisableAndEnableAsTheAppsDialog` |
+| A contract's changes need ManageSettings; a finished project changes nothing (AC-04.1); a failing database answers 500 | `web.site.keepContract` | `TestWeb_R170_AContractsChangesAreGatedAsTheAppsRoutesAre` |
+
 ## Left to later use cases
 
 | What | Use case |

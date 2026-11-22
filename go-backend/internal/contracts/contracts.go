@@ -341,56 +341,71 @@ func (s Routes) amend(w http.ResponseWriter, r *http.Request, caller access.Call
 		return
 	}
 	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		if err := refusalOfDocuments(c, request.AttachmentIDs); err != nil {
-			return err
-		}
-		before, err := changes.Found(c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: web.ID(r, "contractId"), ProjectID: c.ProjectID}))
+		return Amend(c, web.ID(r, "contractId"), request.SupplierID, request.ItemID, request.Terms)
+	})
+}
+
+// Amend gives the contract contractID of the change's project terms, adding to its documents, and supplierID as its contractor and itemID as its
+// item - uuid.Nil keeping either -, as amend does: the rule both doors call, the app's route and the web's Contracts (redix-api #170). Refused as
+// Terms.refusal and refusalOfDocuments say (400), notFound (404) for a contract the project does not hold, contractHasPayments (409) for a new
+// contractor or item once a payment names it, then as refusalOfParties says.
+func Amend(c changes.Change, contractID, supplierID, itemID uuid.UUID, terms Terms) error {
+	if refused := terms.refusal(); refused != "" {
+		return changes.Refuse(http.StatusBadRequest, refused)
+	}
+	if err := refusalOfDocuments(c, terms.AttachmentIDs); err != nil {
+		return err
+	}
+	before, err := changes.Found(c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: contractID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
+	}
+	after := terms.into(before)
+	if supplierID != uuid.Nil {
+		after.SupplierID = supplierID
+	}
+	if itemID != uuid.Nil {
+		after.ItemID = itemID
+	}
+	if after.SupplierID != before.SupplierID || after.ItemID != before.ItemID {
+		withPayments, err := c.Q.ContractsWithPayments(c.Ctx, c.ProjectID)
 		if err != nil {
 			return err
 		}
-		after := request.into(before)
-		if request.SupplierID != uuid.Nil {
-			after.SupplierID = request.SupplierID
+		if slices.Contains(withPayments, before.ID) {
+			return changes.Refuse(http.StatusConflict, "contractHasPayments")
 		}
-		if request.ItemID != uuid.Nil {
-			after.ItemID = request.ItemID
+		if err := refusalOfParties(c, after.SupplierID, after.ItemID); err != nil {
+			return err
 		}
-		if after.SupplierID != before.SupplierID || after.ItemID != before.ItemID {
-			withPayments, err := c.Q.ContractsWithPayments(c.Ctx, c.ProjectID)
-			if err != nil {
-				return err
-			}
-			if slices.Contains(withPayments, before.ID) {
-				return changes.Refuse(http.StatusConflict, "contractHasPayments")
-			}
-			if err := refusalOfParties(c, after.SupplierID, after.ItemID); err != nil {
-				return err
-			}
+	}
+	if after.ItemID != before.ItemID {
+		if after.SortOrder, err = structure.NextTablePlace(c.Ctx, c.Q, after.ItemID); err != nil {
+			return err
 		}
-		if after.ItemID != before.ItemID {
-			if after.SortOrder, err = structure.NextTablePlace(c.Ctx, c.Q, after.ItemID); err != nil {
-				return err
-			}
-		}
-		return keep(c, history.Update, before, after, request.AttachmentIDs)
-	})
+	}
+	return keep(c, history.Update, before, after, terms.AttachmentIDs)
 }
 
 // activate disables a contract, so no new payment names it and it stays in the reports, or brings it back.
 func (s Routes) activate(active bool) access.Handler {
+	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+		s.writer.Done(w, r, caller, func(c changes.Change) error { return Activate(c, web.ID(r, "contractId"), active) })
+	}
+}
+
+// Activate disables the contract contractID of the change's project, or brings it back, as activate does: the rule both doors call, the app's
+// routes and the web's Contracts (redix-api #170). notFound (404) for a contract the project does not hold.
+func Activate(c changes.Change, contractID uuid.UUID, active bool) error {
 	action := history.Disable
 	if active {
 		action = history.Enable
 	}
-	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		s.writer.Done(w, r, caller, func(c changes.Change) error {
-			before, err := changes.Found(c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: web.ID(r, "contractId"), ProjectID: c.ProjectID}))
-			if err != nil {
-				return err
-			}
-			after := before
-			after.IsActive = active
-			return keep(c, action, before, after, nil)
-		})
+	before, err := changes.Found(c.Q.ContractOf(c.Ctx, store.ContractOfParams{ID: contractID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
 	}
+	after := before
+	after.IsActive = active
+	return keep(c, action, before, after, nil)
 }
