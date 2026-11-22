@@ -135,7 +135,8 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-inline-end: 6px; }
 .status .account { justify-self: end; anchor-name: --account; font: inherit; color: inherit; background: transparent; border: 0; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
 .status .account:hover { background: var(--select); color: var(--text); } .status .account:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.account-menu { position-anchor: --account; position-area: block-start span-inline-start; margin: 0 0 4px; min-width: 200px; }
+/* My account opens above the person's name; more specific than .menu-pop, which anchors to the project button and stands later in this sheet. */
+.menu-pop.account-menu { position-anchor: --account; position-area: block-start span-inline-start; margin: 0 0 4px; min-width: 200px; }
 
 /* Signing in: the frame's other parts arrive with a little motion, once. */
 .shell.arriving .side { animation: fade 260ms both; }
