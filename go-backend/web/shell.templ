@@ -12,7 +12,7 @@ const htmxConfig = `{"responseHandling":[{"code":"204","swap":false},{"code":"[2
 
 // document is the whole page: the shell in its language, the stylesheet, and htmx, the one script (#80 R19). Its keydown is the one handler of the
 // shell's own keys: Alt+1 folds and unfolds the side menu from anywhere, as its arrows do, by the key's place, so an Arabic keyboard's 1 counts
-// (#161 R7); Esc hides the details panel from anywhere, a menu open aside, and gives the row it showed the focus again (redix-api #166).
+// (#161 R7); Alt+W closes the tab in front, by its place too (findings row 308); Esc hides the details panel from anywhere, a menu open aside, and gives the row it showed the focus again (redix-api #166).
 templ document(p page) {
 	<!DOCTYPE html>
 	<html
@@ -80,13 +80,10 @@ templ topBar(p page) {
 		}
 		if p.person != "" {
 			<div class="end">
-				<span id="web.person" class="who">{ p.person }</span>
 				<button id="web.notifications" class="quiet-button" type="button" hx-get="/tab/notifications" hx-target="[id='web.content']">
 					{ p.words.Of("notifications.title") }
 					<span id="web.notifications.count" class="chip" hidden hx-get="/notifications/count" hx-trigger="load" hx-target="this" hx-swap="outerHTML"></span>
 				</button>
-				<button id="web.myHistory" class="quiet-button" type="button" hx-get="/tab/myHistory" hx-target="[id='web.content']">{ p.words.Of("history.myTitle") }</button>
-				<button id="myAccount.signOut" class="signout" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
 			</div>
 		}
 	</header>
@@ -115,29 +112,43 @@ templ side(p page) {
 	<aside id="web.sideMenu" class="side" aria-label={ p.words.Of("web.sideMenu") }>
 		<div class="side-head">
 			<span id="web.sideProject" class="side-project">{ p.project.Name }</span>
-			<label id="web.fold" class="fold" for="web.view.sideMenu" data-tip={ p.shortcut("web.collapse") }>{ p.foldArrow() }</label>
+			<label id="web.fold" class="fold" for="web.view.sideMenu" data-tip={ p.shortcut("web.collapse", "Alt+1") }>{ p.foldArrow() }</label>
 		</div>
 		@tree(p)
 	</aside>
 }
 
-// tree is the side menu's items: one whose feature is built opens its tab, one that hands a file over hands it, the others stand gray (#161 R15).
+// tree is the side menu's items, those used every day and then More, folded until it is clicked, over those used now and then (findings row
+// 307): one whose feature is built opens its tab, one that hands a file over hands it, the others stand gray (#161 R15).
 templ tree(p page) {
 	<ul id="web.tree" class="tree">
-		for _, item := range sideMenu {
-			if p.offers(item.name) {
-				<li id={ "web.tree." + item.name }>
-					if path, hands := handsOver[item.name]; hands {
-						<a id={ "web.item." + item.name } href={ templ.SafeURL(path) } download>{ p.words.Of(item.title) }</a>
-					} else if item.built() {
+		@treeItems(p, dailyMenu)
+		<li id="web.tree.more">
+			<details id="web.more" class="more" open?={ p.foldedOpen() }>
+				<summary id="web.more.toggle">{ p.words.Of("history.more") }</summary>
+				<ul id="web.moreItems" class="tree">
+					@treeItems(p, foldedMenu)
+				</ul>
+			</details>
+		</li>
+	</ul>
+}
+
+// treeItems are items of the side menu, those p's caller may use.
+templ treeItems(p page, items []menuItem) {
+	for _, item := range items {
+		if p.offers(item.name) {
+			<li id={ "web.tree." + item.name }>
+				if path, hands := handsOver[item.name]; hands {
+					<a id={ "web.item." + item.name } href={ templ.SafeURL(path) } download>{ p.words.Of(item.title) }</a>
+				} else if item.built() {
 					@itemLink(p, item, false)
 				} else {
-						<span id={ "web.item." + item.name } class="parked" aria-disabled="true">{ p.words.Of(item.title) }</span>
-					}
-				</li>
-			}
+					<span id={ "web.item." + item.name } class="parked" aria-disabled="true">{ p.words.Of(item.title) }</span>
+				}
+			</li>
 		}
-	</ul>
+	}
 }
 
 // itemLink is a built item's link, marked while its tab is in front.
@@ -155,16 +166,15 @@ templ itemLinks(p page) {
 }
 
 // tabsRow is the arrow that brings the side menu back, the open tabs, and the View menu, whose ticks the whole shell's look follows (#161 R9).
+// Its saves queue, the last one sent after the one on its way, so lines dragged quickly over a slow network keep the width they were left at.
 templ tabsRow(p page) {
 	<div class="tabs-row">
-		<label id="web.unfold" class="unfold" for="web.view.sideMenu" data-tip={ p.shortcut("web.showMenu") }>{ p.unfoldArrow() }</label>
+		<label id="web.unfold" class="unfold" for="web.view.sideMenu" data-tip={ p.shortcut("web.showMenu", "Alt+1") }>{ p.unfoldArrow() }</label>
 		@tabs(p, false)
 		<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu">{ p.words.Of("web.view") }</button>
-		<form id="web.viewMenu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none">
+		<form id="web.viewMenu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none" hx-sync="this:queue last">
 			<label id="web.view.topBar.label"><input type="checkbox" id="web.view.topBar" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
-			<label id="web.view.statusBar.label"><input type="checkbox" id="web.view.statusBar" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
 			<label id="web.view.sideMenu.label"><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd id="web.view.sideMenu.shortcut">Alt+1</kbd></label>
-			<input type="checkbox" id="web.view.summary" name="summary" checked?={ p.view.Summary } hidden/>
 			<input type="hidden" id="web.view.width" name="width" value={ strconv.Itoa(p.view.Width) }/>
 			<input type="hidden" id="web.view.detailsWidth" name="details" value={ strconv.Itoa(p.view.DetailsWidth) }/>
 		</form>
@@ -177,7 +187,7 @@ templ tabs(p page, outOfBand bool) {
 		for _, item := range p.openTabs() {
 			<div id={ "web.tab." + item.name } class="tab" role="tab" aria-selected={ strconv.FormatBool(item.name == p.view.Active) }>
 				<button id={ "web.tab." + item.name + ".title" } class="tab-title" type="button" hx-get={ "/tab/" + item.name } hx-target="[id='web.content']">{ p.words.Of(item.title) }</button>
-				<button id={ "web.tab." + item.name + ".close" } class="close" type="button" hx-delete={ "/tab/" + item.name } hx-target="[id='web.content']" aria-label={ p.words.Of("web.close") }>✕</button>
+				<button id={ "web.tab." + item.name + ".close" } class="close" type="button" hx-delete={ "/tab/" + item.name } hx-target="[id='web.content']" aria-label={ p.words.Of("web.close") } { p.closeTip(item.name)... }>✕</button>
 			</div>
 		}
 	</div>
@@ -211,11 +221,21 @@ templ detailsPanel(outOfBand bool) {
 	</aside>
 }
 
-// statusBar is the host this page came from and the web's version (#161 R2).
+// statusBar is the web's version at its start, the host this page came from in its middle, and, for whoever is signed in, My account at its end:
+// their name, opening My history, Shared settings and Sign out (#161 R2; the owner, 23 Nov 2026, findings row 306). It is always shown, so Sign
+// out always can be reached.
 templ statusBar(p page) {
 	<footer id="web.statusBar" class="status">
+		<span id="appVersion.line" class="version">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></span>
 		<span id="web.host" class="host"><span id="web.host.dot" class="dot" aria-hidden="true"></span>{ p.host }</span>
-		<span id="appVersion.line" class="end">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></span>
+		if p.person != "" {
+			<button id="web.account" class="account" type="button" popovertarget="web.accountMenu">{ p.person }</button>
+			<div id="web.accountMenu" class="menu-pop account-menu" popover>
+				<button id="web.myHistory" class="choice" type="button" hx-get="/tab/myHistory" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">{ p.words.Of("history.myTitle") }</button>
+				<button id="web.sharedSettings" class="choice" type="button" hx-get="/tab/settings" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">{ p.words.Of("sharedSettings.title") }</button>
+				<button id="myAccount.signOut" class="choice" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
+			</div>
+		}
 	</footer>
 }
 

@@ -158,7 +158,6 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	lacks(t, body, `id="shell"`)
 	has(t, body, `<h2 id="sharedSettings.title">الإعدادات</h2>`)
 	has(t, body, `id="web.tabs" class="tabs" role="tablist" hx-swap-oob="true"`)
-	has(t, body, `aria-current="true" hx-swap-oob="true">الإعدادات</a>`)
 	lacks(t, body, `class="tree"`)
 	has(t, browser.Send("DELETE", "/tab/settings", nil).Body.String(), `id="projects.title"`)
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
@@ -189,7 +188,7 @@ func TestWeb_R9_R18_TheViewMenuHidesTheBarsAndTheServerDrawsThemHidden(t *testin
 	}
 	body := browser.Send("GET", "/", nil).Body.String()
 	has(t, body, `<input type="checkbox" id="web.view.topBar" name="top">`)
-	has(t, body, `<input type="checkbox" id="web.view.statusBar" name="status">`)
+	lacks(t, body, `id="web.view.statusBar"`)
 	has(t, body, `<input type="checkbox" id="web.view.sideMenu" name="side" checked>`)
 	has(t, body, `style="--side-w: 300px; --details-w: 320px;"`)
 	browser.Send("POST", "/view", url.Values{"top": {"on"}, "width": {"9000"}})
@@ -440,7 +439,7 @@ func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *tes
 
 func TestWeb_R2_TheVersionLineCarriesTheBuildKeptWholeInArabic(t *testing.T) {
 	body := testapi.New(t).Browser().Send("GET", "/", nil).Body.String()
-	has(t, body, `<span id="appVersion.line" class="end">الإصدار 1.0.0<bdi></bdi></span>`)
+	has(t, body, `<span id="appVersion.line" class="version">الإصدار 1.0.0<bdi></bdi></span>`)
 }
 
 // withEmail gives name an account with address as its email, as confirming one would, and is their username.
@@ -633,7 +632,7 @@ func TestWeb_R165_AC37_1_TheDefaultProjectOpensStraightIntoItsHome(t *testing.T)
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<h2 id="home.title">مشروع A</h2>`)
 }
 
-func TestWeb_R165_UC049_TheSummaryAndTheNewestEntriesAreTheApps(t *testing.T) {
+func TestWeb_R165_UC049_TheSummaryIsTheApps(t *testing.T) {
 	w := newWorking(t)
 	approved, waiting := w.sent(100), w.sent(50)
 	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+approved+`"]}`, w.token); code != http.StatusOK {
@@ -647,17 +646,14 @@ func TestWeb_R165_UC049_TheSummaryAndTheNewestEntriesAreTheApps(t *testing.T) {
 	has(t, home, `<span id="summary.surplus" class="surplus">(100.00) <small id="summary.surplus.currency">ر.س</small></span>`)
 	has(t, home, `<b id="summary.expenses">100.00</b>`)
 	has(t, home, `<strong id="summary.pendingCount">بانتظار اعتمادك: 1</strong>`)
-	has(t, home, `id="entries.row.`+approved+`"`)
-	has(t, home, `id="entries.row.`+waiting+`"`)
-	has(t, home, `class="state approved">معتمد</span>`)
-	has(t, home, `class="state pendingApproval">بانتظار الاعتماد</span>`)
-	has(t, home, `class="amount">50.00</td>`)
+	entries := w.browser.Send("GET", "/tab/entries", nil).Body.String()
+	has(t, entries, `id="entries.row.`+approved+`"`)
+	has(t, entries, `id="entries.row.`+waiting+`"`)
 	has(t, home, `id="home.addEntry.`+w.id+`" class="primary small" type="button" title="تسجيل المصروفات" hx-get="/tab/addEntry"`)
 }
 
-func TestWeb_R165_AnEmptyProjectSaysSoAndShowsNoWaiting(t *testing.T) {
+func TestWeb_R165_AnEmptyProjectShowsNoWaiting(t *testing.T) {
 	home := newWorking(t).home()
-	has(t, home, "لا قيود بعد.")
 	lacks(t, home, `id="summary.pending"`)
 	has(t, home, `<span id="summary.surplus" class="surplus">0.00 <small id="summary.surplus.currency">ر.س</small></span>`)
 }
@@ -703,13 +699,49 @@ func TestWeb_R165_AProjectOneMayNotOpenIsNotChosen(t *testing.T) {
 	}
 }
 
-func TestWeb_R165_HideDetailsIsKeptWithTheLook(t *testing.T) {
+// The owner's web home (23 Nov 2026, findings row 306): the summary always open, with no Hide details, and no entries, which Entries lists; Add
+// entry stays for whoever may enter expenses.
+func TestWeb_R306_TheHomeShowsTheSummaryAlwaysAndListsNoEntries(t *testing.T) {
 	w := newWorking(t)
-	has(t, w.home(), `<input type="checkbox" id="web.view.summary" name="summary" checked hidden>`)
-	w.browser.Send("POST", "/view", url.Values{"top": {"on"}, "status": {"on"}, "side": {"on"}, "width": {"248"}})
-	page := w.browser.Send("GET", "/", nil).Body.String()
-	has(t, page, `<input type="checkbox" id="web.view.summary" name="summary" hidden>`)
-	has(t, page, `<label id="home.collapse" class="quiet-button" for="web.view.summary">`)
+	w.sent(100)
+	home := w.home()
+	has(t, home, `<section id="summary.card" class="card summary">`)
+	has(t, home, `<button id="home.addEntry.`+w.id+`" class="primary small" type="button" title="`)
+	lacks(t, home, `id="home.addEntry.`+w.id+`" class="primary small" type="button" disabled`)
+	for _, gone := range []string{`id="home.collapse"`, `id="web.view.summary"`, `<tr id="entries.row.`, `id="home.entriesHeading.`, `id="home.moreEntries.`} {
+		lacks(t, home, gone)
+	}
+	has(t, w.browser.Send("GET", "/tab/entries", nil).Body.String(), `<tr id="entries.row.`)
+}
+
+// The status bar holds the web's version at its start, the host in its middle and My account at its end, which opens My history, Shared
+// settings and Sign out; Shared settings leaves the side menu and My history and Sign out the top bar; the status bar is always shown, so
+// Sign out always can be reached, whatever an older View menu kept (findings row 306).
+func TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut(t *testing.T) {
+	w := newWorking(t)
+	page := w.home()
+	version, host, account := strings.Index(page, `id="appVersion.line"`), strings.Index(page, `id="web.host"`), strings.Index(page, `id="web.account"`)
+	if version < 0 || host < version || account < host {
+		t.Errorf("the version, then the host, then My account: %d, %d, %d", version, host, account)
+	}
+	has(t, page, `<button id="web.account" class="account" type="button" popovertarget="web.accountMenu">User A</button>`)
+	has(t, page, `<div id="web.accountMenu" class="menu-pop account-menu" popover>`)
+	has(t, page, `<button id="web.sharedSettings" class="choice" type="button" hx-get="/tab/settings" hx-target="[id='web.content']"`)
+	has(t, page, `<button id="myAccount.signOut" class="choice" type="button" hx-post="/sign-out"`)
+	top := page[strings.Index(page, `id="web.topBar"`):strings.Index(page, `</header>`)]
+	for _, gone := range []string{`id="web.person"`, `id="web.myHistory"`, `id="myAccount.signOut"`} {
+		lacks(t, top, gone)
+	}
+	has(t, top, `id="web.notifications"`)
+	lacks(t, page, `id="web.item.settings"`)
+	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `<h2 id="sharedSettings.title">`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `id="web.tab.settings"`)
+	kept := "redix_access=" + w.browser.Cookie("redix_access") + "; redix_refresh=" + w.browser.Cookie("redix_refresh") +
+		"; redix_project=" + w.browser.Cookie("redix_project") + "; redix_view=top=1&status=0&side=1&summary=0&width=248"
+	older := w.browser.Send("GET", "/", nil, "Cookie", kept).Body.String()
+	has(t, older, `<footer id="web.statusBar" class="status">`)
+	has(t, older, `<section id="summary.card" class="card summary">`)
+	lacks(t, w.Browser().Send("GET", "/", nil).Body.String(), `id="web.account"`)
 }
 
 func TestWeb_R165_TheHomeAnswersAFailingDatabaseWith500(t *testing.T) {
@@ -2861,7 +2893,7 @@ func TestWeb_R172_UC069_TheProjectHistoryTellsEachLineAsTheAppsDoes(t *testing.T
 func TestWeb_R172_UC069_MyHistoryTellsEveryLineOfMyOwnLogin(t *testing.T) {
 	w := newWorking(t)
 	w.home()
-	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<button id="web.myHistory" class="quiet-button" type="button" hx-get="/tab/myHistory"`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<button id="web.myHistory" class="choice" type="button" hx-get="/tab/myHistory"`)
 	mine := w.browser.Send("GET", "/tab/myHistory", nil).Body.String()
 	has(t, mine, `<h2 id="myHistory.title">سجلي</h2>`)
 	has(t, mine, `تسجيل الدخول`)
@@ -4086,7 +4118,7 @@ func TestWeb_R175_SettingsAsTheAppsScreen(t *testing.T) {
 	has(t, settings, `<button id="sharedSettings.switchProject" class="quiet-button" type="button" popovertarget="web.projects">`)
 	has(t, settings, `id="myAccount.language"`)
 	has(t, settings, `<a id="sharedSettings.theme.system" href="/theme/system" aria-current="true">`)
-	has(t, settings, `<option id="sharedSettings.entriesShownOption.5" value="5" selected>`)
+	lacks(t, settings, `id="sharedSettings.entriesShown"`)
 	has(t, settings, `hx-get="/tab/changePassword"`)
 	has(t, settings, `<a id="legal.privacy" href="/privacy" target="_blank" rel="noopener">`)
 	has(t, settings, `id="sharedSettings.version"`)
@@ -4105,34 +4137,6 @@ func TestWeb_R175_SettingsAsTheAppsScreen(t *testing.T) {
 	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `<a id="sharedSettings.theme.dark" href="/theme/dark" aria-current="true">`)
 	w.browser.Send("GET", "/theme/system", nil)
 	lacks(t, w.browser.Send("GET", "/", nil).Body.String(), `data-theme=`)
-	if code := w.browser.Send("POST", "/entries-shown", url.Values{"count": {"99"}}).Code; code != http.StatusNotFound {
-		t.Errorf("a count Settings does not offer: %d", code)
-	}
-	has(t, w.browser.Send("POST", "/entries-shown", url.Values{"count": {"6"}}).Body.String(), `<option id="sharedSettings.entriesShownOption.6" value="6" selected>`)
-}
-
-func TestWeb_R165_R175_TheHomeListsTheEntriesShownAndShowMoreAddsAsMany(t *testing.T) {
-	w := newWorking(t)
-	for range 7 {
-		w.sent(100)
-	}
-	w.home()
-	first := w.browser.Send("GET", "/tab/home", nil).Body.String()
-	if rows := strings.Count(first, `<tr id="entries.row.`); rows != 5 {
-		t.Errorf("the home lists the app's first choice, 5: %d", rows)
-	}
-	has(t, first, `<button id="home.moreEntries.`+w.id+`" class="quiet-button more" type="button" hx-get="/tab/home?pages=2" hx-target="[id='web.content']">`)
-	has(t, first, `<button id="home.addEntry.`+w.id+`" class="primary small" type="button" title="`)
-	lacks(t, first, `id="home.addEntry.`+w.id+`" class="primary small" type="button" disabled`)
-	second := w.browser.Send("GET", "/tab/home?pages=2", nil).Body.String()
-	if rows := strings.Count(second, `<tr id="entries.row.`); rows != 7 {
-		t.Errorf("Show more adds as many again: %d", rows)
-	}
-	lacks(t, second, `id="home.moreEntries.`)
-	w.browser.Send("POST", "/entries-shown", url.Values{"count": {"6"}})
-	if rows := strings.Count(w.browser.Send("GET", "/tab/home", nil).Body.String(), `<tr id="entries.row.`); rows != 6 {
-		t.Errorf("the home lists the count Settings chose: %d", rows)
-	}
 }
 
 func TestWeb_R175_UC010_MyEmailIsConfirmedWithTheEmailedCodeAsTheAppsDialogs(t *testing.T) {
@@ -4252,7 +4256,7 @@ func TestWeb_R174_UC012_TablesNameAContractsAndAPartnersKindAsTheApps(t *testing
 func TestWeb_R175_SettingsFormsNeedASessionAndAnswerAFailingDatabase(t *testing.T) {
 	w := newWorking(t)
 	outside := w.Browser()
-	for _, ask := range []struct{ method, path string }{{"GET", "/details/my-email"}, {"POST", "/my-email"}, {"POST", "/my-email/confirm"}, {"POST", "/entries-shown"},
+	for _, ask := range []struct{ method, path string }{{"GET", "/details/my-email"}, {"POST", "/my-email"}, {"POST", "/my-email/confirm"},
 		{"GET", "/details/user/existing"}} {
 		has(t, outside.Send(ask.method, ask.path, url.Values{"count": {"6"}}).Body.String(), `id="signIn.username"`)
 	}
@@ -4261,7 +4265,7 @@ func TestWeb_R175_SettingsFormsNeedASessionAndAnswerAFailingDatabase(t *testing.
 		t.Errorf("Add an existing user without ManageUsers: %d", code)
 	}
 	w.home()
-	for _, ask := range []struct{ method, path string }{{"POST", "/entries-shown"}, {"GET", "/details/my-email"}, {"GET", "/details/user/existing"}} {
+	for _, ask := range []struct{ method, path string }{{"GET", "/details/my-email"}, {"GET", "/details/user/existing"}} {
 		for n := int64(1); ; n++ {
 			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"count": {"6"}})
 			if !failed {
@@ -4663,4 +4667,31 @@ func TestWeb_R175_D3_AddEntryNamesTheFileAsTheAppsSectionDoesForEachTable(t *tes
 	for table, word := range map[string]string{w.item + ":" + contract: "سند الاستلام أو إيصال التحويل", capital + ":" + partner: "صورة أو PDF للإيصال"} {
 		has(t, w.browser.Send("GET", "/tab/addEntry?table="+url.QueryEscape(table), nil).Body.String(), `<label id="addEntry.file.label" for="addEntry.file">`+word+`</label>`)
 	}
+}
+
+// The side menu's items used now and then fold under More, closed until it is clicked, and open with the page when the tab in front is one of
+// them (the owner, 23 Nov 2026, findings row 307).
+func TestWeb_R307_TheItemsUsedNowAndThenFoldUnderMore(t *testing.T) {
+	w := newWorking(t)
+	page := w.home()
+	has(t, page, `<li id="web.tree.more"><details id="web.more" class="more"><summary id="web.more.toggle">المزيد</summary><ul id="web.moreItems" class="tree">`)
+	more := page[strings.Index(page, `id="web.more"`):]
+	more = more[:strings.Index(more, `</details>`)]
+	for _, folded := range []string{"requests", "categories", "paymentMethods", "loadFile", "archive", "retrieve", "projectInfo", "myPermissions", "documents"} {
+		has(t, more, `id="web.item.`+folded+`"`)
+	}
+	lacks(t, more, `id="web.item.entries"`)
+	w.browser.Send("GET", "/tab/documents", nil)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<details id="web.more" class="more" open>`)
+}
+
+// Alt+W closes the tab in front from anywhere, by the key's place, and the front tab's close button names it (findings row 308).
+func TestWeb_R308_AltWClosesTheTabInFront(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	w.browser.Send("GET", "/tab/entries", nil)
+	page := w.browser.Send("GET", "/", nil).Body.String()
+	has(t, page, `event.altKey &amp;&amp; event.code === &#39;KeyW&#39;`)
+	has(t, page, `<button id="web.tab.entries.close" class="close" type="button" hx-delete="/tab/entries" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق `+"⁨(Alt+W)⁩"+`">`)
+	lacks(t, page, `<button id="web.tab.home.close" class="close" type="button" hx-delete="/tab/home" hx-target="[id='web.content']" aria-label="إغلاق" data-tip=`)
 }

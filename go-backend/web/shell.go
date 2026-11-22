@@ -85,12 +85,11 @@ func (s site) turnSaying(w http.ResponseWriter, r *http.Request, change func(vie
 	draw(w, r, http.StatusOK, p.content, tabs(p, true), itemLinks(p), detailsPanel(true))
 }
 
-// keepView keeps what the View menu, the fold arrows and the two lines chose: the bars, the side menu, its width and the details panel's (#161
-// R9, R10, R18, findings row 304). The shell already shows the choice; nothing is drawn.
+// keepView keeps what the View menu, the fold arrows and the two lines chose: the top bar, the side menu, its width and the details panel's (#161
+// R9, R10, R18, findings rows 304, 306). The shell already shows the choice; nothing is drawn.
 func (s site) keepView(w http.ResponseWriter, r *http.Request) {
 	v := viewOf(r)
-	v.Top, v.Status, v.Side = r.PostFormValue("top") == "on", r.PostFormValue("status") == "on", r.PostFormValue("side") == "on"
-	v.Summary = r.PostFormValue("summary") == "on"
+	v.Top, v.Side = r.PostFormValue("top") == "on", r.PostFormValue("side") == "on"
 	v.Width = sized(r.PostFormValue("width"), v.Width, narrowest, widest)
 	v.DetailsWidth = sized(r.PostFormValue("details"), v.DetailsWidth, detailsNarrowest, detailsWidest)
 	v.keepLook(w)

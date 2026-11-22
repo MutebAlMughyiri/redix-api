@@ -15,20 +15,16 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
 
-// home is the app's home in the content area (UC-049, redix-api #165): the project's name and the caller's role, the summary - folded by Hide
-// details, kept with the shell's look - the custody they hold, and the newest entries; Add entry for whoever may enter expenses, and Show more
-// while more may follow, as the app's.
-templ home(p page, summary reports.Summary, custody []accounts.View, newest []entries.Row, more string) {
+// home is the project's home in the content area (UC-049, redix-api #165): the project's name and the caller's role, the summary, always open,
+// and the custody they hold; Add entry for whoever may enter expenses. The owner's web home (23 Nov 2026, findings row 306): no Hide details
+// and no newest entries, which Entries lists; the app's home keeps both.
+templ home(p page, summary reports.Summary, custody []accounts.View) {
 	<div class="home-head">
 		<h2 id="home.title">{ p.project.Name }</h2>
 		if p.project.RoleName != "" {
 			<span id="home.roleName" class="role">{ p.project.RoleName }</span>
 		}
 		<span id="home.headEnd" class="end">
-			<label id="home.collapse" class="quiet-button" for="web.view.summary">
-				<span id="home.hideDetails" class="when-shown">{ p.words.Of("home.hideDetails") }</span>
-				<span id="home.showDetails" class="when-hidden">{ p.words.Of("home.showDetails") }</span>
-			</label>
 			<button id={ "home.addEntry." + p.project.ID.String() } class="primary small" type="button" disabled?={ !p.mayEnterExpenses() } title={ p.words.Of("permissions.recordEntries") } hx-get="/tab/addEntry" hx-target="[id='web.content']">{ p.words.Of("entries.new") }</button>
 		</span>
 	</div>
@@ -63,15 +59,6 @@ templ home(p page, summary reports.Summary, custody []accounts.View, newest []en
 					<span id={ "home.custodyName." + account.ID.String() } class="label">{ p.words.Of("accounts.myCustody") } · { account.Name }</span>
 					<b id={ "home.custodyBalance." + account.ID.String() }>{ money(account.Balance) } { p.words.Of("accounts.riyal") }</b>
 				</section>
-			}
-			<h3 id={ "home.entriesHeading." + p.project.ID.String() } class="latest-head">{ p.words.Of("entries.title") }</h3>
-			if len(newest) == 0 {
-				<p id={ "home.entriesEmpty." + p.project.ID.String() } class="empty">{ p.words.Of("entries.empty") }</p>
-			} else {
-				@entryRows(p, newest)
-				if more != "" {
-					<button id={ "home.moreEntries." + p.project.ID.String() } class="quiet-button more" type="button" hx-get={ more } hx-target="[id='web.content']">{ p.words.Of("entries.showMore") }</button>
-				}
 			}
 		</div>
 	</div>

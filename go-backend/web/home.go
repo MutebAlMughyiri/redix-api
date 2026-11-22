@@ -6,7 +6,6 @@ package web
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/a-h/templ"
 
@@ -18,10 +17,8 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
 
-// homeTab is the home of p's project, the app's home in the content area (UC-049, redix-api #165): its summary, the custody p's caller holds, and
-// the newest entries, as many as Settings chose and as many again for each Show more (pages), as the app's; the project list while they choose
-// a project. Every figure comes from the owner the app's routes call. The error is the
-// database's.
+// homeTab is the home of p's project (UC-049, redix-api #165): its summary and the custody p's caller holds; the project list while they choose
+// a project. Every figure comes from the owner the app's routes call. The error is the database's.
 func (s site) homeTab(r *http.Request, p page) (templ.Component, error) {
 	if !p.inProject() {
 		return projectList(p), nil
@@ -29,10 +26,7 @@ func (s site) homeTab(r *http.Request, p page) (templ.Component, error) {
 	read, projectID := s.Database.Queries(), p.project.ID
 	summary, err := reports.SummaryOf(r.Context(), read, projectID, p.caller.Access.Unseen(projectID))
 	listed, accountsErr := accounts.ListOf(r.Context(), read, projectID, p.caller, false)
-	pages, _ := strconv.Atoi(r.URL.Query().Get("pages"))
-	asked := max(pages, 1) * entriesShownOf(r)
-	newest, newestErr := entries.Newest(r.Context(), read, projectID, p.caller, asked)
-	if err := errors.Join(err, accountsErr, newestErr); err != nil {
+	if err := errors.Join(err, accountsErr); err != nil {
 		return nil, err
 	}
 	var custody []accounts.View
@@ -41,11 +35,7 @@ func (s site) homeTab(r *http.Request, p page) (templ.Component, error) {
 			custody = append(custody, account)
 		}
 	}
-	more := ""
-	if len(newest) >= asked {
-		more = "/tab/home?pages=" + strconv.Itoa(max(pages, 1)+1)
-	}
-	return home(p, summary, custody, newest, more), nil
+	return home(p, summary, custody), nil
 }
 
 // mayEnterExpenses says whether p's caller may record an entry here now: RecordEntries, in a project not finished, as the app's

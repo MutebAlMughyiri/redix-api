@@ -52,11 +52,14 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 | --- | --- |
 | Frame | IntelliJ-like: top bar, status bar, a side tree like the project explorer, tabbed content. The frame never reloads; a click changes the content area alone |
 | Fit | The shell fits the window: the page never scrolls; the content, the tree and a panel scroll inside |
-| Top bar | The logo and REDIX; once signed in, the person's name and Sign out. Never the language |
+| Top bar | The logo and REDIX; once signed in, the project button and Notifications. Never the language; the person's name, My history and Sign out are My account's, in the status bar (the owner, 23 Nov 2026, findings row 306) |
 | Side menu | Folds with a keyboard character beside the project's name, never an icon: » in Arabic, « in English, tooltip "Collapse (Alt+1)"; the opposite arrow at the tab bar's start brings it back; Alt+1 is the arrows' `accesskey`. Its line drags from 180 to 480 px, the content keeping 320 |
 | An item not built | Stands gray and disabled until its feature opens it |
-| View menu | «عرض» / View at the tab bar's end, the browser's own popover: Top bar, Status bar, Side menu (Alt+1) |
-| Status bar | The host, the version |
+| View menu | «عرض» / View at the tab bar's end, the browser's own popover: Top bar, Side menu (Alt+1). No Status bar tick: the status bar holds Sign out, so it is always shown (findings row 306); its saves queue, so the last one wins |
+| Status bar | The version at its start, the host in its middle, My account at its end: the person's name, opening My history, Shared settings and Sign out (findings row 306) |
+| Side menu's More | The items used every day, then More with an arrow, folded until clicked, over Permission requests, Categories and items, Payment methods, Load file, Archive, Retrieve, More info, My permissions and Documents; open with the page when the tab in front is one of them (findings row 307). Shared settings is My account's, not the side menu's |
+| Keys | Alt+1 folds the side menu, Alt+W closes the tab in front (its close button's tip names it), Esc hides the details panel; each by the key's place, so an Arabic keyboard counts, all in the shell's one key handler (findings row 308) |
+| A tab's head | Its title at the start; its buttons (`head-actions`) at the far end, left in Arabic, right in English (findings row 309) |
 | Sign-in | In the content area; on success the other parts arrive with a little motion, once |
 | Language | In Settings, and at the sign-in form's foot |
 | Choices | The bars, the folded side menu, its width, the open tabs and the language, kept in cookies and drawn by the server, so nothing flashes |
@@ -83,10 +86,10 @@ Every element a test clicks or reads has an id, so automation finds it as the ap
 
 | Part | Ids |
 | --- | --- |
-| Frame | `web.shell`, `web.topBar`, `web.brand`, `web.person`, `myAccount.signOut`, `web.content`, `web.statusBar`, `web.host`, `appVersion.line` |
-| Side menu | `web.sideMenu`, `web.fold`, `web.tree`, `web.item.<name>` for home, entries, approvals, accounts, partners, contracts, reports, history and settings, `web.sideLine`; beside the details panel `web.detailsLine` |
+| Frame | `web.shell`, `web.topBar`, `web.brand`, `web.notifications`, `web.content`, `web.statusBar`, `appVersion.line`, `web.host`, `web.account`, `web.accountMenu`, `web.myHistory`, `web.sharedSettings`, `myAccount.signOut` |
+| Side menu | `web.sideMenu`, `web.fold`, `web.tree`, `web.item.<name>` for each item, `web.tree.more`, `web.more`, `web.more.toggle`, `web.moreItems`, `web.sideLine`; beside the details panel `web.detailsLine` |
 | Tabs | `web.unfold`, `web.tabs`, `web.tab.<name>`, `web.tab.<name>.title`, `web.tab.<name>.close`, `web.pickFromMenu` |
-| View menu | `web.view`, `web.viewMenu`, `web.view.topBar`, `web.view.statusBar`, `web.view.sideMenu`, `web.view.width`, `web.view.detailsWidth` |
+| View menu | `web.view`, `web.viewMenu`, `web.view.topBar`, `web.view.sideMenu`, `web.view.width`, `web.view.detailsWidth` |
 | Sign-in | `signIn.form`, `signIn.title`, `signIn.hint`, `signIn.notice`, `signIn.username`, `signIn.password`, `signIn.message`, `signIn.submit`, `signIn.registerProject`, `auth.forgotPassword` |
 | Forgot password | `forgotPassword.title`, `forgotPassword.message`, `forgotPassword.sendForm`, `forgotPassword.login`, `forgotPassword.send`, `forgotPassword.sent`, `forgotPassword.form`, `forgotPassword.code`, `forgotPassword.new`, `forgotPassword.confirm`, `forgotPassword.reset`, `forgotPassword.cancel` |
 | Change password | `changePassword.form`, `changePassword.title`, `changePassword.hint`, `changePassword.current`, `changePassword.new`, `changePassword.confirm`, `changePassword.message`, `changePassword.submit` |
@@ -118,7 +121,7 @@ Every element a test clicks or reads has an id, so automation finds it as the ap
 | Entries | `entries.title`, `entries.new`, `entries.filters`, `entries.search`, `entries.mine`, `entries.kindChoice`, `entries.kind.<kind>`, `entries.statusChoice`, `entries.status.<status>`, `entries.period`, `entries.from`, `entries.to`, `entries.number`, `entries.clear`, `entries.empty`, `entries.row.<id>`, `entries.more` |
 | Register new project | `newProject.form`, `newProject.title`, `newProject.hint`, `newProject.message`, `newProject.name`, `newProject.description`, `newProject.startDate`, `newProject.units`, `newProject.unitsHeading`, `newProject.unitName`, `newProject.addUnit`, `newProject.unit.<n>`, the same for `partners` and `partner`, `newProject.managerHeading`, `newProject.managerName`, `newProject.username`, `newProject.mobile`, `newProject.password`, `legal.agreement`, `newProject.submit`, `newProject.cancel` |
 | Projects | `web.project`, `web.projects`, `web.projects.title`, `web.projects.notice`, `web.projects.<id>`, `projects.star.<id>`, `projects.new`, `web.sideProject`; on the list: `projects.title`, `projects.hint`, `projects.empty`, `projects.card.<id>` |
-| Home | `home.title`, `home.roleName`, `home.collapse`, `home.addEntry.<id>`, `summary.card`, `summary.pending`, `summary.surplus.label`, `summary.surplus`, `summary.completion`, `summary.completionBar`, `summary.difference`, `summary.revenue.card`, `summary.revenue.body`, `summary.revenue`, the same for `expenses`, `summary.category.<id>`, `home.custody.<id>`, `home.custodyBalance.<id>`, `home.entriesHeading.<id>`, `home.entriesEmpty.<id>`, `entries.row.<id>`, `home.moreEntries.<id>`; `web.view.summary` keeps Hide details |
+| Home | `home.title`, `home.roleName`, `home.addEntry.<id>`, `summary.card`, `summary.pending`, `summary.surplus.label`, `summary.surplus`, `summary.completion`, `summary.completionBar`, `summary.difference`, `summary.revenue.card`, `summary.revenue.body`, `summary.revenue`, the same for `expenses`, `summary.category.<id>`, `home.custody.<id>`, `home.custodyBalance.<id>`; no Hide details and no entries (findings row 306) |
 
 ## The look
 

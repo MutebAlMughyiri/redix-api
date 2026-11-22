@@ -145,7 +145,17 @@ func (p page) unfoldArrow() string {
 }
 
 // shortcut is key's word with the shortcut that does the same, kept whole inside Arabic text.
-func (p page) shortcut(key string) string { return p.words.Of(key) + " \u2068(Alt+1)\u2069" }
+func (p page) shortcut(key, keys string) string {
+	return p.words.Of(key) + " \u2068(" + keys + ")\u2069"
+}
+
+// closeTip is the tip of a tab's close button: the front tab's names Alt+W, which closes it from anywhere (findings row 308); the others none.
+func (p page) closeTip(name string) templ.Attributes {
+	if name != p.view.Active {
+		return nil
+	}
+	return templ.Attributes{"data-tip": p.shortcut("web.close", "Alt+W")}
+}
 
 // menuItem is an item of the side menu: its tab's name and its title's word.
 type menuItem struct{ name, title string }
@@ -159,12 +169,26 @@ func (item menuItem) built() bool {
 	return built
 }
 
-// sideMenu is the side menu's items, in the order the app's drawer lists them (#161, the shell).
-var sideMenu = []menuItem{
-	{"home", "web.home"}, {"entries", "entries.title"}, {"approvals", "approvals.title"}, {"accounts", "accounts.title"}, {"partners", "partners.title"},
-	{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"projectHistory", "history.projectTitle"},
-	{"users", "users.title"}, {"requests", "permissionRequests.listTitle"}, {"categories", "categories.title"}, {"paymentMethods", "paymentMethods.title"},
-	{"loadFile", "projects.loadFile"}, {"archive", "projects.archive"}, {"retrieve", "projects.retrieve"}, {"projectInfo", "projectInfo.title"}, {"myPermissions", "permissions.mine"}, {"documents", "documents.title"}, {"settings", "sharedSettings.title"},
+// dailyMenu are the side menu's items used every day, and foldedMenu those used now and then, folded under More until it is opened (the owner,
+// 23 Nov 2026, findings row 307); together, sideMenu, in the order the app's drawer lists them (#161, the shell).
+var (
+	dailyMenu = []menuItem{
+		{"home", "web.home"}, {"entries", "entries.title"}, {"approvals", "approvals.title"}, {"accounts", "accounts.title"}, {"partners", "partners.title"},
+		{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"projectHistory", "history.projectTitle"},
+		{"users", "users.title"},
+	}
+	foldedMenu = []menuItem{
+		{"requests", "permissionRequests.listTitle"}, {"categories", "categories.title"}, {"paymentMethods", "paymentMethods.title"},
+		{"loadFile", "projects.loadFile"}, {"archive", "projects.archive"}, {"retrieve", "projects.retrieve"}, {"projectInfo", "projectInfo.title"},
+		{"myPermissions", "permissions.mine"}, {"documents", "documents.title"},
+	}
+	sideMenu = slices.Concat(dailyMenu, foldedMenu)
+)
+
+// foldedOpen says whether More opens with the page: when the tab in front is one of its items, so the item stays in sight. More is always
+// drawn: My permissions, under it, needs no permission.
+func (p page) foldedOpen() bool {
+	return slices.ContainsFunc(foldedMenu, func(item menuItem) bool { return item.name == p.view.Active })
 }
 
 // menuNeeds is the permission a side-menu item needs, as the app shows its screen only to whoever holds it; an item missing here needs none.
@@ -187,8 +211,9 @@ func (p page) offers(name string) bool {
 }
 
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
-// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar, and Change password and Registered projects, from Settings (redix-api #175).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}, {"changePassword", "myAccount.changePassword"}, {"registered", "registered.title"}}
+// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar, and Change password and Registered projects, from Settings (redix-api #175); Shared settings and My history, from
+// My account in the status bar (findings row 306).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}, {"changePassword", "myAccount.changePassword"}, {"registered", "registered.title"}, {"settings", "sharedSettings.title"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
@@ -255,10 +280,12 @@ const lineDragged = `if (!this.hasPointerCapture(event.pointerId)) return; ` +
 	`const width = Math.round(Math.max(+this.dataset.least, Math.min(+this.dataset.most, box.width - 320, along))); ` +
 	`this.closest('.shell').style.setProperty(this.dataset.width, width + 'px'); document.getElementById(this.dataset.keeps).value = width`
 
-// shellKeys is the shell's one keydown handler (see document): Alt+1 and Esc. It and the lists' handlers below are constants of our own, holding no
+// shellKeys is the shell's one keydown handler (see document): Alt+1, Alt+W and Esc. It and the lists' handlers below are constants of our own, holding no
 // person's data, so the templates write them as trusted script.
 const shellKeys = `if (event.altKey && event.code === 'Digit1' && document.getElementById('web.view.sideMenu')) { event.preventDefault(); ` +
 	`document.getElementById('web.view.sideMenu').click() } ` +
+	`const front = event.altKey && event.code === 'KeyW' && document.querySelector('.tab[aria-selected=true] .close'); ` +
+	`if (front) { event.preventDefault(); front.click() } ` +
 	`const details = document.getElementById('web.details'); ` +
 	`if (event.key === 'Escape' && details && details.hasChildNodes() && !document.querySelector(':popover-open')) { event.preventDefault(); ` +
 	`details.replaceChildren(); const shown = document.querySelector('.grid [aria-selected=true]'); if (shown) shown.focus() }`

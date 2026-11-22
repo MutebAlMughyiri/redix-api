@@ -147,7 +147,6 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("POST /my-email/confirm", s.confirmEmail)
 	mux.HandleFunc("GET /details/registered/{id}/reject", s.rejectProjectDialog)
 	mux.HandleFunc("POST /registered/{id}/{action}", s.decideRegistered)
-	mux.HandleFunc("POST /entries-shown", s.chooseEntriesShown)
 	mux.HandleFunc("GET /privacy", legal.Privacy())
 	mux.HandleFunc("GET /terms", legal.Terms())
 	mux.HandleFunc("GET /notification/{id}/open", s.openNotification)

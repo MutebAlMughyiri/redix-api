@@ -3,9 +3,10 @@ package web
 import "strconv"
 
 // settingsPage is Settings as the app's screen shows it: who is signed in and their role here; Switch project and the default project, from
-// the top bar's list; Registered projects for whoever approves them; the language; the appearance; how many entries the home lists; My email;
-// Change password; My history; the privacy policy and the terms of use; Sign out; and the version. No fingerprint row: the web has none (D1).
-templ settingsPage(p page, theme string, entriesShown int, email string) {
+// the top bar's list; Registered projects for whoever approves them; the language; the appearance; My email; Change password; My history; the
+// privacy policy and the terms of use; Sign out; and the version. No fingerprint row: the web has none (D1); no count of the home's entries:
+// the web's home lists none (findings row 306).
+templ settingsPage(p page, theme string, email string) {
 	<div class="view-head"><h2 id="sharedSettings.title">{ p.words.Of("sharedSettings.title") }</h2></div>
 	<div id="sharedSettings.body" class="settings">
 		<section id="sharedSettings.who" class="setting">
@@ -31,15 +32,6 @@ templ settingsPage(p page, theme string, entriesShown int, email string) {
 					<a id={ "sharedSettings.theme." + choice } href={ templ.SafeURL("/theme/" + choice) } aria-current={ strconv.FormatBool(choice == theme || (choice == "system" && theme == "")) }>{ p.words.Of(themeWord(choice)) }</a>
 				}
 			</nav>
-		</section>
-		<section id="sharedSettings.entriesShown" class="setting">
-			<label id="sharedSettings.entriesShown.title" for="sharedSettings.entriesShownChoice">{ p.words.Of("sharedSettings.entriesShown") }</label>
-			<small id="sharedSettings.entriesShown.subtitle" class="hint">{ p.words.Of("sharedSettings.entriesShownHint") }</small>
-			<select id="sharedSettings.entriesShownChoice" name="count" hx-post="/entries-shown" hx-trigger="change" hx-target="[id='web.content']">
-				for _, count := range entriesShownChoices {
-					<option id={ "sharedSettings.entriesShownOption." + strconv.Itoa(count) } value={ strconv.Itoa(count) } selected?={ count == entriesShown }>{ strconv.Itoa(count) }</option>
-				}
-			</select>
 		</section>
 		<section id="sharedSettings.myEmail" class="setting">
 			<h3 id="sharedSettings.myEmail.title">{ p.words.Of("settings.myEmail") }</h3>

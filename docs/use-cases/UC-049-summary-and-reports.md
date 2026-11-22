@@ -30,12 +30,11 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 
 ## On the web: projects and the home (redix-api #165)
 
-The web lands where the app lands: the default project's home, or the list of the person's projects when none is the default (AC-37.1). The project button in the top bar lists them on every page; choosing one opens its home and keeps it in a cookie. The home is the app's home in the shell's content area: the summary from `reports.SummaryOf`, the custody the person holds from `accounts.ListOf`, and the newest entries from `entries.Newest`, the functions the app's routes call. Its pages are in `go-backend/web` (`project.go`, `home.go`, `home.templ`).
+The web lands where the app lands: the default project's home, or the list of the person's projects when none is the default (AC-37.1). The project button in the top bar lists them on every page; choosing one opens its home and keeps it in a cookie. The home is the project's home in the shell's content area: the summary from `reports.SummaryOf`, always open, and the custody the person holds from `accounts.ListOf`, the functions the app's routes call. The owner made the web's home its own on 23 Nov 2026 (findings row 306): no Hide details and no newest entries, which Entries lists; the app's home keeps both. Its pages are in `go-backend/web` (`project.go`, `home.go`, `home.templ`).
 
 | Page | Purpose | Answers |
 | --- | --- | --- |
 | `GET /tab/home` | The home of the project the person works in, or their projects while they choose one | `200` the tab's content |
-| `GET /tab/home?pages=` | The home with as many of the newest entries again for each Show more | `200` the tab's content |
 | `POST /project/{id}` | Chooses the project to work in | `200` the whole shell, its home in front; `404` for a project the person may not open |
 | `POST /project/{id}/default` | Stars the project as the default, or clears the star | `200` the top bar's list, still open, saying so; `404` for a project the person may not open |
 
@@ -43,14 +42,14 @@ The web lands where the app lands: the default project's home, or the list of th
 | --- | --- | --- |
 | With no default project the home lists the person's projects; choosing one opens its home, named in the top bar and the side menu, and keeps it | `web.site.projectOf`, `web.site.chooseProject`, `projects.List` | `TestWeb_R165_WithNoDefaultProjectTheHomeListsTheProjectsAndChoosingOneOpensItsHome` |
 | The default project opens straight into its home (AC-37.1) | `projects.DefaultOf` | `TestWeb_R165_AC37_1_TheDefaultProjectOpensStraightIntoItsHome` |
-| The summary and the newest entries are the app's: the surplus, the totals, what waits, each entry's status and amount as BR-13 writes money | `reports.SummaryOf`, `entries.Newest`, `statement.Money` | `TestWeb_R165_UC049_TheSummaryAndTheNewestEntriesAreTheApps`, `TestWeb_R165_AnEmptyProjectSaysSoAndShowsNoWaiting` |
+| The summary is the app's: the surplus, the totals, what waits, as BR-13 writes money | `reports.SummaryOf`, `statement.Money` | `TestWeb_R165_UC049_TheSummaryIsTheApps`, `TestWeb_R165_AnEmptyProjectShowsNoWaiting` |
 | What waits shows only to whoever may approve it | `web.page.waitsForMe` | `TestWeb_R165_WhatWaitsShowsOnlyToWhoeverMayApprove` |
 | My custody shows each active account I hold | `accounts.ListOf`, `web.site.homeTab` | `TestWeb_R165_MyCustodyShowsWhatIHold` |
 | A project one may not open is not chosen | `web.site.chooseProject` | `TestWeb_R165_AProjectOneMayNotOpenIsNotChosen` |
 | A star makes a project the default, saying so, and a second clears it, as the app's star (AC-37.1) | `projects.SetDefault`, `projects.RemoveDefault`, `web.site.starProject` | `TestWeb_R165_AC37_1_TheStarMakesAProjectTheDefaultAndAgainClearsIt` |
-| Hide details folds the summary and is kept with the shell's look | `web.view.keepLook` | `TestWeb_R165_HideDetailsIsKeptWithTheLook` |
-| The home lists the newest entries Settings chose, 5 until one is chosen, as the app's; Show more adds as many again while more may follow; Add entry opens Add entry for whoever may enter expenses (redix-api #175) | `web.entriesShownOf`, `entries.Newest`, `web.page.mayEnterExpenses` | `TestWeb_R165_R175_TheHomeListsTheEntriesShownAndShowMoreAddsAsMany` |
-| Settings is the app's: who is signed in, Switch project and the default project from the top bar's list, the language, the appearance and the entries shown kept in a cookie (#175 D1), Change password, My history, the privacy policy and the terms of use the web serves too, Sign out and the version | `web.settingsPage`, `web.site.chooseTheme`, `web.site.chooseEntriesShown`, `legal.Privacy`, `legal.Terms` | `TestWeb_R175_SettingsAsTheAppsScreen` |
+| The web's home shows the summary always and lists no entries; Add entry opens Add entry for whoever may enter expenses (findings row 306) | `web.home`, `web.page.mayEnterExpenses` | `TestWeb_R306_TheHomeShowsTheSummaryAlwaysAndListsNoEntries` |
+| My account, at the status bar's end, opens My history, Shared settings and Sign out; the status bar is always shown (findings row 306) | `web.statusBar` | `TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut` |
+| Settings is the app's: who is signed in, Switch project and the default project from the top bar's list, the language, the appearance kept in a cookie (#175 D1) - not the count of the home's entries, the web's home listing none (findings row 306) - Change password, My history, the privacy policy and the terms of use the web serves too, Sign out and the version | `web.settingsPage`, `web.site.chooseTheme`, `legal.Privacy`, `legal.Terms` | `TestWeb_R175_SettingsAsTheAppsScreen` |
 
 ## On the web: the item reports (redix-api #171)
 
