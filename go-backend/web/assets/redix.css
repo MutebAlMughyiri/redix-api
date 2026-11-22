@@ -137,6 +137,7 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
   outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* The status bar: the host at its start, My account at its end (findings rows 306, 315). */
+.shell.in:has([id="web.view.statusBar"]:not(:checked)) { --status: 0px; } .shell.in:has([id="web.view.statusBar"]:not(:checked)) .status { display: none; }
 .status { grid-area: status; display: flex; align-items: center; gap: 16px; padding-inline: 12px; background: var(--chrome);
   border-block-start: 1px solid var(--chrome-line); color: var(--quiet); font-size: 12px; white-space: nowrap; overflow: hidden; }
 .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-inline-end: 6px; }

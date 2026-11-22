@@ -188,7 +188,7 @@ func TestWeb_R9_R18_TheViewMenuHidesTheBarsAndTheServerDrawsThemHidden(t *testin
 	}
 	body := browser.Send("GET", "/", nil).Body.String()
 	has(t, body, `<input type="checkbox" id="web.view.topBar" name="top">`)
-	lacks(t, body, `id="web.view.statusBar"`)
+	has(t, body, `<input type="checkbox" id="web.view.statusBar" name="status">`)
 	has(t, body, `<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu" aria-haspopup="menu" aria-label="عرض"><span id="web.view.arrow" class="arrow" aria-hidden="true">»</span></button>`)
 	has(t, body, `<input type="checkbox" id="web.view.sideMenu" name="side" checked>`)
 	has(t, body, `style="--side-w: 300px; --details-w: 320px;"`)
@@ -747,7 +747,7 @@ func TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut(
 	kept := "redix_access=" + w.browser.Cookie("redix_access") + "; redix_refresh=" + w.browser.Cookie("redix_refresh") +
 		"; redix_project=" + w.browser.Cookie("redix_project") + "; redix_view=top=1&status=0&side=1&summary=0&width=248"
 	older := w.browser.Send("GET", "/", nil, "Cookie", kept).Body.String()
-	has(t, older, `<footer id="web.statusBar" class="status">`)
+	has(t, older, `<input type="checkbox" id="web.view.statusBar" name="status">`)
 	has(t, older, `<section id="summary.card" class="card summary">`)
 	lacks(t, w.Browser().Send("GET", "/", nil).Body.String(), `id="web.account"`)
 }

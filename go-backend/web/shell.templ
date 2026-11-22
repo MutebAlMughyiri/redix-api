@@ -175,6 +175,7 @@ templ tabsRow(p page) {
 		<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu" aria-haspopup="menu" aria-label={ p.words.Of("web.view") }><span id="web.view.arrow" class="arrow" aria-hidden="true">{ arrow }</span></button>
 		<form id="web.viewMenu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none" hx-sync="this:queue last">
 			<label id="web.view.topBar.label"><input type="checkbox" id="web.view.topBar" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
+			<label id="web.view.statusBar.label"><input type="checkbox" id="web.view.statusBar" name="status" checked?={ p.view.Status }/>{ p.words.Of("web.statusBar") }</label>
 			<label id="web.view.sideMenu.label"><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd id="web.view.sideMenu.shortcut">Alt+1</kbd></label>
 			<input type="hidden" id="web.view.width" name="width" value={ strconv.Itoa(p.view.Width) }/>
 			<input type="hidden" id="web.view.detailsWidth" name="details" value={ strconv.Itoa(p.view.DetailsWidth) }/>
@@ -224,8 +225,8 @@ templ detailsPanel(outOfBand bool) {
 
 // statusBar is the host this page came from at its start and, for whoever is signed in, My account at its end: their name with an arrow, so it
 // reads as a menu, opening above it on who is signed in, Shared settings and My history, then Sign out apart (#161 R2; the owner, 23 Nov 2026,
-// findings rows 306, 313, 315). The version is the sign-in form's and Settings', as the app shows it. It is always shown, so Sign out always can be
-// reached.
+// findings rows 306, 313, 315). The version is the sign-in form's and Settings', as the app shows it. The View menu hides it, My account with it,
+// until it is ticked again (findings row 320).
 templ statusBar(p page) {
 	<footer id="web.statusBar" class="status">
 		<span id="web.host" class="host"><span id="web.host.dot" class="dot" aria-hidden="true"></span>{ p.host }</span>
