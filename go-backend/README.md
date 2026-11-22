@@ -74,7 +74,7 @@ The server runs three instances of the API, each a `redix@` service with its own
 | Instance | Name | Ports | Settings | Data |
 | --- | --- | --- | --- | --- |
 | prod | the domain | API 8443, and 80, which proves the three names to Let's Encrypt; web 443, closed until opened | `/etc/redix/prod.env` | `/var/lib/redix/prod` |
-| qa | qa.&lt;domain&gt; | API 8444; web 9444, closed until opened | `/etc/redix/qa.env` | `/var/lib/redix/qa` |
+| qa | qa.&lt;domain&gt; | API 8444; web 9444, open since 23 Nov 2026 | `/etc/redix/qa.env` | `/var/lib/redix/qa` |
 | dev | dev.&lt;domain&gt; | API 8445; web 9445 | `/etc/redix/dev.env` | `/var/lib/redix/dev` |
 
 Only one process can hold port 80, so qa and dev keep their certificates in `/var/lib/redix/certificates` with production's, where
