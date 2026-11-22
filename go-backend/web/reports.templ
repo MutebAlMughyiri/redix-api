@@ -1,0 +1,172 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
+)
+
+// reportsPage is Reports as the app's screen shows it (UC-053): Issue report N, asked first, gray with its reason for whoever may not issue;
+// Expenses and Revenue, each side's item reports; the VAT statement, gray as in the app until its release; then the periodic reports issued,
+// newest first - or that they are for whoever sees every table.
+templ reportsPage(p page, shown reportsShown) {
+	<div class="view-head">
+		<h2 id="reports.title">{ p.words.Of("reports.title") }</h2>
+		<span id="reports.actions" class="head-actions">
+			<button
+				id="reports.issue"
+				class="primary small"
+				type="button"
+				disabled?={ !p.mayIssue(shown) }
+				title={ p.words.Of("reports.needsGenerateReports") }
+				hx-get="/tab/reports?asking=issue"
+				hx-target="[id='web.content']"
+			>{ p.words.Of("reports.issue", strconv.FormatInt(shown.next.Number, 10)) }</button>
+			<button id="reports.expenses" class="quiet-button" type="button" hx-get="/tab/expenses" hx-target="[id='web.content']">{ p.words.Of("summary.expenses") }</button>
+			<button id="reports.revenue" class="quiet-button" type="button" hx-get="/tab/revenue" hx-target="[id='web.content']">{ p.words.Of("summary.revenue") }</button>
+			<button id="reports.vat" class="quiet-button" type="button" disabled>{ p.words.Of("vat.title") }</button>
+		</span>
+	</div>
+	if shown.asking {
+		<div id="reports.ask" class="ask">
+			<b id="reports.askQuestion">{ p.words.Of("reports.issueQuestion", strconv.FormatInt(shown.next.Number, 10)) }</b>
+			<span id="reports.askExplain">{ p.words.Of("reports.issueExplain", shown.waitingCount()) }</span>
+			<button id="reports.issueConfirm" class="primary small" type="button" hx-post="/reports/issue" hx-target="[id='web.content']">{ p.words.Of("reports.issue", strconv.FormatInt(shown.next.Number, 10)) }</button>
+			<button id="reports.issueCancel" class="quiet-button" type="button" hx-get="/tab/reports" hx-target="[id='web.content']">{ p.words.Of("common.cancel") }</button>
+		</div>
+	}
+	if shown.said.notice != "" {
+		<p id="reports.notice" class="notice" role="status">{ p.words.Of(shown.said.notice) }</p>
+	}
+	if shown.said.refusal != "" {
+		<p id="reports.refusal" class="refusal" role="alert">{ p.words.Of(shown.said.refusal) }</p>
+	}
+	<h3 id="reports.periodicHeading" class="section-title">{ p.words.Of("reports.periodic") }</h3>
+	switch {
+		case !shown.whole:
+			<p id="reports.periodicNotForYou" class="empty">{ p.words.Of("reports.periodicNotForYou") }</p>
+		case len(shown.issued) == 0:
+			<p id="reports.noneIssued" class="empty">{ p.words.Of("reports.noneIssued") }</p>
+		default:
+			<div class="grid-wrap">
+				<table id="reports.table" class="grid">
+					<tbody>
+						for _, report := range shown.issued {
+							<tr id={ "reports.periodic." + strconv.FormatInt(report.Number, 10) }>
+								<td id={ "reports.periodic." + strconv.FormatInt(report.Number, 10) + ".title" }>{ p.words.Of("reports.reportNumber") + " " + strconv.FormatInt(report.Number, 10) }</td>
+								<td id={ "reports.periodic." + strconv.FormatInt(report.Number, 10) + ".issuedAt" }>{ report.IssuedAt.In(shown.location).Format(time.DateOnly) }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+	}
+}
+
+// itemReportsPage is a side's item reports as the app's screen shows them (UC-050): a search, then each category the search keeps - its total
+// and its share of the side - opening onto its items, each with its total and opening its report.
+templ itemReportsPage(p page, shown itemReports) {
+	<div class="view-head">
+		<h2 id={ "itemReports.title" }>{ p.words.Of(shown.side.word) }</h2>
+		<b id="itemReports.total">{ money(shown.total) }</b>
+	</div>
+	<form id="itemReports.filters" class="filters" hx-get={ "/tab/" + shown.side.name } hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="itemReports.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } aria-label={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } value={ shown.text }/>
+	</form>
+	<div id="itemReports.categories" class="categories">
+		for _, category := range shown.categories {
+			if items, shows := shown.itemsOf(category); shows {
+				<details id={ "itemReports.category." + category.ID.String() } class="tile" open?={ shown.text != "" }>
+					<summary id={ "itemReports.category." + category.ID.String() + ".body" }>
+						<span id={ "itemReports.category." + category.ID.String() + ".name" }>{ category.Name }</span>
+						<span id={ "itemReports.category." + category.ID.String() + ".figure" } class="figure">{ money(category.Total) } · { strconv.Itoa(share(category.Total, shown.total)) }%</span>
+						<progress id={ "itemReports.category." + category.ID.String() + ".share" } class="bar" max="100" value={ strconv.Itoa(share(category.Total, shown.total)) }></progress>
+					</summary>
+					<table id={ "itemReports.items." + category.ID.String() } class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+						<tbody>
+							for _, item := range items {
+								<tr id={ "itemReports.item." + item.ID.String() } tabindex="0" aria-selected="false" hx-get={ "/tab/itemReport?item=" + item.ID.String() } hx-target="[id='web.content']">
+									<td id={ "itemReports.item." + item.ID.String() + ".name" }>{ item.Name }</td>
+									<td id={ "itemReports.item." + item.ID.String() + ".total" } class="amount">{ money(item.Total) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</details>
+			}
+		}
+	</div>
+}
+
+// itemReportPage is an item's report as the app's screen shows it (UC-050): the item's total; its PDF and Excel, gray until they open on the web;
+// a search; then each table the search keeps - a subgroup's purchases or revenue, a partner's money in and out - with its total and its rows, and
+// each contract with its value, paid, remaining, its payments and their total.
+templ itemReportPage(p page, shown itemReportShown) {
+	if !shown.found {
+		<p id="itemReport.notFound" class="empty">{ p.words.Of("reports.refused") }</p>
+	} else {
+		<div class="view-head">
+			<h2 id="itemReport.title">{ shown.report.ItemName }</h2>
+			<span id="itemReport.category" class="hint">{ shown.report.CategoryName }</span>
+			<span id="itemReport.actions" class="head-actions">
+				<button id="itemReport.file.pdf" class="quiet-button" type="button" disabled>{ p.words.Of("reports.pdf") }</button>
+				<button id="itemReport.file.excel" class="quiet-button" type="button" disabled>{ p.words.Of("reports.excel") }</button>
+			</span>
+		</div>
+		<p id="itemReport.totalLine" class="total-line">
+			<span id="itemReport.totalLabel">{ p.words.Of("reports.itemTotal") }</span>
+			<b id="itemReport.total">{ money(shown.report.Total) }</b>
+		</p>
+		<form id="itemReport.filters" class="filters" hx-get="/tab/itemReport" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="itemReport.item" type="hidden" name="item" value={ shown.query.Get("item") }/>
+			<input id="itemReport.contract" type="hidden" name="contract" value={ shown.query.Get("contract") }/>
+			<input id="itemReport.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", shown.report.ItemName) } aria-label={ p.words.Of("common.searchIn", shown.report.ItemName) } value={ shown.text }/>
+		</form>
+		for _, table := range shown.report.Subgroups {
+			if rows, shows := shown.rowsOf(subgroupName(p, table), table.Rows); shows {
+				<section id={ "itemReport.subgroup." + table.ID.String() } class="report-table">
+					<h3 id={ "itemReport.subgroup." + table.ID.String() + ".title" } class="section-title">
+						<span id={ "itemReport.subgroup." + table.ID.String() + ".name" }>{ subgroupName(p, table) }</span>
+						<b id={ "itemReport.subgroupTotal." + table.ID.String() }>{ money(table.Total) }</b>
+					</h3>
+					@reportRows("itemReport.rows."+table.ID.String(), rows, table.Columns)
+				</section>
+			}
+		}
+		for _, contract := range shown.report.Contracts {
+			if rows, shows := shown.rowsOf(contract.ContractorName, contract.Payments); shows {
+				<section id={ "itemReport.contractCard." + contract.ID.String() } class="report-table">
+					<h3 id={ "itemReport.contractor." + contract.ID.String() } class="section-title">{ contract.ContractorName }</h3>
+					<p id={ "itemReport.contract." + contract.ID.String() } class="hint">{ contractReportLine(p, contract) }</p>
+					if contract.IsOverrun {
+						<p id={ "itemReport.overrun." + contract.ID.String() } class="refusal">{ p.words.Of("reports.overrun") }</p>
+					}
+					@reportRows("itemReport.payments."+contract.ID.String(), rows, contract.Columns)
+					<p id={ "itemReport.contractTotal." + contract.ID.String() } class="total-line">{ p.words.Of("reports.grandTotal") + ": " + money(contract.PaymentsTotal) }</p>
+				</section>
+			}
+		}
+	}
+}
+
+// reportRows is a report table's rows as the app's report lists them: the description, the other values each with its column's name, the amount.
+templ reportRows(id string, rows []entries.ReportRow, columns []entries.ReportColumn) {
+	<table id={ id } class="grid report-rows">
+		<tbody>
+			for _, row := range rows {
+				<tr id={ "itemReport.row." + row.EntryID.String() }>
+					<td id={ "itemReport.row." + row.EntryID.String() + ".title" }>
+						{ reportRowTitle(row, columns) }
+						<small id={ "itemReport.row." + row.EntryID.String() + ".details" } class="hint">{ reportRowDetails(row, columns) }</small>
+					</td>
+					<td id={ "itemReport.row." + row.EntryID.String() + ".amount" } class="amount">{ statement.Money(row.Amount) }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}

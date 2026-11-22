@@ -48,3 +48,17 @@ The web lands where the app lands: the default project's home, or the list of th
 | A project one may not open is not chosen | `web.site.chooseProject` | `TestWeb_R165_AProjectOneMayNotOpenIsNotChosen` |
 | A star makes a project the default, saying so, and a second clears it, as the app's star (AC-37.1) | `projects.SetDefault`, `projects.RemoveDefault`, `web.site.starProject` | `TestWeb_R165_AC37_1_TheStarMakesAProjectTheDefaultAndAgainClearsIt` |
 | Hide details folds the summary and is kept with the shell's look | `web.view.keepLook` | `TestWeb_R165_HideDetailsIsKeptWithTheLook` |
+
+## On the web: the item reports (redix-api #171)
+
+Reports' Expenses and Revenue open each side's item reports in a tab, as the app's screen shows them: each category's total and its share of the side, from `reports.SummaryOf` as the person sees it (BR-31), opening onto its items with their totals; the search keeps a category whose name it finds whole, otherwise the items it finds. An item opens its report in a tab, from `entries.ItemReportIn`, the function `GET /projects/{id}/reports/items/{itemId}` calls too: the item's total, then each table - a subgroup's purchases or revenue, the general one called «عام», a partner's money in and out for whoever sees that partner's capital - with its total and its rows, each row its description, its other values with their columns' names and its amount; then each contract with its value, paid and remaining, overrun said, its payments and their total. Contracts' panel opens a contract's report the same way, from `entries.ContractReportOf` (`GET …/reports/contracts/{contractId}`): its item's report holding that contract alone. The report's PDF and Excel stand gray until the files' slice.
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/expenses?text=`, `GET /tab/revenue?text=` | A side's item reports, searched | `200` the tab's content |
+| `GET /tab/itemReport?item=&text=`, `GET /tab/itemReport?contract=&text=` | An item's or a contract's report, searched | `200` the tab's content; for an item or contract the person may not see, that it could not be shown |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Each side's categories with their totals and shares, their items opening their reports; an item's report by table and contract, overrun said; a contract's report holds that contract alone (UC-050, BR-04); the search keeps a group by its name or its members; a failing database answers 500 | `reports.SummaryOf`, `entries.ItemReportIn`, `entries.ContractReportOf`, `web.searchGroup` | `TestWeb_R171_UC050_EachSidesItemReportsAndAnItemsOrAContractsReport` |
+| A report row says its values by column, an amount column's as money, and a named table by its name | `web.reportRowDetails`, `web.subgroupName` | `TestWeb_R171_UC050_AReportRowSaysItsValuesByColumnAndANamedTableByName` |

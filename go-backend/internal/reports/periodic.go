@@ -4,6 +4,7 @@
 package reports
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -133,16 +134,23 @@ func snapshotOf(c changes.Change, number int64, at moment.Moment, previous fixed
 // issue issues the next report now, numbered after the latest so numbering has no gaps (AC-29.3), and answers it as the list shows it.
 func (s Routes) issue(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var issued Report
-	if !s.writer.Write(w, r, caller, func(c changes.Change) error {
-		latest, err := latestOf(c)
-		if err == nil {
-			issued, err = Issue(c, latest.Number+1, c.Now)
-		}
+	if !s.writer.Write(w, r, caller, func(c changes.Change) (err error) {
+		issued, err = IssueNext(c)
 		return err
 	}) {
 		return
 	}
 	web.JSON(w, r, http.StatusOK, issued)
+}
+
+// IssueNext issues the change's project's next report now, numbered after the latest so numbering has no gaps (AC-29.3), as issue does: the rule
+// both doors call, the app's route and the web's Reports (redix-api #171). The error is the database's.
+func IssueNext(c changes.Change) (Report, error) {
+	latest, err := latestOf(c)
+	if err != nil {
+		return Report{}, err
+	}
+	return Issue(c, latest.Number+1, c.Now)
 }
 
 // Issue issues the change's project's report numbered number at the moment at, from what is approved now: a numbered snapshot that never
@@ -183,30 +191,43 @@ func fixedTotalOf(previous store.LatestPeriodicReportRow) fixed.Total {
 
 // periodicReports is the reports issued, newest first.
 func (s Routes) periodicReports(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	rows, err := s.database.Queries().PeriodicReportsOf(r.Context(), web.ID(r, "projectId"))
+	issued, err := Issued(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
+	s.answer(w, r, issued, err)
+}
+
+// Issued is the reports issued in projectID, newest first, as periodicReports answers them: the rule both doors call, the app's route and the
+// web's Reports (redix-api #171). The error is the database's.
+func Issued(ctx context.Context, read *store.Queries, projectID uuid.UUID) ([]Report, error) {
+	rows, err := read.PeriodicReportsOf(ctx, projectID)
 	var issued []Report
 	for _, row := range rows {
 		issued = append(issued, Report{Number: row.Number, IssuedAt: row.IssuedAt, Expenses: fixed.Counted(row.ExpensesTotal)})
 	}
-	s.answer(w, r, issued, err)
+	return issued, err
 }
 
-// nextPeriodicReportView is what GET /projects/{projectId}/periodic-reports/next answers (UC-053).
-type nextPeriodicReportView struct {
+// Next is the number the next report takes, and what waits for approval, as GET /projects/{projectId}/periodic-reports/next answers it (UC-053)
+// and the web's Issue asks it.
+type Next struct {
 	Number  int64   `json:"number"`
 	Waiting Waiting `json:"waiting"`
 }
 
 // nextPeriodicReport is the number the next report takes, and what waits for approval, which it shows as two lines (UC-053 step 2).
 func (s Routes) nextPeriodicReport(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	latest, err := latestOf(c)
+	next, err := NextOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
+	s.answer(w, r, next, err)
+}
+
+// NextOf is the number projectID's next report takes and what waits for approval, as nextPeriodicReport answers it: the rule both doors call, the
+// app's route and the web's Reports (redix-api #171). The error is the database's.
+func NextOf(ctx context.Context, read *store.Queries, projectID uuid.UUID) (Next, error) {
+	latest, err := latestOf(changes.Change{Ctx: ctx, Q: read, ProjectID: projectID})
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return Next{}, err
 	}
-	waiting, err := WaitingOf(c.Ctx, c.Q, c.ProjectID, access.Everything)
-	s.answer(w, r, nextPeriodicReportView{latest.Number + 1, waiting}, err)
+	waiting, err := WaitingOf(ctx, read, projectID, access.Everything)
+	return Next{latest.Number + 1, waiting}, err
 }
 
 // periodicReport is a report as it was issued: every partner for whoever sees all capital, otherwise the total and only the lines of the partners

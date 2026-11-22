@@ -362,12 +362,19 @@ func signedFor(entry store.Entry) fixed.Total {
 // (BR-31), its total the whole capital; 404 for an item of another project.
 func (s Routes) itemReportRoute(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId"), Access: caller.Access}
-	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
-	if changes.Answered(w, r, err) {
-		return
-	}
-	report, err := ItemReportOf(c, item, func(partnerID uuid.UUID) bool { return caller.Access.SeesCapitalOf(c.ProjectID, partnerID) })
+	report, err := ItemReportIn(c, web.ID(r, "itemId"))
 	s.answer(w, r, report, err)
+}
+
+// ItemReportIn is the report of the item itemID of c's project as c.Access sees it, each partner's table for whoever sees that partner's
+// capital, as itemReportRoute answers it: the rule both doors call, the app's route and the web's item report (redix-api #171). NotFound for an
+// item of another project.
+func ItemReportIn(c changes.Change, itemID uuid.UUID) (ItemReport, error) {
+	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: itemID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return ItemReport{}, err
+	}
+	return ItemReportOf(c, item, func(partnerID uuid.UUID) bool { return c.Access.SeesCapitalOf(c.ProjectID, partnerID) })
 }
 
 // contractReportRoute is the report of one contract, as the Contracts screen opens it (the owner, 12 Nov 2026): its item's report holding that

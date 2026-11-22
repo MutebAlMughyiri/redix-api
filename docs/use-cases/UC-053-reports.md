@@ -68,3 +68,17 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | redix-api #131 D2: the report screens' routes open for whoever holds `SeeReports` and for no one else | `reports.Map`, `entries.Map` | `ReportFilesTests.R131_D2_TheReportScreensOpenForWhoeverSeesReportsAndForNoOneElse` |
 | redix-api #131 D2: issuing and every file need `GenerateReports`; `MoveMoney` and `SeeAllCapital` no longer do | `reports.Map` | `ReportFilesTests.R131_D2_IssuingAndEveryFileNeedGenerateReportsAndMoveMoneyOrSeeAllCapitalNoLongerDo` |
 | redix-api #131 D1, BR-31: a file's رأس المال holds only the partners its reader may see, and its اجمالي الكل, which the summary's line reads, stays the whole capital | `reports.forFilesOf`, `entries.ItemReport.WithTablesOf` | `ReportFilesTests.R131_D1_AFilesCapitalHoldsOnlyThePartnersItsReaderSeesAndTheWholeCapitalStill` |
+
+## On the web: Reports (redix-api #171)
+
+The web's Reports is the app's screen in the shell, its item in the side menu for whoever holds SeeReports: the periodic reports issued, newest first, each with the day it was issued, from `reports.Issued`, the function `GET /projects/{id}/periodic-reports` calls too - or, for someone who does not see every table, that the periodic report is for whoever does. Issue report N, from `reports.NextOf` (the function `…/periodic-reports/next` calls), asks first with the app's question and explanation, how many entries wait among them, and issues through `reports.IssueNext`, the rule `POST …/periodic-reports` runs; it stands gray with its reason without GenerateReports or every table, and a finished project issues nothing (AC-04.1). Expenses and Revenue open each side's item reports (UC-049); the VAT statement stands gray, as in the app, until its release. A report's own page and the files come in the next slices of #171. Its pages are in `go-backend/web` (`reports.go`, `reports.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/reports` | Reports; `?asking=issue` asks before Issue | `200` the tab's content |
+| `POST /reports/issue` | Issues the next report | `200` Reports saying it was issued, or why not; `403` without GenerateReports or every table |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Reports lists the reports issued and issues the next, asked first, numbered after the latest (AC-29.3, BR-26); a finished project issues nothing (AC-04.1); a failing database answers 500 | `reports.Issued`, `reports.NextOf`, `reports.IssueNext` | `TestWeb_R171_UC053_ReportsListsThePeriodicReportsAndIssuesTheNextAskedFirst` |
+| The periodic reports are for whoever sees every table (#106); Issue needs GenerateReports (redix-api #131 D2) | `web.page.mayIssue`, `web.site.issueReport` | `TestWeb_R171_UC053_ThePeriodicReportsAreForWhoeverSeesEveryTable` |

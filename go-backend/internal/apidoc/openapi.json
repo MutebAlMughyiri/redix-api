@@ -2443,6 +2443,21 @@
         ],
         "type": "object"
       },
+      "reports.Next": {
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "waiting": {
+            "$ref": "#/components/schemas/reports.Waiting"
+          }
+        },
+        "required": [
+          "number",
+          "waiting"
+        ],
+        "type": "object"
+      },
       "reports.Report": {
         "properties": {
           "expenses": {
@@ -2540,21 +2555,6 @@
           "expensesCount",
           "revenueAmount",
           "revenueCount"
-        ],
-        "type": "object"
-      },
-      "reports.nextPeriodicReportView": {
-        "properties": {
-          "number": {
-            "type": "integer"
-          },
-          "waiting": {
-            "$ref": "#/components/schemas/reports.Waiting"
-          }
-        },
-        "required": [
-          "number",
-          "waiting"
         ],
         "type": "object"
       },
@@ -9812,7 +9812,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/reports.nextPeriodicReportView"
+                  "$ref": "#/components/schemas/reports.Next"
                 }
               }
             },

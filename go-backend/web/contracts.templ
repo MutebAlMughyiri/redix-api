@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
@@ -132,7 +133,15 @@ templ contractPanel(p page, contract contracts.View, refusal string) {
 				<button id="contracts.enable" class="quiet-button" type="button" hx-post={ "/contract/" + contract.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("contracts.enable") }</button>
 			}
 		}
-		<button id="contract.report" class="quiet-button" type="button" disabled>{ p.words.Of("reports.title") }</button>
+		<button
+			id="contract.report"
+			class="quiet-button"
+			type="button"
+			disabled?={ !p.may(access.SeeReports) || !p.caller.Access.Sees(p.project.ID, contract.ID) }
+			title={ p.words.Of("permissions.seeReports") }
+			hx-get={ "/tab/itemReport?contract=" + contract.ID.String() }
+			hx-target="[id='web.content']"
+		>{ p.words.Of("reports.title") }</button>
 		<button id="contracts.file.pdf" class="quiet-button" type="button" disabled>{ p.words.Of("reports.pdf") }</button>
 		<button id="contracts.file.excel" class="quiet-button" type="button" disabled>{ p.words.Of("reports.excel") }</button>
 	</div>

@@ -161,7 +161,7 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
-	if browser.Send("GET", "/tab/reports", nil).Code != http.StatusNotFound {
+	if browser.Send("GET", "/tab/history", nil).Code != http.StatusNotFound {
 		t.Error("an item whose feature is not built opens no tab")
 	}
 }
@@ -250,7 +250,7 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"reports", "history"} {
+	for _, key := range []string{"history"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
@@ -2379,7 +2379,7 @@ func TestWeb_R170_UC020_ContractsListsEachContractsValuePaidAndRemaining(t *test
 	panel := w.browser.Send("GET", "/details/contract/"+running, nil).Body.String()
 	for _, part := range []string{`<h3 id="contract.title">مقاول أ</h3>`, `<dd id="contract.terms">10 × 100</dd>`, `<dd id="contract.notes">أعمال الأساسات</dd>`,
 		`<p id="contract.pending" class="hint details-say">بانتظار الاعتماد 300.00 · (500.00) بعد الاعتماد</p>`,
-		`<button id="contract.report" class="quiet-button" type="button" disabled>`} {
+		`hx-get="/tab/itemReport?contract=` + running + `"`} {
 		has(t, panel, part)
 	}
 	has(t, w.browser.Send("GET", "/details/contract/"+open, nil).Body.String(), `<p id="contract.standing" class="hint details-foot">عقد مفتوح القيمة</p>`)
@@ -2474,4 +2474,150 @@ func TestWeb_R170_AContractsChangesAreGatedAsTheAppsRoutesAre(t *testing.T) {
 	}
 	has(t, w.browser.Send("POST", "/contract/"+contract+"/edit", url.Values{"value": {"2000"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
 	lacks(t, w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String(), `id="contracts.edit"`)
+}
+
+func TestWeb_R171_UC053_ReportsListsThePeriodicReportsAndIssuesTheNextAskedFirst(t *testing.T) {
+	w := newWorking(t)
+	w.funded(1000)
+	w.approved(300)
+	waiting := w.sent(200)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/reports"`)
+	list := w.browser.Send("GET", "/tab/reports", nil).Body.String()
+	for _, part := range []string{`>إصدار رقم 1</button>`, `<p id="reports.noneIssued" class="empty">لم يُصدر تقرير بعد.</p>`, `hx-get="/tab/expenses"`,
+		`hx-get="/tab/revenue"`, `<button id="reports.vat" class="quiet-button" type="button" disabled>`} {
+		has(t, list, part)
+	}
+	asking := w.browser.Send("GET", "/tab/reports?asking=issue", nil).Body.String()
+	has(t, asking, `<b id="reports.askQuestion">إصدار التقرير رقم 1؟</b>`)
+	has(t, asking, `(1)`)
+	issued := w.browser.Send("POST", "/reports/issue", nil).Body.String()
+	has(t, issued, `<p id="reports.notice" class="notice" role="status">صدر التقرير.</p>`)
+	has(t, issued, `<td id="reports.periodic.1.title">تقرير رقم 1</td>`)
+	has(t, issued, `>إصدار رقم 2</button>`)
+	for _, path := range []string{"/tab/reports", "/tab/reports?asking=issue"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/reports/issue", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("issuing with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+waiting+`"]}`, w.token)
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/reports/issue", nil).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+}
+
+func TestWeb_R171_UC053_ThePeriodicReportsAreForWhoeverSeesEveryTable(t *testing.T) {
+	w := newWorking(t)
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	w.Ask("POST", w.path+"/users/"+member.String()+"/permissions/SeeReports", ``, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	seeing := browser.Send("GET", "/tab/reports", nil).Body.String()
+	has(t, seeing, `<p id="reports.noneIssued" class="empty">`)
+	has(t, seeing, `<button id="reports.issue" class="primary small" type="button" disabled`)
+	if code := browser.Send("POST", "/reports/issue", nil).Code; code != http.StatusForbidden {
+		t.Errorf("issuing without GenerateReports: %d", code)
+	}
+	if code, answer := w.Ask("POST", w.path+"/users/"+member.String()+"/tables", `{"seen":false,"tableIds":["`+w.table+`"]}`, w.token); code >= 300 {
+		t.Fatalf("hiding the table: %d %v", code, answer)
+	}
+	has(t, browser.Send("GET", "/tab/reports", nil).Body.String(), `<p id="reports.periodicNotForYou" class="empty">التقرير الدوري لمن يرى كل الجداول</p>`)
+}
+
+func TestWeb_R171_UC050_EachSidesItemReportsAndAnItemsOrAContractsReport(t *testing.T) {
+	w := newWorking(t)
+	w.funded(5000)
+	purchase := uuid.NewString()
+	if code, answer := w.Ask("POST", w.path+"/entries", `{"id":"`+purchase+`","itemId":"`+w.item+`","tableId":"`+w.table+`","date":"2026-11-10","amount":300,"accountId":"`+
+		w.account+`","paymentMethodId":"`+w.method+`","description":"حديد 16 مم","columnValues":{},"submit":true}`, w.token); code != http.StatusCreated {
+		t.Fatalf("the purchase: %d %v", code, answer)
+	}
+	w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+purchase+`"]}`, w.token)
+	builder := w.supplier(`{"name":"مقاول أ"}`)
+	contract := w.contract(builder, `"value":1000,"isOpenValue":false`)
+	w.paid(contract, builder, 1200, true)
+	w.home()
+	expenses := w.browser.Send("GET", "/tab/expenses", nil).Body.String()
+	has(t, expenses, `<b id="itemReports.total">1,500.00</b>`)
+	has(t, expenses, `>الحديد</span>`)
+	has(t, expenses, `1,500.00 · 100%`)
+	has(t, expenses, `hx-get="/tab/itemReport?item=`+w.item+`"`)
+	lacks(t, w.browser.Send("GET", "/tab/expenses?text=لا+شيء", nil).Body.String(), `>الحديد</span>`)
+	has(t, w.browser.Send("GET", "/tab/expenses?text=التسليح", nil).Body.String(), `class="tile" open`)
+	has(t, w.browser.Send("GET", "/tab/revenue", nil).Body.String(), `>البيع</td>`)
+	report := w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String()
+	for _, part := range []string{`<h2 id="itemReport.title">التسليح</h2>`, `<b id="itemReport.total">1,500.00</b>`, `>عام</span>`, `حديد 16 مم`, `>300.00</td>`,
+		`<h3 id="itemReport.contractor.` + contract + `" class="section-title">مقاول أ</h3>`,
+		`قيمة العقد: 1,000.00 · المدفوع: 1,200.00 · المتبقي: (200.00)`, `مدفوع أكثر من العقد`, `اجمالي الكل: 1,200.00`} {
+		has(t, report, part)
+	}
+	found := w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&text=16", nil).Body.String()
+	has(t, found, `حديد 16 مم`)
+	lacks(t, found, `itemReport.contractCard.`+contract)
+	byContract := w.browser.Send("GET", "/tab/itemReport?contract="+contract, nil).Body.String()
+	has(t, byContract, `itemReport.contractCard.`+contract)
+	lacks(t, byContract, `حديد 16 مم`)
+	has(t, w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String(), `hx-get="/tab/itemReport?contract=`+contract+`"`)
+	has(t, w.browser.Send("GET", "/tab/itemReport?item="+uuid.NewString(), nil).Body.String(), `<p id="itemReport.notFound" class="empty">تعذر تنفيذ ذلك.</p>`)
+	for _, path := range []string{"/tab/expenses", "/tab/itemReport?item=" + w.item, "/tab/itemReport?contract=" + contract} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+}
+
+func TestWeb_R171_UC050_AReportRowSaysItsValuesByColumnAndANamedTableByName(t *testing.T) {
+	w := newWorking(t)
+	w.funded(5000)
+	w.Ask("POST", w.path+"/items/"+w.item+"/columns", `{"name":"المقاس","dataType":"text","isRequired":false,"showInReports":true,"choices":[]}`, w.token)
+	w.Ask("POST", w.path+"/items/"+w.item+"/columns", `{"name":"الخصم","dataType":"amount","isRequired":false,"showInReports":true,"choices":[]}`, w.token)
+	w.Ask("POST", w.path+"/items/"+w.item+"/subgroups", `{"name":"الدور الأول"}`, w.token)
+	var size, discount, floor string
+	for query, into := range map[string]*string{
+		"SELECT key FROM item_columns WHERE item_id = '" + w.item + "' AND name = 'المقاس'":     &size,
+		"SELECT key FROM item_columns WHERE item_id = '" + w.item + "' AND name = 'الخصم'":      &discount,
+		"SELECT id FROM subgroups WHERE item_id = '" + w.item + "' AND name = 'الدور الأول'": &floor,
+	} {
+		if err := w.Database.Read.QueryRow(query).Scan(into); err != nil {
+			t.Fatal(query, err)
+		}
+	}
+	purchase := uuid.NewString()
+	if code, answer := w.Ask("POST", w.path+"/entries", `{"id":"`+purchase+`","itemId":"`+w.item+`","tableId":"`+floor+`","date":"2026-11-10","amount":400,"accountId":"`+
+		w.account+`","paymentMethodId":"`+w.method+`","description":"","columnValues":{"`+size+`":"16 مم","`+discount+`":"1250"},"submit":true}`, w.token); code != http.StatusCreated {
+		t.Fatalf("the purchase: %d %v", code, answer)
+	}
+	w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+purchase+`"]}`, w.token)
+	w.home()
+	report := w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String()
+	has(t, report, `>الدور الأول</span>`)
+	has(t, report, `التاريخ: 2026-11-10 · الحساب: حساب المؤسسة · طريقة الدفع: شبكة · المقاس: 16 مم · الخصم: 1,250.00</small>`)
+	stranger, _ := signedIn(t, w.API, "User C")
+	if code := stranger.Send("POST", "/reports/issue", nil).Code; code != http.StatusNotFound {
+		t.Errorf("issuing with no project chosen: %d", code)
+	}
 }
