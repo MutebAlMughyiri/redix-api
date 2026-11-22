@@ -118,14 +118,14 @@ templ side(p page) {
 	</aside>
 }
 
-// tree is the side menu's items, those used every day and then More, folded until it is clicked, over those used now and then (findings row
-// 307): one whose feature is built opens its tab, one that hands a file over hands it, the others stand gray (#161 R15).
+// tree is the side menu's items, those used every day and then More - its arrow alone, in the middle, its word read only by a screen reader -
+// folded until it is clicked, over those used now and then (findings rows 307, 311): one whose feature is built opens its tab, one that hands a file over hands it, the others stand gray (#161 R15).
 templ tree(p page) {
 	<ul id="web.tree" class="tree">
 		@treeItems(p, dailyMenu)
 		<li id="web.tree.more">
 			<details id="web.more" class="more" open?={ p.foldedOpen() }>
-				<summary id="web.more.toggle">{ p.words.Of("history.more") }</summary>
+				<summary id="web.more.toggle" aria-label={ p.words.Of("history.more") }></summary>
 				<ul id="web.moreItems" class="tree">
 					@treeItems(p, foldedMenu)
 				</ul>

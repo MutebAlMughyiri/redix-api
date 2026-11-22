@@ -4690,7 +4690,7 @@ func TestWeb_R175_D3_AddEntryNamesTheFileAsTheAppsSectionDoesForEachTable(t *tes
 func TestWeb_R307_TheItemsUsedNowAndThenFoldUnderMore(t *testing.T) {
 	w := newWorking(t)
 	page := w.home()
-	has(t, page, `<li id="web.tree.more"><details id="web.more" class="more"><summary id="web.more.toggle">المزيد</summary><ul id="web.moreItems" class="tree">`)
+	has(t, page, `<li id="web.tree.more"><details id="web.more" class="more"><summary id="web.more.toggle" aria-label="المزيد"></summary><ul id="web.moreItems" class="tree">`)
 	more := page[strings.Index(page, `id="web.more"`):]
 	more = more[:strings.Index(more, `</details>`)]
 	for _, folded := range []string{"requests", "categories", "paymentMethods", "loadFile", "archive", "retrieve", "projectInfo", "myPermissions", "documents"} {
