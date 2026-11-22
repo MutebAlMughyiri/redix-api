@@ -16,7 +16,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/encode"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/stored"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
@@ -94,6 +93,19 @@ const (
 
 var dataTypes = web.Enum{"text", "number", "amount", "date", "list", "file"}
 
+// OfferedDataTypes are the data types a person chooses for a new column, in the order the app's choice lists them (ColumnDataType.offered): a
+// file is the attachment's alone.
+var OfferedDataTypes = []DataType{Text, Number, Amount, Date, List}
+
+// Name is the data type's name, as the API writes it and the app's words key it.
+func (d DataType) Name() string { return dataTypes[d] }
+
+// DataTypeNamed is the data type name names, and whether one does.
+func DataTypeNamed(name string) (DataType, bool) {
+	value, err := dataTypes.Parse(name)
+	return DataType(value), err == nil
+}
+
 // MarshalJSON writes the data type by its name.
 func (d DataType) MarshalJSON() ([]byte, error) { return dataTypes.Write(int64(d)) }
 
@@ -115,6 +127,9 @@ const (
 )
 
 var signs = web.Enum{"none", "plus", "minus"}
+
+// Name is the sign's name, as the API writes it and the app's words key it.
+func (s Sign) Name() string { return signs[s] }
 
 // MarshalJSON writes the sign by its name.
 func (s Sign) MarshalJSON() ([]byte, error) { return signs.Write(int64(s)) }
@@ -141,8 +156,8 @@ type ChoiceView struct {
 	Sign Sign      `json:"sign"`
 }
 
-// choiceRequest is a choice as the app sends it, for a new list or one gaining choices (ChoiceRequest).
-type choiceRequest struct {
+// ChoiceRequest is a choice as the app sends it, for a new list or one gaining choices (ChoiceRequest).
+type ChoiceRequest struct {
 	Name string `json:"name"`
 	Sign Sign   `json:"sign,omitzero"`
 }
@@ -177,11 +192,6 @@ func statusOf(code string) int {
 
 // refused is the refusal of code, which rolls a change back.
 func refused(code string) error { return changes.Refuse(statusOf(code), code) }
-
-// refuse answers code before any change began.
-func refuse(w http.ResponseWriter, r *http.Request, code string) {
-	problem.Refuse(w, r, statusOf(code), code)
-}
 
 // change is one write to a project's structure, with the writers of its rows.
 type change struct{ changes.Change }
@@ -285,7 +295,7 @@ func (c column) view(id uuid.UUID) ColumnView {
 
 // choicesOf is what was typed as a list's choices, each a new choice with its sign: each name trimmed, the empty and the repeated ones gone
 // (Column.ChoicesOf).
-func choicesOf(typed []choiceRequest) []choice {
+func choicesOf(typed []ChoiceRequest) []choice {
 	var choices []choice
 	for _, one := range typed {
 		name := strings.TrimSpace(one.Name)
@@ -300,18 +310,18 @@ func acceptable(choices []choice) bool {
 	return !slices.ContainsFunc(choices, func(one choice) bool { _, ok := naming.Named(one.Name); return !ok })
 }
 
-// columnRequest is a new column as the app sends it (AddColumnRequest).
-type columnRequest struct {
+// ColumnRequest is a new column as the app sends it (AddColumnRequest).
+type ColumnRequest struct {
 	Name          string          `json:"name"`
 	DataType      DataType        `json:"dataType"`
 	IsRequired    bool            `json:"isRequired"`
 	ShowInReports bool            `json:"showInReports"`
-	Choices       []choiceRequest `json:"choices"`
+	Choices       []ChoiceRequest `json:"choices"`
 }
 
 // refusalOfNew is why a column typed so cannot be added (Column.CheckNew): invalidName, invalidDataType for a file, or invalidOptions for a list
 // with no acceptable choice; "" when it can.
-func (typed columnRequest) refusalOfNew() string {
+func (typed ColumnRequest) refusalOfNew() string {
 	choices := choicesOf(typed.Choices)
 	_, named := naming.Named(typed.Name)
 	switch {
@@ -326,7 +336,7 @@ func (typed columnRequest) refusalOfNew() string {
 }
 
 // newColumn is the column a person typed, at sortOrder, with a key of its own; only a list keeps choices (DefaultColumn.New).
-func (typed columnRequest) newColumn(sortOrder int64) column {
+func (typed ColumnRequest) newColumn(sortOrder int64) column {
 	name, _ := naming.Named(typed.Name)
 	var choices []choice
 	if typed.DataType == List {
@@ -336,18 +346,18 @@ func (typed columnRequest) newColumn(sortOrder int64) column {
 		IsRequired: typed.IsRequired, ShowInReports: typed.ShowInReports, SortOrder: sortOrder, Choices: choices}
 }
 
-// editRequest is what a column becomes (EditColumnRequest); its type is not here, because it never changes (BR-21).
-type editRequest struct {
+// EditRequest is what a column becomes (EditColumnRequest); its type is not here, because it never changes (BR-21).
+type EditRequest struct {
 	Name          string          `json:"name"`
 	IsRequired    bool            `json:"isRequired"`
 	ShowInReports bool            `json:"showInReports"`
-	NewChoices    []choiceRequest `json:"newChoices,omitzero"`
+	NewChoices    []ChoiceRequest `json:"newChoices,omitzero"`
 }
 
 // edited is the column as typed makes it (Column.Edit), or the refusal: invalidName; coreColumn for more than a new name on a core column
 // (BR-20); invalidOptions for new choices on anything but a list a person added, or one too long. A list's own choices stay, since entries hold
 // their ids; new ones join them.
-func (c column) edited(typed editRequest) (column, string) {
+func (c column) edited(typed EditRequest) (column, string) {
 	name, named := naming.Named(typed.Name)
 	if !named {
 		return c, naming.Invalid

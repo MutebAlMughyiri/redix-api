@@ -1,0 +1,218 @@
+package web
+
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+)
+
+// columnsList is an item's Columns as the app's screen shows them (UC-013): New column, gray in a finished project or for a revenue item; the
+// item's category and type; the default template of its type or this item's own; the hint, for whoever may shape the structure; then each
+// column, custom or not, its type, required or optional, in reports, a lock on a core one. A row moves by dragging, or with Alt+Up and Alt+Down
+// (D1). Why an order could not be kept stands at the top.
+templ columnsList(p page, shown columnsShown, refusal string) {
+	<div class="view-head">
+		<h2 id="columns.title">{ parts(p.words.Of("columns.title"), shown.item.Name) }</h2>
+		<span id="columns.actions" class="head-actions">
+			<button id="columns.add" class="primary small" type="button" hx-get={ "/details/columns/" + shown.item.ID.String() + "/" + shown.scope() + "/new" } hx-target="[id='web.details']" disabled?={ !p.mayShape() || shown.item.Type.IsRevenue() }>{ p.words.Of("columns.new") }</button>
+		</span>
+	</div>
+	<p id="columns.itemDetails" class="hint wide">{ shown.itemDetails(p) }</p>
+	<div id="columns.scope" class="segmented" role="group">
+		<button id="columns.template" type="button" aria-pressed={ strconv.FormatBool(shown.template) } hx-get={ "/tab/itemColumns?item=" + shown.item.ID.String() + "&scope=template" } hx-target="[id='web.content']">{ p.words.Of("columns.template") }</button>
+		<button id="columns.thisItem" type="button" aria-pressed={ strconv.FormatBool(!shown.template) } hx-get={ "/tab/itemColumns?item=" + shown.item.ID.String() } hx-target="[id='web.content']">{ p.words.Of("columns.thisItem") }</button>
+	</div>
+	if p.mayShape() {
+		<p id="columns.hint" class="hint wide">{ p.words.Of("columns.hint") }</p>
+	}
+	if refusal != "" {
+		<p id="columns.refusal" class="refusal wide" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	if len(shown.columns) == 0 {
+		<p id="columns.empty" class="empty">{ p.words.Of("columns.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table
+				id="columns.table"
+				class="grid structure"
+				hx-on:keydown={ templ.JSUnsafeFuncCall(reorderRows + listKeys) }
+				hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }
+				hx-on:dragstart={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:dragover={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:drop={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:dragend={ templ.JSUnsafeFuncCall(reorderRows) }
+			>
+				<tbody id="columns.rows" data-reorder={ shown.path() + "/reorder" }>
+					for _, column := range shown.columns {
+						<tr
+							id={ "columns.row." + column.ID.String() }
+							data-id={ column.ID.String() }
+							if p.mayShape() {
+								draggable="true"
+							}
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/columns/" + shown.item.ID.String() + "/" + shown.scope() + "/" + column.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "columns.cell." + column.ID.String() }>
+								if p.mayShape() {
+									<span id={ "columns.handle." + column.ID.String() } class="handle" title={ p.words.Of("columns.hint") } aria-hidden="true">⋮⋮</span>
+								}
+								<span id={ "columns.name." + column.ID.String() }>{ column.Name }</span>
+								if column.IsCore {
+									<span id={ "columns.core." + column.ID.String() } class="chip" title={ p.words.Of("columns.core") }>{ p.words.Of("columns.core") }</span>
+								}
+								<small id={ "columns.details." + column.ID.String() } class="hint">{ columnLine(p, column) }</small>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// columnsGone is Columns for an item the project does not hold: its title only.
+templ columnsGone(p page) {
+	<div class="view-head">
+		<h2 id="columns.title">{ p.words.Of("columns.title") }</h2>
+	</div>
+}
+
+// columnsBeside is Columns again, carried out of band beside the panel, once a column was added, changed or deleted.
+templ columnsBeside(p page, shown columnsShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@columnsList(p, shown, "")
+	</div>
+}
+
+// columnPanel is a column in the details panel: what its row says, a list's choices, why its change was refused; Edit, and Delete for one not
+// core, as the app's row and its swipe offer them to whoever may shape the structure.
+templ columnPanel(p page, shown columnsShown, column structure.ColumnView, refusal string) {
+	<div class="details-head">
+		<h3 id="column.title">{ column.Name }</h3>
+		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl id="column.facts" class="facts">
+		<dt id="column.type.label">{ p.words.Of("columns.type") }</dt>
+		<dd id="column.type">{ columnLine(p, column) }</dd>
+		if len(column.Choices) > 0 {
+			<dt id="column.choices.label">{ p.words.Of("columns.choices") }</dt>
+			<dd id="column.choices">{ choicesLine(p, column) }</dd>
+		}
+	</dl>
+	if column.IsCore {
+		<p id="column.core" class="hint">{ p.words.Of("columns.core") }</p>
+	}
+	if refusal != "" {
+		<p id="column.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	if p.mayShape() {
+		<div id="column.actions" class="details-actions">
+			<button id="columns.edit" class="quiet-button" type="button" hx-get={ "/details/columns/" + shown.item.ID.String() + "/" + shown.scope() + "/" + column.ID.String() + "?asking=edit" } hx-target="[id='web.details']">{ p.words.Of("columns.edit") }</button>
+			if !column.IsCore {
+				<button id="columns.delete" class="quiet-button" type="button" hx-get={ "/details/columns/" + shown.item.ID.String() + "/" + shown.scope() + "/" + column.ID.String() + "?asking=delete" } hx-target="[id='web.details']">{ p.words.Of("swipe.remove") }</button>
+			}
+		</div>
+	}
+}
+
+// columnForm is New column or Edit column in the details panel, as the app's dialogs ask them: the name; a new column's type and, for a list,
+// its choices; required and in reports, fixed on a core column; a list a person added, its choices and new ones. A template's change ends with
+// the app's question, the template only or every item of its type; why it could not be kept.
+templ columnForm(p page, shown columnsShown, column structure.ColumnView, choices, refusal string) {
+	<div class="details-head">
+		<h3 id="column.title">{ p.words.Of(columnFormTitle(column)) }</h3>
+		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="column.form" class="details-form column-form" hx-post={ columnFormPath(shown, column) } hx-target="[id='web.details']">
+		<div class="field">
+			<label id="columns.columnName.label" for="columns.columnName">{ p.words.Of("columns.name") }</label>
+			<input id="columns.columnName" name="name" required value={ column.Name } autofocus/>
+		</div>
+		if column.ID == uuid.Nil {
+			<div class="field">
+				<label id="columns.dataType.label" for="columns.dataType">{ p.words.Of("columns.type") }</label>
+				<select id="columns.dataType" name="dataType">
+					for _, dataType := range structure.OfferedDataTypes {
+						<option id={ "columns.dataTypeOption." + dataType.Name() } value={ dataType.Name() } selected?={ dataType == column.DataType }>{ p.words.Of(dataTypeWord(dataType)) }</option>
+					}
+				</select>
+			</div>
+			<div class="field choices">
+				<label id="columns.choices.label" for="columns.choices">{ p.words.Of("columns.choices") }</label>
+				<textarea id="columns.choices" name="choices" rows="3">{ choices }</textarea>
+			</div>
+		}
+		<label id="columns.required" class="tick">
+			<input id="columns.required.input" type="checkbox" name="required" value="on" checked?={ column.IsRequired } disabled?={ column.IsCore }/>
+			<span id="columns.required.title">{ p.words.Of("columns.required") }</span>
+		</label>
+		<label id="columns.showInReports" class="tick">
+			<input id="columns.showInReports.input" type="checkbox" name="reports" value="on" checked?={ column.ShowInReports } disabled?={ column.IsCore }/>
+			<span id="columns.showInReports.title">{ p.words.Of("columns.showInReports") }</span>
+		</label>
+		if gainsChoices(column) {
+			<p id="columns.existingChoices" class="hint">{ choicesLine(p, column) }</p>
+			<div class="field">
+				<label id="columns.newChoices.label" for="columns.newChoices">{ p.words.Of("columns.newChoices") }</label>
+				<textarea id="columns.newChoices" name="choices" rows="3">{ choices }</textarea>
+			</div>
+		}
+		if refusal != "" {
+			<p id="column.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		if shown.template {
+			@applyQuestion(p)
+		} else {
+			<span id="column.formActions" class="details-actions">
+				<button id="column.save" class="primary small" type="submit">{ p.words.Of(columnFormSave(column)) }</button>
+			</span>
+		}
+	</form>
+}
+
+// applyQuestion is the app's question a template's change asks: whether it applies to every item of the type, or to the template only; each
+// answer keeps the change.
+templ applyQuestion(p page) {
+	<div id="applyToAll.dialog" class="apply-question">
+		<p id="applyToAll.title" class="section-title">{ p.words.Of("columns.applyQuestion") }</p>
+		<p id="applyToAll.explain" class="hint">{ p.words.Of("columns.applyExplain") }</p>
+		<span id="applyToAll.actions" class="details-actions">
+			<button id="applyToAll.templateOnly" class="quiet-button" type="submit" name="applyToAll" value="false">{ p.words.Of("columns.templateOnly") }</button>
+			<button id="applyToAll.apply" class="primary small" type="submit" name="applyToAll" value="true">{ p.words.Of("columns.applyToAll") }</button>
+		</span>
+	</div>
+}
+
+// deleteQuestion is a column's Delete in the details panel, asked first as the app's swipe asks it; a template's column then asks the app's
+// question, deleted from the template only or from every item of the type. Cancel keeps it.
+templ deleteQuestion(p page, shown columnsShown, column structure.ColumnView) {
+	<div class="details-head">
+		<h3 id="column.title">{ column.Name }</h3>
+		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="column.deleteForm" class="details-form" hx-post={ shown.path() + "/" + column.ID.String() + "/delete" } hx-target="[id='web.details']">
+		<p id="column.deleteQuestion" class="section-title">{ p.words.Of("swipe.question") }</p>
+		if shown.template {
+			@applyQuestion(p)
+		}
+		<span id="column.deleteActions" class="details-actions">
+			if !shown.template {
+				<button id="column.deleteConfirm" class="primary small" type="submit">{ p.words.Of("swipe.remove") }</button>
+			}
+			<button id="column.deleteCancel" class="quiet-button" type="button" hx-get={ "/details/columns/" + shown.item.ID.String() + "/" + shown.scope() + "/" + column.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+		</span>
+	</form>
+}
+
+// orderQuestion is the app's question a template's new order asks, in the details panel; each answer keeps the order shown.
+templ orderQuestion(p page, shown columnsShown, ids string) {
+	<form id="column.orderForm" class="details-form" hx-post={ shown.path() + "/reorder" } hx-target="[id='web.content']">
+		<input id="column.orderIds" type="hidden" name="ids" value={ ids }/>
+		@applyQuestion(p)
+	</form>
+}

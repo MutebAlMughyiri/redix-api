@@ -167,7 +167,7 @@ var sideMenu = []menuItem{
 var menuNeeds = map[string]access.Permission{"approvals": access.ApproveEntries, "approvalHistory": access.ApproveEntries, "reports": access.SeeReports,
 	"expenses": access.SeeReports, "revenue": access.SeeReports, "itemReport": access.SeeReports,
 	"periodicReport": access.SeeReports,
-	"projectHistory": access.SeeProjectHistory, "users": access.ManageUsers, "newUser": access.ManageUsers, "userPermissions": access.ManageUsers, "requests": access.ManageUsers, "categories": access.ManageStructure,
+	"projectHistory": access.SeeProjectHistory, "users": access.ManageUsers, "newUser": access.ManageUsers, "userPermissions": access.ManageUsers, "requests": access.ManageUsers, "categories": access.ManageStructure, "itemColumns": access.ManageStructure,
 	"paymentMethods": access.ManageSettings}
 
 // offers says whether p's caller may use the tab named name: the side menu and the open tabs leave out one they may not, and its content is not
@@ -178,8 +178,8 @@ func (p page) offers(name string) bool {
 }
 
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
-// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}}
+// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns, from its panel (redix-api #174).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
@@ -203,6 +203,7 @@ var contents = map[string]tab{
 	"userPermissions":   site.userPermissionsTab,
 	"myPermissions":     site.myPermissionsTab,
 	"categories":        site.categoriesTab,
+	"itemColumns":       site.columnsTab,
 	"permissionRequest": site.askTab,
 	"requests":          site.requestsTab,
 	"partnerHistory":    site.partnerHistoryTab,

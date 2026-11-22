@@ -4,6 +4,7 @@
 package structure
 
 import (
+	"context"
 	"errors"
 	"math"
 	"net/http"
@@ -42,22 +43,35 @@ func asColumns[T any](rows []T, of func(T) column) []column {
 
 // columnsOfItem is the columns an item asks for, in order; a deleted one is not among them. 404 for an item the project does not hold.
 func (s Routes) columnsOfItem(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	read := s.database.Queries()
-	item, err := changes.Found(read.ItemOf(r.Context(), store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: web.ID(r, "projectId")}))
+	views, err := ColumnsOfItem(r.Context(), s.database.Queries(), web.ID(r, "projectId"), web.ID(r, "itemId"))
 	if errors.Is(err, changes.NotFound) {
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
-	columns, columnsErr := read.ColumnsOfItem(r.Context(), item.ID)
-	if err != nil || columnsErr != nil {
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// ColumnsOfItem is the columns itemID of projectID asks for, in order, a deleted one not among them, as columnsOfItem answers them: the rule
+// both doors call, the app's route and the web's Columns (redix-api #174). changes.NotFound for an item the project does not hold; any other
+// error is the database's.
+func ColumnsOfItem(ctx context.Context, read *store.Queries, projectID, itemID uuid.UUID) ([]ColumnView, error) {
+	item, err := changes.Found(read.ItemOf(ctx, store.ItemOfParams{ID: itemID, ProjectID: projectID}))
+	if err != nil {
+		return nil, err
+	}
+	columns, err := read.ColumnsOfItem(ctx, item.ID)
+	if err != nil {
+		return nil, err
 	}
 	var views []ColumnView
 	for _, row := range visible(columns) {
 		views = append(views, ColumnOf(row))
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // itemTypeOf is the route's item type, or false once it has answered 400 for a name or number that is none (ItemTypeInUrl).
@@ -75,93 +89,111 @@ func (s Routes) columnsOfTemplate(w http.ResponseWriter, r *http.Request, _ acce
 	if !ok {
 		return
 	}
-	template, err := s.database.Queries().DefaultColumnsOfType(r.Context(), store.DefaultColumnsOfTypeParams{ProjectID: web.ID(r, "projectId"), ItemType: int64(itemType)})
+	views, err := ColumnsOfTemplate(r.Context(), s.database.Queries(), web.ID(r, "projectId"), itemType)
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// ColumnsOfTemplate is projectID's default template for itemType, in order, as columnsOfTemplate answers it: the rule both doors call, the app's
+// route and the web's Columns (redix-api #174). The error is the database's.
+func ColumnsOfTemplate(ctx context.Context, read *store.Queries, projectID uuid.UUID, itemType ItemType) ([]ColumnView, error) {
+	template, err := read.DefaultColumnsOfType(ctx, store.DefaultColumnsOfTypeParams{ProjectID: projectID, ItemType: int64(itemType)})
+	if err != nil {
+		return nil, err
 	}
 	var views []ColumnView
 	for _, row := range template {
 		views = append(views, ofDefaultColumn(row).view(row.ID))
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // addToItem adds a column to one item, at the end (AC-41.1): invalidName, invalidDataType or invalidOptions (400) for what was typed; 404 for an
 // item the project does not hold; revenueTakesNoColumns (400) on a revenue item, which asks only what its template gives it; signedListExists
 // (400) for a second list whose choices give a sign (redix-api #129).
 func (s Routes) addToItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request columnRequest
-	if !web.Read(w, r, &request) {
-		return
+	var request ColumnRequest
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error { return AddToItem(c.Change, web.ID(r, "itemId"), request) })
 	}
-	if reason := request.refusalOfNew(); reason != "" {
-		refuse(w, r, reason)
-		return
+}
+
+// AddToItem adds the column typed to itemID, at the end, as addToItem does: the rule both doors call, the app's route and the web's New column
+// (redix-api #174). Refused as addToItem answers.
+func AddToItem(c changes.Change, itemID uuid.UUID, typed ColumnRequest) error {
+	if reason := typed.refusalOfNew(); reason != "" {
+		return refused(reason)
 	}
-	s.done(w, r, caller, func(c change) error {
-		item, err := c.item(r)
-		if err != nil {
-			return err
-		}
-		if ItemType(item.Type).IsRevenue() {
-			return refused(revenueTakesNoColumns)
-		}
-		columns, err := c.Q.ColumnsOfItem(c.Ctx, item.ID)
-		if err != nil {
-			return err
-		}
-		added := request.newColumn(int64(len(columns)))
-		if hasTwoSignedLists(append(asColumns(visible(columns), ofItemColumn), added)) {
-			return refused(signedListExists)
-		}
-		return c.saveItemColumn(store.ItemColumn{}, added.onItem(uuid.Must(uuid.NewV7()), item.ID, false))
-	})
+	one := change{c}
+	item, err := itemIn(c, itemID)
+	if err != nil {
+		return err
+	}
+	if ItemType(item.Type).IsRevenue() {
+		return refused(revenueTakesNoColumns)
+	}
+	columns, err := c.Q.ColumnsOfItem(c.Ctx, item.ID)
+	if err != nil {
+		return err
+	}
+	added := typed.newColumn(int64(len(columns)))
+	if hasTwoSignedLists(append(asColumns(visible(columns), ofItemColumn), added)) {
+		return refused(signedListExists)
+	}
+	return one.saveItemColumn(store.ItemColumn{}, added.onItem(uuid.Must(uuid.NewV7()), item.ID, false))
 }
 
 // reorderOfItem puts an item's columns in the order given, a core one too (BR-20): invalidOrder (400) for a list that is not exactly its columns.
 func (s Routes) reorderOfItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request reorderRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error { return ReorderItemColumns(c.Change, web.ID(r, "itemId"), request.IDs) })
 	}
-	s.done(w, r, caller, func(c change) error {
-		item, err := c.item(r)
-		if err != nil {
-			return err
-		}
-		columns, err := c.Q.ColumnsOfItem(c.Ctx, item.ID)
-		if err != nil {
-			return err
-		}
-		shown := visible(columns)
-		places, ok := inOrder(idsOf(shown, func(row store.ItemColumn) uuid.UUID { return row.ID }), request.IDs)
-		if !ok {
-			return refused(invalidOrder)
-		}
-		for _, before := range shown {
-			after := before
-			after.SortOrder = places[before.ID]
-			if err := c.saveItemColumn(before, after); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
 }
 
-// itemColumn is the route's column of the route's item, and the item's shown columns: changes.NotFound for a column deleted or not the project's.
-func (c change) itemColumn(r *http.Request) (store.ItemColumn, []store.ItemColumn, error) {
-	columns, err := c.Q.ColumnsOfItem(c.Ctx, web.ID(r, "itemId"))
+// ReorderItemColumns puts itemID's columns in the order ids gives, a core one too (BR-20), as reorderOfItem does: the rule both doors call, the
+// app's route and the web's Columns (redix-api #174). NotFound for an item the project does not hold; invalidOrder (400) for ids that are not
+// exactly its columns.
+func ReorderItemColumns(c changes.Change, itemID uuid.UUID, ids []uuid.UUID) error {
+	one := change{c}
+	item, err := itemIn(c, itemID)
+	if err != nil {
+		return err
+	}
+	columns, err := c.Q.ColumnsOfItem(c.Ctx, item.ID)
+	if err != nil {
+		return err
+	}
+	shown := visible(columns)
+	places, ok := inOrder(idsOf(shown, func(row store.ItemColumn) uuid.UUID { return row.ID }), ids)
+	if !ok {
+		return refused(invalidOrder)
+	}
+	for _, before := range shown {
+		after := before
+		after.SortOrder = places[before.ID]
+		if err := one.saveItemColumn(before, after); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// itemColumn is columnID of itemID, and the item's shown columns: changes.NotFound for a column deleted or not the project's.
+func itemColumn(c changes.Change, itemID, columnID uuid.UUID) (store.ItemColumn, []store.ItemColumn, error) {
+	columns, err := c.Q.ColumnsOfItem(c.Ctx, itemID)
 	if err != nil {
 		return store.ItemColumn{}, nil, err
 	}
 	shown := visible(columns)
-	at := slices.IndexFunc(shown, func(row store.ItemColumn) bool { return row.ID == web.ID(r, "columnId") })
+	at := slices.IndexFunc(shown, func(row store.ItemColumn) bool { return row.ID == columnID })
 	if at < 0 {
 		return store.ItemColumn{}, nil, changes.NotFound
 	}
-	if _, err := c.item(r); err != nil {
+	if _, err := itemIn(c, itemID); err != nil {
 		return store.ItemColumn{}, nil, err
 	}
 	return shown[at], shown, nil
@@ -170,25 +202,30 @@ func (c change) itemColumn(r *http.Request) (store.ItemColumn, []store.ItemColum
 // editOfItem changes a column of one item (BR-20, BR-21): its type never changes, and a list's choices are only added to; signedListExists (400)
 // for a sign on a second list of the item (redix-api #129).
 func (s Routes) editOfItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request editRequest
-	if !web.Read(w, r, &request) {
-		return
+	var request EditRequest
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error {
+			return EditItemColumn(c.Change, web.ID(r, "itemId"), web.ID(r, "columnId"), request)
+		})
 	}
-	s.done(w, r, caller, func(c change) error {
-		before, shown, err := c.itemColumn(r)
-		if err != nil {
-			return err
-		}
-		edited, reason := ofItemColumn(before).edited(request)
-		if reason != "" {
-			return refused(reason)
-		}
-		after := edited.onItem(before.ID, before.ItemID, false)
-		if hasTwoSignedLists(asColumns(replaced(shown, after), ofItemColumn)) {
-			return refused(signedListExists)
-		}
-		return c.saveItemColumn(before, after)
-	})
+}
+
+// EditItemColumn makes columnID of itemID as typed, as editOfItem does: the rule both doors call, the app's route and the web's Edit column
+// (redix-api #174). NotFound for a column deleted or not the project's; refused as editOfItem answers.
+func EditItemColumn(c changes.Change, itemID, columnID uuid.UUID, typed EditRequest) error {
+	before, shown, err := itemColumn(c, itemID, columnID)
+	if err != nil {
+		return err
+	}
+	edited, reason := ofItemColumn(before).edited(typed)
+	if reason != "" {
+		return refused(reason)
+	}
+	after := edited.onItem(before.ID, before.ItemID, false)
+	if hasTwoSignedLists(asColumns(replaced(shown, after), ofItemColumn)) {
+		return refused(signedListExists)
+	}
+	return change{c}.saveItemColumn(before, after)
 }
 
 // replaced is columns with row in place of the one of its id.
@@ -205,13 +242,17 @@ func replaced(columns []store.ItemColumn, row store.ItemColumn) []store.ItemColu
 // deleteOfItem deletes a column of one item by hiding it: it leaves entry, and its values stay on their entries and in History (AC-41.2, BR-21).
 // coreColumn (409) for a core column, which is never deleted (BR-20).
 func (s Routes) deleteOfItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	s.done(w, r, caller, func(c change) error {
-		before, _, err := c.itemColumn(r)
-		if err != nil {
-			return err
-		}
-		return c.hide(before)
-	})
+	s.done(w, r, caller, func(c change) error { return DeleteItemColumn(c.Change, web.ID(r, "itemId"), web.ID(r, "columnId")) })
+}
+
+// DeleteItemColumn deletes columnID of itemID by hiding it, as deleteOfItem does: the rule both doors call, the app's route and the web's Delete
+// column (redix-api #174). NotFound for a column deleted or not the project's; coreColumn (409) for a core one.
+func DeleteItemColumn(c changes.Change, itemID, columnID uuid.UUID) error {
+	before, _, err := itemColumn(c, itemID, columnID)
+	if err != nil {
+		return err
+	}
+	return change{c}.hide(before)
 }
 
 // hide deletes an item's column by hiding it (ItemColumn.Hide): coreColumn for a core one.
@@ -252,7 +293,7 @@ func (c change) columnsOfType(itemType ItemType) (map[uuid.UUID][]store.ItemColu
 
 // addTemplateColumnRequest is the body POST /projects/{projectId}/default-columns/{itemType} (UC-013) reads.
 type addTemplateColumnRequest struct {
-	columnRequest
+	ColumnRequest
 	ApplyToAllItems bool `json:"applyToAllItems"`
 }
 
@@ -264,48 +305,53 @@ func (s Routes) addToTemplate(w http.ResponseWriter, r *http.Request, caller acc
 		return
 	}
 	var request addTemplateColumnRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error {
+			return AddToTemplate(c.Change, itemType, request.ColumnRequest, request.ApplyToAllItems)
+		})
 	}
-	reason := request.refusalOfNew()
+}
+
+// AddToTemplate adds the column typed to the change's project's template of itemType, and to every existing item of that type when applyToAll,
+// as addToTemplate does: the rule both doors call, the app's route and the web's New column (redix-api #174). Refused as addToTemplate answers.
+func AddToTemplate(c changes.Change, itemType ItemType, typed ColumnRequest, applyToAll bool) error {
+	reason := typed.refusalOfNew()
 	if itemType.IsRevenue() {
 		reason = revenueTakesNoColumns
 	}
 	if reason != "" {
-		refuse(w, r, reason)
-		return
+		return refused(reason)
 	}
-	s.done(w, r, caller, func(c change) error {
-		template, err := c.template(itemType)
-		if err != nil {
-			return err
-		}
-		added := request.newColumn(int64(len(template)))
-		if hasTwoSignedLists(append(asColumns(template, ofDefaultColumn), added)) {
+	one := change{c}
+	template, err := one.template(itemType)
+	if err != nil {
+		return err
+	}
+	added := typed.newColumn(int64(len(template)))
+	if hasTwoSignedLists(append(asColumns(template, ofDefaultColumn), added)) {
+		return refused(signedListExists)
+	}
+	if err := one.saveDefaultColumn(store.DefaultColumn{}, added.inTemplate(uuid.Must(uuid.NewV7()), c.ProjectID, int64(itemType))); err != nil {
+		return err
+	}
+	if !applyToAll {
+		return nil
+	}
+	byItem, err := one.columnsOfType(itemType)
+	if err != nil {
+		return err
+	}
+	for itemID, columns := range byItem {
+		onItem := added
+		onItem.SortOrder = int64(len(columns))
+		if hasTwoSignedLists(append(asColumns(visible(columns), ofItemColumn), onItem)) {
 			return refused(signedListExists)
 		}
-		if err := c.saveDefaultColumn(store.DefaultColumn{}, added.inTemplate(uuid.Must(uuid.NewV7()), c.ProjectID, int64(itemType))); err != nil {
+		if err := one.saveItemColumn(store.ItemColumn{}, onItem.onItem(uuid.Must(uuid.NewV7()), itemID, false)); err != nil {
 			return err
 		}
-		if !request.ApplyToAllItems {
-			return nil
-		}
-		byItem, err := c.columnsOfType(itemType)
-		if err != nil {
-			return err
-		}
-		for itemID, columns := range byItem {
-			onItem := added
-			onItem.SortOrder = int64(len(columns))
-			if hasTwoSignedLists(append(asColumns(visible(columns), ofItemColumn), onItem)) {
-				return refused(signedListExists)
-			}
-			if err := c.saveItemColumn(store.ItemColumn{}, onItem.onItem(uuid.Must(uuid.NewV7()), itemID, false)); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // reorderTemplateColumnsRequest is the body POST /projects/{projectId}/default-columns/{itemType}/reorder (UC-013) reads.
@@ -322,52 +368,57 @@ func (s Routes) reorderOfTemplate(w http.ResponseWriter, r *http.Request, caller
 		return
 	}
 	var request reorderTemplateColumnsRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error { return ReorderTemplate(c.Change, itemType, request.IDs, request.ApplyToAllItems) })
 	}
-	s.done(w, r, caller, func(c change) error {
-		template, err := c.template(itemType)
-		if err != nil {
+}
+
+// ReorderTemplate puts the change's project's template of itemType in the order ids gives, and every existing item of that type after it when
+// applyToAll, what only that item has after the rest, as reorderOfTemplate does: the rule both doors call, the app's route and the web's Columns
+// (redix-api #174). invalidOrder (400) for ids that are not exactly the template's columns.
+func ReorderTemplate(c changes.Change, itemType ItemType, ids []uuid.UUID, applyToAll bool) error {
+	one := change{c}
+	template, err := one.template(itemType)
+	if err != nil {
+		return err
+	}
+	places, ok := inOrder(idsOf(template, func(row store.DefaultColumn) uuid.UUID { return row.ID }), ids)
+	if !ok {
+		return refused(invalidOrder)
+	}
+	placeOfKey := map[string]int64{}
+	for _, before := range template {
+		after := before
+		after.SortOrder = places[before.ID]
+		placeOfKey[before.Key] = after.SortOrder
+		if err := one.saveDefaultColumn(before, after); err != nil {
 			return err
 		}
-		places, ok := inOrder(idsOf(template, func(row store.DefaultColumn) uuid.UUID { return row.ID }), request.IDs)
-		if !ok {
-			return refused(invalidOrder)
-		}
-		placeOfKey := map[string]int64{}
-		for _, before := range template {
+	}
+	if !applyToAll {
+		return nil
+	}
+	byItem, err := one.columnsOfType(itemType)
+	if err != nil {
+		return err
+	}
+	for _, columns := range byItem {
+		ordered := visible(columns)
+		slices.SortStableFunc(ordered, func(a, b store.ItemColumn) int {
+			if placeA, placeB := placeOr(placeOfKey, a.Key), placeOr(placeOfKey, b.Key); placeA != placeB {
+				return compare(placeA, placeB)
+			}
+			return compare(a.SortOrder, b.SortOrder)
+		})
+		for place, before := range ordered {
 			after := before
-			after.SortOrder = places[before.ID]
-			placeOfKey[before.Key] = after.SortOrder
-			if err := c.saveDefaultColumn(before, after); err != nil {
+			after.SortOrder = int64(place)
+			if err := one.saveItemColumn(before, after); err != nil {
 				return err
 			}
 		}
-		if !request.ApplyToAllItems {
-			return nil
-		}
-		byItem, err := c.columnsOfType(itemType)
-		if err != nil {
-			return err
-		}
-		for _, columns := range byItem {
-			ordered := visible(columns)
-			slices.SortStableFunc(ordered, func(a, b store.ItemColumn) int {
-				if placeA, placeB := placeOr(placeOfKey, a.Key), placeOr(placeOfKey, b.Key); placeA != placeB {
-					return compare(placeA, placeB)
-				}
-				return compare(a.SortOrder, b.SortOrder)
-			})
-			for place, before := range ordered {
-				after := before
-				after.SortOrder = int64(place)
-				if err := c.saveItemColumn(before, after); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 
 func placeOr(places map[string]int64, key string) int64 {
@@ -387,13 +438,13 @@ func compare(a, b int64) int {
 	return 0
 }
 
-// templateColumn is the route's column of the template of itemType, and the whole template: changes.NotFound for none.
-func (c change) templateColumn(r *http.Request, itemType ItemType) (store.DefaultColumn, []store.DefaultColumn, error) {
+// templateColumn is columnID of the template of itemType, and the whole template: changes.NotFound for none.
+func (c change) templateColumn(itemType ItemType, columnID uuid.UUID) (store.DefaultColumn, []store.DefaultColumn, error) {
 	template, err := c.template(itemType)
 	if err != nil {
 		return store.DefaultColumn{}, nil, err
 	}
-	at := slices.IndexFunc(template, func(row store.DefaultColumn) bool { return row.ID == web.ID(r, "columnId") })
+	at := slices.IndexFunc(template, func(row store.DefaultColumn) bool { return row.ID == columnID })
 	if at < 0 {
 		return store.DefaultColumn{}, nil, changes.NotFound
 	}
@@ -402,7 +453,7 @@ func (c change) templateColumn(r *http.Request, itemType ItemType) (store.Defaul
 
 // editTemplateColumnRequest is the body PUT /projects/{projectId}/default-columns/{itemType}/{columnId} (UC-013) reads.
 type editTemplateColumnRequest struct {
-	editRequest
+	EditRequest
 	ApplyToAllItems bool `json:"applyToAllItems"`
 }
 
@@ -414,37 +465,44 @@ func (s Routes) editOfTemplate(w http.ResponseWriter, r *http.Request, caller ac
 		return
 	}
 	var request editTemplateColumnRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error {
+			return EditTemplateColumn(c.Change, itemType, web.ID(r, "columnId"), request.EditRequest, request.ApplyToAllItems)
+		})
 	}
-	s.done(w, r, caller, func(c change) error {
-		before, template, err := c.templateColumn(r, itemType)
-		if err != nil {
-			return err
-		}
-		edited, reason := ofDefaultColumn(before).edited(request.editRequest)
-		if reason != "" {
-			return refused(reason)
-		}
-		after := edited.inTemplate(before.ID, before.ProjectID, before.ItemType)
-		edits := asColumns(template, ofDefaultColumn)
-		edits[slices.IndexFunc(template, func(row store.DefaultColumn) bool { return row.ID == before.ID })] = edited
-		if hasTwoSignedLists(edits) {
-			return refused(signedListExists)
-		}
-		if err := c.saveDefaultColumn(before, after); err != nil {
-			return err
-		}
-		if !request.ApplyToAllItems {
-			return nil
-		}
-		return c.editOnItems(itemType, before.Key, request.editRequest)
-	})
+}
+
+// EditTemplateColumn makes columnID of the template of itemType as typed, and the same column on every existing item of that type when
+// applyToAll, as editOfTemplate does: the rule both doors call, the app's route and the web's Edit column (redix-api #174). NotFound for no such
+// column; refused as editOfTemplate answers.
+func EditTemplateColumn(c changes.Change, itemType ItemType, columnID uuid.UUID, typed EditRequest, applyToAll bool) error {
+	one := change{c}
+	before, template, err := one.templateColumn(itemType, columnID)
+	if err != nil {
+		return err
+	}
+	edited, reason := ofDefaultColumn(before).edited(typed)
+	if reason != "" {
+		return refused(reason)
+	}
+	after := edited.inTemplate(before.ID, before.ProjectID, before.ItemType)
+	edits := asColumns(template, ofDefaultColumn)
+	edits[slices.IndexFunc(template, func(row store.DefaultColumn) bool { return row.ID == before.ID })] = edited
+	if hasTwoSignedLists(edits) {
+		return refused(signedListExists)
+	}
+	if err := one.saveDefaultColumn(before, after); err != nil {
+		return err
+	}
+	if !applyToAll {
+		return nil
+	}
+	return one.editOnItems(itemType, before.Key, typed)
 }
 
 // editOnItems makes typed of the column key on every shown column of the project's items of itemType; a column its own rules refuse it to stays
 // as it is, as Column.Edit left it.
-func (c change) editOnItems(itemType ItemType, key string, typed editRequest) error {
+func (c change) editOnItems(itemType ItemType, key string, typed EditRequest) error {
 	byItem, err := c.columnsOfType(itemType)
 	if err != nil {
 		return err
@@ -486,34 +544,42 @@ func (s Routes) deleteOfTemplate(w http.ResponseWriter, r *http.Request, caller 
 		return
 	}
 	s.done(w, r, caller, func(c change) error {
-		column, _, err := c.templateColumn(r, itemType)
-		if err != nil {
-			return err
-		}
-		if column.IsCore {
-			return refused(coreColumn)
-		}
-		if err := c.Remove("DefaultColumns", column.ID, defaultColumnFields(column), func() error { return c.Q.RemoveDefaultColumn(c.Ctx, column.ID) }); err != nil {
-			return err
-		}
-		if !applyToAllItems {
-			return nil
-		}
-		byItem, err := c.columnsOfType(itemType)
-		if err != nil {
-			return err
-		}
-		for _, columns := range byItem {
-			for _, row := range visible(columns) {
-				if row.Key == column.Key && !row.IsCore {
-					if err := c.hide(row); err != nil {
-						return err
-					}
+		return DeleteTemplateColumn(c.Change, itemType, web.ID(r, "columnId"), applyToAllItems)
+	})
+}
+
+// DeleteTemplateColumn deletes columnID of the template of itemType, and hides it on every existing item of that type when applyToAll, as
+// deleteOfTemplate does: the rule both doors call, the app's route and the web's Delete column (redix-api #174). NotFound for no such column;
+// coreColumn (409) for a core one.
+func DeleteTemplateColumn(c changes.Change, itemType ItemType, columnID uuid.UUID, applyToAll bool) error {
+	one := change{c}
+	column, _, err := one.templateColumn(itemType, columnID)
+	if err != nil {
+		return err
+	}
+	if column.IsCore {
+		return refused(coreColumn)
+	}
+	if err := one.Remove("DefaultColumns", column.ID, defaultColumnFields(column), func() error { return c.Q.RemoveDefaultColumn(c.Ctx, column.ID) }); err != nil {
+		return err
+	}
+	if !applyToAll {
+		return nil
+	}
+	byItem, err := one.columnsOfType(itemType)
+	if err != nil {
+		return err
+	}
+	for _, columns := range byItem {
+		for _, row := range visible(columns) {
+			if row.Key == column.Key && !row.IsCore {
+				if err := one.hide(row); err != nil {
+					return err
 				}
 			}
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // boolean is a query value as bool.TryParse read it: true or false in any case; false and false for anything else or nothing.

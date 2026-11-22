@@ -3509,3 +3509,164 @@ func TestWeb_R174_StructureIsForWhoeverShapesItAndAFinishedProjectChangesNothing
 	has(t, w.browser.Send("POST", "/structure/item/"+w.item+"/rename", url.Values{"name": {"x"}}).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
 	has(t, w.browser.Send("POST", "/structure/reorder", nil).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
 }
+
+func TestWeb_R174_UC013_ColumnsListAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/details/structure/item/"+w.item, nil).Body.String(), `hx-get="/tab/itemColumns?item=`+w.item+`"`)
+	own := w.browser.Send("GET", "/tab/itemColumns?item="+w.item, nil).Body.String()
+	has(t, own, `<h2 id="columns.title">الأعمدة · التسليح</h2>`)
+	has(t, own, `<p id="columns.itemDetails" class="hint wide">الحديد · مشتريات</p>`)
+	has(t, own, `<button id="columns.thisItem" type="button" aria-pressed="true"`)
+	has(t, own, `data-reorder="/columns/`+w.item+`/item/reorder"`)
+	core := w.idsIn("SELECT id FROM item_columns WHERE item_id = ? AND is_core = 1 AND is_hidden = 0 ORDER BY sort_order", w.item)
+	if len(core) == 0 {
+		t.Fatal("a purchases item has core columns")
+	}
+	has(t, own, `<span id="columns.core.`+core[0]+`" class="chip"`)
+	template := w.browser.Send("GET", "/tab/itemColumns?item="+w.item+"&scope=template", nil).Body.String()
+	has(t, template, `<button id="columns.template" type="button" aria-pressed="true"`)
+	has(t, template, `data-reorder="/columns/`+w.item+`/template/reorder"`)
+	var sale string
+	if err := w.Database.Read.QueryRow("SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 3 LIMIT 1", w.id).Scan(&sale); err != nil {
+		t.Fatal(err)
+	}
+	revenue := w.browser.Send("GET", "/tab/itemColumns?item="+sale, nil).Body.String()
+	has(t, revenue, `hx-target="[id='web.details']" disabled>`)
+	has(t, revenue, "لا يُضاف عمود إلى بند إيرادات: يطلب ما يعطيه قالبه.")
+	lacks(t, w.browser.Send("GET", "/tab/itemColumns?item="+uuid.NewString(), nil).Body.String(), `id="columns.itemDetails"`)
+}
+
+func TestWeb_R174_UC013_NewEditAndDeleteAColumnAsTheAppsDialogs(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	page := "/columns/" + w.item + "/item"
+	asking := w.browser.Send("GET", "/details/columns/"+w.item+"/item/new", nil).Body.String()
+	has(t, asking, `<option id="columns.dataTypeOption.text" value="text" selected>`)
+	lacks(t, asking, `value="file"`)
+	lacks(t, asking, `id="applyToAll.dialog"`)
+	has(t, w.browser.Send("POST", page+"/new/add", url.Values{"name": {" "}, "dataType": {"text"}}).Body.String(), `<p id="column.refusal" class="refusal" role="alert">أدخل اسماً من 1 إلى 100 حرف.</p>`)
+	has(t, w.browser.Send("POST", page+"/new/add", url.Values{"name": {"الدرجة"}, "dataType": {"list"}, "choices": {""}}).Body.String(), "أدخل خياراً واحداً على الأقل")
+	added := w.browser.Send("POST", page+"/new/add", url.Values{"name": {"الملاحظة"}, "dataType": {"text"}, "required": {"on"}, "reports": {"on"}}).Body.String()
+	has(t, added, `<h3 id="column.title">الملاحظة</h3>`)
+	has(t, added, `<dd id="column.type">مخصص · نص · إلزامي عند الإدخال · في التقارير</dd>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	var note string
+	if err := w.Database.Read.QueryRow("SELECT id FROM item_columns WHERE item_id = ? AND name = 'الملاحظة'", w.item).Scan(&note); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("GET", "/details/columns/"+w.item+"/item/"+note+"?asking=edit", nil).Body.String(), `<input id="columns.columnName" name="name" required value="الملاحظة" autofocus>`)
+	has(t, w.browser.Send("POST", page+"/"+note+"/edit", url.Values{"name": {"ملاحظة"}}).Body.String(), `<dd id="column.type">مخصص · نص · اختياري</dd>`)
+	w.browser.Send("POST", page+"/new/add", url.Values{"name": {"الدرجة"}, "dataType": {"list"}, "choices": {"أولى\r\nثانية"}, "reports": {"on"}})
+	var grade string
+	if err := w.Database.Read.QueryRow("SELECT id FROM item_columns WHERE item_id = ? AND name = 'الدرجة'", w.item).Scan(&grade); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("GET", "/details/columns/"+w.item+"/item/"+grade+"?asking=edit", nil).Body.String(), `<p id="columns.existingChoices" class="hint">أولى · ثانية</p>`)
+	has(t, w.browser.Send("POST", page+"/"+grade+"/edit", url.Values{"name": {"الدرجة"}, "reports": {"on"}, "choices": {"ثالثة"}}).Body.String(), `<dd id="column.choices">أولى · ثانية · ثالثة</dd>`)
+	has(t, w.browser.Send("GET", "/details/columns/"+w.item+"/item/"+note+"?asking=delete", nil).Body.String(), `<p id="column.deleteQuestion" class="section-title">حذفه؟</p>`)
+	deleted := w.browser.Send("POST", page+"/"+note+"/delete", nil).Body.String()
+	lacks(t, deleted, `id="columns.row.`+note+`"`)
+	if hidden := w.Count(`SELECT count(*) FROM item_columns WHERE id = '` + note + `' AND is_hidden = 1`); hidden != 1 {
+		t.Errorf("a deleted column is hidden, its values kept: %d", hidden)
+	}
+	core := w.idsIn("SELECT id FROM item_columns WHERE item_id = ? AND is_core = 1", w.item)
+	lacks(t, w.browser.Send("GET", "/details/columns/"+w.item+"/item/"+core[0], nil).Body.String(), `id="columns.delete"`)
+	has(t, w.browser.Send("POST", page+"/"+core[0]+"/delete", nil).Body.String(), "العمود الأساسي لا يُحذف، ولا يتغير منه إلا اسمه.")
+	columns := w.idsIn("SELECT id FROM item_columns WHERE item_id = ? AND is_hidden = 0 ORDER BY sort_order", w.item)
+	slices.Reverse(columns)
+	w.browser.Send("POST", page+"/reorder", url.Values{"ids": {strings.Join(columns, ",")}})
+	if again := w.idsIn("SELECT id FROM item_columns WHERE item_id = ? AND is_hidden = 0 ORDER BY sort_order", w.item); !slices.Equal(again, columns) {
+		t.Errorf("the item's columns keep their new order: %v", again)
+	}
+	has(t, w.browser.Send("POST", page+"/reorder", url.Values{"ids": {columns[0]}}).Body.String(), `<p id="columns.refusal" class="refusal wide" role="alert">تغيّرت القائمة. حاول مرة أخرى.</p>`)
+	for _, path := range []string{page + "/" + note + "/archive", page + "/" + uuid.NewString() + "/edit", "/columns/" + w.item + "/unit/new/add", "/columns/" + uuid.NewString() + "/item/new/add",
+		"/columns/x/item/new/add", page + "/new/edit"} {
+		if code := w.browser.Send("POST", path, url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	for _, path := range []string{"/details/columns/" + w.item + "/item/" + uuid.NewString(), "/details/columns/" + w.item + "/unit/new", "/details/columns/" + uuid.NewString() + "/item/new"} {
+		if code := w.browser.Send("GET", path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+}
+
+func TestWeb_R174_UC013_ATemplatesChangeAsksWhetherItReachesEveryItem(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	page := "/columns/" + w.item + "/template"
+	asking := w.browser.Send("GET", "/details/columns/"+w.item+"/template/new", nil).Body.String()
+	has(t, asking, `<button id="applyToAll.templateOnly" class="quiet-button" type="submit" name="applyToAll" value="false">القالب فقط</button>`)
+	has(t, asking, `<button id="applyToAll.apply" class="primary small" type="submit" name="applyToAll" value="true">تطبيق على كل البنود</button>`)
+	w.browser.Send("POST", page+"/new/add", url.Values{"name": {"المورد الفرعي"}, "dataType": {"text"}, "applyToAll": {"false"}})
+	w.browser.Send("POST", page+"/new/add", url.Values{"name": {"رقم الطلب"}, "dataType": {"number"}, "applyToAll": {"true"}})
+	if only := w.Count(`SELECT count(*) FROM item_columns WHERE item_id = '` + w.item + `' AND name = 'المورد الفرعي'`); only != 0 {
+		t.Errorf("the template only leaves the items: %d", only)
+	}
+	if every := w.Count(`SELECT count(*) FROM item_columns WHERE item_id = '` + w.item + `' AND name = 'رقم الطلب' AND is_hidden = 0`); every != 1 {
+		t.Errorf("every item takes a column applied to all: %d", every)
+	}
+	var order string
+	if err := w.Database.Read.QueryRow("SELECT id FROM default_columns WHERE project_id = ? AND name = 'رقم الطلب'", w.id).Scan(&order); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("POST", page+"/"+order+"/edit", url.Values{"name": {"رقم أمر الشراء"}, "applyToAll": {"true"}}).Body.String(), `<h3 id="column.title">رقم أمر الشراء</h3>`)
+	if renamed := w.Count(`SELECT count(*) FROM item_columns WHERE item_id = '` + w.item + `' AND name = 'رقم أمر الشراء'`); renamed != 1 {
+		t.Errorf("an edit applied to all reaches the items: %d", renamed)
+	}
+	has(t, w.browser.Send("GET", "/details/columns/"+w.item+"/template/"+order+"?asking=delete", nil).Body.String(), `id="applyToAll.apply"`)
+	w.browser.Send("POST", page+"/"+order+"/delete", url.Values{"applyToAll": {"true"}})
+	if kept := w.Count(`SELECT count(*) FROM item_columns WHERE item_id = '` + w.item + `' AND name = 'رقم أمر الشراء' AND is_hidden = 0`); kept != 0 {
+		t.Errorf("a delete applied to all hides it on the items: %d", kept)
+	}
+	template := w.idsIn("SELECT id FROM default_columns WHERE project_id = ? AND item_type = 0 ORDER BY sort_order", w.id)
+	slices.Reverse(template)
+	asked := w.browser.Send("POST", page+"/reorder", url.Values{"ids": {strings.Join(template, ",")}})
+	if asked.Header().Get("HX-Retarget") != "[id='web.details']" {
+		t.Errorf("a template's order asks first, in the details panel: %q", asked.Header().Get("HX-Retarget"))
+	}
+	has(t, asked.Body.String(), `<input id="column.orderIds" type="hidden" name="ids" value="`+strings.Join(template, ",")+`">`)
+	w.browser.Send("POST", page+"/reorder", url.Values{"ids": {strings.Join(template, ",")}, "applyToAll": {"false"}})
+	if again := w.idsIn("SELECT id FROM default_columns WHERE project_id = ? AND item_type = 0 ORDER BY sort_order", w.id); !slices.Equal(again, template) {
+		t.Errorf("the template keeps its new order: %v", again)
+	}
+}
+
+func TestWeb_R174_UC013_ColumnsAreForWhoeverShapesTheStructure(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.memberBrowser(builder)
+	if code := browser.Send("POST", "/columns/"+w.item+"/item/new/add", url.Values{"name": {"x"}, "dataType": {"text"}}).Code; code != http.StatusForbidden {
+		t.Errorf("a new column without ManageStructure: %d", code)
+	}
+	if code := browser.Send("POST", "/columns/"+w.item+"/item/reorder", nil).Code; code != http.StatusForbidden {
+		t.Errorf("an order without ManageStructure: %d", code)
+	}
+	if code := browser.Send("GET", "/details/columns/"+w.item+"/item/new", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a column's form without ManageStructure: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/itemColumns?item=" + w.item}, {"GET", "/tab/itemColumns?item=" + w.item + "&scope=template"},
+		{"GET", "/details/columns/" + w.item + "/item/new"}, {"POST", "/columns/" + w.item + "/item/new/add"}, {"POST", "/columns/" + w.item + "/template/reorder"},
+		{"POST", "/columns/" + w.item + "/item/reorder"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"الملاحظة"}, "dataType": {"text"}, "ids": {w.item}, "applyToAll": {"false"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	finished := w.browser.Send("GET", "/tab/itemColumns?item="+w.item, nil).Body.String()
+	lacks(t, finished, `draggable="true"`)
+	lacks(t, finished, `id="columns.hint"`)
+	has(t, w.browser.Send("POST", "/columns/"+w.item+"/item/new/add", url.Values{"name": {"x"}, "dataType": {"text"}}).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+	has(t, w.browser.Send("POST", "/columns/"+w.item+"/template/reorder", nil).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+}

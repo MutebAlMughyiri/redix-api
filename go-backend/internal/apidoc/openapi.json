@@ -2825,6 +2825,25 @@
         ],
         "type": "object"
       },
+      "structure.ChoiceRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sign": {
+            "enum": [
+              "none",
+              "plus",
+              "minus"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "structure.ChoiceView": {
         "properties": {
           "id": {
@@ -2847,6 +2866,44 @@
           "id",
           "name",
           "sign"
+        ],
+        "type": "object"
+      },
+      "structure.ColumnRequest": {
+        "properties": {
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/structure.ChoiceRequest"
+            },
+            "type": "array"
+          },
+          "dataType": {
+            "enum": [
+              "text",
+              "number",
+              "amount",
+              "date",
+              "list",
+              "file"
+            ],
+            "type": "string"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "showInReports": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "choices",
+          "dataType",
+          "isRequired",
+          "name",
+          "showInReports"
         ],
         "type": "object"
       },
@@ -2904,6 +2961,31 @@
           "isEntryField",
           "isRequired",
           "key",
+          "name",
+          "showInReports"
+        ],
+        "type": "object"
+      },
+      "structure.EditRequest": {
+        "properties": {
+          "isRequired": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "newChoices": {
+            "items": {
+              "$ref": "#/components/schemas/structure.ChoiceRequest"
+            },
+            "type": "array"
+          },
+          "showInReports": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "isRequired",
           "name",
           "showInReports"
         ],
@@ -3000,7 +3082,7 @@
           },
           "choices": {
             "items": {
-              "$ref": "#/components/schemas/structure.choiceRequest"
+              "$ref": "#/components/schemas/structure.ChoiceRequest"
             },
             "type": "array"
           },
@@ -3035,88 +3117,6 @@
         ],
         "type": "object"
       },
-      "structure.choiceRequest": {
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "sign": {
-            "enum": [
-              "none",
-              "plus",
-              "minus"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "type": "object"
-      },
-      "structure.columnRequest": {
-        "properties": {
-          "choices": {
-            "items": {
-              "$ref": "#/components/schemas/structure.choiceRequest"
-            },
-            "type": "array"
-          },
-          "dataType": {
-            "enum": [
-              "text",
-              "number",
-              "amount",
-              "date",
-              "list",
-              "file"
-            ],
-            "type": "string"
-          },
-          "isRequired": {
-            "type": "boolean"
-          },
-          "name": {
-            "type": "string"
-          },
-          "showInReports": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "choices",
-          "dataType",
-          "isRequired",
-          "name",
-          "showInReports"
-        ],
-        "type": "object"
-      },
-      "structure.editRequest": {
-        "properties": {
-          "isRequired": {
-            "type": "boolean"
-          },
-          "name": {
-            "type": "string"
-          },
-          "newChoices": {
-            "items": {
-              "$ref": "#/components/schemas/structure.choiceRequest"
-            },
-            "type": "array"
-          },
-          "showInReports": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "isRequired",
-          "name",
-          "showInReports"
-        ],
-        "type": "object"
-      },
       "structure.editTemplateColumnRequest": {
         "properties": {
           "applyToAllItems": {
@@ -3130,7 +3130,7 @@
           },
           "newChoices": {
             "items": {
-              "$ref": "#/components/schemas/structure.choiceRequest"
+              "$ref": "#/components/schemas/structure.ChoiceRequest"
             },
             "type": "array"
           },
@@ -8539,7 +8539,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/structure.columnRequest"
+                "$ref": "#/components/schemas/structure.ColumnRequest"
               }
             }
           },
@@ -8737,7 +8737,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/structure.editRequest"
+                "$ref": "#/components/schemas/structure.EditRequest"
               }
             }
           },

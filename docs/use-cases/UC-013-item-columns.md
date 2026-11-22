@@ -83,6 +83,24 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | One project's route never reaches another's columns (BR-33) | `structure.change.item`, `structure.change.template` | `ColumnsTests.ARouteOfOneProjectNeverReachesAnothersColumns` |
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes` | `ColumnsTests.AFinishedProjectRefusesColumnChangesAndStaysReadable` |
 
+## On the web: Columns (redix-api #174)
+
+The web's Columns is the app's screen in a tab, opened from an item's panel in Categories and items: New column, gray in a finished project or for a revenue item; the item's category and type, a revenue item saying it takes no columns of its own; this item's own columns or the default template of its type, chosen as the app's two segments; the hint, for whoever may shape the structure; then each column, custom or not, its type, required or optional, in reports, a core one marked. Its columns come from `structure.ColumnsOfItem` and `structure.ColumnsOfTemplate`, the functions `GET …/items/{itemId}/columns` and `GET …/default-columns/{itemType}` answer. A row opens the column in the details panel with Edit, and Delete for one not core, asked first as the app's swipe asks; New column asks the name, the type of the five a person chooses, a list's choices a line each, required and in reports; Edit asks the name, required and in reports, fixed on a core column, and a list a person added gains new choices. A template's change, its new column, edit, delete or order, ends with the app's question, the template only or every item of its type. Each keeps through the rule the app's route runs: `structure.AddToItem`, `EditItemColumn`, `DeleteItemColumn`, `ReorderItemColumns`, `AddToTemplate`, `EditTemplateColumn`, `DeleteTemplateColumn`, `ReorderTemplate`, run through the shared changes.Writer. A row moves by dragging it or with Alt+Up and Alt+Down (#174 D1). Its pages are in `go-backend/web` (`columns.go`, `columns.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/itemColumns?item={id}&scope=template` | An item's Columns: its own, or the template of its type | `200` the tab's content; its title only for an item the project does not hold |
+| `GET /details/columns/{item}/{scope}/{id}` | A column in the details panel, `scope` `item` or `template`; `?asking=edit` or `delete`; `id` `new` for New column | `200` the panel or its form; `404` without ManageStructure, or for an item or a column there is none of |
+| `POST /columns/{item}/{scope}/new/add`, `…/{id}/edit`, `…/{id}/delete` | Keeps New column (`name`, `dataType`, `choices`, `required`, `reports`), Edit (`name`, `required`, `reports`, new `choices`) or Delete; a template's with `applyToAll` | `200` the column in the panel, Columns beside it, or Columns alone once deleted; or the form or the panel saying why not; `403` without ManageStructure; `404` for an action there is none of |
+| `POST /columns/{item}/{scope}/reorder` | Keeps the columns' order (`ids`, comma-separated); a template's without `applyToAll` first asks the app's question in the details panel (`HX-Retarget`) | `200` Columns, saying why above it when refused |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Columns shows an item's own columns or its type's template, each with what the app's row says, a core one marked; a revenue item takes no new column (FR-41) | `structure.ColumnsOfItem`, `structure.ColumnsOfTemplate`, `web.columnLine` | `TestWeb_R174_UC013_ColumnsListAsTheAppsScreen` |
+| New column, Edit and Delete as the app's dialogs: a name of 1 to 100 letters, a list with a choice, a list's choices only added to, Delete asked first, a core column never deleted; the order kept, refused when it is not exactly the item's columns (AC-41.1, AC-41.2, BR-20, BR-21) | `structure.AddToItem`, `EditItemColumn`, `DeleteItemColumn`, `ReorderItemColumns` | `TestWeb_R174_UC013_NewEditAndDeleteAColumnAsTheAppsDialogs` |
+| A template's new column, edit, delete and order ask whether they reach every item of the type, and reach them only when told (AC-41.3, BR-21) | `structure.AddToTemplate`, `EditTemplateColumn`, `DeleteTemplateColumn`, `ReorderTemplate` | `TestWeb_R174_UC013_ATemplatesChangeAsksWhetherItReachesEveryItem` |
+| Columns are for whoever shapes the structure; a finished project shows them without handles and changes nothing (AC-04.1); a failing database answers 500 | `web.site.keepColumn`, `web.site.reorderColumns` | `TestWeb_R174_UC013_ColumnsAreForWhoeverShapesTheStructure` |
+
 ## Left to later use cases
 
 | What | Use case |
