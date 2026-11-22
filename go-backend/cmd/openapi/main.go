@@ -292,6 +292,9 @@ func (g *generator) body(body *ast.BlockStmt, p *packages.Package, r *route, bin
 		r.refuse(status, codes)
 	}
 	ast.Inspect(body, func(node ast.Node) bool {
+		if notFound(node, p.TypesInfo) {
+			r.refuse(bound{value: constant.MakeInt64(404)}, nil)
+		}
 		call, isCall := node.(*ast.CallExpr)
 		if !isCall {
 			return true
@@ -874,4 +877,15 @@ func handedOnIn(body *ast.BlockStmt, p *packages.Package, functions map[string]s
 // file's load answers every row's under rowsRefused -, so none of them is read as the route's own answer (findings row 292).
 func gathers(declaration *ast.FuncDecl) bool {
 	return declaration.Doc != nil && slices.ContainsFunc(declaration.Doc.List, func(line *ast.Comment) bool { return line.Text == "//apidoc:gathers" })
+}
+
+// notFound says whether node names the refusal of a row not found - changes.NotFound, or changes.Found, which answers it - so the route it is
+// read in answers 404 (redix-api #173: a rule lifted out of a route keeps the 404 the route wrote itself).
+func notFound(node ast.Node, info *types.Info) bool {
+	ident, isIdent := node.(*ast.Ident)
+	if !isIdent {
+		return false
+	}
+	used := info.Uses[ident]
+	return used != nil && used.Pkg() != nil && used.Pkg().Name() == "changes" && (used.Name() == "NotFound" || used.Name() == "Found")
 }

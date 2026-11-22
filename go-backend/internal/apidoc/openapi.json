@@ -4951,6 +4951,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -5023,6 +5033,16 @@
             },
             "description": "Refused: custodianRequired, invalidName, unknownCustodian."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -5067,6 +5087,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -5110,6 +5140,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -5802,6 +5842,16 @@
             },
             "description": "Refused: invalidName."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -5846,6 +5896,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -5889,6 +5949,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -5951,6 +6021,16 @@
             },
             "description": "Created."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -6004,6 +6084,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -6229,6 +6319,16 @@
             },
             "description": "Refused: invalidNotes, invalidQuantity, invalidUnitPrice, invalidValue, itemNotOffered, unknownAttachment, unknownSupplier."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -6283,6 +6383,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -6326,6 +6436,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -6635,6 +6755,16 @@
             },
             "description": "Refused, with problem details."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -6696,6 +6826,16 @@
             "description": "OK."
           },
           "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
+          "404": {
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6965,6 +7105,16 @@
             },
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -7189,6 +7339,16 @@
             },
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -7409,6 +7569,16 @@
             },
             "description": "Refused: notYourEntry."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -7555,6 +7725,16 @@
             },
             "description": "Refused: notYourEntry."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -7639,6 +7819,16 @@
             },
             "description": "Refused: notYourEntry."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -7720,6 +7910,16 @@
             },
             "description": "Refused: notYourEntry."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -7794,6 +7994,16 @@
             },
             "description": "Refused: reasonRequired."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -7847,6 +8057,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -7979,6 +8199,16 @@
               }
             },
             "description": "Refused: notYourEntry."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "409": {
             "content": {
@@ -8172,6 +8402,16 @@
             },
             "description": "Refused: invalidName."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8288,6 +8528,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8342,6 +8592,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8394,6 +8654,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -8456,6 +8726,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8500,6 +8780,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8543,6 +8833,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -8608,6 +8908,16 @@
             },
             "description": "Refused: invalidName."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8660,6 +8970,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -8732,6 +9052,16 @@
             },
             "description": "Refused: invalidName."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8785,6 +9115,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -8840,6 +9180,16 @@
             },
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8894,6 +9244,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8947,6 +9307,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -9218,6 +9588,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -9290,6 +9670,16 @@
             },
             "description": "Refused: invalidName, unknownUser, userTaken."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -9343,6 +9733,16 @@
               }
             },
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -9531,6 +9931,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -9603,6 +10013,16 @@
             },
             "description": "Refused: invalidName, paysFromNothing, unknownAccount."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -9647,6 +10067,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -9690,6 +10120,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -9775,6 +10215,16 @@
               }
             },
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -10399,6 +10849,16 @@
             },
             "description": "Refused: newerVersion, notAProjectFile, rowsRefused."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -10729,6 +11189,16 @@
             },
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -10773,6 +11243,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -10816,6 +11296,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -10868,6 +11358,16 @@
             },
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -10912,6 +11412,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -10955,6 +11465,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "default": {
             "content": {
@@ -11314,6 +11834,16 @@
             },
             "description": "Refused: invalidMobile, invalidName, invalidVatNumber, unknownItem."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -11368,6 +11898,16 @@
           "200": {
             "description": "OK."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -11421,6 +11961,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "409": {
             "content": {
@@ -11587,6 +12137,16 @@
               }
             },
             "description": "Refused: unknownTimeZone."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused, with problem details."
           },
           "409": {
             "content": {
