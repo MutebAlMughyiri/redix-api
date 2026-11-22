@@ -12,8 +12,8 @@ import (
 )
 
 // reportsPage is Reports as the app's screen shows it (UC-053): Issue report N, asked first, gray with its reason for whoever may not issue;
-// Expenses and Revenue, each side's item reports; the VAT statement, gray as in the app until its release; then the periodic reports issued,
-// newest first - or that they are for whoever sees every table.
+// then the periodic reports issued, newest first - or that they are for whoever sees every table. Expenses, Revenue and VAT refund are the side
+// menu's on the web (findings row 316).
 templ reportsPage(p page, shown reportsShown) {
 	<div class="view-head">
 		<h2 id="reports.title">{ p.words.Of("reports.title") }</h2>
@@ -27,9 +27,6 @@ templ reportsPage(p page, shown reportsShown) {
 				hx-get="/tab/reports?asking=issue"
 				hx-target="[id='web.content']"
 			>{ p.words.Of("reports.issue", strconv.FormatInt(shown.next.Number, 10)) }</button>
-			<button id="reports.expenses" class="quiet-button" type="button" hx-get="/tab/expenses" hx-target="[id='web.content']">{ p.words.Of("summary.expenses") }</button>
-			<button id="reports.revenue" class="quiet-button" type="button" hx-get="/tab/revenue" hx-target="[id='web.content']">{ p.words.Of("summary.revenue") }</button>
-			<button id="reports.vat" class="quiet-button" type="button" disabled>{ p.words.Of("vat.title") }</button>
 		</span>
 	</div>
 	if shown.asking {

@@ -184,17 +184,19 @@ func (item menuItem) built() bool {
 }
 
 // dailyMenu are the side menu's items used every day, and foldedMenu those used now and then, folded under More until it is opened (the owner,
-// 23 Nov 2026, findings row 307); together, sideMenu, in the order the app's drawer lists them (#161, the shell).
+// 23 Nov 2026, findings row 307); together, sideMenu, in the order the app's drawer lists them (#161, the shell). Expenses and Revenue, each
+// side's item reports, are items of their own, and VAT refund, gray until its release, stands under More, where the app keeps all three on its
+// Reports screen (findings row 316).
 var (
 	dailyMenu = []menuItem{
 		{"home", "web.home"}, {"entries", "entries.title"}, {"approvals", "approvals.title"}, {"accounts", "accounts.title"}, {"partners", "partners.title"},
-		{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"projectHistory", "history.projectTitle"},
-		{"users", "users.title"},
+		{"suppliers", "suppliers.title"}, {"contracts", "contracts.title"}, {"reports", "reports.title"}, {"expenses", "summary.expenses"},
+		{"revenue", "summary.revenue"}, {"projectHistory", "history.projectTitle"}, {"users", "users.title"},
 	}
 	foldedMenu = []menuItem{
 		{"requests", "permissionRequests.listTitle"}, {"categories", "categories.title"}, {"paymentMethods", "paymentMethods.title"},
 		{"loadFile", "projects.loadFile"}, {"archive", "projects.archive"}, {"retrieve", "projects.retrieve"}, {"projectInfo", "projectInfo.title"},
-		{"myPermissions", "permissions.mine"}, {"documents", "documents.title"},
+		{"myPermissions", "permissions.mine"}, {"documents", "documents.title"}, {"vat", "vat.title"},
 	}
 	sideMenu = slices.Concat(dailyMenu, foldedMenu)
 )
@@ -207,7 +209,7 @@ func (p page) foldedOpen() bool {
 
 // menuNeeds is the permission a side-menu item needs, as the app shows its screen only to whoever holds it; an item missing here needs none.
 var menuNeeds = map[string]access.Permission{"approvals": access.ApproveEntries, "approvalHistory": access.ApproveEntries, "reports": access.SeeReports,
-	"expenses": access.SeeReports, "revenue": access.SeeReports, "itemReport": access.SeeReports,
+	"expenses": access.SeeReports, "revenue": access.SeeReports, "itemReport": access.SeeReports, "vat": access.SeeReports,
 	"periodicReport": access.SeeReports,
 	"projectHistory": access.SeeProjectHistory, "users": access.ManageUsers, "newUser": access.ManageUsers, "userPermissions": access.ManageUsers, "requests": access.ManageUsers, "categories": access.ManageStructure, "itemColumns": access.ManageStructure, "itemTables": access.ManageStructure,
 	"paymentMethods": access.ManageSettings, "loadFile": access.ManageProjectFiles, "archive": access.ManageProjectFiles,
@@ -225,9 +227,9 @@ func (p page) offers(name string) bool {
 }
 
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
-// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar, and Change password and Registered projects, from Settings (redix-api #175); Shared settings and My history, from
+// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); an item's or a contract's report, from a side's item reports, and a periodic report, from Reports (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar, and Change password and Registered projects, from Settings (redix-api #175); Shared settings and My history, from
 // My account in the status bar (findings row 306).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}, {"changePassword", "myAccount.changePassword"}, {"registered", "registered.title"}, {"settings", "sharedSettings.title"}}
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}, {"changePassword", "myAccount.changePassword"}, {"registered", "registered.title"}, {"settings", "sharedSettings.title"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{

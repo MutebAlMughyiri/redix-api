@@ -2569,10 +2569,17 @@ func TestWeb_R171_UC053_ReportsListsThePeriodicReportsAndIssuesTheNextAskedFirst
 	w.home()
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/reports"`)
 	list := w.browser.Send("GET", "/tab/reports", nil).Body.String()
-	for _, part := range []string{`>إصدار رقم 1</button>`, `<p id="reports.noneIssued" class="empty">لم يُصدر تقرير بعد.</p>`, `hx-get="/tab/expenses"`,
-		`hx-get="/tab/revenue"`, `<button id="reports.vat" class="quiet-button" type="button" disabled>`} {
+	for _, part := range []string{`>إصدار رقم 1</button>`, `<p id="reports.noneIssued" class="empty">لم يُصدر تقرير بعد.</p>`} {
 		has(t, list, part)
 	}
+	for _, gone := range []string{`id="reports.expenses"`, `id="reports.revenue"`, `id="reports.vat"`} {
+		lacks(t, list, gone)
+	}
+	shell := w.browser.Send("GET", "/", nil).Body.String()
+	has(t, shell, `<a id="web.item.expenses" href="#" hx-get="/tab/expenses"`)
+	has(t, shell, `<a id="web.item.revenue" href="#" hx-get="/tab/revenue"`)
+	more := shell[strings.Index(shell, `id="web.more"`):]
+	has(t, more[:strings.Index(more, `</details>`)], `<span id="web.item.vat" class="parked" aria-disabled="true">استرداد ضريبة القيمة المضافة</span>`)
 	asking := w.browser.Send("GET", "/tab/reports?asking=issue", nil).Body.String()
 	has(t, asking, `<b id="reports.askQuestion">إصدار التقرير رقم 1؟</b>`)
 	has(t, asking, `(1)`)
