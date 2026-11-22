@@ -1,0 +1,139 @@
+package web
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+)
+
+// tablesList is an item's Tables as the app's screen shows them (UC-012): New subgroup, gray unless the item takes purchases and the structure
+// may change; the hint that the sheet prints them in this order; a search; then each table, its kind and how many approved entries it holds. A
+// row moves by dragging, or with Alt+Up and Alt+Down, while the whole list shows (D1). Why an order could not be kept stands at the top.
+templ tablesList(p page, shown tablesShown, refusal string) {
+	<div class="view-head">
+		<h2 id="tables.title">{ parts(p.words.Of("categories.tables"), shown.item.Name) }</h2>
+		<span id="tables.actions" class="head-actions">
+			<button id="tables.add" class="primary small" type="button" hx-get={ "/details/tables/" + shown.item.ID.String() + "/new" } hx-target="[id='web.details']" disabled?={ !shown.mayAddSubgroup(p) }>{ p.words.Of("subgroups.new") }</button>
+		</span>
+	</div>
+	<p id="tables.hint" class="hint wide">{ p.words.Of("categories.tablesHint") }</p>
+	if refusal != "" {
+		<p id="tables.refusal" class="refusal wide" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	<form id="tables.filters" class="filters" hx-get="/tab/itemTables" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="tables.itemId" type="hidden" name="item" value={ shown.item.ID.String() }/>
+		<input id="tables.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("categories.tables")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("categories.tables")) } value={ shown.text }/>
+	</form>
+	if len(shown.shown()) == 0 {
+		<p id="tables.empty" class="empty">{ p.words.Of("categories.noTableMatch") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table
+				id="tables.table"
+				class="grid structure"
+				hx-on:keydown={ templ.JSUnsafeFuncCall(reorderRows + listKeys) }
+				hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }
+				hx-on:dragstart={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:dragover={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:drop={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:dragend={ templ.JSUnsafeFuncCall(reorderRows) }
+			>
+				<tbody id="tables.rows" data-reorder={ "/tables/" + shown.item.ID.String() + "/reorder" }>
+					for _, table := range shown.shown() {
+						<tr
+							id={ "tables.row." + table.ID.String() }
+							data-id={ table.ID.String() }
+							if shown.mayMove(p) {
+								draggable="true"
+							}
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/tables/" + shown.item.ID.String() + "/" + table.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "tables.cell." + table.ID.String() }>
+								if shown.mayMove(p) {
+									<span id={ "tables.handle." + table.ID.String() } class="handle" title={ p.words.Of("categories.tablesHint") } aria-hidden="true">⋮⋮</span>
+								}
+								<span id={ "tables.name." + table.ID.String() }>{ table.Name }</span>
+								<small id={ "tables.details." + table.ID.String() } class="hint">{ shown.tableLine(p, table) }</small>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// tablesGone is Tables for an item the project does not hold: its title only.
+templ tablesGone(p page) {
+	<div class="view-head">
+		<h2 id="tables.title">{ p.words.Of("categories.tables") }</h2>
+	</div>
+}
+
+// tablesBeside is Tables again, carried out of band beside the panel, once a subgroup was added, renamed or deleted.
+templ tablesBeside(p page, shown tablesShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@tablesList(p, shown, "")
+	</div>
+}
+
+// tablePanel is a table in the details panel: its kind and how many approved entries it holds, why its change was refused; a subgroup a person
+// named offers Rename, and Delete asked first as the app's swipe asks it, to whoever may shape the structure.
+templ tablePanel(p page, shown tablesShown, table entries.ItemTableView, refusal string) {
+	<div class="details-head">
+		<h3 id="table.title">{ table.Name }</h3>
+		<button id="table.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl id="table.facts" class="facts">
+		<dt id="table.kind.label">{ p.words.Of("categories.itemType") }</dt>
+		<dd id="table.kind">{ shown.tableLine(p, table) }</dd>
+	</dl>
+	if refusal != "" {
+		<p id="table.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	if shown.asking == "delete" {
+		<form id="table.deleteForm" class="details-form" hx-post={ "/tables/" + shown.item.ID.String() + "/" + table.ID.String() + "/delete" } hx-target="[id='web.details']">
+			<p id="table.deleteQuestion" class="section-title">{ p.words.Of("swipe.question") }</p>
+			<span id="table.deleteActions" class="details-actions">
+				<button id="table.deleteConfirm" class="primary small" type="submit">{ p.words.Of("swipe.remove") }</button>
+				<button id="table.deleteCancel" class="quiet-button" type="button" hx-get={ "/details/tables/" + shown.item.ID.String() + "/" + table.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+			</span>
+		</form>
+	} else if p.mayShape() && isNamedSubgroup(table) {
+		<div id="table.actions" class="details-actions">
+			<button id="tables.rename" class="quiet-button" type="button" hx-get={ "/details/tables/" + shown.item.ID.String() + "/" + table.ID.String() + "?asking=rename" } hx-target="[id='web.details']">{ p.words.Of("categories.rename") }</button>
+			<button id="tables.delete" class="quiet-button" type="button" hx-get={ "/details/tables/" + shown.item.ID.String() + "/" + table.ID.String() + "?asking=delete" } hx-target="[id='web.details']">{ p.words.Of("swipe.remove") }</button>
+		</div>
+	}
+}
+
+// subgroupForm is New subgroup or a subgroup's Rename in the details panel, as the app's dialog asks it: the name; why it could not be kept.
+templ subgroupForm(p page, shown tablesShown, table entries.ItemTableView, name, refusal string) {
+	<div class="details-head">
+		if table.ID == uuid.Nil {
+			<h3 id="table.title">{ p.words.Of("subgroups.new") }</h3>
+		} else {
+			<h3 id="table.title">{ p.words.Of("categories.rename") }</h3>
+		}
+		<button id="table.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="table.form" class="details-form" hx-post={ subgroupFormPath(shown, table) } hx-target="[id='web.details']">
+		<div class="field">
+			<label id="table.name.label" for="table.name">{ p.words.Of("categories.subgroupName") }</label>
+			<input id="table.name" name="name" required value={ name } autofocus/>
+		</div>
+		if refusal != "" {
+			<p id="table.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="table.formActions" class="details-actions">
+			if table.ID == uuid.Nil {
+				<button id="table.save" class="primary small" type="submit">{ p.words.Of("subgroups.new") }</button>
+			} else {
+				<button id="table.save" class="primary small" type="submit">{ p.words.Of("categories.save") }</button>
+			}
+		</span>
+	</form>
+}

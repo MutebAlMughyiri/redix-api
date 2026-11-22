@@ -32,14 +32,14 @@ func (s site) shellFor(w http.ResponseWriter, r *http.Request, p page) (page, er
 }
 
 // openTab opens the tab named name and brings it to the front: its content in the content area, the tabs and the side menu marked beside it;
-// only the content area changes, the frame stays (#161 R5).
+// only the content area changes, the frame stays (#161 R5). A tab opened for one record keeps it (recordTabs).
 func (s site) openTab(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if _, built := contents[name]; !built {
 		http.NotFound(w, r)
 		return
 	}
-	s.turn(w, r, func(v view) view { return v.opening(name) })
+	s.turn(w, r, func(v view) view { return v.opening(name).recording(name, r.URL.RawQuery) })
 }
 
 // closeTab closes the tab named name; the last tab left comes to the front.

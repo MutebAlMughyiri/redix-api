@@ -434,17 +434,6 @@
         ],
         "type": "object"
       },
-      "changes.nameRequest": {
-        "properties": {
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "type": "object"
-      },
       "contracts.View": {
         "properties": {
           "documents": {
@@ -921,6 +910,30 @@
           "subgroups",
           "total",
           "type"
+        ],
+        "type": "object"
+      },
+      "entries.ItemTableView": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "id",
+          "kind",
+          "name"
         ],
         "type": "object"
       },
@@ -1759,30 +1772,6 @@
           "fileName",
           "role",
           "uploadedAt"
-        ],
-        "type": "object"
-      },
-      "entries.itemTableView": {
-        "properties": {
-          "count": {
-            "type": "integer"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "count",
-          "id",
-          "kind",
-          "name"
         ],
         "type": "object"
       },
@@ -8909,7 +8898,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/changes.nameRequest"
+                "$ref": "#/components/schemas/structure.nameRequest"
               }
             }
           },
@@ -9053,7 +9042,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/changes.nameRequest"
+                "$ref": "#/components/schemas/structure.nameRequest"
               }
             }
           },
@@ -9193,7 +9182,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.itemTableView"
+                    "$ref": "#/components/schemas/entries.ItemTableView"
                   },
                   "type": "array"
                 }

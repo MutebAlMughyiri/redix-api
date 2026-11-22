@@ -5,6 +5,7 @@ package web
 
 import (
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -22,7 +23,13 @@ type view struct {
 	Tabs                       []string
 	Active                     string
 	Project                    uuid.UUID
+	// Records are the record each tab opened for one keeps, as its page's query: whose Permissions, which item's Columns or Tables.
+	Records map[string]string
 }
+
+// recordTabs are the tabs a page opens for one record, which show it again when their title is pressed or the page opens anew, as the app's
+// screen stays on what it opened (redix-api #174).
+var recordTabs = []string{"userPermissions", "itemColumns", "itemTables"}
 
 const (
 	// lookCookie keeps the bars, the side menu and its width, which the View menu changes; tabsCookie keeps the open tabs. Each is written only by
@@ -55,6 +62,9 @@ func viewOf(r *http.Request) view {
 	if slices.Contains(v.Tabs, tabs.Get("active")) {
 		v.Active = tabs.Get("active")
 	}
+	for _, name := range v.Tabs {
+		v = v.recording(name, tabs.Get("record."+name))
+	}
 	return v
 }
 
@@ -79,7 +89,11 @@ func (v view) keepProject(w http.ResponseWriter) { setPreference(w, projectCooki
 
 // keepTabs sets v's open tabs in their cookie.
 func (v view) keepTabs(w http.ResponseWriter) {
-	setPreference(w, tabsCookie, url.Values{"tab": v.Tabs, "active": {v.Active}}.Encode())
+	kept := url.Values{"tab": v.Tabs, "active": {v.Active}}
+	for name, record := range v.Records {
+		kept.Set("record."+name, record)
+	}
+	setPreference(w, tabsCookie, kept.Encode())
 }
 
 // setPreference keeps a choice of the person's in the cookie called name for a year: the look, the tabs, the language. The page's script never
@@ -105,8 +119,34 @@ func (v view) opening(name string) view {
 	return v
 }
 
-// closing is v without the tab named name; the last tab left comes to the front when it was.
+// recording is v with query kept as the record of the tab named name, when it is a tab opened for one and query names one.
+func (v view) recording(name, query string) view {
+	if !slices.Contains(recordTabs, name) || query == "" {
+		return v
+	}
+	v.Records = maps.Clone(v.Records)
+	if v.Records == nil {
+		v.Records = map[string]string{}
+	}
+	v.Records[name] = query
+	return v
+}
+
+// recordOf is r as the front tab's page reads it: with the record that tab keeps, when r names none.
+func (v view) recordOf(r *http.Request) *http.Request {
+	record, kept := v.Records[v.Active]
+	if !kept || r.URL.RawQuery != "" {
+		return r
+	}
+	again := r.Clone(r.Context())
+	again.URL.RawQuery = record
+	return again
+}
+
+// closing is v without the tab named name, and the record it kept; the last tab left comes to the front when it was.
 func (v view) closing(name string) view {
+	v.Records = maps.Clone(v.Records)
+	delete(v.Records, name)
 	v.Tabs = slices.DeleteFunc(slices.Clone(v.Tabs), func(open string) bool { return open == name })
 	if v.Active == name {
 		v.Active = ""

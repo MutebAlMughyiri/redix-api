@@ -3670,3 +3670,123 @@ func TestWeb_R174_UC013_ColumnsAreForWhoeverShapesTheStructure(t *testing.T) {
 	has(t, w.browser.Send("POST", "/columns/"+w.item+"/item/new/add", url.Values{"name": {"x"}, "dataType": {"text"}}).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
 	has(t, w.browser.Send("POST", "/columns/"+w.item+"/template/reorder", nil).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
 }
+
+func TestWeb_R174_UC012_TablesListAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	w.sent(100)
+	w.home()
+	has(t, w.browser.Send("GET", "/details/structure/item/"+w.item, nil).Body.String(), `hx-get="/tab/itemTables?item=`+w.item+`"`)
+	tables := w.browser.Send("GET", "/tab/itemTables?item="+w.item, nil).Body.String()
+	has(t, tables, `<h2 id="tables.title">جداول البند · التسليح</h2>`)
+	has(t, tables, `<p id="tables.hint" class="hint wide">`)
+	has(t, tables, `<button id="tables.add" class="primary small" type="button" hx-get="/details/tables/`+w.item+`/new" hx-target="[id='web.details']">`)
+	has(t, tables, `<tr id="tables.row.`+w.table+`" data-id="`+w.table+`" draggable="true"`)
+	has(t, tables, `<span id="tables.name.`+w.table+`">التسليح</span>`)
+	has(t, tables, `<small id="tables.details.`+w.table+`" class="hint">مشتريات · 0</small>`)
+	has(t, tables, `data-reorder="/tables/`+w.item+`/reorder"`)
+	lacks(t, w.browser.Send("GET", "/details/tables/"+w.item+"/"+w.table, nil).Body.String(), `id="tables.rename"`)
+	searched := w.browser.Send("GET", "/tab/itemTables?item="+w.item+"&text=nothing-here", nil).Body.String()
+	has(t, searched, `<p id="tables.empty" class="empty">لا يوجد جدول مطابق.</p>`)
+	lacks(t, w.browser.Send("GET", "/tab/itemTables?item="+w.item+"&text=التسليح", nil).Body.String(), `draggable="true"`)
+	var sale string
+	if err := w.Database.Read.QueryRow("SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 3 LIMIT 1", w.id).Scan(&sale); err != nil {
+		t.Fatal(err)
+	}
+	revenue := w.browser.Send("GET", "/tab/itemTables?item="+sale, nil).Body.String()
+	has(t, revenue, `hx-target="[id='web.details']" disabled>`)
+	has(t, revenue, "إيرادات · 0")
+	lacks(t, w.browser.Send("GET", "/tab/itemTables?item="+uuid.NewString(), nil).Body.String(), `id="tables.hint"`)
+}
+
+func TestWeb_R174_UC012_NewSubgroupRenameAndDeleteAsTheAppsDialogs(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	page := "/tables/" + w.item
+	has(t, w.browser.Send("GET", "/details/tables/"+w.item+"/new", nil).Body.String(), `<form id="table.form" class="details-form" hx-post="/tables/`+w.item+`/new/add"`)
+	has(t, w.browser.Send("POST", page+"/new/add", url.Values{"name": {" "}}).Body.String(), `<p id="table.refusal" class="refusal" role="alert">أدخل اسماً من 1 إلى 100 حرف.</p>`)
+	added := w.browser.Send("POST", page+"/new/add", url.Values{"name": {"الدور الأول"}}).Body.String()
+	has(t, added, `<h3 id="table.title">الدور الأول</h3>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	var floor string
+	if err := w.Database.Read.QueryRow("SELECT id FROM subgroups WHERE item_id = ? AND name = 'الدور الأول'", w.item).Scan(&floor); err != nil {
+		t.Fatal(err)
+	}
+	has(t, added, `id="tables.rename"`)
+	has(t, w.browser.Send("GET", "/details/tables/"+w.item+"/"+floor+"?asking=rename", nil).Body.String(), `<input id="table.name" name="name" required value="الدور الأول" autofocus>`)
+	has(t, w.browser.Send("POST", page+"/"+floor+"/rename", url.Values{"name": {"الدور الثاني"}}).Body.String(), `<h3 id="table.title">الدور الثاني</h3>`)
+	has(t, w.browser.Send("POST", page+"/"+w.table+"/rename", url.Values{"name": {"العام"}}).Body.String(), "المجموعة العامة للبند لا يُعدَّل اسمها ولا تُحذف.")
+	order := w.idsIn("SELECT id FROM subgroups WHERE item_id = ? ORDER BY sort_order", w.item)
+	slices.Reverse(order)
+	w.browser.Send("POST", page+"/reorder", url.Values{"ids": {strings.Join(order, ",")}})
+	if again := w.idsIn("SELECT id FROM subgroups WHERE item_id = ? ORDER BY sort_order", w.item); !slices.Equal(again, order) {
+		t.Errorf("the tables keep their new order: %v", again)
+	}
+	has(t, w.browser.Send("POST", page+"/reorder", url.Values{"ids": {order[0]}}).Body.String(), `<p id="tables.refusal" class="refusal wide" role="alert">تغيّرت القائمة. حاول مرة أخرى.</p>`)
+	has(t, w.browser.Send("GET", "/details/tables/"+w.item+"/"+floor+"?asking=delete", nil).Body.String(), `<p id="table.deleteQuestion" class="section-title">حذفه؟</p>`)
+	deleted := w.browser.Send("POST", page+"/"+floor+"/delete", nil).Body.String()
+	lacks(t, deleted, `id="tables.row.`+floor+`"`)
+	has(t, deleted, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	for _, path := range []string{page + "/" + w.table + "/archive", page + "/" + uuid.NewString() + "/rename", "/tables/" + uuid.NewString() + "/new/add", "/tables/x/new/add",
+		page + "/new/rename"} {
+		if code := w.browser.Send("POST", path, url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	for _, path := range []string{"/details/tables/" + w.item + "/" + uuid.NewString(), "/details/tables/" + uuid.NewString() + "/new", "/details/tables/x/new"} {
+		if code := w.browser.Send("GET", path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	if code := w.browser.Send("POST", "/tables/x/reorder", nil).Code; code != http.StatusNotFound {
+		t.Errorf("an item that is no id: %d", code)
+	}
+}
+
+func TestWeb_R174_UC012_TablesAreForWhoeverShapesTheStructure(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.memberBrowser(builder)
+	if code := browser.Send("POST", "/tables/"+w.item+"/new/add", url.Values{"name": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("a new subgroup without ManageStructure: %d", code)
+	}
+	if code := browser.Send("POST", "/tables/"+w.item+"/reorder", nil).Code; code != http.StatusForbidden {
+		t.Errorf("an order without ManageStructure: %d", code)
+	}
+	if code := browser.Send("GET", "/details/tables/"+w.item+"/new", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a subgroup's form without ManageStructure: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/itemTables?item=" + w.item}, {"GET", "/details/tables/" + w.item + "/new"},
+		{"POST", "/tables/" + w.item + "/new/add"}, {"POST", "/tables/" + w.item + "/reorder"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"الدور الأول"}, "ids": {w.table}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	finished := w.browser.Send("GET", "/tab/itemTables?item="+w.item, nil).Body.String()
+	lacks(t, finished, `draggable="true"`)
+	has(t, finished, `hx-target="[id='web.details']" disabled>`)
+	has(t, w.browser.Send("POST", "/tables/"+w.item+"/new/add", url.Values{"name": {"x"}}).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+	has(t, w.browser.Send("POST", "/tables/"+w.item+"/reorder", nil).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+}
+
+func TestWeb_R174_ATabOpenedForOneRecordShowsItAgain(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/itemTables?item="+w.item, nil).Body.String(), `<h2 id="tables.title">جداول البند · التسليح</h2>`)
+	w.browser.Send("GET", "/tab/home", nil)
+	has(t, w.browser.Send("GET", "/tab/itemTables", nil).Body.String(), `<h2 id="tables.title">جداول البند · التسليح</h2>`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<h2 id="tables.title">جداول البند · التسليح</h2>`)
+	w.browser.Send("DELETE", "/tab/itemTables", nil)
+	has(t, w.browser.Send("GET", "/tab/itemTables", nil).Body.String(), `<h2 id="tables.title">جداول البند</h2>`)
+	w.browser.Send("GET", "/tab/users?text=nobody", nil)
+	lacks(t, w.browser.Send("GET", "/tab/users", nil).Body.String(), `value="nobody"`)
+}

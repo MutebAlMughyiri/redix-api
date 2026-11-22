@@ -151,7 +151,7 @@ templ itemPanel(p page, item structure.ItemView, category structure.CategoryView
 		<button id={ "categories.itemColumns." + item.ID.String() } class="quiet-button" type="button" hx-get={ "/tab/itemColumns?item=" + item.ID.String() } hx-target="[id='web.content']">{ p.words.Of("columns.title") }</button>
 		if p.mayShape() {
 			<button id="categories.renameItem" class="quiet-button" type="button" hx-get={ "/details/structure/item/" + item.ID.String() + "?asking=rename" } hx-target="[id='web.details']">{ p.words.Of("categories.rename") }</button>
-			<button id="categories.tables" class="quiet-button" type="button" disabled>{ p.words.Of("categories.tables") }</button>
+			<button id="categories.tables" class="quiet-button" type="button" hx-get={ "/tab/itemTables?item=" + item.ID.String() } hx-target="[id='web.content']">{ p.words.Of("categories.tables") }</button>
 			<button id="categories.changeType" class="quiet-button" type="button" hx-get={ "/details/structure/item/" + item.ID.String() + "?asking=type" } hx-target="[id='web.details']">{ p.words.Of("categories.changeType") }</button>
 			if item.IsActive {
 				<button id="categories.disableItem" class="quiet-button" type="button" hx-post={ "/structure/item/" + item.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("categories.disable") }</button>

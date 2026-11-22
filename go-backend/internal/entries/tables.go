@@ -440,8 +440,9 @@ func Offered(c changes.Change, held access.Access) ([]OfferedCategory, error) {
 	return views, nil
 }
 
-// itemTableView is part of what GET /projects/{projectId}/items/{itemId}/tables (UC-012) answers.
-type itemTableView struct {
+// ItemTableView is part of what GET /projects/{projectId}/items/{itemId}/tables (UC-012) answers.
+// ItemTableView is one of an item's tables as the app's Tables lists it, and the web's: its kind, name and how many approved entries it holds.
+type ItemTableView struct {
 	ID    uuid.UUID `json:"id"`
 	Kind  named     `json:"kind"`
 	Name  string    `json:"name"`
@@ -454,18 +455,27 @@ type itemTableView struct {
 // with how many approved entries it holds. 404 for an item the project does not hold.
 func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
-	if changes.Answered(w, r, err) {
-		return
+	views, err := ItemTablesOf(c, web.ID(r, "itemId"), caller.Access)
+	if !changes.Answered(w, r, err) {
+		web.JSON(w, r, http.StatusOK, views)
+	}
+}
+
+// ItemTablesOf is itemID's tables in the change's project for whoever holds held, in the order its sheet prints them, as itemTables answers them:
+// the rule both doors call, the app's route and the web's Tables (redix-api #174). changes.NotFound for an item the project does not hold; any
+// other error is the database's.
+func ItemTablesOf(c changes.Change, itemID uuid.UUID, held access.Access) ([]ItemTableView, error) {
+	item, err := changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: itemID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return nil, err
 	}
 	all, err := c.Q.EntriesOf(c.Ctx, c.ProjectID)
 	known, factsErr := factsOf(c, all)
 	subgroups, subgroupsErr := c.Q.SubgroupsOfItem(c.Ctx, item.ID)
 	contractRows, contractsErr := c.Q.ContractsOf(c.Ctx, c.ProjectID)
 	partners, partnersErr := c.Q.PartnersInItem(c.Ctx, item.ID)
-	if err != nil || factsErr != nil || subgroupsErr != nil || contractsErr != nil || partnersErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if err := errors.Join(err, factsErr, subgroupsErr, contractsErr, partnersErr); err != nil {
+		return nil, err
 	}
 	counts := map[uuid.UUID]int{}
 	for _, entry := range all {
@@ -485,36 +495,36 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 			counts[partner]++
 		}
 	}
-	var views []itemTableView
+	var views []ItemTableView
 	if item.Type != int64(structure.Capital) {
 		for _, subgroup := range subgroups {
 			kind, name := subgroupTable, subgroup.Name
 			if subgroup.Name == "" {
 				kind, name = generalTable, item.Name
 			}
-			views = append(views, itemTableView{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
+			views = append(views, ItemTableView{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
 		}
 	}
 	for _, contract := range contractRows {
 		if contract.ItemID == item.ID {
-			views = append(views, itemTableView{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
+			views = append(views, ItemTableView{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
 		}
 	}
-	seesAll, chosen := caller.Access.Holds(c.ProjectID, access.SeeAllCapital), caller.Access.ChosenIn(c.ProjectID)
-	if !caller.Access.Holds(c.ProjectID, access.SeeChosenCapital) {
+	seesAll, chosen := held.Holds(c.ProjectID, access.SeeAllCapital), held.ChosenIn(c.ProjectID)
+	if !held.Holds(c.ProjectID, access.SeeChosenCapital) {
 		chosen = nil
 	}
 	for _, partner := range partners {
 		if !partner.IsDeleted && (seesAll || slices.Contains(chosen, partner.ID)) {
-			views = append(views, itemTableView{ID: partner.ID, Kind: named{partnerTable, tableKinds}, Name: partner.Name, place: partner.SortOrder})
+			views = append(views, ItemTableView{ID: partner.ID, Kind: named{partnerTable, tableKinds}, Name: partner.Name, place: partner.SortOrder})
 		}
 	}
-	views = slices.DeleteFunc(views, func(view itemTableView) bool { return !caller.Access.Sees(c.ProjectID, view.ID) })
-	slices.SortStableFunc(views, func(a, b itemTableView) int { return int(a.place - b.place) })
+	views = slices.DeleteFunc(views, func(view ItemTableView) bool { return !held.Sees(c.ProjectID, view.ID) })
+	slices.SortStableFunc(views, func(a, b ItemTableView) int { return int(a.place - b.place) })
 	for i := range views {
 		views[i].Count = counts[views[i].ID]
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // sightTables is the project's tables as «الجداول» ticks them (#106 R4, D8, D9): every group and contract by category and item, in the order of the
@@ -549,22 +559,22 @@ func SightTablesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, h
 			if item.CategoryID != category.ID || item.Type == int64(structure.Capital) {
 				continue
 			}
-			var placed []itemTableView
+			var placed []ItemTableView
 			for _, subgroup := range subgroups {
 				if subgroup.ItemID == item.ID {
 					kind, name := subgroupTable, subgroup.Name
 					if subgroup.Name == "" {
 						kind, name = generalTable, item.Name
 					}
-					placed = append(placed, itemTableView{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
+					placed = append(placed, ItemTableView{ID: subgroup.ID, Kind: named{kind, tableKinds}, Name: name, place: subgroup.SortOrder})
 				}
 			}
 			for _, contract := range projectContracts {
 				if contract.ItemID == item.ID {
-					placed = append(placed, itemTableView{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
+					placed = append(placed, ItemTableView{ID: contract.ID, Kind: named{contractTable, tableKinds}, Name: contract.SupplierName, place: contract.SortOrder})
 				}
 			}
-			slices.SortStableFunc(placed, func(a, b itemTableView) int { return int(a.place - b.place) })
+			slices.SortStableFunc(placed, func(a, b ItemTableView) int { return int(a.place - b.place) })
 			shown := OfferedItem{ID: item.ID, Name: item.Name, IsRevenue: structure.ItemType(item.Type).IsRevenue()}
 			for _, table := range placed {
 				if listed(table.ID) {

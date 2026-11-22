@@ -45,7 +45,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A deleted partner's login may be another partner's in the project | `partners.Routes.delete` | `PartnersTests.R214_ADeletedPartnersLoginMayBeAnotherPartnersInTheProject` |
 | Partners show in the order added | `partners.Routes.list` | `PartnersTests.PartnersShowInTheOrderTheyWereAdded` |
 | An edit renames a partner and sets or takes away their login | `partners.Routes.edit` | `PartnersTests.AnEditRenamesAPartnerAndSetsTheirLogin`, `AnEditCanTakeALoginAway` |
-| A partner needs a name of 1 to 100 characters | `changes.Named` | `PartnersTests.APartnerNeedsANameOfAtMost100Characters` |
+| A partner needs a name of 1 to 100 characters | `partners.Create` | `PartnersTests.APartnerNeedsANameOfAtMost100Characters` |
 | A login must be in the project (BR-33) | `partners.refusalOfLogin` | `PartnersTests.ALoginMustBeInTheProject` |
 | A login is one partner in a project, also in the database, and any number have none | `partners.refusalOfLogin`, the unique index `ix_partner_users_project_id_user_id` | `PartnersTests.ALoginIsOnePartnerInAProject`, `TheDatabaseHoldsALoginToOnePartnerInAProjectAndManyWithNoLogin` |
 | One login may be a partner in two projects (BR-33) | The unique index `ix_partner_users_project_id_user_id`, per project | `PartnersTests.OneLoginMayBeAPartnerInTwoProjects` |

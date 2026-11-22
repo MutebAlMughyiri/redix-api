@@ -422,11 +422,6 @@ func ReorderItems(c changes.Change, categoryID uuid.UUID, ids []uuid.UUID) error
 		func(row store.Item, place int64) store.Item { row.SortOrder = place; return row }, change{c}.saveItem)
 }
 
-// item is the route's item, or changes.NotFound for one the project does not hold (ProjectStructure.ItemOfAsync, BR-33).
-func (c change) item(r *http.Request) (store.Item, error) {
-	return itemIn(c.Change, web.ID(r, "itemId"))
-}
-
 // itemIn is itemID in the change's project, or changes.NotFound for one it does not hold (ProjectStructure.ItemOfAsync, BR-33).
 func itemIn(c changes.Change, itemID uuid.UUID) (store.Item, error) {
 	return changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: itemID, ProjectID: c.ProjectID}))
@@ -496,18 +491,28 @@ func SetTablePercentages(c changes.Change, itemID uuid.UUID, isOn bool) error {
 // addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400)
 // for an item that takes no purchases, since a sub-table holds purchases (the owner, 7 Nov 2026).
 func (s Routes) addSubgroup(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, ok := changes.Named(w, r)
-	if !ok {
-		return
-	}
-	s.done(w, r, caller, func(c change) error {
-		item, err := c.item(r)
-		if err != nil {
+	var request nameRequest
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error {
+			_, err := CreateSubgroup(c.Change, web.ID(r, "itemId"), request.Name)
 			return err
-		}
-		_, err = AddSubgroup(c.Change, item, name)
-		return err
-	})
+		})
+	}
+}
+
+// CreateSubgroup adds the subgroup typed as name last among itemID's tables, as addSubgroup does: invalidName for a name not 1 to 100 letters,
+// NotFound for an item the project does not hold, then the refusals of AddSubgroup. The rule both doors call, the app's route and the web's New
+// subgroup (redix-api #174).
+func CreateSubgroup(c changes.Change, itemID uuid.UUID, name string) (uuid.UUID, error) {
+	named, ok := naming.Named(name)
+	if !ok {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	item, err := itemIn(c, itemID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return AddSubgroup(c, item, named)
 }
 
 // AddSubgroup adds the subgroup named name last among the item's tables (UC-012, CategoriesEndpoints.AddSubgroupAsync): itemTakesNoPurchases
@@ -666,61 +671,66 @@ func (c change) rebuildColumns(item store.Item) error {
 // invalidOrder (400) for a list that is not exactly them.
 func (s Routes) reorderTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request reorderRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error { return ReorderTables(c.Change, web.ID(r, "itemId"), request.IDs) })
 	}
-	s.done(w, r, caller, func(c change) error {
-		item, err := c.item(r)
-		if err != nil {
+}
+
+// ReorderTables puts all of itemID's tables - its subgroups, contracts and partners alike - in the order ids gives, the order of its sheet, as
+// reorderTables does: the rule both doors call, the app's route and the web's Tables (redix-api #174). NotFound for an item the project does not
+// hold; invalidOrder (400) for ids that are not exactly them.
+func ReorderTables(c changes.Change, itemID uuid.UUID, order []uuid.UUID) error {
+	one := change{c}
+	item, err := itemIn(c, itemID)
+	if err != nil {
+		return err
+	}
+	var subgroups []store.Subgroup
+	if ItemType(item.Type).hasSubgroupTables() {
+		if subgroups, err = c.Q.SubgroupsOfItem(c.Ctx, item.ID); err != nil {
 			return err
 		}
-		var subgroups []store.Subgroup
-		if ItemType(item.Type).hasSubgroupTables() {
-			if subgroups, err = c.Q.SubgroupsOfItem(c.Ctx, item.ID); err != nil {
-				return err
-			}
-		}
-		contracts, err := c.Q.ContractsOfItem(c.Ctx, item.ID)
-		if err != nil {
+	}
+	contracts, err := c.Q.ContractsOfItem(c.Ctx, item.ID)
+	if err != nil {
+		return err
+	}
+	partners, err := one.keptPartnersIn(item.ID)
+	if err != nil {
+		return err
+	}
+	ids := append(append(idsOf(subgroups, func(row store.Subgroup) uuid.UUID { return row.ID }),
+		idsOf(contracts, func(row store.Contract) uuid.UUID { return row.ID })...), idsOf(partners, func(row store.Partner) uuid.UUID { return row.ID })...)
+	places, ok := inOrder(ids, order)
+	if !ok {
+		return refused(invalidOrder)
+	}
+	for _, before := range subgroups {
+		after := before
+		after.SortOrder = places[before.ID]
+		if err := one.saveSubgroup(before, after); err != nil {
 			return err
 		}
-		partners, err := c.keptPartnersIn(item.ID)
-		if err != nil {
+	}
+	for _, contract := range contracts {
+		place := places[contract.ID]
+		if err := one.Save("Contracts", contract.ID, false, map[string]any{"SortOrder": contract.SortOrder}, map[string]any{"SortOrder": place},
+			func() error {
+				return c.Q.SetContractPlace(c.Ctx, store.SetContractPlaceParams{ID: contract.ID, SortOrder: place})
+			}); err != nil {
 			return err
 		}
-		ids := append(append(idsOf(subgroups, func(row store.Subgroup) uuid.UUID { return row.ID }),
-			idsOf(contracts, func(row store.Contract) uuid.UUID { return row.ID })...), idsOf(partners, func(row store.Partner) uuid.UUID { return row.ID })...)
-		places, ok := inOrder(ids, request.IDs)
-		if !ok {
-			return refused(invalidOrder)
+	}
+	for _, partner := range partners {
+		place := places[partner.ID]
+		if err := one.Save("Partners", partner.ID, false, map[string]any{"SortOrder": partner.SortOrder}, map[string]any{"SortOrder": place},
+			func() error {
+				return c.Q.SetPartnerPlace(c.Ctx, store.SetPartnerPlaceParams{ID: partner.ID, SortOrder: place})
+			}); err != nil {
+			return err
 		}
-		for _, before := range subgroups {
-			after := before
-			after.SortOrder = places[before.ID]
-			if err := c.saveSubgroup(before, after); err != nil {
-				return err
-			}
-		}
-		for _, contract := range contracts {
-			place := places[contract.ID]
-			if err := c.Save("Contracts", contract.ID, false, map[string]any{"SortOrder": contract.SortOrder}, map[string]any{"SortOrder": place},
-				func() error {
-					return c.Q.SetContractPlace(c.Ctx, store.SetContractPlaceParams{ID: contract.ID, SortOrder: place})
-				}); err != nil {
-				return err
-			}
-		}
-		for _, partner := range partners {
-			place := places[partner.ID]
-			if err := c.Save("Partners", partner.ID, false, map[string]any{"SortOrder": partner.SortOrder}, map[string]any{"SortOrder": place},
-				func() error {
-					return c.Q.SetPartnerPlace(c.Ctx, store.SetPartnerPlaceParams{ID: partner.ID, SortOrder: place})
-				}); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // keptPartnersIn is the partners whose tables are in the item, those deleted aside (Partner.Kept).
@@ -735,19 +745,18 @@ func (c change) keptPartnersIn(itemID uuid.UUID) ([]store.Partner, error) {
 	return kept, err
 }
 
-// subgroup is the route's subgroup of the route's item: changes.NotFound for either not the project's; generalSubgroup (409) for the item's general
-// group, which is never renamed or removed, so an entry always has a subgroup (UC-012).
-func (c change) subgroup(r *http.Request) (store.Subgroup, error) {
-	subgroups, err := c.Q.SubgroupsOfItem(c.Ctx, web.ID(r, "itemId"))
+// subgroupOf is subgroupID of itemID: changes.NotFound for either not the project's; generalSubgroup (409) for the item's general group, which
+// is never renamed or removed, so an entry always has a subgroup (UC-012).
+func subgroupOf(c changes.Change, itemID, subgroupID uuid.UUID) (store.Subgroup, error) {
+	subgroups, err := c.Q.SubgroupsOfItem(c.Ctx, itemID)
 	if err != nil {
 		return store.Subgroup{}, err
 	}
-	subgroupID := web.ID(r, "subgroupId")
 	for _, subgroup := range subgroups {
 		if subgroup.ID != subgroupID {
 			continue
 		}
-		if _, err := c.item(r); err != nil {
+		if _, err := itemIn(c, itemID); err != nil {
 			return subgroup, err
 		}
 		if subgroup.Name == generalName {
@@ -760,31 +769,45 @@ func (c change) subgroup(r *http.Request) (store.Subgroup, error) {
 
 // renameSubgroup renames a subgroup other than General, refusing a name the naming rule refuses as invalidName (UC-012).
 func (s Routes) renameSubgroup(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, ok := changes.Named(w, r)
-	if !ok {
-		return
+	var request nameRequest
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error {
+			return RenameSubgroup(c.Change, web.ID(r, "itemId"), web.ID(r, "subgroupId"), request.Name)
+		})
 	}
-	s.done(w, r, caller, func(c change) error {
-		before, err := c.subgroup(r)
-		if err != nil {
-			return err
-		}
-		after := before
-		after.Name = name
-		return c.saveSubgroup(before, after)
-	})
+}
+
+// RenameSubgroup names subgroupID of itemID name, as renameSubgroup does: the rule both doors call, the app's route and the web's Tables
+// (redix-api #174). invalidName for a name not 1 to 100 letters; NotFound for either not the project's; generalSubgroup (409) for the general
+// group.
+func RenameSubgroup(c changes.Change, itemID, subgroupID uuid.UUID, name string) error {
+	named, ok := naming.Named(name)
+	if !ok {
+		return changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	before, err := subgroupOf(c, itemID, subgroupID)
+	if err != nil {
+		return err
+	}
+	after := before
+	after.Name = named
+	return change{c}.saveSubgroup(before, after)
 }
 
 // deleteSubgroup removes a subgroup no entry uses: subgroupInUse (409) for one an entry uses (FR-05).
 func (s Routes) deleteSubgroup(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	s.done(w, r, caller, func(c change) error {
-		subgroup, err := c.subgroup(r)
-		if err != nil {
-			return err
-		}
-		if inUse, err := c.Q.SubgroupHasEntries(c.Ctx, subgroup.ID); err != nil || inUse {
-			return errors.Join(err, refusalIf(inUse, subgroupInUse))
-		}
-		return c.Remove("Subgroups", subgroup.ID, subgroupFields(subgroup), func() error { return c.Q.RemoveSubgroup(c.Ctx, subgroup.ID) })
-	})
+	s.done(w, r, caller, func(c change) error { return DeleteSubgroup(c.Change, web.ID(r, "itemId"), web.ID(r, "subgroupId")) })
+}
+
+// DeleteSubgroup removes subgroupID of itemID while no entry uses it, as deleteSubgroup does: the rule both doors call, the app's route and the
+// web's Tables (redix-api #174). NotFound for either not the project's; generalSubgroup or subgroupInUse (409).
+func DeleteSubgroup(c changes.Change, itemID, subgroupID uuid.UUID) error {
+	subgroup, err := subgroupOf(c, itemID, subgroupID)
+	if err != nil {
+		return err
+	}
+	if inUse, err := c.Q.SubgroupHasEntries(c.Ctx, subgroup.ID); err != nil || inUse {
+		return errors.Join(err, refusalIf(inUse, subgroupInUse))
+	}
+	return change{c}.Remove("Subgroups", subgroup.ID, subgroupFields(subgroup), func() error { return c.Q.RemoveSubgroup(c.Ctx, subgroup.ID) })
 }
