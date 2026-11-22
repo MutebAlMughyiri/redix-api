@@ -2854,3 +2854,14 @@ func TestWeb_R172_UC069_MyHistoryTellsEveryLineOfMyOwnLogin(t *testing.T) {
 		}
 	}
 }
+
+// Findings row 293 (the owner, 23 Nov 2026): one details panel, following the tab in front - every selection is kept for its tab, and a tab coming
+// from /tab/ selects and shows its own again; the browser's behaviour is proved by redix-web-automation's EntriesTest.
+func TestWeb_D293_TheDetailsPanelFollowsTheTabInFront(t *testing.T) {
+	browser, _ := signedIn(t, testapi.New(t), "User A")
+	page := browser.Send("GET", "/", nil).Body.String()
+	has(t, page, `hx-on::after-settle="`)
+	has(t, page, `window.selected[front.id] = row.getAttribute(&#39;hx-get&#39;)`)
+	has(t, page, `path.startsWith(&#39;/tab/&#39;)`)
+	lacks(t, page, "openInTab")
+}

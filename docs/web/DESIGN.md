@@ -46,7 +46,7 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 | Sign-in | In the content area; on success the other parts arrive with a little motion, once |
 | Language | In Settings, and at the sign-in form's foot |
 | Choices | The bars, the folded side menu, its width, the open tabs and the language, kept in cookies and drawn by the server, so nothing flashes |
-| Details panel (with the first list) | Like Google Drive's: click or Enter shows it, Esc hides it from anywhere, Up and Down move the selection and the panel follows, Home and End; "Open in a tab" moves the record to its own tab; its line drags from 240 to 560 px |
+| Details panel (with the first list) | Like Google Drive's: click or Enter shows it, Esc hides it from anywhere, Up and Down move the selection and the panel follows, Home and End; one panel, no tab of its own: it shows what the tab in front has selected, and when another tab comes to the front it shows that tab's selection (the owner, 23 Nov 2026, findings row 293 - "Open in a tab" is not built); its line drags from 240 to 560 px |
 
 ## How a feature joins it
 

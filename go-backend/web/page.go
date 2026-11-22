@@ -223,9 +223,22 @@ const shellKeys = `if (event.altKey && event.code === 'Digit1' && document.getEl
 	`if (event.key === 'Escape' && details && details.hasChildNodes() && !document.querySelector(':popover-open')) { event.preventDefault(); ` +
 	`details.replaceChildren(); const shown = document.querySelector('.grid [aria-selected=true]'); if (shown) shown.focus() }`
 
-// selectRow defines select, which marks one row of a list as the selected one; both of a list's handlers start with it.
-const selectRow = `window.select = window.select || (row => { row.closest('tbody').querySelectorAll('[aria-selected=true]').forEach(other => ` +
-	`other.setAttribute('aria-selected', 'false')); row.setAttribute('aria-selected', 'true') }); `
+// selectRow defines select, which marks one row of a list as the selected one and keeps it as the selection of the tab in front, so the details
+// panel comes back to it when that tab does (findings row 293); both of a list's handlers start with it.
+const selectRow = `window.selected = window.selected || {}; ` +
+	`window.select = window.select || (row => { row.closest('tbody').querySelectorAll('[aria-selected=true]').forEach(other => ` +
+	`other.setAttribute('aria-selected', 'false')); row.setAttribute('aria-selected', 'true'); ` +
+	`const front = document.querySelector('.tab[aria-selected=true]'); if (front) window.selected[front.id] = row.getAttribute('hx-get') }); `
+
+// followSelection is the shell's one settle handler (see document): when a tab's content comes from /tab/ - the tab brought to the front, or its
+// filters changed -, the row that tab last selected is selected again and shown, so the one details panel always shows what the tab in front
+// has selected (the owner, 23 Nov 2026, findings row 293: "one view panel and changed based on selected"). A list redrawn beside the panel
+// after a change is not a tab arriving, and the panel keeps what it says.
+const followSelection = selectRow + `const path = event.detail.pathInfo && event.detail.pathInfo.requestPath; ` +
+	`if (event.target.id !== 'web.content' || !path || !path.startsWith('/tab/')) return; ` +
+	`const front = document.querySelector('.tab[aria-selected=true]'), address = front && window.selected[front.id]; ` +
+	`const row = address && [...event.target.querySelectorAll('tr[hx-get]')].find(each => each.getAttribute('hx-get') === address); ` +
+	`if (row) { select(row); row.click() }`
 
 // listKeys are a list's own keys, which every list of the shell carries (the base design): a click or Enter shows a row in the details panel;
 // Up, Down, Home and End move the selection, and the panel follows it while it is open.
