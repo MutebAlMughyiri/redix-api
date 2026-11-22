@@ -77,6 +77,11 @@ type reorderRequest struct {
 	IDs []uuid.UUID `json:"ids"`
 }
 
+// nameRequest is the body that names a category, an item or a subgroup.
+type nameRequest struct {
+	Name string `json:"name"`
+}
+
 // CategoryView is a category as the app shows it (CategoryView), and the web's item choices (redix-api #170).
 type CategoryView struct {
 	ID       uuid.UUID  `json:"id"`
@@ -131,12 +136,18 @@ func categories(ctx context.Context, read *store.Queries, projectID uuid.UUID, o
 
 // list is every category and item of the project, disabled ones included.
 func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	views, err := categories(r.Context(), s.database.Queries(), web.ID(r, "projectId"), func(store.Category, store.Item) bool { return true })
+	views, err := ListOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
 	web.JSON(w, r, http.StatusOK, views)
+}
+
+// ListOf is projectID's categories with every item, in the order of the periodic report, as list answers them: the rule both doors call, the
+// app's route and the web's Categories and items (redix-api #174). The error is the database's.
+func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID) ([]CategoryView, error) {
+	return categories(ctx, read, projectID, func(store.Category, store.Item) bool { return true })
 }
 
 // offered is what an entry of itemType may choose from: active items of that type in active categories, a category with nothing to offer left out
@@ -181,15 +192,25 @@ func AddCategory(c changes.Change, name string) (store.Category, error) {
 	return category, change{c}.saveCategory(store.Category{}, category)
 }
 
-// addCategory adds a category as AddCategory does: 201 with it.
-func (s Routes) addCategory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, ok := changes.Named(w, r)
+// CreateCategory adds the category typed as name at the end of the change's project's list, as addCategory does: invalidName for a name not 1 to
+// 100 letters. The rule both doors call, the app's route and the web's New category (redix-api #174).
+func CreateCategory(c changes.Change, name string) (store.Category, error) {
+	named, ok := naming.Named(name)
 	if !ok {
+		return store.Category{}, changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	return AddCategory(c, named)
+}
+
+// addCategory adds a category as CreateCategory does: 201 with it.
+func (s Routes) addCategory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
+	var request nameRequest
+	if !web.Read(w, r, &request) {
 		return
 	}
 	var category store.Category
 	added := s.write(w, r, caller, func(c change) (err error) {
-		category, err = AddCategory(c.Change, name)
+		category, err = CreateCategory(c.Change, request.Name)
 		return err
 	})
 	if added {
@@ -205,14 +226,18 @@ func (s Routes) reorderCategories(w http.ResponseWriter, r *http.Request, caller
 	if !web.Read(w, r, &request) {
 		return
 	}
-	s.done(w, r, caller, func(c change) error {
-		categories, err := c.Q.CategoriesOf(c.Ctx, c.ProjectID)
-		if err != nil {
-			return err
-		}
-		return reorder(categories, request.IDs, func(row store.Category) uuid.UUID { return row.ID },
-			func(row store.Category, place int64) store.Category { row.SortOrder = place; return row }, c.saveCategory)
-	})
+	s.done(w, r, caller, func(c change) error { return ReorderCategories(c.Change, request.IDs) })
+}
+
+// ReorderCategories puts the change's project's categories in the order ids gives, as reorderCategories does: the rule both doors call, the app's
+// route and the web's Categories and items (redix-api #174). invalidOrder (400) for ids that are not exactly the project's categories.
+func ReorderCategories(c changes.Change, ids []uuid.UUID) error {
+	categories, err := c.Q.CategoriesOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return err
+	}
+	return reorder(categories, ids, func(row store.Category) uuid.UUID { return row.ID },
+		func(row store.Category, place int64) store.Category { row.SortOrder = place; return row }, change{c}.saveCategory)
 }
 
 // reorder saves each of rows at its place in ids, through save (AC-39.1): invalidOrder (400) for ids that are not exactly rows', by id.
@@ -237,31 +262,46 @@ func idsOf[T any](rows []T, id func(T) uuid.UUID) []uuid.UUID {
 	return ids
 }
 
-// changeCategory applies change to the route's category: 404 for one the project does not hold.
-func (s Routes) changeCategory(w http.ResponseWriter, r *http.Request, caller access.Caller, apply func(*store.Category)) {
-	s.done(w, r, caller, func(c change) error {
-		before, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: web.ID(r, "categoryId"), ProjectID: c.ProjectID}))
-		if err != nil {
-			return err
-		}
-		after := before
-		apply(&after)
-		return c.saveCategory(before, after)
-	})
+// changeCategory applies apply to categoryID in the change's project: NotFound for one the project does not hold.
+func changeCategory(c changes.Change, categoryID uuid.UUID, apply func(*store.Category)) error {
+	before, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
+	}
+	after := before
+	apply(&after)
+	return change{c}.saveCategory(before, after)
 }
 
-// renameCategory renames a category, refusing a name the naming rule refuses as invalidName (UC-012).
+// renameCategory renames a category, refusing a name the naming rule refuses as invalidName (UC-012), as RenameCategory does.
 func (s Routes) renameCategory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	if name, ok := changes.Named(w, r); ok {
-		s.changeCategory(w, r, caller, func(category *store.Category) { category.Name = name })
+	var request nameRequest
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error { return RenameCategory(c.Change, web.ID(r, "categoryId"), request.Name) })
 	}
 }
 
-// activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back.
+// RenameCategory names categoryID name, refusing a name the naming rule refuses as invalidName (UC-012): the rule both doors call, the app's
+// route and the web's Categories and items (redix-api #174). NotFound for a category the project does not hold.
+func RenameCategory(c changes.Change, categoryID uuid.UUID, name string) error {
+	named, ok := naming.Named(name)
+	if !ok {
+		return changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	return changeCategory(c, categoryID, func(category *store.Category) { category.Name = named })
+}
+
+// activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back, as ActivateCategory does.
 func (s Routes) activateCategory(active bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		s.changeCategory(w, r, caller, func(category *store.Category) { category.IsActive = active })
+		s.done(w, r, caller, func(c change) error { return ActivateCategory(c.Change, web.ID(r, "categoryId"), active) })
 	}
+}
+
+// ActivateCategory disables categoryID, so it and its items leave entry and stay in the reports (BR-15), or brings it back when active: the rule
+// both doors call, the app's route and the web's Categories and items (redix-api #174). NotFound for a category the project does not hold.
+func ActivateCategory(c changes.Change, categoryID uuid.UUID, active bool) error {
+	return changeCategory(c, categoryID, func(category *store.Category) { category.IsActive = active })
 }
 
 // addItemRequest is the body POST /projects/{projectId}/categories/{categoryId}/items (UC-012) reads.
@@ -277,21 +317,26 @@ func (s Routes) addItem(w http.ResponseWriter, r *http.Request, caller access.Ca
 	if !web.Read(w, r, &request) {
 		return
 	}
-	name, ok := naming.Named(request.Name)
-	if !ok {
-		refuse(w, r, naming.Invalid)
-		return
-	}
 	var item store.Item
 	var general store.Subgroup
 	added := s.write(w, r, caller, func(c change) (err error) {
-		item, general, err = AddItem(c.Change, web.ID(r, "categoryId"), name, request.Type)
+		item, general, err = CreateItem(c.Change, web.ID(r, "categoryId"), request.Name, request.Type)
 		return err
 	})
 	if added {
 		w.Header().Set("Location", "/projects/"+web.ID(r, "projectId").String()+"/items/"+item.ID.String())
 		web.JSON(w, r, http.StatusCreated, itemViewOf(item, []store.Subgroup{general}))
 	}
+}
+
+// CreateItem adds the item typed as name of itemType at the end of categoryID, as addItem does: invalidName for a name not 1 to 100 letters, then
+// the refusals of AddItem. The rule both doors call, the app's route and the web's Add item (redix-api #174).
+func CreateItem(c changes.Change, categoryID uuid.UUID, name string, itemType ItemType) (store.Item, store.Subgroup, error) {
+	named, ok := naming.Named(name)
+	if !ok {
+		return store.Item{}, store.Subgroup{}, changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	return AddItem(c, categoryID, named, itemType)
 }
 
 // AddItem adds the item named name of its type at the end of the category, with its general group and the default columns of its type (FR-05,
@@ -359,50 +404,74 @@ func (s Routes) reorderItems(w http.ResponseWriter, r *http.Request, caller acce
 	if !web.Read(w, r, &request) {
 		return
 	}
-	s.done(w, r, caller, func(c change) error {
-		categoryID := web.ID(r, "categoryId")
-		if _, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.ProjectID})); err != nil {
-			return err
-		}
-		items, err := c.Q.ItemsOfCategory(c.Ctx, categoryID)
-		if err != nil {
-			return err
-		}
-		return reorder(items, request.IDs, func(row store.Item) uuid.UUID { return row.ID },
-			func(row store.Item, place int64) store.Item { row.SortOrder = place; return row }, c.saveItem)
-	})
+	s.done(w, r, caller, func(c change) error { return ReorderItems(c.Change, web.ID(r, "categoryId"), request.IDs) })
+}
+
+// ReorderItems puts categoryID's items in the order ids gives, as reorderItems does: the rule both doors call, the app's route and the web's
+// Categories and items (redix-api #174). NotFound for a category the project does not hold; invalidOrder (400) for ids that are not exactly its
+// items.
+func ReorderItems(c changes.Change, categoryID uuid.UUID, ids []uuid.UUID) error {
+	if _, err := changes.Found(c.Q.CategoryOf(c.Ctx, store.CategoryOfParams{ID: categoryID, ProjectID: c.ProjectID})); err != nil {
+		return err
+	}
+	items, err := c.Q.ItemsOfCategory(c.Ctx, categoryID)
+	if err != nil {
+		return err
+	}
+	return reorder(items, ids, func(row store.Item) uuid.UUID { return row.ID },
+		func(row store.Item, place int64) store.Item { row.SortOrder = place; return row }, change{c}.saveItem)
 }
 
 // item is the route's item, or changes.NotFound for one the project does not hold (ProjectStructure.ItemOfAsync, BR-33).
 func (c change) item(r *http.Request) (store.Item, error) {
-	return changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: web.ID(r, "itemId"), ProjectID: c.ProjectID}))
+	return itemIn(c.Change, web.ID(r, "itemId"))
 }
 
-// changeItem applies change to the route's item: 404 for one the project does not hold.
-func (s Routes) changeItem(w http.ResponseWriter, r *http.Request, caller access.Caller, apply func(*store.Item)) {
-	s.done(w, r, caller, func(c change) error {
-		before, err := c.item(r)
-		if err != nil {
-			return err
-		}
-		after := before
-		apply(&after)
-		return c.saveItem(before, after)
-	})
+// itemIn is itemID in the change's project, or changes.NotFound for one it does not hold (ProjectStructure.ItemOfAsync, BR-33).
+func itemIn(c changes.Change, itemID uuid.UUID) (store.Item, error) {
+	return changes.Found(c.Q.ItemOf(c.Ctx, store.ItemOfParams{ID: itemID, ProjectID: c.ProjectID}))
 }
 
-// renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012).
+// changeItem applies apply to itemID in the change's project: NotFound for one the project does not hold.
+func changeItem(c changes.Change, itemID uuid.UUID, apply func(*store.Item)) error {
+	before, err := itemIn(c, itemID)
+	if err != nil {
+		return err
+	}
+	after := before
+	apply(&after)
+	return change{c}.saveItem(before, after)
+}
+
+// renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012), as RenameItem does.
 func (s Routes) renameItem(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	if name, ok := changes.Named(w, r); ok {
-		s.changeItem(w, r, caller, func(item *store.Item) { item.Name = name })
+	var request nameRequest
+	if web.Read(w, r, &request) {
+		s.done(w, r, caller, func(c change) error { return RenameItem(c.Change, web.ID(r, "itemId"), request.Name) })
 	}
 }
 
-// activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back.
+// RenameItem names itemID name, refusing a name the naming rule refuses as invalidName (UC-012): the rule both doors call, the app's route and
+// the web's Categories and items (redix-api #174). NotFound for an item the project does not hold.
+func RenameItem(c changes.Change, itemID uuid.UUID, name string) error {
+	named, ok := naming.Named(name)
+	if !ok {
+		return changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	return changeItem(c, itemID, func(item *store.Item) { item.Name = named })
+}
+
+// activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back, as ActivateItem does.
 func (s Routes) activateItem(active bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		s.changeItem(w, r, caller, func(item *store.Item) { item.IsActive = active })
+		s.done(w, r, caller, func(c change) error { return ActivateItem(c.Change, web.ID(r, "itemId"), active) })
 	}
+}
+
+// ActivateItem disables itemID, so it leaves entry and stays in the reports (BR-15), or brings it back when active: the rule both doors call,
+// the app's route and the web's Categories and items (redix-api #174). NotFound for an item the project does not hold.
+func ActivateItem(c changes.Change, itemID uuid.UUID, active bool) error {
+	return changeItem(c, itemID, func(item *store.Item) { item.IsActive = active })
 }
 
 // tablePercentagesRequest is the body PUT /projects/{projectId}/items/{itemId}/table-percentages (UC-012) reads.
@@ -414,8 +483,14 @@ type tablePercentagesRequest struct {
 func (s Routes) setTablePercentages(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request tablePercentagesRequest
 	if web.Read(w, r, &request) {
-		s.changeItem(w, r, caller, func(item *store.Item) { item.ShowsTablePercentages = request.IsOn })
+		s.done(w, r, caller, func(c change) error { return SetTablePercentages(c.Change, web.ID(r, "itemId"), request.IsOn) })
 	}
+}
+
+// SetTablePercentages sets whether itemID's sheet calculates each table's percentage of the whole (AC-46.9): the rule both doors call, the app's
+// route and the web's Categories and items (redix-api #174). NotFound for an item the project does not hold.
+func SetTablePercentages(c changes.Change, itemID uuid.UUID, isOn bool) error {
+	return changeItem(c, itemID, func(item *store.Item) { item.ShowsTablePercentages = isOn })
 }
 
 // addSubgroup adds a named subgroup last among the item's tables (UC-012): 404 for an item the project does not hold, itemTakesNoPurchases (400)
@@ -496,21 +571,26 @@ func (s Routes) changeItemType(w http.ResponseWriter, r *http.Request, caller ac
 	if !web.Read(w, r, &request) {
 		return
 	}
-	s.done(w, r, caller, func(c change) error {
-		before, err := c.item(r)
-		if err != nil {
-			return err
-		}
-		if err := c.refuseTypeChange(before, request.Type); err != nil {
-			return err
-		}
-		after := before
-		after.Type = int64(request.Type)
-		if err := c.saveItem(before, after); err != nil {
-			return err
-		}
-		return c.rebuildColumns(after)
-	})
+	s.done(w, r, caller, func(c change) error { return ChangeItemType(c.Change, web.ID(r, "itemId"), request.Type) })
+}
+
+// ChangeItemType makes itemID for to, as changeItemType does: the rule both doors call, the app's route and the web's Change type (redix-api
+// #174). NotFound for an item the project does not hold, then refuseTypeChange's refusals.
+func ChangeItemType(c changes.Change, itemID uuid.UUID, to ItemType) error {
+	one := change{c}
+	before, err := itemIn(c, itemID)
+	if err != nil {
+		return err
+	}
+	if err := one.refuseTypeChange(before, to); err != nil {
+		return err
+	}
+	after := before
+	after.Type = int64(to)
+	if err := one.saveItem(before, after); err != nil {
+		return err
+	}
+	return one.rebuildColumns(after)
 }
 
 func (c change) refuseTypeChange(item store.Item, to ItemType) error {

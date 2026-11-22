@@ -1,0 +1,241 @@
+package web
+
+import "github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+
+// categoriesList is Categories and items as the app's screen shows them (UC-012): New category, gray in a finished project; the hint that
+// dragging sets the order of the periodic report; a search; then each category, how many items it holds or that it is disabled, its items under
+// it with their type; a row moves by dragging, or with Alt+Up and Alt+Down, for whoever may shape the structure (redix-api #174 D1). Why an order
+// could not be kept stands at the top.
+templ categoriesList(p page, shown structureShown, refusal string) {
+	<div class="view-head">
+		<h2 id="categories.title">{ p.words.Of("categories.title") }</h2>
+		<span id="categories.actions" class="head-actions">
+			<button id="categories.add" class="primary small" type="button" hx-get="/details/structure/category/new" hx-target="[id='web.details']" disabled?={ !p.mayShape() }>{ p.words.Of("categories.new") }</button>
+		</span>
+	</div>
+	if p.mayShape() {
+		<p id="categories.hint" class="hint wide">{ p.words.Of("categories.hint") }</p>
+	}
+	if refusal != "" {
+		<p id="categories.refusal" class="refusal wide" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	<form id="categories.filters" class="filters" hx-get="/tab/categories" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="categories.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("categories.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("categories.title")) } value={ shown.text }/>
+	</form>
+	if len(shown.shown()) == 0 {
+		<p id="categories.empty" class="empty">{ p.words.Of("categories.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table
+				id="categories.table"
+				class="grid structure"
+				data-reorder="/structure/reorder"
+				hx-on:keydown={ templ.JSUnsafeFuncCall(reorderRows + listKeys) }
+				hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }
+				hx-on:dragstart={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:dragover={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:drop={ templ.JSUnsafeFuncCall(reorderRows) }
+				hx-on:dragend={ templ.JSUnsafeFuncCall(reorderRows) }
+			>
+				for _, category := range shown.shown() {
+					<tbody
+						id={ "categories.card." + category.ID.String() }
+						data-id={ category.ID.String() }
+						data-reorder={ "/structure/category/" + category.ID.String() + "/reorder" }
+						if p.mayShape() {
+							draggable="true"
+						}
+					>
+						<tr
+							id={ "categories.tile." + category.ID.String() }
+							class={ "category", templ.KV("disabled", !category.IsActive) }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/structure/category/" + category.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "categories.cell." + category.ID.String() }>
+								if p.mayShape() {
+									<span id={ "categories.handle." + category.ID.String() } class="handle" title={ p.words.Of("categories.hint") } aria-hidden="true">⋮⋮</span>
+								}
+								<strong id={ "categories.name." + category.ID.String() }>{ category.Name }</strong>
+								<small id={ "categories.details." + category.ID.String() } class="hint">{ categoryLine(p, category) }</small>
+							</td>
+						</tr>
+						if len(category.Items) == 0 {
+							<tr id={ "categories.noItemsRow." + category.ID.String() } class="no-items">
+								<td id={ "categories.noItems." + category.ID.String() } class="hint">{ p.words.Of("categories.noItems") }</td>
+							</tr>
+						}
+						for _, item := range category.Items {
+							<tr
+								id={ "categories.item." + item.ID.String() }
+								class={ "item", templ.KV("disabled", !item.IsActive) }
+								data-id={ item.ID.String() }
+								if p.mayShape() {
+									draggable="true"
+								}
+								tabindex="0"
+								aria-selected="false"
+								hx-get={ "/details/structure/item/" + item.ID.String() }
+								hx-target="[id='web.details']"
+							>
+								<td id={ "categories.itemCell." + item.ID.String() }>
+									if p.mayShape() {
+										<span id={ "categories.itemHandle." + item.ID.String() } class="handle" title={ p.words.Of("categories.hint") } aria-hidden="true">⋮⋮</span>
+									}
+									<span id={ "categories.itemName." + item.ID.String() }>{ item.Name }</span>
+									<small id={ "categories.itemDetails." + item.ID.String() } class="hint">{ itemLine(p, item) }</small>
+								</td>
+							</tr>
+						}
+					</tbody>
+				}
+			</table>
+		</div>
+	}
+}
+
+// categoriesBeside is Categories and items again, carried out of band beside the panel, once a category or an item changed.
+templ categoriesBeside(p page, shown structureShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@categoriesList(p, shown, "")
+	</div>
+}
+
+// categoryPanel is a category in the details panel: how many items it holds or that it is disabled, why its change was refused; Add item,
+// Rename, and Disable or Enable, as the app's card offers them to whoever may shape the structure.
+templ categoryPanel(p page, category structure.CategoryView, refusal string) {
+	<div class="details-head">
+		<h3 id="category.title">{ category.Name }</h3>
+		<button id="category.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl id="category.facts" class="facts">
+		<dt id="category.items.label">{ p.words.Of("categories.items") }</dt>
+		<dd id="category.items">{ categoryLine(p, category) }</dd>
+	</dl>
+	if refusal != "" {
+		<p id="category.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	if p.mayShape() {
+		<div id="category.actions" class="details-actions">
+			<button id={ "categories.addItem." + category.ID.String() } class="quiet-button" type="button" hx-get={ "/details/structure/category/" + category.ID.String() + "?asking=item" } hx-target="[id='web.details']">{ p.words.Of("categories.addItem") }</button>
+			<button id={ "categories.rename." + category.ID.String() } class="quiet-button" type="button" hx-get={ "/details/structure/category/" + category.ID.String() + "?asking=rename" } hx-target="[id='web.details']">{ p.words.Of("categories.rename") }</button>
+			if category.IsActive {
+				<button id={ "categories.disable." + category.ID.String() } class="quiet-button" type="button" hx-post={ "/structure/category/" + category.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("categories.disable") }</button>
+			} else {
+				<button id={ "categories.enable." + category.ID.String() } class="quiet-button" type="button" hx-post={ "/structure/category/" + category.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("categories.enable") }</button>
+			}
+		</div>
+	}
+}
+
+// itemPanel is an item in the details panel: its type or that it is disabled, its category, why its change was refused; Columns, then, for
+// whoever may shape the structure, Rename, Tables, Change type, the table percentages ticked as the item keeps them, and Disable or Enable, as
+// the app's row menu offers them.
+templ itemPanel(p page, item structure.ItemView, category structure.CategoryView, refusal string) {
+	<div class="details-head">
+		<h3 id="item.title">{ item.Name }</h3>
+		<button id="item.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<dl id="item.facts" class="facts">
+		<dt id="item.type.label">{ p.words.Of("categories.itemType") }</dt>
+		<dd id="item.type">{ itemLine(p, item) }</dd>
+		<dt id="item.category.label">{ p.words.Of("categories.categoryName") }</dt>
+		<dd id="item.category">{ category.Name }</dd>
+	</dl>
+	if refusal != "" {
+		<p id="item.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+	}
+	<div id="item.actions" class="details-actions">
+		<button id={ "categories.itemColumns." + item.ID.String() } class="quiet-button" type="button" disabled>{ p.words.Of("columns.title") }</button>
+		if p.mayShape() {
+			<button id="categories.renameItem" class="quiet-button" type="button" hx-get={ "/details/structure/item/" + item.ID.String() + "?asking=rename" } hx-target="[id='web.details']">{ p.words.Of("categories.rename") }</button>
+			<button id="categories.tables" class="quiet-button" type="button" disabled>{ p.words.Of("categories.tables") }</button>
+			<button id="categories.changeType" class="quiet-button" type="button" hx-get={ "/details/structure/item/" + item.ID.String() + "?asking=type" } hx-target="[id='web.details']">{ p.words.Of("categories.changeType") }</button>
+			if item.IsActive {
+				<button id="categories.disableItem" class="quiet-button" type="button" hx-post={ "/structure/item/" + item.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("categories.disable") }</button>
+			} else {
+				<button id="categories.enableItem" class="quiet-button" type="button" hx-post={ "/structure/item/" + item.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("categories.enable") }</button>
+			}
+		}
+	</div>
+	if p.mayShape() {
+		<label id="categories.tablePercentages" class="tick">
+			<input id="categories.tablePercentages.input" type="checkbox" name="held" value="on" checked?={ item.ShowsTablePercentages } hx-post={ "/structure/item/" + item.ID.String() + "/percentages" } hx-target="[id='web.details']"/>
+			<span id="categories.tablePercentages.label">{ p.words.Of("categories.tablePercentages") }</span>
+		</label>
+	}
+}
+
+// categoryForm is New category or a category's Rename in the details panel, as the app's dialog asks it: the name; why it could not be kept.
+templ categoryForm(p page, category structure.CategoryView, name, refusal string) {
+	<div class="details-head">
+		<h3 id="category.title">{ p.words.Of(categoryFormTitle(category)) }</h3>
+		<button id="category.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="category.form" class="details-form" hx-post={ categoryFormPath(category) } hx-target="[id='web.details']">
+		<div class="field">
+			<label id="category.name.label" for="category.name">{ p.words.Of("categories.categoryName") }</label>
+			<input id="category.name" name="name" required value={ name } autofocus/>
+		</div>
+		if refusal != "" {
+			<p id="category.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="category.formActions" class="details-actions">
+			<button id="category.save" class="primary small" type="submit">{ p.words.Of(categoryFormSave(category)) }</button>
+		</span>
+	</form>
+}
+
+// itemForm is an item's form in the details panel, as the app's dialog asks it: Add item (asking item) the name and the type; Rename the name;
+// Change type the type; why it could not be kept.
+templ itemForm(p page, category structure.CategoryView, item structure.ItemView, asking, refusal string) {
+	<div class="details-head">
+		<h3 id="item.title">{ p.words.Of(itemFormTitle(asking)) }</h3>
+		<button id="item.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="item.form" class="details-form" hx-post={ itemFormPath(category, item, asking) } hx-target="[id='web.details']">
+		if asking != "type" {
+			<div class="field">
+				<label id="item.name.label" for="item.name">{ p.words.Of("categories.itemName") }</label>
+				<input id="item.name" name="name" required value={ item.Name } autofocus/>
+			</div>
+		}
+		if asking != "rename" {
+			@typeChoice(p, item.Type)
+		}
+		if refusal != "" {
+			<p id="item.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="item.formActions" class="details-actions">
+			if asking == "item" {
+				<button id="item.save" class="primary small" type="submit">{ p.words.Of("categories.addItem") }</button>
+			} else {
+				<button id="item.save" class="primary small" type="submit">{ p.words.Of("categories.save") }</button>
+			}
+		</span>
+	</form>
+}
+
+// typeChoice is an item's type as the app's ItemTypeChoice asks it: its side, expenses or revenue, then the types of that side.
+templ typeChoice(p page, chosen structure.ItemType) {
+	<fieldset id="categories.sideChoice" class="type-choice" hx-on:change={ templ.JSUnsafeFuncCall(sideChoice) }>
+		<p id="categories.sideHeading" class="section-title">{ p.words.Of("categories.side") }</p>
+		<label id="categories.side.false" class="tick">
+			<input id="categories.side.false.input" type="radio" name="side" value="expenses" checked?={ !chosen.IsRevenue() }/>
+			<span id="categories.side.false.label">{ p.words.Of("categories.sideExpenses") }</span>
+		</label>
+		<label id="categories.side.true" class="tick">
+			<input id="categories.side.true.input" type="radio" name="side" value="revenue" checked?={ chosen.IsRevenue() }/>
+			<span id="categories.side.true.label">{ p.words.Of("categories.sideRevenue") }</span>
+		</label>
+		<p id="categories.typeHeading" class="section-title">{ p.words.Of("categories.itemType") }</p>
+		for _, itemType := range structure.ItemTypes {
+			<label id={ "categories.itemType." + itemType.Name() } class={ "tick", sideOf(itemType) }>
+				<input id={ "categories.itemType." + itemType.Name() + ".input" } type="radio" name="type" value={ itemType.Name() } data-side={ sideOf(itemType) } checked?={ itemType == chosen }/>
+				<span id={ "categories.itemType." + itemType.Name() + ".label" }>{ p.words.Of(itemTypeWord(itemType)) }</span>
+			</label>
+		}
+	</fieldset>
+}

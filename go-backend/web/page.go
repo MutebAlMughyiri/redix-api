@@ -202,6 +202,7 @@ var contents = map[string]tab{
 	"newUser":           site.newUserTab,
 	"userPermissions":   site.userPermissionsTab,
 	"myPermissions":     site.myPermissionsTab,
+	"categories":        site.categoriesTab,
 	"permissionRequest": site.askTab,
 	"requests":          site.requestsTab,
 	"partnerHistory":    site.partnerHistoryTab,

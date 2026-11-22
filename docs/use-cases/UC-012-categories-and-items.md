@@ -96,6 +96,26 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A finished project refuses every change and stays readable (AC-04.1) | `access.Gate.Changes`, an endpoint filter | `CategoriesTests.AFinishedProjectRefusesEveryChangeAndStaysReadable` |
 | A subgroup an expense or revenue is kept on is not removed (`subgroupInUse`); "is anything kept on it" has one owner for items and subgroups | `structure.Routes.deleteSubgroup`, `ItemHasEntriesAsync` | `CategoriesTests.ASubgroupAnEntryUsesIsNotRemoved`, `ASubgroupRevenueIsKeptOnIsNotRemoved` |
 
+## On the web: Categories and items (redix-api #174)
+
+The web's Categories and items is the app's screen in the shell, its item in the side menu for whoever shapes the structure: New category, gray in a finished project; the hint that dragging sets the order of the periodic report; a search finding a category by its name or an item's; then each category, how many items it holds or that it is disabled, with its items under it and their type, from `structure.ListOf`, the function `GET /projects/{id}/categories` answers. A row opens the category or the item in the details panel with what the app's card and row menu offer: a category's Add item (its name, then the side and the type, as the app's choice), Rename, and Disable or Enable; an item's Columns, Rename, Tables, Change type, the table percentages ticked, and Disable or Enable. Each keeps through the rule the app's route runs: `structure.CreateCategory`, `RenameCategory`, `ActivateCategory`, `CreateItem`, `RenameItem`, `ChangeItemType`, `SetTablePercentages`, `ActivateItem`, run through the shared changes.Writer. A row moves among its own by dragging it, or with Alt+Up and Alt+Down (D1), and the order is kept through `structure.ReorderCategories` or `structure.ReorderItems`. Whoever may not shape it, or in a finished project, sees the list without handles or actions (AC-04.1). Columns and Tables stand gray until their slices of #174. Its pages are in `go-backend/web` (`structure.go`, `structure.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/categories?text=` | Categories and items, searched | `200` the tab's content; the item stays out of the menu without ManageStructure |
+| `GET /details/structure/category/{id}`, `GET /details/structure/item/{id}` | A category or an item in the details panel; `?asking=rename` or, a category's, `item` (Add item), an item's, `type` | `200` the panel or its form; `404` without ManageStructure, or for one the project does not hold |
+| `GET /details/structure/category/new` | New category's form | `200` the form |
+| `POST /structure/category/new/add`, `POST /structure/category/{id}/rename`, `…/disable`, `…/enable`, `…/item` | Keeps New category or Rename (`name`), disables or enables a category, adds an item (`name`, `type`) | `200` the category or the item added in the panel, Categories and items beside it; or the form or the panel saying why not; `403` without ManageStructure; `404` for an action there is none of |
+| `POST /structure/item/{id}/rename`, `…/type`, `…/percentages`, `…/disable`, `…/enable` | Keeps an item's Rename (`name`), Change type (`type`), table percentages (`held` while ticked), Disable or Enable | as above |
+| `POST /structure/reorder`, `POST /structure/category/{id}/reorder` | Keeps the order of the categories, or of a category's items (`ids`, comma-separated) | `200` Categories and items, saying why above it when refused |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Categories and items lists every category with its items in the report's order, how many it holds or that it is disabled, each item's type; the search finds a category by its name or an item's | `structure.ListOf`, `web.structureShown` | `TestWeb_R174_UC012_CategoriesAndItemsListAsTheAppsScreen` |
+| New category, Rename, Disable and Enable, Add item with its side and type, an item's Rename, Change type, table percentages, Disable and Enable, as the app's dialogs and menus: a name of 1 to 100 letters, one capital item a project, no type change for an item with entries | `structure.CreateCategory`, `RenameCategory`, `ActivateCategory`, `CreateItem`, `RenameItem`, `ChangeItemType`, `SetTablePercentages`, `ActivateItem` | `TestWeb_R174_UC012_CategoriesAndItemsChangeAsTheAppsDialogs` |
+| A row moves among its own and the order is kept, as the periodic report's; an order that is not exactly the list's is refused (AC-39.1, D1) | `structure.ReorderCategories`, `structure.ReorderItems`, `web.reorderRows` | `TestWeb_R174_D1_ARowMovesAmongItsOwnAndTheOrderIsKept` |
+| Categories and items is for whoever shapes the structure; a finished project shows it without handles or actions and changes nothing (AC-04.1); a failing database answers 500 | `web.page.mayShape`, `web.site.keepStructure` | `TestWeb_R174_StructureIsForWhoeverShapesItAndAFinishedProjectChangesNothing` |
+
 ## Left to later use cases
 
 | What | Use case |

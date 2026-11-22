@@ -3339,3 +3339,173 @@ func TestWeb_R173_R112_RequestsAreForWhoeverManagesTheUsers(t *testing.T) {
 		}
 	}
 }
+
+// idsIn is the ids query answers, in its order, joined by commas as a reorder sends them.
+func (w working) idsIn(query string, args ...any) []string {
+	w.t.Helper()
+	rows, err := w.Database.Read.Query(query, args...)
+	if err != nil {
+		w.t.Fatal(err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			w.t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func TestWeb_R174_UC012_CategoriesAndItemsListAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	var category string
+	if err := w.Database.Read.QueryRow("SELECT category_id FROM items WHERE id = ?", w.item).Scan(&category); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	list := w.browser.Send("GET", "/tab/categories", nil).Body.String()
+	has(t, list, `<h2 id="categories.title">التصنيفات والبنود</h2>`)
+	has(t, list, `<button id="categories.add" class="primary small" type="button" hx-get="/details/structure/category/new" hx-target="[id='web.details']">`)
+	has(t, list, `<p id="categories.hint" class="hint wide">اسحب لتغيير الترتيب، وهو ترتيب التقرير الدوري.</p>`)
+	has(t, list, `<tbody id="categories.card.`+category+`" data-id="`+category+`" data-reorder="/structure/category/`+category+`/reorder" draggable="true">`)
+	has(t, list, `<strong id="categories.name.`+category+`">الحديد</strong>`)
+	has(t, list, `<small id="categories.details.`+category+`" class="hint">البنود: 1</small>`)
+	has(t, list, `<span id="categories.itemName.`+w.item+`">التسليح</span>`)
+	has(t, list, `<small id="categories.itemDetails.`+w.item+`" class="hint">مشتريات</small>`)
+	has(t, list, `data-reorder="/structure/reorder"`)
+	found := w.browser.Send("GET", "/tab/categories?text=التسليح", nil).Body.String()
+	has(t, found, `id="categories.card.`+category+`"`)
+	if strings.Count(found, `<tbody id="categories.card.`) != 1 {
+		t.Errorf("the search keeps the category whose item it finds: %d", strings.Count(found, `<tbody id="categories.card.`))
+	}
+	has(t, w.browser.Send("GET", "/tab/categories?text=nothing-here", nil).Body.String(), `<p id="categories.empty" class="empty">`)
+}
+
+func TestWeb_R174_UC012_CategoriesAndItemsChangeAsTheAppsDialogs(t *testing.T) {
+	w := newWorking(t)
+	w.partner("الشريك A", "")
+	w.home()
+	has(t, w.browser.Send("GET", "/details/structure/category/new", nil).Body.String(), `<form id="category.form" class="details-form" hx-post="/structure/category/new/add"`)
+	has(t, w.browser.Send("POST", "/structure/category/new/add", url.Values{"name": {" "}}).Body.String(), `<p id="category.refusal" class="refusal" role="alert">أدخل اسماً من 1 إلى 100 حرف.</p>`)
+	added := w.browser.Send("POST", "/structure/category/new/add", url.Values{"name": {"الخرسانة"}}).Body.String()
+	has(t, added, `<h3 id="category.title">الخرسانة</h3>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	var category string
+	if err := w.Database.Read.QueryRow("SELECT id FROM categories WHERE name = 'الخرسانة'").Scan(&category); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("GET", "/details/structure/category/"+category+"?asking=rename", nil).Body.String(), `<input id="category.name" name="name" required value="الخرسانة" autofocus>`)
+	has(t, w.browser.Send("POST", "/structure/category/"+category+"/rename", url.Values{"name": {"الخرسانة المسلحة"}}).Body.String(), `<h3 id="category.title">الخرسانة المسلحة</h3>`)
+	disabled := w.browser.Send("POST", "/structure/category/"+category+"/disable", nil).Body.String()
+	has(t, disabled, `<dd id="category.items">معطّل</dd>`)
+	has(t, disabled, `id="categories.enable.`+category+`"`)
+	has(t, w.browser.Send("POST", "/structure/category/"+category+"/enable", nil).Body.String(), `id="categories.disable.`+category+`"`)
+	asking := w.browser.Send("GET", "/details/structure/category/"+category+"?asking=item", nil).Body.String()
+	has(t, asking, `<input id="categories.itemType.both.input" type="radio" name="type" value="both" data-side="expenses" checked>`)
+	has(t, asking, `<input id="categories.side.false.input" type="radio" name="side" value="expenses" checked>`)
+	item := w.browser.Send("POST", "/structure/category/"+category+"/item", url.Values{"name": {"الصب"}, "type": {"purchases"}}).Body.String()
+	has(t, item, `<h3 id="item.title">الصب</h3>`)
+	has(t, item, `<dd id="item.type">مشتريات</dd>`)
+	has(t, item, `<dd id="item.category">الخرسانة المسلحة</dd>`)
+	var poured string
+	if err := w.Database.Read.QueryRow("SELECT id FROM items WHERE name = 'الصب'").Scan(&poured); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("POST", "/structure/category/"+category+"/item", url.Values{"name": {"رأس مال ثانٍ"}, "type": {"capital"}}).Body.String(),
+		`<p id="item.refusal" class="refusal" role="alert">لهذا المشروع بند رأس المال بالفعل.</p>`)
+	has(t, w.browser.Send("POST", "/structure/item/"+poured+"/rename", url.Values{"name": {"صب الخرسانة"}}).Body.String(), `<h3 id="item.title">صب الخرسانة</h3>`)
+	has(t, w.browser.Send("GET", "/details/structure/item/"+poured+"?asking=type", nil).Body.String(), `<input id="categories.itemType.purchases.input" type="radio" name="type" value="purchases" data-side="expenses" checked>`)
+	has(t, w.browser.Send("POST", "/structure/item/"+poured+"/type", url.Values{"type": {"contractorPayments"}}).Body.String(), `<dd id="item.type">دفعات مقاولين</dd>`)
+	w.sent(100)
+	has(t, w.browser.Send("POST", "/structure/item/"+w.item+"/type", url.Values{"type": {"sale"}}).Body.String(), "هذا البند عليه قيود، فلا يتغير نوعه.")
+	has(t, w.browser.Send("POST", "/structure/item/"+poured+"/percentages", url.Values{"held": {"on"}}).Body.String(),
+		`<input id="categories.tablePercentages.input" type="checkbox" name="held" value="on" checked`)
+	if on := w.Count(`SELECT count(*) FROM items WHERE id = '` + poured + `' AND shows_table_percentages = 1`); on != 1 {
+		t.Errorf("the table percentages are kept: %d", on)
+	}
+	has(t, w.browser.Send("POST", "/structure/item/"+poured+"/disable", nil).Body.String(), `<dd id="item.type">معطّل</dd>`)
+	has(t, w.browser.Send("POST", "/structure/item/"+poured+"/enable", nil).Body.String(), `id="categories.disableItem"`)
+	for _, path := range []string{"/structure/item/" + poured + "/archive", "/structure/item/" + uuid.NewString() + "/rename", "/structure/category/" + uuid.NewString() + "/rename",
+		"/structure/unit/" + poured + "/rename", "/structure/category/new/rename"} {
+		if code := w.browser.Send("POST", path, url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	for _, path := range []string{"/details/structure/item/" + uuid.NewString(), "/details/structure/category/" + uuid.NewString(), "/details/structure/unit/" + poured} {
+		if code := w.browser.Send("GET", path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+}
+
+func TestWeb_R174_D1_ARowMovesAmongItsOwnAndTheOrderIsKept(t *testing.T) {
+	w := newWorking(t)
+	var category string
+	if err := w.Database.Read.QueryRow("SELECT category_id FROM items WHERE id = ?", w.item).Scan(&category); err != nil {
+		t.Fatal(err)
+	}
+	w.Ask("POST", w.path+"/categories/"+category+"/items", `{"name":"الربط","type":"purchases"}`, w.token)
+	w.home()
+	items := w.idsIn("SELECT id FROM items WHERE category_id = ? ORDER BY sort_order", category)
+	slices.Reverse(items)
+	moved := w.browser.Send("POST", "/structure/category/"+category+"/reorder", url.Values{"ids": {strings.Join(items, ",")}}).Body.String()
+	if strings.Index(moved, `id="categories.item.`+items[0]+`"`) > strings.Index(moved, `id="categories.item.`+items[1]+`"`) {
+		t.Error("the items show in the order kept")
+	}
+	if again := w.idsIn("SELECT id FROM items WHERE category_id = ? ORDER BY sort_order", category); !slices.Equal(again, items) {
+		t.Errorf("the items' order is kept: %v", again)
+	}
+	categories := w.idsIn("SELECT id FROM categories WHERE project_id = ? ORDER BY sort_order", w.id)
+	slices.Reverse(categories)
+	w.browser.Send("POST", "/structure/reorder", url.Values{"ids": {strings.Join(categories, ",")}})
+	if again := w.idsIn("SELECT id FROM categories WHERE project_id = ? ORDER BY sort_order", w.id); !slices.Equal(again, categories) {
+		t.Errorf("the categories' order is kept: %v", again)
+	}
+	has(t, w.browser.Send("POST", "/structure/reorder", url.Values{"ids": {categories[0]}}).Body.String(),
+		`<p id="categories.refusal" class="refusal wide" role="alert">تغيّرت القائمة. حاول مرة أخرى.</p>`)
+	if code := w.browser.Send("POST", "/structure/category/x/reorder", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a category that is no id: %d", code)
+	}
+}
+
+func TestWeb_R174_StructureIsForWhoeverShapesItAndAFinishedProjectChangesNothing(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.memberBrowser(builder)
+	lacks(t, browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/categories"`)
+	if code := browser.Send("POST", "/structure/item/"+w.item+"/rename", url.Values{"name": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("renaming without ManageStructure: %d", code)
+	}
+	if code := browser.Send("POST", "/structure/reorder", nil).Code; code != http.StatusForbidden {
+		t.Errorf("reordering without ManageStructure: %d", code)
+	}
+	if code := browser.Send("GET", "/details/structure/item/"+w.item, nil).Code; code != http.StatusNotFound {
+		t.Errorf("an item's panel without ManageStructure: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/categories"}, {"GET", "/details/structure/item/" + w.item}, {"POST", "/structure/item/" + w.item + "/rename"},
+		{"POST", "/structure/category/new/add"}, {"POST", "/structure/reorder"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"البند"}, "ids": {w.item}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	finished := w.browser.Send("GET", "/tab/categories", nil).Body.String()
+	has(t, finished, `hx-target="[id='web.details']" disabled>`)
+	lacks(t, finished, `id="categories.hint"`)
+	lacks(t, finished, `draggable="true"`)
+	lacks(t, w.browser.Send("GET", "/details/structure/item/"+w.item, nil).Body.String(), `id="categories.renameItem"`)
+	has(t, w.browser.Send("POST", "/structure/item/"+w.item+"/rename", url.Values{"name": {"x"}}).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+	has(t, w.browser.Send("POST", "/structure/reorder", nil).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+}

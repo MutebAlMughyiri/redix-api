@@ -3166,6 +3166,17 @@
         ],
         "type": "object"
       },
+      "structure.nameRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "structure.reorderRequest": {
         "properties": {
           "ids": {
@@ -5628,7 +5639,7 @@
         ]
       },
       "post": {
-        "description": "addCategory adds a category as AddCategory does: 201 with it.\n\nAccess: needs the ManageStructure permission.",
+        "description": "addCategory adds a category as CreateCategory does: 201 with it.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -5644,7 +5655,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/changes.nameRequest"
+                "$ref": "#/components/schemas/structure.nameRequest"
               }
             }
           },
@@ -5682,7 +5693,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "addCategory adds a category as AddCategory does: 201 with it.",
+        "summary": "addCategory adds a category as CreateCategory does: 201 with it.",
         "tags": [
           "structure"
         ]
@@ -5797,7 +5808,7 @@
     },
     "/projects/{projectId}/categories/{categoryId}": {
       "put": {
-        "description": "renameCategory renames a category, refusing a name the naming rule refuses as invalidName (UC-012).\n\nAccess: needs the ManageStructure permission.",
+        "description": "renameCategory renames a category, refusing a name the naming rule refuses as invalidName (UC-012), as RenameCategory does.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -5822,7 +5833,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/changes.nameRequest"
+                "$ref": "#/components/schemas/structure.nameRequest"
               }
             }
           },
@@ -5863,7 +5874,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "renameCategory renames a category, refusing a name the naming rule refuses as invalidName (UC-012).",
+        "summary": "renameCategory renames a category, refusing a name the naming rule refuses as invalidName (UC-012), as RenameCategory does.",
         "tags": [
           "structure"
         ]
@@ -5871,7 +5882,7 @@
     },
     "/projects/{projectId}/categories/{categoryId}/disable": {
       "post": {
-        "description": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back.\n\nAccess: needs the ManageStructure permission.",
+        "description": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back, as ActivateCategory does.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -5917,7 +5928,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back.",
+        "summary": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back, as ActivateCategory does.",
         "tags": [
           "structure"
         ]
@@ -5925,7 +5936,7 @@
     },
     "/projects/{projectId}/categories/{categoryId}/enable": {
       "post": {
-        "description": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back.\n\nAccess: needs the ManageStructure permission.",
+        "description": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back, as ActivateCategory does.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -5971,7 +5982,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back.",
+        "summary": "activateCategory disables a category, so it and its items leave entry and stay in the reports (BR-15), or brings it back, as ActivateCategory does.",
         "tags": [
           "structure"
         ]
@@ -6020,6 +6031,16 @@
               }
             },
             "description": "Created."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidName."
           },
           "404": {
             "content": {
@@ -8357,7 +8378,7 @@
     },
     "/projects/{projectId}/items/{itemId}": {
       "put": {
-        "description": "renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012).\n\nAccess: needs the ManageStructure permission.",
+        "description": "renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012), as RenameItem does.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -8382,7 +8403,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/changes.nameRequest"
+                "$ref": "#/components/schemas/structure.nameRequest"
               }
             }
           },
@@ -8423,7 +8444,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012).",
+        "summary": "renameItem renames an item, refusing a name the naming rule refuses as invalidName (UC-012), as RenameItem does.",
         "tags": [
           "structure"
         ]
@@ -8755,7 +8776,7 @@
     },
     "/projects/{projectId}/items/{itemId}/disable": {
       "post": {
-        "description": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back.\n\nAccess: needs the ManageStructure permission.",
+        "description": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back, as ActivateItem does.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -8801,7 +8822,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back.",
+        "summary": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back, as ActivateItem does.",
         "tags": [
           "structure"
         ]
@@ -8809,7 +8830,7 @@
     },
     "/projects/{projectId}/items/{itemId}/enable": {
       "post": {
-        "description": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back.\n\nAccess: needs the ManageStructure permission.",
+        "description": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back, as ActivateItem does.\n\nAccess: needs the ManageStructure permission.",
         "parameters": [
           {
             "in": "path",
@@ -8855,7 +8876,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back.",
+        "summary": "activateItem disables an item, so it leaves entry and stays in the reports (BR-15), or brings it back, as ActivateItem does.",
         "tags": [
           "structure"
         ]

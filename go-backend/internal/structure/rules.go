@@ -48,6 +48,18 @@ func (t *ItemType) UnmarshalJSON(data []byte) error {
 	return err
 }
 
+// ItemTypes are the types of item in the order the app's choice lists them.
+var ItemTypes = []ItemType{Purchases, ContractorPayments, Both, Sale, VatRefund, OtherRevenue, Capital}
+
+// Name is the type's name, as the API writes it and the app's words key it.
+func (t ItemType) Name() string { return itemTypes[t] }
+
+// ItemTypeNamed is the type name names, and whether one does.
+func ItemTypeNamed(name string) (ItemType, bool) {
+	value, err := itemTypes.Parse(name)
+	return ItemType(value), err == nil
+}
+
 // IsRevenue says whether an item of this type is on the revenue side: its entries are money coming in (ItemTypes.IsRevenue).
 func (t ItemType) IsRevenue() bool { return t >= Sale }
 
