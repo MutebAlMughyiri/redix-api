@@ -51,6 +51,12 @@ func (s site) closeTab(w http.ResponseWriter, r *http.Request) {
 // turn changes the view's tabs with change, keeps it, and answers the front tab's content with the tabs and the side menu; a request with no session
 // answers the sign-in form in the whole shell.
 func (s site) turn(w http.ResponseWriter, r *http.Request, change func(view) view) {
+	s.turnSaying(w, r, change, said{})
+}
+
+// turnSaying is turn, the tab it brings to the front told what the change that brought it there said, as a screen the app pops back to shows its
+// message.
+func (s site) turnSaying(w http.ResponseWriter, r *http.Request, change func(view) view, saying said) {
 	p, err := s.page(r)
 	if err != nil {
 		failed(w)
@@ -68,6 +74,7 @@ func (s site) turn(w http.ResponseWriter, r *http.Request, change func(view) vie
 	}
 	p.view = change(p.view)
 	p.view.keepTabs(w)
+	p.said = saying
 	if p, err = s.open(r, p, caller); err != nil {
 		failed(w)
 		return

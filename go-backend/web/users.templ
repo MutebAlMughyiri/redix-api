@@ -227,10 +227,10 @@ templ newUserPage(p page, shown newUserShown) {
 		</div>
 		<h3 id="newUser.permissionsHeading" class="section-title">{ p.words.Of("permissions.title") }</h3>
 		<fieldset id="newUser.permissions" class="permission-ticks" hx-on:change={ templ.JSUnsafeFuncCall(capitalPair) }>
-			@permissionTickList(p, "newUser", shown.holds, newUserTick, shown.partners, shown.chose, newUserChoice)
+			@permissionTickList(p, "newUser", permissionTicks, shown.holds, formTick("newUser"), shown.partners, shown.chose, newUserChoice)
 		</fieldset>
 		<div id="newUser.tables" hx-on:change={ templ.JSUnsafeFuncCall(tickGroups) }>
-			@tableTicks(p, shown.tables, shown.sees, newUserTableTick)
+			@tableTicks(p, p.words.Of("users.tables"), p.words.Of("users.tablesHint"), shown.tables, shown.sees, newUserTableTick)
 		</div>
 		<span id="newUser.actions" class="details-actions">
 			<button id="newUser.submit" class="primary small" type="submit">{ p.words.Of("users.add") }</button>
@@ -240,10 +240,10 @@ templ newUserPage(p page, shown newUserShown) {
 
 // permissionTickList are a project's permissions to tick as the app's PermissionTicks lists them, for New user and a person's Permissions alike:
 // in the app's order, the capital and reports groups headed, the partners to choose under Specific partners' capital, shown while it is ticked.
-// tick and choose are what a permission's and a partner's tick does on the screen drawing them.
-templ permissionTickList(p page, prefix string, holds func(access.Permission) bool, tick func(access.Permission) templ.Attributes, choices []partners.View, chosen func(uuid.UUID) bool, choose func(uuid.UUID) templ.Attributes) {
-	for _, permission := range permissionTicks {
-		if opensGroup(permission) {
+// shown are those it lists; tick and choose are what a permission's and a partner's tick does on the screen drawing them.
+templ permissionTickList(p page, prefix string, shown []access.Permission, holds func(access.Permission) bool, tick func(access.Permission) templ.Attributes, choices []partners.View, chosen func(uuid.UUID) bool, choose func(uuid.UUID) templ.Attributes) {
+	for _, permission := range shown {
+		if opensGroup(shown, permission) {
 			<p id={ prefix + "." + permissionGroup(permission) } class="section-title">{ p.words.Of(permissionGroup(permission)) }</p>
 		}
 		<label id={ prefix + "." + permissionName(permission) } class="tick">
@@ -265,10 +265,13 @@ templ permissionTickList(p page, prefix string, holds func(access.Permission) bo
 }
 
 // tableTicks are the project's tables as the app's TableTicks ticks them: by category, each item's tick over its tables', ticked while every one
-// is seen, between while some are. tick is what an item's or a table's tick does on the screen drawing them, given the tables it ticks.
-templ tableTicks(p page, categories []entries.OfferedCategory, sees func(uuid.UUID) bool, tick func(tableIDs []uuid.UUID, table bool) templ.Attributes) {
-	<h3 id="tables.heading" class="section-title">{ p.words.Of("users.tables") }</h3>
-	<p id="tables.heading.hint" class="hint">{ p.words.Of("users.tablesHint") }</p>
+// is seen, between while some are, under heading and its hint, when there is one. tick is what an item's or a table's tick does on the screen
+// drawing them, given the tables it ticks.
+templ tableTicks(p page, heading, hint string, categories []entries.OfferedCategory, sees func(uuid.UUID) bool, tick func(tableIDs []uuid.UUID, table bool) templ.Attributes) {
+	<h3 id="tables.heading" class="section-title">{ heading }</h3>
+	if hint != "" {
+		<p id="tables.heading.hint" class="hint">{ hint }</p>
+	}
 	<div id="tables.ticks" class="table-ticks">
 		for _, category := range categories {
 			<details id={ "tables.category." + category.ID.String() } open>
@@ -315,9 +318,9 @@ templ userPermissionsPage(p page, shown userPermissionsShown) {
 				<p id="userPermissions.message" class="refusal" role="alert">{ p.words.Of(shown.refusal) }</p>
 			}
 			<fieldset id="userPermissions.permissions" class="permission-ticks">
-				@permissionTickList(p, "userPermissions", shown.holds, shown.tick, shown.partners, shown.chose, shown.choose)
+				@permissionTickList(p, "userPermissions", permissionTicks, shown.holds, shown.tick, shown.partners, shown.chose, shown.choose)
 			</fieldset>
-			@tableTicks(p, shown.tables, shown.sees, shown.tickTables)
+			@tableTicks(p, p.words.Of("users.tables"), p.words.Of("users.tablesHint"), shown.tables, shown.sees, shown.tickTables)
 		</div>
 	}
 }

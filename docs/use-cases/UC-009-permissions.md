@@ -147,6 +147,28 @@ A manager unticks, for one person in one project, the tables they may not see: a
 | #106 R4, D9, G2: the tables list holds every table for a manager and the seen ones for anyone else | `entries.TestR106_D9_G2_TheTablesListHoldsEveryTableForAManagerAndTheSeenOnesForAnyoneElse` |
 | #106: every route the sight reaches answers a failing database | `entries.TestR106_EveryRouteTheSightReachesAnswersAFailingDatabase` |
 
+## On the web: My permissions and Permission requests (redix-api #173)
+
+The web's My permissions is the app's screen in the shell, its item in the side menu for everyone in the project: the hint; the latest request, from `users.MyRequestOf`, the function `GET …/permission-requests/mine` answers, saying where it stands, a rejection's reason in it, and while it waits what it asks, why and when, with Withdraw, through `users.Withdraw`; the permissions held, read only, drawn by the same owner as New user's and a person's Permissions, the search keeping those whose name or hint holds it, as the app's does; the partners whose capital they see; and the tables they see, saying when some are not theirs. Ask for permissions, gray in a finished project as the app's button, ticks every project permission as held, Read project fixed and one of the capital pair at most, and keeps Send gray until a tick changes; Send asks the reason in the details panel, what the ticks give and take named below it, and keeps the request through `users.Ask`; sent, My permissions comes to the front saying so and Ask closes, as the app's screen pops. Permission requests, for whoever manages the project's users, lists every request waiting from `users.WaitingRequestsOf`, who asked and what, why and when, with Approve, through `users.Approve`, and Reject, asking the reason in the details panel, through `users.Reject`; each decision is said by name. These are the rules the app's routes call, run through the shared changes.Writer; as the API refuses a request's changes in a finished project, the web says so in the app's words. Its pages are in `go-backend/web` (`requests.go`, `requests.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/myPermissions?text=` | My permissions, searched | `200` the tab's content |
+| `POST /permission-request/withdraw` | Withdraw | `200` My permissions saying it was withdrawn, or why not |
+| `GET /tab/permissionRequest` | Ask for permissions | `200` the form |
+| `GET /details/permission-request?permission=` | Send's dialog: the reason, what the ticks ask | `200` the panel |
+| `POST /permission-request` | Sends the request: each `permission` ticked and the `reason` | `200` My permissions in front saying it was sent (`HX-Retarget` the content area); or the dialog saying why not |
+| `GET /tab/requests` | Permission requests | `200` the tab's content; the item stays out of the menu without ManageUsers |
+| `GET /details/permission-request/{id}/reject` | Reject's sheet | `200` the panel; `404` without ManageUsers, or for no request waiting with that id |
+| `POST /permission-request/{id}/approve`, `…/reject` | Approves, or rejects with `reason` | `200` Permission requests saying so, or why not; a rejection refused keeps its sheet; `403` without ManageUsers; `404` for an action there is none of, or no request waiting |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| My permissions shows what the caller holds, read only, searched by name and hint, and says when some tables are not theirs | `web.myPermissionsShown`, `web.permissionTickList`, `web.tableTicks` | `TestWeb_R173_R112_MyPermissionsShowsWhatTheCallerHoldsAsTheAppsScreen` |
+| Ask for permissions asks what changes, with a reason; sent, My permissions says so and shows it waiting; Withdraw takes it back; a finished project changes nothing (R1, R8, R10) | `users.Ask`, `users.Withdraw`, `web.site.askingChange` | `TestWeb_R173_R112_AskForPermissionsAndWithdrawAsTheAppsScreens` |
+| Permission requests lists each waiting request; Reject asks a reason; Approve gives what was asked; each decision said by name (R3, R4, R8) | `users.WaitingRequestsOf`, `users.Approve`, `users.Reject` | `TestWeb_R173_R112_PermissionRequestsApproveAndRejectAsTheAppsScreen` |
+| Permission requests is for whoever manages the project's users; a finished project decides nothing; a failing database answers 500 | `web.site.decideRequest`, `web.menuNeeds` | `TestWeb_R173_R112_RequestsAreForWhoeverManagesTheUsers` |
+
 ## Left to later use cases
 
 The OWASP MASVS review in AC-N08 comes before release.

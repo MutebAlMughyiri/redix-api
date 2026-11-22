@@ -1,0 +1,142 @@
+package web
+
+import (
+	"strings"
+	"time"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+)
+
+// myPermissionsPage is My permissions as the app's screen shows it (redix-api #112): Ask for permissions, gray in a finished project; the search;
+// the hint; the latest request, Withdraw while it waits; the permissions held, read only, the partners whose capital they see; and the tables,
+// saying when some are not theirs.
+templ myPermissionsPage(p page, shown myPermissionsShown) {
+	<div class="view-head">
+		<h2 id="myPermissions.title">{ p.words.Of("permissions.mine") }</h2>
+		<span id="myPermissions.actions" class="head-actions">
+			<button id="myPermissions.ask" class="primary small" type="button" hx-get="/tab/permissionRequest" hx-target="[id='web.content']" disabled?={ p.finished() }>{ p.words.Of("permissionRequests.ask") }</button>
+		</span>
+	</div>
+	<form id="myPermissions.filters" class="filters" hx-get="/tab/myPermissions" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="myPermissions.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("permissions.mine")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("permissions.mine")) } value={ shown.text }/>
+	</form>
+	<div id="myPermissions.page" class="entry-form">
+		if shown.said.notice != "" {
+			<p id="myPermissions.notice" class="notice" role="status">{ p.words.Of(shown.said.notice) }</p>
+		}
+		if shown.said.refusal != "" {
+			<p id="myPermissions.refusal" class="refusal" role="alert">{ p.words.Of(shown.said.refusal) }</p>
+		}
+		<p id="myPermissions.hint" class="hint">{ p.words.Of("permissions.mineHint") }</p>
+		if shown.asked {
+			<div id="myPermissions.requestCard" class="request-card">
+				<p id="myPermissions.request" class="lines">{ shown.requestText(p) }</p>
+				if shown.request.IsWaiting() {
+					<button id="myPermissions.withdraw" class="quiet-button" type="button" hx-post="/permission-request/withdraw" hx-target="[id='web.content']">{ p.words.Of("permissionRequests.withdraw") }</button>
+				}
+			</div>
+		}
+		<fieldset id="myPermissions.permissions" class="permission-ticks">
+			@permissionTickList(p, "myPermissions", shown.shows(p), p.may, readOnlyTick, shown.partners, everyPartner, readOnlyChoice)
+		</fieldset>
+		@tableTicks(p, p.words.Of("permissions.mineTables"), mineTablesHint(p), shown.tables, p.sees, readOnlyTables)
+	</div>
+}
+
+// askPage is Ask for permissions as the app's screen asks it (redix-api #112): the hint, every project permission ticked as the caller holds it,
+// Read project fixed, one of the capital pair at most; Send, gray until a tick changes, asks the reason in the details panel.
+templ askPage(p page) {
+	<div class="view-head">
+		<h2 id="permissionRequest.title">{ p.words.Of("permissionRequests.title") }</h2>
+	</div>
+	<form id="permissionRequest.form" class="entry-form" hx-on:change={ templ.JSUnsafeFuncCall(askedChanged) }>
+		<p id="permissionRequest.hint" class="hint">{ p.words.Of("permissionRequests.hint") }</p>
+		<fieldset id="permissionRequest.permissions" class="permission-ticks" hx-on:change={ templ.JSUnsafeFuncCall(capitalPair) }>
+			@permissionTickList(p, "permissionRequest", permissionTicks, p.may, formTick("permissionRequest"), nil, everyPartner, readOnlyChoice)
+		</fieldset>
+		<span id="permissionRequest.actions" class="details-actions">
+			<button id="permissionRequest.send" class="primary small" type="button" disabled hx-get="/details/permission-request" hx-include="[id='permissionRequest.form']" hx-target="[id='web.details']">{ p.words.Of("permissionRequests.send") }</button>
+		</span>
+	</form>
+}
+
+// askForm is Ask for permissions' Send in the details panel, as the app's dialog asks it: the reason, and below it what the ticks ask; why it
+// could not be sent.
+templ askForm(p page, asked []string, reason, refusal string) {
+	<div class="details-head">
+		<h3 id="permissionRequest.dialogTitle">{ p.words.Of("permissionRequests.title") }</h3>
+		<button id="permissionRequest.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="permissionRequest.reasonForm" class="details-form" hx-post="/permission-request" hx-include="[id='permissionRequest.form']" hx-target="[id='web.details']">
+		<div class="field">
+			<label id="permissionRequest.reason.label" for="permissionRequest.reason">{ p.words.Of("permissionRequests.reason") }</label>
+			<textarea id="permissionRequest.reason" name="reason" rows="3" required autofocus>{ reason }</textarea>
+		</div>
+		<p id="permissionRequest.asked" class="hint lines">{ strings.Join(asked, "\n") }</p>
+		if refusal != "" {
+			<p id="permissionRequest.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="permissionRequest.dialogActions" class="details-actions">
+			<button id="permissionRequest.save" class="primary small" type="submit">{ p.words.Of("permissionRequests.send") }</button>
+		</span>
+	</form>
+}
+
+// requestsList is Permission requests as the app's screen lists them (redix-api #112): each request waiting, oldest first, who asked and what,
+// why and when, with Approve and Reject; what the last decision said.
+templ requestsList(p page, shown requestsShown) {
+	<div class="view-head">
+		<h2 id="permissionRequests.title">{ p.words.Of("permissionRequests.listTitle") }</h2>
+	</div>
+	if shown.said.notice != "" {
+		<p id="permissionRequests.notice" class="notice wide" role="status">{ p.words.Of(shown.said.notice, shown.decided) }</p>
+	}
+	if shown.said.refusal != "" {
+		<p id="permissionRequests.refusal" class="refusal wide" role="alert">{ p.words.Of(shown.said.refusal) }</p>
+	}
+	if len(shown.waiting) == 0 {
+		<p id="permissionRequests.empty" class="empty">{ p.words.Of("permissionRequests.empty") }</p>
+	} else {
+		<ul id="permissionRequests.list" class="request-list">
+			for _, request := range shown.waiting {
+				<li id={ "permissionRequests.row." + request.ID.String() } class="request-card">
+					<strong id={ "permissionRequests.row." + request.ID.String() + ".title" }>{ request.DisplayName }</strong>
+					<p id={ "permissionRequests.row." + request.ID.String() + ".subtitle" } class="hint lines">{ askedIn(p, request, shown.location) }</p>
+					<span id={ "permissionRequests.row." + request.ID.String() + ".actions" } class="details-actions">
+						<button id={ "permissionRequests.approve." + request.ID.String() } class="quiet-button" type="button" hx-post={ "/permission-request/" + request.ID.String() + "/approve" } hx-target="[id='web.content']">{ p.words.Of("permissionRequests.approve") }</button>
+						<button id={ "permissionRequests.reject." + request.ID.String() } class="quiet-button" type="button" hx-get={ "/details/permission-request/" + request.ID.String() + "/reject" } hx-target="[id='web.details']">{ p.words.Of("permissionRequests.reject") }</button>
+					</span>
+				</li>
+			}
+		</ul>
+	}
+}
+
+// requestRejectForm is a request's Reject in the details panel, as the app's sheet asks it: who asked and what, the reason, and why it could not be
+// kept.
+templ requestRejectForm(p page, request users.RequestView, location *time.Location, refusal string) {
+	<div class="details-head">
+		<h3 id="permissionRequests.rejectTitle">{ p.words.Of("permissionRequests.rejectTitle", request.DisplayName) }</h3>
+		<button id="permissionRequests.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="permissionRequests.requestRejectForm" class="details-form" hx-post={ "/permission-request/" + request.ID.String() + "/reject" } hx-target="[id='web.details']">
+		<p id="permissionRequests.about" class="hint lines">{ askedIn(p, request, location) }</p>
+		<div class="field">
+			<label id="permissionRequests.rejectReason.label" for="permissionRequests.rejectReason">{ p.words.Of("permissionRequests.rejectReason") }</label>
+			<textarea id="permissionRequests.rejectReason" name="reason" rows="3" required autofocus></textarea>
+		</div>
+		if refusal != "" {
+			<p id="permissionRequests.rejectRefusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="permissionRequests.rejectActions" class="details-actions">
+			<button id="permissionRequests.rejectSend" class="primary small" type="submit">{ p.words.Of("permissionRequests.reject") }</button>
+		</span>
+	</form>
+}
+
+// requestsBeside is Permission requests again, carried out of band beside the panel a rejection closed.
+templ requestsBeside(p page, shown requestsShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@requestsList(p, shown)
+	</div>
+}

@@ -251,7 +251,7 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"projectInfo", "myPermissions", "documents"} {
+	for _, key := range []string{"projectInfo", "documents"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
@@ -3149,6 +3149,187 @@ func TestWeb_R173_PermissionsAreForWhoeverManagesTheUsers(t *testing.T) {
 		{"POST", "/user/" + builder.String() + "/permission/RecordEntries"}} {
 		for n := int64(1); ; n++ {
 			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"held": {"on"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+// memberBrowser is a browser signed in as person, in w's project.
+func (w working) memberBrowser(person uuid.UUID) *testapi.Browser {
+	w.t.Helper()
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {person.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	return browser
+}
+
+func TestWeb_R173_R112_MyPermissionsShowsWhatTheCallerHoldsAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	w.Ask("POST", w.path+"/users/"+builder.String()+"/permissions/RecordEntries", ``, w.token)
+	browser := w.memberBrowser(builder)
+	has(t, browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/myPermissions"`)
+	mine := browser.Send("GET", "/tab/myPermissions", nil).Body.String()
+	has(t, mine, `<h2 id="myPermissions.title">صلاحياتي</h2>`)
+	has(t, mine, `id="myPermissions.hint"`)
+	has(t, mine, `<input id="myPermissions.readProject.input" type="checkbox" checked disabled>`)
+	has(t, mine, `<input id="myPermissions.recordEntries.input" type="checkbox" checked disabled>`)
+	has(t, mine, `<input id="myPermissions.manageUsers.input" type="checkbox" disabled>`)
+	has(t, mine, `<input id="tables.table.`+w.table+`.input" type="checkbox" checked disabled>`)
+	has(t, mine, `<button id="myPermissions.ask" class="primary small" type="button" hx-get="/tab/permissionRequest" hx-target="[id='web.content']">`)
+	lacks(t, mine, `id="myPermissions.request"`)
+	lacks(t, mine, `id="tables.heading.hint"`)
+	found := browser.Send("GET", "/tab/myPermissions?text=تسجيل", nil).Body.String()
+	has(t, found, `id="myPermissions.recordEntries.input"`)
+	lacks(t, found, `id="myPermissions.manageUsers.input"`)
+	w.home()
+	partner := w.partner("الشريك A", "")
+	w.browser.Send("POST", "/user/"+builder.String()+"/partner/"+partner, url.Values{"held": {"on"}})
+	w.browser.Send("POST", "/user/"+builder.String()+"/tables?table="+w.table, nil)
+	seeing := w.memberBrowser(builder).Send("GET", "/tab/myPermissions", nil).Body.String()
+	has(t, seeing, `<p id="tables.heading.hint" class="hint">التقرير الدوري لمن يرى كل الجداول</p>`)
+	has(t, seeing, `<input id="myPermissions.seeChosenCapital.input" type="checkbox" checked disabled>`)
+	has(t, seeing, `<input id="permissions.partner.`+partner+`.input" type="checkbox" checked disabled>`)
+}
+
+func TestWeb_R173_R112_AskingNeedsAProjectAndAnswersAFailingDatabase(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	outside := w.Browser()
+	outside.Send("POST", "/sign-in", url.Values{"username": {builder.String()}, "password": {password}})
+	for _, ask := range []struct{ method, path string }{{"GET", "/details/permission-request"}, {"POST", "/permission-request"}, {"POST", "/permission-request/withdraw"}} {
+		if code := outside.Send(ask.method, ask.path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s %s with no project: %d", ask.method, ask.path, code)
+		}
+	}
+	browser := w.memberBrowser(builder)
+	for _, ask := range []struct{ method, path string }{{"GET", "/details/permission-request?permission=ManageUsers"}, {"POST", "/permission-request"},
+		{"POST", "/permission-request/withdraw"}, {"GET", "/tab/permissionRequest"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := browser.SendFailing(n, ask.method, ask.path, url.Values{"permission": {"ManageUsers"}, "reason": {"أتابع المستخدمين"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+func TestWeb_R173_R112_AskForPermissionsAndWithdrawAsTheAppsScreens(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	w.Ask("POST", w.path+"/users/"+builder.String()+"/permissions/RecordEntries", ``, w.token)
+	browser := w.memberBrowser(builder)
+	asking := browser.Send("GET", "/tab/permissionRequest", nil).Body.String()
+	has(t, asking, `id="permissionRequest.send" class="primary small" type="button" disabled`)
+	has(t, asking, `<input id="permissionRequest.readProject.input" type="checkbox" checked disabled name="permission" value="ReadProject">`)
+	has(t, asking, `<input id="permissionRequest.recordEntries.input" type="checkbox" checked name="permission" value="RecordEntries">`)
+	has(t, asking, `data-excludes="permissionRequest.seeChosenCapital.input"`)
+	wanted := url.Values{"permission": {"ManageUsers", "SeeReports"}}
+	dialog := browser.Send("GET", "/details/permission-request?"+wanted.Encode(), nil).Body.String()
+	has(t, dialog, `id="permissionRequest.reason"`)
+	has(t, dialog, "يُضاف: إدارة المستخدمين، ")
+	has(t, dialog, "يُزال: تسجيل المصروفات")
+	has(t, browser.Send("POST", "/permission-request", wanted).Body.String(), `<p id="permissionRequest.refusal" class="refusal" role="alert">اذكر السبب</p>`)
+	wanted.Set("reason", "أتابع المستخدمين")
+	sent := browser.Send("POST", "/permission-request", wanted)
+	if sent.Header().Get("HX-Retarget") != "[id='web.content']" {
+		t.Errorf("Send brings My permissions to the content area: %q", sent.Header().Get("HX-Retarget"))
+	}
+	has(t, sent.Body.String(), `<p id="myPermissions.notice" class="notice" role="status">أُرسل طلبك إلى مدير المستخدمين</p>`)
+	has(t, sent.Body.String(), "طلبك بانتظار الموافقة\nيُضاف: إدارة المستخدمين")
+	has(t, sent.Body.String(), `id="myPermissions.withdraw"`)
+	lacks(t, sent.Body.String(), `id="web.tab.permissionRequest"`)
+	has(t, sent.Body.String(), `<div id="web.tab.myPermissions" class="tab" role="tab" aria-selected="true">`)
+	if waiting := w.Count(`SELECT count(*) FROM permission_requests WHERE user_id = '` + builder.String() + `' AND status = 0`); waiting != 1 {
+		t.Errorf("the request waits: %d", waiting)
+	}
+	withdrawn := browser.Send("POST", "/permission-request/withdraw", nil).Body.String()
+	has(t, withdrawn, "سُحب طلبك")
+	lacks(t, withdrawn, `id="myPermissions.request"`)
+	has(t, browser.Send("POST", "/permission-request/withdraw", nil).Body.String(), `<p id="myPermissions.refusal" class="refusal" role="alert">رُفض الطلب</p>`)
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	closed := w.memberBrowser(builder)
+	has(t, closed.Send("GET", "/tab/myPermissions", nil).Body.String(), `hx-target="[id='web.content']" disabled>`)
+	has(t, closed.Send("POST", "/permission-request", wanted).Body.String(), "المشروع منتهٍ فلا يتغير")
+}
+
+func TestWeb_R173_R112_PermissionRequestsApproveAndRejectAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	ask := func() string {
+		w.t.Helper()
+		if code, answer := w.Ask("POST", w.path+"/permission-requests", `{"gives":["ManageUsers"],"reason":"أتابع المستخدمين"}`, w.Token(builder, false)); code != http.StatusCreated {
+			t.Fatalf("asking: %d %v", code, answer)
+		}
+		var id string
+		if err := w.Database.Read.QueryRow("SELECT id FROM permission_requests WHERE user_id = ? AND status = 0", builder).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	asked := ask()
+	w.home()
+	list := w.browser.Send("GET", "/tab/requests", nil).Body.String()
+	has(t, list, `<strong id="permissionRequests.row.`+asked+`.title">User B</strong>`)
+	has(t, list, "يُضاف: إدارة المستخدمين\nأتابع المستخدمين\n")
+	has(t, w.browser.Send("GET", "/details/permission-request/"+asked+"/reject", nil).Body.String(), `<h3 id="permissionRequests.rejectTitle">رفض طلب User B</h3>`)
+	has(t, w.browser.Send("POST", "/permission-request/"+asked+"/reject", nil).Body.String(), `<p id="permissionRequests.rejectRefusal" class="refusal" role="alert">اذكر السبب</p>`)
+	rejected := w.browser.Send("POST", "/permission-request/"+asked+"/reject", url.Values{"reason": {"ليس الآن"}}).Body.String()
+	has(t, rejected, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	has(t, rejected, "رُفض طلب User B")
+	has(t, rejected, `<p id="permissionRequests.empty" class="empty">لا طلب بانتظار الموافقة</p>`)
+	has(t, w.memberBrowser(builder).Send("GET", "/tab/myPermissions", nil).Body.String(), "رُفض طلبك: ليس الآن")
+	asked = ask()
+	approved := w.browser.Send("POST", "/permission-request/"+asked+"/approve", nil).Body.String()
+	has(t, approved, "اعتُمد طلب User B")
+	if held := w.Count(`SELECT count(*) FROM project_permissions WHERE user_id = '` + builder.String() + `' AND permission = 'ManageUsers'`); held != 1 {
+		t.Errorf("approving gives what was asked: %d", held)
+	}
+	for _, path := range []string{"/permission-request/" + asked + "/approve", "/permission-request/" + uuid.NewString() + "/approve", "/permission-request/" + asked + "/archive"} {
+		if code := w.browser.Send("POST", path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	if code := w.browser.Send("GET", "/details/permission-request/"+uuid.NewString()+"/reject", nil).Code; code != http.StatusNotFound {
+		t.Errorf("rejecting no request: %d", code)
+	}
+}
+
+func TestWeb_R173_R112_RequestsAreForWhoeverManagesTheUsers(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	w.Ask("POST", w.path+"/permission-requests", `{"gives":["ManageUsers"],"reason":"أتابع المستخدمين"}`, w.Token(builder, false))
+	var asked string
+	if err := w.Database.Read.QueryRow("SELECT id FROM permission_requests WHERE user_id = ?", builder).Scan(&asked); err != nil {
+		t.Fatal(err)
+	}
+	browser := w.memberBrowser(builder)
+	lacks(t, browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/requests"`)
+	if code := browser.Send("POST", "/permission-request/"+asked+"/approve", nil).Code; code != http.StatusForbidden {
+		t.Errorf("approving without ManageUsers: %d", code)
+	}
+	if code := browser.Send("GET", "/details/permission-request/"+asked+"/reject", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Reject's sheet without ManageUsers: %d", code)
+	}
+	w.home()
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("POST", "/permission-request/"+asked+"/approve", nil).Body.String(), `<p id="permissionRequests.refusal" class="refusal wide" role="alert">المشروع منتهٍ فلا يتغير</p>`)
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/requests"}, {"GET", "/tab/myPermissions"}, {"GET", "/details/permission-request/" + asked + "/reject"},
+		{"POST", "/permission-request/" + asked + "/reject"}, {"POST", "/permission-request/withdraw"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"reason": {"ليس الآن"}})
 			if !failed {
 				break
 			}

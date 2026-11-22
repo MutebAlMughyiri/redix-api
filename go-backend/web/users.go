@@ -180,7 +180,7 @@ func (s site) keepUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return err
 	})
-	refusal, err := refusalOf(err)
+	refusal, err := refusalOf("users", err)
 	if err != nil {
 		failed(w)
 		return
@@ -230,10 +230,10 @@ func permissionGroup(permission access.Permission) string {
 	return ""
 }
 
-// opensGroup says whether permission's tick is the first of its group, so the group's heading goes above it.
-func opensGroup(permission access.Permission) bool {
-	at := slices.Index(permissionTicks, permission)
-	return permissionGroup(permission) != "" && (at == 0 || permissionGroup(permissionTicks[at-1]) != permissionGroup(permission))
+// opensGroup says whether permission's tick is the first of its group among those shown, so the group's heading goes above it.
+func opensGroup(shown []access.Permission, permission access.Permission) bool {
+	at := slices.Index(shown, permission)
+	return permissionGroup(permission) != "" && (at == 0 || permissionGroup(shown[at-1]) != permissionGroup(permission))
 }
 
 // excludes is the id of the tick a capital tick takes away when ticked, as the app keeps one of the pair at most; "" for any other.
@@ -334,7 +334,7 @@ func (s site) createUser(w http.ResponseWriter, r *http.Request) {
 		created, err = users.Create(c, typed)
 		return err
 	})
-	refusal, err := refusalOf(err)
+	refusal, err := refusalOf("users", err)
 	switch {
 	case err != nil:
 		failed(w)
@@ -364,27 +364,29 @@ const tickGroups = `const box = event.target, group = box.closest('.tick-item');
 // capitalPair keeps one of the capital ticks at most, as the app's New user does: ticking one takes the other away.
 const capitalPair = `const box = event.target; if (box.checked && box.dataset.excludes) document.getElementById(box.dataset.excludes).checked = false`
 
-// refusalOf is why a change to the project's users was refused, in the app's words: "users." and its code, users.refused for one without; "" when
+// refusalOf is why a change was refused, in the words of the screen whose words start with screen: its code, refused for one without; "" when
 // it was kept. The error is the database's.
-func refusalOf(err error) (string, error) {
+func refusalOf(screen string, err error) (string, error) {
 	var refused changes.Refusal
 	switch {
 	case errors.As(err, &refused) && refused.Code == "":
-		return "users.refused", nil
+		return screen + ".refused", nil
 	case errors.As(err, &refused):
-		return "users." + refused.Code, nil
+		return screen + "." + refused.Code, nil
 	}
 	return "", err
 }
 
-// newUserTick is what a permission's tick does on New user: it is sent with the form, Read project always and fixed, ticking one of the capital
-// pair taking the other away.
-func newUserTick(permission access.Permission) templ.Attributes {
-	attributes := templ.Attributes{"name": "permission", "value": string(permission), "disabled": permission == access.ReadProject}
-	if excluded := excludes("newUser", permission); excluded != "" {
-		attributes["data-excludes"] = excluded + ".input"
+// formTick is what a permission's tick does on a form whose ticks' ids start with prefix, New user's and Ask for permissions': it is sent with
+// the form, Read project always and fixed, ticking one of the capital pair taking the other away.
+func formTick(prefix string) func(access.Permission) templ.Attributes {
+	return func(permission access.Permission) templ.Attributes {
+		attributes := templ.Attributes{"name": "permission", "value": string(permission), "disabled": permission == access.ReadProject}
+		if excluded := excludes(prefix, permission); excluded != "" {
+			attributes["data-excludes"] = excluded + ".input"
+		}
+		return attributes
 	}
-	return attributes
 }
 
 // newUserChoice is what a partner's tick does on New user: it is sent with the form.
@@ -552,7 +554,7 @@ func (s site) keepTick(w http.ResponseWriter, r *http.Request, act func(c change
 		http.NotFound(w, r)
 		return
 	}
-	refusal, err := refusalOf(err)
+	refusal, err := refusalOf("users", err)
 	if err != nil {
 		failed(w)
 		return

@@ -41,7 +41,9 @@ type page struct {
 	// arriving plays the parts' motion once, in the answer to signing in (#161 R6).
 	arriving bool
 	// notice is the word key the sign-in form says above its fields, once, in the answer that brought it: after a reset, auth.passwordReset.
-	notice  string
+	notice string
+	// said is what the change that brought the front tab there said, for the tab to show: Ask for permissions' sent, on My permissions.
+	said    said
 	content templ.Component
 }
 
@@ -176,36 +178,39 @@ func (p page) offers(name string) bool {
 }
 
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
-// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users (redix-api #173).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}}
+// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
-	"home":            site.homeTab,
-	"entries":         site.entriesTab,
-	"addEntry":        site.addEntryTab,
-	"approvals":       site.approvalsTab,
-	"accounts":        site.accountsTab,
-	"partners":        site.partnersTab,
-	"suppliers":       site.suppliersTab,
-	"contracts":       site.contractsTab,
-	"reports":         site.reportsTab,
-	"expenses":        site.expensesTab,
-	"revenue":         site.revenueTab,
-	"itemReport":      site.itemReportTab,
-	"periodicReport":  site.periodicReportTab,
-	"projectHistory":  site.projectHistoryTab,
-	"myHistory":       site.myHistoryTab,
-	"users":           site.usersTab,
-	"newUser":         site.newUserTab,
-	"userPermissions": site.userPermissionsTab,
-	"partnerHistory":  site.partnerHistoryTab,
-	"reconcile":       site.countTab,
-	"accountHistory":  site.accountHistoryTab,
-	"approvalHistory": site.approvalHistoryTab,
-	"registerProject": site.registerTab,
-	"changeEntry":     site.changeEntryTab,
-	"settings":        func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
+	"home":              site.homeTab,
+	"entries":           site.entriesTab,
+	"addEntry":          site.addEntryTab,
+	"approvals":         site.approvalsTab,
+	"accounts":          site.accountsTab,
+	"partners":          site.partnersTab,
+	"suppliers":         site.suppliersTab,
+	"contracts":         site.contractsTab,
+	"reports":           site.reportsTab,
+	"expenses":          site.expensesTab,
+	"revenue":           site.revenueTab,
+	"itemReport":        site.itemReportTab,
+	"periodicReport":    site.periodicReportTab,
+	"projectHistory":    site.projectHistoryTab,
+	"myHistory":         site.myHistoryTab,
+	"users":             site.usersTab,
+	"newUser":           site.newUserTab,
+	"userPermissions":   site.userPermissionsTab,
+	"myPermissions":     site.myPermissionsTab,
+	"permissionRequest": site.askTab,
+	"requests":          site.requestsTab,
+	"partnerHistory":    site.partnerHistoryTab,
+	"reconcile":         site.countTab,
+	"accountHistory":    site.accountHistoryTab,
+	"approvalHistory":   site.approvalHistoryTab,
+	"registerProject":   site.registerTab,
+	"changeEntry":       site.changeEntryTab,
+	"settings":          func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
 }
 
 // openTabs are the open tabs' items, in the order they were opened.

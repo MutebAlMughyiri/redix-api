@@ -3391,6 +3391,63 @@
         ],
         "type": "object"
       },
+      "users.RequestView": {
+        "properties": {
+          "askedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "gives": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "rejectionReason": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "waiting",
+              "approved",
+              "rejected"
+            ],
+            "type": "string"
+          },
+          "takes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "askedAt",
+          "displayName",
+          "gives",
+          "id",
+          "reason",
+          "rejectionReason",
+          "status",
+          "takes",
+          "userId"
+        ],
+        "type": "object"
+      },
       "users.View": {
         "properties": {
           "displayName": {
@@ -3507,63 +3564,6 @@
         },
         "required": [
           "reason"
-        ],
-        "type": "object"
-      },
-      "users.requestView": {
-        "properties": {
-          "askedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "gives": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          },
-          "rejectionReason": {
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "waiting",
-              "approved",
-              "rejected"
-            ],
-            "type": "string"
-          },
-          "takes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "userId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "askedAt",
-          "displayName",
-          "gives",
-          "id",
-          "reason",
-          "rejectionReason",
-          "status",
-          "takes",
-          "userId"
         ],
         "type": "object"
       },
@@ -10471,7 +10471,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/users.requestView"
+                    "$ref": "#/components/schemas/users.RequestView"
                   },
                   "type": "array"
                 }
@@ -10523,7 +10523,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.requestView"
+                  "$ref": "#/components/schemas/users.RequestView"
                 }
               }
             },
@@ -10619,7 +10619,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/users.requestView"
+                    "$ref": "#/components/schemas/users.RequestView"
                   },
                   "type": "array"
                 }

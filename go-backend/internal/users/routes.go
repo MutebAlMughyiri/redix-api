@@ -17,7 +17,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/stored"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -28,14 +27,13 @@ import (
 // what each may do there (FR-02, BR-29 to BR-33, #120, #126).
 type Routes struct {
 	database db.DB
-	clock    clock.Clock
 	writer   changes.Writer
 }
 
 // Map routes PUT /users/{userId} and POST /users/{userId}/reset-password for a working session; GET /projects/{projectId}/members for whoever reads
 // the project; and the project's users routes for whoever manages its users.
 func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Clock) {
-	u := Routes{database: database, clock: clock, writer: changes.Writer{Database: database, Clock: clock}}
+	u := Routes{database: database, writer: changes.Writer{Database: database, Clock: clock}}
 	u.mapRequests(router, gate)
 	router.Handle("PUT", "/users/{userId:guid}", gate.Working(u.edit))
 	router.Handle("POST", "/users/{userId:guid}/reset-password", gate.Working(u.resetPassword))
@@ -622,14 +620,6 @@ func inProject(c changes.Change, userID uuid.UUID) error {
 // changeOf is the users' own change from c, the change both doors run.
 func changeOf(c changes.Change) change {
 	return change{ctx: c.Ctx, q: c.Q, actor: c.Actor, now: c.Now}
-}
-
-// write runs apply in one transaction, as caller, now.
-func (u Routes) write(r *http.Request, caller access.Caller, apply func(change) error) error {
-	now := moment.Of(u.clock.Now())
-	return u.database.InTx(r.Context(), func(q *store.Queries) error {
-		return apply(change{ctx: r.Context(), q: q, actor: caller.UserID, now: now})
-	})
 }
 
 // answerInProject answers userID with what they hold in projectID (ViewInProjectAsync).
