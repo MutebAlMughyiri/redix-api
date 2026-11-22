@@ -94,9 +94,23 @@ func (s site) page(r *http.Request) (page, error) {
 	return p, nil
 }
 
-// open is p for caller: their name, their projects and the one they work in, and the shell's parts with the active tab; or the change-password
-// form while a temporary password is left to change (AC-02.1, #161 R13). The error is the database's.
+// open is p for caller, identified, with the tab in front drawn as its content: for the answers that draw the whole shell or bring a tab to the
+// front, the only ones that show it (findings row 300). The error is the database's.
 func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) {
+	p, err := s.identify(r, p, caller)
+	if err != nil || !p.in {
+		return p, err
+	}
+	if tab, opened := contents[p.view.Active]; opened && p.offers(p.view.Active) {
+		p.content, err = tab(s, p.view.recordOf(r), p)
+	}
+	return p, err
+}
+
+// identify is p for caller: their name, their projects and the one they work in; or the change-password form while a temporary password is left
+// to change (AC-02.1, #161 R13). Every action starts from it and reads only what it answers itself (findings row 300). The error is the
+// database's.
+func (s site) identify(r *http.Request, p page, caller access.Caller) (page, error) {
 	user, err := s.Database.Queries().UserWithID(r.Context(), caller.UserID)
 	if err != nil {
 		return p, err
@@ -114,10 +128,7 @@ func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) 
 		return p, err
 	}
 	p.project = p.projectOf()
-	if tab, opened := contents[p.view.Active]; opened && p.offers(p.view.Active) {
-		p.content, err = tab(s, p.view.recordOf(r), p)
-	}
-	return p, err
+	return p, nil
 }
 
 // direction is the way p's language reads.

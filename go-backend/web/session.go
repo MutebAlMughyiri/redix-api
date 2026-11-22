@@ -164,8 +164,9 @@ func (s site) signOut(w http.ResponseWriter, r *http.Request) {
 	reshell(w, r, p)
 }
 
-// working is r's page opened for its signed-in caller, their projects and the one they work in; false once it has answered - 500 for a failing
-// database, the sign-in form in the whole shell for a session that ended.
+// working is r's page for its signed-in caller, their projects and the one they work in, with no tab drawn: the action reads only what it
+// answers (findings row 300); false once it has answered - 500 for a failing database, the sign-in form in the whole shell for a session that
+// ended.
 func (s site) working(w http.ResponseWriter, r *http.Request) (page, bool) {
 	p, err := s.page(r)
 	if err != nil {
@@ -182,7 +183,7 @@ func (s site) working(w http.ResponseWriter, r *http.Request) (page, bool) {
 		reshell(w, r, p)
 		return p, false
 	}
-	if p, err = s.open(r, p, caller); err != nil {
+	if p, err = s.identify(r, p, caller); err != nil {
 		failed(w)
 		return p, false
 	}
