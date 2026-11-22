@@ -20,7 +20,6 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
 )
@@ -54,39 +53,29 @@ type PaymentMethod struct {
 	AccountIDs []uuid.UUID `json:"accountIds"`
 }
 
-// paysFrom is the accounts a request names a method paying from, and whether it named any list at all: one naming none keeps what a method pays
+// PaysFrom is the accounts a request names a method paying from, and whether it named any list at all: one naming none keeps what a method pays
 // from, and a new method then pays from every account of its project (R4).
-type paysFrom struct {
+type PaysFrom struct {
 	ids   []uuid.UUID
 	named bool
 }
 
 // UnmarshalJSON reads the accounts named, and that the request named a list at all.
-func (p *paysFrom) UnmarshalJSON(data []byte) error {
+func (p *PaysFrom) UnmarshalJSON(data []byte) error {
 	p.named = true
 	return json.Unmarshal(data, &p.ids)
 }
 
+// PaysFromAccounts is a method paying from exactly ids, as a dialog's ticks name them.
+func PaysFromAccounts(ids []uuid.UUID) PaysFrom { return PaysFrom{ids: ids, named: true} }
+
 // IsZero is a request that named no accounts.
-func (p paysFrom) IsZero() bool { return !p.named }
+func (p PaysFrom) IsZero() bool { return !p.named }
 
 // methodRequest is a payment method as its dialog sends it: its name, and the accounts it pays from.
 type methodRequest struct {
 	Name     string   `json:"name"`
-	PaysFrom paysFrom `json:"accountIds,omitzero"`
-}
-
-// read is the request's name and the accounts it names; false once it has answered a body it cannot read or a name it refuses.
-func read(w http.ResponseWriter, r *http.Request) (string, paysFrom, bool) {
-	var request methodRequest
-	if !web.Read(w, r, &request) {
-		return "", paysFrom{}, false
-	}
-	name, ok := naming.Named(request.Name)
-	if !ok {
-		problem.Refuse(w, r, http.StatusBadRequest, naming.Invalid)
-	}
-	return name, request.PaysFrom, ok
+	PaysFrom PaysFrom `json:"accountIds,omitzero"`
 }
 
 // list is the project's payment methods in order: every one, or only the active ones an entry may choose from (AC-40.1).
@@ -127,20 +116,30 @@ func save(c changes.Change, before, after store.PaymentMethod) error {
 
 // add adds a payment method as AddPaymentMethod does, paying from the accounts its dialog ticked.
 func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, from, ok := read(w, r)
-	if !ok {
-		return
+	var request methodRequest
+	if web.Read(w, r, &request) {
+		s.writer.Done(w, r, caller, func(c changes.Change) error {
+			_, err := CreatePaymentMethod(c, request.Name, request.PaysFrom)
+			return err
+		})
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		_, err := AddPaymentMethod(c, name, from)
-		return err
-	})
+}
+
+// CreatePaymentMethod adds the payment method typed as name, paying from the accounts from names, as add does: invalidName for a name not 1 to
+// 100 letters, then the refusals of AddPaymentMethod. The rule both doors call, the app's route and the web's New payment method (redix-api
+// #174).
+func CreatePaymentMethod(c changes.Change, name string, from PaysFrom) (uuid.UUID, error) {
+	named, ok := naming.Named(name)
+	if !ok {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	return AddPaymentMethod(c, named, from)
 }
 
 // AddPaymentMethod adds the payment method named name at the end of the change's project's list (PaymentMethodsEndpoints.AddAsync), paying from
 // the accounts from names, or every account of the project when it names none: the one way a payment method is added, by hand or by a project
 // file's load.
-func AddPaymentMethod(c changes.Change, name string, from paysFrom) (uuid.UUID, error) {
+func AddPaymentMethod(c changes.Change, name string, from PaysFrom) (uuid.UUID, error) {
 	methods, err := c.Q.PaymentMethodsOf(c.Ctx, c.ProjectID)
 	if err != nil {
 		return uuid.Nil, err
@@ -157,13 +156,13 @@ func AddPaymentMethod(c changes.Change, name string, from paysFrom) (uuid.UUID, 
 }
 
 // EveryAccount is a payment method paying from every account of its project, as a project file's methods do (R4).
-var EveryAccount = paysFrom{}
+var EveryAccount = PaysFrom{}
 
 // setPaysFrom makes the method pay from exactly the accounts from names, or every account of the project when it names none and the method is
 // new (redix-app #109, R4): paysFromNothing for an empty list while the project holds accounts (R10), unknownAccount for an account it does not
 // hold. A project with no account yet takes a method naming none, and every account added later is ticked on it (D1b). A change to what a
 // method kept pays from is its own History line, under the method.
-func setPaysFrom(c changes.Change, methodID uuid.UUID, from paysFrom, isNew bool) error {
+func setPaysFrom(c changes.Change, methodID uuid.UUID, from PaysFrom, isNew bool) error {
 	if !from.named && !isNew {
 		return nil
 	}
@@ -246,64 +245,85 @@ func sortedIDs(ids []uuid.UUID) []string {
 	return texts
 }
 
-// change applies apply to the route's payment method: 404 for one the project does not hold.
-func (s Routes) change(w http.ResponseWriter, r *http.Request, caller access.Caller, apply func(*store.PaymentMethod)) {
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		before, err := changes.Found(c.Q.PaymentMethodOf(c.Ctx, store.PaymentMethodOfParams{ID: web.ID(r, "paymentMethodId"), ProjectID: c.ProjectID}))
-		if err != nil {
-			return err
-		}
-		after := before
-		apply(&after)
-		return save(c, before, after)
-	})
+// methodIn is methodID in the change's project, or changes.NotFound for one it does not hold.
+func methodIn(c changes.Change, methodID uuid.UUID) (store.PaymentMethod, error) {
+	return changes.Found(c.Q.PaymentMethodOf(c.Ctx, store.PaymentMethodOfParams{ID: methodID, ProjectID: c.ProjectID}))
 }
 
-// rename changes a payment method's name and, when its dialog sends them, the accounts it pays from.
+// rename changes a payment method's name and, when its dialog sends them, the accounts it pays from, as RenamePaymentMethod does.
 func (s Routes) rename(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	name, from, ok := read(w, r)
-	if !ok {
-		return
+	var request methodRequest
+	if web.Read(w, r, &request) {
+		s.writer.Done(w, r, caller, func(c changes.Change) error {
+			return RenamePaymentMethod(c, web.ID(r, "paymentMethodId"), request.Name, request.PaysFrom)
+		})
 	}
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		before, err := changes.Found(c.Q.PaymentMethodOf(c.Ctx, store.PaymentMethodOfParams{ID: web.ID(r, "paymentMethodId"), ProjectID: c.ProjectID}))
-		if err != nil {
-			return err
-		}
-		after := before
-		after.Name = name
-		if err := save(c, before, after); err != nil {
-			return err
-		}
-		return setPaysFrom(c, before.ID, from, false)
-	})
 }
 
-// activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back.
+// RenamePaymentMethod names methodID name and makes it pay from the accounts from names, when it names any, as rename does: the rule both doors
+// call, the app's route and the web's Rename (redix-api #174). invalidName for a name not 1 to 100 letters; NotFound for a method the project
+// does not hold; then the refusals of setPaysFrom.
+func RenamePaymentMethod(c changes.Change, methodID uuid.UUID, name string, from PaysFrom) error {
+	named, ok := naming.Named(name)
+	if !ok {
+		return changes.Refuse(http.StatusBadRequest, naming.Invalid)
+	}
+	before, err := methodIn(c, methodID)
+	if err != nil {
+		return err
+	}
+	after := before
+	after.Name = named
+	if err := save(c, before, after); err != nil {
+		return err
+	}
+	return setPaysFrom(c, before.ID, from, false)
+}
+
+// activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back, as
+// ActivatePaymentMethod does.
 func (s Routes) activate(active bool) access.Handler {
 	return func(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-		s.change(w, r, caller, func(method *store.PaymentMethod) { method.IsActive = active })
+		s.writer.Done(w, r, caller, func(c changes.Change) error { return ActivatePaymentMethod(c, web.ID(r, "paymentMethodId"), active) })
 	}
 }
 
-// delete deletes a payment method no expense was paid with: paymentMethodUsed (409) for one an expense keeps, which is disabled instead.
+// ActivatePaymentMethod disables methodID, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back when active:
+// the rule both doors call, the app's route and the web's Payment methods (redix-api #174). NotFound for a method the project does not hold.
+func ActivatePaymentMethod(c changes.Change, methodID uuid.UUID, active bool) error {
+	before, err := methodIn(c, methodID)
+	if err != nil {
+		return err
+	}
+	after := before
+	after.IsActive = active
+	return save(c, before, after)
+}
+
+// delete deletes a payment method no expense was paid with: paymentMethodUsed (409) for one an expense keeps, which is disabled instead, as
+// DeletePaymentMethod does.
 func (s Routes) delete(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	s.writer.Done(w, r, caller, func(c changes.Change) error {
-		method, err := changes.Found(c.Q.PaymentMethodOf(c.Ctx, store.PaymentMethodOfParams{ID: web.ID(r, "paymentMethodId"), ProjectID: c.ProjectID}))
-		if err != nil {
+	s.writer.Done(w, r, caller, func(c changes.Change) error { return DeletePaymentMethod(c, web.ID(r, "paymentMethodId")) })
+}
+
+// DeletePaymentMethod deletes methodID while no expense was paid with it, as delete does: the rule both doors call, the app's route and the web's
+// Payment methods (redix-api #174). NotFound for a method the project does not hold; paymentMethodUsed (409) for one an expense keeps, which is
+// disabled instead.
+func DeletePaymentMethod(c changes.Change, methodID uuid.UUID) error {
+	method, err := methodIn(c, methodID)
+	if err != nil {
+		return err
+	}
+	if used, err := c.Q.PaymentMethodUsed(c.Ctx, method.ID); err != nil || used {
+		if used {
+			return changes.Refuse(http.StatusConflict, "paymentMethodUsed")
+		}
+		return err
+	}
+	return c.Remove("PaymentMethods", method.ID, fields(method), func() error {
+		if err := c.Q.RemovePaymentMethodAccounts(c.Ctx, method.ID); err != nil {
 			return err
 		}
-		if used, err := c.Q.PaymentMethodUsed(c.Ctx, method.ID); err != nil || used {
-			if used {
-				return changes.Refuse(http.StatusConflict, "paymentMethodUsed")
-			}
-			return err
-		}
-		return c.Remove("PaymentMethods", method.ID, fields(method), func() error {
-			if err := c.Q.RemovePaymentMethodAccounts(c.Ctx, method.ID); err != nil {
-				return err
-			}
-			return c.Q.RemovePaymentMethod(c.Ctx, method.ID)
-		})
+		return c.Q.RemovePaymentMethod(c.Ctx, method.ID)
 	})
 }

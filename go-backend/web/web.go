@@ -128,6 +128,8 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /details/tables/{item}/{id}", s.tableDetails)
 	mux.HandleFunc("POST /tables/{item}/{id}/{action}", s.keepTable)
 	mux.HandleFunc("POST /tables/{item}/reorder", s.reorderTables)
+	mux.HandleFunc("GET /details/payment-method/{id}", s.methodDetails)
+	mux.HandleFunc("POST /payment-method/{id}/{action}", s.keepMethod)
 	mux.HandleFunc("GET /details/permission-request", s.askDialog)
 	mux.HandleFunc("POST /permission-request", s.sendRequest)
 	mux.HandleFunc("GET /details/permission-request/{id}/reject", s.rejectDialog)

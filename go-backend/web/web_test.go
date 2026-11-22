@@ -3790,3 +3790,84 @@ func TestWeb_R174_ATabOpenedForOneRecordShowsItAgain(t *testing.T) {
 	w.browser.Send("GET", "/tab/users?text=nobody", nil)
 	lacks(t, w.browser.Send("GET", "/tab/users", nil).Body.String(), `value="nobody"`)
 }
+
+func TestWeb_R174_UC014_PaymentMethodsListAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	var name string
+	if err := w.Database.Read.QueryRow("SELECT name FROM payment_methods WHERE id = ?", w.method).Scan(&name); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	list := w.browser.Send("GET", "/tab/paymentMethods", nil).Body.String()
+	has(t, list, `<h2 id="paymentMethods.title">طرق الدفع</h2>`)
+	has(t, list, `<button id="paymentMethods.add" class="primary small" type="button" hx-get="/details/payment-method/new" hx-target="[id='web.details']">`)
+	has(t, list, `<span id="paymentMethods.name.`+w.method+`">`+name+`</span>`)
+	has(t, list, `<small id="paymentMethods.paysFrom.`+w.method+`" class="hint">يدفع من: حساب المؤسسة</small>`)
+}
+
+func TestWeb_R174_UC014_PaymentMethodsChangeAsTheAppsDialog(t *testing.T) {
+	w := newWorking(t)
+	w.sent(100)
+	w.home()
+	asking := w.browser.Send("GET", "/details/payment-method/new", nil).Body.String()
+	has(t, asking, `<input id="paymentMethods.accountTick.`+w.account+`.input" type="checkbox" name="account" value="`+w.account+`" checked>`)
+	has(t, w.browser.Send("POST", "/payment-method/new/add", url.Values{"name": {" "}, "account": {w.account}}).Body.String(), `<p id="paymentMethod.refusal" class="refusal" role="alert">أدخل اسماً من 1 إلى 100 حرف.</p>`)
+	has(t, w.browser.Send("POST", "/payment-method/new/add", url.Values{"name": {"تحويل"}}).Body.String(), "اختر حسابًا واحدًا على الأقل تدفع منه هذه الطريقة")
+	added := w.browser.Send("POST", "/payment-method/new/add", url.Values{"name": {"تحويل"}, "account": {w.account}}).Body.String()
+	has(t, added, `<h3 id="paymentMethod.title">تحويل</h3>`)
+	has(t, added, `<p id="paymentMethod.paysFrom" class="hint">يدفع من: حساب المؤسسة</p>`)
+	has(t, added, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	var transfer string
+	if err := w.Database.Read.QueryRow("SELECT id FROM payment_methods WHERE project_id = ? AND name = 'تحويل'", w.id).Scan(&transfer); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("GET", "/details/payment-method/"+transfer+"?asking=rename", nil).Body.String(), `<input id="paymentMethod.name" name="name" required value="تحويل" autofocus>`)
+	has(t, w.browser.Send("POST", "/payment-method/"+transfer+"/rename", url.Values{"name": {"تحويل بنكي"}, "account": {w.account}}).Body.String(), `<h3 id="paymentMethod.title">تحويل بنكي</h3>`)
+	disabled := w.browser.Send("POST", "/payment-method/"+transfer+"/disable", nil).Body.String()
+	has(t, disabled, `<p id="paymentMethod.disabled" class="hint">معطّلة</p>`)
+	has(t, disabled, `id="paymentMethods.enable"`)
+	has(t, w.browser.Send("POST", "/payment-method/"+transfer+"/enable", nil).Body.String(), `id="paymentMethods.disable"`)
+	has(t, w.browser.Send("GET", "/details/payment-method/"+transfer+"?asking=delete", nil).Body.String(), `<p id="paymentMethod.deleteQuestion" class="section-title">حذفه؟</p>`)
+	lacks(t, w.browser.Send("POST", "/payment-method/"+transfer+"/delete", nil).Body.String(), `id="paymentMethods.row.`+transfer+`"`)
+	has(t, w.browser.Send("POST", "/payment-method/"+w.method+"/delete", nil).Body.String(), "دُفع بهذه الطريقة مصروف، فلا تُحذف. عطّلها بدلاً من ذلك.")
+	for _, path := range []string{"/payment-method/" + w.method + "/archive", "/payment-method/" + uuid.NewString() + "/rename", "/payment-method/new/rename"} {
+		if code := w.browser.Send("POST", path, url.Values{"name": {"x"}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	if code := w.browser.Send("GET", "/details/payment-method/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("a method the project does not hold: %d", code)
+	}
+}
+
+func TestWeb_R174_UC014_PaymentMethodsAreForWhoeverManagesTheSettings(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.memberBrowser(builder)
+	lacks(t, browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/paymentMethods"`)
+	if code := browser.Send("POST", "/payment-method/"+w.method+"/disable", nil).Code; code != http.StatusForbidden {
+		t.Errorf("disabling without ManageSettings: %d", code)
+	}
+	if code := browser.Send("GET", "/details/payment-method/"+w.method, nil).Code; code != http.StatusNotFound {
+		t.Errorf("a method's panel without ManageSettings: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/paymentMethods"}, {"GET", "/details/payment-method/new"}, {"GET", "/details/payment-method/" + w.method},
+		{"POST", "/payment-method/new/add"}, {"POST", "/payment-method/" + w.method + "/rename"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"تحويل"}, "account": {w.account}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	has(t, w.browser.Send("GET", "/tab/paymentMethods", nil).Body.String(), `hx-target="[id='web.details']" disabled>`)
+	lacks(t, w.browser.Send("GET", "/details/payment-method/"+w.method, nil).Body.String(), `id="paymentMethods.rename"`)
+	has(t, w.browser.Send("POST", "/payment-method/"+w.method+"/disable", nil).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+}

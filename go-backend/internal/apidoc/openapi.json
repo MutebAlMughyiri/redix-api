@@ -2768,10 +2768,15 @@
         ],
         "type": "object"
       },
+      "settings.PaysFrom": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
       "settings.methodRequest": {
         "properties": {
           "accountIds": {
-            "$ref": "#/components/schemas/settings.paysFrom"
+            "$ref": "#/components/schemas/settings.PaysFrom"
           },
           "name": {
             "type": "string"
@@ -2780,11 +2785,6 @@
         "required": [
           "name"
         ],
-        "type": "object"
-      },
-      "settings.paysFrom": {
-        "properties": {},
-        "required": [],
         "type": "object"
       },
       "structure.CategoryView": {
@@ -9916,7 +9916,7 @@
     },
     "/projects/{projectId}/payment-methods/{paymentMethodId}": {
       "delete": {
-        "description": "delete deletes a payment method no expense was paid with: paymentMethodUsed (409) for one an expense keeps, which is disabled instead.\n\nAccess: needs the ManageSettings permission.",
+        "description": "delete deletes a payment method no expense was paid with: paymentMethodUsed (409) for one an expense keeps, which is disabled instead, as DeletePaymentMethod does.\n\nAccess: needs the ManageSettings permission.",
         "parameters": [
           {
             "in": "path",
@@ -9972,13 +9972,13 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "delete deletes a payment method no expense was paid with: paymentMethodUsed (409) for one an expense keeps, which is disabled instead.",
+        "summary": "delete deletes a payment method no expense was paid with: paymentMethodUsed (409) for one an expense keeps, which is disabled instead, as DeletePaymentMethod does.",
         "tags": [
           "settings"
         ]
       },
       "put": {
-        "description": "rename changes a payment method's name and, when its dialog sends them, the accounts it pays from.\n\nAccess: needs the ManageSettings permission.",
+        "description": "rename changes a payment method's name and, when its dialog sends them, the accounts it pays from, as RenamePaymentMethod does.\n\nAccess: needs the ManageSettings permission.",
         "parameters": [
           {
             "in": "path",
@@ -10044,7 +10044,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "rename changes a payment method's name and, when its dialog sends them, the accounts it pays from.",
+        "summary": "rename changes a payment method's name and, when its dialog sends them, the accounts it pays from, as RenamePaymentMethod does.",
         "tags": [
           "settings"
         ]
@@ -10052,7 +10052,7 @@
     },
     "/projects/{projectId}/payment-methods/{paymentMethodId}/disable": {
       "post": {
-        "description": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back.\n\nAccess: needs the ManageSettings permission.",
+        "description": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back, as ActivatePaymentMethod does.\n\nAccess: needs the ManageSettings permission.",
         "parameters": [
           {
             "in": "path",
@@ -10098,7 +10098,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back.",
+        "summary": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back, as ActivatePaymentMethod does.",
         "tags": [
           "settings"
         ]
@@ -10106,7 +10106,7 @@
     },
     "/projects/{projectId}/payment-methods/{paymentMethodId}/enable": {
       "post": {
-        "description": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back.\n\nAccess: needs the ManageSettings permission.",
+        "description": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back, as ActivatePaymentMethod does.\n\nAccess: needs the ManageSettings permission.",
         "parameters": [
           {
             "in": "path",
@@ -10152,7 +10152,7 @@
             "description": "Problem details, with the failure's code and trace id (redix-api #150)."
           }
         },
-        "summary": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back.",
+        "summary": "activate disables a payment method, so it leaves entry and stays on the entries that used it (AC-40.1), or brings it back, as ActivatePaymentMethod does.",
         "tags": [
           "settings"
         ]

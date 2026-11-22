@@ -1,0 +1,126 @@
+package web
+
+import (
+	"slices"
+
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/settings"
+)
+
+// methodsList is Payment methods as the app's screen shows them (AC-40.1): New payment method, gray in a finished project; then each method,
+// quiet while disabled, the accounts it pays from, and that it is disabled.
+templ methodsList(p page, shown methodsShown) {
+	<div class="view-head">
+		<h2 id="paymentMethods.title">{ p.words.Of("paymentMethods.title") }</h2>
+		<span id="paymentMethods.actions" class="head-actions">
+			<button id="paymentMethods.add" class="primary small" type="button" hx-get="/details/payment-method/new" hx-target="[id='web.details']" disabled?={ !p.mayKeepMethods() }>{ p.words.Of("paymentMethods.new") }</button>
+		</span>
+	</div>
+	if len(shown.all) == 0 {
+		<p id="paymentMethods.empty" class="empty">{ p.words.Of("paymentMethods.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id="paymentMethods.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<tbody>
+					for _, method := range shown.all {
+						<tr
+							id={ "paymentMethods.row." + method.ID.String() }
+							class={ templ.KV("disabled", !method.IsActive) }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/payment-method/" + method.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "paymentMethods.cell." + method.ID.String() }>
+								<span id={ "paymentMethods.name." + method.ID.String() }>{ method.Name }</span>
+								<small id={ "paymentMethods.paysFrom." + method.ID.String() } class="hint">{ shown.paysFromLine(p, method) }</small>
+								if !method.IsActive {
+									<small id={ "paymentMethods.disabled." + method.ID.String() } class="hint">{ p.words.Of("paymentMethods.disabled") }</small>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// methodsBeside is Payment methods again, carried out of band beside the panel, once a method was added, changed or deleted.
+templ methodsBeside(p page, shown methodsShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@methodsList(p, shown)
+	</div>
+}
+
+// methodPanel is a payment method in the details panel: the accounts it pays from, that it is disabled, why its change was refused; Rename,
+// Disable or Enable, and Delete asked first as the app's swipe asks it, to whoever manages the settings.
+templ methodPanel(p page, shown methodsShown, method settings.PaymentMethod, said said) {
+	<div class="details-head">
+		<h3 id="paymentMethod.title">{ method.Name }</h3>
+		<button id="paymentMethod.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<p id="paymentMethod.paysFrom" class="hint">{ shown.paysFromLine(p, method) }</p>
+	if !method.IsActive {
+		<p id="paymentMethod.disabled" class="hint">{ p.words.Of("paymentMethods.disabled") }</p>
+	}
+	if said.refusal != "" {
+		<p id="paymentMethod.refusal" class="refusal" role="alert">{ p.words.Of(said.refusal) }</p>
+	}
+	if said.asking == "delete" {
+		<form id="paymentMethod.deleteForm" class="details-form" hx-post={ "/payment-method/" + method.ID.String() + "/delete" } hx-target="[id='web.details']">
+			<p id="paymentMethod.deleteQuestion" class="section-title">{ p.words.Of("swipe.question") }</p>
+			<span id="paymentMethod.deleteActions" class="details-actions">
+				<button id="paymentMethod.deleteConfirm" class="primary small" type="submit">{ p.words.Of("swipe.remove") }</button>
+				<button id="paymentMethod.deleteCancel" class="quiet-button" type="button" hx-get={ "/details/payment-method/" + method.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+			</span>
+		</form>
+	} else if p.mayKeepMethods() {
+		<div id="paymentMethod.actions" class="details-actions">
+			<button id="paymentMethods.rename" class="quiet-button" type="button" hx-get={ "/details/payment-method/" + method.ID.String() + "?asking=rename" } hx-target="[id='web.details']">{ p.words.Of("paymentMethods.rename") }</button>
+			if method.IsActive {
+				<button id="paymentMethods.disable" class="quiet-button" type="button" hx-post={ "/payment-method/" + method.ID.String() + "/disable" } hx-target="[id='web.details']">{ p.words.Of("paymentMethods.disable") }</button>
+			} else {
+				<button id="paymentMethods.enable" class="quiet-button" type="button" hx-post={ "/payment-method/" + method.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("paymentMethods.enable") }</button>
+			}
+			<button id="paymentMethods.delete" class="quiet-button" type="button" hx-get={ "/details/payment-method/" + method.ID.String() + "?asking=delete" } hx-target="[id='web.details']">{ p.words.Of("swipe.remove") }</button>
+		</div>
+	}
+}
+
+// methodForm is New payment method or Rename in the details panel, as the app's dialog asks it: the name, then the active accounts it pays from,
+// each ticked as the method pays from it, every one for a new method; why it could not be kept.
+templ methodForm(p page, shown methodsShown, method settings.PaymentMethod, name, refusal string) {
+	<div class="details-head">
+		if method.ID == uuid.Nil {
+			<h3 id="paymentMethod.title">{ p.words.Of("paymentMethods.new") }</h3>
+		} else {
+			<h3 id="paymentMethod.title">{ p.words.Of("paymentMethods.rename") }</h3>
+		}
+		<button id="paymentMethod.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="paymentMethod.form" class="details-form" hx-post={ methodFormPath(method) } hx-target="[id='web.details']">
+		<div class="field">
+			<label id="paymentMethod.name.label" for="paymentMethod.name">{ p.words.Of("paymentMethods.name") }</label>
+			<input id="paymentMethod.name" name="name" required value={ name } autofocus/>
+		</div>
+		<p id="paymentMethods.paysFromHeading" class="section-title">{ p.words.Of("paymentMethods.paysFrom") }</p>
+		for _, account := range shown.activeAccounts() {
+			<label id={ "paymentMethods.accountTick." + account.ID.String() } class="tick">
+				<input id={ "paymentMethods.accountTick." + account.ID.String() + ".input" } type="checkbox" name="account" value={ account.ID.String() } checked?={ slices.Contains(method.AccountIDs, account.ID) }/>
+				<span id={ "paymentMethods.accountTick." + account.ID.String() + ".title" }>{ account.Name }</span>
+			</label>
+		}
+		if refusal != "" {
+			<p id="paymentMethod.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="paymentMethod.formActions" class="details-actions">
+			if method.ID == uuid.Nil {
+				<button id="paymentMethod.save" class="primary small" type="submit">{ p.words.Of("paymentMethods.new") }</button>
+			} else {
+				<button id="paymentMethod.save" class="primary small" type="submit">{ p.words.Of("paymentMethods.save") }</button>
+			}
+		</span>
+	</form>
+}

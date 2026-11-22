@@ -45,7 +45,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | They are rows of its own | `settings.AddPaymentMethod` | `PaymentMethodsTests.ProjectsTakeTheirOwnRowsOfTheTemplatesMethods` |
 | A project copied from an earlier one still starts from the seed | `structure.Copy` | `PaymentMethodsTests.AProjectCopiedFromAnEarlierOneStillStartsFromTheSeed` |
 | A method is added at the end, and renamed | `settings.Routes.add`, `Rename` | `PaymentMethodsTests.FinanceAddsAMethodAtTheEndOfTheList`, `FinanceRenamesAMethod` |
-| A method needs a name of 1 to 100 characters | `changes.Named`, `projects.newProject` | `PaymentMethodsTests.AMethodNeedsANameOfAtMost100Characters` |
+| A method needs a name of 1 to 100 characters | `settings.CreatePaymentMethod`, `settings.RenamePaymentMethod`, `projects.newProject` | `PaymentMethodsTests.AMethodNeedsANameOfAtMost100Characters` |
 | A disabled method leaves entry and stays on the list (AC-40.1) | `settings.Routes.list`, `List` | `PaymentMethodsTests.ADisabledMethodLeavesEntryAndStaysOnTheList` |
 | Enabling brings it back | `settings.Routes.activate` | `PaymentMethodsTests.EnablingBringsAMethodBackIntoEntry` |
 | A method no expense was paid with is deleted; one an expense was paid with is refused and stays, to be disabled instead | `settings.Routes.delete` | `PaymentMethodsTests.FinanceDeletesAMethodNoExpenseWasPaidWith`, `AMethodAnExpenseWasPaidWithIsNotDeleted` |
@@ -57,6 +57,22 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | A method pays from the accounts its dialog ticks, and a change to them is the method's History line (redix-app #109 R3) | `settings.setPaysFrom` | `settings_test.TestR3_AMethodPaysFromTheAccountsItsDialogTicks` |
 | A method naming no accounts pays from every one, and an account added later is paid from by every method (R4, D1b); a deleted account or method takes its links with it | `settings.AddPaymentMethod`, `settings.TickOnEveryMethod`, `accounts.Routes.delete` | `settings_test.TestR4_D1b_EveryMethodPaysFromEveryAccountUntilOneIsUnticked` |
 | A method pays from at least one of the project's accounts (R10) | `settings.setPaysFrom` | `settings_test.TestR10_AMethodPaysFromAtLeastOneOfTheProjectsAccounts` |
+
+## On the web: Payment methods (redix-api #174)
+
+The web's Payment methods is the app's screen in the shell, its item in the side menu for whoever manages the project's settings: New payment method, gray in a finished project; then each method, quiet while disabled, the accounts it pays from, and that it is disabled, from `settings.MethodsOf`, the function `GET …/payment-methods` answers, with the accounts from `accounts.ListOf`. A row opens the method in the details panel with Rename, Disable or Enable, and Delete asked first as the app's swipe asks. New payment method and Rename ask the name and tick the active accounts it pays from, every one for a new method, as the app's dialog does. Each keeps through the rule the app's route runs: `settings.CreatePaymentMethod`, `RenamePaymentMethod`, `ActivatePaymentMethod`, `DeletePaymentMethod`, run through the shared changes.Writer. Its pages are in `go-backend/web` (`methods.go`, `methods.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/paymentMethods` | Payment methods | `200` the tab's content; the item stays out of the menu without ManageSettings |
+| `GET /details/payment-method/{id}` | A method in the details panel; `?asking=rename` or `delete`; `id` `new` for New payment method | `200` the panel or its form; `404` without ManageSettings, or for a method the project does not hold |
+| `POST /payment-method/new/add`, `…/{id}/rename`, `…/disable`, `…/enable`, `…/delete` | Keeps New payment method or Rename (`name`, each `account` ticked), disables, enables or deletes a method | `200` the method in the panel, Payment methods beside it, or Payment methods alone once deleted; or the form or the panel saying why not; `403` without ManageSettings; `404` for an action there is none of |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Payment methods lists every method in order with the accounts it pays from, said disabled when it is | `settings.MethodsOf`, `web.methodsShown` | `TestWeb_R174_UC014_PaymentMethodsListAsTheAppsScreen` |
+| New payment method, Rename, Disable, Enable and Delete as the app's dialog and menu: a name of 1 to 100 letters, at least one account it pays from, every active account ticked for a new one, Delete asked first, a method an expense used never deleted (AC-40.1) | `settings.CreatePaymentMethod`, `RenamePaymentMethod`, `ActivatePaymentMethod`, `DeletePaymentMethod` | `TestWeb_R174_UC014_PaymentMethodsChangeAsTheAppsDialog` |
+| Payment methods are for whoever manages the settings; a finished project changes nothing (AC-04.1); a failing database answers 500 | `web.page.mayKeepMethods`, `web.site.keepMethod` | `TestWeb_R174_UC014_PaymentMethodsAreForWhoeverManagesTheSettings` |
 
 ## Left to later use cases
 
