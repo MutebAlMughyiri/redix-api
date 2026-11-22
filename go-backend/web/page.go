@@ -139,6 +139,9 @@ func (p page) direction() string {
 	return "ltr"
 }
 
+// arrow is the web's one arrow, the side menu's: More and My account turn it to point down or up (findings row 314).
+const arrow = "»"
+
 // foldArrow folds the side menu toward its edge: the menu stands on the right in Arabic, on the left in English (#161 R7).
 func (p page) foldArrow() string {
 	if p.language == "ar" {

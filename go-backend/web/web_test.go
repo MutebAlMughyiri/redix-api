@@ -725,7 +725,7 @@ func TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut(
 		t.Errorf("the version, then the host, then My account: %d, %d, %d", version, host, account)
 	}
 	has(t, page, `<button id="web.account" class="account" type="button" popovertarget="web.accountMenu" aria-haspopup="menu"><span id="web.account.name">User A</span>`)
-	has(t, page, `<span id="web.account.arrow" class="caret" aria-hidden="true"></span>`)
+	has(t, page, `<span id="web.account.arrow" class="arrow" aria-hidden="true">»</span>`)
 	has(t, page, `<b id="web.accountMenu.name">User A</b>`)
 	has(t, page, `<div id="web.accountMenu" class="menu-pop account-menu" popover>`)
 	has(t, page, `<button id="web.sharedSettings" class="choice" type="button" hx-get="/tab/settings" hx-target="[id='web.content']"`)
@@ -4695,7 +4695,7 @@ func TestWeb_R175_D3_AddEntryNamesTheFileAsTheAppsSectionDoesForEachTable(t *tes
 func TestWeb_R307_TheItemsUsedNowAndThenFoldUnderMore(t *testing.T) {
 	w := newWorking(t)
 	page := w.home()
-	has(t, page, `<li id="web.tree.more"><details id="web.more" class="more"><summary id="web.more.toggle" aria-label="المزيد"></summary><ul id="web.moreItems" class="tree">`)
+	has(t, page, `<li id="web.tree.more"><details id="web.more" class="more"><summary id="web.more.toggle" aria-label="المزيد"><span id="web.more.arrow" class="arrow" aria-hidden="true">»</span></summary><ul id="web.moreItems" class="tree">`)
 	more := page[strings.Index(page, `id="web.more"`):]
 	more = more[:strings.Index(more, `</details>`)]
 	for _, folded := range []string{"requests", "categories", "paymentMethods", "loadFile", "archive", "retrieve", "projectInfo", "myPermissions", "documents"} {

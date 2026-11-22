@@ -125,7 +125,7 @@ templ tree(p page) {
 		@treeItems(p, dailyMenu)
 		<li id="web.tree.more">
 			<details id="web.more" class="more" open?={ p.foldedOpen() }>
-				<summary id="web.more.toggle" aria-label={ p.words.Of("history.more") }></summary>
+				<summary id="web.more.toggle" aria-label={ p.words.Of("history.more") }><span id="web.more.arrow" class="arrow" aria-hidden="true">{ arrow }</span></summary>
 				<ul id="web.moreItems" class="tree">
 					@treeItems(p, foldedMenu)
 				</ul>
@@ -231,7 +231,7 @@ templ statusBar(p page) {
 		if p.person != "" {
 			<button id="web.account" class="account" type="button" popovertarget="web.accountMenu" aria-haspopup="menu">
 				<span id="web.account.name">{ p.person }</span>
-				<span id="web.account.arrow" class="caret" aria-hidden="true"></span>
+				<span id="web.account.arrow" class="arrow" aria-hidden="true">{ arrow }</span>
 			</button>
 			<div id="web.accountMenu" class="menu-pop account-menu" popover>
 				<div id="web.accountMenu.who" class="account-who">

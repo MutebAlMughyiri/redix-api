@@ -47,7 +47,11 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 /* The side menu, like a project explorer. An item whose feature is not built stands gray. */
 .side { grid-area: side; overflow: hidden; background: var(--chrome); border-inline-end: 1px solid var(--chrome-line); display: flex; flex-direction: column; min-width: 0; }
 .side-head { display: flex; align-items: center; gap: 6px; padding-block: 6px 4px; padding-inline: 12px 6px; min-height: 22px; color: var(--quiet); font-size: 12px; white-space: nowrap; }
-.fold, .unfold { position: relative; margin-inline-start: auto; font-size: 15px; line-height: 1; color: var(--quiet); border-radius: 4px; padding: 3px 7px; cursor: pointer; user-select: none; }
+/* The web's one arrow, the side menu's »: its size and color, and for one that points up or down, the character turned, kept left to right so the
+   page's direction never mirrors it (the owner, 23 Nov 2026, findings row 314). */
+.arrow, .fold, .unfold { font-size: 15px; line-height: 1; color: var(--quiet); }
+.arrow { display: inline-block; direction: ltr; unicode-bidi: isolate; transition: transform 120ms; }
+.fold, .unfold { position: relative; margin-inline-start: auto; border-radius: 4px; padding: 3px 7px; cursor: pointer; user-select: none; }
 .fold:hover, .unfold:hover { background: var(--select); color: var(--text); }
 .unfold { display: none; align-self: center; margin-inline: 4px; }
 .shell:has([id="web.view.sideMenu"]:not(:checked)) .unfold { display: inline-block; }
@@ -57,7 +61,7 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .tab .close[data-tip] { position: relative; } .tab .close[data-tip]:hover::after { inset-inline-start: auto; inset-inline-end: 0; }
 /* More, at the side menu's foot, over the items used now and then: its arrow alone, in the middle, turning while it is open (findings rows 307, 311). */
 .more summary { list-style: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--quiet); padding: 4px 8px; border-radius: 5px; user-select: none; }
-.more summary::-webkit-details-marker { display: none; } .more summary::after { content: "\25BE"; transition: transform 120ms; } .more[open] summary::after { transform: rotate(180deg); }
+.more summary::-webkit-details-marker { display: none; } .more .arrow { transform: rotate(90deg); } .more[open] .arrow { transform: rotate(-90deg); }
 .more summary:hover { background: var(--select); color: var(--text); } .more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .more .tree { padding: 0; overflow: visible; }
 .tree { list-style: none; margin: 0; padding: 0 6px 8px; overflow: auto; white-space: nowrap; flex: 1; min-height: 0; }
@@ -138,8 +142,7 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
   border: 1px solid var(--chrome-line); border-radius: 5px; padding: 1px 8px; cursor: pointer; }
 .status .account:hover, .status:has(.account-menu:popover-open) .account { background: var(--select); border-color: var(--accent); }
 .status .account:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.status .caret { width: 6px; height: 6px; border: solid var(--quiet); border-width: 2px 2px 0 0; transform: translateY(2px) rotate(-45deg); transition: transform 120ms; }
-.status:has(.account-menu:popover-open) .caret { transform: translateY(-2px) rotate(135deg); }
+.status .account .arrow { transform: rotate(-90deg); } .status:has(.account-menu:popover-open) .account .arrow { transform: rotate(90deg); }
 /* My account opens above the person's name; more specific than .menu-pop, which anchors to the project button and stands later in this sheet. */
 .menu-pop.account-menu { position-anchor: --account; position-area: block-start span-inline-start; margin: 0 0 6px; min-width: 220px; }
 .account-who { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px 8px; } .account-who b { font-size: 13px; font-weight: 600; }
