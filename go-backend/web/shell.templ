@@ -221,12 +221,12 @@ templ detailsPanel(outOfBand bool) {
 	</aside>
 }
 
-// statusBar is the web's version at its start, the host this page came from in its middle, and, for whoever is signed in, My account at its end:
-// their name with an arrow, so it reads as a menu, opening above it on who is signed in, Shared settings and My history, then Sign out apart
-// (#161 R2; the owner, 23 Nov 2026, findings rows 306, 313). It is always shown, so Sign out always can be reached.
+// statusBar is the host this page came from at its start and, for whoever is signed in, My account at its end: their name with an arrow, so it
+// reads as a menu, opening above it on who is signed in, Shared settings and My history, then Sign out apart (#161 R2; the owner, 23 Nov 2026,
+// findings rows 306, 313, 315). The version is the sign-in form's and Settings', as the app shows it. It is always shown, so Sign out always can be
+// reached.
 templ statusBar(p page) {
 	<footer id="web.statusBar" class="status">
-		<span id="appVersion.line" class="version">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></span>
 		<span id="web.host" class="host"><span id="web.host.dot" class="dot" aria-hidden="true"></span>{ p.host }</span>
 		if p.person != "" {
 			<button id="web.account" class="account" type="button" popovertarget="web.accountMenu" aria-haspopup="menu">
@@ -254,9 +254,9 @@ templ emptyContent(p page) {
 	<p id="web.pickFromMenu" class="empty">{ p.words.Of("web.pickFromMenu") }</p>
 }
 
-// signInForm is the sign-in, in the content area: what the app's sign-in has, with the language at its foot, since Settings cannot be reached before
-// signing in (#161 R2, R12, R19). The cursor waits in Username, or in Password when a refusal kept the username (#76 row 286). message is the
-// word key of a refusal, or ""; p.notice says what just happened, as after a reset.
+// signInForm is the sign-in, in the content area: what the app's sign-in has, with the language and the version at its foot, since Settings cannot
+// be reached before signing in (#161 R2, R12, R19; findings row 315). The cursor waits in Username, or in Password when a refusal kept the
+// username (#76 row 286). message is the word key of a refusal, or ""; p.notice says what just happened, as after a reset.
 templ signInForm(p page, message string, username string) {
 	<div class="signin">
 		<form
@@ -287,6 +287,7 @@ templ signInForm(p page, message string, username string) {
 			<div class="form-language">
 				@languageChoice(p)
 			</div>
+			<p id="appVersion.line" class="hint form-version">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></p>
 		</form>
 	</div>
 }

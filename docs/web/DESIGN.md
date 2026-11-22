@@ -56,7 +56,7 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 | Side menu | Folds with a keyboard character beside the project's name, never an icon: » in Arabic, « in English, tooltip "Collapse (Alt+1)"; the opposite arrow at the tab bar's start brings it back; Alt+1 is the arrows' `accesskey`. Its line drags from 180 to 480 px, the content keeping 320 |
 | An item not built | Stands gray and disabled until its feature opens it |
 | View menu | «عرض» / View at the tab bar's end, the browser's own popover: Top bar, Side menu (Alt+1). No Status bar tick: the status bar holds Sign out, so it is always shown (findings row 306); its saves queue, so the last one wins |
-| Status bar | The version at its start, the host in its middle, My account at its end: the person's name with a chevron, in a quiet button, opening above it on who is signed in, Shared settings and My history, then Sign out apart (findings rows 306, 313) |
+| Status bar | The host at its start, My account at its end - the version is the sign-in form's foot's and Settings' (findings row 315): the person's name with a chevron, in a quiet button, opening above it on who is signed in, Shared settings and My history, then Sign out apart (findings rows 306, 313) |
 | Side menu's More | The items used every day, then More - its arrow alone, in the middle, its word for a screen reader only (findings row 311) - folded until clicked, over Permission requests, Categories and items, Payment methods, Load file, Archive, Retrieve, More info, My permissions and Documents; open with the page when the tab in front is one of them (findings row 307). Shared settings is My account's, not the side menu's |
 | Keys | Alt+1 folds the side menu, Alt+W closes the tab in front (its close button's tip names it), Esc hides the details panel; each by the key's place, so an Arabic keyboard counts, all in the shell's one key handler (findings row 308) |
 | Arrows | One arrow, the side menu's »: its size and color everywhere, turned to point down or up for More and My account, kept left to right so the page's direction never mirrors it (findings row 314) |
@@ -87,7 +87,7 @@ Every element a test clicks or reads has an id, so automation finds it as the ap
 
 | Part | Ids |
 | --- | --- |
-| Frame | `web.shell`, `web.topBar`, `web.brand`, `web.notifications`, `web.content`, `web.statusBar`, `appVersion.line`, `web.host`, `web.account` with `.name`, `.arrow`, `web.accountMenu` with `.who`, `.name`, `.username`, `web.sharedSettings`, `web.myHistory`, `myAccount.signOut` |
+| Frame | `web.shell`, `web.topBar`, `web.brand`, `web.notifications`, `web.content`, `web.statusBar`, `web.host`, `web.account` with `.name`, `.arrow`, `web.accountMenu` with `.who`, `.name`, `.username`, `web.sharedSettings`, `web.myHistory`, `myAccount.signOut` |
 | Side menu | `web.sideMenu`, `web.fold`, `web.tree`, `web.item.<name>` for each item, `web.tree.more`, `web.more`, `web.more.toggle`, `web.more.arrow`, `web.moreItems`, `web.sideLine`; beside the details panel `web.detailsLine` |
 | Tabs | `web.unfold`, `web.tabs`, `web.tab.<name>`, `web.tab.<name>.title`, `web.tab.<name>.close`, `web.pickFromMenu` |
 | View menu | `web.view`, `web.viewMenu`, `web.view.topBar`, `web.view.sideMenu`, `web.view.width`, `web.view.detailsWidth` |

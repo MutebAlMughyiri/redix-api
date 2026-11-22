@@ -129,16 +129,16 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .language a { color: var(--quiet); text-decoration: none; padding-block: 2px; border-block-end: 2px solid transparent; }
 .language a[aria-current="true"] { color: var(--text); border-block-end-color: var(--accent); }
 .form-language { display: flex; justify-content: center; padding-block-start: 12px; border-block-start: 1px solid var(--chrome-line); }
+.form-version { margin: 0; text-align: center; font-size: 12px; }
 .primary:focus-visible, .secondary:focus-visible, .form-links a:focus-visible, .tab-title:focus-visible, .tab .close:focus-visible, .tree a:focus-visible, .signout:focus-visible, .view-button:focus-visible, .language a:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* The status bar: the version at its start, the host in its middle, My account at its end (findings row 306). */
-.status { grid-area: status; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding-inline: 12px; background: var(--chrome);
+/* The status bar: the host at its start, My account at its end (findings rows 306, 315). */
+.status { grid-area: status; display: flex; align-items: center; gap: 16px; padding-inline: 12px; background: var(--chrome);
   border-block-start: 1px solid var(--chrome-line); color: var(--quiet); font-size: 12px; white-space: nowrap; overflow: hidden; }
-.status .version { justify-self: start; } .status .host { justify-self: center; }
 .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-inline-end: 6px; }
 /* My account: the name with an arrow, in a quiet button, so it reads as a menu; the arrow turns while the menu is open (findings row 313). */
-.status .account { justify-self: end; anchor-name: --account; display: inline-flex; align-items: center; gap: 6px; font: inherit; color: var(--text); background: var(--content);
+.status .account { margin-inline-start: auto; anchor-name: --account; display: inline-flex; align-items: center; gap: 6px; font: inherit; color: var(--text); background: var(--content);
   border: 1px solid var(--chrome-line); border-radius: 5px; padding: 1px 8px; cursor: pointer; }
 .status .account:hover, .status:has(.account-menu:popover-open) .account { background: var(--select); border-color: var(--accent); }
 .status .account:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

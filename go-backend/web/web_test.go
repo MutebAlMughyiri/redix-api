@@ -439,7 +439,7 @@ func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *tes
 
 func TestWeb_R2_TheVersionLineCarriesTheBuildKeptWholeInArabic(t *testing.T) {
 	body := testapi.New(t).Browser().Send("GET", "/", nil).Body.String()
-	has(t, body, `<span id="appVersion.line" class="version">الإصدار 1.0.0<bdi></bdi></span>`)
+	has(t, body, `<p id="appVersion.line" class="hint form-version">الإصدار 1.0.0<bdi></bdi></p>`)
 }
 
 // withEmail gives name an account with address as its email, as confirming one would, and is their username.
@@ -720,10 +720,12 @@ func TestWeb_R306_TheHomeShowsTheSummaryAlwaysAndListsNoEntries(t *testing.T) {
 func TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut(t *testing.T) {
 	w := newWorking(t)
 	page := w.home()
-	version, host, account := strings.Index(page, `id="appVersion.line"`), strings.Index(page, `id="web.host"`), strings.Index(page, `id="web.account"`)
-	if version < 0 || host < version || account < host {
-		t.Errorf("the version, then the host, then My account: %d, %d, %d", version, host, account)
+	host, account := strings.Index(page, `id="web.host"`), strings.Index(page, `id="web.account"`)
+	if host < 0 || account < host {
+		t.Errorf("the host, then My account: %d, %d", host, account)
 	}
+	lacks(t, page, `id="appVersion.line"`)
+	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `id="sharedSettings.version"`)
 	has(t, page, `<button id="web.account" class="account" type="button" popovertarget="web.accountMenu" aria-haspopup="menu"><span id="web.account.name">User A</span>`)
 	has(t, page, `<span id="web.account.arrow" class="arrow" aria-hidden="true">»</span>`)
 	has(t, page, `<b id="web.accountMenu.name">User A</b>`)
