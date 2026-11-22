@@ -206,9 +206,9 @@ func TestWeb_R10_TheDetailsPanelsLineWidensItAndItsWidthIsKept(t *testing.T) {
 	has(t, page, `<div id="web.sideLine" class="sash side-line" aria-hidden="true" data-within=".shell" data-edge="start" data-width="--side-w" `+
 		`data-keeps="web.view.width" data-least="180" data-most="480"`)
 	has(t, page, `<input type="hidden" id="web.view.detailsWidth" name="details" value="320">`)
-	for sent, kept := range map[string]string{"400": "400", "9000": "560", "10": "240"} {
-		browser.Send("POST", "/view", url.Values{"side": {"on"}, "width": {"300"}, "details": {sent}})
-		has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 300px; --details-w: `+kept+`px;"`)
+	for _, width := range [][2]string{{"400", "400"}, {"9000", "560"}, {"10", "240"}} {
+		browser.Send("POST", "/view", url.Values{"side": {"on"}, "width": {"300"}, "details": {width[0]}})
+		has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 300px; --details-w: `+width[1]+`px;"`)
 	}
 	browser.Send("POST", "/view", url.Values{"side": {"on"}, "width": {"300"}})
 	has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 300px; --details-w: 240px;"`)
