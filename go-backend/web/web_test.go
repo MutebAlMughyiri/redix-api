@@ -153,13 +153,13 @@ func TestWeb_R3_AnAssetUnzippedIsTheFileItself(t *testing.T) {
 
 func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	browser, _ := signedIn(t, testapi.New(t), "User A")
-	answered := browser.Send("GET", "/tab/settings", nil)
+	answered := browser.Send("GET", "/tab/notifications", nil)
 	body := answered.Body.String()
 	lacks(t, body, `id="shell"`)
-	has(t, body, `<h2 id="sharedSettings.title">الإعدادات</h2>`)
+	has(t, body, `<h2 id="notifications.title">الإشعارات</h2>`)
 	has(t, body, `id="web.tabs" class="tabs" role="tablist" hx-swap-oob="true"`)
 	lacks(t, body, `class="tree"`)
-	has(t, browser.Send("DELETE", "/tab/settings", nil).Body.String(), `id="projects.title"`)
+	has(t, browser.Send("DELETE", "/tab/notifications", nil).Body.String(), `id="projects.title"`)
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
@@ -220,9 +220,9 @@ func TestWeb_R10_TheDetailsPanelsLineWidensItAndItsWidthIsKept(t *testing.T) {
 func TestWeb_R11_TheLanguageIsInSettingsNotTheTopBar(t *testing.T) {
 	browser, _ := signedIn(t, testapi.New(t), "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	lacks(t, page, `href="/language/`)
-	settings := browser.Send("GET", "/tab/settings", nil).Body.String()
-	has(t, settings, `<h3 id="myAccount.language">اللغة</h3>`)
+	lacks(t, page[:strings.Index(page, `</header>`)], `href="/language/`)
+	settings := page[strings.Index(page, `id="web.settingsMenu"`):]
+	has(t, settings, `<span id="myAccount.language" class="label">اللغة</span>`)
 	has(t, settings, `href="/language/en"`)
 }
 
@@ -253,7 +253,7 @@ func TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse(t *testing.T) {
 	signing := browser.Send("POST", "/sign-in", url.Values{"username": {id.String()}, "password": {password}}).Body.String()
 	has(t, signing, `id="changePassword.current"`)
 	lacks(t, signing, `class="side"`)
-	if browser.Send("GET", "/tab/settings", nil).Header().Get("HX-Retarget") != "[id='web.shell']" {
+	if browser.Send("GET", "/tab/notifications", nil).Header().Get("HX-Retarget") != "[id='web.shell']" {
 		t.Error("a tab answers the change-password form in the whole shell while the password is temporary")
 	}
 	mismatch := browser.Send("POST", "/change-password", url.Values{"current": {password}, "new": {"Chosen-new-3"}, "confirm": {"Chosen-new-4"}})
@@ -275,7 +275,7 @@ func TestWeb_R14_R15_EverySideMenuItemOpensItsTabOnceBuilt(t *testing.T) {
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
 	lacks(t, page, `class="parked"`)
-	for _, key := range []string{"home", "entries", "projectInfo", "myPermissions", "documents", "settings"} {
+	for _, key := range []string{"home", "entries", "projectInfo", "myPermissions", "documents"} {
 		has(t, page, `hx-get="/tab/`+key+`"`)
 	}
 }
@@ -317,7 +317,7 @@ func TestWeb_R16_TwelveHoursUnusedEndTheSession(t *testing.T) {
 	if browser.Cookie("redix_refresh") != "" {
 		t.Error("an ended session's cookies are cleared")
 	}
-	if browser.Send("GET", "/tab/settings", nil).Header().Get("HX-Retarget") != "[id='web.shell']" {
+	if browser.Send("GET", "/tab/notifications", nil).Header().Get("HX-Retarget") != "[id='web.shell']" {
 		t.Error("a tab asked with no session answers the sign-in form in the whole shell")
 	}
 }
@@ -358,7 +358,7 @@ func TestWeb_EveryPageAnswersAFailingDatabaseWith500(t *testing.T) {
 		method, path string
 		form         url.Values
 	}{
-		{"GET", "/", nil}, {"GET", "/tab/settings", nil}, {"DELETE", "/tab/settings", nil}, {"GET", "/sign-in", nil}, {"GET", "/forgot-password", nil},
+		{"GET", "/", nil}, {"GET", "/tab/notifications", nil}, {"DELETE", "/tab/notifications", nil}, {"GET", "/sign-in", nil}, {"GET", "/forgot-password", nil},
 		{"POST", "/reset-with-code", url.Values{"login": {"nobody"}, "code": {"000000"}, "new": {"Reset-chosen-4"}, "confirm": {"Reset-chosen-4"}}},
 		{"POST", "/change-password", url.Values{"current": {password}, "new": {"Chosen-new-3"}, "confirm": {"Chosen-new-3"}}}, {"POST", "/sign-out", nil},
 	} {
@@ -376,7 +376,7 @@ func TestWeb_EveryPageAnswersAFailingDatabaseWith500(t *testing.T) {
 
 func TestWeb_R5_ClosingATabNotOpenChangesNothing(t *testing.T) {
 	browser, _ := signedIn(t, testapi.New(t), "User A")
-	has(t, browser.Send("DELETE", "/tab/settings", nil).Body.String(), `id="projects.title"`)
+	has(t, browser.Send("DELETE", "/tab/notifications", nil).Body.String(), `id="projects.title"`)
 }
 
 func TestWeb_R13_ChangingAPasswordWithNoSessionAnswersTheSignInForm(t *testing.T) {
@@ -391,7 +391,7 @@ func TestWeb_EveryElementsIdIsTheOnlyOneOnItsPage(t *testing.T) {
 	api := testapi.New(t)
 	pages := map[string]string{"signed out": api.Browser().Send("GET", "/", nil).Body.String()}
 	browser, _ := signedIn(t, api, "User A")
-	browser.Send("GET", "/tab/settings", nil)
+	browser.Send("GET", "/tab/notifications", nil)
 	pages["signed in"] = browser.Send("GET", "/", nil).Body.String()
 	pages["forgot password, a code sent"] = pages["signed out"] + api.Browser().Send("POST", "/forgot-password", url.Values{"login": {"nobody"}}).Body.String()
 	for name, page := range pages {
@@ -427,7 +427,7 @@ func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *tes
 		}
 		return names
 	}
-	if set := cookies(browser.Send("GET", "/tab/settings", nil)); !slices.Equal(set, []string{"redix_tabs"}) {
+	if set := cookies(browser.Send("GET", "/tab/notifications", nil)); !slices.Equal(set, []string{"redix_tabs"}) {
 		t.Errorf("opening a tab keeps the tabs alone: %v", set)
 	}
 	if set := cookies(browser.Send("POST", "/view", url.Values{"side": {"on"}, "width": {"300"}})); !slices.Equal(set, []string{"redix_view"}) {
@@ -435,12 +435,13 @@ func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *tes
 	}
 	page := browser.Send("GET", "/", nil).Body.String()
 	has(t, page, `style="--side-w: 300px; --details-w: 320px;"`)
-	has(t, page, `id="web.tab.settings" class="tab" role="tab" aria-selected="true"`)
+	has(t, page, `id="web.tab.notifications" class="tab" role="tab" aria-selected="true"`)
 }
 
 func TestWeb_R2_TheVersionLineCarriesTheBuildKeptWholeInArabic(t *testing.T) {
 	body := testapi.New(t).Browser().Send("GET", "/", nil).Body.String()
-	has(t, body, `<p id="appVersion.line" class="hint form-version">الإصدار 1.0.0<bdi></bdi></p>`)
+	has(t, body, `<span id="appVersion.line" class="version">الإصدار 1.0.0<bdi></bdi></span>`)
+	lacks(t, body[:strings.Index(body, `id="web.statusBar"`)], `id="appVersion.line"`)
 }
 
 // withEmail gives name an account with address as its email, as confirming one would, and is their username.
@@ -726,12 +727,12 @@ func TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut(
 		t.Errorf("the host, then My account: %d, %d", host, account)
 	}
 	lacks(t, page, `id="appVersion.line"`)
-	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `id="sharedSettings.version"`)
+	has(t, page[strings.Index(page, `id="web.settingsMenu"`):], `id="sharedSettings.version"`)
 	has(t, page, `<button id="web.account" class="account" type="button" popovertarget="web.accountMenu" aria-haspopup="menu"><span id="web.account.name">User A</span>`)
 	has(t, page, `<span id="web.account.arrow" class="arrow" aria-hidden="true">»</span>`)
 	has(t, page, `<b id="web.accountMenu.name">User A</b>`)
 	has(t, page, `<div id="web.accountMenu" class="menu-pop account-menu" popover>`)
-	has(t, page, `<button id="web.sharedSettings" class="choice" type="button" hx-get="/tab/settings" hx-target="[id='web.content']"`)
+	has(t, page, `<button id="web.sharedSettings" class="choice sub-head" type="button" aria-haspopup="menu">`)
 	has(t, page, `<button id="myAccount.signOut" class="choice sign-out" type="button" hx-post="/sign-out"`)
 	if settings, signOut := strings.Index(page, `id="web.sharedSettings"`), strings.Index(page, `id="myAccount.signOut"`); settings > signOut {
 		t.Error("Sign out stands last, apart from the rest")
@@ -742,8 +743,9 @@ func TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut(
 	}
 	has(t, top, `id="web.notifications"`)
 	lacks(t, page, `id="web.item.settings"`)
-	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `<h2 id="sharedSettings.title">`)
-	has(t, w.browser.Send("GET", "/", nil).Body.String(), `id="web.tab.settings"`)
+	if code := w.browser.Send("GET", "/tab/settings", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Settings has no tab of its own now: %d", code)
+	}
 	kept := "redix_access=" + w.browser.Cookie("redix_access") + "; redix_refresh=" + w.browser.Cookie("redix_refresh") +
 		"; redix_project=" + w.browser.Cookie("redix_project") + "; redix_view=top=1&status=0&side=1&summary=0&width=248"
 	older := w.browser.Send("GET", "/", nil, "Cookie", kept).Body.String()
@@ -4141,16 +4143,19 @@ func TestWeb_R175_NotificationsAnswerAFailingDatabase(t *testing.T) {
 	}
 }
 
-func TestWeb_R175_SettingsAsTheAppsScreen(t *testing.T) {
+// Settings is a list beside My account's menu, opened on hover or focus, where the app has a screen; its items do what the app's screen does
+// (findings row 321).
+func TestWeb_R175_R321_SettingsIsAListInMyAccount(t *testing.T) {
 	w := newWorking(t)
-	w.home()
-	settings := w.browser.Send("GET", "/tab/settings", nil).Body.String()
-	has(t, settings, `<h3 id="sharedSettings.who.title">User A</h3>`)
-	has(t, settings, `<button id="sharedSettings.switchProject" class="quiet-button" type="button" popovertarget="web.projects">`)
+	page := w.home()
+	settings := page[strings.Index(page, `<div id="web.settingsMenu" class="submenu">`):]
+	settings = settings[:strings.Index(settings, `<hr class="menu-line">`)]
+	has(t, settings, `<button id="sharedSettings.switchProject" class="choice" type="button" popovertarget="web.projects">`)
 	has(t, settings, `id="myAccount.language"`)
 	has(t, settings, `<a id="sharedSettings.theme.system" href="/theme/system" aria-current="true">`)
 	lacks(t, settings, `id="sharedSettings.entriesShown"`)
 	has(t, settings, `hx-get="/tab/changePassword"`)
+	has(t, settings, `hx-get="/details/my-email"`)
 	has(t, settings, `<a id="legal.privacy" href="/privacy" target="_blank" rel="noopener">`)
 	has(t, settings, `id="sharedSettings.version"`)
 	lacks(t, settings, `id="sharedSettings.registered"`)
@@ -4165,7 +4170,7 @@ func TestWeb_R175_SettingsAsTheAppsScreen(t *testing.T) {
 		t.Errorf("choosing an appearance opens the page again: %d", code)
 	}
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<html lang="ar" dir="rtl" data-theme="dark">`)
-	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `<a id="sharedSettings.theme.dark" href="/theme/dark" aria-current="true">`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<a id="sharedSettings.theme.dark" href="/theme/dark" aria-current="true">`)
 	w.browser.Send("GET", "/theme/system", nil)
 	lacks(t, w.browser.Send("GET", "/", nil).Body.String(), `data-theme=`)
 }
@@ -4173,22 +4178,22 @@ func TestWeb_R175_SettingsAsTheAppsScreen(t *testing.T) {
 func TestWeb_R175_UC010_MyEmailIsConfirmedWithTheEmailedCodeAsTheAppsDialogs(t *testing.T) {
 	w := newWorking(t)
 	w.home()
-	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `hx-get="/details/my-email"`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<small id="sharedSettings.myEmail.subtitle" class="hint"></small>`)
 	has(t, w.browser.Send("GET", "/details/my-email", nil).Body.String(), `<input id="myEmail.email" name="email" type="email" required value="" autofocus>`)
 	has(t, w.browser.Send("POST", "/my-email", url.Values{"email": {"not-an-email"}}).Body.String(), `<p id="myEmail.refusal" class="refusal" role="alert">`)
 	sent := w.browser.Send("POST", "/my-email", url.Values{"email": {"a.new@example.com"}}).Body.String()
 	has(t, sent, `<p id="myEmail.sentTo" class="hint">أدخل الرمز المرسل إلى a.new@example.com.</p>`)
 	has(t, w.browser.Send("POST", "/my-email/confirm", url.Values{"email": {"a.new@example.com"}, "code": {"000000"}}).Body.String(), "الرمز غير صحيح أو انتهت صلاحيته.")
 	confirmed := w.browser.Send("POST", "/my-email/confirm", url.Values{"email": {"a.new@example.com"}, "code": {w.Emails.LastCodeTo("a.new@example.com")}}).Body.String()
-	has(t, confirmed, `<div id="web.content" hx-swap-oob="innerHTML">`)
-	has(t, confirmed, `<small id="sharedSettings.myEmail.subtitle" class="hint">a.new@example.com</small>`)
+	has(t, confirmed, `<small id="sharedSettings.myEmail.subtitle" class="hint" hx-swap-oob="true">a.new@example.com</small>`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<small id="sharedSettings.myEmail.subtitle" class="hint">a.new@example.com</small>`)
 	other := w.member("User B", "")
 	w.Exec(`UPDATE users SET email = 'b@example.com' WHERE id = ?`, other)
 	w.browser.Send("POST", "/my-email", url.Values{"email": {"c@example.com"}})
 	code := w.Emails.LastCodeTo("c@example.com")
 	w.Exec(`UPDATE users SET email = 'c@example.com' WHERE id = ?`, other)
 	has(t, w.browser.Send("POST", "/my-email/confirm", url.Values{"email": {"c@example.com"}, "code": {code}}).Body.String(), "هذا البريد لحساب آخر.")
-	for _, ask := range []struct{ method, path string }{{"POST", "/my-email"}, {"POST", "/my-email/confirm"}, {"GET", "/tab/settings"}} {
+	for _, ask := range []struct{ method, path string }{{"POST", "/my-email"}, {"POST", "/my-email/confirm"}} {
 		for n := int64(1); ; n++ {
 			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"email": {"d@example.com"}, "code": {"000000"}})
 			if !failed {
@@ -4215,7 +4220,7 @@ func TestWeb_R175_UC006_RegisteredProjectsAreApprovedOrRejectedAsTheAppsScreen(t
 	first, second := waiting("مشروع C"), waiting("مشروع D")
 	browser := w.Browser()
 	browser.Send("POST", "/sign-in", url.Values{"username": {admin}, "password": {password}})
-	has(t, browser.Send("GET", "/tab/settings", nil).Body.String(), `<button id="sharedSettings.registered" class="quiet-button" type="button" hx-get="/tab/registered"`)
+	has(t, browser.Send("GET", "/", nil).Body.String(), `<button id="sharedSettings.registered" class="choice" type="button" hx-get="/tab/registered"`)
 	list := browser.Send("GET", "/tab/registered", nil).Body.String()
 	has(t, list, `<strong id="registered.name.`+first+`">مشروع C</strong>`)
 	has(t, list, `<small id="registered.details.`+first+`" class="hint">2026-11-01 · B1 · B2</small>`)

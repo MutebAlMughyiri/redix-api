@@ -132,7 +132,6 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .language a { color: var(--quiet); text-decoration: none; padding-block: 2px; border-block-end: 2px solid transparent; }
 .language a[aria-current="true"] { color: var(--text); border-block-end-color: var(--accent); }
 .form-language { display: flex; justify-content: center; padding-block-start: 12px; border-block-start: 1px solid var(--chrome-line); }
-.form-version { margin: 0; text-align: center; font-size: 12px; }
 .primary:focus-visible, .secondary:focus-visible, .form-links a:focus-visible, .tab-title:focus-visible, .tab .close:focus-visible, .tree a:focus-visible, .signout:focus-visible, .view-button:focus-visible, .language a:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px; }
 
@@ -142,6 +141,7 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
   border-block-start: 1px solid var(--chrome-line); color: var(--quiet); font-size: 12px; white-space: nowrap; overflow: hidden; }
 .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-inline-end: 6px; }
 /* My account: the name with an arrow, in a quiet button, so it reads as a menu; the arrow turns while the menu is open (findings row 313). */
+.status .version { margin-inline-start: auto; }
 .status .account { margin-inline-start: auto; anchor-name: --account; display: inline-flex; align-items: center; gap: 6px; font: inherit; color: var(--text); background: var(--content);
   border: 1px solid var(--chrome-line); border-radius: 5px; padding: 1px 8px; cursor: pointer; }
 .status .account:hover, .status:has(.account-menu:popover-open) .account { background: var(--select); border-color: var(--accent); }
@@ -176,9 +176,18 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 /* The project the person works in (redix-api #165): its button in the top bar lists their projects; its name heads the side menu. */
 .project { anchor-name: --project; display: inline-flex; align-items: center; gap: 6px; font: inherit; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 4px 8px; cursor: pointer; }
 .project:hover, .project:focus-visible { background: var(--select); } .caret { color: var(--quiet); font-size: 10px; }
-.menu-pop { position-anchor: --project; position-area: block-end span-inline-end; position-try-fallbacks: flip-inline; inset: auto; margin: 4px 0 0; padding: 6px; min-width: 260px;
-  max-height: calc(100vh - var(--top) - 24px); overflow: auto; box-sizing: border-box;
-  background: var(--content); color: var(--text); border: 1px solid var(--chrome-line); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.menu-pop { position-anchor: --project; position-area: block-end span-inline-end; position-try-fallbacks: flip-inline; inset: auto; margin: 4px 0 0; min-width: 260px;
+  max-height: calc(100vh - var(--top) - 24px); overflow: auto; }
+/* A menu's look, the popovers' and Settings' list beside My account's. */
+.menu-pop, .submenu { padding: 6px; box-sizing: border-box; background: var(--content); color: var(--text); border: 1px solid var(--chrome-line); border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+/* Settings' list beside My account's menu, on the page's side of it, opened by hovering or focusing Settings (findings row 321). */
+.menu-pop.account-menu { overflow: visible; }
+.sub { position: relative; } .sub-head { justify-content: space-between; } [dir="ltr"] .sub-head .arrow { transform: rotate(180deg); }
+.submenu { display: none; position: absolute; inset-block-end: -7px; inset-inline-end: 100%; min-width: 300px; flex-direction: column; gap: 2px; }
+.sub:hover > .submenu, .sub:focus-within > .submenu { display: flex; }
+.sub-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px; } .sub-row .segmented { margin: 0; }
+.menu-pop .sub-choice { flex-direction: column; align-items: flex-start; gap: 2px; } .sub-choice small:empty { display: none; } .sub-version { margin: 4px 8px 2px; font-size: 12px; }
 .menu-pop h4 { margin: 4px 8px 6px; font-size: 12px; font-weight: 500; color: var(--quiet); }
 .menu-pop .choice, .menu-pop .parked { display: flex; width: 100%; box-sizing: border-box; padding: 7px 8px; }
 .choice { align-items: center; gap: 8px; font: inherit; text-align: start; border: 0; border-radius: 4px; background: transparent; color: var(--text); cursor: pointer; }

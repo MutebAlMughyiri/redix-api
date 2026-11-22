@@ -224,13 +224,16 @@ templ detailsPanel(outOfBand bool) {
 }
 
 // statusBar is the host this page came from at its start and, for whoever is signed in, My account at its end: their name with an arrow, so it
-// reads as a menu, opening above it on who is signed in, Shared settings and My history, then Sign out apart (#161 R2; the owner, 23 Nov 2026,
-// findings rows 306, 313, 315). The version is the sign-in form's and Settings', as the app shows it. The View menu hides it, My account with it,
+// reads as a menu, opening above it on who is signed in, Settings' list and My history, then Sign out apart (#161 R2; the owner, 23 Nov 2026,
+// findings rows 306, 313, 315, 321). Before anyone signs in, the version stands at its end, as the sign-in page always showed it; once signed in,
+// it is Settings' (findings row 322). The View menu hides it, My account with it,
 // until it is ticked again (findings row 320).
 templ statusBar(p page) {
 	<footer id="web.statusBar" class="status">
 		<span id="web.host" class="host"><span id="web.host.dot" class="dot" aria-hidden="true"></span>{ p.host }</span>
-		if p.person != "" {
+		if p.person == "" {
+			<span id="appVersion.line" class="version">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></span>
+		} else {
 			<button id="web.account" class="account" type="button" popovertarget="web.accountMenu" aria-haspopup="menu">
 				<span id="web.account.name">{ p.person }</span>
 				<span id="web.account.arrow" class="arrow" aria-hidden="true">{ arrow }</span>
@@ -242,7 +245,7 @@ templ statusBar(p page) {
 						<small id="web.accountMenu.username" class="hint">{ p.caller.Username }</small>
 					}
 				</div>
-				<button id="web.sharedSettings" class="choice" type="button" hx-get="/tab/settings" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">{ p.words.Of("sharedSettings.title") }</button>
+				@settingsMenu(p)
 				<button id="web.myHistory" class="choice" type="button" hx-get="/tab/myHistory" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">{ p.words.Of("history.myTitle") }</button>
 				<hr class="menu-line"/>
 				<button id="myAccount.signOut" class="choice sign-out" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
@@ -256,8 +259,8 @@ templ emptyContent(p page) {
 	<p id="web.pickFromMenu" class="empty">{ p.words.Of("web.pickFromMenu") }</p>
 }
 
-// signInForm is the sign-in, in the content area: what the app's sign-in has, with the language and the version at its foot, since Settings cannot
-// be reached before signing in (#161 R2, R12, R19; findings row 315). The cursor waits in Username, or in Password when a refusal kept the
+// signInForm is the sign-in, in the content area: what the app's sign-in has, with the language at its foot, since Settings cannot be reached
+// before signing in (#161 R2, R12, R19). The cursor waits in Username, or in Password when a refusal kept the
 // username (#76 row 286). message is the word key of a refusal, or ""; p.notice says what just happened, as after a reset.
 templ signInForm(p page, message string, username string) {
 	<div class="signin">
@@ -289,7 +292,6 @@ templ signInForm(p page, message string, username string) {
 			<div class="form-language">
 				@languageChoice(p)
 			</div>
-			<p id="appVersion.line" class="hint form-version">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></p>
 		</form>
 	</div>
 }

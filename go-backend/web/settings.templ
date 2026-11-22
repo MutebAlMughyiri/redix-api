@@ -2,61 +2,55 @@ package web
 
 import "strconv"
 
-// settingsPage is Settings as the app's screen shows it: who is signed in and their role here; Switch project and the default project, from
-// the top bar's list; Registered projects for whoever approves them; the language; the appearance; My email; Change password; My history; the
-// privacy policy and the terms of use; Sign out; and the version. No fingerprint row: the web has none (D1); no count of the home's entries:
-// the web's home lists none (findings row 306).
-templ settingsPage(p page, theme string, email string) {
-	<div class="view-head"><h2 id="sharedSettings.title">{ p.words.Of("sharedSettings.title") }</h2></div>
-	<div id="sharedSettings.body" class="settings">
-		<section id="sharedSettings.who" class="setting">
-			<h3 id="sharedSettings.who.title">{ p.person }</h3>
-			<small id="sharedSettings.who.subtitle" class="hint">{ parts(p.caller.Username, p.project.RoleName) }</small>
-		</section>
-		<section id="sharedSettings.projects" class="setting">
-			<button id="sharedSettings.switchProject" class="quiet-button" type="button" popovertarget="web.projects">{ p.words.Of("sharedSettings.switchProject") }</button>
-			<button id="sharedSettings.defaultProject" class="quiet-button" type="button" popovertarget="web.projects">{ p.words.Of("sharedSettings.defaultProject") }</button>
-			<small id="sharedSettings.defaultProject.hint" class="hint">{ p.words.Of("sharedSettings.defaultProjectHint") }</small>
+// settingsMenu is Settings as My account opens it, a list beside its menu on hover or focus, where the app has a screen (the owner, 23 Nov
+// 2026, findings row 321): the language and the appearance, switched at once; My email, with the address the account holds, in the details
+// panel; Change password and, for whoever approves them, Registered projects, in their tabs; Switch project and the default project, from the
+// top bar's list; the privacy policy and the terms of use; and the version. Who is signed in, My history and Sign out are My account's own. No
+// fingerprint row (D1); no count of the home's entries (findings row 306).
+templ settingsMenu(p page) {
+	<div id="web.settings" class="sub">
+		<button id="web.sharedSettings" class="choice sub-head" type="button" aria-haspopup="menu">
+			{ p.words.Of("sharedSettings.title") }
+			<span id="web.sharedSettings.arrow" class="arrow" aria-hidden="true">{ arrow }</span>
+		</button>
+		<div id="web.settingsMenu" class="submenu">
+			<div id="web.setting.language" class="sub-row">
+				<span id="myAccount.language" class="label">{ p.words.Of("myAccount.language") }</span>
+				@languageChoice(p)
+			</div>
+			<div id="sharedSettings.appearance" class="sub-row">
+				<span id="sharedSettings.appearance.title" class="label">{ p.words.Of("sharedSettings.appearance") }</span>
+				<nav id="sharedSettings.themeChoice" class="segmented" aria-label={ p.words.Of("sharedSettings.appearance") }>
+					for _, choice := range themes {
+						<a id={ "sharedSettings.theme." + choice } href={ templ.SafeURL("/theme/" + choice) } aria-current={ strconv.FormatBool(choice == p.theme || (choice == "system" && p.theme == "")) }>{ p.words.Of(themeWord(choice)) }</a>
+					}
+				</nav>
+			</div>
+			<button id="sharedSettings.changeEmail" class="choice sub-choice" type="button" hx-get="/details/my-email" hx-target="[id='web.details']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">
+				{ p.words.Of("settings.myEmail") }
+				<small id="sharedSettings.myEmail.subtitle" class="hint">{ p.email }</small>
+			</button>
+			<button id="sharedSettings.changePassword" class="choice" type="button" hx-get="/tab/changePassword" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">{ p.words.Of("myAccount.changePassword") }</button>
 			if p.mayApproveProjects() {
-				<button id="sharedSettings.registered" class="quiet-button" type="button" hx-get="/tab/registered" hx-target="[id='web.content']">{ p.words.Of("registered.title") }</button>
+				<button id="sharedSettings.registered" class="choice" type="button" hx-get="/tab/registered" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">{ p.words.Of("registered.title") }</button>
 			}
-		</section>
-		<section id="web.setting.language" class="setting">
-			<h3 id="myAccount.language">{ p.words.Of("myAccount.language") }</h3>
-			@languageChoice(p)
-		</section>
-		<section id="sharedSettings.appearance" class="setting">
-			<h3 id="sharedSettings.appearance.title">{ p.words.Of("sharedSettings.appearance") }</h3>
-			<nav id="sharedSettings.themeChoice" class="segmented" aria-label={ p.words.Of("sharedSettings.appearance") }>
-				for _, choice := range themes {
-					<a id={ "sharedSettings.theme." + choice } href={ templ.SafeURL("/theme/" + choice) } aria-current={ strconv.FormatBool(choice == theme || (choice == "system" && theme == "")) }>{ p.words.Of(themeWord(choice)) }</a>
-				}
-			</nav>
-		</section>
-		<section id="sharedSettings.myEmail" class="setting">
-			<h3 id="sharedSettings.myEmail.title">{ p.words.Of("settings.myEmail") }</h3>
-			<small id="sharedSettings.myEmail.subtitle" class="hint">{ email }</small>
-			<button id="sharedSettings.changeEmail" class="quiet-button" type="button" hx-get="/details/my-email" hx-target="[id='web.details']">{ p.words.Of("settings.myEmail") }</button>
-		</section>
-		<section id="sharedSettings.account" class="setting">
-			<button id="sharedSettings.changePassword" class="quiet-button" type="button" hx-get="/tab/changePassword" hx-target="[id='web.content']">{ p.words.Of("myAccount.changePassword") }</button>
-			<button id="sharedSettings.myHistory" class="quiet-button" type="button" hx-get="/tab/myHistory" hx-target="[id='web.content']">{ p.words.Of("history.myTitle") }</button>
-			<a id="legal.privacy" href="/privacy" target="_blank" rel="noopener">{ p.words.Of("legal.privacy") }</a>
-			<a id="legal.terms" href="/terms" target="_blank" rel="noopener">{ p.words.Of("legal.terms") }</a>
-			<button id="sharedSettings.signOut" class="signout" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
-		</section>
-		<p id="sharedSettings.version" class="hint">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></p>
+			<button id="sharedSettings.switchProject" class="choice" type="button" popovertarget="web.projects">{ p.words.Of("sharedSettings.switchProject") }</button>
+			<button id="sharedSettings.defaultProject" class="choice" type="button" popovertarget="web.projects">{ p.words.Of("sharedSettings.defaultProject") }</button>
+			<div id="sharedSettings.legal" class="sub-row">
+				<a id="legal.privacy" href="/privacy" target="_blank" rel="noopener">{ p.words.Of("legal.privacy") }</a>
+				<a id="legal.terms" href="/terms" target="_blank" rel="noopener">{ p.words.Of("legal.terms") }</a>
+			</div>
+			<p id="sharedSettings.version" class="hint sub-version">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></p>
+		</div>
 	</div>
 }
 
-// settingsBeside is Settings again, carried out of band beside the panel My email closed.
-templ settingsBeside(settings templ.Component) {
-	<div id="web.content" hx-swap-oob="innerHTML">
-		@settings
-	</div>
+// myEmailKept carries the email just confirmed into Settings' list, out of band, the details panel closing beside it (UC-010).
+templ myEmailKept(email string) {
+	<small id="sharedSettings.myEmail.subtitle" class="hint" hx-swap-oob="true">{ email }</small>
 }
 
-// changePasswordTab is Change password in its tab, from Settings, as the app's screen: the form the first sign-in asks too.
+// changePasswordTab is Change password in its tab, from Settings' list, as the app's screen: the form the first sign-in asks too.
 templ changePasswordTab(p page) {
 	@changePasswordForm(p, "", p.caller.Username)
 }

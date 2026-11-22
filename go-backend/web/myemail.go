@@ -44,7 +44,7 @@ func (s site) askToConfirmEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 // confirmEmail makes the email the code was sent to the person's through auth.Codes.ConfirmEmail, the rule the app's route runs, and closes the
-// details panel, Settings beside it showing the new email; refused, the code's form says why in the app's words: another account took the email,
+// details panel, Settings' list showing the new email (findings row 321); refused, the code's form says why in the app's words: another account took the email,
 // or the code is not the one sent.
 func (s site) confirmEmail(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.working(w, r)
@@ -66,10 +66,10 @@ func (s site) confirmEmail(w http.ResponseWriter, r *http.Request) {
 		draw(w, r, http.StatusOK, myEmailCodeForm(p, r.PostFormValue("email"), refusal))
 		return
 	}
-	settings, err := s.settingsOf(r, p)
+	user, err := s.Database.Queries().UserWithID(r.Context(), p.caller.UserID)
 	if err != nil {
 		failed(w)
 		return
 	}
-	draw(w, r, http.StatusOK, settingsBeside(settings))
+	draw(w, r, http.StatusOK, myEmailKept(user.Email))
 }

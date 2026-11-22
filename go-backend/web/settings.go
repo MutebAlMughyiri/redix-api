@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/a-h/templ"
-
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 )
 
@@ -29,20 +27,6 @@ func themeOf(r *http.Request) string {
 // themeWord is the word of an appearance, as the app's segments name them.
 func themeWord(theme string) string {
 	return map[string]string{"system": "sharedSettings.themeSystem", "light": "sharedSettings.themeLight", "dark": "sharedSettings.themeDark"}[theme]
-}
-
-// settingsTab is Settings in its tab (redix-api #161, #175), with or without a project, as the app's screen: who is signed in, Switch project
-// and the default project, Registered projects, the language, the appearance, My email, Change password, My history, the privacy policy and the
-// terms of use, Sign out, and the version. The app's how many entries its home lists is not here, since the web's home lists none (findings row
-// 306).
-func (s site) settingsTab(r *http.Request, p page) (templ.Component, error) {
-	return s.settingsOf(r, p)
-}
-
-// settingsOf is Settings for p's caller as r's cookies keep their choices, with the email their account holds. The error is the database's.
-func (s site) settingsOf(r *http.Request, p page) (templ.Component, error) {
-	user, err := s.Database.Queries().UserWithID(r.Context(), p.caller.UserID)
-	return settingsPage(p, themeOf(r), user.Email), err
 }
 
 // chooseTheme keeps the appearance chosen in Settings and opens the page again in it, as the language is chosen (#175 D1).
