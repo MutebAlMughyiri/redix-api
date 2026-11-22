@@ -2,7 +2,7 @@
 
 # UC-053 to UC-058: The periodic report and the report files
 
-**Purpose:** issue the numbered periodic report that replaces the manual statement, and give it and the other reports as files: the periodic report as a PDF laid out as report 23 and as a workbook with live totals; the VAT statement as the accountant's workbook; an item's report and the contracts report as a PDF and a workbook.
+**Purpose:** issue the numbered periodic report that replaces the manual statement, and give it and the other reports as files: the periodic report as a PDF laid out as report 23 and as a workbook with live totals; the VAT statement as the accountant's workbook; an item's report and a contract's as a PDF and a workbook. The all-contracts files went on 23 Nov (findings row 285): the app had dropped their buttons on 12 Nov, and the web does exactly as the app.
 
 **Who uses it:** whoever holds `SeeReports` («يرى التقارير») reads a report, seeing only their own partner line (BR-31). Whoever holds `GenerateReports` («يُصدر التقارير») issues the next one and takes every report's Excel and PDF; a file's رأس المال holds only the partners its reader may see (`PartnerSight`), its اجمالي الكل still the whole capital, as the summary's line is (BR-31). `MoveMoney` no longer issues, and the files no longer need `SeeAllCapital` (redix-api #131).
 
@@ -15,7 +15,6 @@
 | `GET /projects/{id}/periodic-reports/{number}/pdf`, `/xlsx` | `GenerateReports` | Its files, رأس المال holding only the partners the caller may see |
 | `GET /projects/{id}/vat-statement/xlsx?from=&to=` | `GenerateReports` | The VAT statement's workbook, its VAT a formula on each total at `vatRatePercent` (redix-api #96, D19, D20) |
 | `GET /projects/{id}/reports/items/{itemId}/pdf`, `/xlsx` | `GenerateReports` | An item's report as files; رأس المال's holds only the partners the caller may see |
-| `GET /projects/{id}/reports/contracts/pdf`, `/xlsx` | `GenerateReports` | The contracts report as files |
 | `GET /projects/{id}/reports/contracts/{contractId}/pdf`, `/xlsx` | `GenerateReports` | One contract's report as files, from the item report's writers, for its ⋮ on Contracts (the owner, 12 Nov 2026) |
 
 **One table design (UC-067, FR-46).** Every sheet but الخلاصة is a list of tables written by `statement.Book`, the one layout; a builder (`reports.sheetOf`, `reports.contractsWorkbookOf`) only says what each table holds; رأس المال is an item like any other, its sheet a table per partner (redix-api #109). Every table prints its own columns, nothing fixed (redix-api #129, R1, R4): the columns of its item that print in the reports, in their order, «الوصف» first but on رأس المال, where «نوع الحركة» comes before it, each headed by its own name, then its amount column, headed by that column's name; a purchase table is never given what only a payment has, nor a payment what only a purchase has (`ReportColumns`). «سعر الوحدة» and «العدد» appear only on a table whose item has them, and «رقم الفاتورة» on none: a bill number entered before redix-api #96 D2 stays in `Invoices.Number`, for the VAT statement and the lists. A list's cell holds its choice's name; a file's says «فتح المرفق». «الوصف» is the entry's one description. The PDF draws the same tables. A report issued before redix-api #129 kept no columns of its tables, so its files print the amount alone.

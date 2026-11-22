@@ -136,7 +136,7 @@ func TestR106_R6_TheSummaryTheBalancesAndTheItemReportCountOnlyTheSeenTables(t *
 func TestR106_R7_R12_TheWholeDocumentsAreForWhoeverSeesEveryTable(t *testing.T) {
 	a := newSighted(t)
 	a.tick(false, a.group)
-	for _, path := range []string{"/periodic-reports", "/periodic-reports/next", "/vat-statement/xlsx", "/reports/contracts/pdf"} {
+	for _, path := range []string{"/periodic-reports", "/periodic-reports/next", "/vat-statement/xlsx"} {
 		if code, _ := a.Ask("GET", a.path+path, ``, a.saraToken); code != 403 {
 			t.Errorf("GET %s for Sara: %d, want 403", path, code)
 		}

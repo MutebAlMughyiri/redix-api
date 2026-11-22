@@ -51,8 +51,6 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("GET", project+"/reports/items/{itemId:guid}/pdf", files(s.itemFile(true)))
 	router.Handle("GET", project+"/reports/contracts/{contractId:guid}/xlsx", files(s.contractFile(false)))
 	router.Handle("GET", project+"/reports/contracts/{contractId:guid}/pdf", files(s.contractFile(true)))
-	router.Handle("GET", project+"/reports/contracts/xlsx", files(access.Whole(s.contractsWorkbook)))
-	router.Handle("GET", project+"/reports/contracts/pdf", files(access.Whole(s.contractsPdf)))
 	router.Handle("GET", project+"/vat-statement/xlsx", files(access.Whole(s.vatWorkbook)))
 }
 
