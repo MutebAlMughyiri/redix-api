@@ -486,27 +486,6 @@ func (q *Queries) AddNotificationEntry(ctx context.Context, arg AddNotificationE
 	return err
 }
 
-const addPartner = `-- name: AddPartner :exec
-INSERT INTO partners (id, project_id, name, sort_order, is_deleted) VALUES (?, ?, ?, ?, 0)
-`
-
-type AddPartnerParams struct {
-	ID        uuid.UUID
-	ProjectID uuid.UUID
-	Name      string
-	SortOrder int64
-}
-
-func (q *Queries) AddPartner(ctx context.Context, arg AddPartnerParams) error {
-	_, err := q.exec(ctx, q.addPartnerStmt, addPartner,
-		arg.ID,
-		arg.ProjectID,
-		arg.Name,
-		arg.SortOrder,
-	)
-	return err
-}
-
 const addPaymentDetails = `-- name: AddPaymentDetails :exec
 INSERT INTO contractor_payment_details (entry_id, contract_id, is_outside_contract) VALUES (?, ?, ?)
 `

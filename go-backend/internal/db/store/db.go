@@ -81,9 +81,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addNotificationEntryStmt, err = db.PrepareContext(ctx, addNotificationEntry); err != nil {
 		return nil, fmt.Errorf("error preparing query AddNotificationEntry: %w", err)
 	}
-	if q.addPartnerStmt, err = db.PrepareContext(ctx, addPartner); err != nil {
-		return nil, fmt.Errorf("error preparing query AddPartner: %w", err)
-	}
 	if q.addPaymentDetailsStmt, err = db.PrepareContext(ctx, addPaymentDetails); err != nil {
 		return nil, fmt.Errorf("error preparing query AddPaymentDetails: %w", err)
 	}
@@ -878,11 +875,6 @@ func (q *Queries) Close() error {
 	if q.addNotificationEntryStmt != nil {
 		if cerr := q.addNotificationEntryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addNotificationEntryStmt: %w", cerr)
-		}
-	}
-	if q.addPartnerStmt != nil {
-		if cerr := q.addPartnerStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing addPartnerStmt: %w", cerr)
 		}
 	}
 	if q.addPaymentDetailsStmt != nil {
@@ -2103,7 +2095,6 @@ type Queries struct {
 	addInactiveStmt                     *sql.Stmt
 	addNotificationStmt                 *sql.Stmt
 	addNotificationEntryStmt            *sql.Stmt
-	addPartnerStmt                      *sql.Stmt
 	addPaymentDetailsStmt               *sql.Stmt
 	addPaymentMethodAccountStmt         *sql.Stmt
 	addPeriodicReportStmt               *sql.Stmt
@@ -2361,7 +2352,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addInactiveStmt:                     q.addInactiveStmt,
 		addNotificationStmt:                 q.addNotificationStmt,
 		addNotificationEntryStmt:            q.addNotificationEntryStmt,
-		addPartnerStmt:                      q.addPartnerStmt,
 		addPaymentDetailsStmt:               q.addPaymentDetailsStmt,
 		addPaymentMethodAccountStmt:         q.addPaymentMethodAccountStmt,
 		addPeriodicReportStmt:               q.addPeriodicReportStmt,

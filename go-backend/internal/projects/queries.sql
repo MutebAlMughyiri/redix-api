@@ -53,9 +53,6 @@ DELETE FROM units WHERE id = sqlc.arg(id);
 -- name: AddStructureSource :exec
 INSERT INTO project_structure_sources (project_id, structure_source_id) VALUES (?, ?);
 
--- name: AddPartner :exec
-INSERT INTO partners (id, project_id, name, sort_order, is_deleted) VALUES (?, ?, ?, ?, 0);
-
 -- name: HasEntriesWaiting :one
 SELECT EXISTS (SELECT 1 FROM entries WHERE project_id = sqlc.arg(project_id) AND status = 1) AS waiting;
 

@@ -304,3 +304,21 @@ func TestAC52_2_TheAdminRejectsAProjectSayingWhy(t *testing.T) {
 		t.Errorf("rejected twice: %d %v", code, answer)
 	}
 }
+
+// Findings row 294: the partners a registration declares are added with their Create line, as partners.Add records one, so the partner history
+// shows when every partner was added; the registration's request stays one line of the project history.
+func TestUC066_D294_ARegistrationsPartnersEachHaveTheirCreateLine(t *testing.T) {
+	a := newAPI(t)
+	code, answer := a.Ask("POST", "/projects/register", `{"name":"مشروع","startDate":"2026-11-05","units":["أ"],"partners":["شريك أ","شريك ب"],"displayName":"B",
+		"username":"b","mobile":"0500000000","password":"Register-1"}`, "")
+	if code != 201 {
+		t.Fatalf("%d %v", code, answer)
+	}
+	project := testapi.Field(answer, "id").(string)
+	if got := a.Count("SELECT count(*) FROM history WHERE project_id = ? AND table_name = 'Partners' AND action = 'Create'", project); got != 2 {
+		t.Errorf("the declared partners have %d Create lines, want 2", got)
+	}
+	if got := a.Count("SELECT count(DISTINCT trace_id) FROM history WHERE project_id = ?", project); got != 1 {
+		t.Errorf("the registration wrote %d requests' lines, want one", got)
+	}
+}

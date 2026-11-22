@@ -222,20 +222,25 @@ func Add(c changes.Change, name string, login uuid.UUID) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.Nil, err
 	}
+	partnerID, err := Declare(c, name, place)
+	if err != nil || login == uuid.Nil {
+		return partnerID, err
+	}
+	if err := c.Q.SavePartnerLogin(c.Ctx, store.SavePartnerLoginParams{PartnerID: partnerID, ProjectID: c.ProjectID, UserID: login}); err != nil {
+		return uuid.Nil, err
+	}
+	return partnerID, c.Record(history.Create, "PartnerUsers", partnerID, nil, map[string]any{"ProjectId": c.ProjectID, "UserId": login})
+}
+
+// Declare keeps the partner named name at place among the change's project's capital tables, with its Create line: the one way a partner is
+// saved new, which Add calls and a registration calls for each partner it declares, so the partner history shows when every partner was added
+// (findings row 294).
+func Declare(c changes.Change, name string, place int64) (uuid.UUID, error) {
 	partner := store.Partner{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, Name: name, SortOrder: place}
 	if err := c.Q.SavePartner(c.Ctx, store.SavePartnerParams(partner)); err != nil {
 		return uuid.Nil, err
 	}
-	if err := c.Record(history.Create, "Partners", partner.ID, nil, fields(partner)); err != nil {
-		return uuid.Nil, err
-	}
-	if login == uuid.Nil {
-		return partner.ID, nil
-	}
-	if err := c.Q.SavePartnerLogin(c.Ctx, store.SavePartnerLoginParams{PartnerID: partner.ID, ProjectID: c.ProjectID, UserID: login}); err != nil {
-		return uuid.Nil, err
-	}
-	return partner.ID, c.Record(history.Create, "PartnerUsers", partner.ID, nil, map[string]any{"ProjectId": c.ProjectID, "UserId": login})
+	return partner.ID, c.Record(history.Create, "Partners", partner.ID, nil, fields(partner))
 }
 
 func orRefused(err error, code string) error {

@@ -18,6 +18,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/naming"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/notifications"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -271,7 +272,7 @@ func started(request Start) (store.Project, []string, []string, string) {
 
 // addWithManager keeps a new project waiting for the admin, its units and partners, and its manager's permissions, recording the project as
 // registered by its manager (ProjectsEndpoints.AddWithManager).
-func addWithManager(ctx context.Context, q *store.Queries, project store.Project, units, partners []string, managerID uuid.UUID, now moment.Moment) error {
+func addWithManager(ctx context.Context, q *store.Queries, project store.Project, units, partnerNames []string, managerID uuid.UUID, now moment.Moment) error {
 	err := q.AddProject(ctx, store.AddProjectParams{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Status: project.Status, Description: project.Description})
 	if err != nil {
 		return err
@@ -285,8 +286,9 @@ func addWithManager(ctx context.Context, q *store.Queries, project store.Project
 			return err
 		}
 	}
-	for place, name := range partners {
-		if err := q.AddPartner(ctx, store.AddPartnerParams{ID: uuid.Must(uuid.NewV7()), ProjectID: project.ID, Name: name, SortOrder: int64(place + 1)}); err != nil {
+	declaring := changes.Change{Ctx: ctx, Q: q, ProjectID: project.ID, Actor: managerID, Now: now}
+	for place, name := range partnerNames {
+		if _, err := partners.Declare(declaring, name, int64(place+1)); err != nil {
 			return err
 		}
 	}
