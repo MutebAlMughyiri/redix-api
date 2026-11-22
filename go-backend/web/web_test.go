@@ -1582,7 +1582,7 @@ func TestWeb_R164_UC006_ASignedInPersonRegistersAProjectTheyManage(t *testing.T)
 	}
 }
 
-func TestWeb_R166_D1_AnEntryWithAFileSaysItHasOne(t *testing.T) {
+func TestWeb_R175_D3_AnEntrysFileIsHandedOverFromItsPanel(t *testing.T) {
 	w := newWorking(t)
 	code, uploaded := w.AskWithFile(w.path+"/attachments", "invoice-31.pdf", []byte("%PDF-1.4 invoice"), w.token, nil)
 	if code >= 300 {
@@ -1596,7 +1596,12 @@ func TestWeb_R166_D1_AnEntryWithAFileSaysItHasOne(t *testing.T) {
 	}
 	w.home()
 	panel := w.browser.Send("GET", "/details/entry/"+id, nil).Body.String()
-	has(t, panel, `<dt id="entry.file.0.label">فاتورة</dt><dd id="entry.file.0" class="file">invoice-31.pdf</dd>`)
+	has(t, panel, `<dt id="entry.file.0.label">فاتورة</dt><dd id="entry.file.0.value"><a id="entry.file.0" class="file" href="/attachment/`+
+		uploaded["id"].(string)+`" download="invoice-31.pdf">invoice-31.pdf</a> </dd>`)
+	lacks(t, panel, `id="entry.file.0.picture"`)
+	if file := w.browser.Send("GET", "/attachment/"+uploaded["id"].(string), nil); file.Body.String() != "%PDF-1.4 invoice" {
+		t.Errorf("the entry's file: %d %q", file.Code, file.Body.String())
+	}
 	lacks(t, w.browser.Send("GET", "/details/entry/"+w.sent(40), nil).Body.String(), `id="entry.file.0"`)
 }
 
@@ -4508,5 +4513,126 @@ func TestWeb_R175_ProjectFilesNeedASessionAndAnswerAFailingDatabase(t *testing.T
 				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
 			}
 		}
+	}
+}
+
+func TestWeb_R175_D3_AContractsDocumentsAndAMovementsReceiptAreHandedOverFromTheirPanels(t *testing.T) {
+	w := newWorking(t)
+	picture := append([]byte{0x89, 0x50, 0x4E, 0x47}, []byte("a receipt")...)
+	code, receipt := w.AskWithFile(w.path+"/attachments", "receipt.png", picture, w.token, nil)
+	if code >= 300 {
+		t.Fatalf("uploading the receipt: %d %v", code, receipt)
+	}
+	partner := w.partner("الشريك A", "")
+	var capital string
+	if err := w.Database.Read.QueryRow("SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 6", w.id).Scan(&capital); err != nil {
+		t.Fatal(err)
+	}
+	movement := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + movement + `","itemId":"` + capital + `","tableId":"` + partner + `","date":"2026-11-10","amount":500,"accountId":"` + w.account +
+		`","description":"","columnValues":{},"attachmentId":"` + receipt["id"].(string) + `","submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		t.Fatalf("the movement: %d %v", code, answer)
+	}
+	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+movement+`"]}`, w.token); code != http.StatusOK {
+		t.Fatalf("approving the movement: %d %v", code, answer)
+	}
+	code, document := w.AskWithFile(w.path+"/attachments/document", "terms.docx", []byte("the terms"), w.token, nil)
+	if code >= 300 {
+		t.Fatalf("uploading the contract's document: %d %v", code, document)
+	}
+	contract := w.contract(w.supplier(`{"name":"مقاول أ"}`), `"value":1000,"isOpenValue":false,"attachmentIds":["`+document["id"].(string)+`"]`)
+	w.home()
+	partnerPanel := w.browser.Send("GET", "/details/partner/"+partner, nil).Body.String()
+	has(t, partnerPanel, `<a id="movements.row.`+movement+`.receipt" class="file" href="/attachment/`+receipt["id"].(string)+`" download="receipt.png">receipt.png</a>`)
+	has(t, partnerPanel, `<img id="movements.row.`+movement+`.receipt.picture" class="file-picture" src="/attachment/`+receipt["id"].(string)+`" alt="receipt.png">`)
+	contractPanel := w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String()
+	has(t, contractPanel, `<a id="contract.document.`+document["id"].(string)+`" class="file" href="/attachment/`+document["id"].(string)+`" download="terms.docx">terms.docx</a>`)
+	if file := w.browser.Send("GET", "/attachment/"+document["id"].(string), nil); file.Body.String() != "the terms" {
+		t.Errorf("the contract's document: %d %q", file.Code, file.Body.String())
+	}
+}
+
+// typedFields is typedEntry as a file's form sends its fields beside the file.
+func typedFields(typed url.Values) map[string]string {
+	fields := map[string]string{}
+	for key := range typed {
+		fields[key] = typed.Get(key)
+	}
+	return fields
+}
+
+func TestWeb_R175_D3_AddEntryKeepsTheFileItTakesAsTheAppsInvoiceSection(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	form := w.browser.Send("GET", "/tab/addEntry", nil).Body.String()
+	has(t, form, `hx-post="/entry" hx-encoding="multipart/form-data"`)
+	has(t, form, `<label id="addEntry.file.label" for="addEntry.file">صورة الفاتورة</label> <input id="addEntry.file" form="addEntry.form" name="file" type="file" accept="image/jpeg,image/png,application/pdf">`)
+	has(t, w.browser.SendFile("/entry", "notes.txt", []byte("not an invoice"), typedFields(w.typedEntry("60", true))).Body.String(), "يمكن حفظ صورة أو ملف PDF فقط.")
+	picture := append([]byte{0x89, 0x50, 0x4E, 0x47}, []byte("an invoice")...)
+	undated := w.typedEntry("60", true)
+	undated.Set("date", "")
+	refused := w.browser.SendFile("/entry", "invoice.png", picture, typedFields(undated)).Body.String()
+	has(t, refused, `<p id="addEntry.message" class="refusal wide" role="alert">`)
+	has(t, refused, `<small id="addEntry.fileKept" class="hint">invoice.png</small>`)
+	var kept string
+	if err := w.Database.Read.QueryRow("SELECT id FROM attachments WHERE project_id = ? AND file_name = 'invoice.png'", w.id).Scan(&kept); err != nil {
+		t.Fatal(err)
+	}
+	has(t, refused, `<input form="addEntry.form" type="hidden" name="attachment" value="`+kept+`">`)
+	carried := w.typedEntry("60", true)
+	carried.Set("attachment", kept)
+	saved := w.browser.Send("POST", "/entry", carried).Body.String()
+	has(t, saved, `id="addEntry.message" class="notice wide"`)
+	lacks(t, saved, `id="addEntry.fileKept"`)
+	if held := w.Count("SELECT count(*) FROM entry_attachments WHERE attachment_id = ?", kept); held != 1 {
+		t.Errorf("entries holding the kept file: %d", held)
+	}
+	has(t, saved, `<a id="entry.file.0" class="file" href="/attachment/`+kept+`" download="invoice.png">invoice.png</a>`)
+	member := w.member("User B", "")
+	w.Ask("POST", w.path+"/users/"+member.String()+"/permissions/RecordEntries", ``, w.token)
+	reader := w.memberBrowser(member)
+	lacks(t, reader.Send("GET", "/tab/addEntry", nil).Body.String(), `id="addEntry.file"`)
+}
+
+func TestWeb_R175_D3_NewContractKeepsTheDocumentsItTakesAsTheAppsDialog(t *testing.T) {
+	w := newWorking(t)
+	w.Ask("PUT", w.path+"/items/"+w.item+"/type", `{"type":"both"}`, w.token)
+	contractor := w.supplier(`{"name":"مقاول أ"}`)
+	w.home()
+	form := w.browser.Send("GET", "/details/contract/new", nil).Body.String()
+	has(t, form, `hx-post="/contract" hx-encoding="multipart/form-data"`)
+	has(t, form, `<input id="contracts.documents" name="file" type="file" multiple>`)
+	refused := w.browser.SendFile("/contract", "terms.docx", []byte("the terms"), map[string]string{"item": w.item, "value": "1000"}).Body.String()
+	has(t, refused, `id="contract.refusal"`)
+	var kept string
+	if err := w.Database.Read.QueryRow("SELECT id FROM attachments WHERE project_id = ? AND file_name = 'terms.docx'", w.id).Scan(&kept); err != nil {
+		t.Fatal(err)
+	}
+	has(t, refused, `<input type="hidden" name="document" value="`+kept+`"> <small id="contracts.added.`+kept+`" class="hint">terms.docx</small>`)
+	saved := w.browser.Send("POST", "/contract", url.Values{"contractor": {contractor}, "item": {w.item}, "value": {"1000"}, "document": {kept}}).Body.String()
+	has(t, saved, `<a id="contract.document.`+kept+`" class="file" href="/attachment/`+kept+`" download="terms.docx">terms.docx</a>`)
+	var contract string
+	if err := w.Database.Read.QueryRow("SELECT id FROM contracts WHERE supplier_id = ?", contractor).Scan(&contract); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("GET", "/details/contract/"+contract+"?asking=edit", nil).Body.String(),
+		`<a id="contracts.document.`+kept+`" class="file" href="/attachment/`+kept+`" download="terms.docx">terms.docx</a>`)
+	if held := w.Count("SELECT count(*) FROM contract_attachments WHERE contract_id = ?", contract); held != 1 {
+		t.Errorf("documents the contract holds: %d", held)
+	}
+}
+
+func TestWeb_R175_D3_AddEntryNamesTheFileAsTheAppsSectionDoesForEachTable(t *testing.T) {
+	w := newWorking(t)
+	contract := w.contract(w.supplier(`{"name":"مقاول أ"}`), `"value":1000,"isOpenValue":false`)
+	partner := w.partner("الشريك A", "")
+	var capital string
+	if err := w.Database.Read.QueryRow("SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 6", w.id).Scan(&capital); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	for table, word := range map[string]string{w.item + ":" + contract: "سند الاستلام أو إيصال التحويل", capital + ":" + partner: "صورة أو PDF للإيصال"} {
+		has(t, w.browser.Send("GET", "/tab/addEntry?table="+url.QueryEscape(table), nil).Body.String(), `<label id="addEntry.file.label" for="addEntry.file">`+word+`</label>`)
 	}
 }

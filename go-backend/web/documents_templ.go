@@ -441,7 +441,7 @@ func documentPanel(p page, shown documentsShown, document documents.View, said s
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if isPicture(document) {
+		if isPicture(document.ContentType) {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<img id=\"document.picture\" class=\"details-picture\" src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

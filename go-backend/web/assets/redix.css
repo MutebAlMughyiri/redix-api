@@ -244,7 +244,7 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .details-foot { margin: 0; padding: 0 14px 14px; font-size: 12px; }
 
 /* An entry's actions in the details panel (redix-api #166). */
-.details-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 14px; } .details-say { margin: 0 14px 12px; } .details-picture { display: block; max-inline-size: calc(100% - 28px); margin: 0 14px 12px; border-radius: 6px; }
+.details-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 14px; } .details-say { margin: 0 14px 12px; } .file-picture { display: block; max-inline-size: 100%; margin-block-start: 6px; border-radius: 6px; } .details-picture { display: block; max-inline-size: calc(100% - 28px); margin: 0 14px 12px; border-radius: 6px; }
 .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; border-radius: 6px; background: var(--refusal-bg); }
 .ask span { flex: 1 1 100%; color: var(--refusal); } .primary.danger { background: var(--refusal); color: var(--on-accent); }
 .filters a { color: var(--accent); text-decoration: none; font-size: 12.5px; } .filters a:hover { text-decoration: underline; }

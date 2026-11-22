@@ -68,7 +68,7 @@ The web's Entries tab is the app's list in the shell: the same search and filter
 | Show more adds a page with the same filters | `web.site.entriesTab` | `TestWeb_R166_ShowMoreAddsAPageWithTheSameFilters` |
 | A row opens its entry in the details panel; an entry the person does not see is not shown (BR-31) | `entries.RowOf` | `TestWeb_R166_ARowOpensItsEntryInTheDetailsPanel`, `TestWeb_R166_AnEntryOfAnotherProjectIsNotShown` |
 | A rejected entry says why | `web.entryPanel` | `TestWeb_R166_ARejectedEntrySaysWhy` |
-| An entry with files names each by its role and name; the files themselves stay off the web (#80 D2, #166 D1) | `entries.Row.Files`, `web.fileWord` | `TestWeb_R166_D1_AnEntryWithAFileSaysItHasOne` |
+| An entry's files are each named by its role and handed over from its panel, a picture shown as it is (#175 D3) | `entries.Row.Files`, `web.keptFile` | `TestWeb_R175_D3_AnEntrysFileIsHandedOverFromItsPanel` |
 | Whoever approves approves a waiting entry from the panel, and its row follows; a second approval says it was decided (FR-19) | `entries.ApproveEach`, `web.site.entryAction` | `TestWeb_R166_FR19_TheManagerApprovesFromThePanelAndTheRowFollows` |
 | A draft is sent; Remove asks first, then the entry leaves the list, an approved one removed softly (UC-033, redix-api #119) | `entries.Submit`, `entries.Remove` | `TestWeb_R166_ADraftIsSentAndTheRemovedOneLeavesTheList` |
 | An action is gated as the app's route is: its permission, and a finished project changes nothing (AC-04.1) | `web.actionNeeds`, `web.page.finished` | `TestWeb_R166_AnActionIsGatedAsTheAppsRouteIs` |

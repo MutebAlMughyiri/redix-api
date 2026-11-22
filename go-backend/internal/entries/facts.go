@@ -298,13 +298,17 @@ type Row struct {
 	// Changeable says whether the caller may change or delete the entry as refusalOfChange decides it (BR-42), for the web's panel to ask
 	// rather than decide again (redix-api #166); the app's answer does not carry it.
 	Changeable bool `json:"-"`
-	// Files are the entry's files, each by its role and its name, for the web's panel to say it has them, files staying off the web (redix-api
-	// #166 D1); the app's answer does not carry them.
+	// Files are the entry's files, each by its role, its name and its attachment, for the web's panel to hand them over (redix-api #175 D3); the
+	// app's answer does not carry them.
 	Files []File `json:"-"`
 }
 
-// File is one of an entry's files as the web's panel names it: its role - invoice, receipt, bankReceipt, other - and its name.
-type File struct{ Role, Name string }
+// File is one of an entry's files as the web's panel shows it: its role - invoice, receipt, bankReceipt, other -, its name, its type and its
+// attachment.
+type File struct {
+	Role, Name, ContentType string
+	AttachmentID            uuid.UUID
+}
 
 func (f facts) row(entry store.Entry, userID uuid.UUID) Row {
 	supplier := f.supplierOf(entry)

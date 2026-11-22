@@ -86,7 +86,7 @@ templ contractsList(p page, shown contractsShown) {
 }
 
 // contractPanel is a contract in the details panel: its item, value, paid and remaining, what waits for approval, its unit price and quantity,
-// its notes and documents - the files stay off the web (#80 D2) -, why its change was refused; for whoever keeps the settings, Edit, and Disable
+// its notes and documents, each handed over (#175 D3), why its change was refused; for whoever keeps the settings, Edit, and Disable
 // or Enable, as the app's card menu offers them; and its report and files, gray until Reports (redix-api #171) opens them.
 templ contractPanel(p page, contract contracts.View, refusal string) {
 	<div class="details-head">
@@ -113,7 +113,9 @@ templ contractPanel(p page, contract contracts.View, refusal string) {
 		if len(contract.Documents) > 0 {
 			<dt id="contract.documents.label">{ p.words.Of("contracts.documents") }</dt>
 			for _, document := range contract.Documents {
-				<dd id={ "contract.document." + document.ID.String() }>{ document.FileName }</dd>
+				<dd id={ "contract.document." + document.ID.String() + ".value" }>
+					@keptFile("contract.document."+document.ID.String(), document.ID.String(), document.FileName, document.ContentType)
+				</dd>
 			}
 		}
 	</dl>
@@ -168,6 +170,7 @@ templ contractForm(p page, editing contracts.View, typed contractTyped, contract
 		} else {
 			hx-post={ "/contract/" + editing.ID.String() + "/edit" }
 		}
+		hx-encoding="multipart/form-data"
 		hx-target="[id='web.details']"
 	>
 		if editing.HasPayments {
@@ -190,7 +193,9 @@ templ contractForm(p page, editing contracts.View, typed contractTyped, contract
 							hx-get={ "/details/contract/" + editing.ID.String() + "?asking=edit" }
 						}
 						hx-include="closest form"
-						hx-target="[id='web.details']"
+						hx-target="[id='contracts.contractor']"
+						hx-select="[id='contracts.contractor']"
+						hx-swap="outerHTML"
 						hx-trigger="input changed delay:400ms"
 					/>
 					<select id="contracts.contractor" name="contractor">
@@ -232,6 +237,21 @@ templ contractForm(p page, editing contracts.View, typed contractTyped, contract
 			<label id="contracts.notes.label" for="contracts.notes">{ p.words.Of("contracts.notes") }</label>
 			<textarea id="contracts.notes" name="notes" rows="3">{ typed.notes }</textarea>
 		</div>
+		if p.may(access.AttachFiles) || len(editing.Documents) > 0 {
+			<div class="field">
+				<label id="contracts.documents.label" for="contracts.documents">{ p.words.Of("contracts.documents") }</label>
+				for _, document := range editing.Documents {
+					@keptFile("contracts.document."+document.ID.String(), document.ID.String(), document.FileName, document.ContentType)
+				}
+				for _, document := range typed.documents {
+					<input type="hidden" name="document" value={ document.ID.String() }/>
+					<small id={ "contracts.added." + document.ID.String() } class="hint">{ document.FileName }</small>
+				}
+				if p.may(access.AttachFiles) {
+					<input id="contracts.documents" name="file" type="file" multiple/>
+				}
+			</div>
+		}
 		if refusal != "" {
 			<p id="contract.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
 		}

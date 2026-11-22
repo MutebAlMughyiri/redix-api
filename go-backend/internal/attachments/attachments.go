@@ -176,6 +176,34 @@ func FormFile(r *http.Request) ([]byte, string, error) {
 	return content, header.Filename, err
 }
 
+// Upload is a file a form sent: what it holds and its name.
+type Upload struct {
+	Content []byte
+	Name    string
+}
+
+// FormFiles is every file a form sent as "file", in order, as a form that sends several does - the web's contract form; an error for a form
+// that is not multipart, or a file that could not be read.
+func FormFiles(r *http.Request) ([]Upload, error) {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		return nil, err
+	}
+	var files []Upload
+	for _, header := range r.MultipartForm.File["file"] {
+		file, err := header.Open()
+		if err != nil {
+			return nil, err
+		}
+		content, err := io.ReadAll(file)
+		_ = file.Close()
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, Upload{Content: content, Name: header.Filename})
+	}
+	return files, nil
+}
+
 // Keep keeps content, sent as fileName, for the project, its file written under folder and its row added with its line; the same file from the same
 // person answers the one already kept, and false (AttachmentsEndpoints.KeepAsync): the one way a file is kept, an entry's and a document's alike.
 // An entry's must be a picture under 1 MB or a PDF - invalidFileType, imageTooLarge - and with anyFile any file of at most 25 MB, fileTooLarge.

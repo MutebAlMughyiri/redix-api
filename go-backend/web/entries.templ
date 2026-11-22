@@ -111,7 +111,9 @@ templ entryPanel(p page, row entries.Row, shown said) {
 		}
 		for at, file := range row.Files {
 			<dt id={ "entry.file." + strconv.Itoa(at) + ".label" }>{ p.words.Of(fileWord(file.Role)) }</dt>
-			<dd id={ "entry.file." + strconv.Itoa(at) } class="file">{ file.Name }</dd>
+			<dd id={ "entry.file." + strconv.Itoa(at) + ".value" }>
+				@keptFile("entry.file."+strconv.Itoa(at), file.AttachmentID.String(), file.Name, file.ContentType)
+			</dd>
 		}
 		<dt id="entry.amount.label">{ p.words.Of("expenses.amount") }</dt>
 		<dd id="entry.amount" class="money">{ statement.Money(row.Amount) }</dd>

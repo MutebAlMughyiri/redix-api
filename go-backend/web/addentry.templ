@@ -8,14 +8,17 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
 )
 
-// addEntry is Add entry as the app's screen asks it (UC-022, redix-api #166), with no file (#80 D2): the table, the description, the date and
+// addEntry is Add entry as the app's screen asks it (UC-022, redix-api #166): the file, for whoever may attach files (#175 D3), the table, the
+// description, the date and
 // the amount; inside or outside a contract's agreement, a purchase's supplier, the item's own columns; the payment method and the account; then
-// Save draft and Send. Changing the table, the method or the supplier search draws it again with what was typed.
+// Save draft and Send. Changing the table, the method or the supplier search draws the form again with what was typed, the file field outside
+// it, joined by form=, so a file chosen stays chosen.
 templ addEntry(p page, form entryForm) {
 	<div class="view-head">
 		<h2 id="addEntry.title">{ p.words.Of(form.title()) }</h2>
@@ -26,13 +29,25 @@ templ addEntry(p page, form entryForm) {
 	if form.table.ID == uuid.Nil {
 		<p id="addEntry.message" class="hint">{ p.words.Of("entries.noTableMatch") }</p>
 	} else {
-		<form id="addEntry.form" class="entry-form" hx-post={ form.action() } hx-target="[id='web.content']" hx-sync="this:drop">
+		if p.may(access.AttachFiles) {
+			<div id="addEntry.fileSection" class="entry-form">
+				<div class="field wide">
+					<label id="addEntry.file.label" for="addEntry.file">{ p.words.Of(form.fileWord()) }</label>
+					<input id="addEntry.file" form="addEntry.form" name="file" type="file" accept="image/jpeg,image/png,application/pdf"/>
+					if form.file.ID != uuid.Nil {
+						<input form="addEntry.form" type="hidden" name="attachment" value={ form.file.ID.String() }/>
+						<small id="addEntry.fileKept" class="hint">{ form.file.FileName }</small>
+					}
+				</div>
+			</div>
+		}
+		<form id="addEntry.form" class="entry-form" hx-post={ form.action() } hx-encoding="multipart/form-data" hx-target="[id='web.content']" hx-sync="this:drop">
 			if form.editing.ID != uuid.Nil {
 				<input type="hidden" name="entry" value={ form.editing.ID.String() }/>
 			}
 			<div class="field wide">
 				<label id="addEntry.table.label" for="addEntry.table">{ p.words.Of("entries.table") }</label>
-				<select id="addEntry.table" name="table" hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']">
+				<select id="addEntry.table" name="table" hx-get={ form.tab() } hx-include="closest form" hx-target="[id='addEntry.form']" hx-select="[id='addEntry.form']" hx-swap="outerHTML">
 					for _, category := range form.tables {
 						<optgroup label={ category.Name }>
 							for _, item := range category.Items {
@@ -69,7 +84,7 @@ templ addEntry(p page, form entryForm) {
 				<div class="field wide">
 					<label id="addEntry.supplier.label" for="addEntry.supplier">{ p.words.Of("expenses.supplier") }</label>
 					<span id="addEntry.supplierChoice" class="pair">
-						<input id="addEntry.supplierSearch" class="search" type="search" name="supplierText" value={ form.typed.Get("supplierText") } placeholder={ p.words.Of("common.search") } aria-label={ p.words.Of("common.search") } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms"/>
+						<input id="addEntry.supplierSearch" class="search" type="search" name="supplierText" value={ form.typed.Get("supplierText") } placeholder={ p.words.Of("common.search") } aria-label={ p.words.Of("common.search") } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='addEntry.form']" hx-select="[id='addEntry.form']" hx-swap="outerHTML" hx-trigger="input changed delay:400ms"/>
 						<select id="addEntry.supplier" name="supplier">
 							<option id="addEntry.supplier.option.none" value=""></option>
 							for _, supplier := range form.suppliers {
@@ -89,7 +104,7 @@ templ addEntry(p page, form entryForm) {
 				<fieldset id="payment.methodChoice" class="picks wide">
 					<legend id="payment.methodChoice.label">{ p.words.Of("expenses.paymentMethod") }</legend>
 					for _, method := range form.methods {
-						<label id={ "payment.method." + method.ID.String() } class="pick"><input type="radio" name="method" value={ method.ID.String() } checked?={ method.ID == form.method } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='web.content']"/>{ method.Name }</label>
+						<label id={ "payment.method." + method.ID.String() } class="pick"><input type="radio" name="method" value={ method.ID.String() } checked?={ method.ID == form.method } hx-get={ form.tab() } hx-include="closest form" hx-target="[id='addEntry.form']" hx-select="[id='addEntry.form']" hx-swap="outerHTML"/>{ method.Name }</label>
 					}
 				</fieldset>
 			}

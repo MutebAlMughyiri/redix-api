@@ -1,0 +1,13 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+// keptFile is a file the project keeps as a panel shows it: its name, handing the file over, and the picture itself when it is one, as the
+// app's viewer shows it (redix-api #175 D3). Every panel that shows a file asks it.
+templ keptFile(id, attachmentID, name, contentType string) {
+	<a id={ id } class="file" href={ templ.SafeURL("/attachment/" + attachmentID) } download={ name }>{ name }</a>
+	if isPicture(contentType) {
+		<img id={ id + ".picture" } class="file-picture" src={ "/attachment/" + attachmentID } alt={ name }/>
+	}
+}

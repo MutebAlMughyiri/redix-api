@@ -15,8 +15,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
@@ -148,11 +150,12 @@ func (s site) contractsTab(r *http.Request, p page) (templ.Component, error) {
 // contract and each card's menu.
 func (p page) mayKeepContracts() bool { return !p.finished() && p.may(access.ManageSettings) }
 
-// contractTyped is a contract as its form types it; an empty contractor or item keeps the contract's own.
+// contractTyped is a contract as its form types it, with the documents it adds; an empty contractor or item keeps the contract's own.
 type contractTyped struct {
 	contractor, item                                  uuid.UUID
 	contractorText, value, unitPrice, quantity, notes string
 	openValue                                         bool
+	documents                                         []store.Attachment
 }
 
 // contractTypedIn is the contract form's fields in form, or editing's own terms when the form was not drawn yet.
@@ -178,6 +181,9 @@ func typedFigure(number fixed.Number) string {
 // terms is what typed asks of the contract, or the refusal word of a figure that is no number, as the app's dialog refuses it before sending.
 func (typed contractTyped) terms() (contracts.Terms, string) {
 	terms := contracts.Terms{IsOpenValue: typed.openValue, Notes: typed.notes}
+	for _, document := range typed.documents {
+		terms.AttachmentIDs = append(terms.AttachmentIDs, document.ID)
+	}
 	figures := []struct {
 		text, refusal string
 		into          *fixed.Number
@@ -271,7 +277,7 @@ func (s site) keepContract(w http.ResponseWriter, r *http.Request) {
 	}
 	action := r.PathValue("action")
 	act, known := contractChanges[action]
-	if !p.inProject() || r.ParseForm() != nil || (action != "" && !known) {
+	if !p.inProject() || parsedForm(r) != nil || (action != "" && !known) {
 		http.NotFound(w, r)
 		return
 	}
@@ -295,8 +301,19 @@ func (s site) keepContract(w http.ResponseWriter, r *http.Request) {
 	}
 	typed, terms, refusal := contractTypedIn(r.PostForm, contract), contracts.Terms{}, ""
 	asked := action == "" || action == "edit"
+	if typed.documents, err = s.carriedDocuments(r, p); err != nil {
+		failed(w)
+		return
+	}
 	if asked {
 		terms, refusal = typed.terms()
+	}
+	if asked && refusal == "" && !p.finished() {
+		if typed.documents, refusal, err = s.keepContractDocuments(r, p, typed.documents); err != nil {
+			failed(w)
+			return
+		}
+		terms, _ = typed.terms()
 	}
 	if p.finished() {
 		refusal = "projects.projectFinished"
@@ -331,4 +348,47 @@ func (s site) keepContract(w http.ResponseWriter, r *http.Request) {
 	}
 	contract, _ = shown.contractOf(contract.ID)
 	draw(w, r, http.StatusOK, contractPanel(p, contract, refusal), contractsBeside(p, shown))
+}
+
+// carriedDocuments are the documents a refused contract form carries, kept already and still to be added, as the app's dialog holds those it
+// added; the error is the database's.
+func (s site) carriedDocuments(r *http.Request, p page) ([]store.Attachment, error) {
+	var carried []store.Attachment
+	for _, id := range r.PostForm["document"] {
+		attachmentID, _ := uuid.Parse(id)
+		document, err := changes.Found(s.Database.Queries().AttachmentOf(r.Context(), store.AttachmentOfParams{ID: attachmentID, ProjectID: p.project.ID}))
+		switch {
+		case err == nil:
+			carried = append(carried, document)
+		case !errors.Is(err, changes.NotFound):
+			return nil, err
+		}
+	}
+	return carried, nil
+}
+
+// keepContractDocuments keeps each file the form sent as a document, for whoever may attach files, through the rule the app's POST
+// /projects/{id}/attachments/document runs (attachments.Keep), in a change of their own before the contract's, as the app keeps each once
+// chosen: the documents the contract is to add - those carried, then those kept - and why a file was refused (fileTooLarge); the error is the
+// database's.
+func (s site) keepContractDocuments(r *http.Request, p page, carried []store.Attachment) ([]store.Attachment, string, error) {
+	files, err := attachments.FormFiles(r)
+	if err != nil || !p.may(access.AttachFiles) {
+		return carried, "", nil
+	}
+	err = changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) error {
+		for _, file := range files {
+			if len(file.Content) == 0 {
+				continue
+			}
+			kept, _, err := attachments.Keep(c, s.AttachmentsFolder, file.Content, file.Name, true)
+			if err != nil {
+				return err
+			}
+			carried = append(carried, kept)
+		}
+		return nil
+	})
+	refusal, err := refusalOf("attachments", err)
+	return carried, refusal, err
 }

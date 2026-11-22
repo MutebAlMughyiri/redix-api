@@ -67,10 +67,8 @@ func (s documentsShown) fileLine(document documents.View) string {
 	return parts(document.FileName, document.UploadedAt.In(s.location).Format(time.DateOnly))
 }
 
-// isPicture says whether a document's file is a picture, which the app shows to zoom into and the panel shows as it is.
-func isPicture(document documents.View) bool {
-	return strings.HasPrefix(document.ContentType, "image/")
-}
+// isPicture says whether a file of contentType is a picture, which the app shows to zoom into and a panel shows as it is.
+func isPicture(contentType string) bool { return strings.HasPrefix(contentType, "image/") }
 
 // documentsOf is Documents with the search text, read through the rule the app's route answers (documents.ListOf). The error is the database's.
 func (s site) documentsOf(ctx context.Context, p page, text string) (documentsShown, error) {

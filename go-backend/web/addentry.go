@@ -16,7 +16,9 @@ import (
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
@@ -47,6 +49,7 @@ type entryForm struct {
 	typed     url.Values
 	said      said
 	refused   string
+	file      store.Attachment
 }
 
 // title is the form's title: Add entry, or the change of the entry it edits - Fix for a rejected one - as the app's screen is titled.
@@ -82,6 +85,20 @@ func (f entryForm) asksContract() bool { return f.table.Kind.Name() == "contract
 // asksSupplier says whether the chosen table is a purchase's, which may name its supplier (redix-api #129).
 func (f entryForm) asksSupplier() bool { return !f.item.IsRevenue && !f.asksContract() }
 
+// fileWord is what the form's file is, as the app's section says it until there is one (EntryTable.fileWordKey): a partner's receipt, a
+// revenue's file, a contractor's receipt, or an expense's invoice.
+func (f entryForm) fileWord() string {
+	switch {
+	case f.table.Kind.Name() == "partner":
+		return "capital.receiptHint"
+	case f.item.IsRevenue:
+		return "revenue.file"
+	case f.asksContract():
+		return "contractorPayments.receipt"
+	}
+	return "attachments.invoicePhoto"
+}
+
 // tableValue is how a table is named in the form: its item's id and its own.
 func tableValue(item entries.OfferedItem, table entries.OfferedTable) string {
 	return item.ID.String() + ":" + table.ID.String()
@@ -102,6 +119,13 @@ func (s site) entryFormOf(ctx context.Context, p page, typed url.Values) (entryF
 	read := s.Database.Queries()
 	c := changes.Change{Ctx: ctx, Q: read, ProjectID: p.project.ID, Actor: p.caller.UserID, Access: p.caller.Access}
 	form := entryForm{typed: typed}
+	if attachmentID, _ := uuid.Parse(typed.Get("attachment")); attachmentID != uuid.Nil {
+		file, err := changes.Found(read.AttachmentOf(ctx, store.AttachmentOfParams{ID: attachmentID, ProjectID: p.project.ID}))
+		if err != nil && !errors.Is(err, changes.NotFound) {
+			return form, err
+		}
+		form.file = file
+	}
 	var err error
 	if form.tables, err = entries.Offered(c, p.caller.Access); err != nil {
 		return form, err
@@ -223,7 +247,8 @@ func (f entryForm) request(entryID uuid.UUID, send bool) entries.Request {
 		values.Values[column.Key] = typed.Get("column." + column.Key)
 	}
 	request := entries.Request{ID: entryID, ItemID: f.item.ID, TableID: f.table.ID, Date: moment.Date{Time: date}, Amount: amount, AccountID: f.account(),
-		Description: typed.Get("description"), ColumnValues: values, Submit: send, IsOutsideContract: f.asksContract() && typed.Get("outside") == "true"}
+		Description: typed.Get("description"), ColumnValues: values, Submit: send, IsOutsideContract: f.asksContract() && typed.Get("outside") == "true",
+		AttachmentID: f.file.ID}
 	if !f.item.IsRevenue {
 		request.PaymentMethodID = f.method
 	}
@@ -324,7 +349,7 @@ func (s site) changeEntry(w http.ResponseWriter, r *http.Request) {
 		failed(w)
 		return
 	}
-	if !found || !p.inProject() || r.ParseForm() != nil {
+	if !found || !p.inProject() || parsedForm(r) != nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -343,7 +368,7 @@ func (s site) recordEntry(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !p.inProject() || r.ParseForm() != nil {
+	if !p.inProject() || parsedForm(r) != nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -365,6 +390,13 @@ func (s site) save(w http.ResponseWriter, r *http.Request, p page, editing entri
 	}
 	if form.said.refusal = form.whatIsWrong(); p.finished() {
 		form.said.refusal = "projects.projectFinished"
+	}
+	if form.said.refusal == "" {
+		form.file, form.said.refusal, err = s.keepEntryFile(r, p, form.file)
+	}
+	if err != nil {
+		failed(w)
+		return
 	}
 	if form.said.refusal != "" {
 		draw(w, r, http.StatusOK, addEntry(p, form))
@@ -413,4 +445,28 @@ func (s site) save(w http.ResponseWriter, r *http.Request, p page, editing entri
 		form.said.notice = "contractorPayments.savedOverrun"
 	}
 	draw(w, r, http.StatusOK, addEntry(p, form), panelBeside(p, row))
+}
+
+// parsedForm reads the form r posted, a file among it or none, as Add entry sends it.
+func parsedForm(r *http.Request) error {
+	if err := r.ParseMultipartForm(32 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+		return err
+	}
+	return nil
+}
+
+// keepEntryFile keeps the file the form sent, for whoever may attach files, through the rule the app's POST /projects/{id}/attachments runs
+// (attachments.Keep), in a change of its own before the entry's, as the app keeps it first: the file the entry is to hold - the one kept, or
+// carried when none was sent - and the word of why it was refused (invalidFileType, imageTooLarge); the error is the database's.
+func (s site) keepEntryFile(r *http.Request, p page, carried store.Attachment) (store.Attachment, string, error) {
+	content, fileName, err := attachments.FormFile(r)
+	if err != nil || len(content) == 0 || !p.may(access.AttachFiles) {
+		return carried, "", nil
+	}
+	err = changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) (err error) {
+		carried, _, err = attachments.Keep(c, s.AttachmentsFolder, content, fileName, false)
+		return err
+	})
+	refusal, err := refusalOf("attachments", err)
+	return carried, refusal, err
 }

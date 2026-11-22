@@ -70,7 +70,7 @@ templ documentPanel(p page, shown documentsShown, document documents.View, said 
 		<p id="document.group" class="hint">{ p.words.Of("documents.group") + ": " + document.Group }</p>
 	}
 	<p id="document.file" class="hint">{ shown.fileLine(document) }</p>
-	if isPicture(document) {
+	if isPicture(document.ContentType) {
 		<img id="document.picture" class="details-picture" src={ "/attachment/" + document.AttachmentID.String() } alt={ document.Name }/>
 	}
 	if said.notice != "" {
