@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/config"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/incidents"
@@ -56,6 +57,10 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 		logger.Info("the database's schema is up to date", "path", settings.DatabasePath)
 		return nil
 	}
+	requestSize, err := config.RequestSize(ctx, database)
+	if err != nil {
+		return err
+	}
 	now := clock.System{}
 	if err := auth.SeedAdmin(ctx, database, settings.AdminUsername, settings.AdminPassword, moment.Of(now.Now())); err != nil {
 		return err
@@ -73,31 +78,27 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	recorded := func(door http.Handler) http.Handler {
 		return problem.Traced(incidents.Recorded(door, failures, logger, now))
 	}
-	return serve(ctx, logger, settings, recorded(doors.API), recorded(doors.Pages))
+	return serve(ctx, logger, settings, requestSize, recorded(doors.API), recorded(doors.Pages))
 }
-
-// maxBodyBytes is the largest request body the API reads: the largest file a person may send is 25 MB (fileTooLarge), with room for its form
-// (redix-api #145, R17).
-const maxBodyBytes = 30 << 20
 
 // serve answers until ctx ends: the API on the first of Urls and, when Web__Urls names one, the web's pages on its first (redix-api #161 S14).
 // With a domain, as the server's instances run, both answer HTTPS, the API on 8443 and the web on 443 for production, with the certificate Let's
 // Encrypt gives the domain, which autocert keeps in the certificates folder and renews (redix-api #145, D1, R21). Let's Encrypt checks a name over
 // HTTP on port 80, which one process alone can hold: the instance whose Urls name a second, HTTP address, production, proves its own name there
 // and those of Certificates__Proves, and sends every other request to HTTPS; qa and dev name none, and their tokens reach port 80 through the
-// certificates folder the three share (D-R25). Without a domain, as Dev and QA run on a PC, plain HTTP. No request's body passes 30 MB (R17).
-func serve(ctx context.Context, logger *slog.Logger, settings environment.Settings, api, pages http.Handler) error {
+// certificates folder the three share (D-R25). Without a domain, as Dev and QA run on a PC, plain HTTP. No request's body passes requestSize bytes (R17, config.RequestSize).
+func serve(ctx context.Context, logger *slog.Logger, settings environment.Settings, requestSize int64, api, pages http.Handler) error {
 	addresses, err := listenAddresses(settings.Urls)
 	if err != nil {
 		return err
 	}
-	servers := []*http.Server{{Addr: addresses[0], Handler: http.MaxBytesHandler(api, maxBodyBytes), ReadHeaderTimeout: 10 * time.Second}}
+	servers := []*http.Server{{Addr: addresses[0], Handler: http.MaxBytesHandler(api, requestSize), ReadHeaderTimeout: 10 * time.Second}}
 	if settings.WebUrls != "" {
 		web, err := listenAddresses(settings.WebUrls)
 		if err != nil {
 			return err
 		}
-		servers = append(servers, &http.Server{Addr: web[0], Handler: http.MaxBytesHandler(pages, maxBodyBytes), ReadHeaderTimeout: 10 * time.Second})
+		servers = append(servers, &http.Server{Addr: web[0], Handler: http.MaxBytesHandler(pages, requestSize), ReadHeaderTimeout: 10 * time.Second})
 	}
 	logger.Info("the API is listening", "address", servers[0].Addr, "web", settings.WebUrls, "domain", settings.Domain, "environment", settings.Environment,
 		"database", settings.DatabasePath)

@@ -164,6 +164,12 @@ var signedByDotNet = []string{
 	"ReportFilesTests.Owner16Nov_AWorkbooksFileCellOpensItsFileWithNoSignInForSevenDaysAndAChangedLinkOpensNothing",
 }
 
+// configuredSinceDotNet are the tests that read every config value, which since 23 Nov 2026 hold one .NET's did not, the largest request
+// (requestSizeMegabytes, redix-api #145 R17); TestUC070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn proves the values .NET answered.
+var configuredSinceDotNet = []string{
+	"ConfigTests.UC_070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn",
+}
+
 // isGone says whether s asked for a route .NET did not have - one removed, or a method a path does not take - which Go's router answers as
 // ASP.NET Core's did, 404 or 405, with no route of its own.
 func isGone(s step) bool {
@@ -199,7 +205,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			// rows 263, 264).
 			underReview++
 		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name),
-			slices.Contains(askedForMine, name):
+			slices.Contains(askedForMine, name), slices.Contains(configuredSinceDotNet, name):
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {

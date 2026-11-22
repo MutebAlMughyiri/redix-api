@@ -6,7 +6,10 @@
 package config
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -29,4 +32,28 @@ func Map(router *web.Router, database db.DB) {
 		}
 		web.JSON(w, r, http.StatusOK, byKey)
 	})
+}
+
+// requestSize is the key of the largest request the API and the web read, in megabytes.
+const requestSize = "requestSizeMegabytes"
+
+// RequestSize is the largest request body, in bytes, the API and the web read: the value requestSizeMegabytes, 30 to start with, so the
+// largest file a person may send, 25 MB (fileTooLarge), fits with room for its form, and a larger body is refused before any route reads it
+// (redix-api #145 R17; the owner, 23 Nov 2026: kept in this table). The server reads it as it starts, so a change holds from the instance's
+// next start; a value that is no whole number of megabytes above 0, or none, stops it there, naming the key.
+func RequestSize(ctx context.Context, database db.DB) (int64, error) {
+	rows, err := database.Queries().Values(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, row := range rows {
+		if row.Key == requestSize {
+			megabytes, err := strconv.ParseInt(row.Value, 10, 64)
+			if err != nil || megabytes <= 0 {
+				return 0, fmt.Errorf("the config value %s is %q, not a whole number of megabytes", requestSize, row.Value)
+			}
+			return megabytes << 20, nil
+		}
+	}
+	return 0, fmt.Errorf("the config value %s is missing", requestSize)
 }

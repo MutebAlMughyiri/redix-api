@@ -139,7 +139,8 @@ func TestMigrateBringsTheSchemaUpToDateAndStops(t *testing.T) {
 	}
 }
 
-// The server does not start, and says why, on settings it cannot work with, a database it cannot open or seed, or an address it cannot use.
+// The server does not start, and says why, on settings it cannot work with, a database it cannot open or seed, a config value it cannot read
+// (R17), or an address it cannot use.
 func TestTheServerRefusesToStartOnWhatItCannotWorkWith(t *testing.T) {
 	busy, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -160,6 +161,17 @@ func TestTheServerRefusesToStartOnWhatItCannotWorkWith(t *testing.T) {
 			}
 			defer func() { _ = database.Close() }()
 			if err := database.Exec(context.Background(), "CREATE TRIGGER no_users BEFORE INSERT ON users BEGIN SELECT RAISE(ABORT, 'no users'); END"); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"a largest request that is no number of megabytes": func(t *testing.T) {
+			path := settings(t, "http://"+freeAddress(t))
+			database, err := db.Open(context.Background(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = database.Close() }()
+			if err := database.Exec(context.Background(), "UPDATE config_values SET value = 'thirty' WHERE key = 'requestSizeMegabytes'"); err != nil {
 				t.Fatal(err)
 			}
 		},
@@ -311,18 +323,32 @@ func TestR25_ProductionsHttpPortProvesTheNamesOfTheOtherInstances(t *testing.T) 
 	}
 }
 
-// No request's body passes 30 MB: a larger one is refused before any route keeps it, as Caddy refused it (redix-api #145 R17).
-func TestR17_ABodyOver30MBIsRefused(t *testing.T) {
+// No request's body passes the config value requestSizeMegabytes, read as the server starts: a larger one is refused before any route reads
+// it, as Caddy refused it (redix-api #145 R17; the owner, 23 Nov 2026: kept in the config table). Set to 1, a sign-in a byte under 1 MB is read
+// and answered, one a byte over is refused; config's own test proves it starts at 30.
+func TestR17_ABodyOverTheConfiguredSizeIsRefused(t *testing.T) {
 	address := freeAddress(t)
-	settings(t, "http://"+address)
-	started(t, quiet, address)
-
-	response, err := http.Post("http://"+address+"/auth/sign-in", "application/json", bytes.NewReader(make([]byte, maxBodyBytes+1)))
+	path := settings(t, "http://"+address)
+	database, err := db.Open(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = response.Body.Close()
-	if response.StatusCode != http.StatusBadRequest {
-		t.Errorf("a body of 30 MB and a byte answered %d", response.StatusCode)
+	if err := database.Exec(context.Background(), "UPDATE config_values SET value = '1' WHERE key = 'requestSizeMegabytes'"); err != nil {
+		t.Fatal(err)
+	}
+	_ = database.Close()
+	started(t, quiet, address)
+
+	signIn := []byte(`{"username": "nobody", "password": "Wrong-passw0rd"}`)
+	for size, want := range map[int]bool{1<<20 - 1: false, 1<<20 + 1: true} {
+		body := append(append([]byte{}, signIn...), bytes.Repeat([]byte(" "), size-len(signIn))...)
+		response, err := http.Post("http://"+address+"/auth/sign-in", "application/json", bytes.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = response.Body.Close()
+		if refused := response.StatusCode == http.StatusBadRequest; refused != want {
+			t.Errorf("a body of %d bytes answered %d", size, response.StatusCode)
+		}
 	}
 }
