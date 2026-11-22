@@ -10397,7 +10397,7 @@
                 }
               }
             },
-            "description": "Refused: accountMissing, invalidAmount, invalidMobile, invalidName, invalidNotes, invalidQuantity, invalidUnitPrice, invalidValue, invalidVatNumber, newerVersion, notAProjectFile, paysFromNothing, rowsRefused, unknownAccount, unknownItem, unknownTable."
+            "description": "Refused: newerVersion, notAProjectFile, rowsRefused."
           },
           "409": {
             "content": {
@@ -10407,7 +10407,7 @@
                 }
               }
             },
-            "description": "Refused: projectHasEntries, vatNumberTaken."
+            "description": "Refused: projectHasEntries."
           },
           "default": {
             "content": {

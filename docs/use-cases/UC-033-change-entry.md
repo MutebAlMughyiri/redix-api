@@ -47,7 +47,7 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 
 ## On the web: Change and Fix (redix-api #166)
 
-An entry the person may change shows Change in the details panel, Fix for a rejected one (`entries.Row.Changeable`, from `refusalOfChange`). It opens Add entry's form in a tab of its own, filled with the entry as it stands (`entries.Typed`: its table, fields, columns, payment and supplier; a credit note's amount without its minus), drawn again as it changes as Add entry is. Saving goes through `entries.Change`: the checks the app's route makes, then every check a new entry passes. The route makes the same checks in its own body, since the API document's generator reads a route's calls five functions deep and would not reach the refusals of `entryOf` through one more. Its pages are in `go-backend/web` (`addentry.go`, `addentry.templ`).
+An entry the person may change shows Change in the details panel, Fix for a rejected one (`entries.Row.Changeable`, from `refusalOfChange`). It opens Add entry's form in a tab of its own, filled with the entry as it stands (`entries.Typed`: its table, fields, columns, payment and supplier; a credit note's amount without its minus), drawn again as it changes as Add entry is. Saving goes through `entries.Change`: the checks the app's route makes, then every check a new entry passes. The app's route `PUT /projects/{id}/entries/{entryId}` calls `entries.Change` too, the one rule both doors run (findings row 292). Its pages are in `go-backend/web` (`addentry.go`, `addentry.templ`).
 
 | Page | Purpose | Answers |
 | --- | --- | --- |

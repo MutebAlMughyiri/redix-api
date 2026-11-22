@@ -53,7 +53,7 @@ the user variable once to its `typst.exe`, or `go test ./...` fails those tests 
 | --- | --- |
 | `make test` | Every test, the replay of .NET's answers among them (about seven minutes) |
 | `make cover` | The same, failing below the coverage floor (redix-api #141) |
-| `go generate ./internal/apidoc` | Writes the OpenAPI document from the code (`cmd/openapi`), after any change to a route, what it reads, answers or refuses; `make test` fails until it is rewritten. Dev and QA serve it at `/openapi/v1.json`, with Swagger UI at `/swagger` (#142) |
+| `go generate ./internal/apidoc` | Writes the OpenAPI document from the code (`cmd/openapi`), after any change to a route, what it reads, answers or refuses; `make test` fails until it is rewritten. Dev and QA serve it at `/openapi/v1.json`, with Swagger UI at `/swagger` (#142). It reads a route's calls six functions deep; a call handed to another call, and a function marked `//apidoc:gathers` (one that gathers refusals into rows its caller answers together), are not read as the route's own refusals (findings row 292). |
 | `go tool templ generate` | Writes the web's pages from their `.templ` files (templ, a tool in go.mod), after any change to one; the generated `_templ.go` files are committed (#80 D14) |
 | `make sqlc` | Generates the store, with two guards: query files stay ASCII, and no `sqlc.arg` is left unreplaced (G15) |
 | `make build` | The Linux binary, `bin/redix-server` |

@@ -84,18 +84,9 @@ func (s Routes) change(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !web.Read(w, r, &typed) {
 		return
 	}
-	existing, found := s.entry(w, r, caller)
-	if !found {
-		return
-	}
-	if status, code := refusalOfChange(existing, caller); code != "" {
-		problem.Refuse(w, r, status, code)
-		return
-	}
-	typed.ID = existing.ID
 	var answer any
 	if s.writer.Write(w, r, caller, func(c changes.Change) error {
-		changed, err := kept(c, typed, existing)
+		changed, err := Change(c, caller, web.ID(r, "entryId"), typed)
 		answer = changed
 		return err
 	}) {
@@ -103,21 +94,19 @@ func (s Routes) change(w http.ResponseWriter, r *http.Request, caller access.Cal
 	}
 }
 
-// Change changes the entry entryID of c's project to typed as caller, through the checks change makes (UC-033): changes.NotFound for an entry
-// caller does not see, the refusals of refusalOfChange, then every check a new entry passes. The web's Change calls it (redix-api #166); the
-// route makes the same checks in its own body, since the API document's generator reads a route's calls five functions deep and would not
-// reach the refusals of entryOf through one more.
-func Change(c changes.Change, caller access.Caller, entryID uuid.UUID, typed Request) error {
+// Change changes the entry entryID of c's project to typed as caller, and is the entry as kept (UC-033): changes.NotFound for an entry caller
+// does not see, the refusals of refusalOfChange, then every check a new entry passes. The one rule both doors call, the app's route and the
+// web's Change (redix-api #166, findings row 292).
+func Change(c changes.Change, caller access.Caller, entryID uuid.UUID, typed Request) (any, error) {
 	existing, err := seenEntry(c, caller, entryID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if status, code := refusalOfChange(existing, caller); code != "" {
-		return changes.Refuse(status, code)
+		return nil, changes.Refuse(status, code)
 	}
 	typed.ID = existing.ID
-	_, err = kept(c, typed, existing)
-	return err
+	return kept(c, typed, existing)
 }
 
 // refusalOfChange is why caller cannot change entry (EntryChanges.RefusalOf): entryApproved (409), since what is approved never changes (BR-11);

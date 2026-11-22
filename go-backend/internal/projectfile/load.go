@@ -201,6 +201,8 @@ func orRefused(err error, rows []refusal) error {
 
 // registersOf is the project's accounts, suppliers and payment methods by name, once the suppliers and payment methods of the file's lists it
 // lacks are added through their owners (D6). An account is never added: the file carries no type or custodian.
+//
+//apidoc:gathers
 func registersOf(c changes.Change, projectFile file, refused *[]refusal) (registers, error) {
 	known := registers{accounts: map[string]uuid.UUID{}, suppliers: map[string]uuid.UUID{}, paymentMethods: map[string]uuid.UUID{}}
 	supplierRows, err := c.Q.SuppliersOf(c.Ctx, store.SuppliersOfParams{ProjectID: c.ProjectID})
@@ -273,6 +275,8 @@ func labelsOf(projectFile file, key string) []string {
 // placesOf is every table of the file with the item and the table of the project it goes into: a category and an item found by name, or added at
 // the end (D5, D13); a table found by name within its item, or added through its owner - a subgroup, a contract with the contractor its name
 // gives after «دفعات», or a partner (D6). A part its owner refuses is listed, and its rows with it.
+//
+//apidoc:gathers
 func placesOf(c changes.Change, projectFile file, refused *[]refusal) ([]place, error) {
 	var places []place
 	for _, fileCategory := range projectFile.Categories {
@@ -444,6 +448,8 @@ func partnerOf(c changes.Change, name string) (owner, uuid.UUID, string, error) 
 
 // balancesOf is what each account of the file really held, by the project's account of its name (D8); an account the project lacks is listed as
 // accountNotInProject (D6).
+//
+//apidoc:gathers
 func balancesOf(projectFile file, known registers, refused *[]refusal) []accounts.Actual {
 	var balances []accounts.Actual
 	for _, account := range projectFile.Accounts {
@@ -478,6 +484,8 @@ type asked struct {
 // record records every row of every table through Add entry's own checks, telling no decider (D7): a table not offered to the caller is listed
 // once, and each row refused is listed with its table, its place counted from 1 as the sheet's «#» counts it, and its code, in the file's order.
 // The rows are recorded by their date, then in the file's order, so each «رقم القيد» follows the calendar (redix-api #128 D6).
+//
+//apidoc:gathers
 func record(c changes.Change, places []place, projectFile file, known registers, refused *[]refusal) ([]kept, error) {
 	options := map[string][2]string{}
 	for _, list := range projectFile.Lists {

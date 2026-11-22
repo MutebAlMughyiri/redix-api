@@ -270,6 +270,7 @@ func (g *generator) body(body *ast.BlockStmt, p *packages.Package, r *route, bin
 		return found
 	}
 	clauses := clausesIn(body, p.TypesInfo)
+	handedOn := handedOnIn(body, p, g.functions)
 	refuse := func(call *ast.CallExpr, status bound, statusExpression, expression ast.Expr) {
 		if from, statusAt, codeAt := sameCall(body, p, statusExpression, expression); status.value == nil && from != nil {
 			for _, pair := range g.paired(p, from, statusAt, codeAt, 0) {
@@ -331,10 +332,13 @@ func (g *generator) body(body *ast.BlockStmt, p *packages.Package, r *route, bin
 		case "changes.Unknown":
 			refuse(call, bound{value: constant.MakeInt64(400)}, nil, arguments[1])
 		default:
-			if function == nil || function.Pkg() == nil || platform[function.Pkg().Name()] || reading[function.FullName()] || len(reading) > 4 {
+			if handedOn[call] {
+				return false
+			}
+			if function == nil || function.Pkg() == nil || platform[function.Pkg().Name()] || reading[function.FullName()] || len(reading) > 5 {
 				return true
 			}
-			if code, declared := g.functions[function.FullName()]; declared {
+			if code, declared := g.functions[function.FullName()]; declared && !gathers(code.declaration) {
 				calledBindings := map[*types.Var]bound{}
 				place := 0
 				for _, field := range code.declaration.Type.Params.List {
@@ -837,4 +841,37 @@ func (g *generator) object(structure *types.Struct) map[string]any {
 	}
 	sort.Strings(required)
 	return map[string]any{"type": "object", "properties": properties, "required": required}
+}
+
+// handedOnIn is every call of body handed as an argument to a function of our own: what it answers is that function's to judge - codeOf turns
+// an owner's refusal into a row of a project file's rowsRefused -, so the route does not answer its refusals itself and they are not read as
+// the route's (findings row 292).
+func handedOnIn(body *ast.BlockStmt, p *packages.Package, functions map[string]source) map[*ast.CallExpr]bool {
+	handed := map[*ast.CallExpr]bool{}
+	ast.Inspect(body, func(node ast.Node) bool {
+		outer, isCall := node.(*ast.CallExpr)
+		if !isCall {
+			return true
+		}
+		function, _ := typeutil.Callee(p.TypesInfo, outer).(*types.Func)
+		if function == nil {
+			return true
+		}
+		if _, ours := functions[function.FullName()]; !ours {
+			return true
+		}
+		for _, argument := range outer.Args {
+			if inner, isCall := ast.Unparen(argument).(*ast.CallExpr); isCall {
+				handed[inner] = true
+			}
+		}
+		return true
+	})
+	return handed
+}
+
+// gathers says whether declaration is marked //apidoc:gathers: it collects the refusals it meets into rows its caller answers together - a project
+// file's load answers every row's under rowsRefused -, so none of them is read as the route's own answer (findings row 292).
+func gathers(declaration *ast.FuncDecl) bool {
+	return declaration.Doc != nil && slices.ContainsFunc(declaration.Doc.List, func(line *ast.Comment) bool { return line.Text == "//apidoc:gathers" })
 }

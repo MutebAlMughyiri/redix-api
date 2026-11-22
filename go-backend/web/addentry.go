@@ -329,7 +329,8 @@ func (s site) changeEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.save(w, r, p, row, func(c changes.Change, typed entries.Request) error {
-		return entries.Change(c, p.caller, entryID, typed)
+		_, err := entries.Change(c, p.caller, entryID, typed)
+		return err
 	})
 }
 
