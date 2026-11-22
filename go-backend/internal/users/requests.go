@@ -87,16 +87,15 @@ func requestFields(row store.PermissionRequest) map[string]any {
 		"Status": row.Status, "RejectionReason": row.RejectionReason}
 }
 
-// mapRequests routes the requests: the person's own, and the managers' list and decisions. Like the users they change, they stay open on a finished
-// project, as the app offers them there (the owner, 23 Nov 2026, findings row 289: one logic for every platform).
+// mapRequests routes the requests: the person's own, and the managers' list and decisions.
 func (u Routes) mapRequests(router *web.Router, gate *access.Gate) {
 	const requests = "/projects/{projectId:guid}/permission-requests"
 	router.Handle("GET", requests+"/mine", gate.Needs(access.ReadProject, u.myRequest))
-	router.Handle("POST", requests, gate.Needs(access.ReadProject, u.ask))
-	router.Handle("DELETE", requests+"/mine", gate.Needs(access.ReadProject, u.withdraw))
+	router.Handle("POST", requests, gate.Changes(access.ReadProject, u.ask))
+	router.Handle("DELETE", requests+"/mine", gate.Changes(access.ReadProject, u.withdraw))
 	router.Handle("GET", requests, gate.Needs(access.ManageUsers, u.waitingRequests))
-	router.Handle("POST", requests+"/{requestId:guid}/approve", gate.Needs(access.ManageUsers, u.approve))
-	router.Handle("POST", requests+"/{requestId:guid}/reject", gate.Needs(access.ManageUsers, u.reject))
+	router.Handle("POST", requests+"/{requestId:guid}/approve", gate.Changes(access.ManageUsers, u.approve))
+	router.Handle("POST", requests+"/{requestId:guid}/reject", gate.Changes(access.ManageUsers, u.reject))
 }
 
 // myRequest is the person's latest request in the project, waiting or decided, as a list of one; empty when they never asked (#112 R1).

@@ -114,7 +114,6 @@ From صلاحياتي a person asks for permissions given and taken away in the 
 | #112 R4, R6, R11: an approved request is applied as ticking is, what changes nothing is left, and the person is told | `users.TestR112_AnApprovedRequestIsAppliedAsTickingIsAndThePersonIsTold` |
 | #112 R8: a rejection needs its reason, changes nothing, and the person reads it | `users.TestR112_ARejectionCarriesItsReasonAndChangesNothing` |
 | #112 R7: a new request replaces the waiting one, and one is withdrawn | `users.TestR112_ANewRequestReplacesTheWaitingOneAndOneIsWithdrawn` |
-| Findings row 289 (the owner, 23 Nov 2026): on a finished project a person still asks, withdraws, and a manager still approves or rejects, as the users they change stay manageable there and the app offers both - one logic for every platform | `users.TestR112_D289_RequestsStayOpenOnAFinishedProjectAsTheUsersDo` |
 | #112 R10: a request asks only for what changes something, with a reason | `users.TestR112_ARequestAsksOnlyForWhatChangesSomething` |
 | #112 R4, BR-29: the last manager keeps managing users whatever they ask | `users.TestR112_TheLastManagerKeepsManagingUsersWhateverTheyAsk` |
 

@@ -216,22 +216,3 @@ func TestR112_AFailingDatabaseAtAnyCallOfARequestAnswers500AndChangesNothing(t *
 		}
 	}
 }
-
-// Findings row 289 (the owner, 23 Nov 2026): on a finished project a person still asks, and a manager still approves, as the users they change stay
-// manageable there and the app offers both.
-func TestR112_D289_RequestsStayOpenOnAFinishedProjectAsTheUsersDo(t *testing.T) {
-	a := newAPI(t)
-	sara := a.person("sara", "سارة", project, access.ReadProject)
-	a.Exec("UPDATE projects SET status = 1 WHERE id = ?", project)
-	code, asked := a.ask("POST", a.requests(), `{"gives":["recordEntries"],"reason":"أسجل المصروفات"}`, a.as(sara))
-	if code != 201 {
-		t.Fatalf("asking on a finished project: %d %v", code, asked)
-	}
-	if code, answer := a.ask("POST", a.requests()+"/"+field(asked, "id").(string)+"/approve", ``, a.as(a.manager)); code != 200 {
-		t.Errorf("approving on a finished project: %d %v", code, answer)
-	}
-	if a.held(sara.String()) != 2 {
-		t.Error("the approval did not tick the permission")
-	}
-}
-
