@@ -3964,3 +3964,85 @@ func TestWeb_R175_MoreInfoChangesAreForWhoeverManagesTheProject(t *testing.T) {
 		}
 	}
 }
+
+func TestWeb_R175_UC036_NotificationsListWhatThePersonWasToldAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	w.Ask("POST", w.path+"/permission-requests", `{"gives":["ManageUsers"],"reason":"أتابع المستخدمين"}`, w.Token(builder, false))
+	var notice, approved string
+	for kind, into := range map[int]*string{5: &notice, 3: &approved} {
+		if err := w.Database.Read.QueryRow("SELECT id FROM notifications WHERE user_id = ? AND kind = ?", w.manager, kind).Scan(into); err != nil {
+			t.Fatal(kind, err)
+		}
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<span id="web.notifications.count" class="chip" hidden hx-get="/notifications/count" hx-trigger="load" hx-target="this" hx-swap="outerHTML"></span>`)
+	has(t, w.browser.Send("GET", "/notifications/count", nil).Body.String(), `<span id="web.notifications.count" class="chip" aria-label="الإشعارات">2</span>`)
+	list := w.browser.Send("GET", "/tab/notifications", nil).Body.String()
+	has(t, list, `<h2 id="notifications.title">الإشعارات</h2>`)
+	has(t, list, `<tr id="notifications.row.`+notice+`" class="unread"`)
+	has(t, list, `<span id="notifications.row.`+notice+`.title">طلب تغيير صلاحيات بانتظار موافقتك</span>`)
+	has(t, list, `<small id="notifications.row.`+notice+`.subtitle" class="hint">مشروع A · `)
+	has(t, w.browser.Send("GET", "/tab/notifications?text=nothing-here", nil).Body.String(), `<p id="notifications.empty" class="empty">لا جديد.</p>`)
+	opened := w.browser.Send("GET", "/notification/"+notice+"/open", nil)
+	if opened.Header().Get("HX-Retarget") != "[id='web.shell']" {
+		t.Errorf("a notification opens what it is about in the whole shell: %q", opened.Header().Get("HX-Retarget"))
+	}
+	has(t, opened.Body.String(), `<div id="web.tab.requests" class="tab" role="tab" aria-selected="true">`)
+	has(t, w.browser.Send("GET", "/notifications/count", nil).Body.String(), `<span id="web.notifications.count" class="chip" aria-label="الإشعارات">1</span>`)
+	lacks(t, w.browser.Send("GET", "/tab/notifications", nil).Body.String(), `<tr id="notifications.row.`+notice+`" class="unread"`)
+	has(t, w.browser.Send("GET", "/notification/"+approved+"/open", nil).Body.String(), `<div id="web.tab.home" class="tab" role="tab" aria-selected="true">`)
+	has(t, w.browser.Send("GET", "/notifications/count", nil).Body.String(), `<span id="web.notifications.count" class="chip" hidden aria-label="الإشعارات">0</span>`)
+	if code := w.browser.Send("GET", "/notification/"+uuid.NewString()+"/open", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a notification that is not theirs: %d", code)
+	}
+}
+
+func TestWeb_R175_UC036_AnEntrysNotificationOpensItBesideEntries(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	for _, permission := range []string{"RecordEntries", "ChargeAnyAccount"} {
+		w.Ask("POST", w.path+"/users/"+builder.String()+"/permissions/"+permission, ``, w.token)
+	}
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + w.item + `","tableId":"` + w.table + `","date":"2026-11-10","amount":100,"accountId":"` + w.account +
+		`","paymentMethodId":"` + w.method + `","description":"","columnValues":{},"submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.Token(builder, false)); code != http.StatusCreated {
+		t.Fatalf("recording: %d %v", code, answer)
+	}
+	if code, answer := w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+id+`"]}`, w.token); code != http.StatusOK {
+		t.Fatalf("approve: %d %v", code, answer)
+	}
+	var notice string
+	if err := w.Database.Read.QueryRow("SELECT id FROM notifications WHERE user_id = ?", builder).Scan(&notice); err != nil {
+		t.Fatal(err)
+	}
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {builder.String()}, "password": {password}})
+	opened := browser.Send("GET", "/notification/"+notice+"/open", nil).Body.String()
+	has(t, opened, `<div id="web.tab.entries" class="tab" role="tab" aria-selected="true">`)
+	has(t, opened, `<h3 id="entry.title">`)
+	has(t, opened, `<span id="web.sideProject" class="side-project">مشروع A</span>`)
+}
+
+func TestWeb_R175_NotificationsAnswerAFailingDatabase(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	w.Ask("POST", w.path+"/permission-requests", `{"gives":["ManageUsers"],"reason":"أتابع المستخدمين"}`, w.Token(builder, false))
+	var notice string
+	if err := w.Database.Read.QueryRow("SELECT id FROM notifications WHERE user_id = ?", w.manager).Scan(&notice); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	for _, path := range []string{"/tab/notifications", "/notifications/count", "/notification/" + notice + "/open"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+}

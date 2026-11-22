@@ -1,0 +1,50 @@
+package web
+
+import "strconv"
+
+// noticesList is Notifications as the app's screen lists them (UC-036): a search, then what the person was told, newest first, each in the
+// app's words, bold while unread, its project and its day; a row opens what it is about.
+templ noticesList(p page, shown noticesShown) {
+	<div class="view-head">
+		<h2 id="notifications.title">{ p.words.Of("notifications.title") }</h2>
+	</div>
+	<form id="notifications.filters" class="filters" hx-get="/tab/notifications" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="notifications.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("notifications.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("notifications.title")) } value={ shown.text }/>
+	</form>
+	if len(shown.shown(p)) == 0 {
+		<p id="notifications.empty" class="empty">{ p.words.Of("notifications.empty") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id="notifications.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<tbody>
+					for _, notice := range shown.shown(p) {
+						<tr
+							id={ "notifications.row." + notice.ID.String() }
+							class={ templ.KV("unread", !notice.IsRead) }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/notification/" + notice.ID.String() + "/open" }
+							hx-target="[id='web.content']"
+						>
+							<td id={ "notifications.cell." + notice.ID.String() }>
+								<span id={ "notifications.row." + notice.ID.String() + ".title" }>{ p.words.Of("notifications." + notice.Kind.Name()) }</span>
+								<small id={ "notifications.row." + notice.ID.String() + ".subtitle" } class="hint">{ shown.lineOf(notice) }</small>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// noticesCount is how many notifications the person has not opened, beside the top bar's Notifications, as the app's bell shows it: nothing
+// while none is.
+templ noticesCount(p page, unread int) {
+	<span id="web.notifications.count" class="chip" hidden?={ unread == 0 } aria-label={ p.words.Of("notifications.title") }>{ strconv.Itoa(unread) }</span>
+}
+
+// noticesCountBeside is that count again, carried out of band once one was opened.
+templ noticesCountBeside(p page, unread int) {
+	<span id="web.notifications.count" class="chip" hidden?={ unread == 0 } hx-swap-oob="true">{ strconv.Itoa(unread) }</span>
+}

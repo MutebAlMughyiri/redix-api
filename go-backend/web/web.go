@@ -130,6 +130,8 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("POST /tables/{item}/reorder", s.reorderTables)
 	mux.HandleFunc("GET /details/payment-method/{id}", s.methodDetails)
 	mux.HandleFunc("GET /details/project-info/{asking}", s.projectInfoDetails)
+	mux.HandleFunc("GET /notifications/count", s.notificationsButton)
+	mux.HandleFunc("GET /notification/{id}/open", s.openNotification)
 	mux.HandleFunc("POST /project-info/{asking}", s.keepProjectInfo)
 	mux.HandleFunc("POST /payment-method/{id}/{action}", s.keepMethod)
 	mux.HandleFunc("GET /details/permission-request", s.askDialog)

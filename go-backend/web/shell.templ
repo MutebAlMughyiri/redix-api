@@ -55,7 +55,9 @@ templ shell(p page) {
 				@p.content
 			</div>
 			if p.in {
-				@detailsPanel(false)
+				@detailsPanel(false) {
+					@p.details
+				}
 			}
 		</main>
 		@statusBar(p)
@@ -79,6 +81,10 @@ templ topBar(p page) {
 		if p.person != "" {
 			<div class="end">
 				<span id="web.person" class="who">{ p.person }</span>
+				<button id="web.notifications" class="quiet-button" type="button" hx-get="/tab/notifications" hx-target="[id='web.content']">
+					{ p.words.Of("notifications.title") }
+					<span id="web.notifications.count" class="chip" hidden hx-get="/notifications/count" hx-trigger="load" hx-target="this" hx-swap="outerHTML"></span>
+				</button>
 				<button id="web.myHistory" class="quiet-button" type="button" hx-get="/tab/myHistory" hx-target="[id='web.content']">{ p.words.Of("history.myTitle") }</button>
 				<button id="myAccount.signOut" class="signout" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
 			</div>

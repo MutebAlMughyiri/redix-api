@@ -277,3 +277,5 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .segmented { display: inline-flex; border: 1px solid var(--chrome-line); border-radius: 999px; overflow: hidden; margin-block: 4px 8px; } .segmented button { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; padding: 4px 12px; cursor: pointer; } .segmented button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); } .column-form .choices { display: none; } .column-form:has(option[value=list]:checked) .choices { display: grid; } .apply-question { display: grid; gap: 6px; }
 /* More info (redix-api #175): a fact and the action beside it on one line; a unit a row of its own. */
 .info-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; } .info-row.unit { padding-block: 4px; border-bottom: 1px solid var(--chrome-line); }
+/* Notifications (redix-api #175): the top bar's count, gone while nothing is unread - a chip's own display would keep it - and an unread row bold. */
+.chip[hidden] { display: none; } .grid tr.unread td > span { font-weight: 700; }

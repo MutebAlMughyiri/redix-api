@@ -1810,7 +1810,7 @@
         ],
         "type": "object"
       },
-      "notifications.notificationView": {
+      "notifications.View": {
         "properties": {
           "at": {
             "format": "date-time",
@@ -4261,7 +4261,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/notifications.notificationView"
+                    "$ref": "#/components/schemas/notifications.View"
                   },
                   "type": "array"
                 }
