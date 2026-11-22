@@ -1,0 +1,133 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import (
+	"strconv"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/documents"
+)
+
+// documentsList is Documents as the app's screen shows them (UC-064): Add document, gray for whoever may not manage the project or in a finished
+// one; a search; then each document - its name, its file's name and the day it was kept - those in no group first, then each group under its
+// heading.
+templ documentsList(p page, shown documentsShown) {
+	<div class="view-head">
+		<h2 id="documents.title">{ p.words.Of("documents.title") }</h2>
+		<span id="documents.actions" class="head-actions">
+			<button id="documents.add" class="primary small" type="button" disabled?={ !p.mayManageProject() } hx-get="/details/document/new" hx-target="[id='web.details']">{ p.words.Of("documents.add") }</button>
+		</span>
+	</div>
+	<form id="documents.filters" class="filters" hx-get="/tab/documents" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+		<input id="documents.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("documents.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("documents.title")) } value={ shown.text }/>
+	</form>
+	if kept := shown.shown(); len(kept) == 0 {
+		<p id="documents.empty" class="empty">{ p.words.Of("documents.none") }</p>
+	} else {
+		<div class="grid-wrap">
+			<table id="documents.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<tbody>
+					for at, document := range kept {
+						if startsGroup(kept, at) {
+							<tr class="group"><th id={ "documents.groupHeading." + document.ID.String() }>{ document.Group }</th></tr>
+						}
+						<tr
+							id={ "documents.document." + document.ID.String() }
+							tabindex="0"
+							aria-selected="false"
+							hx-get={ "/details/document/" + document.ID.String() }
+							hx-target="[id='web.details']"
+						>
+							<td id={ "documents.cell." + document.ID.String() }>
+								<span id={ "documents.name." + document.ID.String() }>{ document.Name }</span>
+								<small id={ "documents.file." + document.ID.String() } class="hint">{ shown.fileLine(document) }</small>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+// documentsBeside is Documents again, carried out of band beside the panel, once a document was added or removed.
+templ documentsBeside(p page, shown documentsShown) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@documentsList(p, shown)
+	</div>
+}
+
+// documentPanel is a document in the details panel: its group, its file's name and day, the picture itself when it is one, as the app's viewer
+// shows it; that it was saved, or why its removal was refused; Download, as the app's button hands the file over, and Remove, asked first as the
+// app's swipe asks it, to whoever manages the project.
+templ documentPanel(p page, shown documentsShown, document documents.View, said said) {
+	<div class="details-head">
+		<h3 id="document.title">{ document.Name }</h3>
+		<button id="document.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	if document.Group != "" {
+		<p id="document.group" class="hint">{ p.words.Of("documents.group") + ": " + document.Group }</p>
+	}
+	<p id="document.file" class="hint">{ shown.fileLine(document) }</p>
+	if isPicture(document) {
+		<img id="document.picture" class="details-picture" src={ "/attachment/" + document.AttachmentID.String() } alt={ document.Name }/>
+	}
+	if said.notice != "" {
+		<p id="document.notice" class="notice details-say" role="status">{ p.words.Of(said.notice) }</p>
+	}
+	if said.refusal != "" {
+		<p id="document.refusal" class="refusal details-say" role="alert">{ p.words.Of(said.refusal) }</p>
+	}
+	if said.asking == "remove" && p.mayManageProject() {
+		<form id="document.removeForm" class="details-form" hx-post={ "/document/" + document.ID.String() + "/remove" } hx-target="[id='web.details']">
+			<p id="document.removeQuestion" class="section-title">{ p.words.Of("swipe.question") }</p>
+			<span id="document.removeActions" class="details-actions">
+				<button id="document.removeConfirm" class="primary small" type="submit">{ p.words.Of("swipe.remove") }</button>
+				<button id="document.removeCancel" class="quiet-button" type="button" hx-get={ "/details/document/" + document.ID.String() } hx-target="[id='web.details']">{ p.words.Of("common.cancel") }</button>
+			</span>
+		</form>
+	} else {
+		<div id="document.actions" class="details-actions">
+			<a id="document.download" class="quiet-button" href={ templ.SafeURL("/attachment/" + document.AttachmentID.String()) } download={ document.FileName }>{ p.words.Of("documents.download") }</a>
+			if p.mayManageProject() {
+				<button id="document.remove" class="quiet-button" type="button" hx-get={ "/details/document/" + document.ID.String() + "?asking=remove" } hx-target="[id='web.details']">{ p.words.Of("swipe.remove") }</button>
+			}
+		</div>
+	}
+}
+
+// documentForm is Add document in the details panel, as the app's dialog asks it: the name, the group with the groups already kept to choose
+// from, and the file; why it could not be kept.
+templ documentForm(p page, shown documentsShown, name, group, refusal string) {
+	<div class="details-head">
+		<h3 id="documentForm.title">{ p.words.Of("documents.add") }</h3>
+		<button id="documentForm.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="documentForm.form" class="details-form" hx-post="/document/new/add" hx-encoding="multipart/form-data" hx-target="[id='web.details']">
+		<div class="field">
+			<label id="documentForm.name.label" for="documentForm.name">{ p.words.Of("documents.name") }</label>
+			<input id="documentForm.name" name="name" value={ name } autofocus/>
+		</div>
+		<div class="field">
+			<label id="documentForm.group.label" for="documentForm.group">{ p.words.Of("documents.group") }</label>
+			<input id="documentForm.group" name="group" list="documentForm.groups" value={ group } placeholder={ p.words.Of("documents.groupHint") }/>
+			<datalist id="documentForm.groups">
+				for at, kept := range shown.groups() {
+					<option id={ "documentForm.groupOption." + strconv.Itoa(at) } value={ kept }></option>
+				}
+			</datalist>
+		</div>
+		<div class="field">
+			<label id="documentForm.file.label" for="documentForm.file">{ p.words.Of("documents.file") }</label>
+			<input id="documentForm.file" name="file" type="file"/>
+			<small id="documentForm.fileHint" class="hint">{ p.words.Of("documents.fileHint") }</small>
+		</div>
+		if refusal != "" {
+			<p id="documentForm.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="documentForm.actions" class="details-actions">
+			<button id="documentForm.save" class="primary small" type="submit">{ p.words.Of("documents.save") }</button>
+		</span>
+	</form>
+}

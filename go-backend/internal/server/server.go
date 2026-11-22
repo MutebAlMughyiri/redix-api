@@ -114,5 +114,6 @@ func Routes(parts Parts) Doors {
 	archive.Map(router, gate, database, now)
 	sync.Map(router, gate)
 	return Doors{API: router, Pages: site.Routes(site.Parts{Database: database, Sessions: sessions, Codes: codes, EmailCodes: emailCodes, Registrations: registrations, Gate: gate, Book: book,
-		Clock: now, Typst: statement.Typst{Path: parts.TypstPath}, Links: links, ByLink: attachments.ByLink(database, parts.AttachmentsFolder, links)})}
+		Clock: now, Typst: statement.Typst{Path: parts.TypstPath}, Links: links, ByLink: attachments.ByLink(database, parts.AttachmentsFolder, links),
+		AttachmentsFolder: parts.AttachmentsFolder})}
 }

@@ -6,6 +6,7 @@
 package documents
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -45,8 +46,8 @@ func Map(router *web.Router, gate *access.Gate, database db.DB, clock clock.Cloc
 	router.Handle("DELETE", documents+"/{documentId:guid}", gate.Changes(access.ManageProject, s.remove))
 }
 
-// documentView is part of what GET /projects/{projectId}/documents answers (UC-064).
-type documentView struct {
+// View is a document as Documents lists it, part of what GET /projects/{projectId}/documents answers (UC-064).
+type View struct {
 	ID           uuid.UUID     `json:"id"`
 	Name         string        `json:"name"`
 	Group        string        `json:"group"`
@@ -58,17 +59,23 @@ type documentView struct {
 
 // list is the project's documents: those in no group first, then each group in order, newest first within each.
 func (s Routes) list(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	rows, err := s.database.Queries().DocumentsOf(r.Context(), web.ID(r, "projectId"))
+	views, err := ListOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var views []documentView
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// ListOf is projectID's documents: those in no group first, then each group in order, newest first within each (UC-064).
+func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID) ([]View, error) {
+	rows, err := read.DocumentsOf(ctx, projectID)
+	var views []View
 	for _, row := range rows {
-		views = append(views, documentView{ID: row.ID, Name: row.Name, Group: row.GroupName, AttachmentID: row.AttachmentID, FileName: row.FileName, ContentType: row.ContentType,
+		views = append(views, View{ID: row.ID, Name: row.Name, Group: row.GroupName, AttachmentID: row.AttachmentID, FileName: row.FileName, ContentType: row.ContentType,
 			UploadedAt: row.UploadedAt})
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, err
 }
 
 type idView struct {
@@ -87,52 +94,61 @@ func (s Routes) add(w http.ResponseWriter, r *http.Request, caller access.Caller
 	if !ok {
 		return
 	}
-	name, group := strings.TrimSpace(r.FormValue("name")), strings.TrimSpace(r.FormValue("group"))
-	if name == "" || utf8.RuneCountInString(name) > nameMaxLength {
-		problem.Refuse(w, r, http.StatusBadRequest, "invalidName")
-		return
-	}
-	if utf8.RuneCountInString(group) > groupMaxLength {
-		problem.Refuse(w, r, http.StatusBadRequest, "invalidGroup")
-		return
-	}
-	var document store.Document
-	added := s.writer.Write(w, r, caller, func(c changes.Change) error {
-		attachment, _, err := attachments.Keep(c, s.folder, content, fileName, true)
-		if err != nil {
-			return err
-		}
-		kept, err := c.Q.DocumentKept(c.Ctx, store.DocumentKeptParams{ProjectID: c.ProjectID, AttachmentID: attachment.ID})
-		if err != nil || kept {
-			if kept {
-				return changes.Refuse(http.StatusConflict, "documentAlreadyKept")
-			}
-			return err
-		}
-		document = store.Document{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, AttachmentID: attachment.ID, Name: name, GroupName: group,
-			UploadedByUserID: c.Actor, UploadedAt: c.Now}
-		if err := c.Q.AddDocument(c.Ctx, store.AddDocumentParams(document)); err != nil {
-			return err
-		}
-		return c.Record(history.Create, "Documents", document.ID, nil, fields(document))
+	var documentID uuid.UUID
+	added := s.writer.Write(w, r, caller, func(c changes.Change) (err error) {
+		documentID, err = Add(c, s.folder, content, fileName, r.FormValue("name"), r.FormValue("group"))
+		return err
 	})
 	if added {
-		web.JSON(w, r, http.StatusOK, idView{document.ID})
+		web.JSON(w, r, http.StatusOK, idView{documentID})
 	}
+}
+
+// Add keeps content, sent as fileName, as a document of c's project under name and group, each trimmed, its file through the attachment store
+// under folder; the document's id. invalidName for a name empty or past 200 letters, invalidGroup past 100, fileTooLarge past 25 MB (400);
+// documentAlreadyKept (409) for a file already a document (UC-064).
+func Add(c changes.Change, folder string, content []byte, fileName, name, group string) (uuid.UUID, error) {
+	name, group = strings.TrimSpace(name), strings.TrimSpace(group)
+	if name == "" || utf8.RuneCountInString(name) > nameMaxLength {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, "invalidName")
+	}
+	if utf8.RuneCountInString(group) > groupMaxLength {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, "invalidGroup")
+	}
+	attachment, _, err := attachments.Keep(c, folder, content, fileName, true)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	kept, err := c.Q.DocumentKept(c.Ctx, store.DocumentKeptParams{ProjectID: c.ProjectID, AttachmentID: attachment.ID})
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if kept {
+		return uuid.Nil, changes.Refuse(http.StatusConflict, "documentAlreadyKept")
+	}
+	document := store.Document{ID: uuid.Must(uuid.NewV7()), ProjectID: c.ProjectID, AttachmentID: attachment.ID, Name: name, GroupName: group, UploadedByUserID: c.Actor,
+		UploadedAt: c.Now}
+	if err := c.Q.AddDocument(c.Ctx, store.AddDocumentParams(document)); err != nil {
+		return uuid.Nil, err
+	}
+	return document.ID, c.Record(history.Create, "Documents", document.ID, nil, fields(document))
 }
 
 // remove takes a document off the project's list; its file stays in the attachment store, which never deletes (NFR-11). 404 for one outside the
 // project.
 func (s Routes) remove(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	documentID := web.ID(r, "documentId")
-	removed := s.writer.Write(w, r, caller, func(c changes.Change) error {
-		document, err := changes.Found(c.Q.DocumentOf(c.Ctx, store.DocumentOfParams{ID: documentID, ProjectID: c.ProjectID}))
-		if err != nil {
-			return err
-		}
-		return c.Remove("Documents", document.ID, fields(document), func() error { return c.Q.RemoveDocument(c.Ctx, document.ID) })
-	})
-	if removed {
+	if s.writer.Write(w, r, caller, func(c changes.Change) error { return Remove(c, documentID) }) {
 		web.JSON(w, r, http.StatusOK, idView{documentID})
 	}
+}
+
+// Remove takes documentID off c's project's list; its file stays in the attachment store, which never deletes (NFR-11). 404 for one outside the
+// project (UC-064).
+func Remove(c changes.Change, documentID uuid.UUID) error {
+	document, err := changes.Found(c.Q.DocumentOf(c.Ctx, store.DocumentOfParams{ID: documentID, ProjectID: c.ProjectID}))
+	if err != nil {
+		return err
+	}
+	return c.Remove("Documents", document.ID, fields(document), func() error { return c.Q.RemoveDocument(c.Ctx, document.ID) })
 }

@@ -222,6 +222,7 @@ var contents = map[string]tab{
 	"registerProject":   site.registerTab,
 	"changeEntry":       site.changeEntryTab,
 	"settings":          site.settingsTab,
+	"documents":         site.documentsTab,
 	"changePassword":    func(_ site, _ *http.Request, p page) (templ.Component, error) { return changePasswordTab(p), nil },
 }
 

@@ -631,7 +631,7 @@
         ],
         "type": "object"
       },
-      "documents.documentView": {
+      "documents.View": {
         "properties": {
           "attachmentId": {
             "format": "uuid",
@@ -6974,7 +6974,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/documents.documentView"
+                    "$ref": "#/components/schemas/documents.View"
                   },
                   "type": "array"
                 }

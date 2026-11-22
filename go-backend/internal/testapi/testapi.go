@@ -46,10 +46,12 @@ type API struct {
 	Database db.DB
 	Clock    *clock.Fake
 	Emails   *Emails
-	handler  http.Handler
-	pages    http.Handler
-	tokens   credentials.Tokens
-	failure  *dbtest.Failure
+	// AttachmentsFolder keeps the files people send, as the server's does.
+	AttachmentsFolder string
+	handler           http.Handler
+	pages             http.Handler
+	tokens            credentials.Tokens
+	failure           *dbtest.Failure
 }
 
 // New is the API on a fresh database of t's own, its per-address windows too wide for any test to reach.
@@ -64,10 +66,10 @@ func Limited(t *testing.T, perHour int) *API {
 	t.Helper()
 	database, failure := dbtest.Open(t, filepath.Join(t.TempDir(), "redix.db"))
 	fake := clock.NewFake(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC))
-	emails := &Emails{}
+	emails, folder := &Emails{}, filepath.Join(t.TempDir(), "attachments")
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	doors := server.Routes(server.Parts{Database: database, Clock: fake, SigningKey: signingKey, Sender: emails, EmailCodesPerHour: perHour,
-		AttachmentsFolder: filepath.Join(t.TempDir(), "attachments"), TypstPath: typstPath(),
+		AttachmentsFolder: folder, TypstPath: typstPath(),
 		RegistrationsPerHour: perHour, Documented: true, Log: quiet})
 	failures, err := incidents.Open(filepath.Join(t.TempDir(), "incidents.db"))
 	if err != nil {
@@ -77,7 +79,7 @@ func Limited(t *testing.T, perHour int) *API {
 	recorded := func(door http.Handler) http.Handler {
 		return problem.Traced(incidents.Recorded(door, failures, quiet, fake))
 	}
-	return &API{t: t, Database: database, Clock: fake, Emails: emails, handler: recorded(doors.API), pages: recorded(doors.Pages),
+	return &API{t: t, Database: database, Clock: fake, Emails: emails, AttachmentsFolder: folder, handler: recorded(doors.API), pages: recorded(doors.Pages),
 		tokens: credentials.NewTokens(signingKey, fake), failure: failure}
 }
 
@@ -105,6 +107,24 @@ func (b *Browser) SendFailing(n int64, method, path string, form url.Values, hea
 	b.api.t.Helper()
 	request := httptest.NewRequest(method, path, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return b.serve(n, request, headers...)
+}
+
+// SendFile posts path with content as the form's file called name and fields beside it, as a page's form sends a file, carrying the browser's
+// cookies.
+func (b *Browser) SendFile(path, name string, content []byte, fields map[string]string) *httptest.ResponseRecorder {
+	b.api.t.Helper()
+	body, contentType := b.api.Form(name, content, fields)
+	request := httptest.NewRequest("POST", path, strings.NewReader(body))
+	request.Header.Set("Content-Type", contentType)
+	answered, _ := b.serve(0, request)
+	return answered
+}
+
+// serve answers request on the web's pages with the browser's cookies and headers as name and value pairs, the database failing its nth call;
+// it keeps the cookies the answer sets and drops those it clears.
+func (b *Browser) serve(n int64, request *http.Request, headers ...string) (*httptest.ResponseRecorder, bool) {
+	b.api.t.Helper()
 	for name, value := range b.cookies {
 		request.AddCookie(&http.Cookie{Name: name, Value: value})
 	}

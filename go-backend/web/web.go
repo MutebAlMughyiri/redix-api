@@ -52,6 +52,8 @@ type Parts struct {
 	Typst         statement.Typst
 	Links         attachments.Links
 	ByLink        http.HandlerFunc
+	// AttachmentsFolder keeps the files people send, the attachment store the app's routes keep them in (NFR-10).
+	AttachmentsFolder string
 }
 
 // site draws the pages.
@@ -109,6 +111,10 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /report-file/periodic/{number}/{format}", s.periodicFile)
 	mux.HandleFunc("GET /report-file/{kind}/{id}/{format}", s.reportFile)
 	mux.HandleFunc("GET /files/{link}", s.ByLink)
+	mux.HandleFunc("GET /attachment/{id}", s.attachmentFile)
+	mux.HandleFunc("GET /details/document/{id}", s.documentDetails)
+	mux.HandleFunc("POST /document/new/add", s.addDocument)
+	mux.HandleFunc("POST /document/{id}/remove", s.removeDocument)
 	mux.HandleFunc("GET /project-history", s.projectHistoryMore)
 	mux.HandleFunc("GET /my-history", s.myHistoryMore)
 	mux.HandleFunc("GET /details/user/{id}", s.userDetails)

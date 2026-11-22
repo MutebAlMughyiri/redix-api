@@ -247,16 +247,14 @@ func TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse(t *testing.T) {
 	has(t, browser.Send("GET", "/", nil).Body.String(), `class="shell in"`)
 }
 
-func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
+func TestWeb_R14_R15_EverySideMenuItemOpensItsTabOnceBuilt(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"documents"} {
-		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
+	lacks(t, page, `class="parked"`)
+	for _, key := range []string{"home", "entries", "projectInfo", "myPermissions", "documents", "settings"} {
+		has(t, page, `hx-get="/tab/`+key+`"`)
 	}
-	has(t, page, `hx-get="/tab/home"`)
-	has(t, page, `hx-get="/tab/entries"`)
-	has(t, page, `hx-get="/tab/settings"`)
 }
 
 func TestWeb_R16_SignOutEndsThisBrowserAndClearsItsCookies(t *testing.T) {
@@ -4235,6 +4233,139 @@ func TestWeb_R175_SettingsFormsNeedASessionAndAnswerAFailingDatabase(t *testing.
 	for _, ask := range []struct{ method, path string }{{"POST", "/entries-shown"}, {"GET", "/details/my-email"}, {"GET", "/details/user/existing"}} {
 		for n := int64(1); ; n++ {
 			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"count": {"6"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+func TestWeb_R175_UC064_DocumentsAreListedKeptDownloadedAndRemovedAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	picture := append([]byte{0x89, 0x50, 0x4E, 0x47}, []byte("a picture")...)
+	pdf := append([]byte{0x25, 0x50, 0x44, 0x46}, []byte("a contract")...)
+	w.home()
+	empty := w.browser.Send("GET", "/tab/documents", nil).Body.String()
+	has(t, empty, `<p id="documents.empty" class="empty">لا توجد مستندات بعد.</p>`)
+	has(t, empty, `<button id="documents.add" class="primary small" type="button" hx-get="/details/document/new"`)
+	has(t, w.browser.Send("GET", "/details/document/new", nil).Body.String(), `hx-encoding="multipart/form-data"`)
+	has(t, w.browser.Send("POST", "/document/new/add", url.Values{"name": {"عقد"}}).Body.String(), "اختر ملف المستند أولاً.")
+	has(t, w.browser.SendFile("/document/new/add", "plan.png", picture, map[string]string{"name": " "}).Body.String(), "اكتب اسم المستند في 200 حرف على الأكثر.")
+	has(t, w.browser.SendFile("/document/new/add", "plan.png", picture, map[string]string{"name": "مخطط", "group": strings.Repeat("ت", 101)}).Body.String(),
+		"اكتب التصنيف في 100 حرف على الأكثر.")
+	saved := w.browser.SendFile("/document/new/add", "plan.png", picture, map[string]string{"name": " مخطط الدور ", "group": "مخططات"}).Body.String()
+	has(t, saved, `<p id="document.notice" class="notice details-say" role="status">تم حفظ المستند.</p>`)
+	has(t, saved, `<h3 id="document.title">مخطط الدور</h3>`)
+	has(t, saved, `<p id="document.group" class="hint">`)
+	has(t, saved, `<img id="document.picture" class="details-picture" src="/attachment/`)
+	has(t, saved, `id="web.content" hx-swap-oob="innerHTML"`)
+	w.browser.SendFile("/document/new/add", "contract.pdf", pdf, map[string]string{"name": "عقد المقاول"})
+	has(t, w.browser.SendFile("/document/new/add", "again.pdf", pdf, map[string]string{"name": "نسخة"}).Body.String(), "هذا الملف محفوظ كمستند من قبل.")
+	var planID, planFile, contractID string
+	if err := w.Database.Read.QueryRow("SELECT id, attachment_id FROM documents WHERE project_id = ? AND name = 'مخطط الدور'", w.id).Scan(&planID, &planFile); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Database.Read.QueryRow("SELECT id FROM documents WHERE project_id = ? AND name = 'عقد المقاول'", w.id).Scan(&contractID); err != nil {
+		t.Fatal(err)
+	}
+	list := w.browser.Send("GET", "/tab/documents", nil).Body.String()
+	if ungrouped, grouped := strings.Index(list, `id="documents.document.`+contractID+`"`), strings.Index(list, `id="documents.document.`+planID+`"`); ungrouped < 0 || grouped < ungrouped {
+		t.Errorf("a document in no group lists first, then each group: %d, %d", ungrouped, grouped)
+	}
+	has(t, list, `<tr class="group"><th id="documents.groupHeading.`+planID+`">مخططات</th></tr>`)
+	has(t, list, `<small id="documents.file.`+planID+`" class="hint">plan.png · `)
+	searched := w.browser.Send("GET", "/tab/documents?text=PLAN", nil).Body.String()
+	has(t, searched, `id="documents.document.`+planID+`"`)
+	lacks(t, searched, `id="documents.document.`+contractID+`"`)
+	has(t, w.browser.Send("GET", "/details/document/new", nil).Body.String(), `<option id="documentForm.groupOption.0" value="مخططات"></option>`)
+	panel := w.browser.Send("GET", "/details/document/"+contractID, nil).Body.String()
+	has(t, panel, `<a id="document.download" class="quiet-button" href="/attachment/`)
+	has(t, panel, `download="contract.pdf"`)
+	lacks(t, panel, `id="document.picture"`)
+	file := w.browser.Send("GET", "/attachment/"+planFile, nil)
+	if file.Code != http.StatusOK || !bytes.Equal(file.Body.Bytes(), picture) || !strings.Contains(file.Header().Get("Content-Disposition"), "plan.png") {
+		t.Errorf("the document's file: %d %q %q", file.Code, file.Header().Get("Content-Disposition"), file.Body.Bytes())
+	}
+	for _, path := range []string{"/attachment/" + uuid.Must(uuid.NewV7()).String(), "/attachment/not-an-id", "/details/document/" + uuid.Must(uuid.NewV7()).String()} {
+		if code := w.browser.Send("GET", path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("GET %s: %d", path, code)
+		}
+	}
+	reader := w.memberBrowser(w.member("User B", ""))
+	read := reader.Send("GET", "/tab/documents", nil).Body.String()
+	has(t, read, `<button id="documents.add" class="primary small" type="button" disabled hx-get="/details/document/new"`)
+	readPanel := reader.Send("GET", "/details/document/"+contractID, nil).Body.String()
+	has(t, readPanel, `id="document.download"`)
+	lacks(t, readPanel, `id="document.remove"`)
+	if code := reader.Send("GET", "/details/document/new", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Add document without ManageProject: %d", code)
+	}
+	if code := reader.Send("GET", "/attachment/"+planFile, nil).Code; code != http.StatusOK {
+		t.Errorf("a reader's document file: %d", code)
+	}
+	for _, path := range []string{"/document/new/add", "/document/" + contractID + "/remove"} {
+		if code := reader.Send("POST", path, nil).Code; code != http.StatusForbidden {
+			t.Errorf("POST %s without ManageProject: %d", path, code)
+		}
+	}
+	has(t, w.browser.Send("GET", "/details/document/"+contractID+"?asking=remove", nil).Body.String(), `<form id="document.removeForm" class="details-form" hx-post="/document/`+contractID+`/remove"`)
+	if code := w.browser.Send("POST", "/document/"+uuid.Must(uuid.NewV7()).String()+"/remove", nil).Code; code != http.StatusNotFound {
+		t.Errorf("removing a document the project does not hold: %d", code)
+	}
+	removed := w.browser.Send("POST", "/document/"+contractID+"/remove", nil).Body.String()
+	lacks(t, removed, `id="documents.document.`+contractID+`"`)
+	has(t, removed, `id="documents.document.`+planID+`"`)
+	if kept := w.Count("SELECT count(*) FROM documents WHERE project_id = ?", w.id); kept != 1 {
+		t.Errorf("documents kept after the removal: %d", kept)
+	}
+	if code, answer := w.Ask("POST", w.path+"/close", ``, w.token); code >= 300 {
+		t.Fatalf("closing: %d %v", code, answer)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/documents", nil).Body.String(), `<button id="documents.add" class="primary small" type="button" disabled`)
+	has(t, w.browser.SendFile("/document/new/add", "late.pdf", pdf, map[string]string{"name": "متأخر"}).Body.String(), "هذا المشروع مغلق.")
+	has(t, w.browser.Send("POST", "/document/"+planID+"/remove", nil).Body.String(), "هذا المشروع مغلق.")
+}
+
+func TestWeb_R175_UC064_DocumentsNeedASessionAndAnswerAFailingDatabase(t *testing.T) {
+	w := newWorking(t)
+	outside := w.Browser()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/documents"}, {"GET", "/details/document/new"}, {"POST", "/document/new/add"},
+		{"POST", "/document/x/remove"}, {"GET", "/attachment/x"}} {
+		has(t, outside.Send(ask.method, ask.path, nil).Body.String(), `id="signIn.username"`)
+	}
+	w.home()
+	w.browser.SendFile("/document/new/add", "plan.pdf", []byte("%PDF plan"), map[string]string{"name": "مخطط"})
+	var documentID, attachmentID string
+	if err := w.Database.Read.QueryRow("SELECT id, attachment_id FROM documents WHERE project_id = ?", w.id).Scan(&documentID, &attachmentID); err != nil {
+		t.Fatal(err)
+	}
+	person, _ := w.Person("User C")
+	elsewhere := w.Browser()
+	elsewhere.Send("POST", "/sign-in", url.Values{"username": {person.String()}, "password": {password}})
+	for _, ask := range []struct{ method, path string }{{"GET", "/details/document/" + documentID}, {"POST", "/document/new/add"},
+		{"POST", "/document/" + documentID + "/remove"}, {"GET", "/attachment/" + attachmentID}} {
+		if code := elsewhere.Send(ask.method, ask.path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s %s with no project open: %d", ask.method, ask.path, code)
+		}
+	}
+	var storagePath string
+	if err := w.Database.Read.QueryRow("SELECT storage_path FROM attachments WHERE id = ?", attachmentID).Scan(&storagePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(w.AttachmentsFolder, filepath.FromSlash(storagePath))); err != nil {
+		t.Fatal(err)
+	}
+	if code := w.browser.Send("GET", "/attachment/"+attachmentID, nil).Code; code != http.StatusNotFound {
+		t.Errorf("a file not kept on disk: %d", code)
+	}
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/documents"}, {"GET", "/details/document/new"}, {"GET", "/details/document/" + documentID},
+		{"GET", "/attachment/" + attachmentID}, {"POST", "/document/" + documentID + "/remove"}, {"POST", "/document/new/add"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, nil)
 			if !failed {
 				break
 			}

@@ -7,6 +7,7 @@ package attachments
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -78,6 +79,25 @@ func (s Routes) read(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	s.send(w, r, attachment, err)
 }
 
+// FileOf is the attachment attachmentID of projectID with its file, kept under folder: changes.NotFound for one of another project (BR-33), or
+// whose file is not kept.
+func FileOf(ctx context.Context, read *store.Queries, folder string, projectID, attachmentID uuid.UUID) (store.Attachment, []byte, error) {
+	attachment, err := read.AttachmentOf(ctx, store.AttachmentOfParams{ID: attachmentID, ProjectID: projectID})
+	return fileOf(folder, attachment, err)
+}
+
+// fileOf is attachment's file under folder, read once the lookup found it: changes.NotFound for none, or for a file not kept.
+func fileOf(folder string, attachment store.Attachment, err error) (store.Attachment, []byte, error) {
+	if _, err := changes.Found(attachment, err); err != nil {
+		return attachment, nil, err
+	}
+	content, err := os.ReadFile(filepath.Join(folder, filepath.FromSlash(attachment.StoragePath)))
+	if err != nil {
+		return attachment, nil, changes.NotFound
+	}
+	return attachment, content, nil
+}
+
 // ByLink is the handler that opens the file a signed link names, as GET /files/{link} answers it: the one handler both doors serve that path
 // with, the API's and the web's, so a receipt's link in a report's workbook opens from wherever the workbook was taken (the owner, 23 Nov 2026,
 // redix-api #171).
@@ -93,15 +113,10 @@ func (s Routes) readByLink(w http.ResponseWriter, r *http.Request) {
 
 // send sends the attachment's file under its own name; 404 when it was not found, or its file is not kept.
 func (s Routes) send(w http.ResponseWriter, r *http.Request, attachment store.Attachment, err error) {
-	if _, err := changes.Found(attachment, err); changes.Answered(w, r, err) {
-		return
+	attachment, content, err := fileOf(s.folder, attachment, err)
+	if !changes.Answered(w, r, err) {
+		web.SendFile(w, attachment.ContentType, attachment.FileName, content)
 	}
-	content, err := os.ReadFile(filepath.Join(s.folder, filepath.FromSlash(attachment.StoragePath)))
-	if err != nil {
-		problem.Status(w, r, http.StatusNotFound)
-		return
-	}
-	web.SendFile(w, attachment.ContentType, attachment.FileName, content)
 }
 
 // view is an attachment as the app shows it (AttachmentView).
@@ -142,18 +157,23 @@ func (s Routes) upload(anyFile bool) access.Handler {
 
 // Sent is the file a form sent as "file", and its name; false once it has answered 400 for none.
 func Sent(w http.ResponseWriter, r *http.Request) ([]byte, string, bool) {
-	file, header, err := r.FormFile("file")
+	content, name, err := FormFile(r)
 	if err != nil {
 		problem.Status(w, r, http.StatusBadRequest)
 		return nil, "", false
+	}
+	return content, name, true
+}
+
+// FormFile is the file a form sent as "file", and its name; an error for none, or for one that could not be read.
+func FormFile(r *http.Request) ([]byte, string, error) {
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return nil, "", err
 	}
 	defer func() { _ = file.Close() }()
 	content, err := io.ReadAll(file)
-	if err != nil {
-		problem.Status(w, r, http.StatusBadRequest)
-		return nil, "", false
-	}
-	return content, header.Filename, true
+	return content, header.Filename, err
 }
 
 // Keep keeps content, sent as fileName, for the project, its file written under folder and its row added with its line; the same file from the same
