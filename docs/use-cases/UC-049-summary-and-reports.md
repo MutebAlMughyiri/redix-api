@@ -35,6 +35,7 @@ The web lands where the app lands: the default project's home, or the list of th
 | Page | Purpose | Answers |
 | --- | --- | --- |
 | `GET /tab/home` | The home of the project the person works in, or their projects while they choose one | `200` the tab's content |
+| `GET /tab/home?pages=` | The home with as many of the newest entries again for each Show more | `200` the tab's content |
 | `POST /project/{id}` | Chooses the project to work in | `200` the whole shell, its home in front; `404` for a project the person may not open |
 | `POST /project/{id}/default` | Stars the project as the default, or clears the star | `200` the top bar's list, still open, saying so; `404` for a project the person may not open |
 
@@ -48,6 +49,8 @@ The web lands where the app lands: the default project's home, or the list of th
 | A project one may not open is not chosen | `web.site.chooseProject` | `TestWeb_R165_AProjectOneMayNotOpenIsNotChosen` |
 | A star makes a project the default, saying so, and a second clears it, as the app's star (AC-37.1) | `projects.SetDefault`, `projects.RemoveDefault`, `web.site.starProject` | `TestWeb_R165_AC37_1_TheStarMakesAProjectTheDefaultAndAgainClearsIt` |
 | Hide details folds the summary and is kept with the shell's look | `web.view.keepLook` | `TestWeb_R165_HideDetailsIsKeptWithTheLook` |
+| The home lists the newest entries Settings chose, 5 until one is chosen, as the app's; Show more adds as many again while more may follow; Add entry opens Add entry for whoever may enter expenses (redix-api #175) | `web.entriesShownOf`, `entries.Newest`, `web.page.mayEnterExpenses` | `TestWeb_R165_R175_TheHomeListsTheEntriesShownAndShowMoreAddsAsMany` |
+| Settings is the app's: who is signed in, Switch project and the default project from the top bar's list, the language, the appearance and the entries shown kept in a cookie (#175 D1), Change password, My history, the privacy policy and the terms of use the web serves too, Sign out and the version | `web.settingsPage`, `web.site.chooseTheme`, `web.site.chooseEntriesShown`, `legal.Privacy`, `legal.Terms` | `TestWeb_R175_SettingsAsTheAppsScreen` |
 
 ## On the web: the item reports (redix-api #171)
 

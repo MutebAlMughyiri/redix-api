@@ -62,7 +62,7 @@ func entriesList(p page, query url.Values, rows []entries.Row, more bool, take i
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if p.finished() || !p.may(access.RecordEntries) {
+		if !p.mayEnterExpenses() {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " disabled")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

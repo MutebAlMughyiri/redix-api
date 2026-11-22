@@ -15,7 +15,13 @@ const htmxConfig = `{"responseHandling":[{"code":"204","swap":false},{"code":"[2
 // (#161 R7); Esc hides the details panel from anywhere, a menu open aside, and gives the row it showed the focus again (redix-api #166).
 templ document(p page) {
 	<!DOCTYPE html>
-	<html lang={ p.language } dir={ p.direction() }>
+	<html
+		lang={ p.language }
+		dir={ p.direction() }
+		if p.theme != "" {
+			data-theme={ p.theme }
+		}
+	>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -316,15 +322,6 @@ templ changePasswordForm(p page, message string, username string) {
 			<button id="changePassword.submit" class="primary" type="submit">{ p.words.Of("changePassword.submit") }</button>
 		</form>
 	</div>
-}
-
-// settingsTab is Settings: the language, chosen here and never in the top bar (#161 R11).
-templ settingsTab(p page) {
-	<div class="view-head"><h2 id="sharedSettings.title">{ p.words.Of("sharedSettings.title") }</h2></div>
-	<section id="web.setting.language" class="setting">
-		<h3 id="myAccount.language">{ p.words.Of("myAccount.language") }</h3>
-		@languageChoice(p)
-	</section>
 }
 
 // languageChoice is the two languages, the one in use marked; choosing one draws the page again in it (#161 S6).

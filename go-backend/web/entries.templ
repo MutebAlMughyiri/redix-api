@@ -26,7 +26,7 @@ templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take 
 				id="entries.new"
 				class="primary small"
 				type="button"
-				disabled?={ p.finished() || !p.may(access.RecordEntries) }
+				disabled?={ !p.mayEnterExpenses() }
 				title={ p.words.Of("permissions.recordEntries") }
 				hx-get="/tab/addEntry"
 				hx-target="[id='web.content']"

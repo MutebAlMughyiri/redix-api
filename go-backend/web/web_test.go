@@ -631,7 +631,7 @@ func TestWeb_R165_UC049_TheSummaryAndTheNewestEntriesAreTheApps(t *testing.T) {
 	has(t, home, `class="state approved">معتمد</span>`)
 	has(t, home, `class="state pendingApproval">بانتظار الاعتماد</span>`)
 	has(t, home, `class="amount">50.00</td>`)
-	has(t, home, `id="home.addEntry.`+w.id+`" class="primary small" type="button" disabled`)
+	has(t, home, `id="home.addEntry.`+w.id+`" class="primary small" type="button" title="تسجيل المصروفات" hx-get="/tab/addEntry"`)
 }
 
 func TestWeb_R165_AnEmptyProjectSaysSoAndShowsNoWaiting(t *testing.T) {
@@ -4044,5 +4044,62 @@ func TestWeb_R175_NotificationsAnswerAFailingDatabase(t *testing.T) {
 				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
 			}
 		}
+	}
+}
+
+func TestWeb_R175_SettingsAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	settings := w.browser.Send("GET", "/tab/settings", nil).Body.String()
+	has(t, settings, `<h3 id="sharedSettings.who.title">User A</h3>`)
+	has(t, settings, `<button id="sharedSettings.switchProject" class="quiet-button" type="button" popovertarget="web.projects">`)
+	has(t, settings, `id="myAccount.language"`)
+	has(t, settings, `<a id="sharedSettings.theme.system" href="/theme/system" aria-current="true">`)
+	has(t, settings, `<option id="sharedSettings.entriesShownOption.5" value="5" selected>`)
+	has(t, settings, `hx-get="/tab/changePassword"`)
+	has(t, settings, `<a id="legal.privacy" href="/privacy" target="_blank" rel="noopener">`)
+	has(t, settings, `id="sharedSettings.version"`)
+	lacks(t, settings, `id="sharedSettings.registered"`)
+	has(t, w.browser.Send("GET", "/tab/changePassword", nil).Body.String(), `id="changePassword.form"`)
+	if privacy := w.browser.Send("GET", "/privacy", nil); privacy.Code != http.StatusOK || !strings.Contains(privacy.Header().Get("Content-Type"), "text/html") {
+		t.Errorf("the web serves the privacy policy: %d %s", privacy.Code, privacy.Header().Get("Content-Type"))
+	}
+	if code := w.browser.Send("GET", "/theme/blue", nil).Code; code != http.StatusNotFound {
+		t.Errorf("an appearance Settings does not offer: %d", code)
+	}
+	if code := w.browser.Send("GET", "/theme/dark", nil).Code; code != http.StatusSeeOther {
+		t.Errorf("choosing an appearance opens the page again: %d", code)
+	}
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<html lang="ar" dir="rtl" data-theme="dark">`)
+	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `<a id="sharedSettings.theme.dark" href="/theme/dark" aria-current="true">`)
+	w.browser.Send("GET", "/theme/system", nil)
+	lacks(t, w.browser.Send("GET", "/", nil).Body.String(), `data-theme=`)
+	if code := w.browser.Send("POST", "/entries-shown", url.Values{"count": {"99"}}).Code; code != http.StatusNotFound {
+		t.Errorf("a count Settings does not offer: %d", code)
+	}
+	has(t, w.browser.Send("POST", "/entries-shown", url.Values{"count": {"6"}}).Body.String(), `<option id="sharedSettings.entriesShownOption.6" value="6" selected>`)
+}
+
+func TestWeb_R165_R175_TheHomeListsTheEntriesShownAndShowMoreAddsAsMany(t *testing.T) {
+	w := newWorking(t)
+	for range 7 {
+		w.sent(100)
+	}
+	w.home()
+	first := w.browser.Send("GET", "/tab/home", nil).Body.String()
+	if rows := strings.Count(first, `<tr id="entries.row.`); rows != 5 {
+		t.Errorf("the home lists the app's first choice, 5: %d", rows)
+	}
+	has(t, first, `<button id="home.moreEntries.`+w.id+`" class="quiet-button more" type="button" hx-get="/tab/home?pages=2" hx-target="[id='web.content']">`)
+	has(t, first, `<button id="home.addEntry.`+w.id+`" class="primary small" type="button" title="`)
+	lacks(t, first, `id="home.addEntry.`+w.id+`" class="primary small" type="button" disabled`)
+	second := w.browser.Send("GET", "/tab/home?pages=2", nil).Body.String()
+	if rows := strings.Count(second, `<tr id="entries.row.`); rows != 7 {
+		t.Errorf("Show more adds as many again: %d", rows)
+	}
+	lacks(t, second, `id="home.moreEntries.`)
+	w.browser.Send("POST", "/entries-shown", url.Values{"count": {"6"}})
+	if rows := strings.Count(w.browser.Send("GET", "/tab/home", nil).Body.String(), `<tr id="entries.row.`); rows != 6 {
+		t.Errorf("the home lists the count Settings chose: %d", rows)
 	}
 }

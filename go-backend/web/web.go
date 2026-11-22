@@ -16,6 +16,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/legal"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
@@ -131,6 +132,10 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /details/payment-method/{id}", s.methodDetails)
 	mux.HandleFunc("GET /details/project-info/{asking}", s.projectInfoDetails)
 	mux.HandleFunc("GET /notifications/count", s.notificationsButton)
+	mux.HandleFunc("GET /theme/{theme}", s.chooseTheme)
+	mux.HandleFunc("POST /entries-shown", s.chooseEntriesShown)
+	mux.HandleFunc("GET /privacy", legal.Privacy())
+	mux.HandleFunc("GET /terms", legal.Terms())
 	mux.HandleFunc("GET /notification/{id}/open", s.openNotification)
 	mux.HandleFunc("POST /project-info/{asking}", s.keepProjectInfo)
 	mux.HandleFunc("POST /payment-method/{id}/{action}", s.keepMethod)

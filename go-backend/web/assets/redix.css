@@ -10,13 +10,20 @@
   --font: system-ui, -apple-system, "Segoe UI", "Noto Sans Arabic", "Noto Sans", Tahoma, sans-serif;
   color-scheme: light;
 }
+/* Dark follows the system unless Settings chose light, or is chosen there (#175 D1): one set of dark tokens, named twice. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --accent: #80D5D0; --on-accent: #003735; --select: #1F3B39;
     --chrome: #1B2120; --chrome-line: #2C3533; --content: #141918; --text: #DDE4E2; --quiet: #A7B2B0; --faint: #7F8A88;
     --input: #0E1514; --outline: #5C6766; --refusal: #FFB4AB; --refusal-bg: #5C0F0A; --ok: #8FD1AC;
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --accent: #80D5D0; --on-accent: #003735; --select: #1F3B39;
+  --chrome: #1B2120; --chrome-line: #2C3533; --content: #141918; --text: #DDE4E2; --quiet: #A7B2B0; --faint: #7F8A88;
+  --input: #0E1514; --outline: #5C6766; --refusal: #FFB4AB; --refusal-bg: #5C0F0A; --ok: #8FD1AC;
+  color-scheme: dark;
 }
 html, body { height: 100%; margin: 0; overflow: hidden; }
 body { background: var(--content); color: var(--text); font-family: var(--font); font-size: 13px; }
@@ -279,3 +286,5 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .info-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; } .info-row.unit { padding-block: 4px; border-bottom: 1px solid var(--chrome-line); }
 /* Notifications (redix-api #175): the top bar's count, gone while nothing is unread - a chip's own display would keep it - and an unread row bold. */
 .chip[hidden] { display: none; } .grid tr.unread td > span { font-weight: 700; }
+/* Settings (redix-api #175): a section a row of buttons and links that wrap; the segments as a choice of links. */
+.settings { display: grid; gap: 12px; } .setting { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } .setting h3, .setting .hint { flex-basis: 100%; margin: 0; } .segmented a { padding: 4px 12px; color: var(--text); text-decoration: none; font-size: 12.5px; } .segmented a[aria-current=true] { background: var(--accent); color: var(--on-accent); }

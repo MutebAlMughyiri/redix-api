@@ -25,6 +25,12 @@ func Map(router *web.Router) {
 	router.Handle("GET", "/terms", page(terms))
 }
 
+// Privacy answers the privacy policy as GET /privacy does, for the web, which serves the same one copy (redix-api #175).
+func Privacy() http.HandlerFunc { return page(privacy) }
+
+// Terms answers the terms of use as GET /terms does, for the web, which serves the same one copy (redix-api #175).
+func Terms() http.HandlerFunc { return page(terms) }
+
 // page answers one of the two pages as it is kept.
 func page(html []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {

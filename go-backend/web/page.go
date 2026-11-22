@@ -23,9 +23,11 @@ import (
 type page struct {
 	words    words
 	language string
-	host     string
-	view     view
-	assets   assets
+	// theme is the appearance the person chose, light or dark, or "" for the system's (#175 D1).
+	theme  string
+	host   string
+	view   view
+	assets assets
 	// person is the signed-in person's name; "" before anyone signs in.
 	person string
 	// caller is who is signed in, and what they hold; the zero caller before anyone is.
@@ -87,7 +89,7 @@ func (s site) page(r *http.Request) (page, error) {
 	if err != nil {
 		host = r.Host
 	}
-	p := page{words: found, language: language, host: host, view: viewOf(r), assets: s.assets, details: templ.NopComponent}
+	p := page{words: found, language: language, theme: themeOf(r), host: host, view: viewOf(r), assets: s.assets, details: templ.NopComponent}
 	p.content = emptyContent(p)
 	return p, nil
 }
@@ -180,8 +182,8 @@ func (p page) offers(name string) bool {
 }
 
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
-// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar (redix-api #175).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}}
+// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar, and Change password, from Settings (redix-api #175).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}, {"changePassword", "myAccount.changePassword"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
@@ -218,7 +220,8 @@ var contents = map[string]tab{
 	"approvalHistory":   site.approvalHistoryTab,
 	"registerProject":   site.registerTab,
 	"changeEntry":       site.changeEntryTab,
-	"settings":          func(_ site, _ *http.Request, p page) (templ.Component, error) { return settingsTab(p), nil },
+	"settings":          site.settingsTab,
+	"changePassword":    func(_ site, _ *http.Request, p page) (templ.Component, error) { return changePasswordTab(p), nil },
 }
 
 // openTabs are the open tabs' items, in the order they were opened.
