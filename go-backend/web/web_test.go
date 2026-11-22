@@ -724,10 +724,15 @@ func TestWeb_R306_MyAccountInTheStatusBarHoldsMyHistorySharedSettingsAndSignOut(
 	if version < 0 || host < version || account < host {
 		t.Errorf("the version, then the host, then My account: %d, %d, %d", version, host, account)
 	}
-	has(t, page, `<button id="web.account" class="account" type="button" popovertarget="web.accountMenu">User A</button>`)
+	has(t, page, `<button id="web.account" class="account" type="button" popovertarget="web.accountMenu" aria-haspopup="menu"><span id="web.account.name">User A</span>`)
+	has(t, page, `<span id="web.account.arrow" class="caret" aria-hidden="true"></span>`)
+	has(t, page, `<b id="web.accountMenu.name">User A</b>`)
 	has(t, page, `<div id="web.accountMenu" class="menu-pop account-menu" popover>`)
 	has(t, page, `<button id="web.sharedSettings" class="choice" type="button" hx-get="/tab/settings" hx-target="[id='web.content']"`)
-	has(t, page, `<button id="myAccount.signOut" class="choice" type="button" hx-post="/sign-out"`)
+	has(t, page, `<button id="myAccount.signOut" class="choice sign-out" type="button" hx-post="/sign-out"`)
+	if settings, signOut := strings.Index(page, `id="web.sharedSettings"`), strings.Index(page, `id="myAccount.signOut"`); settings > signOut {
+		t.Error("Sign out stands last, apart from the rest")
+	}
 	top := page[strings.Index(page, `id="web.topBar"`):strings.Index(page, `</header>`)]
 	for _, gone := range []string{`id="web.person"`, `id="web.myHistory"`, `id="myAccount.signOut"`} {
 		lacks(t, top, gone)

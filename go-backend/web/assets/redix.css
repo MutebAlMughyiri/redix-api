@@ -133,10 +133,17 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
   border-block-start: 1px solid var(--chrome-line); color: var(--quiet); font-size: 12px; white-space: nowrap; overflow: hidden; }
 .status .version { justify-self: start; } .status .host { justify-self: center; }
 .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-inline-end: 6px; }
-.status .account { justify-self: end; anchor-name: --account; font: inherit; color: inherit; background: transparent; border: 0; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
-.status .account:hover { background: var(--select); color: var(--text); } .status .account:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* My account: the name with an arrow, in a quiet button, so it reads as a menu; the arrow turns while the menu is open (findings row 313). */
+.status .account { justify-self: end; anchor-name: --account; display: inline-flex; align-items: center; gap: 6px; font: inherit; color: var(--text); background: var(--content);
+  border: 1px solid var(--chrome-line); border-radius: 5px; padding: 1px 8px; cursor: pointer; }
+.status .account:hover, .status:has(.account-menu:popover-open) .account { background: var(--select); border-color: var(--accent); }
+.status .account:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.status .caret { width: 6px; height: 6px; border: solid var(--quiet); border-width: 2px 2px 0 0; transform: translateY(2px) rotate(-45deg); transition: transform 120ms; }
+.status:has(.account-menu:popover-open) .caret { transform: translateY(-2px) rotate(135deg); }
 /* My account opens above the person's name; more specific than .menu-pop, which anchors to the project button and stands later in this sheet. */
-.menu-pop.account-menu { position-anchor: --account; position-area: block-start span-inline-start; margin: 0 0 4px; min-width: 200px; }
+.menu-pop.account-menu { position-anchor: --account; position-area: block-start span-inline-start; margin: 0 0 6px; min-width: 220px; }
+.account-who { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px 8px; } .account-who b { font-size: 13px; font-weight: 600; }
+.menu-line { border: 0; border-block-start: 1px solid var(--chrome-line); margin: 6px 0; } .account-menu .sign-out { color: var(--refusal); }
 
 /* Signing in: the frame's other parts arrive with a little motion, once. */
 .shell.arriving .side { animation: fade 260ms both; }
