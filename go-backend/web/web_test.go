@@ -189,6 +189,7 @@ func TestWeb_R9_R18_TheViewMenuHidesTheBarsAndTheServerDrawsThemHidden(t *testin
 	body := browser.Send("GET", "/", nil).Body.String()
 	has(t, body, `<input type="checkbox" id="web.view.topBar" name="top">`)
 	lacks(t, body, `id="web.view.statusBar"`)
+	has(t, body, `<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu" aria-haspopup="menu" aria-label="عرض"><span id="web.view.arrow" class="arrow" aria-hidden="true">»</span></button>`)
 	has(t, body, `<input type="checkbox" id="web.view.sideMenu" name="side" checked>`)
 	has(t, body, `style="--side-w: 300px; --details-w: 320px;"`)
 	browser.Send("POST", "/view", url.Values{"top": {"on"}, "width": {"9000"}})

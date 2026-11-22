@@ -91,7 +91,8 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .tab .close { font: inherit; font-size: 12px; color: var(--faint); background: transparent; border: 0; padding: 0 2px; border-radius: 3px; cursor: pointer; }
 .tab .close:hover { background: var(--select); color: var(--text); }
 .view-button { anchor-name: --view; font: inherit; color: var(--quiet); background: transparent; border: 0; border-inline-start: 1px solid var(--chrome-line); padding: 0 14px; cursor: pointer; white-space: nowrap; }
-.view-button:hover { background: var(--select); color: var(--text); }
+.view-button:hover, .tabs-row:has(.view-menu:popover-open) .view-button { background: var(--select); color: var(--text); }
+.view-button .arrow { transform: rotate(90deg); } .tabs-row:has(.view-menu:popover-open) .view-button .arrow { transform: rotate(-90deg); }
 .view-menu { position-anchor: --view; position-area: block-end span-inline-start; position-try-fallbacks: flip-inline; inset: auto; margin: 4px 0 0; padding: 6px; min-width: 200px;
   background: var(--content); color: var(--text); border: 1px solid var(--chrome-line); border-radius: 6px; box-shadow: 0 8px 24px rgba(0, 0, 0, .14); font-size: 13px; }
 .view-menu label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; }

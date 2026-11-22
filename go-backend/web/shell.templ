@@ -165,13 +165,14 @@ templ itemLinks(p page) {
 	}
 }
 
-// tabsRow is the arrow that brings the side menu back, the open tabs, and the View menu, whose ticks the whole shell's look follows (#161 R9).
+// tabsRow is the arrow that brings the side menu back, the open tabs, and the View menu, whose ticks the whole shell's look follows (#161 R9),
+// opened by the web's arrow, down, its word read only by a screen reader (findings row 317).
 // Its saves queue, the last one sent after the one on its way, so lines dragged quickly over a slow network keep the width they were left at.
 templ tabsRow(p page) {
 	<div class="tabs-row">
 		<label id="web.unfold" class="unfold" for="web.view.sideMenu" data-tip={ p.shortcut("web.showMenu", "Alt+1") }>{ p.unfoldArrow() }</label>
 		@tabs(p, false)
-		<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu">{ p.words.Of("web.view") }</button>
+		<button id="web.view" class="view-button" type="button" popovertarget="web.viewMenu" aria-haspopup="menu" aria-label={ p.words.Of("web.view") }><span id="web.view.arrow" class="arrow" aria-hidden="true">{ arrow }</span></button>
 		<form id="web.viewMenu" class="view-menu" popover hx-post="/view" hx-trigger="change" hx-swap="none" hx-sync="this:queue last">
 			<label id="web.view.topBar.label"><input type="checkbox" id="web.view.topBar" name="top" checked?={ p.view.Top }/>{ p.words.Of("web.topBar") }</label>
 			<label id="web.view.sideMenu.label"><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd id="web.view.sideMenu.shortcut">Alt+1</kbd></label>
