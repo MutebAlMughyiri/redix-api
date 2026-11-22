@@ -4,6 +4,7 @@
 package web_test
 
 import (
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"io"
@@ -2645,7 +2646,6 @@ func TestWeb_R171_UC053_APeriodicReportShowsEachSectionAsIssued(t *testing.T) {
 		`<dt id="periodicReport.line.surplus.pendingExpenses.label" class="line">مصروفات بانتظار الاعتماد (1)</dt>`,
 		`<dt id="periodicReport.line.partners.0.label" class="line">شريك أ · 100.0000000000%</dt>`,
 		`<dd id="periodicReport.line.partners.total" class="money strong">500.00</dd>`,
-		`<button id="periodicReport.file.pdf" class="quiet-button" type="button" disabled>`,
 	} {
 		has(t, report, part)
 	}
@@ -2667,4 +2667,125 @@ func TestWeb_R171_UC053_APeriodicReportShowsEachSectionAsIssued(t *testing.T) {
 	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
 	browser.Send("POST", "/project/"+w.id, nil)
 	has(t, browser.Send("GET", "/tab/periodicReport?number=1", nil).Body.String(), `<p id="periodicReport.notForYou" class="empty">`)
+}
+
+func TestWeb_R171_UC054_EachReportsPdfAsTheAppsRouteHandsIt(t *testing.T) {
+	w := newWorking(t)
+	w.funded(5000)
+	w.approved(300)
+	builder := w.supplier(`{"name":"مقاول أ"}`)
+	contract := w.contract(builder, `"value":1000,"isOpenValue":false`)
+	if code, answer := w.Ask("POST", w.path+"/periodic-reports", ``, w.token); code >= 300 {
+		t.Fatalf("issuing: %d %v", code, answer)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/periodicReport?number=1", nil).Body.String(), `<a id="periodicReport.file.pdf" class="quiet-button" href="/report-file/periodic/1/pdf">`)
+	has(t, w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String(), `href="/report-file/item/`+w.item+`/pdf"`)
+	has(t, w.browser.Send("GET", "/tab/itemReport?contract="+contract, nil).Body.String(), `href="/report-file/contract/`+contract+`/pdf"`)
+	has(t, w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String(), `href="/report-file/contract/`+contract+`/pdf"`)
+	for path, name := range map[string]string{"/report-file/periodic/1/pdf": "report-1.pdf", "/report-file/item/" + w.item + "/pdf": "item.pdf",
+		"/report-file/contract/" + contract + "/pdf": "contract.pdf"} {
+		answered := w.browser.Send("GET", path, nil)
+		if answered.Code != http.StatusOK || answered.Header().Get("Content-Type") != "application/pdf" || !strings.HasPrefix(answered.Body.String(), "%PDF") {
+			t.Errorf("%s: %d %s", path, answered.Code, answered.Header().Get("Content-Type"))
+		}
+		has(t, answered.Header().Get("Content-Disposition"), name)
+	}
+	for _, path := range []string{"/report-file/periodic/9/pdf", "/report-file/item/" + uuid.NewString() + "/pdf", "/report-file/contract/" + uuid.NewString() + "/pdf"} {
+		if code := w.browser.Send("GET", path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	for _, path := range []string{"/report-file/periodic/1/pdf", "/report-file/item/" + w.item + "/pdf"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	w.Ask("POST", w.path+"/users/"+member.String()+"/permissions/SeeReports", ``, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	has(t, browser.Send("GET", "/tab/periodicReport?number=1", nil).Body.String(),
+		`<button id="periodicReport.file.pdf" class="quiet-button" type="button" disabled title="يحتاج صلاحية «يُصدر التقارير».">`)
+	if code := browser.Send("GET", "/report-file/item/"+w.item+"/pdf", nil).Code; code != http.StatusForbidden {
+		t.Errorf("a PDF without GenerateReports: %d", code)
+	}
+	w.Ask("POST", w.path+"/users/"+member.String()+"/permissions/GenerateReports", ``, w.token)
+	w.Ask("POST", w.path+"/users/"+member.String()+"/tables", `{"seen":false,"tableIds":["`+w.table+`"]}`, w.token)
+	if code := browser.Send("GET", "/report-file/periodic/1/pdf", nil).Code; code != http.StatusForbidden {
+		t.Errorf("the periodic PDF without every table: %d", code)
+	}
+	stranger, _ := signedIn(t, w.API, "User C")
+	if code := stranger.Send("GET", "/report-file/periodic/1/pdf", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a PDF with no project chosen: %d", code)
+	}
+}
+
+func TestWeb_R171_UC055_EachReportsWorkbookAndItsReceiptLinkOpenFromTheWeb(t *testing.T) {
+	w := newWorking(t)
+	w.funded(5000)
+	code, uploaded := w.AskWithFile(w.path+"/attachments", "invoice-31.pdf", []byte("%PDF-1.4 invoice"), w.token, nil)
+	if code >= 300 {
+		t.Fatalf("uploading: %d %v", code, uploaded)
+	}
+	id := uuid.Must(uuid.NewV7()).String()
+	body := `{"id":"` + id + `","itemId":"` + w.item + `","tableId":"` + w.table + `","date":"2026-11-10","amount":60,"accountId":"` + w.account +
+		`","paymentMethodId":"` + w.method + `","description":"","columnValues":{},"attachmentId":"` + uploaded["id"].(string) + `","submit":true}`
+	if code, answer := w.Ask("POST", w.path+"/entries", body, w.token); code != http.StatusCreated {
+		t.Fatalf("recording: %d %v", code, answer)
+	}
+	w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+id+`"]}`, w.token)
+	builder := w.supplier(`{"name":"مقاول أ"}`)
+	contract := w.contract(builder, `"value":1000,"isOpenValue":false`)
+	if code, answer := w.Ask("POST", w.path+"/periodic-reports", ``, w.token); code >= 300 {
+		t.Fatalf("issuing: %d %v", code, answer)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String(), `<a id="itemReport.file.excel" class="quiet-button" href="/report-file/item/`+w.item+`/xlsx">`)
+	for path, name := range map[string]string{"/report-file/periodic/1/xlsx": "report-1.xlsx", "/report-file/item/" + w.item + "/xlsx": "item.xlsx",
+		"/report-file/contract/" + contract + "/xlsx": "contract.xlsx"} {
+		answered := w.browser.Send("GET", path, nil)
+		if answered.Code != http.StatusOK || !strings.HasPrefix(answered.Body.String(), "PK") {
+			t.Errorf("%s: %d %s", path, answered.Code, answered.Header().Get("Content-Type"))
+		}
+		has(t, answered.Header().Get("Content-Disposition"), name)
+	}
+	if code := w.browser.Send("GET", "/report-file/item/"+w.item+"/docx", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a format there is none of: %d", code)
+	}
+	workbook := w.browser.Send("GET", "/report-file/item/"+w.item+"/xlsx", nil).Body.Bytes()
+	opened, err := zip.NewReader(bytes.NewReader(workbook), int64(len(workbook)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := ""
+	for _, file := range opened.File {
+		if strings.HasPrefix(file.Name, "xl/worksheets/_rels/") {
+			reader, _ := file.Open()
+			content, _ := io.ReadAll(reader)
+			_ = reader.Close()
+			if at := strings.Index(string(content), "/files/"); at >= 0 {
+				link = string(content[at:])
+				link = link[:strings.IndexByte(link, '"')]
+			}
+		}
+	}
+	if link == "" {
+		t.Fatal("the workbook links no receipt")
+	}
+	receipt := w.Browser().Send("GET", link, nil)
+	if receipt.Code != http.StatusOK || receipt.Body.String() != "%PDF-1.4 invoice" {
+		t.Errorf("the receipt's link opens %d %q", receipt.Code, receipt.Body.String())
+	}
+	if code := w.Browser().Send("GET", "/files/not-a-link", nil).Code; code != http.StatusNotFound {
+		t.Errorf("a link never made: %d", code)
+	}
 }

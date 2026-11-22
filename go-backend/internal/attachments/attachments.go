@@ -78,6 +78,13 @@ func (s Routes) read(w http.ResponseWriter, r *http.Request, _ access.Caller) {
 	s.send(w, r, attachment, err)
 }
 
+// ByLink is the handler that opens the file a signed link names, as GET /files/{link} answers it: the one handler both doors serve that path
+// with, the API's and the web's, so a receipt's link in a report's workbook opens from wherever the workbook was taken (the owner, 23 Nov 2026,
+// redix-api #171).
+func ByLink(database db.DB, folder string, links Links) http.HandlerFunc {
+	return Routes{database: database, folder: folder, links: links}.readByLink
+}
+
 // readByLink is the file a signed link opens, with no sign-in (FileLinks, the owner, 16 Nov 2026); 404 for a link expired, changed or never made.
 func (s Routes) readByLink(w http.ResponseWriter, r *http.Request) {
 	attachment, err := s.database.Queries().AttachmentWithID(r.Context(), s.links.AttachmentOf(r.PathValue("link")))

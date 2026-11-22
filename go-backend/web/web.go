@@ -13,10 +13,12 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/auth"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/limits"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
 
 // Version is the web's version, SemVer, raised by hand with each release as pubspec raises the app's (#161 S12).
@@ -46,6 +48,9 @@ type Parts struct {
 	Gate          *access.Gate
 	Book          *access.Book
 	Clock         clock.Clock
+	Typst         statement.Typst
+	Links         attachments.Links
+	ByLink        http.HandlerFunc
 }
 
 // site draws the pages.
@@ -100,6 +105,9 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("POST /contract", s.keepContract)
 	mux.HandleFunc("POST /contract/{id}/{action}", s.keepContract)
 	mux.HandleFunc("POST /reports/issue", s.issueReport)
+	mux.HandleFunc("GET /report-file/periodic/{number}/{format}", s.periodicFile)
+	mux.HandleFunc("GET /report-file/{kind}/{id}/{format}", s.reportFile)
+	mux.HandleFunc("GET /files/{link}", s.ByLink)
 	mux.HandleFunc("GET /partner-history", s.partnerHistoryMore)
 	mux.HandleFunc("GET /details/partner/new", s.newPartnerForm)
 	mux.HandleFunc("POST /partner", s.keepPartner)

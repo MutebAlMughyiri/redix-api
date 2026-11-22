@@ -6,6 +6,7 @@ package reports
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/accounts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
@@ -292,26 +294,36 @@ func forFilesOf(report Snapshot, caller access.Caller, projectID uuid.UUID) Snap
 // periodicWorkbook is the report as a workbook with live totals (UC-055), its capital showing only the partners the caller may see (redix-api #131
 // D1, BR-31); 404 for a number not issued.
 func (s Routes) periodicWorkbook(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	report, found, err := issuedOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), web.Int(r, "number"))
+	number := web.Int(r, "number")
+	file, found, err := PeriodicWorkbookOf(r, s.database.Queries(), s.links, web.ID(r, "projectId"), number, caller)
 	if err == nil && !found {
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
-	projectID, read := web.ID(r, "projectId"), s.database.Queries()
+	s.sendFile(w, r, file, excelType, PeriodicFileName(number, false), err)
+}
+
+// PeriodicWorkbookOf is projectID's report numbered number as a workbook with live totals (UC-055), its capital showing only the partners caller
+// may see (redix-api #131 D1, BR-31), each receipt linked on the address r came to, as periodicWorkbook answers it: the rule both doors call, the
+// app's route and the web's (redix-api #171). found is false for a number not issued; the error is the database's or the workbook's.
+func PeriodicWorkbookOf(r *http.Request, read *store.Queries, links attachments.Links, projectID uuid.UUID, number int64, caller access.Caller) ([]byte, bool, error) {
+	report, found, err := issuedOf(r.Context(), read, projectID, number)
+	if err != nil || !found {
+		return nil, found, err
+	}
 	seen := forFilesOf(report, caller, projectID)
 	var ids []uuid.UUID
 	for _, item := range seen.Items {
 		ids = append(ids, item.EntryIDs()...)
 	}
-	links, linksErr := s.links.OfEntries(r.Context(), read, ids, r)
-	words, wordsErr := s.waitingWords(r)
+	fileLinks, linksErr := links.OfEntries(r.Context(), read, ids, r)
+	words, wordsErr := waitingWordsOf(r.Context(), read)
 	zone, zoneErr := zones.Of(r.Context(), read, projectID)
-	if err != nil || linksErr != nil || wordsErr != nil || zoneErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if err := errors.Join(linksErr, wordsErr, zoneErr); err != nil {
+		return nil, true, err
 	}
-	file, err := periodicWorkbookOf(seen, links, words, zone)
-	s.sendFile(w, r, file, excelType, fmt.Sprintf("report-%d.xlsx", report.Number), err)
+	file, err := periodicWorkbookOf(seen, fileLinks, words, zone)
+	return file, true, err
 }
 
 // issued is the report numbered number as it was issued; not found for a number not issued.

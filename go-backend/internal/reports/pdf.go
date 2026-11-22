@@ -4,11 +4,16 @@
 package reports
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
@@ -98,19 +103,38 @@ func contractsDocumentOf(projectName string, list []contracts.View) statement.Do
 // periodicPdf is the report as a PDF laid out as report 23 (UC-054), its capital showing only the partners the caller may see (redix-api #131 D1,
 // BR-31); 404 for a number not issued.
 func (s Routes) periodicPdf(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	report, found, err := issuedOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), web.Int(r, "number"))
+	number := web.Int(r, "number")
+	file, found, err := PeriodicPdfOf(r.Context(), s.database.Queries(), s.typst, web.ID(r, "projectId"), number, caller)
 	if err == nil && !found {
 		problem.Status(w, r, http.StatusNotFound)
 		return
 	}
-	words, wordsErr := s.waitingWords(r)
-	zone, zoneErr := zones.Of(r.Context(), s.database.Queries(), web.ID(r, "projectId"))
-	if err != nil || wordsErr != nil || zoneErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	s.sendFile(w, r, file, pdfType, PeriodicFileName(number, true), err)
+}
+
+// PeriodicPdfOf is projectID's report numbered number as a PDF laid out as report 23 (UC-054), its capital showing only the partners caller may
+// see (redix-api #131 D1, BR-31), as periodicPdf answers it: the rule both doors call, the app's route and the web's (redix-api #171). found is
+// false for a number not issued; the error is the database's or typst's.
+func PeriodicPdfOf(ctx context.Context, read *store.Queries, typst statement.Typst, projectID uuid.UUID, number int64, caller access.Caller) ([]byte, bool, error) {
+	report, found, err := issuedOf(ctx, read, projectID, number)
+	if err != nil || !found {
+		return nil, found, err
 	}
-	file, err := s.typst.Pdf(periodicDocumentOf(forFilesOf(report, caller, web.ID(r, "projectId")), words, zone))
-	s.sendFile(w, r, file, pdfType, fmt.Sprintf("report-%d.pdf", report.Number), err)
+	words, wordsErr := waitingWordsOf(ctx, read)
+	zone, zoneErr := zones.Of(ctx, read, projectID)
+	if err := errors.Join(wordsErr, zoneErr); err != nil {
+		return nil, true, err
+	}
+	file, err := typst.Pdf(periodicDocumentOf(forFilesOf(report, caller, projectID), words, zone))
+	return file, true, err
+}
+
+// PeriodicFileName is the name the report numbered number's file is handed under, its PDF or its workbook.
+func PeriodicFileName(number int64, isPdf bool) string {
+	if isPdf {
+		return fmt.Sprintf("report-%d.pdf", number)
+	}
+	return fmt.Sprintf("report-%d.xlsx", number)
 }
 
 // contractsPdf is the contracts report as a PDF.
@@ -122,10 +146,9 @@ func (s Routes) contractsPdf(w http.ResponseWriter, r *http.Request, _ access.Ca
 }
 
 // waitingWords are the labels of what waits, from the translations.
-func (s Routes) waitingWords(r *http.Request) (waitingWords, error) {
-	read := s.database.Queries()
-	expenses, err := read.ArabicWord(r.Context(), "reports.pendingExpenses")
-	revenue, revenueErr := read.ArabicWord(r.Context(), "reports.pendingRevenue")
+func waitingWordsOf(ctx context.Context, read *store.Queries) (waitingWords, error) {
+	expenses, err := read.ArabicWord(ctx, "reports.pendingExpenses")
+	revenue, revenueErr := read.ArabicWord(ctx, "reports.pendingRevenue")
 	if err == nil {
 		err = revenueErr
 	}

@@ -120,8 +120,7 @@ templ itemReportPage(p page, shown itemReportShown) {
 			<h2 id="itemReport.title">{ shown.report.ItemName }</h2>
 			<span id="itemReport.category" class="hint">{ shown.report.CategoryName }</span>
 			<span id="itemReport.actions" class="head-actions">
-				<button id="itemReport.file.pdf" class="quiet-button" type="button" disabled>{ p.words.Of("reports.pdf") }</button>
-				<button id="itemReport.file.excel" class="quiet-button" type="button" disabled>{ p.words.Of("reports.excel") }</button>
+				@reportFiles(p, "itemReport.file", shown.fileAddress())
 			</span>
 		</div>
 		<p id="itemReport.totalLine" class="total-line">
@@ -189,8 +188,7 @@ templ periodicReportPage(p page, shown periodicReportShown) {
 			<div class="view-head">
 				<h2 id="periodicReport.title">{ p.words.Of("reports.reportNumber") + " " + strconv.FormatInt(shown.report.Number, 10) + " · " + shown.report.IssuedAt.In(shown.location).Format(time.DateOnly) }</h2>
 				<span id="periodicReport.actions" class="head-actions">
-					<button id="periodicReport.file.pdf" class="quiet-button" type="button" disabled>{ p.words.Of("reports.pdf") }</button>
-					<button id="periodicReport.file.excel" class="quiet-button" type="button" disabled>{ p.words.Of("reports.excel") }</button>
+					@reportFiles(p, "periodicReport.file", "/report-file/periodic/"+strconv.FormatInt(shown.report.Number, 10))
 				</span>
 			</div>
 			<div id="periodicReport.sections" class="report-sections">
@@ -208,3 +206,16 @@ templ periodicReportPage(p page, shown periodicReportShown) {
 			</div>
 	}
 }
+
+// reportFiles are a report's PDF and Excel for whoever may take report files, the browser saving or opening each as it does any file (#171 D1);
+// gray with their reason for anyone else, as the app's file buttons. Each format's file is under the report's address.
+templ reportFiles(p page, idPrefix, address string) {
+	for _, format := range reportFormats {
+		if p.mayTakeReportFiles() {
+			<a id={ idPrefix + "." + format.name } class="quiet-button" href={ templ.SafeURL(address + "/" + format.path) }>{ p.words.Of("reports." + format.name) }</a>
+		} else {
+			<button id={ idPrefix + "." + format.name } class="quiet-button" type="button" disabled title={ p.words.Of("reports.needsGenerateReports") }>{ p.words.Of("reports." + format.name) }</button>
+		}
+	}
+}
+

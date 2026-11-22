@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
@@ -202,18 +203,33 @@ func (s Routes) contractFile(isPdf bool) access.Handler {
 // 2026).
 func (s Routes) sendReport(w http.ResponseWriter, r *http.Request, c changes.Change, report entries.ItemReport, name string, isPdf bool, err error) {
 	if err == nil && isPdf {
-		file, err := s.typst.Pdf(statement.Document{Pages: []statement.Page{statement.PdfPage(sheetOf(report, nil))}})
+		file, err := ReportPdfOf(s.typst, report)
 		s.sendFile(w, r, file, pdfType, name+".pdf", err)
 		return
 	}
-	project, projectErr := c.Q.ProjectWithID(c.Ctx, c.ProjectID)
-	links, linksErr := s.links.OfEntries(c.Ctx, c.Q, report.EntryIDs(), r)
-	if err != nil || projectErr != nil || linksErr != nil {
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	file, err := workbookOf(project.Name, report, links)
+	file, err := ReportWorkbookOf(r, c, s.links, report)
 	s.sendFile(w, r, file, excelType, name+".xlsx", err)
+}
+
+// ReportWorkbookOf is an item's or a contract's report as a workbook of c's project, each receipt linked on the address r came to, as sendReport
+// hands it: the rule both doors call, the app's routes and the web's (redix-api #171). The error is the database's or the workbook's.
+func ReportWorkbookOf(r *http.Request, c changes.Change, links attachments.Links, report entries.ItemReport) ([]byte, error) {
+	project, err := c.Q.ProjectWithID(c.Ctx, c.ProjectID)
+	fileLinks, linksErr := links.OfEntries(c.Ctx, c.Q, report.EntryIDs(), r)
+	if err := errors.Join(err, linksErr); err != nil {
+		return nil, err
+	}
+	return workbookOf(project.Name, report, fileLinks)
+}
+
+// ReportPdfOf is an item's or a contract's report as a PDF, as sendReport hands it: the rule both doors call, the app's routes and the web's
+// (redix-api #171). The error is typst's.
+func ReportPdfOf(typst statement.Typst, report entries.ItemReport) ([]byte, error) {
+	return typst.Pdf(statement.Document{Pages: []statement.Page{statement.PdfPage(sheetOf(report, nil))}})
 }
 
 // contractsWorkbook is the contracts report as a workbook.

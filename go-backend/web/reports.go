@@ -20,6 +20,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/reports"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
@@ -327,3 +328,108 @@ func (s site) periodicReportTab(r *http.Request, p page) (templ.Component, error
 	shown.report, shown.found, shown.location = report, found, zones.Location(zone)
 	return periodicReportPage(p, shown), errors.Join(err, zoneErr)
 }
+
+// mayTakeReportFiles says whether p's caller may take a report's PDF: GenerateReports, a finished project's too, as the app's file buttons and the
+// routes' gate say (redix-api #131).
+func (p page) mayTakeReportFiles() bool { return p.may(access.GenerateReports) }
+
+// periodicFile hands the periodic report the path numbers as a PDF or a workbook, through the rules the app's routes answer
+// (reports.PeriodicPdfOf, reports.PeriodicWorkbookOf). 403 without GenerateReports or every table; 404 for a number not issued.
+func (s site) periodicFile(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.filing(w, r)
+	if !ok {
+		return
+	}
+	if !p.caller.Access.SeesEveryTable(p.project.ID) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+	number, _ := strconv.ParseInt(r.PathValue("number"), 10, 64)
+	isPdf := r.PathValue("format") == "pdf"
+	var file []byte
+	var found bool
+	var err error
+	if isPdf {
+		file, found, err = reports.PeriodicPdfOf(r.Context(), s.Database.Queries(), s.Typst, p.project.ID, number, p.caller)
+	} else {
+		file, found, err = reports.PeriodicWorkbookOf(r, s.Database.Queries(), s.Links, p.project.ID, number, p.caller)
+	}
+	switch {
+	case err != nil:
+		failed(w)
+	case !found:
+		http.NotFound(w, r)
+	default:
+		web.SendFile(w, fileTypes[isPdf], reports.PeriodicFileName(number, isPdf), file)
+	}
+}
+
+// reportFile hands an item's report, or a contract's, as a PDF or a workbook, through the rules the app's routes answer (entries.ItemReportIn,
+// entries.ContractReportOf, reports.ReportPdfOf, reports.ReportWorkbookOf). 403 without GenerateReports; 404 for one the caller may not see.
+func (s site) reportFile(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.filing(w, r)
+	if !ok {
+		return
+	}
+	c := changes.Change{Ctx: r.Context(), Q: s.Database.Queries(), ProjectID: p.project.ID, Access: p.caller.Access}
+	id, _ := uuid.Parse(r.PathValue("id"))
+	var report entries.ItemReport
+	var err error
+	if r.PathValue("kind") == "contract" {
+		report, err = entries.ContractReportOf(c, id)
+	} else {
+		report, err = entries.ItemReportIn(c, id)
+	}
+	isPdf := r.PathValue("format") == "pdf"
+	var file []byte
+	switch {
+	case err == nil && isPdf:
+		file, err = reports.ReportPdfOf(s.Typst, report)
+	case err == nil:
+		file, err = reports.ReportWorkbookOf(r, c, s.Links, report)
+	}
+	if refused := (changes.Refusal{}); errors.As(err, &refused) && refused.Status == http.StatusNotFound {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		failed(w)
+		return
+	}
+	web.SendFile(w, fileTypes[isPdf], r.PathValue("kind")+"."+r.PathValue("format"), file)
+}
+
+// fileTypes are a report file's media types: a PDF's, and a workbook's.
+var fileTypes = map[bool]string{true: "application/pdf", false: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+
+// filing is the page a report file is asked from, for whoever may take report files; false once it has answered 404 outside a project or for a
+// format there is none of, or 403.
+func (s site) filing(w http.ResponseWriter, r *http.Request) (page, bool) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return p, false
+	}
+	if format := r.PathValue("format"); !p.inProject() || (format != "pdf" && format != "xlsx") {
+		http.NotFound(w, r)
+		return p, false
+	}
+	if !p.mayTakeReportFiles() {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return p, false
+	}
+	return p, true
+}
+
+// fileAddress is where the report shown is taken as a file: a contract's for a query naming one, otherwise its item's.
+func (shown itemReportShown) fileAddress() string {
+	if contractID, _ := uuid.Parse(shown.query.Get("contract")); contractID != uuid.Nil {
+		return "/report-file/contract/" + contractID.String()
+	}
+	return "/report-file/item/" + shown.report.ItemID.String()
+}
+
+// reportFormat is a report file's format: its word's name and its path.
+type reportFormat struct{ name, path string }
+
+// reportFormats are a report's files, in the app's order: its PDF, then its Excel.
+var reportFormats = []reportFormat{{"pdf", "pdf"}, {"excel", "xlsx"}}
