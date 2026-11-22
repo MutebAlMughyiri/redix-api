@@ -53,3 +53,42 @@ templ historyMoreButton(p page, shown history, outOfBand bool) {
 		<button id={ shown.name + ".more" } hx-swap-oob="delete"></button>
 	}
 }
+
+// historyKind is a history's choice of the kind of line it keeps, every kind when none is chosen, as the app's history screens offer it.
+templ historyKind(p page, shown history, kinds []string) {
+	<label id={ shown.name + ".kindChoice.label" } class="pick-select">
+		{ p.words.Of("history.kind") }
+		<select id={ shown.name + ".kindChoice" } name="area">
+			<option id={ shown.name + ".all" } value="">{ p.words.Of("history.all") }</option>
+			for _, kind := range kinds {
+				<option id={ shown.name + ".kind." + kind } value={ kind } selected?={ kind == shown.query.Get("area") }>{ p.words.Of("history.area." + kind) }</option>
+			}
+		</select>
+	</label>
+}
+
+// projectHistoryPage is «سجل المشروع» as the app's screen shows it: a search, the kind and the person to narrow by, then each line, newest first.
+templ projectHistoryPage(p page, shown history) {
+	<div class="view-head">
+		<h2 id="projectHistory.title">{ p.words.Of("history.projectTitle") }</h2>
+	</div>
+	<form id="projectHistory.filters" class="filters" hx-get="/tab/projectHistory" hx-target="[id='web.content']" hx-trigger="change, input changed delay:400ms from:[name='text'], submit">
+		<input id="projectHistory.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("history.projectTitle")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("history.projectTitle")) } value={ shown.query.Get("text") }/>
+		@historyKind(p, shown, projectAreas)
+		@historyPerson(p, shown)
+	</form>
+	@historyList(p, shown)
+}
+
+// myHistoryPage is «سجلي» as the app's screen shows it: a search and the kind to narrow by, then each line of the person's own login.
+templ myHistoryPage(p page, shown history) {
+	<div class="view-head">
+		<h2 id="myHistory.title">{ p.words.Of("history.myTitle") }</h2>
+		<span id="myHistory.person" class="hint">{ p.person }</span>
+	</div>
+	<form id="myHistory.filters" class="filters" hx-get="/tab/myHistory" hx-target="[id='web.content']" hx-trigger="change, input changed delay:400ms from:[name='text'], submit">
+		<input id="myHistory.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("history.myTitle")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("history.myTitle")) } value={ shown.query.Get("text") }/>
+		@historyKind(p, shown, loginAreas)
+	</form>
+	@historyList(p, shown)
+}

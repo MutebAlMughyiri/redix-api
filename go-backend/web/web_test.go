@@ -162,8 +162,8 @@ func TestWeb_R5_ATabAnswersItsContentAloneTheFrameStays(t *testing.T) {
 	closed := browser.Send("DELETE", "/tab/home", nil).Body.String()
 	has(t, closed, "اختر من القائمة الجانبية لتبدأ.")
 	lacks(t, closed, `class="tab-title"`)
-	if browser.Send("GET", "/tab/history", nil).Code != http.StatusNotFound {
-		t.Error("an item whose feature is not built opens no tab")
+	if browser.Send("GET", "/tab/nothing", nil).Code != http.StatusNotFound {
+		t.Error("a tab no feature opens is not found")
 	}
 }
 
@@ -247,13 +247,11 @@ func TestWeb_R13_ATemporaryPasswordIsChangedBeforeAnythingElse(t *testing.T) {
 	has(t, browser.Send("GET", "/", nil).Body.String(), `class="shell in"`)
 }
 
-func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
+func TestWeb_R14_R15_EveryItemOfTheSideMenuIsBuiltAndOpensItsTab(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"history"} {
-		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
-	}
+	lacks(t, page, `class="parked"`)
 	has(t, page, `hx-get="/tab/home"`)
 	has(t, page, `hx-get="/tab/entries"`)
 	has(t, page, `hx-get="/tab/settings"`)
@@ -2787,5 +2785,72 @@ func TestWeb_R171_UC055_EachReportsWorkbookAndItsReceiptLinkOpenFromTheWeb(t *te
 	}
 	if code := w.Browser().Send("GET", "/files/not-a-link", nil).Code; code != http.StatusNotFound {
 		t.Errorf("a link never made: %d", code)
+	}
+}
+
+func TestWeb_R172_UC069_TheProjectHistoryTellsEachLineAsTheAppsDoes(t *testing.T) {
+	w := newWorking(t)
+	w.Ask("PUT", w.path+"/items/"+w.item, `{"name":"حديد التسليح"}`, w.token)
+	w.supplier(`{"name":"مؤسسة أ"}`)
+	w.approved(300)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/projectHistory"`)
+	history := w.browser.Send("GET", "/tab/projectHistory", nil).Body.String()
+	for _, part := range []string{`<h2 id="projectHistory.title">سجل المشروع</h2>`, `id="projectHistory.kindChoice"`, `id="projectHistory.personChoice"`,
+		`الاسم كان التسليح`, `مؤسسة أ`, `300.00`} {
+		has(t, history, part)
+	}
+	suppliers := w.browser.Send("GET", "/tab/projectHistory?area=suppliers", nil).Body.String()
+	has(t, suppliers, `مؤسسة أ`)
+	lacks(t, suppliers, `الاسم كان التسليح`)
+	has(t, suppliers, `<option id="projectHistory.kind.suppliers" value="suppliers" selected>`)
+	has(t, w.browser.Send("GET", "/tab/projectHistory?text=لا+شيء", nil).Body.String(), `<p id="projectHistory.empty" class="empty">لا شيء بعد.</p>`)
+	for _, path := range []string{"/tab/projectHistory", "/project-history?before=999999"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
+	}
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	lacks(t, browser.Send("GET", "/", nil).Body.String(), `id="web.item.projectHistory"`)
+	if code := browser.Send("GET", "/project-history", nil).Code; code != http.StatusNotFound {
+		t.Errorf("the project history without SeeProjectHistory: %d", code)
+	}
+}
+
+func TestWeb_R172_UC069_MyHistoryTellsEveryLineOfMyOwnLogin(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<button id="web.myHistory" class="quiet-button" type="button" hx-get="/tab/myHistory"`)
+	mine := w.browser.Send("GET", "/tab/myHistory", nil).Body.String()
+	has(t, mine, `<h2 id="myHistory.title">سجلي</h2>`)
+	has(t, mine, `تسجيل الدخول`)
+	has(t, mine, `id="myHistory.kindChoice"`)
+	lacks(t, mine, `id="myHistory.personChoice"`)
+	has(t, w.browser.Send("GET", "/tab/myHistory?area=password", nil).Body.String(), `<p id="myHistory.empty" class="empty">`)
+	stranger, _ := signedIn(t, w.API, "User C")
+	has(t, stranger.Send("GET", "/tab/myHistory", nil).Body.String(), `تسجيل الدخول`)
+	if code := stranger.Send("GET", "/my-history?before=999999", nil).Code; code != http.StatusOK {
+		t.Errorf("the next page of My history with no project chosen: %d", code)
+	}
+	for _, path := range []string{"/tab/myHistory", "/my-history?before=999999"} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s with the database failing at its call %d answers %d", path, n, answered.Code)
+			}
+		}
 	}
 }

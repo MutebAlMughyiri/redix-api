@@ -6,9 +6,12 @@ package entries
 import (
 	"bytes"
 	"cmp"
+	"context"
 	"encoding/json"
+	"errors"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -376,7 +379,8 @@ func shown(rows []store.History) []store.History {
 	return kept
 }
 
-type projectLine struct {
+// ProjectLine is a line of «سجل المشروع», as the app's and the web's project history say it (UC-069, redix-api #172).
+type ProjectLine struct {
 	ID      int64         `json:"id"`
 	At      moment.Moment `json:"at"`
 	By      string        `json:"by"`
@@ -391,21 +395,31 @@ type projectLine struct {
 	Amount  fixed.Number  `json:"amount"`
 }
 
-func (l projectLine) holds(text string) bool {
+func (l ProjectLine) holds(text string) bool {
 	return spelling.Holds(text, l.Amount, l.By, l.Name, l.About, l.NameWas, l.From, l.To)
 }
 
 // projectHistory is a page of «سجل المشروع» (UC-069 R1-R5): every action in the project, one line per request, newest first, each only for
 // someone who may see its record; area keeps one kind of record, any other text every kind.
 func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	c := changes.Change{Ctx: r.Context(), Q: s.database.Queries(), ProjectID: web.ID(r, "projectId")}
-	area, areaErr := areas.Parse(r.URL.Query().Get("area"))
-	known, err := namesOf(c)
+	lines, err := ProjectHistoryOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, r.URL.Query())
 	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	lines, err := page(r.URL.Query(), wholeRequests(c, projectLines(c)), func(batch []store.History) ([]projectLine, error) {
+	web.JSON(w, r, http.StatusOK, lines)
+}
+
+// ProjectHistoryOf is a page of projectID's «سجل المشروع» as caller may see it, as projectHistory answers it, paged and narrowed by query's area,
+// by, before and text: the rule both doors call, the app's route and the web's (redix-api #172). The error is the database's.
+func ProjectHistoryOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, query url.Values) ([]ProjectLine, error) {
+	c := changes.Change{Ctx: ctx, Q: read, ProjectID: projectID}
+	area, areaErr := areas.Parse(query.Get("area"))
+	known, err := namesOf(c)
+	if err != nil {
+		return nil, err
+	}
+	return page(query, wholeRequests(c, projectLines(c)), func(batch []store.History) ([]ProjectLine, error) {
 		rows, err := shownOf(c, batch)
 		if err != nil {
 			return nil, err
@@ -422,7 +436,7 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 		if err != nil {
 			return nil, err
 		}
-		var made []projectLine
+		var made []ProjectLine
 		for i, row := range rows {
 			kind := things[row.TableName]
 			if kind.seen(sees, owns[i]) && (areaErr != nil || kind.area == areas[area]) {
@@ -431,15 +445,10 @@ func (s Routes) projectHistory(w http.ResponseWriter, r *http.Request, caller ac
 		}
 		return made, nil
 	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	web.JSON(w, r, http.StatusOK, lines)
 }
 
 // projectLineOf is the line of «سجل المشروع» row stands for, described from its own values and what History knows of its records (UC-069 R1-R4).
-func projectLineOf(row store.History, own values, records knowledge, decisions []store.EntryDecision) projectLine {
+func projectLineOf(row store.History, own values, records knowledge, decisions []store.EntryDecision) ProjectLine {
 	kind := things[row.TableName]
 	action := actionOf[row.Action]
 	if said, saidSo := kind.saidAs[row.Action]; saidSo {
@@ -456,7 +465,7 @@ func projectLineOf(row store.History, own values, records knowledge, decisions [
 	if row.Action == "Retrieve" {
 		said.about = valuesIn(row.After).text("ArchivedAt")
 	}
-	return projectLine{ID: row.ID, At: row.At, By: records.people[row.UserID], Area: one(areas, kind.area), Action: one(actions, action),
+	return ProjectLine{ID: row.ID, At: row.At, By: records.people[row.UserID], Area: one(areas, kind.area), Action: one(actions, action),
 		Thing: one(thingNames, kind.name), Name: said.name, About: said.about, NameWas: said.nameWas, From: said.from, To: said.to, Amount: said.amount}
 }
 
@@ -582,7 +591,8 @@ var loginKindOf = map[string]loginKind{"SignIn": {"signIn", "signIn"}, "SignOut"
 	"TurnOnBiometrics": {"biometricsOn", "biometrics"}, "TurnOffBiometrics": {"biometricsOff", "biometrics"}, "Create": {"created", "details"},
 	"Update": {"changed", "details"}}
 
-type loginLine struct {
+// LoginLine is a line of «سجلي», as the app's and the web's My history say it (UC-069 R6, redix-api #172).
+type LoginLine struct {
 	ID    int64         `json:"id"`
 	At    moment.Moment `json:"at"`
 	By    string        `json:"by"`
@@ -591,18 +601,27 @@ type loginLine struct {
 	About string        `json:"about"`
 }
 
-func (l loginLine) holds(text string) bool { return spelling.Holds(text, 0, l.By, l.About) }
+func (l LoginLine) holds(text string) bool { return spelling.Holds(text, 0, l.By, l.About) }
 
 // myHistory is a page of «سجلي» (UC-069 R6): every line of the caller's own login, whoever wrote it, newest first; what a change set shows
 // only as the name, username, mobile and email it gave, never a hash, a code or a token. area keeps one kind, any other text every kind.
 func (s Routes) myHistory(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	q := s.database.Queries()
-	area, areaErr := areas.Parse(r.URL.Query().Get("area"))
-	rows, err := q.HistoryOfLogin(r.Context(), caller.UserID)
-	people, peopleErr := q.UserNames(r.Context())
-	if err != nil || peopleErr != nil {
+	lines, err := MyHistoryOf(r.Context(), s.database.Queries(), caller, r.URL.Query())
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
+	}
+	web.JSON(w, r, http.StatusOK, lines)
+}
+
+// MyHistoryOf is a page of caller's «سجلي», as myHistory answers it, paged and narrowed by query's area, before and text: the rule both doors
+// call, the app's route and the web's (redix-api #172). The error is the database's.
+func MyHistoryOf(ctx context.Context, q *store.Queries, caller access.Caller, query url.Values) ([]LoginLine, error) {
+	area, areaErr := areas.Parse(query.Get("area"))
+	rows, err := q.HistoryOfLogin(ctx, caller.UserID)
+	people, peopleErr := q.UserNames(ctx)
+	if err := errors.Join(err, peopleErr); err != nil {
+		return nil, err
 	}
 	names := map[uuid.UUID]string{}
 	for _, person := range people {
@@ -616,7 +635,7 @@ func (s Routes) myHistory(w http.ResponseWriter, r *http.Request, caller access.
 	mine := func(before, _ int64) ([]store.History, error) {
 		return slices.DeleteFunc(slices.Clone(rows), func(row store.History) bool { return row.ID >= before }), nil
 	}
-	lines, err := page(r.URL.Query(), mine, each(keep, func(row store.History) loginLine {
+	return page(query, mine, each(keep, func(row store.History) LoginLine {
 		kind, gave := loginKindOf[row.Action], valuesIn(row.After)
 		var about []string
 		for _, field := range []string{"DisplayName", "Username", "Mobile", "Email"} {
@@ -624,12 +643,7 @@ func (s Routes) myHistory(w http.ResponseWriter, r *http.Request, caller access.
 				about = append(about, text)
 			}
 		}
-		return loginLine{ID: row.ID, At: row.At, By: names[row.UserID], Area: one(areas, kind.area), Kind: one(loginKinds, kind.kind),
+		return LoginLine{ID: row.ID, At: row.At, By: names[row.UserID], Area: one(areas, kind.area), Kind: one(loginKinds, kind.kind),
 			About: strings.Join(about, " · ")}
 	}))
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	web.JSON(w, r, http.StatusOK, lines)
 }

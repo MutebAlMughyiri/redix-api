@@ -86,6 +86,7 @@ templ topBar(p page) {
 		if p.person != "" {
 			<div class="end">
 				<span id="web.person" class="who">{ p.person }</span>
+				<button id="web.myHistory" class="quiet-button" type="button" hx-get="/tab/myHistory" hx-target="[id='web.content']">{ p.words.Of("history.myTitle") }</button>
 				<button id="myAccount.signOut" class="signout" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
 			</div>
 		}

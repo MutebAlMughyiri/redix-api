@@ -924,6 +924,38 @@
         ],
         "type": "object"
       },
+      "entries.LoginLine": {
+        "properties": {
+          "about": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "about",
+          "area",
+          "at",
+          "by",
+          "id",
+          "kind"
+        ],
+        "type": "object"
+      },
       "entries.OfferedCategory": {
         "properties": {
           "id": {
@@ -1128,6 +1160,63 @@
           "number",
           "partnerName",
           "supplierName"
+        ],
+        "type": "object"
+      },
+      "entries.ProjectLine": {
+        "properties": {
+          "about": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "amount": {
+            "description": "A figure kept to four decimals.",
+            "type": "number"
+          },
+          "area": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameWas": {
+            "type": "string"
+          },
+          "thing": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "about",
+          "action",
+          "amount",
+          "area",
+          "at",
+          "by",
+          "from",
+          "id",
+          "name",
+          "nameWas",
+          "thing",
+          "to"
         ],
         "type": "object"
       },
@@ -1694,95 +1783,6 @@
           "id",
           "kind",
           "name"
-        ],
-        "type": "object"
-      },
-      "entries.loginLine": {
-        "properties": {
-          "about": {
-            "type": "string"
-          },
-          "area": {
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "by": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "kind": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "about",
-          "area",
-          "at",
-          "by",
-          "id",
-          "kind"
-        ],
-        "type": "object"
-      },
-      "entries.projectLine": {
-        "properties": {
-          "about": {
-            "type": "string"
-          },
-          "action": {
-            "type": "string"
-          },
-          "amount": {
-            "description": "A figure kept to four decimals.",
-            "type": "number"
-          },
-          "area": {
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "by": {
-            "type": "string"
-          },
-          "from": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "nameWas": {
-            "type": "string"
-          },
-          "thing": {
-            "type": "string"
-          },
-          "to": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "about",
-          "action",
-          "amount",
-          "area",
-          "at",
-          "by",
-          "from",
-          "id",
-          "name",
-          "nameWas",
-          "thing",
-          "to"
         ],
         "type": "object"
       },
@@ -4227,7 +4227,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.loginLine"
+                    "$ref": "#/components/schemas/entries.LoginLine"
                   },
                   "type": "array"
                 }
@@ -8100,7 +8100,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/entries.projectLine"
+                    "$ref": "#/components/schemas/entries.ProjectLine"
                   },
                   "type": "array"
                 }

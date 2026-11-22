@@ -108,6 +108,8 @@ func Routes(parts Parts) http.Handler {
 	mux.HandleFunc("GET /report-file/periodic/{number}/{format}", s.periodicFile)
 	mux.HandleFunc("GET /report-file/{kind}/{id}/{format}", s.reportFile)
 	mux.HandleFunc("GET /files/{link}", s.ByLink)
+	mux.HandleFunc("GET /project-history", s.projectHistoryMore)
+	mux.HandleFunc("GET /my-history", s.myHistoryMore)
 	mux.HandleFunc("GET /partner-history", s.partnerHistoryMore)
 	mux.HandleFunc("GET /details/partner/new", s.newPartnerForm)
 	mux.HandleFunc("POST /partner", s.keepPartner)

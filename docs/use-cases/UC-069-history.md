@@ -58,3 +58,19 @@ An entry's Create is said as `drafted`; every other action as `actionOf` says it
 | R5 Newest first, 50 at a time, filtered by kind and person, searched by its words | `entries.page` | `TestR5_AHistoryIsFilteredByKindAndPersonAndSearched` |
 | R6 «سجلي» reads the lines of the caller's own login alone, never a hash, a code or a token | `entries.myHistory`, the query `HistoryOfLogin` | `TestR6_MyHistoryIsMyOwnLoginsLinesAlone` |
 | R7 Every line keeps the trace id of the request that wrote it; a new permission takes no older one's number | `history.Write`, `access.All` | `TestR7_EveryLineKeepsTheTraceIdOfTheRequestThatWroteIt`, `TestR7_ANewPermissionTakesNoOlderPermissionsNumber` |
+
+## On the web: the project history and My history (redix-api #172)
+
+«سجل المشروع» opens from the side menu for whoever holds SeeProjectHistory, as the app's screen: every action in the project, one line per request, newest first, each only for someone who may see its record, from `entries.ProjectHistoryOf`, the function `GET /projects/{id}/history` calls too. Each line says what was done to what - a permission by its own word -, what it was about, the name it had, what it went from and to, and its amount, then who did it and when in the project's time; a search, the kind (the app's areas in a project) and the person narrow it, and Show more adds the next page. «سجلي» opens from the top bar beside the person's name, for everyone signed in (#172 D1), from `entries.MyHistoryOf`, the function `GET /me/history` calls too: every line of the person's own login, whoever wrote it, narrowed by a search and the kind (signing in, the password, biometrics, their details). Both are drawn on `web/history.go`'s one owner of a history page, with the other three.
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/projectHistory?text=&area=&by=` | «سجل المشروع», in its tab | `200` the tab's content; the item stays out of the menu without SeeProjectHistory |
+| `GET /project-history?before=&text=&area=&by=` | Its next page | `200` its lines, with Show more again while there is more; `404` without SeeProjectHistory |
+| `GET /tab/myHistory?text=&area=` | «سجلي», in its tab | `200` the tab's content, a project chosen or not |
+| `GET /my-history?before=&text=&area=` | Its next page | `200` its lines |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| The project history says each line as the app's does, narrowed by kind, person and search; only whoever holds SeeProjectHistory reads it; a failing database answers 500 (UC-069 R1-R5) | `entries.ProjectHistoryOf`, `web.projectLineText` | `TestWeb_R172_UC069_TheProjectHistoryTellsEachLineAsTheAppsDoes` |
+| My history tells every line of the person's own login, opened from the top bar with or without a project; a failing database answers 500 (UC-069 R6) | `entries.MyHistoryOf`, `web.site.myHistoryOf` | `TestWeb_R172_UC069_MyHistoryTellsEveryLineOfMyOwnLogin` |

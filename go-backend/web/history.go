@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/a-h/templ"
+
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
@@ -85,7 +87,7 @@ func (s site) historyMore(w http.ResponseWriter, r *http.Request, name string, o
 	if !ok {
 		return
 	}
-	if !p.inProject() || !p.offers(name) {
+	if (!p.inProject() && name != "myHistory") || !p.offers(name) {
 		http.NotFound(w, r)
 		return
 	}
@@ -203,4 +205,89 @@ func partnerLineValues(p page, line entries.PartnerLine) []string {
 		return []string{statement.Money(line.Amount.Number()), line.Partner, line.Account}
 	}
 	return []string{line.Partner}
+}
+
+// projectAreas and loginAreas are the kinds of line the project history and My history narrow to, in the app's order (HistoryArea.inAProject,
+// HistoryArea.ofALogin).
+var (
+	projectAreas = []string{"entries", "accounts", "partners", "suppliers", "structure", "project", "people"}
+	loginAreas   = []string{"signIn", "password", "biometrics", "details"}
+)
+
+// projectHistoryOf is the page of «سجل المشروع» query asks, through the rule the app's route answers (entries.ProjectHistoryOf): each line as
+// the app's says it, only for whoever may see its record (UC-069). The error is the database's.
+func (s site) projectHistoryOf(ctx context.Context, p page, query url.Values) (history, error) {
+	shown, err := s.historyOf(ctx, p, "projectHistory", "/project-history", query)
+	lines, linesErr := entries.ProjectHistoryOf(ctx, s.Database.Queries(), p.project.ID, p.caller, query)
+	shown.full = len(lines) == entries.PageSize
+	for _, line := range lines {
+		shown.rows = append(shown.rows, historyRow{id: line.ID, kind: line.Action.Name(), what: projectLineText(p, line, shown.location),
+			who: shown.when(p, line.By, false, line.At)})
+	}
+	return shown, errors.Join(err, linesErr)
+}
+
+// projectLineText is what a line of «سجل المشروع» says, as the app's ProjectHistoryLine.textIn: what was done to what, a permission by its own
+// word; what it was about, a retrieval's archive time in the project's; the name it had, what it went from and to, and its amount.
+func projectLineText(p page, line entries.ProjectLine, location *time.Location) string {
+	name := line.Name
+	if line.Thing.Name() == "permission" {
+		name = p.words.Of("permissions." + line.Name)
+	}
+	about, nameWas, fromTo, amount := line.About, "", "", ""
+	if at, err := time.Parse(time.RFC3339Nano, about); err == nil && line.Action.Name() == "retrieved" {
+		about = at.In(location).Format("2006-01-02 15:04")
+	}
+	if line.NameWas != "" {
+		nameWas = p.words.Of("history.nameWas", line.NameWas)
+	}
+	if line.From != "" {
+		fromTo = p.words.Of("history.fromTo", line.From, line.To)
+	}
+	if line.Amount != 0 {
+		amount = statement.Money(line.Amount)
+	}
+	done := strings.Join(slices.DeleteFunc([]string{p.words.Of("history.action." + line.Action.Name()), p.words.Of("history.thing." + line.Thing.Name()), name},
+		func(part string) bool { return part == "" }), " ")
+	return parts(done, about, nameWas, fromTo, amount)
+}
+
+// myHistoryOf is the page of «سجلي» query asks, through the rule the app's route answers (entries.MyHistoryOf): every line of the caller's own
+// login, whoever wrote it, in the project's time when one is chosen, Riyadh's otherwise. The error is the database's.
+func (s site) myHistoryOf(ctx context.Context, p page, query url.Values) (history, error) {
+	read := s.Database.Queries()
+	zone, err := "", error(nil)
+	if p.inProject() {
+		zone, err = zones.Of(ctx, read, p.project.ID)
+	}
+	shown := history{name: "myHistory", query: query, next: "/my-history", location: zones.Location(zone)}
+	lines, linesErr := entries.MyHistoryOf(ctx, read, p.caller, query)
+	shown.full = len(lines) == entries.PageSize
+	for _, line := range lines {
+		shown.rows = append(shown.rows, historyRow{id: line.ID, kind: line.Kind.Name(), what: parts(p.words.Of("history.login."+line.Kind.Name()), line.About),
+			who: shown.when(p, line.By, false, line.At)})
+	}
+	return shown, errors.Join(err, linesErr)
+}
+
+// projectHistoryTab is «سجل المشروع» in its tab (UC-069, redix-api #172), for whoever may see the project's history.
+func (s site) projectHistoryTab(r *http.Request, p page) (templ.Component, error) {
+	shown, err := s.projectHistoryOf(r.Context(), p, r.URL.Query())
+	return projectHistoryPage(p, shown), err
+}
+
+// projectHistoryMore is the next page of «سجل المشروع», added after the last line.
+func (s site) projectHistoryMore(w http.ResponseWriter, r *http.Request) {
+	s.historyMore(w, r, "projectHistory", s.projectHistoryOf)
+}
+
+// myHistoryTab is «سجلي» in its tab (UC-069 R6, redix-api #172), opened from the top bar, for everyone signed in.
+func (s site) myHistoryTab(r *http.Request, p page) (templ.Component, error) {
+	shown, err := s.myHistoryOf(r.Context(), p, r.URL.Query())
+	return myHistoryPage(p, shown), err
+}
+
+// myHistoryMore is the next page of «سجلي», added after the last line.
+func (s site) myHistoryMore(w http.ResponseWriter, r *http.Request) {
+	s.historyMore(w, r, "myHistory", s.myHistoryOf)
 }
