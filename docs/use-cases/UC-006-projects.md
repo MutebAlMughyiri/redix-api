@@ -67,6 +67,20 @@ The web's More info is the app's screen in the shell, its item in the side menu 
 | A closed project reads only, and More info offers no change (AC-04.1) | `projects.changeProject` | `TestWeb_R175_UC006_ClosingTheProjectLeavesItReadOnly` |
 | More info's changes are for whoever manages the project; a failing database answers 500 | `web.site.keepProjectInfo` | `TestWeb_R175_MoreInfoChangesAreForWhoeverManagesTheProject` |
 
+## On the web: Registered projects (redix-api #175)
+
+Registered projects is the app's screen in a tab, from Settings, for whoever approves the projects people register: each project waiting, the earliest start first, from `projects.WaitingOf`, the function `GET /projects/registered` answers - its name, start date and units, who registered it with their username and mobile, its description - with Approve, through `projects.ApproveProject`, and Reject, asking the reason in the details panel, through `projects.RejectProject`, the rules the app's routes run. Anyone else sees its title only. Its pages are in `go-backend/web` (`registered.go`, `registered.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/registered` | Registered projects | `200` the tab's content |
+| `GET /details/registered/{id}/reject` | Reject's sheet | `200` the panel; `404` without ApproveProjects, or for no project waiting with that id |
+| `POST /registered/{id}/approve`, `…/reject` | Approves the project, or rejects it with `reason` | `200` Registered projects again; a rejection refused keeps its sheet; `403` without ApproveProjects; `404` for an action there is none of, or no project waiting |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| Registered projects lists each project waiting; Approve approves it, Reject asks a reason of 1 to 500 letters and rejects it; both are for whoever approves projects (BR-34) | `projects.WaitingOf`, `projects.ApproveProject`, `projects.RejectProject` | `TestWeb_R175_UC006_RegisteredProjectsAreApprovedOrRejectedAsTheAppsScreen` |
+
 ## Left to later use cases
 
 | What | Use case |

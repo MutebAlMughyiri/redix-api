@@ -59,3 +59,17 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 | The admin sets his email here and then resets his password with it (D6, R10) | `auth.Codes.askToConfirm`, `auth.Codes.confirm`, `auth.Codes.forgotPassword` | `MyEmailTests.D6_R10_TheAdminSetsHisEmailInSettingsAndThenResetsWithIt` |
 | The confirmation is in the language the phone asked in (AC-02.10) | `email.Send` | `MyEmailTests.AC_02_10_TheConfirmationIsInTheLanguageThePhoneAskedIn` |
 | A confirmed address is in the History table, by the person, with the old and the new (UC-005) | `auth.Codes.confirm` | `MyEmailTests.AConfirmedAddressIsInTheHistoryByThePersonWithTheOldAndTheNew` |
+
+## On the web: My email (redix-api #175)
+
+Settings shows the email the person's account holds, and My email asks for a new one in the details panel, as the app's two dialogs do: the new email and Send code, through `auth.Codes.AskToConfirmEmail`, the rule `POST /me/email` runs, one address asking only so often, the app's asks and the web's counted together; then the code sent to it and Save, through `auth.Codes.ConfirmEmail`, the rule `POST /me/email/confirm` runs. Kept, the panel closes and Settings shows the new email; refused, the form says why in the app's words: an email the rules refuse, one another account holds, or a code that is wrong or expired. Its pages are in `go-backend/web` (`myemail.go`, `myemail.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /details/my-email` | My email's first step | `200` the form |
+| `POST /my-email` | Sends a code to the `email` typed | `200` the code's step, or the form saying why not |
+| `POST /my-email/confirm` | Keeps the email the `code` was sent to | `200` the panel closed, Settings beside it; or the code's step saying why not |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| My email sends a code to the new email and keeps it once the code comes back; an email another account holds, or a wrong code, is refused (AC-10.4) | `auth.Codes.AskToConfirmEmail`, `auth.Codes.ConfirmEmail` | `TestWeb_R175_UC010_MyEmailIsConfirmedWithTheEmailedCodeAsTheAppsDialogs` |

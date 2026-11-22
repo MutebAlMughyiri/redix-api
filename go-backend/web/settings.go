@@ -50,10 +50,16 @@ func themeWord(theme string) string {
 }
 
 // settingsTab is Settings in its tab (redix-api #161, #175), with or without a project, as the app's screen: who is signed in, Switch project
-// and the default project, the language, the appearance, how many entries the home lists, Change password, My history, the privacy policy and
-// the terms of use, Sign out, and the version.
+// and the default project, Registered projects, the language, the appearance, how many entries the home lists, My email, Change password, My
+// history, the privacy policy and the terms of use, Sign out, and the version.
 func (s site) settingsTab(r *http.Request, p page) (templ.Component, error) {
-	return settingsPage(p, themeOf(r), entriesShownOf(r)), nil
+	return s.settingsOf(r, p)
+}
+
+// settingsOf is Settings for p's caller as r's cookies keep their choices, with the email their account holds. The error is the database's.
+func (s site) settingsOf(r *http.Request, p page) (templ.Component, error) {
+	user, err := s.Database.Queries().UserWithID(r.Context(), p.caller.UserID)
+	return settingsPage(p, themeOf(r), entriesShownOf(r), user.Email), err
 }
 
 // chooseTheme keeps the appearance chosen in Settings and opens the page again in it, as the language is chosen (#175 D1).
@@ -80,7 +86,12 @@ func (s site) chooseEntriesShown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setPreference(w, entriesCookie, strconv.Itoa(count))
-	draw(w, r, http.StatusOK, settingsPage(p, themeOf(r), count))
+	user, err := s.Database.Queries().UserWithID(r.Context(), p.caller.UserID)
+	if err != nil {
+		failed(w)
+		return
+	}
+	draw(w, r, http.StatusOK, settingsPage(p, themeOf(r), count, user.Email))
 }
 
 // mayApproveProjects says whether p's caller approves the projects people register, as the app's session.may(approveProjects).

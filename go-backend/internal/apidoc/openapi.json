@@ -2051,6 +2051,50 @@
         ],
         "type": "object"
       },
+      "projects.RegisteredView": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "managerMobile": {
+            "type": "string"
+          },
+          "managerName": {
+            "type": "string"
+          },
+          "managerUsername": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "startDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "units": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "description",
+          "id",
+          "managerMobile",
+          "managerName",
+          "managerUsername",
+          "name",
+          "startDate",
+          "units"
+        ],
+        "type": "object"
+      },
       "projects.Registration": {
         "properties": {
           "description": {
@@ -2260,50 +2304,6 @@
         },
         "required": [
           "description"
-        ],
-        "type": "object"
-      },
-      "projects.registeredView": {
-        "properties": {
-          "description": {
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "managerMobile": {
-            "type": "string"
-          },
-          "managerName": {
-            "type": "string"
-          },
-          "managerUsername": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "startDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "units": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "description",
-          "id",
-          "managerMobile",
-          "managerName",
-          "managerUsername",
-          "name",
-          "startDate",
-          "units"
         ],
         "type": "object"
       },
@@ -4591,7 +4591,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/projects.registeredView"
+                    "$ref": "#/components/schemas/projects.RegisteredView"
                   },
                   "type": "array"
                 }

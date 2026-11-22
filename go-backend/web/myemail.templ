@@ -1,0 +1,43 @@
+package web
+
+// myEmailForm is My email's first step in the details panel, as the app's dialog asks it: the new email, Send code; why it could not be sent.
+templ myEmailForm(p page, typed, refusal string) {
+	<div class="details-head">
+		<h3 id="myEmail.title">{ p.words.Of("settings.myEmail") }</h3>
+		<button id="myEmail.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="myEmail.form" class="details-form" hx-post="/my-email" hx-target="[id='web.details']">
+		<div class="field">
+			<label id="myEmail.email.label" for="myEmail.email">{ p.words.Of("users.email") }</label>
+			<input id="myEmail.email" name="email" type="email" required value={ typed } autofocus/>
+		</div>
+		if refusal != "" {
+			<p id="myEmail.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="myEmail.actions" class="details-actions">
+			<button id="myEmail.send" class="primary small" type="submit">{ p.words.Of("auth.sendCode") }</button>
+		</span>
+	</form>
+}
+
+// myEmailCodeForm is My email's second step, as the app's dialog asks it: the code sent to the email, and Save; why it could not be kept.
+templ myEmailCodeForm(p page, email, refusal string) {
+	<div class="details-head">
+		<h3 id="myEmail.title">{ p.words.Of("settings.myEmail") }</h3>
+		<button id="myEmail.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="myEmail.codeForm" class="details-form" hx-post="/my-email/confirm" hx-target="[id='web.details']">
+		<p id="myEmail.sentTo" class="hint">{ p.words.Of("settings.emailConfirm", email) }</p>
+		<input id="myEmail.sentEmail" type="hidden" name="email" value={ email }/>
+		<div class="field">
+			<label id="myEmail.code.label" for="myEmail.code">{ p.words.Of("auth.code") }</label>
+			<input id="myEmail.code" name="code" inputmode="numeric" autocomplete="one-time-code" required autofocus/>
+		</div>
+		if refusal != "" {
+			<p id="myEmail.refusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="myEmail.codeActions" class="details-actions">
+			<button id="myEmail.save" class="primary small" type="submit">{ p.words.Of("users.save") }</button>
+		</span>
+	</form>
+}

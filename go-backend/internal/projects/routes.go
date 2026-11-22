@@ -5,7 +5,6 @@ package projects
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
@@ -349,8 +348,8 @@ func Register(ctx context.Context, database db.DB, now time.Time, registration R
 	})
 }
 
-// registeredView is a project waiting for the admin, with who registered it (RegisteredProjectView).
-type registeredView struct {
+// RegisteredView is a project waiting for the admin, with who registered it (RegisteredProjectView).
+type RegisteredView struct {
 	ID              uuid.UUID   `json:"id"`
 	Name            string      `json:"name"`
 	StartDate       moment.Date `json:"startDate"`
@@ -363,17 +362,26 @@ type registeredView struct {
 
 // waiting is the projects waiting for the admin, the earliest start first, each with its manager (RegistrationEndpoints.Waiting).
 func (p Routes) waiting(w http.ResponseWriter, r *http.Request, _ access.Caller) {
-	read := p.database.Queries()
-	projects, err := read.PendingProjects(r.Context())
-	managers, managersErr := read.ManagersOfPending(r.Context())
-	units, unitsErr := read.AllUnits(r.Context())
-	if err != nil || managersErr != nil || unitsErr != nil {
+	views, err := WaitingOf(r.Context(), p.database.Queries())
+	if err != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	var views []registeredView
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// WaitingOf is the projects waiting for the admin, the earliest start first, each with its manager, as waiting answers them: the rule both doors
+// call, the app's route and the web's Registered projects (redix-api #175). The error is the database's.
+func WaitingOf(ctx context.Context, read *store.Queries) ([]RegisteredView, error) {
+	projects, err := read.PendingProjects(ctx)
+	managers, managersErr := read.ManagersOfPending(ctx)
+	units, unitsErr := read.AllUnits(ctx)
+	if err := errors.Join(err, managersErr, unitsErr); err != nil {
+		return nil, err
+	}
+	var views []RegisteredView
 	for _, project := range projects {
-		view := registeredView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Description: project.Description}
+		view := RegisteredView{ID: project.ID, Name: project.Name, StartDate: project.StartDate, Description: project.Description}
 		for _, unit := range units {
 			if unit.ProjectID == project.ID {
 				view.Units = append(view.Units, unit.Name)
@@ -387,24 +395,31 @@ func (p Routes) waiting(w http.ResponseWriter, r *http.Request, _ access.Caller)
 		}
 		views = append(views, view)
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }
 
 // approve lets a registered project in, with its structure copied and its register started with the general cash supplier in the admin's name,
 // and tells its managers; its permissions count from the next request (BR-34, FR-05, UC-017): 404 for no such project, notPending (409) for one
 // decided already.
 func (p Routes) approve(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	before, waiting := p.waitingProject(w, r)
-	if !waiting {
-		return
+	(changes.Writer{Database: p.database, Clock: p.clock}).Done(w, r, caller, func(c changes.Change) error { return ApproveProject(c) })
+}
+
+// ApproveProject approves the change's project while it waits for the admin, as approve does: the rule both doors call, the app's route and the
+// web's Registered projects (redix-api #175). It starts with the template's structure and the general cash supplier, and its manager is told.
+// NotFound for no such project; notPending (409) for one decided already.
+func ApproveProject(c changes.Change) error {
+	before, err := waitingIn(c)
+	if err != nil {
+		return err
 	}
 	after := before
 	after.Status = active
-	p.decide(w, r, caller, history.ApproveProject, notifications.ProjectApproved, before, after, func(ctx context.Context, q *store.Queries) error {
+	return decideProject(c, history.ApproveProject, notifications.ProjectApproved, before, after, func(ctx context.Context, q *store.Queries) error {
 		if err := structure.Copy(ctx, q, after.ID); err != nil {
 			return err
 		}
-		return suppliers.AddGeneralCash(ctx, q, after.ID, caller.UserID)
+		return suppliers.AddGeneralCash(ctx, q, after.ID, c.Actor)
 	})
 }
 
@@ -417,58 +432,48 @@ type rejectProjectRequest struct {
 // already, invalidReason (400) for a reason empty or over 500 characters.
 func (p Routes) reject(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request rejectProjectRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		(changes.Writer{Database: p.database, Clock: p.clock}).Done(w, r, caller, func(c changes.Change) error { return RejectProject(c, request.Reason) })
 	}
-	before, waiting := p.waitingProject(w, r)
-	if !waiting {
-		return
+}
+
+// RejectProject rejects the change's project while it waits for the admin, with reason, as reject does: the rule both doors call, the app's
+// route and the web's Registered projects (redix-api #175). Its manager is told. NotFound for no such project; notPending (409) for one decided
+// already; invalidReason (400) for none or one past 500 letters.
+func RejectProject(c changes.Change, reason string) error {
+	before, err := waitingIn(c)
+	if err != nil {
+		return err
 	}
-	reason := strings.TrimSpace(request.Reason)
-	if length := len([]rune(reason)); length == 0 || length > reasonMaxLength {
-		problem.Refuse(w, r, http.StatusBadRequest, invalidReason)
-		return
+	kept := strings.TrimSpace(reason)
+	if length := len([]rune(kept)); length == 0 || length > reasonMaxLength {
+		return changes.Refuse(http.StatusBadRequest, invalidReason)
 	}
 	after := before
-	after.Status, after.RejectionReason = rejected, reason
-	p.decide(w, r, caller, history.RejectProject, notifications.ProjectRejected, before, after, nothingMore)
+	after.Status, after.RejectionReason = rejected, kept
+	return decideProject(c, history.RejectProject, notifications.ProjectRejected, before, after, nothingMore)
 }
 
-// waitingProject is the route's project while it waits for the admin: 404 for no such project, notPending (409) for one decided already.
-func (p Routes) waitingProject(w http.ResponseWriter, r *http.Request) (store.Project, bool) {
-	project, err := p.database.Queries().ProjectWithID(r.Context(), web.ID(r, "projectId"))
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		problem.Status(w, r, http.StatusNotFound)
-	case err != nil:
-		problem.Status(w, r, http.StatusInternalServerError)
-	case project.Status != pendingApproval:
-		problem.Refuse(w, r, http.StatusConflict, notPending)
-	default:
-		return project, true
+// waitingIn is the change's project while it waits for the admin: changes.NotFound for no such project, notPending (409) for one decided
+// already.
+func waitingIn(c changes.Change) (store.Project, error) {
+	project, err := changes.Found(c.Q.ProjectWithID(c.Ctx, c.ProjectID))
+	if err == nil && project.Status != pendingApproval {
+		err = changes.Refuse(http.StatusConflict, notPending)
 	}
-	return project, false
+	return project, err
 }
 
-// decide keeps the admin's decision on a project - its new status, with also's rows beside it - recorded as action, and tells its managers
-// (RegistrationEndpoints.DecideAsync): 200 with no body.
-func (p Routes) decide(w http.ResponseWriter, r *http.Request, caller access.Caller, action history.Action, told notifications.Kind, before, after store.Project,
-	also func(context.Context, *store.Queries) error) {
-	now := moment.Of(p.clock.Now())
-	err := p.database.InTx(r.Context(), func(q *store.Queries) error {
-		if err := keepChanges(r.Context(), q, caller.UserID, action, now, before, after, nil, nil); err != nil {
-			return err
-		}
-		if err := also(r.Context(), q); err != nil {
-			return err
-		}
-		return notifications.TellManagers(r.Context(), q, after.ID, told, now)
-	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+// decideProject keeps the admin's decision on a waiting project, before to after, with its History line under action, then also, and tells its
+// managers told.
+func decideProject(c changes.Change, action history.Action, told notifications.Kind, before, after store.Project, also func(context.Context, *store.Queries) error) error {
+	if err := keepChanges(c.Ctx, c.Q, c.Actor, action, c.Now, before, after, nil, nil); err != nil {
+		return err
 	}
-	w.WriteHeader(http.StatusOK)
+	if err := also(c.Ctx, c.Q); err != nil {
+		return err
+	}
+	return notifications.TellManagers(c.Ctx, c.Q, after.ID, told, c.Now)
 }
 
 // timeZoneRequest is the body PUT /projects/{projectId}/time-zone (UC-006) reads.

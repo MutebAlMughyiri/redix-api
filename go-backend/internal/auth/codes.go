@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/email"
@@ -188,19 +189,31 @@ func (c Codes) askToConfirm(w http.ResponseWriter, r *http.Request, caller acces
 	if !web.Read(w, r, &request) {
 		return
 	}
-	address := strings.TrimSpace(request.Email)
-	if c.refuseEmail(w, r, address, caller.UserID) {
-		return
+	err := c.AskToConfirmEmail(r.Context(), caller.UserID, request.Email, web.Language(r))
+	if !changes.Answered(w, r, err) {
+		w.WriteHeader(http.StatusAccepted)
 	}
-	code, err := c.make(r.Context(), caller.UserID, confirmEmail, address)
+}
+
+// AskToConfirmEmail emails userID a code, in language, to confirm typed as their email, as askToConfirm does: the rule both doors call, the
+// app's route and the web's My email (redix-api #175). Refused as users.RefusalOfEmail refuses; a code that could not be sent is logged.
+func (c Codes) AskToConfirmEmail(ctx context.Context, userID uuid.UUID, typed, language string) error {
+	address := strings.TrimSpace(typed)
+	status, refusal, err := users.RefusalOfEmail(ctx, c.database.Queries(), address, userID)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return err
 	}
-	if err := email.Send(r.Context(), c.database, c.sender, address, web.Language(r), "email.confirmSubject", "email.confirmBody", code); err != nil {
-		c.log.Error("a confirmation code was not sent", "userId", caller.UserID, "error", err)
+	if refusal != "" {
+		return changes.Refuse(status, refusal)
 	}
-	w.WriteHeader(http.StatusAccepted)
+	code, err := c.make(ctx, userID, confirmEmail, address)
+	if err != nil {
+		return err
+	}
+	if err := email.Send(ctx, c.database, c.sender, address, language, "email.confirmSubject", "email.confirmBody", code); err != nil {
+		c.log.Error("a confirmation code was not sent", "userId", userID, "error", err)
+	}
+	return nil
 }
 
 // confirmEmailRequest is the body POST /me/email/confirm (UC-010) reads.
@@ -215,48 +228,45 @@ func (c Codes) confirm(w http.ResponseWriter, r *http.Request, caller access.Cal
 	if !web.Read(w, r, &request) {
 		return
 	}
+	err := c.ConfirmEmail(r.Context(), caller.UserID, request.Code)
+	if !changes.Answered(w, r, err) {
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// ConfirmEmail makes the email the code typed was sent to userID's, as confirm does: the rule both doors call, the app's route and the web's My
+// email (redix-api #175). codeWrong (400) for a code that is not the latest, unused and unexpired with a try left; refused as
+// users.RefusalOfEmail refuses when another account took the email meanwhile.
+func (c Codes) ConfirmEmail(ctx context.Context, userID uuid.UUID, typed string) error {
 	now := moment.Of(c.clock.Now())
-	user, err := c.database.Queries().UserWithID(r.Context(), caller.UserID)
+	user, err := c.database.Queries().UserWithID(ctx, userID)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return err
 	}
-	code, ok := c.codeOf(w, r, user.ID, confirmEmail, request.Code, now)
+	code, ok, err := c.check(ctx, user.ID, confirmEmail, strings.TrimSpace(typed), now)
+	if err != nil {
+		return err
+	}
 	if !ok {
-		return
+		return changes.Refuse(http.StatusBadRequest, codeWrong)
 	}
-	if c.refuseEmail(w, r, code.Email, user.ID) {
-		return
+	status, refusal, err := users.RefusalOfEmail(ctx, c.database.Queries(), code.Email, user.ID)
+	if err != nil {
+		return err
 	}
-	err = c.database.InTx(r.Context(), func(q *store.Queries) error {
-		if err := q.SpendCode(r.Context(), store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
+	if refusal != "" {
+		return changes.Refuse(status, refusal)
+	}
+	return c.database.InTx(ctx, func(q *store.Queries) error {
+		if err := q.SpendCode(ctx, store.SpendCodeParams{ID: code.ID, UsedAt: now}); err != nil {
 			return err
 		}
-		changed, err := users.ChangeEmail(r.Context(), q, user, code.Email)
+		changed, err := users.ChangeEmail(ctx, q, user, code.Email)
 		if err != nil {
 			return err
 		}
-		return history.Write(r.Context(), q, now, user.ID, history.Update, users.Change(user, changed))
+		return history.Write(ctx, q, now, user.ID, history.Update, users.Change(user, changed))
 	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// refuseEmail answers the refusal of an email for userID, when there is one (users.RefusalOfEmail).
-func (c Codes) refuseEmail(w http.ResponseWriter, r *http.Request, address string, userID uuid.UUID) bool {
-	status, code, err := users.RefusalOfEmail(r.Context(), c.database.Queries(), address, userID)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return true
-	}
-	if code != "" {
-		problem.Refuse(w, r, status, code)
-		return true
-	}
-	return false
 }
 
 // accountOf is the account login names: the one with that username, or else the one with that email (AccountOfAsync).
@@ -288,20 +298,6 @@ func (c Codes) make(ctx context.Context, userID uuid.UUID, purpose int64, addres
 		return q.AddCode(ctx, store.AddCodeParams{ID: uuid.Must(uuid.NewV7()), UserID: userID, Purpose: purpose, Email: address, CodeHash: credentials.Hash(code), ExpiresAt: expiresAt})
 	})
 	return code, err
-}
-
-// codeOf is the code user userID typed for purpose, checked at now: 500 when it could not be read, codeWrong (400) for a wrong, used, expired or
-// worn-out one (AC-02.8, AC-10.4); false once it has answered.
-func (c Codes) codeOf(w http.ResponseWriter, r *http.Request, userID uuid.UUID, purpose int64, typed string, now moment.Moment) (store.EmailCode, bool) {
-	code, ok, err := c.check(r.Context(), userID, purpose, strings.TrimSpace(typed), now)
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return code, false
-	}
-	if !ok {
-		problem.Refuse(w, r, http.StatusBadRequest, codeWrong)
-	}
-	return code, ok
 }
 
 // check is the user's latest code for purpose when typed is it, unused, unexpired and with a try left; each check counts a try, right or wrong

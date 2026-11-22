@@ -1,0 +1,63 @@
+package web
+
+import "github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
+
+// registeredList is Registered projects as the app's screen lists them (UC-006): each project waiting for the admin, its name, start date and
+// units, who registered it and their username and mobile, its description, with Approve and Reject; why a decision was refused.
+templ registeredList(p page, waiting []projects.RegisteredView, said said) {
+	<div class="view-head">
+		<h2 id="registered.title">{ p.words.Of("registered.title") }</h2>
+	</div>
+	if said.refusal != "" {
+		<p id="registered.refusal" class="refusal wide" role="alert">{ p.words.Of(said.refusal) }</p>
+	}
+	if len(waiting) == 0 {
+		<p id="registered.empty" class="empty">{ p.words.Of("registered.empty") }</p>
+	} else {
+		<ul id="registered.list" class="request-list">
+			for _, project := range waiting {
+				<li id={ "registered.card." + project.ID.String() } class="request-card">
+					<strong id={ "registered.name." + project.ID.String() }>{ project.Name }</strong>
+					<small id={ "registered.details." + project.ID.String() } class="hint">{ registeredLine(project) }</small>
+					<small id={ "registered.manager." + project.ID.String() } class="hint">{ managerLine(project) }</small>
+					if project.Description != "" {
+						<p id={ "registered.description." + project.ID.String() } class="lines">{ project.Description }</p>
+					}
+					<span id={ "registered.actions." + project.ID.String() } class="details-actions">
+						<button id={ "registered.approve." + project.ID.String() } class="quiet-button" type="button" hx-post={ "/registered/" + project.ID.String() + "/approve" } hx-target="[id='web.content']">{ p.words.Of("registered.approve") }</button>
+						<button id={ "registered.reject." + project.ID.String() } class="quiet-button" type="button" hx-get={ "/details/registered/" + project.ID.String() + "/reject" } hx-target="[id='web.details']">{ p.words.Of("registered.reject") }</button>
+					</span>
+				</li>
+			}
+		</ul>
+	}
+}
+
+// registeredBeside is Registered projects again, carried out of band beside the panel a rejection closed.
+templ registeredBeside(p page, waiting []projects.RegisteredView) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@registeredList(p, waiting, said{})
+	</div>
+}
+
+// rejectProjectForm is a registered project's Reject in the details panel, as the app's sheet asks it: the project's name and the reason; why it
+// could not be kept.
+templ rejectProjectForm(p page, project projects.RegisteredView, reason, refusal string) {
+	<div class="details-head">
+		<h3 id="registered.rejectTitle">{ p.words.Of("registered.reject") }</h3>
+		<button id="registered.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="registered.rejectForm" class="details-form" hx-post={ "/registered/" + project.ID.String() + "/reject" } hx-target="[id='web.details']">
+		<p id="registered.about" class="hint">{ project.Name }</p>
+		<div class="field">
+			<label id="registered.reason.label" for="registered.reason">{ p.words.Of("registered.reason") }</label>
+			<textarea id="registered.reason" name="reason" rows="3" required autofocus>{ reason }</textarea>
+		</div>
+		if refusal != "" {
+			<p id="registered.rejectRefusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="registered.rejectActions" class="details-actions">
+			<button id="registered.rejectSend" class="primary small" type="submit">{ p.words.Of("registered.reject") }</button>
+		</span>
+	</form>
+}

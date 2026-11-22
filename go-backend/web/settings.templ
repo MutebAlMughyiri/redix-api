@@ -5,7 +5,7 @@ import "strconv"
 // settingsPage is Settings as the app's screen shows it: who is signed in and their role here; Switch project and the default project, from
 // the top bar's list; Registered projects for whoever approves them; the language; the appearance; how many entries the home lists; My email;
 // Change password; My history; the privacy policy and the terms of use; Sign out; and the version. No fingerprint row: the web has none (D1).
-templ settingsPage(p page, theme string, entriesShown int) {
+templ settingsPage(p page, theme string, entriesShown int, email string) {
 	<div class="view-head"><h2 id="sharedSettings.title">{ p.words.Of("sharedSettings.title") }</h2></div>
 	<div id="sharedSettings.body" class="settings">
 		<section id="sharedSettings.who" class="setting">
@@ -17,7 +17,7 @@ templ settingsPage(p page, theme string, entriesShown int) {
 			<button id="sharedSettings.defaultProject" class="quiet-button" type="button" popovertarget="web.projects">{ p.words.Of("sharedSettings.defaultProject") }</button>
 			<small id="sharedSettings.defaultProject.hint" class="hint">{ p.words.Of("sharedSettings.defaultProjectHint") }</small>
 			if p.mayApproveProjects() {
-				<button id="sharedSettings.registered" class="quiet-button" type="button" disabled>{ p.words.Of("registered.title") }</button>
+				<button id="sharedSettings.registered" class="quiet-button" type="button" hx-get="/tab/registered" hx-target="[id='web.content']">{ p.words.Of("registered.title") }</button>
 			}
 		</section>
 		<section id="web.setting.language" class="setting">
@@ -41,6 +41,11 @@ templ settingsPage(p page, theme string, entriesShown int) {
 				}
 			</select>
 		</section>
+		<section id="sharedSettings.myEmail" class="setting">
+			<h3 id="sharedSettings.myEmail.title">{ p.words.Of("settings.myEmail") }</h3>
+			<small id="sharedSettings.myEmail.subtitle" class="hint">{ email }</small>
+			<button id="sharedSettings.changeEmail" class="quiet-button" type="button" hx-get="/details/my-email" hx-target="[id='web.details']">{ p.words.Of("settings.myEmail") }</button>
+		</section>
 		<section id="sharedSettings.account" class="setting">
 			<button id="sharedSettings.changePassword" class="quiet-button" type="button" hx-get="/tab/changePassword" hx-target="[id='web.content']">{ p.words.Of("myAccount.changePassword") }</button>
 			<button id="sharedSettings.myHistory" class="quiet-button" type="button" hx-get="/tab/myHistory" hx-target="[id='web.content']">{ p.words.Of("history.myTitle") }</button>
@@ -49,6 +54,13 @@ templ settingsPage(p page, theme string, entriesShown int) {
 			<button id="sharedSettings.signOut" class="signout" type="button" hx-post="/sign-out" hx-target="[id='web.shell']" hx-swap="outerHTML">{ p.words.Of("myAccount.signOut") }</button>
 		</section>
 		<p id="sharedSettings.version" class="hint">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></p>
+	</div>
+}
+
+// settingsBeside is Settings again, carried out of band beside the panel My email closed.
+templ settingsBeside(settings templ.Component) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@settings
 	</div>
 }
 

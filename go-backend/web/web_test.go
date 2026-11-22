@@ -3902,6 +3902,7 @@ func TestWeb_R175_UC006_MoreInfoChangesAsTheAppsDialogs(t *testing.T) {
 	has(t, w.browser.Send("GET", "/details/project-info/timeZone", nil).Body.String(), `id="projectInfo.timeZoneOption.Asia/Riyadh.input"`)
 	has(t, w.browser.Send("POST", "/project-info/timeZone", url.Values{"value": {"Mars/Olympus"}}).Body.String(), "هذه المنطقة الزمنية غير متاحة")
 	w.browser.Send("POST", "/project-info/timeZone", url.Values{"value": {"Asia/Dubai"}})
+	has(t, w.browser.Send("POST", "/project-info/timeZone", url.Values{"value": {"Asia/Dubai"}}).Body.String(), `<h3 id="projectInfo.name" class="section-title">مشروع B</h3>`)
 	if kept := w.Count(`SELECT count(*) FROM project_time_zones WHERE project_id = '` + w.id + `' AND time_zone = 'Asia/Dubai'`); kept != 1 {
 		t.Errorf("the time zone is kept: %d", kept)
 	}
@@ -3938,6 +3939,7 @@ func TestWeb_R175_UC006_ClosingTheProjectLeavesItReadOnly(t *testing.T) {
 	lacks(t, closed, `id="projectInfo.close"`)
 	has(t, w.browser.Send("GET", "/details/project-info/rename", nil).Body.String(), `id="projectInfo.field"`)
 	has(t, w.browser.Send("POST", "/project-info/rename", url.Values{"value": {"مشروع C"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+	has(t, w.browser.Send("POST", "/project-info/timeZone", url.Values{"value": {"Asia/Dubai"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
 }
 
 func TestWeb_R175_MoreInfoChangesAreForWhoeverManagesTheProject(t *testing.T) {
@@ -4101,5 +4103,144 @@ func TestWeb_R165_R175_TheHomeListsTheEntriesShownAndShowMoreAddsAsMany(t *testi
 	w.browser.Send("POST", "/entries-shown", url.Values{"count": {"6"}})
 	if rows := strings.Count(w.browser.Send("GET", "/tab/home", nil).Body.String(), `<tr id="entries.row.`); rows != 6 {
 		t.Errorf("the home lists the count Settings chose: %d", rows)
+	}
+}
+
+func TestWeb_R175_UC010_MyEmailIsConfirmedWithTheEmailedCodeAsTheAppsDialogs(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/settings", nil).Body.String(), `hx-get="/details/my-email"`)
+	has(t, w.browser.Send("GET", "/details/my-email", nil).Body.String(), `<input id="myEmail.email" name="email" type="email" required value="" autofocus>`)
+	has(t, w.browser.Send("POST", "/my-email", url.Values{"email": {"not-an-email"}}).Body.String(), `<p id="myEmail.refusal" class="refusal" role="alert">`)
+	sent := w.browser.Send("POST", "/my-email", url.Values{"email": {"a.new@example.com"}}).Body.String()
+	has(t, sent, `<p id="myEmail.sentTo" class="hint">أدخل الرمز المرسل إلى a.new@example.com.</p>`)
+	has(t, w.browser.Send("POST", "/my-email/confirm", url.Values{"email": {"a.new@example.com"}, "code": {"000000"}}).Body.String(), "الرمز غير صحيح أو انتهت صلاحيته.")
+	confirmed := w.browser.Send("POST", "/my-email/confirm", url.Values{"email": {"a.new@example.com"}, "code": {w.Emails.LastCodeTo("a.new@example.com")}}).Body.String()
+	has(t, confirmed, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	has(t, confirmed, `<small id="sharedSettings.myEmail.subtitle" class="hint">a.new@example.com</small>`)
+	other := w.member("User B", "")
+	w.Exec(`UPDATE users SET email = 'b@example.com' WHERE id = ?`, other)
+	w.browser.Send("POST", "/my-email", url.Values{"email": {"c@example.com"}})
+	code := w.Emails.LastCodeTo("c@example.com")
+	w.Exec(`UPDATE users SET email = 'c@example.com' WHERE id = ?`, other)
+	has(t, w.browser.Send("POST", "/my-email/confirm", url.Values{"email": {"c@example.com"}, "code": {code}}).Body.String(), "هذا البريد لحساب آخر.")
+	for _, ask := range []struct{ method, path string }{{"POST", "/my-email"}, {"POST", "/my-email/confirm"}, {"GET", "/tab/settings"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"email": {"d@example.com"}, "code": {"000000"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+func TestWeb_R175_UC006_RegisteredProjectsAreApprovedOrRejectedAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	var admin string
+	if err := w.Database.Read.QueryRow("SELECT user_id FROM system_permissions WHERE permission = 'ApproveProjects'").Scan(&admin); err != nil {
+		t.Fatal(err)
+	}
+	waiting := func(name string) string {
+		t.Helper()
+		_, answer := w.Ask("POST", "/projects", `{"name":"`+name+`","startDate":"2026-11-01","units":["B1","B2"],"description":"فلل"}`, w.token)
+		return testapi.Field(answer, "id").(string)
+	}
+	first, second := waiting("مشروع C"), waiting("مشروع D")
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {admin}, "password": {password}})
+	has(t, browser.Send("GET", "/tab/settings", nil).Body.String(), `<button id="sharedSettings.registered" class="quiet-button" type="button" hx-get="/tab/registered"`)
+	list := browser.Send("GET", "/tab/registered", nil).Body.String()
+	has(t, list, `<strong id="registered.name.`+first+`">مشروع C</strong>`)
+	has(t, list, `<small id="registered.details.`+first+`" class="hint">2026-11-01 · B1 · B2</small>`)
+	has(t, list, `<small id="registered.manager.`+first+`" class="hint">User A · `+w.manager.String()+`</small>`)
+	has(t, list, `<p id="registered.description.`+first+`" class="lines">فلل</p>`)
+	has(t, browser.Send("GET", "/details/registered/"+first+"/reject", nil).Body.String(), `<p id="registered.about" class="hint">مشروع C</p>`)
+	has(t, browser.Send("POST", "/registered/"+first+"/reject", url.Values{"reason": {" "}}).Body.String(), "اكتب السبب، في 500 حرف على الأكثر.")
+	rejected := browser.Send("POST", "/registered/"+first+"/reject", url.Values{"reason": {"لا وثائق"}}).Body.String()
+	var told string
+	if err := w.Database.Read.QueryRow("SELECT id FROM notifications WHERE user_id = ? AND kind = 4", w.manager).Scan(&told); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/notification/"+told+"/open", nil).Body.String(), `<h2 id="notifications.title">الإشعارات</h2>`)
+	lacks(t, rejected, `id="registered.card.`+first+`"`)
+	has(t, rejected, `<div id="web.content" hx-swap-oob="innerHTML">`)
+	approved := browser.Send("POST", "/registered/"+second+"/approve", nil).Body.String()
+	has(t, approved, `<p id="registered.empty" class="empty">لا مشاريع بانتظار الاعتماد.</p>`)
+	for id, status := range map[string]int{first: 3, second: 0} {
+		if kept := w.Count(`SELECT count(*) FROM projects WHERE id = ? AND status = ?`, id, status); kept != 1 {
+			t.Errorf("the project %s holds status %d: %d", id, status, kept)
+		}
+	}
+	for _, path := range []string{"/registered/" + second + "/approve", "/registered/" + uuid.NewString() + "/approve", "/registered/" + second + "/archive"} {
+		if code := browser.Send("POST", path, nil).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	if code := browser.Send("GET", "/details/registered/"+uuid.NewString()+"/reject", nil).Code; code != http.StatusNotFound {
+		t.Errorf("rejecting no project waiting: %d", code)
+	}
+	third := waiting("مشروع E")
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/registered", nil).Body.String(), `<p id="registered.empty" class="empty">`)
+	if code := w.browser.Send("POST", "/registered/"+third+"/approve", nil).Code; code != http.StatusForbidden {
+		t.Errorf("approving without ApproveProjects: %d", code)
+	}
+	if code := w.browser.Send("GET", "/details/registered/"+third+"/reject", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Reject's sheet without ApproveProjects: %d", code)
+	}
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/registered"}, {"GET", "/details/registered/" + third + "/reject"},
+		{"POST", "/registered/" + third + "/reject"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := browser.SendFailing(n, ask.method, ask.path, url.Values{"reason": {"لا وثائق"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+func TestWeb_R174_UC012_TablesNameAContractsAndAPartnersKindAsTheApps(t *testing.T) {
+	w := newWorking(t)
+	contractor := w.supplier(`{"name":"مقاول أ"}`)
+	contract := w.contract(contractor, `"value":1000,"isOpenValue":false`)
+	partner := w.partner("الشريك A", "")
+	var capital string
+	if err := w.Database.Read.QueryRow("SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 6", w.id).Scan(&capital); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/itemTables?item="+w.item, nil).Body.String(), `<small id="tables.details.`+contract+`" class="hint">دفعات عقد · 0</small>`)
+	has(t, w.browser.Send("GET", "/tab/itemTables?item="+capital, nil).Body.String(), `<small id="tables.details.`+partner+`" class="hint">رأس المال · 0</small>`)
+}
+
+func TestWeb_R175_SettingsFormsNeedASessionAndAnswerAFailingDatabase(t *testing.T) {
+	w := newWorking(t)
+	outside := w.Browser()
+	for _, ask := range []struct{ method, path string }{{"GET", "/details/my-email"}, {"POST", "/my-email"}, {"POST", "/my-email/confirm"}, {"POST", "/entries-shown"},
+		{"GET", "/details/user/existing"}} {
+		has(t, outside.Send(ask.method, ask.path, url.Values{"count": {"6"}}).Body.String(), `id="signIn.username"`)
+	}
+	builder := w.member("User B", "")
+	if code := w.memberBrowser(builder).Send("GET", "/details/user/existing", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Add an existing user without ManageUsers: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"POST", "/entries-shown"}, {"GET", "/details/my-email"}, {"GET", "/details/user/existing"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"count": {"6"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
 	}
 }

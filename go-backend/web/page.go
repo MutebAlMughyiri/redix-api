@@ -182,8 +182,8 @@ func (p page) offers(name string) bool {
 }
 
 // pageTabs are the tabs a page opens that the side menu does not list: Add entry, from Entries' button, and an entry's Change, from the
-// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar, and Change password, from Settings (redix-api #175).
-var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}, {"changePassword", "myAccount.changePassword"}}
+// details panel (redix-api #166); the approval history, from Approvals (redix-api #167); Register new project, from the project menu (redix-api #164); the count of the actual balances and the account history, from Accounts (redix-api #168); the partner history, from Partners (redix-api #169); each side's item reports, from Reports, an item's or a contract's report, and a periodic report (redix-api #171); My history, from the top bar (redix-api #172); New user and a person's Permissions, from Users, and Ask for permissions, from My permissions (redix-api #173); an item's Columns and Tables, from its panel (redix-api #174); Notifications, from the top bar, and Change password and Registered projects, from Settings (redix-api #175).
+var pageTabs = []menuItem{{"addEntry", "entries.new"}, {"changeEntry", "entries.edit"}, {"approvalHistory", "approvals.history"}, {"registerProject", "projects.new"}, {"reconcile", "reconciliations.enterTitle"}, {"accountHistory", "accounts.history"}, {"partnerHistory", "partners.history"}, {"expenses", "summary.expenses"}, {"revenue", "summary.revenue"}, {"itemReport", "contracts.item"}, {"periodicReport", "reports.periodic"}, {"myHistory", "history.myTitle"}, {"newUser", "users.new"}, {"userPermissions", "permissions.title"}, {"permissionRequest", "permissionRequests.title"}, {"itemColumns", "columns.title"}, {"itemTables", "categories.tables"}, {"notifications", "notifications.title"}, {"changePassword", "myAccount.changePassword"}, {"registered", "registered.title"}}
 
 // contents are what each built feature's tab shows, by its item's name; an item with none stands gray until its feature is built (#161 R15).
 var contents = map[string]tab{
@@ -212,6 +212,7 @@ var contents = map[string]tab{
 	"paymentMethods":    site.paymentMethodsTab,
 	"projectInfo":       site.projectInfoTab,
 	"notifications":     site.notificationsTab,
+	"registered":        site.registeredTab,
 	"permissionRequest": site.askTab,
 	"requests":          site.requestsTab,
 	"partnerHistory":    site.partnerHistoryTab,
