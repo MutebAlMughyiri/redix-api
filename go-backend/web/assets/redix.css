@@ -182,7 +182,9 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .quiet-button { display: inline-flex; align-items: center; font: inherit; height: 30px; padding-inline: 12px; border: 1px solid var(--chrome-line); border-radius: 5px; background: transparent; color: var(--quiet); cursor: pointer; }
 .quiet-button:hover { background: var(--select); color: var(--text); }
 .primary.small { height: 30px; padding-inline: 14px; } .primary:disabled { background: var(--chrome-line); color: var(--faint); cursor: not-allowed; }
-.home { display: grid; grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+/* The home in the middle of the page, one column: its head, the summary, the custody (the owner, 23 Nov 2026, findings row 310). */
+.home-page { max-width: 760px; margin-inline: auto; }
+.home { display: flex; flex-direction: column; gap: 12px; }
 .card { border: 1px solid var(--chrome-line); border-radius: 8px; background: var(--chrome); padding: 14px; }
 .summary { display: flex; flex-direction: column; gap: 10px; }
 .pending { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 6px; background: var(--select); }
@@ -194,11 +196,9 @@ progress.bar::-webkit-progress-bar { background: var(--chrome-line); border-radi
 progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
 .tile { border: 1px solid var(--chrome-line); border-radius: 6px; background: var(--content); }
-.tile[open] { grid-column: 1 / -1; border-color: var(--accent); }
-.tile summary { display: flex; flex-direction: column; gap: 2px; padding: 10px; cursor: pointer; } .tile summary b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.tile-head { display: flex; flex-direction: column; gap: 2px; padding: 10px; } .tile-head b { font-size: 14px; font-variant-numeric: tabular-nums; }
 .shares { list-style: none; margin: 0; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
 .shares li { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; } .shares .figure { font-variant-numeric: tabular-nums; } .shares .bar { grid-column: 1 / -1; height: 4px; }
-.side-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .custody { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; } .custody b { margin-inline-start: auto; font-size: 15px; font-variant-numeric: tabular-nums; }
 .latest-head { margin: 0; font-size: 14px; font-weight: 600; } .more { align-self: center; font-size: 12.5px; }
 .grid-wrap { overflow: auto; border: 1px solid var(--chrome-line); border-radius: 6px; }
@@ -208,7 +208,7 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .state { font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--chrome-line); color: var(--quiet); white-space: nowrap; }
 .state.approved, .state.active { color: var(--ok); border-color: currentColor; } .state.rejected { color: var(--refusal); border-color: currentColor; }
 .hint { color: var(--quiet); }
-@media (max-width: 720px) { .home { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { .tiles { grid-template-columns: minmax(0, 1fr); } }
 
 /* Register new project (redix-api #164): the sign-in's box made wider, its units and partners added one at a time. */
 .signin.wide > * { max-width: 520px; } .signin.wide { height: auto; align-items: start; padding-block: 20px; }

@@ -16,44 +16,44 @@ import (
 )
 
 // home is the project's home in the content area (UC-049, redix-api #165): the project's name and the caller's role, the summary, always open,
-// and the custody they hold; Add entry for whoever may enter expenses. The owner's web home (23 Nov 2026, findings row 306): no Hide details
-// and no newest entries, which Entries lists; the app's home keeps both.
+// and the custody they hold; Add entry for whoever may enter expenses. The owner's web home (23 Nov 2026, findings rows 306, 310): in the middle
+// of the page, no Hide details, Revenue and Expenses never folded, and no newest entries, which Entries lists; the app's home keeps its own.
 templ home(p page, summary reports.Summary, custody []accounts.View) {
-	<div class="home-head">
-		<h2 id="home.title">{ p.project.Name }</h2>
-		if p.project.RoleName != "" {
-			<span id="home.roleName" class="role">{ p.project.RoleName }</span>
-		}
-		<span id="home.headEnd" class="end">
-			<button id={ "home.addEntry." + p.project.ID.String() } class="primary small" type="button" disabled?={ !p.mayEnterExpenses() } title={ p.words.Of("permissions.recordEntries") } hx-get="/tab/addEntry" hx-target="[id='web.content']">{ p.words.Of("entries.new") }</button>
-		</span>
-	</div>
-	<div class="home">
-		<section id="summary.card" class="card summary">
-			if p.waitsForMe(summary) {
-				<div id="summary.pending" class="pending">
-					<strong id="summary.pendingCount">{ p.words.Of("summary.pending", strconv.FormatInt(summary.Waiting.ExpensesCount+summary.Waiting.RevenueCount, 10)) }</strong>
-					if summary.Waiting.ExpensesCount > 0 {
-						<small id="summary.pendingExpenses">{ p.words.Of("reports.pendingExpenses") } ({ strconv.FormatInt(summary.Waiting.ExpensesCount, 10) }): { money(summary.Waiting.ExpensesAmount) }</small>
-					}
-					if summary.Waiting.RevenueCount > 0 {
-						<small id="summary.pendingRevenue">{ p.words.Of("reports.pendingRevenue") } ({ strconv.FormatInt(summary.Waiting.RevenueCount, 10) }): { money(summary.Waiting.RevenueAmount) }</small>
-					}
+	<div id="home.page" class="home-page">
+		<div class="home-head">
+			<h2 id="home.title">{ p.project.Name }</h2>
+			if p.project.RoleName != "" {
+				<span id="home.roleName" class="role">{ p.project.RoleName }</span>
+			}
+			<span id="home.headEnd" class="end">
+				<button id={ "home.addEntry." + p.project.ID.String() } class="primary small" type="button" disabled?={ !p.mayEnterExpenses() } title={ p.words.Of("permissions.recordEntries") } hx-get="/tab/addEntry" hx-target="[id='web.content']">{ p.words.Of("entries.new") }</button>
+			</span>
+		</div>
+		<div class="home">
+			<section id="summary.card" class="card summary">
+				if p.waitsForMe(summary) {
+					<div id="summary.pending" class="pending">
+						<strong id="summary.pendingCount">{ p.words.Of("summary.pending", strconv.FormatInt(summary.Waiting.ExpensesCount+summary.Waiting.RevenueCount, 10)) }</strong>
+						if summary.Waiting.ExpensesCount > 0 {
+							<small id="summary.pendingExpenses">{ p.words.Of("reports.pendingExpenses") } ({ strconv.FormatInt(summary.Waiting.ExpensesCount, 10) }): { money(summary.Waiting.ExpensesAmount) }</small>
+						}
+						if summary.Waiting.RevenueCount > 0 {
+							<small id="summary.pendingRevenue">{ p.words.Of("reports.pendingRevenue") } ({ strconv.FormatInt(summary.Waiting.RevenueCount, 10) }): { money(summary.Waiting.RevenueAmount) }</small>
+						}
+					</div>
+				}
+				<span id="summary.surplus.label" class="label">{ p.words.Of("summary.surplus") }</span>
+				<span id="summary.surplus" class="surplus">{ money(summary.Surplus) } <small id="summary.surplus.currency">{ p.words.Of("accounts.riyal") }</small></span>
+				<span id="summary.completion" class="label">{ p.words.Of("summary.completion") }: { string(summary.CompletionPercent) }%</span>
+				<progress id="summary.completionBar" class="bar" max="100" value={ string(summary.CompletionPercent) }></progress>
+				if summary.WasReconciled {
+					<span id="summary.difference" class="label">{ p.words.Of("summary.difference") }: { money(summary.ReconciliationDifference) }</span>
+				}
+				<div class="tiles">
+					@summarySide(p, "revenue", summary.Revenue, summary.RevenueCategories)
+					@summarySide(p, "expenses", summary.Expenses, summary.Categories)
 				</div>
-			}
-			<span id="summary.surplus.label" class="label">{ p.words.Of("summary.surplus") }</span>
-			<span id="summary.surplus" class="surplus">{ money(summary.Surplus) } <small id="summary.surplus.currency">{ p.words.Of("accounts.riyal") }</small></span>
-			<span id="summary.completion" class="label">{ p.words.Of("summary.completion") }: { string(summary.CompletionPercent) }%</span>
-			<progress id="summary.completionBar" class="bar" max="100" value={ string(summary.CompletionPercent) }></progress>
-			if summary.WasReconciled {
-				<span id="summary.difference" class="label">{ p.words.Of("summary.difference") }: { money(summary.ReconciliationDifference) }</span>
-			}
-			<div class="tiles">
-				@summarySide(p, "revenue", summary.Revenue, summary.RevenueCategories)
-				@summarySide(p, "expenses", summary.Expenses, summary.Categories)
-			</div>
-		</section>
-		<div class="side-col">
+			</section>
 			for _, account := range custody {
 				<section id={ "home.custody." + account.ID.String() } class="card custody">
 					<span id={ "home.custodyName." + account.ID.String() } class="label">{ p.words.Of("accounts.myCustody") } · { account.Name }</span>
@@ -64,14 +64,14 @@ templ home(p page, summary reports.Summary, custody []accounts.View) {
 	</div>
 }
 
-// summarySide is Revenue or Expenses with its total, opening on its categories with each one's share; the two share one name, so opening one
-// closes the other, as the app's tiles do, with the browser's own disclosure and no script.
+// summarySide is Revenue or Expenses with its total and every category with its share, always shown: the owner's web home folds none (23 Nov
+// 2026, findings row 310), where the app's tiles open one at a time.
 templ summarySide(p page, side string, total fixed.Total, categories []reports.CategoryTotal) {
-	<details id={ "summary." + side + ".card" } class="tile" name="summary.side">
-		<summary id={ "summary." + side + ".body" }>
+	<section id={ "summary." + side + ".card" } class="tile">
+		<div id={ "summary." + side + ".body" } class="tile-head">
 			<span id={ "summary." + side + ".label" } class="label">{ p.words.Of("summary." + side) }</span>
 			<b id={ "summary." + side }>{ money(total) }</b>
-		</summary>
+		</div>
 		<ul id={ "summary." + side + ".shares" } class="shares">
 			for _, category := range categories {
 				<li id={ "summary.category." + category.ID.String() }>
@@ -81,7 +81,7 @@ templ summarySide(p page, side string, total fixed.Total, categories []reports.C
 				</li>
 			}
 		</ul>
-	</details>
+	</section>
 }
 
 // entryRows are entries as the app's lists show them: number, date, the item or the partner, the supplier, the status and the amount; a click or
@@ -201,4 +201,3 @@ templ projectChoice(p page, project projects.View, idPrefix string) {
 		<span id={ idPrefix + project.ID.String() + ".status" } class={ "state", project.Status }>{ p.words.Of(statusWord(project.Status)) }</span>
 	</button>
 }
-
