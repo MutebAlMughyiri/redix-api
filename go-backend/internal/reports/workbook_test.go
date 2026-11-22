@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
@@ -498,6 +499,26 @@ func TestAC_46_11_EveryColumnFitsItsContentAndTextPastFortyFiveCharactersWraps(t
 	if strings.Contains(string(content), "customHeight") {
 		t.Error("a row keeps a height of its own")
 	}
+}
+
+func TestFindings131_TheContractsWorkbookIsOneStatementTableOfWhatEachContractHasLeft(t *testing.T) {
+	content, err := contractsWorkbookOf("مشروع A", []contracts.View{{SupplierName: "شركة النخيل", ItemName: "الحفر", Value: amountOf(1000), Remaining: countedOf(1000)}})
+	book := open(t, content, err)
+	sheet := book.first()
+	book.want(book.text(sheet, "A1"), "العقود", "A1")
+	var headers []string
+	for column := 2; column <= 6; column++ {
+		name, _ := excelize.CoordinatesToCellName(column, 2)
+		headers = append(headers, book.text(sheet, name))
+	}
+	book.want(strings.Join(headers, "|"), "المقاول|البند|قيمة العقد|المدفوع|المتبقي", "the headers")
+	book.want(book.number(sheet, "D3"), 1000.0, "D3")
+	book.want(book.number(sheet, "E3"), 0.0, "E3")
+	book.want(book.number(sheet, "F3"), 1000.0, "F3")
+	book.want(book.text(sheet, "A4"), "الاجمالي", "A4")
+	book.want(book.formula(sheet, "F4"), "SUM(F3:F3)", "F4")
+	book.want(book.text(sheet, "A2"), "", "A2")
+	book.want(book.number(sheet, "A3"), 1.0, "A3")
 }
 
 func TestAC_54_6_G6_TheWorkbookShowsTheNumberAndAReportIssuedBeforeEntriesHadOneLeavesItEmpty(t *testing.T) {

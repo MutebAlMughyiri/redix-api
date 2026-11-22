@@ -13,6 +13,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/attachments"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
@@ -148,6 +149,25 @@ func workbookOf(projectName string, item entries.ItemReport, fileLinks map[uuid.
 	return book.Bytes()
 }
 
+// contractsWorkbookOf is the contracts report as a workbook of the project projectName: one statement table (UC-067, findings row 131) of each
+// contract's contractor, item, value and what was paid, its amount what is left of it, an overrun negative and an open value nothing.
+func contractsWorkbookOf(projectName string, list []contracts.View) ([]byte, error) {
+	table := statement.Table{Title: "العقود", Columns: []statement.Column{{Header: "المقاول"}, {Header: "البند"}, {Header: "قيمة العقد", Kind: statement.Price},
+		{Header: "المدفوع", Kind: statement.Price}}, Amount: statement.Column{Header: "المتبقي", Kind: statement.Price}}
+	for index, contract := range list {
+		var value any = contract.Value.Float()
+		remaining := contract.Remaining.Number().Float()
+		if contract.IsOpenValue {
+			value, remaining = "مفتوحة", 0
+		}
+		table.Rows = append(table.Rows, statement.Row{Number: index + 1, Cells: []any{contract.SupplierName, contract.ItemName, value, contract.Paid.Number().Float()},
+			Amount: remaining, CountsAgainstAgreement: true})
+	}
+	book := statement.NewBook(projectName, "")
+	book.Add(statement.Sheet{Name: "العقود", Tables: []statement.Table{table}, ShowsEveryTable: true})
+	return book.Bytes()
+}
+
 // itemFile is an item's report as a PDF, or as a workbook; رأس المال's holds only the partners the caller may see, its total the whole capital
 // (BR-31).
 func (s Routes) itemFile(isPdf bool) access.Handler {
@@ -210,6 +230,31 @@ func ReportWorkbookOf(r *http.Request, c changes.Change, links attachments.Links
 // (redix-api #171). The error is typst's.
 func ReportPdfOf(typst statement.Typst, report entries.ItemReport) ([]byte, error) {
 	return typst.Pdf(statement.Document{Pages: []statement.Page{statement.PdfPage(sheetOf(report, nil))}})
+}
+
+// contractsWorkbook is the contracts report as a workbook.
+func (s Routes) contractsWorkbook(w http.ResponseWriter, r *http.Request, _ access.Caller) {
+	if name, list, found := s.contractsOf(w, r); found {
+		file, err := contractsWorkbookOf(name, list)
+		s.sendFile(w, r, file, excelType, "contracts.xlsx", err)
+	}
+}
+
+// contractsOf is the project's name and its contracts, which the contracts report shows; false once it has answered 404 for a project that does not
+// exist, or 500.
+func (s Routes) contractsOf(w http.ResponseWriter, r *http.Request) (string, []contracts.View, bool) {
+	read, projectID := s.database.Queries(), web.ID(r, "projectId")
+	project, err := changes.Found(read.ProjectWithID(r.Context(), projectID))
+	if errors.Is(err, changes.NotFound) {
+		problem.Status(w, r, http.StatusNotFound)
+		return "", nil, false
+	}
+	list, listErr := contracts.List(r.Context(), read, projectID)
+	if err != nil || listErr != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return "", nil, false
+	}
+	return project.Name, list, true
 }
 
 // sendFile sends file as an attachment named name through web.SendFile, the one way the API hands a file it makes (redix-api #76 row 274).

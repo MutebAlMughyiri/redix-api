@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/contracts"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -81,6 +82,24 @@ func summaryPage(report Snapshot, words waitingWords, zone string) statement.Pag
 	return page
 }
 
+// contractsDocumentOf is the contracts report as a PDF: each contract's value, paid, remaining, and an alert where more was paid (FR-31, FR-33).
+func contractsDocumentOf(projectName string, list []contracts.View) statement.Document {
+	table := statement.Block{Kind: "table", Gap: 6, Widths: []statement.TableWidth{{Shares: 3}, {Shares: 2}, {Shares: 2}, {Shares: 2}, {Shares: 2}},
+		Header: []string{"المقاول", "البند", "قيمة العقد", "المدفوع", "المتبقي"}}
+	for _, contract := range list {
+		contractor, value, remaining := contract.SupplierName, statement.Money(contract.Value), statement.Money(contract.Remaining.Number())
+		if contract.IsOverrun {
+			contractor += " · متجاوز"
+		}
+		if contract.IsOpenValue {
+			value, remaining = "مفتوحة", ""
+		}
+		table.Rows = append(table.Rows, statement.PdfRow{Cells: []statement.PdfCell{{Text: contractor, Strong: contract.IsOverrun}, {Text: contract.ItemName},
+			{Text: value}, {Text: statement.Money(contract.Paid.Number())}, {Text: remaining, Strong: contract.IsOverrun}}})
+	}
+	return statement.Document{Pages: []statement.Page{{Title: projectName + " · العقود والمتبقي", TitleSize: 13, Blocks: []statement.Block{table}}}}
+}
+
 // periodicPdf is the report as a PDF laid out as report 23 (UC-054), its capital showing only the partners the caller may see (redix-api #131 D1,
 // BR-31); 404 for a number not issued.
 func (s Routes) periodicPdf(w http.ResponseWriter, r *http.Request, caller access.Caller) {
@@ -116,6 +135,14 @@ func PeriodicFileName(number int64, isPdf bool) string {
 		return fmt.Sprintf("report-%d.pdf", number)
 	}
 	return fmt.Sprintf("report-%d.xlsx", number)
+}
+
+// contractsPdf is the contracts report as a PDF.
+func (s Routes) contractsPdf(w http.ResponseWriter, r *http.Request, _ access.Caller) {
+	if name, list, found := s.contractsOf(w, r); found {
+		file, err := s.typst.Pdf(contractsDocumentOf(name, list))
+		s.sendFile(w, r, file, pdfType, "contracts.pdf", err)
+	}
 }
 
 // waitingWords are the labels of what waits, from the translations.
