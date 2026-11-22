@@ -360,7 +360,9 @@ func replay(t *testing.T, steps []step, hosts []host, swept map[int]bool) {
 			resolve()
 		case "request":
 			fake.Set(s.At)
-			if s.Status >= 200 && s.Status < 300 && strings.Contains(s.ContentType, "json") && firstWithABody(s) {
+			// The broken body is sent only to a host that limits nothing: on one that counts registrations or codes it would spend a permit a later step
+			// counts on, whichever test the parallel runs bring there first (findings row 295).
+			if s.Status >= 200 && s.Status < 300 && strings.Contains(s.ContentType, "json") && limitsOf(hosts, s).limitsNothing() && firstWithABody(s) {
 				var broken *httptest.ResponseRecorder
 				historytest.Check(t, database, func() { broken = send(handlerOf(s), names, withBrokenBody(s)) })
 				if broken.Code != http.StatusBadRequest {
