@@ -2865,3 +2865,10 @@ func TestWeb_D293_TheDetailsPanelFollowsTheTabInFront(t *testing.T) {
 	has(t, page, `path.startsWith(&#39;/tab/&#39;)`)
 	lacks(t, page, "openInTab")
 }
+
+// The side menu's line takes its drag for itself: pressing it starts none of the browser's own mouse actions, which dragged the side menu's link
+// beside it and cancelled the line's drag after its first step (redix-web-automation WorkInTheShellTest, 23 Nov 2026).
+func TestWeb_R10_TheSideLinesPressStartsNoDragOfItsOwn(t *testing.T) {
+	browser, _ := signedIn(t, testapi.New(t), "User A")
+	has(t, browser.Send("GET", "/", nil).Body.String(), `hx-on:pointerdown="event.preventDefault(); this.setPointerCapture(event.pointerId);`)
+}
