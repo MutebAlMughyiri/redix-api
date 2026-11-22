@@ -251,7 +251,7 @@ func TestWeb_R14_R15_WhatIsNotBuiltStandsGray(t *testing.T) {
 	api := testapi.New(t)
 	browser, _ := signedIn(t, api, "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
-	for _, key := range []string{"projectInfo", "documents"} {
+	for _, key := range []string{"documents"} {
 		has(t, page, `<span id="web.item.`+key+`" class="parked" aria-disabled="true">`)
 	}
 	has(t, page, `hx-get="/tab/home"`)
@@ -3870,4 +3870,97 @@ func TestWeb_R174_UC014_PaymentMethodsAreForWhoeverManagesTheSettings(t *testing
 	has(t, w.browser.Send("GET", "/tab/paymentMethods", nil).Body.String(), `hx-target="[id='web.details']" disabled>`)
 	lacks(t, w.browser.Send("GET", "/details/payment-method/"+w.method, nil).Body.String(), `id="paymentMethods.rename"`)
 	has(t, w.browser.Send("POST", "/payment-method/"+w.method+"/disable", nil).Body.String(), "هذا المشروع منتهٍ، فلا يتغير فيه شيء.")
+}
+
+func TestWeb_R175_UC006_MoreInfoShowsTheProjectAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/projectInfo"`)
+	info := w.browser.Send("GET", "/tab/projectInfo", nil).Body.String()
+	has(t, info, `<h2 id="projectInfo.title">معلومات المشروع</h2>`)
+	has(t, info, `<h3 id="projectInfo.name" class="section-title">مشروع A</h3>`)
+	has(t, info, `<small id="projectInfo.details" class="hint">تاريخ البدء 2026-11-01</small>`)
+	has(t, info, `id="projectInfo.timeZone"`)
+	has(t, info, `>A1</span>`)
+	has(t, info, `id="projectInfo.rename"`)
+	has(t, info, `<textarea id="projectInfo.description" name="value" rows="4" maxlength="2000"></textarea>`)
+	builder := w.member("User B", "")
+	reader := w.memberBrowser(builder).Send("GET", "/tab/projectInfo", nil).Body.String()
+	lacks(t, reader, `id="projectInfo.rename"`)
+	has(t, reader, `<p id="projectInfo.descriptionText" class="hint">لا يوجد وصف بعد.</p>`)
+}
+
+func TestWeb_R175_UC006_MoreInfoChangesAsTheAppsDialogs(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	has(t, w.browser.Send("GET", "/details/project-info/rename", nil).Body.String(), `<input id="projectInfo.field" name="value" required value="مشروع A" autofocus>`)
+	has(t, w.browser.Send("POST", "/project-info/rename", url.Values{"value": {" "}}).Body.String(), `<p id="projectInfo.formRefusal" class="refusal" role="alert">اكتب اسماً من 1 إلى 100 حرف.</p>`)
+	renamed := w.browser.Send("POST", "/project-info/rename", url.Values{"value": {"مشروع B"}}).Body.String()
+	has(t, renamed, `<h3 id="projectInfo.name" class="section-title">مشروع B</h3>`)
+	has(t, renamed, `<span id="web.sideProject" class="side-project" hx-swap-oob="true">مشروع B</span>`)
+	has(t, renamed, `id="web.project"`)
+	has(t, w.browser.Send("GET", "/details/project-info/timeZone", nil).Body.String(), `id="projectInfo.timeZoneOption.Asia/Riyadh.input"`)
+	has(t, w.browser.Send("POST", "/project-info/timeZone", url.Values{"value": {"Mars/Olympus"}}).Body.String(), "هذه المنطقة الزمنية غير متاحة")
+	w.browser.Send("POST", "/project-info/timeZone", url.Values{"value": {"Asia/Dubai"}})
+	if kept := w.Count(`SELECT count(*) FROM project_time_zones WHERE project_id = '` + w.id + `' AND time_zone = 'Asia/Dubai'`); kept != 1 {
+		t.Errorf("the time zone is kept: %d", kept)
+	}
+	has(t, w.browser.Send("POST", "/project-info/unit", url.Values{"value": {"A1"}}).Body.String(), "توجد وحدة بهذا الاسم في هذا المشروع.")
+	has(t, w.browser.Send("POST", "/project-info/unit", url.Values{"value": {"A2"}}).Body.String(), `>A2</span>`)
+	var unit string
+	if err := w.Database.Read.QueryRow("SELECT id FROM units WHERE project_id = ? AND name = 'A2'", w.id).Scan(&unit); err != nil {
+		t.Fatal(err)
+	}
+	has(t, w.browser.Send("GET", "/details/project-info/unit?unit="+unit, nil).Body.String(), `value="A2"`)
+	has(t, w.browser.Send("POST", "/project-info/unit", url.Values{"unit": {unit}, "value": {"B2"}}).Body.String(), `>B2</span>`)
+	has(t, w.browser.Send("GET", "/details/project-info/deleteUnit?unit="+unit, nil).Body.String(), "B2 - حذفه؟")
+	lacks(t, w.browser.Send("POST", "/project-info/deleteUnit", url.Values{"unit": {unit}}).Body.String(), `>B2</span>`)
+	has(t, w.browser.Send("POST", "/project-info/describe", url.Values{"value": {strings.Repeat("و", 2001)}}).Body.String(), "اكتب 2000 حرف على الأكثر.")
+	has(t, w.browser.Send("POST", "/project-info/describe", url.Values{"value": {"فلل سكنية"}}).Body.String(), `<p id="projectInfo.notice" class="notice" role="status">تم حفظ الوصف.</p>`)
+	w.sent(100)
+	has(t, w.browser.Send("GET", "/details/project-info/close", nil).Body.String(), `<p id="projectInfo.question" class="section-title">إغلاق هذا المشروع؟</p>`)
+	has(t, w.browser.Send("POST", "/project-info/close", nil).Body.String(), "في هذا المشروع قيود بانتظار الاعتماد.")
+	for _, path := range []string{"/project-info/archive", "/project-info/deleteUnit"} {
+		if code := w.browser.Send("POST", path, url.Values{"unit": {uuid.NewString()}}).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+	if code := w.browser.Send("GET", "/details/project-info/unit?unit="+uuid.NewString(), nil).Code; code != http.StatusNotFound {
+		t.Errorf("a unit the project does not have: %d", code)
+	}
+}
+
+func TestWeb_R175_UC006_ClosingTheProjectLeavesItReadOnly(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	closed := w.browser.Send("POST", "/project-info/close", nil).Body.String()
+	has(t, closed, `<small id="projectInfo.details" class="hint">تاريخ البدء 2026-11-01 · للقراءة فقط</small>`)
+	lacks(t, closed, `id="projectInfo.close"`)
+	has(t, w.browser.Send("GET", "/details/project-info/rename", nil).Body.String(), `id="projectInfo.field"`)
+	has(t, w.browser.Send("POST", "/project-info/rename", url.Values{"value": {"مشروع C"}}).Body.String(), "هذا المشروع منتهٍ، فلا يمكن تغييره.")
+}
+
+func TestWeb_R175_MoreInfoChangesAreForWhoeverManagesTheProject(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.memberBrowser(builder)
+	if code := browser.Send("POST", "/project-info/rename", url.Values{"value": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("renaming without ManageProject: %d", code)
+	}
+	if code := browser.Send("GET", "/details/project-info/rename", nil).Code; code != http.StatusNotFound {
+		t.Errorf("Rename's form without ManageProject: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/projectInfo"}, {"GET", "/details/project-info/timeZone"}, {"POST", "/project-info/rename"},
+		{"POST", "/project-info/describe"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"value": {"مشروع B"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
 }

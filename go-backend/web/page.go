@@ -206,6 +206,7 @@ var contents = map[string]tab{
 	"itemColumns":       site.columnsTab,
 	"itemTables":        site.itemTablesTab,
 	"paymentMethods":    site.paymentMethodsTab,
+	"projectInfo":       site.projectInfoTab,
 	"permissionRequest": site.askTab,
 	"requests":          site.requestsTab,
 	"partnerHistory":    site.partnerHistoryTab,

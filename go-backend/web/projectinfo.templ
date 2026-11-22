@@ -1,0 +1,132 @@
+package web
+
+import (
+	"time"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
+)
+
+// projectInfoPage is More info as the app's screen shows it (UC-006): the project's name, its start date and status, read only once finished;
+// its time zone; its units; its description; and, for whoever manages it, Rename, Change the time zone, Add unit, each unit's Rename and Delete,
+// the description to edit, and Close the project, each asked in the details panel. What the last change said stands at the top.
+templ projectInfoPage(p page, said said) {
+	<div class="view-head">
+		<h2 id="projectInfo.title">{ p.words.Of("projectInfo.title") }</h2>
+	</div>
+	<div id="projectInfo.body" class="entry-form">
+		if said.notice != "" {
+			<p id="projectInfo.notice" class="notice" role="status">{ p.words.Of(said.notice) }</p>
+		}
+		if said.refusal != "" {
+			<p id="projectInfo.refusal" class="refusal" role="alert">{ p.words.Of(said.refusal) }</p>
+		}
+		<div class="info-row">
+			<h3 id="projectInfo.name" class="section-title">{ p.project.Name }</h3>
+			if p.mayManageProject() {
+				<button id="projectInfo.rename" class="quiet-button" type="button" hx-get="/details/project-info/rename" hx-target="[id='web.details']">{ p.words.Of("projects.rename") }</button>
+			}
+		</div>
+		<div class="info-row">
+			<small id="projectInfo.details" class="hint">{ startLine(p) }</small>
+			<span id="projectInfo.status" class={ "state", p.project.Status }>{ p.words.Of(statusWord(p.project.Status)) }</span>
+		</div>
+		<div class="info-row">
+			<small id="projectInfo.timeZone" class="hint">{ p.words.Of("projects.timeZone") + ": " + zoneWord(p, p.project.TimeZone) + " (" + utcOffset(p.project.UTCOffset) + ")" }</small>
+			if p.mayManageProject() {
+				<button id="projectInfo.changeTimeZone" class="quiet-button" type="button" hx-get="/details/project-info/timeZone" hx-target="[id='web.details']">{ p.words.Of("projects.timeZone") }</button>
+			}
+		</div>
+		<div class="info-row">
+			<h3 id="projectInfo.units" class="section-title">{ p.words.Of("projects.units") }</h3>
+			if p.mayManageProject() {
+				<button id="projectInfo.addUnit" class="quiet-button" type="button" hx-get="/details/project-info/unit" hx-target="[id='web.details']">{ p.words.Of("projects.addUnit") }</button>
+			}
+		</div>
+		if len(p.project.Units) == 0 {
+			<p id="projectInfo.noUnits" class="hint">{ p.words.Of("projects.noUnits") }</p>
+		}
+		for _, unit := range p.project.Units {
+			<div id={ "projectInfo.unitRow." + unit.ID.String() } class="info-row unit">
+				<span id={ "projectInfo.unit." + unit.ID.String() }>{ unit.Name }</span>
+				if p.mayManageProject() {
+					<span id={ "projectInfo.unitMenu." + unit.ID.String() } class="details-actions">
+						<button id={ "projectInfo.renameUnit." + unit.ID.String() } class="quiet-button" type="button" hx-get={ "/details/project-info/unit?unit=" + unit.ID.String() } hx-target="[id='web.details']">{ p.words.Of("projects.renameUnit") }</button>
+						<button id={ "projectInfo.deleteUnit." + unit.ID.String() } class="quiet-button" type="button" hx-get={ "/details/project-info/deleteUnit?unit=" + unit.ID.String() } hx-target="[id='web.details']">{ p.words.Of("swipe.remove") }</button>
+					</span>
+				}
+			</div>
+		}
+		<h3 id="projectInfo.descriptionHeading" class="section-title">{ p.words.Of("projectInfo.description") }</h3>
+		if p.mayManageProject() {
+			<form id="projectInfo.descriptionForm" hx-post="/project-info/describe" hx-target="[id='web.content']">
+				<textarea id="projectInfo.description" name="value" rows="4" maxlength="2000">{ p.project.Description }</textarea>
+				<small id="projectInfo.description.hint" class="hint">{ p.words.Of("projectInfo.descriptionHint") }</small>
+				<span id="projectInfo.descriptionActions" class="details-actions">
+					<button id="projectInfo.saveDescription" class="primary small" type="submit">{ p.words.Of("projectInfo.save") }</button>
+				</span>
+			</form>
+		} else if p.project.Description == "" {
+			<p id="projectInfo.descriptionText" class="hint">{ p.words.Of("projectInfo.noDescription") }</p>
+		} else {
+			<p id="projectInfo.descriptionText" class="lines">{ p.project.Description }</p>
+		}
+		if p.mayManageProject() {
+			<span id="projectInfo.closeActions" class="details-actions">
+				<button id="projectInfo.close" class="quiet-button danger" type="button" hx-get="/details/project-info/close" hx-target="[id='web.details']">{ p.words.Of("projects.close") }</button>
+			</span>
+		}
+	</div>
+}
+
+// projectInfoBeside is More info again, carried out of band, with the project's name wherever the shell shows it, once a form kept a change.
+templ projectInfoBeside(p page) {
+	<div id="web.content" hx-swap-oob="innerHTML">
+		@projectInfoPage(p, said{})
+	</div>
+	@projectButton(p, true)
+	<span id="web.sideProject" class="side-project" hx-swap-oob="true">{ p.project.Name }</span>
+	@projectMenuBeside(p)
+}
+
+// projectInfoForm is one of More info's forms in the details panel, as the app's dialogs ask them: Rename, the time zones, Add unit or a unit's
+// Rename, a unit's Delete and Close the project, each of the last two asked first; what was typed and why it could not be kept.
+templ projectInfoForm(p page, asking string, unit projects.Unit, typed, refusal string, now time.Time) {
+	<div class="details-head">
+		<h3 id="projectInfo.formTitle">{ p.words.Of(projectInfoTitle(asking, unit)) }</h3>
+		<button id="projectInfo.formClose" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+	</div>
+	<form id="projectInfo.form" class="details-form" hx-post={ "/project-info/" + asking } hx-target="[id='web.details']">
+		if unit.Name != "" {
+			<input id="projectInfo.formUnit" type="hidden" name="unit" value={ unit.ID.String() }/>
+		}
+		switch asking {
+			case "rename", "unit":
+				<div class="field">
+					<label id="projectInfo.field.label" for="projectInfo.field">{ p.words.Of(projectInfoLabel(asking)) }</label>
+					<input id="projectInfo.field" name="value" required value={ typedOr(typed, asking, unit, p) } autofocus/>
+				</div>
+			case "timeZone":
+				<div id="projectInfo.timeZones" class="type-choice">
+					for _, zone := range zones.All {
+						<label id={ "projectInfo.timeZoneOption." + zone.Name } class="tick">
+							<input id={ "projectInfo.timeZoneOption." + zone.Name + ".input" } type="radio" name="value" value={ zone.Name } checked?={ zone.Name == p.project.TimeZone }/>
+							<span id={ "projectInfo.timeZoneOption." + zone.Name + ".title" }>{ p.words.Of(zone.WordKey) + " (" + utcOffset(zones.OffsetMinutes(zone.Name, now)) + ")" }</span>
+						</label>
+					}
+				</div>
+			case "deleteUnit":
+				<p id="projectInfo.question" class="section-title">{ unit.Name + " - " + p.words.Of("swipe.question") }</p>
+			case "close":
+				<p id="projectInfo.question" class="section-title">{ p.words.Of("projects.closeQuestion") }</p>
+				<p id="projectInfo.subject" class="hint">{ p.project.Name }</p>
+				<p id="projectInfo.explain" class="hint">{ p.words.Of("projects.closeExplain") }</p>
+		}
+		if refusal != "" {
+			<p id="projectInfo.formRefusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		<span id="projectInfo.formActions" class="details-actions">
+			<button id="projectInfo.formSave" class="primary small" type="submit">{ p.words.Of(projectInfoSave(asking, unit)) }</button>
+		</span>
+	</form>
+}

@@ -480,33 +480,32 @@ type timeZoneRequest struct {
 // not on it, projectFinished (409) in a finished project. A change is its own History line.
 func (p Routes) setTimeZone(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request timeZoneRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		p.change(w, r, caller, func(c changes.Change) error { return SetTimeZone(c, request.TimeZone) })
 	}
-	if !zones.Offered(request.TimeZone) {
-		problem.Refuse(w, r, http.StatusBadRequest, "unknownTimeZone")
-		return
+}
+
+// SetTimeZone sets the change's project's time zone to timeZone, as setTimeZone does: the rule both doors call, the app's route and the web's
+// More info (redix-api #175). unknownTimeZone (400) for one REDIX does not offer; NotFound for no such project; projectFinished (409).
+func SetTimeZone(c changes.Change, timeZone string) error {
+	if !zones.Offered(timeZone) {
+		return changes.Refuse(http.StatusBadRequest, "unknownTimeZone")
 	}
-	done := changes.Writer{Database: p.database, Clock: p.clock}.Write(w, r, caller, func(c changes.Change) error {
-		project, err := changes.Found(c.Q.ProjectWithID(c.Ctx, c.ProjectID))
-		if err != nil {
-			return err
-		}
-		if project.Status == finished {
-			return changes.Refuse(http.StatusConflict, projectFinished)
-		}
-		before, err := zones.Of(c.Ctx, c.Q, c.ProjectID)
-		if err != nil || before == request.TimeZone {
-			return err
-		}
-		if err := c.Q.SetProjectTimeZone(c.Ctx, store.SetProjectTimeZoneParams{ProjectID: c.ProjectID, TimeZone: request.TimeZone}); err != nil {
-			return err
-		}
-		return c.Record(history.Update, "ProjectTimeZones", c.ProjectID, map[string]any{"TimeZone": before}, map[string]any{"TimeZone": request.TimeZone})
-	})
-	if done {
-		p.answer(w, r, http.StatusOK, web.ID(r, "projectId"), caller.UserID)
+	project, err := changes.Found(c.Q.ProjectWithID(c.Ctx, c.ProjectID))
+	if err != nil {
+		return err
 	}
+	if project.Status == finished {
+		return changes.Refuse(http.StatusConflict, projectFinished)
+	}
+	before, err := zones.Of(c.Ctx, c.Q, c.ProjectID)
+	if err != nil || before == timeZone {
+		return err
+	}
+	if err := c.Q.SetProjectTimeZone(c.Ctx, store.SetProjectTimeZoneParams{ProjectID: c.ProjectID, TimeZone: timeZone}); err != nil {
+		return err
+	}
+	return c.Record(history.Update, "ProjectTimeZones", c.ProjectID, map[string]any{"TimeZone": before}, map[string]any{"TimeZone": timeZone})
 }
 
 // zoneView is a zone a project may be in, as its picker shows it: the word of its city and how far it is ahead of UTC now.
@@ -537,16 +536,21 @@ type renameProjectRequest struct {
 // rename renames the project.
 func (p Routes) rename(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request renameProjectRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		p.change(w, r, caller, func(c changes.Change) error { return RenameProject(c, request.Name) })
 	}
-	p.change(w, r, caller, history.Update, func(c projectChangeContext) string {
-		name, ok := naming.Named(request.Name)
+}
+
+// RenameProject names the change's project name, as rename does: the rule both doors call, the app's route and the web's More info (redix-api
+// #175). Refused as changeProject refuses; invalidName for a name not 1 to 100 letters.
+func RenameProject(c changes.Change, name string) error {
+	return changeProject(c, history.Update, func(project projectChangeContext) error {
+		named, ok := naming.Named(name)
 		if !ok {
-			return invalidName
+			return changes.Refuse(http.StatusBadRequest, invalidName)
 		}
-		c.project.Name = name
-		return ""
+		project.project.Name = named
+		return nil
 	})
 }
 
@@ -558,16 +562,21 @@ type describeProjectRequest struct {
 // describe gives the project its description, up to 2,000 characters.
 func (p Routes) describe(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request describeProjectRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		p.change(w, r, caller, func(c changes.Change) error { return DescribeProject(c, request.Description) })
 	}
-	p.change(w, r, caller, history.Update, func(c projectChangeContext) string {
-		description := strings.TrimSpace(request.Description)
-		if len([]rune(description)) > descriptionMaxLength {
-			return invalidDescription
+}
+
+// DescribeProject gives the change's project description, as describe does: the rule both doors call, the app's route and the web's More info
+// (redix-api #175). Refused as changeProject refuses; invalidDescription past 2,000 characters.
+func DescribeProject(c changes.Change, description string) error {
+	return changeProject(c, history.Update, func(project projectChangeContext) error {
+		kept := strings.TrimSpace(description)
+		if len([]rune(kept)) > descriptionMaxLength {
+			return changes.Refuse(http.StatusBadRequest, invalidDescription)
 		}
-		c.project.Description = description
-		return ""
+		project.project.Description = kept
+		return nil
 	})
 }
 
@@ -579,23 +588,28 @@ type addUnitRequest struct {
 // addUnit adds a unit after the last: invalidName (400) or unitNameTaken (409).
 func (p Routes) addUnit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request addUnitRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		p.change(w, r, caller, func(c changes.Change) error { return AddUnit(c, request.Name) })
 	}
-	p.change(w, r, caller, history.Create, func(c projectChangeContext) string {
-		name, ok := naming.Named(request.Name)
+}
+
+// AddUnit adds the unit named name after the change's project's last, as addUnit does: the rule both doors call, the app's route and the web's
+// More info (redix-api #175). Refused as changeProject refuses; invalidName (400) or unitNameTaken (409).
+func AddUnit(c changes.Change, name string) error {
+	return changeProject(c, history.Create, func(project projectChangeContext) error {
+		named, ok := naming.Named(name)
 		switch {
 		case !ok:
-			return invalidName
-		case c.unitNamed(name, uuid.Nil):
-			return unitNameTaken
+			return changes.Refuse(http.StatusBadRequest, invalidName)
+		case project.unitNamed(named, uuid.Nil):
+			return changes.Refuse(http.StatusConflict, unitNameTaken)
 		}
 		order := int64(0)
-		for _, unit := range *c.units {
+		for _, unit := range *project.units {
 			order = max(order, unit.SortOrder+1)
 		}
-		*c.units = append(*c.units, store.Unit{ID: uuid.Must(uuid.NewV7()), ProjectID: c.project.ID, Name: name, SortOrder: order})
-		return ""
+		*project.units = append(*project.units, store.Unit{ID: uuid.Must(uuid.NewV7()), ProjectID: project.project.ID, Name: named, SortOrder: order})
+		return nil
 	})
 }
 
@@ -607,58 +621,72 @@ type renameUnitRequest struct {
 // renameUnit renames one of the project's units: 404 for one it does not have, invalidName (400) or unitNameTaken (409).
 func (p Routes) renameUnit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
 	var request renameUnitRequest
-	if !web.Read(w, r, &request) {
-		return
+	if web.Read(w, r, &request) {
+		p.change(w, r, caller, func(c changes.Change) error { return RenameUnit(c, web.ID(r, "unitId"), request.Name) })
 	}
-	unitID := web.ID(r, "unitId")
-	p.change(w, r, caller, history.Update, func(c projectChangeContext) string {
-		unit := c.unit(unitID)
+}
+
+// RenameUnit names unitID of the change's project name, as renameUnit does: the rule both doors call, the app's route and the web's More info
+// (redix-api #175). Refused as changeProject refuses; NotFound for a unit it does not have, invalidName (400) or unitNameTaken (409).
+func RenameUnit(c changes.Change, unitID uuid.UUID, name string) error {
+	return changeProject(c, history.Update, func(project projectChangeContext) error {
+		unit := project.unit(unitID)
 		if unit == nil {
-			return unknownUnit
+			return changes.NotFound
 		}
-		name, ok := naming.Named(request.Name)
+		named, ok := naming.Named(name)
 		switch {
 		case !ok:
-			return invalidName
-		case c.unitNamed(name, unitID):
-			return unitNameTaken
+			return changes.Refuse(http.StatusBadRequest, invalidName)
+		case project.unitNamed(named, unitID):
+			return changes.Refuse(http.StatusConflict, unitNameTaken)
 		}
-		unit.Name = name
-		return ""
+		unit.Name = named
+		return nil
 	})
 }
 
 // deleteUnit removes one of the project's units: 404 for one it does not have.
 func (p Routes) deleteUnit(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	unitID := web.ID(r, "unitId")
-	p.change(w, r, caller, history.Delete, func(c projectChangeContext) string {
-		if c.unit(unitID) == nil {
-			return unknownUnit
+	p.change(w, r, caller, func(c changes.Change) error { return DeleteUnit(c, web.ID(r, "unitId")) })
+}
+
+// DeleteUnit removes unitID from the change's project, as deleteUnit does: the rule both doors call, the app's route and the web's More info
+// (redix-api #175). Refused as changeProject refuses; NotFound for a unit it does not have.
+func DeleteUnit(c changes.Change, unitID uuid.UUID) error {
+	return changeProject(c, history.Delete, func(project projectChangeContext) error {
+		if project.unit(unitID) == nil {
+			return changes.NotFound
 		}
 		var kept []store.Unit
-		for _, unit := range *c.units {
+		for _, unit := range *project.units {
 			if unit.ID != unitID {
 				kept = append(kept, unit)
 			}
 		}
-		*c.units = kept
-		return ""
+		*project.units = kept
+		return nil
 	})
 }
 
 // close finishes the project, which then only reads (AC-04.1): pendingEntries (409) while an entry waits for approval.
 func (p Routes) close(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	waiting, err := p.database.Queries().HasEntriesWaiting(r.Context(), web.ID(r, "projectId"))
+	p.change(w, r, caller, func(c changes.Change) error { return CloseProject(c) })
+}
+
+// CloseProject finishes the change's project, which then only reads (AC-04.1), as close does: the rule both doors call, the app's route and the
+// web's More info (redix-api #175). Refused as changeProject refuses; pendingEntries (409) while an entry waits for approval.
+func CloseProject(c changes.Change) error {
+	waiting, err := c.Q.HasEntriesWaiting(c.Ctx, c.ProjectID)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return err
 	}
-	p.change(w, r, caller, history.CloseProject, func(c projectChangeContext) string {
+	return changeProject(c, history.CloseProject, func(project projectChangeContext) error {
 		if waiting {
-			return pendingEntries
+			return changes.Refuse(http.StatusConflict, pendingEntries)
 		}
-		c.project.Status = finished
-		return ""
+		project.project.Status = finished
+		return nil
 	})
 }
 
@@ -686,48 +714,33 @@ func (c projectChangeContext) unitNamed(name string, other uuid.UUID) bool {
 	return false
 }
 
-// change applies decide to the route's project and its units, keeps what it changed and records each change, as ChangeAsync and
-// AddHistoryOfChanges did: 404 for no such project or unit; a finished project refuses with projectFinished (409); invalidName and
-// invalidDescription answer 400, any other refusal 409; then the project as the caller sees it.
-func (p Routes) change(w http.ResponseWriter, r *http.Request, caller access.Caller, action history.Action, decide func(projectChangeContext) string) {
-	projectID := web.ID(r, "projectId")
-	read := p.database.Queries()
-	before, err := read.ProjectWithID(r.Context(), projectID)
-	if errors.Is(err, sql.ErrNoRows) {
-		problem.Status(w, r, http.StatusNotFound)
-		return
+// change runs act as one change to the route's project and answers the project as the caller sees it, or the refusal act gave.
+func (p Routes) change(w http.ResponseWriter, r *http.Request, caller access.Caller, act func(c changes.Change) error) {
+	if (changes.Writer{Database: p.database, Clock: p.clock}).Write(w, r, caller, act) {
+		p.answer(w, r, http.StatusOK, web.ID(r, "projectId"), caller.UserID)
 	}
-	unitsBefore, unitsErr := read.UnitsOf(r.Context(), projectID)
-	if err != nil || unitsErr != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+}
+
+// changeProject applies decide to the change's project and its units, keeps what it changed and records each change under action, as
+// ChangeAsync and AddHistoryOfChanges did: NotFound for no such project; projectFinished (409) in a finished project; then the refusal decide
+// gives, each with its own status.
+func changeProject(c changes.Change, action history.Action, decide func(projectChangeContext) error) error {
+	before, err := changes.Found(c.Q.ProjectWithID(c.Ctx, c.ProjectID))
+	if err != nil {
+		return err
+	}
+	if before.Status == finished {
+		return changes.Refuse(http.StatusConflict, projectFinished)
+	}
+	unitsBefore, err := c.Q.UnitsOf(c.Ctx, c.ProjectID)
+	if err != nil {
+		return err
 	}
 	project, units := before, append([]store.Unit{}, unitsBefore...)
-	refusal := projectFinished
-	if project.Status != finished {
-		refusal = decide(projectChangeContext{project: &project, units: &units})
+	if err := decide(projectChangeContext{project: &project, units: &units}); err != nil {
+		return err
 	}
-	switch refusal {
-	case "":
-	case unknownUnit:
-		problem.Status(w, r, http.StatusNotFound)
-		return
-	case invalidName, invalidDescription:
-		problem.Refuse(w, r, http.StatusBadRequest, refusal)
-		return
-	default:
-		problem.Refuse(w, r, http.StatusConflict, refusal)
-		return
-	}
-	now := moment.Of(p.clock.Now())
-	err = p.database.InTx(r.Context(), func(q *store.Queries) error {
-		return keepChanges(r.Context(), q, caller.UserID, action, now, before, project, unitsBefore, units)
-	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
-	}
-	p.answer(w, r, http.StatusOK, projectID, caller.UserID)
+	return keepChanges(c.Ctx, c.Q, c.Actor, action, c.Now, before, project, unitsBefore, units)
 }
 
 // keepChanges writes what changed between before and after - the project and each unit added, renamed or removed - each with its History line.

@@ -50,6 +50,23 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Whoever registers a project manages it | `projects.addWithManager` | `ProjectsTests.WhoeverStartsAProjectManagesIt` |
 | Creating a project, adding a unit and closing a project are in the History table | `projects.addWithManager`, `projects.Routes.change`, `history.Changed` | `ProjectsTests.CreatingAProjectIsInTheHistoryWithItsName`, `AddingAUnitIsInTheHistoryWithItsName`, `ClosingAProjectIsInTheHistoryWithItsStatusOldAndNew` |
 
+## On the web: More info (redix-api #175)
+
+The web's More info is the app's screen in the shell, its item in the side menu for everyone in the project: the project's name, its start date and status, said read only once finished; its time zone with its distance from UTC; its units; its description. Whoever manages the project, in a project not finished, also has what the app's menus offer, each asked in the details panel: Rename, the time zone chosen from those REDIX offers, Add unit, a unit's Rename and Delete asked first, the description to edit with its hint, saved in place, and Close the project asked first with what closing does. Each keeps through the rule the app's route runs: `projects.RenameProject`, `SetTimeZone`, `AddUnit`, `RenameUnit`, `DeleteUnit`, `DescribeProject`, `CloseProject`, run through the shared changes.Writer, each refusal raised with its own status. A new name shows at once in the top bar, the side menu and the project list. Its pages are in `go-backend/web` (`projectinfo.go`, `projectinfo.templ`).
+
+| Page | Purpose | Answers |
+| --- | --- | --- |
+| `GET /tab/projectInfo` | More info | `200` the tab's content |
+| `GET /details/project-info/{asking}` | A form in the details panel: `rename`, `timeZone`, `unit` (with `?unit=` a unit's Rename), `deleteUnit?unit=`, `close` | `200` the form; `404` without ManageProject, or for a form or a unit there is none of |
+| `POST /project-info/{asking}` | Keeps the form's `value` - the name, the time zone, a unit's name (`unit` for one renamed), the description (`describe`) - or deletes a unit, or closes the project | `200` More info with the project's name beside it, the panel closed; the description in place, saying it was saved; or the form saying why not; `403` without ManageProject; `404` for a form or a unit there is none of |
+
+| Rule | Enforced by | Proved by |
+| --- | --- | --- |
+| More info shows the project as the app's screen, its changes only for whoever manages it | `web.page.mayManageProject` | `TestWeb_R175_UC006_MoreInfoShowsTheProjectAsTheAppsScreen` |
+| Rename, the time zone, Add unit, a unit's Rename and Delete, the description and Close as the app's dialogs: a name of 1 to 100 letters, a time zone REDIX offers, no two units of one name, at most 2,000 letters of description, no close while an entry waits (AC-04.1) | `projects.RenameProject`, `SetTimeZone`, `AddUnit`, `RenameUnit`, `DeleteUnit`, `DescribeProject`, `CloseProject` | `TestWeb_R175_UC006_MoreInfoChangesAsTheAppsDialogs` |
+| A closed project reads only, and More info offers no change (AC-04.1) | `projects.changeProject` | `TestWeb_R175_UC006_ClosingTheProjectLeavesItReadOnly` |
+| More info's changes are for whoever manages the project; a failing database answers 500 | `web.site.keepProjectInfo` | `TestWeb_R175_MoreInfoChangesAreForWhoeverManagesTheProject` |
+
 ## Left to later use cases
 
 | What | Use case |

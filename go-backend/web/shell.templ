@@ -71,14 +71,7 @@ templ topBar(p page) {
 			<span id="web.appTitle">{ p.words.Of("app.title") }</span>
 		</div>
 		if p.in {
-			<button id="web.project" class="project" type="button" popovertarget="web.projects">
-				if p.inProject() {
-					{ p.project.Name }
-				} else {
-					{ p.words.Of("projects.choose") }
-				}
-				<span id="web.project.caret" class="caret" aria-hidden="true">▾</span>
-			</button>
+			@projectButton(p, false)
 			<div id="web.projects" class="menu-pop projects-menu" popover>
 				@projectMenu(p, "")
 			</div>
@@ -91,6 +84,19 @@ templ topBar(p page) {
 			</div>
 		}
 	</header>
+}
+
+// projectButton is the top bar's button naming the project the person works in, which opens the list to choose another; carried out of band
+// once More info renames it (redix-api #175).
+templ projectButton(p page, outOfBand bool) {
+	<button id="web.project" class="project" type="button" popovertarget="web.projects" { swapOutOfBand(outOfBand)... }>
+		if p.inProject() {
+			{ p.project.Name }
+		} else {
+			{ p.words.Of("projects.choose") }
+		}
+		<span id="web.project.caret" class="caret" aria-hidden="true">▾</span>
+	</button>
 }
 
 // logo is REDIX's mark, the one picture (#80 R19).

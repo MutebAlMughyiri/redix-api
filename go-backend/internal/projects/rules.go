@@ -37,7 +37,6 @@ const (
 	invalidName        = naming.Invalid
 	invalidDescription = "invalidDescription"
 	unitNameTaken      = "unitNameTaken"
-	unknownUnit        = "unknownUnit"
 	pendingEntries     = "pendingEntries"
 	notPending         = "notPending"
 	invalidReason      = "invalidReason"
