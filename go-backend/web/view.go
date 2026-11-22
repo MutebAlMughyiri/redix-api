@@ -23,13 +23,15 @@ type view struct {
 	Tabs                []string
 	Active              string
 	Project             uuid.UUID
-	// Records are the record each tab opened for one keeps, as its page's query: whose Permissions, which item's Columns or Tables.
+	// Records are the record each tab opened for one keeps, as its page's query: whose Permissions, which item's Columns or Tables, which entry
+	// Change opened.
 	Records map[string]string
 }
 
-// recordTabs are the tabs a page opens for one record, which show it again when their title is pressed or the page opens anew, as the app's
-// screen stays on what it opened (redix-api #174).
-var recordTabs = []string{"userPermissions", "itemColumns", "itemTables"}
+// recordTabs are the tabs a page opens for one record, by the query key that names it, which show that record again when their title is pressed
+// or the page opens anew, as the app's screen stays on what it opened (redix-api #174). Only the record is kept, never what a form typed beside
+// it, so Change entry opens again on its entry as it stands, never on an edit not saved (findings row 301).
+var recordTabs = map[string]string{"userPermissions": "user", "itemColumns": "item", "itemTables": "item", "changeEntry": "entry"}
 
 const (
 	// lookCookie keeps the bars, the side menu and its width, which the View menu changes; tabsCookie keeps the open tabs. Each is written only by
@@ -130,16 +132,19 @@ func (v view) opening(name string) view {
 	return v
 }
 
-// recording is v with query kept as the record of the tab named name, when it is a tab opened for one and query names one.
+// recording is v keeping the record query names as the record of the tab named name, when it is a tab opened for one and query names one.
 func (v view) recording(name, query string) view {
-	if !slices.Contains(recordTabs, name) || query == "" {
+	key, opensOne := recordTabs[name]
+	values, _ := url.ParseQuery(query)
+	record := values.Get(key)
+	if !opensOne || record == "" {
 		return v
 	}
 	v.Records = maps.Clone(v.Records)
 	if v.Records == nil {
 		v.Records = map[string]string{}
 	}
-	v.Records[name] = query
+	v.Records[name] = url.Values{key: {record}}.Encode()
 	return v
 }
 

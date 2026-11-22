@@ -1305,6 +1305,22 @@ func TestWeb_R166_UC033_ChangeFillsTheFormAndSavesThroughTheAppsRule(t *testing.
 	}
 }
 
+// Change entry keeps only its entry: pressed again, or after a reload, it opens on the entry as it stands, never on what its form had typed
+// (findings row 301).
+func TestWeb_R301_ChangeEntryOpensAgainOnItsEntryAsItStands(t *testing.T) {
+	w := newWorking(t)
+	draft := w.drafted(30)
+	w.home()
+	typed := w.typedEntry("99", false)
+	typed.Set("entry", draft)
+	has(t, w.browser.Send("GET", "/tab/changeEntry?"+typed.Encode(), nil).Body.String(), `<input id="addEntry.amount" name="amount" inputmode="decimal" value="99">`)
+	w.browser.Send("GET", "/tab/home", nil)
+	again := w.browser.Send("GET", "/tab/changeEntry", nil).Body.String()
+	has(t, again, `<h2 id="addEntry.title">تعديل</h2>`)
+	has(t, again, `<input id="addEntry.amount" name="amount" inputmode="decimal" value="30">`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `id="web.tab.changeEntry"`)
+}
+
 func TestWeb_R166_UC033_AnApprovedEntryIsNotChanged(t *testing.T) {
 	w := newWorking(t)
 	approved := w.approved(70)
