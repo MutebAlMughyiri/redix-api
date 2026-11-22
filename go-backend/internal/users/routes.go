@@ -266,8 +266,8 @@ func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID) ([]Vi
 	return views, nil
 }
 
-// createUserRequest is the body POST /projects/{projectId}/users (UC-008) reads.
-type createUserRequest struct {
+// NewPerson is a new person as New user types them, the body POST /projects/{projectId}/users (UC-008) reads and the web's New user sends.
+type NewPerson struct {
 	DisplayName       string              `json:"displayName"`
 	Username          string              `json:"username"`
 	Mobile            string              `json:"mobile"`
@@ -282,99 +282,95 @@ type createUserRequest struct {
 // create adds a new person to the project with a temporary password, ReadProject and the permissions ticked, the partners chosen and a role name
 // (FR-02): invalidRoleName, invalidPermission, unknownPartner, the details' and the email's refusals, or usernameTaken (409); 201 with them.
 func (u Routes) create(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	var request createUserRequest
+	var request NewPerson
 	if !web.Read(w, r, &request) {
 		return
 	}
-	projectID := web.ID(r, "projectId")
-	roleName := strings.TrimSpace(request.RoleName)
-	if utf8.RuneCountInString(roleName) > roleNameMaxLength {
-		problem.Refuse(w, r, http.StatusBadRequest, "invalidRoleName")
+	var created uuid.UUID
+	if !u.writer.Write(w, r, caller, func(c changes.Change) (err error) {
+		created, err = Create(c, request)
+		return err
+	}) {
 		return
 	}
-	if slices.Contains(request.Permissions, access.ApproveProjects) ||
-		(slices.Contains(request.Permissions, access.SeeAllCapital) && slices.Contains(request.Permissions, access.SeeChosenCapital)) {
-		problem.Refuse(w, r, http.StatusBadRequest, "invalidPermission")
-		return
+	w.Header().Set("Location", "/users/"+created.String())
+	u.answerInProject(w, r, http.StatusCreated, web.ID(r, "projectId"), created)
+}
+
+// Create adds the new person typed to the change's project with a temporary password, ReadProject and the permissions ticked, the partners chosen,
+// the tables unticked and a role name (FR-02), as create does: the rule both doors call, the app's route and the web's New user (redix-api
+// #173). Refused with invalidRoleName, invalidPermission, unknownPartner, unknownTable, the details' and the email's refusals, or usernameTaken
+// (409); it is the new person's id.
+func Create(c changes.Change, typed NewPerson) (uuid.UUID, error) {
+	roleName := strings.TrimSpace(typed.RoleName)
+	if utf8.RuneCountInString(roleName) > roleNameMaxLength {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, "invalidRoleName")
+	}
+	if slices.Contains(typed.Permissions, access.ApproveProjects) ||
+		(slices.Contains(typed.Permissions, access.SeeAllCapital) && slices.Contains(typed.Permissions, access.SeeChosenCapital)) {
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, "invalidPermission")
 	}
 	var partners []uuid.UUID
-	if slices.Contains(request.Permissions, access.SeeChosenCapital) {
-		for _, id := range request.PartnerIDs {
+	if slices.Contains(typed.Permissions, access.SeeChosenCapital) {
+		for _, id := range typed.PartnerIDs {
 			if !slices.Contains(partners, id) {
 				partners = append(partners, id)
 			}
 		}
 	}
-	read := u.database.Queries()
-	kept, err := read.KeptPartnerIDs(r.Context(), store.KeptPartnerIDsParams{ProjectID: projectID, Ids: partners})
+	kept, err := c.Q.KeptPartnerIDs(c.Ctx, store.KeptPartnerIDsParams{ProjectID: c.ProjectID, Ids: partners})
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return uuid.Nil, err
 	}
 	if len(kept) != len(partners) {
-		problem.Refuse(w, r, http.StatusBadRequest, "unknownPartner")
-		return
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, "unknownPartner")
 	}
-	for _, tableID := range request.UnseenTableIDs {
-		known, err := isTable(r.Context(), read, projectID, tableID)
-		switch {
-		case err != nil:
-			problem.Status(w, r, http.StatusInternalServerError)
-			return
-		case !known:
-			problem.Refuse(w, r, http.StatusBadRequest, "unknownTable")
-			return
+	for _, tableID := range typed.UnseenTableIDs {
+		known, err := isTable(c.Ctx, c.Q, c.ProjectID, tableID)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		if !known {
+			return uuid.Nil, changes.Refuse(http.StatusBadRequest, "unknownTable")
 		}
 	}
-	now := moment.Of(u.clock.Now())
-	user, status, refusal, err := New(r.Context(), read, request.DisplayName, request.Username, request.Mobile, request.TemporaryPassword, true, now)
+	user, status, refusal, err := New(c.Ctx, c.Q, typed.DisplayName, typed.Username, typed.Mobile, typed.TemporaryPassword, true, c.Now)
 	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+		return uuid.Nil, err
 	}
 	if refusal != "" {
-		problem.Refuse(w, r, status, refusal)
-		return
+		return uuid.Nil, changes.Refuse(status, refusal)
 	}
-	user.Email = strings.TrimSpace(request.Email)
-	if status, refusal, err := RefusalOfEmail(r.Context(), read, user.Email, uuid.Nil); err != nil || refusal != "" {
+	user.Email = strings.TrimSpace(typed.Email)
+	if status, refusal, err := RefusalOfEmail(c.Ctx, c.Q, user.Email, uuid.Nil); err != nil || refusal != "" {
 		if err != nil {
-			problem.Status(w, r, http.StatusInternalServerError)
-		} else {
-			problem.Refuse(w, r, status, refusal)
+			return uuid.Nil, err
 		}
-		return
+		return uuid.Nil, changes.Refuse(status, refusal)
 	}
-	ticked := append([]access.Permission{access.ReadProject}, request.Permissions...)
-	err = u.write(r, caller, func(c change) error {
-		if err := Add(c.ctx, c.q, user, c.actor, now); err != nil {
-			return err
-		}
-		for i, permission := range ticked {
-			if !slices.Contains(ticked[:i], permission) {
-				if err := c.addPermission(projectID, user.ID, permission); err != nil {
-					return err
-				}
-			}
-		}
-		for _, partnerID := range partners {
-			if err := c.choose(projectID, user.ID, partnerID); err != nil {
-				return err
-			}
-		}
-		for _, tableID := range request.UnseenTableIDs {
-			if err := c.unsee(projectID, user.ID, tableID); err != nil {
-				return err
-			}
-		}
-		return c.nameRole(projectID, user.ID, roleName)
-	})
-	if err != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	made := changeOf(c)
+	if err := Add(c.Ctx, c.Q, user, c.Actor, c.Now); err != nil {
+		return uuid.Nil, err
 	}
-	w.Header().Set("Location", "/users/"+user.ID.String())
-	u.answerInProject(w, r, http.StatusCreated, projectID, user.ID)
+	ticked := append([]access.Permission{access.ReadProject}, typed.Permissions...)
+	for i, permission := range ticked {
+		if !slices.Contains(ticked[:i], permission) {
+			if err := made.addPermission(c.ProjectID, user.ID, permission); err != nil {
+				return uuid.Nil, err
+			}
+		}
+	}
+	for _, partnerID := range partners {
+		if err := made.choose(c.ProjectID, user.ID, partnerID); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	for _, tableID := range typed.UnseenTableIDs {
+		if err := made.unsee(c.ProjectID, user.ID, tableID); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	return user.ID, made.nameRole(c.ProjectID, user.ID, roleName)
 }
 
 // addExistingUserRequest is the body POST /projects/{projectId}/users/existing (UC-008) reads.

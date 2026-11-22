@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
 )
 
@@ -177,14 +180,8 @@ func (s site) keepUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return err
 	})
-	refusal := ""
-	var refused changes.Refusal
-	switch {
-	case errors.As(err, &refused) && refused.Code == "":
-		refusal = "users.refused"
-	case errors.As(err, &refused):
-		refusal = "users." + refused.Code
-	case err != nil:
+	refusal, err := refusalOf(err)
+	if err != nil {
 		failed(w)
 		return
 	}
@@ -208,3 +205,370 @@ func (s site) keepUser(w http.ResponseWriter, r *http.Request) {
 	person, _ = shown.personOf(userID)
 	draw(w, r, http.StatusOK, userPanel(p, person, said{}), usersBeside(p, shown))
 }
+
+// permissionTicks are a project's permissions in the order the app's ticks list them (Permission.inAProject): ReadProject first, every person
+// holding it; never ApproveProjects, which is no project's.
+var permissionTicks = []access.Permission{access.ReadProject, access.ManageUsers, access.SeeAllCapital, access.SeeChosenCapital, access.ManageProject,
+	access.ManageStructure, access.ManageSettings, access.AddSupplier, access.ChargeAnyAccount, access.RecordEntries, access.ManageAnyEntry,
+	access.DeleteEntries, access.RemoveApprovedEntries, access.AttachFiles, access.ApproveEntries, access.MoveMoney, access.SeeReports,
+	access.GenerateReports, access.SeeProjectHistory, access.ManageProjectFiles}
+
+// permissionName is permission's name as the app's words and keys spell it: RecordEntries is recordEntries.
+func permissionName(permission access.Permission) string {
+	name := string(permission)
+	return strings.ToLower(name[:1]) + name[1:]
+}
+
+// permissionGroup is the word of the group a permission's tick opens, as the app's Permission.groupWordKey: the capital pair, the reports pair.
+func permissionGroup(permission access.Permission) string {
+	switch permission {
+	case access.SeeAllCapital, access.SeeChosenCapital:
+		return "permissions.capitalGroup"
+	case access.SeeReports, access.GenerateReports:
+		return "permissions.reportsGroup"
+	}
+	return ""
+}
+
+// opensGroup says whether permission's tick is the first of its group, so the group's heading goes above it.
+func opensGroup(permission access.Permission) bool {
+	at := slices.Index(permissionTicks, permission)
+	return permissionGroup(permission) != "" && (at == 0 || permissionGroup(permissionTicks[at-1]) != permissionGroup(permission))
+}
+
+// excludes is the id of the tick a capital tick takes away when ticked, as the app keeps one of the pair at most; "" for any other.
+func excludes(prefix string, permission access.Permission) string {
+	switch permission {
+	case access.SeeAllCapital:
+		return prefix + ".seeChosenCapital"
+	case access.SeeChosenCapital:
+		return prefix + ".seeAllCapital"
+	}
+	return ""
+}
+
+// newUserShown is New user as the app's screen asks it (UC-008): the person typed, the permissions, partners and tables ticked, the project's
+// partners and tables to tick, and why it could not be kept.
+type newUserShown struct {
+	typed    users.NewPerson
+	partners []partners.View
+	tables   []entries.OfferedCategory
+	refusal  string
+}
+
+// holds says whether New user's form has permission ticked: ReadProject always.
+func (s newUserShown) holds(permission access.Permission) bool {
+	return permission == access.ReadProject || slices.Contains(s.typed.Permissions, permission)
+}
+
+// chose says whether New user's form has partnerID chosen.
+func (s newUserShown) chose(partnerID uuid.UUID) bool {
+	return slices.Contains(s.typed.PartnerIDs, partnerID)
+}
+
+// sees says whether New user's form leaves tableID ticked, seen.
+func (s newUserShown) sees(tableID uuid.UUID) bool {
+	return !slices.Contains(s.typed.UnseenTableIDs, tableID)
+}
+
+// newUserOf is New user with typed and refusal, the partners and tables to tick read through the rules the app's routes answer (partners.ListOf,
+// entries.SightTablesOf). The error is the database's.
+func (s site) newUserOf(ctx context.Context, p page, typed users.NewPerson, refusal string) (newUserShown, error) {
+	read := s.Database.Queries()
+	listed, err := partners.ListOf(ctx, read, p.project.ID, p.caller)
+	tables, tablesErr := entries.SightTablesOf(ctx, read, p.project.ID, p.caller.Access)
+	return newUserShown{typed: typed, partners: listed, tables: tables, refusal: refusal}, errors.Join(err, tablesErr)
+}
+
+// newUserTab is New user in its tab (UC-008, redix-api #173), opened from Users.
+func (s site) newUserTab(r *http.Request, p page) (templ.Component, error) {
+	shown, err := s.newUserOf(r.Context(), p, users.NewPerson{}, "")
+	return newUserPage(p, shown), err
+}
+
+// createUser adds the person New user typed through users.Create, the rule the app's route runs: ReadProject and the permissions ticked, the
+// partners chosen, the tables left unticked unseen, with a temporary password they change at their first sign-in. Kept, the form starts again
+// and the person shows in the details panel; refused, the form says why in the app's words. 403 without ManageUsers.
+func (s site) createUser(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || r.ParseForm() != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !p.may(access.ManageUsers) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+	shown, err := s.newUserOf(r.Context(), p, users.NewPerson{}, "")
+	if err != nil {
+		failed(w)
+		return
+	}
+	form := r.PostForm
+	typed := users.NewPerson{DisplayName: form.Get("name"), Username: form.Get("username"), Mobile: form.Get("mobile"), Email: form.Get("email"),
+		TemporaryPassword: form.Get("password"), RoleName: form.Get("roleName")}
+	for _, name := range form["permission"] {
+		if permission, known := access.Named(name); known {
+			typed.Permissions = append(typed.Permissions, permission)
+		}
+	}
+	for _, id := range form["partner"] {
+		if partnerID, err := uuid.Parse(id); err == nil {
+			typed.PartnerIDs = append(typed.PartnerIDs, partnerID)
+		}
+	}
+	for _, category := range shown.tables {
+		for _, item := range category.Items {
+			for _, table := range item.Tables {
+				if !slices.Contains(form["seen"], table.ID.String()) {
+					typed.UnseenTableIDs = append(typed.UnseenTableIDs, table.ID)
+				}
+			}
+		}
+	}
+	var created uuid.UUID
+	err = changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) (err error) {
+		created, err = users.Create(c, typed)
+		return err
+	})
+	refusal, err := refusalOf(err)
+	switch {
+	case err != nil:
+		failed(w)
+		return
+	case refusal != "":
+		typed.TemporaryPassword = ""
+		shown.typed, shown.refusal = typed, refusal
+		draw(w, r, http.StatusOK, newUserPage(p, shown))
+		return
+	}
+	listed, err := s.usersOf(r.Context(), p, "")
+	if err != nil {
+		failed(w)
+		return
+	}
+	person, _ := listed.personOf(created)
+	draw(w, r, http.StatusOK, newUserPage(p, shown), userBeside(p, person))
+}
+
+// tickGroups ties an item's tick to its tables' as the app's TableTicks does: the item's tick sets every table of its, and a table's tick leaves
+// the item's ticked when every table is, unticked when none is, and between otherwise. A constant of our own, holding no person's data.
+const tickGroups = `const box = event.target, group = box.closest('.tick-item'); if (!group) return; ` +
+	`const tables = [...group.querySelectorAll('input[data-table]')], item = group.querySelector('input[data-item]'); ` +
+	`if (box === item) tables.forEach(table => { table.checked = item.checked }); ` +
+	`const seen = tables.filter(table => table.checked).length; item.checked = seen === tables.length; item.indeterminate = seen > 0 && seen < tables.length`
+
+// capitalPair keeps one of the capital ticks at most, as the app's New user does: ticking one takes the other away.
+const capitalPair = `const box = event.target; if (box.checked && box.dataset.excludes) document.getElementById(box.dataset.excludes).checked = false`
+
+// refusalOf is why a change to the project's users was refused, in the app's words: "users." and its code, users.refused for one without; "" when
+// it was kept. The error is the database's.
+func refusalOf(err error) (string, error) {
+	var refused changes.Refusal
+	switch {
+	case errors.As(err, &refused) && refused.Code == "":
+		return "users.refused", nil
+	case errors.As(err, &refused):
+		return "users." + refused.Code, nil
+	}
+	return "", err
+}
+
+// newUserTick is what a permission's tick does on New user: it is sent with the form, Read project always and fixed, ticking one of the capital
+// pair taking the other away.
+func newUserTick(permission access.Permission) templ.Attributes {
+	attributes := templ.Attributes{"name": "permission", "value": string(permission), "disabled": permission == access.ReadProject}
+	if excluded := excludes("newUser", permission); excluded != "" {
+		attributes["data-excludes"] = excluded + ".input"
+	}
+	return attributes
+}
+
+// newUserChoice is what a partner's tick does on New user: it is sent with the form.
+func newUserChoice(partnerID uuid.UUID) templ.Attributes {
+	return templ.Attributes{"name": "partner", "value": partnerID.String()}
+}
+
+// newUserTableTick is what a table's tick does on New user: it is sent with the form while ticked; an item's ticks its tables (tickGroups).
+func newUserTableTick(tableIDs []uuid.UUID, table bool) templ.Attributes {
+	if table {
+		return templ.Attributes{"name": "seen", "value": tableIDs[0].String(), "data-table": true}
+	}
+	return templ.Attributes{"data-item": true}
+}
+
+// seenOf is how many of item's tables are ticked.
+func seenOf(item entries.OfferedItem, sees func(uuid.UUID) bool) int {
+	seen := 0
+	for _, table := range item.Tables {
+		if sees(table.ID) {
+			seen++
+		}
+	}
+	return seen
+}
+
+// tableIDsOf is the ids of item's tables, those its tick ticks.
+func tableIDsOf(item entries.OfferedItem) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(item.Tables))
+	for _, table := range item.Tables {
+		ids = append(ids, table.ID)
+	}
+	return ids
+}
+
+// userPermissionsShown is a person's Permissions as the app's screen shows them (UC-008): the person, found while in the project, the project's
+// partners and tables to tick, and why a tick could not be kept.
+type userPermissionsShown struct {
+	person   users.View
+	found    bool
+	partners []partners.View
+	tables   []entries.OfferedCategory
+	refusal  string
+}
+
+// holds says whether the person holds permission here.
+func (s userPermissionsShown) holds(permission access.Permission) bool {
+	return slices.Contains(heldHere(s.person).Permissions, permission)
+}
+
+// chose says whether the person sees partnerID's capital.
+func (s userPermissionsShown) chose(partnerID uuid.UUID) bool {
+	return slices.Contains(heldHere(s.person).PartnerIDs, partnerID)
+}
+
+// sees says whether the person sees tableID's entries.
+func (s userPermissionsShown) sees(tableID uuid.UUID) bool {
+	return !slices.Contains(heldHere(s.person).UnseenTables, tableID)
+}
+
+// tick is what a permission's tick does on Permissions: it is kept at once, given while ticked and taken while not.
+func (s userPermissionsShown) tick(permission access.Permission) templ.Attributes {
+	return s.keptAt("/permission/" + string(permission))
+}
+
+// choose is what a partner's tick does on Permissions: kept at once.
+func (s userPermissionsShown) choose(partnerID uuid.UUID) templ.Attributes {
+	return s.keptAt("/partner/" + partnerID.String())
+}
+
+// tickTables is what an item's or a table's tick does on Permissions: its tables kept at once, all an item's in one request, as the app sends them.
+func (s userPermissionsShown) tickTables(tableIDs []uuid.UUID, _ bool) templ.Attributes {
+	query := url.Values{}
+	for _, id := range tableIDs {
+		query.Add("table", id.String())
+	}
+	return s.keptAt("/tables?" + query.Encode())
+}
+
+// keptAt is a tick of the person's Permissions posted to path at once, held while ticked, the page drawn again as they then hold it.
+func (s userPermissionsShown) keptAt(path string) templ.Attributes {
+	return templ.Attributes{"name": "held", "value": "on", "hx-post": "/user/" + s.person.ID.String() + path, "hx-target": "[id='web.content']"}
+}
+
+// userPermissionsOf is userID's Permissions with refusal, the person, partners and tables read through the rules the app's routes answer
+// (users.ListOf, partners.ListOf, entries.SightTablesOf). The error is the database's.
+func (s site) userPermissionsOf(ctx context.Context, p page, userID uuid.UUID, refusal string) (userPermissionsShown, error) {
+	read := s.Database.Queries()
+	listed, err := s.usersOf(ctx, p, "")
+	choices, partnersErr := partners.ListOf(ctx, read, p.project.ID, p.caller)
+	tables, tablesErr := entries.SightTablesOf(ctx, read, p.project.ID, p.caller.Access)
+	person, found := listed.personOf(userID)
+	return userPermissionsShown{person: person, found: found, partners: choices, tables: tables, refusal: refusal}, errors.Join(err, partnersErr, tablesErr)
+}
+
+// userPermissionsTab is a person's Permissions in its tab (UC-008, redix-api #173), opened from their panel in Users.
+func (s site) userPermissionsTab(r *http.Request, p page) (templ.Component, error) {
+	userID, _ := uuid.Parse(r.URL.Query().Get("user"))
+	shown, err := s.userPermissionsOf(r.Context(), p, userID, "")
+	return userPermissionsPage(p, shown), err
+}
+
+// keepPermission gives the permission named in the path while its tick is held, or takes it, through users.Give and users.Take, the rules the
+// app's routes run: taking Read project takes the person out of the project.
+func (s site) keepPermission(w http.ResponseWriter, r *http.Request) {
+	s.keepTick(w, r, func(c changes.Change, userID uuid.UUID, held bool) error {
+		if held {
+			return users.Give(c, userID, r.PathValue("permission"))
+		}
+		return users.Take(c, userID, r.PathValue("permission"))
+	})
+}
+
+// keepChosenPartner shows the partner in the path to the person while its tick is held, or stops showing them, through users.Choose and
+// users.Unchoose.
+func (s site) keepChosenPartner(w http.ResponseWriter, r *http.Request) {
+	s.keepTick(w, r, func(c changes.Change, userID uuid.UUID, held bool) error {
+		partnerID, err := uuid.Parse(r.PathValue("partner"))
+		if err != nil {
+			return changes.NotFound
+		}
+		if held {
+			return users.Choose(c, userID, partnerID)
+		}
+		return users.Unchoose(c, userID, partnerID)
+	})
+}
+
+// keepTables ticks the tables in the query for the person while held, or unticks them, through users.SeeTables, all in one change.
+func (s site) keepTables(w http.ResponseWriter, r *http.Request) {
+	s.keepTick(w, r, func(c changes.Change, userID uuid.UUID, held bool) error {
+		var tableIDs []uuid.UUID
+		for _, id := range r.URL.Query()["table"] {
+			tableID, err := uuid.Parse(id)
+			if err != nil {
+				return changes.NotFound
+			}
+			tableIDs = append(tableIDs, tableID)
+		}
+		return users.SeeTables(c, userID, held, tableIDs)
+	})
+}
+
+// keepTick keeps one tick of a person's Permissions at once through act, held while ticked, and draws the page again as they now hold it, the
+// person beside it in the details panel, as the app's screen keeps each tick; refused, the page says why in the app's words. 403 without
+// ManageUsers; 404 for someone not in the project.
+func (s site) keepTick(w http.ResponseWriter, r *http.Request, act func(c changes.Change, userID uuid.UUID, held bool) error) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	userID, err := uuid.Parse(r.PathValue("id"))
+	if !p.inProject() || err != nil || r.ParseForm() != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !p.may(access.ManageUsers) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+	err = changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) error {
+		return act(c, userID, r.PostForm.Get("held") == "on")
+	})
+	if errors.Is(err, changes.NotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	refusal, err := refusalOf(err)
+	if err != nil {
+		failed(w)
+		return
+	}
+	shown, err := s.userPermissionsOf(r.Context(), p, userID, refusal)
+	if err != nil {
+		failed(w)
+		return
+	}
+	if !shown.found {
+		draw(w, r, http.StatusOK, userPermissionsPage(p, shown), detailsPanel(true))
+		return
+	}
+	draw(w, r, http.StatusOK, userPermissionsPage(p, shown), userBeside(p, shown.person))
+}
+
+// partialTicks shows an item's tick between ticked and not while only some of its tables are, as the app's TableTicks does: HTML holds that
+// state only as a property, so it is set on every page htmx loads. A constant of our own, holding no person's data.
+const partialTicks = `const loaded = event.target; [...loaded.querySelectorAll('input[data-partial]')].forEach(box => { box.indeterminate = true })`

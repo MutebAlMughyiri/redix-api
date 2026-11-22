@@ -3298,6 +3298,56 @@
         ],
         "type": "object"
       },
+      "users.NewPerson": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "mobile": {
+            "type": "string"
+          },
+          "partnerIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "temporaryPassword": {
+            "type": "string"
+          },
+          "unseenTableIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayName",
+          "email",
+          "mobile",
+          "temporaryPassword",
+          "username"
+        ],
+        "type": "object"
+      },
       "users.ProjectView": {
         "properties": {
           "isInactive": {
@@ -3411,56 +3461,6 @@
         },
         "required": [
           "reason"
-        ],
-        "type": "object"
-      },
-      "users.createUserRequest": {
-        "properties": {
-          "displayName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "mobile": {
-            "type": "string"
-          },
-          "partnerIds": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "permissions": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "roleName": {
-            "type": "string"
-          },
-          "temporaryPassword": {
-            "type": "string"
-          },
-          "unseenTableIds": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "username": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "displayName",
-          "email",
-          "mobile",
-          "temporaryPassword",
-          "username"
         ],
         "type": "object"
       },
@@ -12533,7 +12533,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/users.createUserRequest"
+                "$ref": "#/components/schemas/users.NewPerson"
               }
             }
           },

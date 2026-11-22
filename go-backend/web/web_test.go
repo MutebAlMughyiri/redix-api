@@ -2899,7 +2899,7 @@ func TestWeb_R173_UC008_UsersListsEveryoneAsTheAppsScreen(t *testing.T) {
 	has(t, list, `<small id="users.details.`+builder.String()+`" class="hint">`+builder.String()+` · مهندس الموقع</small>`)
 	has(t, list, `<small id="users.permissionsLine.`+builder.String()+`" class="hint">الصلاحيات: 1</small>`)
 	has(t, list, `<span id="users.status.`+gone.String()+`" class="chip">معطّل</span>`)
-	has(t, list, `<button id="users.new" class="primary small" type="button" disabled>`)
+	has(t, list, `<button id="users.new" class="primary small" type="button" hx-get="/tab/newUser"`)
 	found := w.browser.Send("GET", "/tab/users?text=مهندس", nil).Body.String()
 	has(t, found, `id="users.row.`+builder.String()+`"`)
 	lacks(t, found, `id="users.row.`+gone.String()+`"`)
@@ -2966,6 +2966,189 @@ func TestWeb_R173_UsersAreForWhoeverManagesThem(t *testing.T) {
 		{"POST", "/user/" + builder.String() + "/disable"}, {"POST", "/user"}} {
 		for n := int64(1); ; n++ {
 			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"User B2"}, "username": {builder.String()}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+func TestWeb_R173_UC008_NewUserAsksWhatTheAppsScreenAsks(t *testing.T) {
+	w := newWorking(t)
+	partner := w.partner("الشريك A", "")
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/users", nil).Body.String(), `hx-get="/tab/newUser"`)
+	form := w.browser.Send("GET", "/tab/newUser", nil).Body.String()
+	has(t, form, `<h2 id="newUser.title">مستخدم جديد</h2>`)
+	has(t, form, `id="newUser.name.hint"`)
+	has(t, form, `id="newUser.password.hint"`)
+	has(t, form, `<input id="newUser.readProject.input" type="checkbox" checked disabled name="permission" value="ReadProject">`)
+	has(t, form, `data-excludes="newUser.seeChosenCapital.input"`)
+	has(t, form, `<p id="newUser.permissions.capitalGroup" class="section-title">`)
+	has(t, form, `<p id="newUser.permissions.reportsGroup" class="section-title">`)
+	has(t, form, `<input id="permissions.partner.`+partner+`.input" type="checkbox" name="partner" value="`+partner+`">`)
+	has(t, form, `<input id="tables.table.`+w.table+`.input" type="checkbox" checked data-table name="seen" value="`+w.table+`">`)
+	has(t, form, `<input id="tables.item.`+w.item+`.input" type="checkbox" checked data-item>`)
+	lacks(t, form, `value="ApproveProjects"`)
+}
+
+func TestWeb_R173_UC008_NewUserAddsThePersonWithWhatIsTicked(t *testing.T) {
+	w := newWorking(t)
+	partner := w.partner("الشريك A", "")
+	w.home()
+	typed := func(username string, permissions ...string) url.Values {
+		return url.Values{"name": {"User E"}, "username": {username}, "mobile": {""}, "email": {username + "@example.com"}, "password": {"Temporary-77"},
+			"roleName": {"محاسب"}, "permission": permissions, "partner": {partner}}
+	}
+	refused := w.browser.Send("POST", "/users/new", typed("user.e", "SeeAllCapital", "SeeChosenCapital")).Body.String()
+	has(t, refused, `<p id="newUser.message" class="refusal" role="alert">لا تُمنح هذه الصلاحية داخل مشروع.</p>`)
+	has(t, refused, `<input id="newUser.username" name="username" required autocomplete="off" value="user.e">`)
+	has(t, refused, `<input id="newUser.password" name="password" type="password" autocomplete="new-password" required>`)
+	has(t, refused, `<input id="newUser.seeAllCapital.input" type="checkbox" checked data-excludes="newUser.seeChosenCapital.input" name="permission" value="SeeAllCapital">`)
+	added := w.browser.Send("POST", "/users/new", typed("user.e", "RecordEntries", "SeeChosenCapital")).Body.String()
+	has(t, added, `<h3 id="user.title">User E</h3>`)
+	has(t, added, `<dd id="user.roleName">محاسب</dd>`)
+	has(t, added, `<input id="newUser.name" name="name" required value="" autofocus>`)
+	read := w.Database.Read
+	var person string
+	if err := read.QueryRow("SELECT id FROM users WHERE username = 'user.e'").Scan(&person); err != nil {
+		t.Fatal(err)
+	}
+	var permissions, chosen, unseen int
+	for query, into := range map[string]*int{
+		"SELECT count(*) FROM project_permissions WHERE user_id = ? AND permission IN ('ReadProject', 'RecordEntries', 'SeeChosenCapital')": &permissions,
+		"SELECT count(*) FROM chosen_partners WHERE user_id = ? AND partner_id = '" + partner + "'":                                         &chosen,
+		"SELECT count(*) FROM unseen_groups WHERE user_id = ? AND subgroup_id = '" + w.table + "'":                                          &unseen,
+	} {
+		if err := read.QueryRow(query, person).Scan(into); err != nil {
+			t.Fatal(query, err)
+		}
+	}
+	if permissions != 3 || chosen != 1 || unseen != 1 {
+		t.Errorf("the new person holds %d of the three permissions, %d chosen partner, %d unseen table", permissions, chosen, unseen)
+	}
+	seen := typed("user.f", "RecordEntries")
+	seen.Set("seen", w.table)
+	w.browser.Send("POST", "/users/new", seen)
+	if err := read.QueryRow("SELECT count(*) FROM unseen_groups JOIN users ON users.id = unseen_groups.user_id WHERE users.username = 'user.f' AND subgroup_id = ?", w.table).Scan(&unseen); err != nil || unseen != 0 {
+		t.Errorf("a table left ticked is seen: %d unseen, %v", unseen, err)
+	}
+	has(t, w.browser.Send("POST", "/users/new", typed("user.e", "RecordEntries")).Body.String(), "اسم المستخدم هذا مستخدم. اختر غيره.")
+}
+
+func TestWeb_R173_NewUserIsForWhoeverManagesTheUsers(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {builder.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	if code := browser.Send("POST", "/users/new", url.Values{"username": {"x"}}).Code; code != http.StatusForbidden {
+		t.Errorf("New user without ManageUsers: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/newUser"}, {"POST", "/users/new"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"name": {"User G"}, "username": {"user.g"}, "email": {"g@example.com"},
+				"password": {"Temporary-77"}})
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answers %d", ask.method, ask.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+// tick is how a person's Permissions page draws the tick whose id is id, ticked or not, the rest of its tag cut.
+func tick(id string, ticked bool) string {
+	if ticked {
+		return `<input id="` + id + `.input" type="checkbox" checked `
+	}
+	return `<input id="` + id + `.input" type="checkbox" hx-post=`
+}
+
+func TestWeb_R173_UC008_PermissionsShowWhatThePersonHoldsAsTheAppsScreen(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	partner := w.partner("الشريك A", "")
+	w.Ask("POST", w.path+"/users/"+builder.String()+"/permissions/RecordEntries", ``, w.token)
+	w.home()
+	has(t, w.browser.Send("GET", "/details/user/"+builder.String(), nil).Body.String(), `hx-get="/tab/userPermissions?user=`+builder.String()+`"`)
+	page := w.browser.Send("GET", "/tab/userPermissions?user="+builder.String(), nil).Body.String()
+	has(t, page, `<h3 id="userPermissions.name" class="section-title">User B</h3>`)
+	has(t, page, `id="userPermissions.hint"`)
+	has(t, page, tick("userPermissions.readProject", true))
+	has(t, page, tick("userPermissions.recordEntries", true))
+	has(t, page, tick("userPermissions.manageUsers", false))
+	has(t, page, `hx-post="/user/`+builder.String()+`/permission/RecordEntries"`)
+	has(t, page, `hx-post="/user/`+builder.String()+`/partner/`+partner+`"`)
+	has(t, page, `hx-post="/user/`+builder.String()+`/tables?table=`+w.table+`"`)
+	has(t, page, tick("tables.table."+w.table, true))
+	lacks(t, page, `value="ApproveProjects"`)
+	lacks(t, w.browser.Send("GET", "/tab/userPermissions?user="+uuid.NewString(), nil).Body.String(), `id="userPermissions.name"`)
+}
+
+func TestWeb_R173_UC008_EachTickIsKeptAtOnceAsTheAppsScreenKeepsIt(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	partner := w.partner("الشريك A", "")
+	w.Ask("POST", w.path+"/items/"+w.item+"/subgroups", `{"name":"الدور الأول"}`, w.token)
+	var floor string
+	if err := w.Database.Read.QueryRow("SELECT id FROM subgroups WHERE item_id = ? AND name = 'الدور الأول'", w.item).Scan(&floor); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	person := "/user/" + builder.String()
+	held := url.Values{"held": {"on"}}
+	given := w.browser.Send("POST", person+"/permission/RecordEntries", held).Body.String()
+	has(t, given, tick("userPermissions.recordEntries", true))
+	has(t, given, `<p id="user.permissionsLine" class="hint details-foot">الصلاحيات: 2</p>`)
+	w.browser.Send("POST", person+"/permission/SeeAllCapital", held)
+	chosen := w.browser.Send("POST", person+"/permission/SeeChosenCapital", held).Body.String()
+	has(t, chosen, tick("userPermissions.seeChosenCapital", true))
+	has(t, chosen, tick("userPermissions.seeAllCapital", false))
+	has(t, w.browser.Send("POST", person+"/partner/"+partner, held).Body.String(), `<input id="permissions.partner.`+partner+`.input" type="checkbox" checked `)
+	has(t, w.browser.Send("POST", person+"/partner/"+partner, nil).Body.String(), `<input id="permissions.partner.`+partner+`.input" type="checkbox" hx-post=`)
+	between := w.browser.Send("POST", person+"/tables?table="+w.table, nil).Body.String()
+	has(t, between, tick("tables.table."+w.table, false))
+	has(t, between, tick("tables.table."+floor, true))
+	has(t, between, `<input id="tables.item.`+w.item+`.input" type="checkbox" data-partial hx-post=`)
+	both := w.browser.Send("POST", person+"/tables?table="+w.table+"&table="+floor, held).Body.String()
+	has(t, both, `<input id="tables.item.`+w.item+`.input" type="checkbox" checked hx-post=`)
+	taken := w.browser.Send("POST", person+"/permission/RecordEntries", nil).Body.String()
+	has(t, taken, tick("userPermissions.recordEntries", false))
+	has(t, w.browser.Send("POST", "/user/"+w.manager.String()+"/permission/ManageUsers", nil).Body.String(),
+		`<p id="userPermissions.message" class="refusal" role="alert">يحتاج المشروع إلى شخص واحد على الأقل يدير مستخدميه.</p>`)
+	has(t, w.browser.Send("POST", person+"/permission/ApproveProjects", held).Body.String(), "لا تُمنح هذه الصلاحية داخل مشروع.")
+	out := w.browser.Send("POST", person+"/permission/ReadProject", nil).Body.String()
+	lacks(t, out, `id="userPermissions.name"`)
+	has(t, out, `<aside id="web.details" class="details" aria-live="polite" hx-swap-oob="true"></aside>`)
+	for _, path := range []string{"/user/" + uuid.NewString() + "/permission/RecordEntries", "/user/x/permission/RecordEntries", person + "/partner/x",
+		"/user/" + w.manager.String() + "/tables?table=x"} {
+		if code := w.browser.Send("POST", path, held).Code; code != http.StatusNotFound {
+			t.Errorf("%s: %d", path, code)
+		}
+	}
+}
+
+func TestWeb_R173_PermissionsAreForWhoeverManagesTheUsers(t *testing.T) {
+	w := newWorking(t)
+	builder := w.member("User B", "")
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {builder.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	if code := browser.Send("POST", "/user/"+builder.String()+"/permission/ManageUsers", url.Values{"held": {"on"}}).Code; code != http.StatusForbidden {
+		t.Errorf("a tick without ManageUsers: %d", code)
+	}
+	w.home()
+	for _, ask := range []struct{ method, path string }{{"GET", "/tab/userPermissions?user=" + builder.String()},
+		{"POST", "/user/" + builder.String() + "/permission/RecordEntries"}} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, ask.method, ask.path, url.Values{"held": {"on"}})
 			if !failed {
 				break
 			}

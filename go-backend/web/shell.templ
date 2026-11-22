@@ -25,7 +25,7 @@ templ document(p page) {
 			<link rel="stylesheet" href={ p.assets.css }/>
 			<script src={ p.assets.htmx } defer></script>
 		</head>
-		<body hx-on:keydown={ templ.JSUnsafeFuncCall(shellKeys) } hx-on::after-settle={ templ.JSUnsafeFuncCall(followSelection) }>
+		<body hx-on:keydown={ templ.JSUnsafeFuncCall(shellKeys) } hx-on::after-settle={ templ.JSUnsafeFuncCall(followSelection) } hx-on::load={ templ.JSUnsafeFuncCall(partialTicks) }>
 			@shell(p)
 		</body>
 	</html>

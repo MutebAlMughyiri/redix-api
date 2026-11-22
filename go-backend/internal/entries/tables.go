@@ -4,6 +4,7 @@
 package entries
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -520,17 +521,26 @@ func (s Routes) itemTables(w http.ResponseWriter, r *http.Request, caller access
 // report, each item's in the order its sheet prints them, finished ones included; one the caller does not see is listed only to someone who manages
 // the people, who can then tick it back (G2). A partner is the capital ticks' (R14).
 func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	q, ctx, projectID := s.database.Queries(), r.Context(), web.ID(r, "projectId")
+	views, err := SightTablesOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller.Access)
+	if err != nil {
+		problem.Status(w, r, http.StatusInternalServerError)
+		return
+	}
+	web.JSON(w, r, http.StatusOK, views)
+}
+
+// SightTablesOf is projectID's tables as «الجداول» ticks them for whoever holds held, as sightTables answers them: the rule both doors call, the
+// app's route and the web's New user and Permissions (redix-api #173). The error is the database's.
+func SightTablesOf(ctx context.Context, q *store.Queries, projectID uuid.UUID, held access.Access) ([]OfferedCategory, error) {
 	categories, err := q.CategoriesOf(ctx, projectID)
 	items, itemsErr := q.ItemsOf(ctx, projectID)
 	subgroups, subgroupsErr := q.SubgroupsOf(ctx, projectID)
 	projectContracts, contractsErr := q.ContractsOf(ctx, projectID)
-	if errors.Join(err, itemsErr, subgroupsErr, contractsErr) != nil {
-		problem.Status(w, r, http.StatusInternalServerError)
-		return
+	if err := errors.Join(err, itemsErr, subgroupsErr, contractsErr); err != nil {
+		return nil, err
 	}
 	listed := func(id uuid.UUID) bool {
-		return caller.Access.Sees(projectID, id) || caller.Access.Holds(projectID, access.ManageUsers)
+		return held.Sees(projectID, id) || held.Holds(projectID, access.ManageUsers)
 	}
 	var views []OfferedCategory
 	for _, category := range categories {
@@ -569,5 +579,5 @@ func (s Routes) sightTables(w http.ResponseWriter, r *http.Request, caller acces
 			views = append(views, view)
 		}
 	}
-	web.JSON(w, r, http.StatusOK, views)
+	return views, nil
 }

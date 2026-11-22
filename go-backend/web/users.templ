@@ -3,7 +3,14 @@
 
 package web
 
-import "github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+import (
+	"github.com/google/uuid"
+
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+)
 
 // usersList is Users as the app's screen shows them (UC-008): New user and Add an existing user, a search, then each person - their name, said
 // disabled when they are, their username, role name and mobile, and how many permissions they hold here.
@@ -11,7 +18,7 @@ templ usersList(p page, shown usersShown) {
 	<div class="view-head">
 		<h2 id="users.title">{ p.words.Of("users.title") }</h2>
 		<span id="users.actions" class="head-actions">
-			<button id="users.new" class="primary small" type="button" disabled>{ p.words.Of("users.new") }</button>
+			<button id="users.new" class="primary small" type="button" hx-get="/tab/newUser" hx-target="[id='web.content']">{ p.words.Of("users.new") }</button>
 			<button id="users.addExisting" class="quiet-button" type="button" hx-get="/details/user/existing" hx-target="[id='web.details']">{ p.words.Of("users.addExisting") }</button>
 		</span>
 	</div>
@@ -85,7 +92,7 @@ templ userPanel(p page, person users.View, said said) {
 	} else {
 		<div id="user.actions" class="details-actions">
 			<button id="users.edit" class="quiet-button" type="button" hx-get={ "/details/user/" + person.ID.String() + "?asking=edit" } hx-target="[id='web.details']">{ p.words.Of("users.edit") }</button>
-			<button id="users.permissions" class="quiet-button" type="button" disabled>{ p.words.Of("permissions.title") }</button>
+			<button id="users.permissions" class="quiet-button" type="button" hx-get={ "/tab/userPermissions?user=" + person.ID.String() } hx-target="[id='web.content']">{ p.words.Of("permissions.title") }</button>
 			<button id="users.resetPassword" class="quiet-button" type="button" hx-get={ "/details/user/" + person.ID.String() + "?asking=reset" } hx-target="[id='web.details']">{ p.words.Of("users.resetPassword") }</button>
 			if heldHere(person).IsInactive {
 				<button id="users.enable" class="quiet-button" type="button" hx-post={ "/user/" + person.ID.String() + "/enable" } hx-target="[id='web.details']">{ p.words.Of("users.enable") }</button>
@@ -179,4 +186,145 @@ templ usersBeside(p page, shown usersShown) {
 	<div id="web.content" hx-swap-oob="innerHTML">
 		@usersList(p, shown)
 	</div>
+}
+
+// newUserPage is New user as the app's screen asks it (UC-008): the name with its hint, the username, role name, mobile, email and temporary
+// password with its rules; the permissions to tick, ReadProject always, a chosen-capital tick opening the partners to choose; and the tables to
+// tick, every one seen until unticked. Why it could not be kept stands at its top.
+templ newUserPage(p page, shown newUserShown) {
+	<div class="view-head">
+		<h2 id="newUser.title">{ p.words.Of("users.new") }</h2>
+	</div>
+	<form id="newUser.form" class="entry-form" hx-post="/users/new" hx-target="[id='web.content']">
+		if shown.refusal != "" {
+			<p id="newUser.message" class="refusal" role="alert">{ p.words.Of(shown.refusal) }</p>
+		}
+		<div class="field">
+			<label id="newUser.name.label" for="newUser.name">{ p.words.Of("users.name") }</label>
+			<input id="newUser.name" name="name" required value={ shown.typed.DisplayName } autofocus/>
+			<small id="newUser.name.hint" class="hint">{ p.words.Of("users.nameHint") }</small>
+		</div>
+		<div class="field">
+			<label id="newUser.username.label" for="newUser.username">{ p.words.Of("users.username") }</label>
+			<input id="newUser.username" name="username" required autocomplete="off" value={ shown.typed.Username }/>
+		</div>
+		<div class="field">
+			<label id="newUser.roleName.label" for="newUser.roleName">{ p.words.Of("users.roleName") }</label>
+			<input id="newUser.roleName" name="roleName" value={ shown.typed.RoleName }/>
+		</div>
+		<div class="field">
+			<label id="newUser.mobile.label" for="newUser.mobile">{ p.words.Of("users.mobile") }</label>
+			<input id="newUser.mobile" name="mobile" type="tel" value={ shown.typed.Mobile }/>
+		</div>
+		<div class="field">
+			<label id="newUser.email.label" for="newUser.email">{ p.words.Of("users.email") }</label>
+			<input id="newUser.email" name="email" type="email" value={ shown.typed.Email }/>
+		</div>
+		<div class="field">
+			<label id="newUser.password.label" for="newUser.password">{ p.words.Of("users.temporaryPassword") }</label>
+			<input id="newUser.password" name="password" type="password" autocomplete="new-password" required/>
+			<small id="newUser.password.hint" class="hint">{ parts(p.words.Of("users.temporaryPasswordHint"), p.words.Of("common.passwordRules")) }</small>
+		</div>
+		<h3 id="newUser.permissionsHeading" class="section-title">{ p.words.Of("permissions.title") }</h3>
+		<fieldset id="newUser.permissions" class="permission-ticks" hx-on:change={ templ.JSUnsafeFuncCall(capitalPair) }>
+			@permissionTickList(p, "newUser", shown.holds, newUserTick, shown.partners, shown.chose, newUserChoice)
+		</fieldset>
+		<div id="newUser.tables" hx-on:change={ templ.JSUnsafeFuncCall(tickGroups) }>
+			@tableTicks(p, shown.tables, shown.sees, newUserTableTick)
+		</div>
+		<span id="newUser.actions" class="details-actions">
+			<button id="newUser.submit" class="primary small" type="submit">{ p.words.Of("users.add") }</button>
+		</span>
+	</form>
+}
+
+// permissionTickList are a project's permissions to tick as the app's PermissionTicks lists them, for New user and a person's Permissions alike:
+// in the app's order, the capital and reports groups headed, the partners to choose under Specific partners' capital, shown while it is ticked.
+// tick and choose are what a permission's and a partner's tick does on the screen drawing them.
+templ permissionTickList(p page, prefix string, holds func(access.Permission) bool, tick func(access.Permission) templ.Attributes, choices []partners.View, chosen func(uuid.UUID) bool, choose func(uuid.UUID) templ.Attributes) {
+	for _, permission := range permissionTicks {
+		if opensGroup(permission) {
+			<p id={ prefix + "." + permissionGroup(permission) } class="section-title">{ p.words.Of(permissionGroup(permission)) }</p>
+		}
+		<label id={ prefix + "." + permissionName(permission) } class="tick">
+			<input id={ prefix + "." + permissionName(permission) + ".input" } type="checkbox" checked?={ holds(permission) } { tick(permission)... }/>
+			<span id={ prefix + "." + permissionName(permission) + ".title" }>{ p.words.Of("permissions." + permissionName(permission)) }</span>
+			<small id={ prefix + "." + permissionName(permission) + ".hint" } class="hint">{ p.words.Of("permissions." + permissionName(permission) + "Hint") }</small>
+		</label>
+		if permission == access.SeeChosenCapital {
+			<div id={ prefix + ".partners" } class="chosen-partners">
+				for _, partner := range choices {
+					<label id={ "permissions.partner." + partner.ID.String() } class="tick">
+						<input id={ "permissions.partner." + partner.ID.String() + ".input" } type="checkbox" checked?={ chosen(partner.ID) } { choose(partner.ID)... }/>
+						<span id={ "permissions.partner." + partner.ID.String() + ".title" }>{ partner.Name }</span>
+					</label>
+				}
+			</div>
+		}
+	}
+}
+
+// tableTicks are the project's tables as the app's TableTicks ticks them: by category, each item's tick over its tables', ticked while every one
+// is seen, between while some are. tick is what an item's or a table's tick does on the screen drawing them, given the tables it ticks.
+templ tableTicks(p page, categories []entries.OfferedCategory, sees func(uuid.UUID) bool, tick func(tableIDs []uuid.UUID, table bool) templ.Attributes) {
+	<h3 id="tables.heading" class="section-title">{ p.words.Of("users.tables") }</h3>
+	<p id="tables.heading.hint" class="hint">{ p.words.Of("users.tablesHint") }</p>
+	<div id="tables.ticks" class="table-ticks">
+		for _, category := range categories {
+			<details id={ "tables.category." + category.ID.String() } open>
+				<summary id={ "tables.category." + category.ID.String() + ".title" }>{ category.Name }</summary>
+				for _, item := range category.Items {
+					<div id={ "tables.item." + item.ID.String() } class="tick-item">
+						<label id={ "tables.item." + item.ID.String() + ".tick" } class="tick">
+							<input
+								id={ "tables.item." + item.ID.String() + ".input" }
+								type="checkbox"
+								checked?={ seenOf(item, sees) == len(item.Tables) }
+								if seenOf(item, sees) > 0 && seenOf(item, sees) < len(item.Tables) {
+									data-partial
+								}
+								{ tick(tableIDsOf(item), false)... }
+							/>
+							<span id={ "tables.item." + item.ID.String() + ".title" }>{ item.Name }</span>
+						</label>
+						for _, table := range item.Tables {
+							<label id={ "tables.table." + table.ID.String() } class="tick sub">
+								<input id={ "tables.table." + table.ID.String() + ".input" } type="checkbox" checked?={ sees(table.ID) } { tick([]uuid.UUID{table.ID}, true)... }/>
+								<span id={ "tables.table." + table.ID.String() + ".title" }>{ table.Name }</span>
+							</label>
+						}
+					</div>
+				}
+			</details>
+		}
+	</div>
+}
+
+// userPermissionsPage is a person's Permissions as the app's screen shows them (UC-008): their name and the hint, the permissions, partners and
+// tables ticked as they hold them, each tick kept at once, as the app keeps it; why one could not be kept stands at its top. Someone no longer
+// in the project, Read project taken from them, leaves the page with its title only, as the app's screen empties.
+templ userPermissionsPage(p page, shown userPermissionsShown) {
+	<div class="view-head">
+		<h2 id="userPermissions.title">{ p.words.Of("permissions.title") }</h2>
+	</div>
+	if shown.found {
+		<div id="userPermissions.page" class="entry-form">
+			<h3 id="userPermissions.name" class="section-title">{ shown.person.DisplayName }</h3>
+			<p id="userPermissions.hint" class="hint">{ p.words.Of("permissions.hint") }</p>
+			if shown.refusal != "" {
+				<p id="userPermissions.message" class="refusal" role="alert">{ p.words.Of(shown.refusal) }</p>
+			}
+			<fieldset id="userPermissions.permissions" class="permission-ticks">
+				@permissionTickList(p, "userPermissions", shown.holds, shown.tick, shown.partners, shown.chose, shown.choose)
+			</fieldset>
+			@tableTicks(p, shown.tables, shown.sees, shown.tickTables)
+		</div>
+	}
+}
+
+// userBeside is a person in the details panel, carried out of band beside the page that added them.
+templ userBeside(p page, person users.View) {
+	@detailsPanel(true) {
+		@userPanel(p, person, said{})
+	}
 }
