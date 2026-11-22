@@ -4,6 +4,7 @@
 package reports
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -44,7 +45,7 @@ type waitingWords struct {
 }
 
 // periodicWorkbookOf is report as a workbook, each «المرفق» opening its entry's file by its link in fileLinks.
-func periodicWorkbookOf(report snapshot, fileLinks map[uuid.UUID]string, words waitingWords, zone string) ([]byte, error) {
+func periodicWorkbookOf(report Snapshot, fileLinks map[uuid.UUID]string, words waitingWords, zone string) ([]byte, error) {
 	book := statement.NewBook(report.ProjectName+" · التقرير "+strconv.FormatInt(report.Number, 10), summaryName)
 	summary := book.AddSheet(summaryName, 21.5, 13.13, 5.25, 22, 15.5, 15.63)
 	named := map[string]int{}
@@ -68,7 +69,7 @@ func periodicWorkbookOf(report snapshot, fileLinks map[uuid.UUID]string, words w
 
 // inReadingOrder is the report's items in the order الخلاصة reads them (redix-api #129): the revenue side's categories, then the expense side's,
 // each category's items in order; any other last.
-func inReadingOrder(report snapshot) []entries.ItemReport {
+func inReadingOrder(report Snapshot) []entries.ItemReport {
 	var listed []uuid.UUID
 	for _, category := range append(slices.Clone(report.RevenueCategories), report.Categories...) {
 		for _, item := range category.Items {
@@ -90,7 +91,7 @@ func inReadingOrder(report snapshot) []entries.ItemReport {
 // revenue items, رأس المال first as the structure orders it; the expense side every category of expense items. A category of one item points at
 // that item's sheet, one of more at its detail block (AC-46.10). A line holding only sale items is muted and left out of مجموع الايرادات بدون
 // البيع.
-func fillSummary(sheet *statement.Worksheet, report snapshot, sheets map[uuid.UUID]statement.Placed, words waitingWords, zone string) {
+func fillSummary(sheet *statement.Worksheet, report Snapshot, sheets map[uuid.UUID]statement.Placed, words waitingWords, zone string) {
 	title := sheet.Range(1, 1, 1, 5).Merge()
 	title.First().Set(report.ProjectName)
 	title.Bold().Size(15).Centre()
@@ -266,7 +267,7 @@ func heading(sheet *statement.Worksheet, row int, label string) *statement.Cell 
 
 // forFilesOf is the report as the files of caller give it (redix-api #131 D1, BR-31): رأس المال's tables and the partners' lines only of the
 // partners they see, as the capital screen shows them, its total still the whole capital. Whoever sees all capital gets every partner.
-func forFilesOf(report snapshot, caller access.Caller, projectID uuid.UUID) snapshot {
+func forFilesOf(report Snapshot, caller access.Caller, projectID uuid.UUID) Snapshot {
 	if caller.Access.Holds(projectID, access.SeeAllCapital) {
 		return report
 	}
@@ -291,7 +292,7 @@ func forFilesOf(report snapshot, caller access.Caller, projectID uuid.UUID) snap
 // periodicWorkbook is the report as a workbook with live totals (UC-055), its capital showing only the partners the caller may see (redix-api #131
 // D1, BR-31); 404 for a number not issued.
 func (s Routes) periodicWorkbook(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	report, found, err := s.issued(r, web.Int(r, "number"))
+	report, found, err := issuedOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), web.Int(r, "number"))
 	if err == nil && !found {
 		problem.Status(w, r, http.StatusNotFound)
 		return
@@ -314,11 +315,11 @@ func (s Routes) periodicWorkbook(w http.ResponseWriter, r *http.Request, caller 
 }
 
 // issued is the report numbered number as it was issued; not found for a number not issued.
-func (s Routes) issued(r *http.Request, number int64) (snapshot, bool, error) {
-	kept, err := s.database.Queries().PeriodicReportSnapshot(r.Context(), store.PeriodicReportSnapshotParams{ProjectID: web.ID(r, "projectId"), Number: number})
+func issuedOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, number int64) (Snapshot, bool, error) {
+	kept, err := read.PeriodicReportSnapshot(ctx, store.PeriodicReportSnapshotParams{ProjectID: projectID, Number: number})
 	if err != nil || len(kept) == 0 {
-		return snapshot{}, false, err
+		return Snapshot{}, false, err
 	}
-	var report snapshot
+	var report Snapshot
 	return report, true, json.Unmarshal([]byte(kept[0]), &report)
 }

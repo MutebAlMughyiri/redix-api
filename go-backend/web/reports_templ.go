@@ -284,82 +284,137 @@ func reportsPage(p page, shown reportsShown) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		default:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<div class=\"grid-wrap\"><table id=\"reports.table\" class=\"grid\"><tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<div class=\"grid-wrap\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			{
+				templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+				templ_7745c5c3_Buffer := templ.GetBuffer()
+				var templ_7745c5c3_ElementScripts []templ.ComponentScript
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<table id=\"reports.table\" class=\"grid\" hx-on:keydown=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var17 templ.ComponentScript = templ.JSUnsafeFuncCall(listKeys)
+				templ_7745c5c3_ElementScripts = append(templ_7745c5c3_ElementScripts, templ_7745c5c3_Var17)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17.Call)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" hx-on:click=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var18 templ.ComponentScript = templ.JSUnsafeFuncCall(listSelects)
+				templ_7745c5c3_ElementScripts = append(templ_7745c5c3_ElementScripts, templ_7745c5c3_Var18)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18.Call)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "><tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, report := range shown.issued {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<tr id=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var17 string
-				templ_7745c5c3_Var17, templ_7745c5c3_Err = templruntime.NewAttributeExpression("reports.periodic." + strconv.FormatInt(report.Number, 10)).Resolve(ctx)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 60, Col: 74}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\"><td id=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var18 string
-				templ_7745c5c3_Var18, templ_7745c5c3_Err = templruntime.NewAttributeExpression("reports.periodic." + strconv.FormatInt(report.Number, 10) + ".title").Resolve(ctx)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 61, Col: 86}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<tr id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var19 string
-				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.reportNumber") + " " + strconv.FormatInt(report.Number, 10))
+				templ_7745c5c3_Var19, templ_7745c5c3_Err = templruntime.NewAttributeExpression("reports.periodic." + strconv.FormatInt(report.Number, 10)).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 61, Col: 170}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 61, Col: 71}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</td><td id=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" tabindex=\"0\" aria-selected=\"false\" hx-get=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var20 string
-				templ_7745c5c3_Var20, templ_7745c5c3_Err = templruntime.NewAttributeExpression("reports.periodic." + strconv.FormatInt(report.Number, 10) + ".issuedAt").Resolve(ctx)
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templruntime.NewAttributeExpression("/tab/periodicReport?number=" + strconv.FormatInt(report.Number, 10)).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 62, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 64, Col: 85}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" hx-target=\"[id='web.content']\"><td id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var21 string
-				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(report.IssuedAt.In(shown.location).Format(time.DateOnly))
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templruntime.NewAttributeExpression("reports.periodic." + strconv.FormatInt(report.Number, 10) + ".title").Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 62, Col: 150}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 67, Col: 86}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</td></tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var22 string
+				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.reportNumber") + " " + strconv.FormatInt(report.Number, 10))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 67, Col: 170}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</td><td id=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var23 string
+				templ_7745c5c3_Var23, templ_7745c5c3_Err = templruntime.NewAttributeExpression("reports.periodic." + strconv.FormatInt(report.Number, 10) + ".issuedAt").Resolve(ctx)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 68, Col: 89}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var24 string
+				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(report.IssuedAt.In(shown.location).Format(time.DateOnly))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 68, Col: 150}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</td></tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</tbody></table></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</tbody></table></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -387,231 +442,231 @@ func itemReportsPage(p page, shown itemReports) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<div class=\"view-head\"><h2 id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var23 string
-		templ_7745c5c3_Var23, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.title").Resolve(ctx)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 75, Col: 30}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var24 string
-		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of(shown.side.word))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 75, Col: 62}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</h2><b id=\"itemReports.total\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(money(shown.total))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 76, Col: 48}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</b></div><form id=\"itemReports.filters\" class=\"filters\" hx-get=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"view-head\"><h2 id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var26 string
-		templ_7745c5c3_Var26, templ_7745c5c3_Err = templruntime.NewAttributeExpression("/tab/" + shown.side.name).Resolve(ctx)
+		templ_7745c5c3_Var26, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.title").Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 78, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 81, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" hx-target=\"[id='web.content']\" hx-trigger=\"input changed delay:400ms from:[name='text'], submit\"><input id=\"itemReports.search\" class=\"search\" type=\"search\" name=\"text\" placeholder=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", p.words.Of(shown.side.word))).Resolve(ctx)
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of(shown.side.word))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 79, Col: 146}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 81, Col: 62}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</h2><b id=\"itemReports.total\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", p.words.Of(shown.side.word))).Resolve(ctx)
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(money(shown.total))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 79, Col: 220}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 82, Col: 48}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</b></div><form id=\"itemReports.filters\" class=\"filters\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var29 string
-		templ_7745c5c3_Var29, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.text).Resolve(ctx)
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templruntime.NewAttributeExpression("/tab/" + shown.side.name).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 79, Col: 241}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 84, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\"></form><div id=\"itemReports.categories\" class=\"categories\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" hx-target=\"[id='web.content']\" hx-trigger=\"input changed delay:400ms from:[name='text'], submit\"><input id=\"itemReports.search\" class=\"search\" type=\"search\" name=\"text\" placeholder=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var30 string
+		templ_7745c5c3_Var30, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", p.words.Of(shown.side.word))).Resolve(ctx)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 85, Col: 146}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\" aria-label=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var31 string
+		templ_7745c5c3_Var31, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", p.words.Of(shown.side.word))).Resolve(ctx)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 85, Col: 220}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var32 string
+		templ_7745c5c3_Var32, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.text).Resolve(ctx)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 85, Col: 241}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\"></form><div id=\"itemReports.categories\" class=\"categories\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, category := range shown.categories {
 			if items, shows := shown.itemsOf(category); shows {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<details id=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var30 string
-				templ_7745c5c3_Var30, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String()).Resolve(ctx)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 84, Col: 64}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" class=\"tile\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				if shown.text != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, " open")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "><summary id=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var31 string
-				templ_7745c5c3_Var31, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".body").Resolve(ctx)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 85, Col: 75}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\"><span id=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var32 string
-				templ_7745c5c3_Var32, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".name").Resolve(ctx)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 86, Col: 73}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<details id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var33 string
-				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(category.Name)
+				templ_7745c5c3_Var33, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String()).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 86, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 90, Col: 64}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</span> <span id=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"tile\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if shown.text != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, " open")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "><summary id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var34 string
-				templ_7745c5c3_Var34, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".figure").Resolve(ctx)
+				templ_7745c5c3_Var34, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".body").Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 87, Col: 75}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 91, Col: 75}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" class=\"figure\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\"><span id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var35 string
-				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(money(category.Total))
+				templ_7745c5c3_Var35, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".name").Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 87, Col: 116}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 92, Col: 73}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, " · ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var36 string
-				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(share(category.Total, shown.total)))
+				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(category.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 87, Col: 172}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 92, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "%</span> <progress id=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</span> <span id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var37 string
-				templ_7745c5c3_Var37, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".share").Resolve(ctx)
+				templ_7745c5c3_Var37, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".figure").Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 88, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 93, Col: 75}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" class=\"bar\" max=\"100\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\" class=\"figure\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var38 string
-				templ_7745c5c3_Var38, templ_7745c5c3_Err = templruntime.NewAttributeExpression(strconv.Itoa(share(category.Total, shown.total))).Resolve(ctx)
+				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(money(category.Total))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 88, Col: 159}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 93, Col: 116}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\"></progress></summary>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, " · ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var39 string
+				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(share(category.Total, shown.total)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 93, Col: 172}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "%</span> <progress id=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var40 string
+				templ_7745c5c3_Var40, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.category." + category.ID.String() + ".share").Resolve(ctx)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 94, Col: 78}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\" class=\"bar\" max=\"100\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var41 string
+				templ_7745c5c3_Var41, templ_7745c5c3_Err = templruntime.NewAttributeExpression(strconv.Itoa(share(category.Total, shown.total))).Resolve(ctx)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 94, Col: 159}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "\"></progress></summary>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -619,40 +674,40 @@ func itemReportsPage(p page, shown itemReports) templ.Component {
 					templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
 					templ_7745c5c3_Buffer := templ.GetBuffer()
 					var templ_7745c5c3_ElementScripts []templ.ComponentScript
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<table id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<table id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var39 string
-					templ_7745c5c3_Var39, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.items." + category.ID.String()).Resolve(ctx)
+					var templ_7745c5c3_Var42 string
+					templ_7745c5c3_Var42, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.items." + category.ID.String()).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 90, Col: 60}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 96, Col: 60}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" class=\"grid\" hx-on:keydown=\"")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var40 templ.ComponentScript = templ.JSUnsafeFuncCall(listKeys)
-					templ_7745c5c3_ElementScripts = append(templ_7745c5c3_ElementScripts, templ_7745c5c3_Var40)
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40.Call)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" class=\"grid\" hx-on:keydown=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" hx-on:click=\"")
+					var templ_7745c5c3_Var43 templ.ComponentScript = templ.JSUnsafeFuncCall(listKeys)
+					templ_7745c5c3_ElementScripts = append(templ_7745c5c3_ElementScripts, templ_7745c5c3_Var43)
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43.Call)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var41 templ.ComponentScript = templ.JSUnsafeFuncCall(listSelects)
-					templ_7745c5c3_ElementScripts = append(templ_7745c5c3_ElementScripts, templ_7745c5c3_Var41)
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41.Call)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\" hx-on:click=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\"")
+					var templ_7745c5c3_Var44 templ.ComponentScript = templ.JSUnsafeFuncCall(listSelects)
+					templ_7745c5c3_ElementScripts = append(templ_7745c5c3_ElementScripts, templ_7745c5c3_Var44)
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44.Call)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -666,101 +721,101 @@ func itemReportsPage(p page, shown itemReports) templ.Component {
 					}
 					templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "><tbody>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "><tbody>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				for _, item := range items {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<tr id=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var42 string
-					templ_7745c5c3_Var42, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.item." + item.ID.String()).Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 93, Col: 55}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" tabindex=\"0\" aria-selected=\"false\" hx-get=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var43 string
-					templ_7745c5c3_Var43, templ_7745c5c3_Err = templruntime.NewAttributeExpression("/tab/itemReport?item=" + item.ID.String()).Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 93, Col: 144}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\" hx-target=\"[id='web.content']\"><td id=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var44 string
-					templ_7745c5c3_Var44, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.item." + item.ID.String() + ".name").Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 94, Col: 66}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<tr id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var45 string
-					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
+					templ_7745c5c3_Var45, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.item." + item.ID.String()).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 94, Col: 80}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 99, Col: 55}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</td><td id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\" tabindex=\"0\" aria-selected=\"false\" hx-get=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var46 string
-					templ_7745c5c3_Var46, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.item." + item.ID.String() + ".total").Resolve(ctx)
+					templ_7745c5c3_Var46, templ_7745c5c3_Err = templruntime.NewAttributeExpression("/tab/itemReport?item=" + item.ID.String()).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 95, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 99, Col: 144}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" class=\"amount\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" hx-target=\"[id='web.content']\"><td id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var47 string
-					templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(money(item.Total))
+					templ_7745c5c3_Var47, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.item." + item.ID.String() + ".name").Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 95, Col: 104}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 100, Col: 66}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</td></tr>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var48 string
+					templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 100, Col: 80}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</td><td id=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var49 string
+					templ_7745c5c3_Var49, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReports.item." + item.ID.String() + ".total").Resolve(ctx)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 101, Col: 67}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var49)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "\" class=\"amount\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var50 string
+					templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(money(item.Total))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 101, Col: 104}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</td></tr>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</tbody></table></details>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</tbody></table></details>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -789,252 +844,252 @@ func itemReportPage(p page, shown itemReportShown) templ.Component {
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
 		if !shown.found {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<p id=\"itemReport.notFound\" class=\"empty\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var49 string
-			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.refused"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 111, Col: 75}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</p>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<div class=\"view-head\"><h2 id=\"itemReport.title\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var50 string
-			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(shown.report.ItemName)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 114, Col: 52}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</h2><span id=\"itemReport.category\" class=\"hint\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var51 string
-			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(shown.report.CategoryName)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 115, Col: 74}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</span> <span id=\"itemReport.actions\" class=\"head-actions\"><button id=\"itemReport.file.pdf\" class=\"quiet-button\" type=\"button\" disabled>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<p id=\"itemReport.notFound\" class=\"empty\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var52 string
-			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.pdf"))
+			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.refused"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 117, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 117, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</button> <button id=\"itemReport.file.excel\" class=\"quiet-button\" type=\"button\" disabled>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<div class=\"view-head\"><h2 id=\"itemReport.title\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var53 string
-			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.excel"))
+			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(shown.report.ItemName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 118, Col: 112}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 120, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</button></span></div><p id=\"itemReport.totalLine\" class=\"total-line\"><span id=\"itemReport.totalLabel\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</h2><span id=\"itemReport.category\" class=\"hint\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var54 string
-			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.itemTotal"))
+			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(shown.report.CategoryName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 122, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 121, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</span> <b id=\"itemReport.total\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "</span> <span id=\"itemReport.actions\" class=\"head-actions\"><button id=\"itemReport.file.pdf\" class=\"quiet-button\" type=\"button\" disabled>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var55 string
-			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(money(shown.report.Total))
+			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.pdf"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 123, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 123, Col: 108}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</b></p><form id=\"itemReport.filters\" class=\"filters\" hx-get=\"/tab/itemReport\" hx-target=\"[id='web.content']\" hx-trigger=\"input changed delay:400ms from:[name='text'], submit\"><input id=\"itemReport.item\" type=\"hidden\" name=\"item\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</button> <button id=\"itemReport.file.excel\" class=\"quiet-button\" type=\"button\" disabled>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var56 string
-			templ_7745c5c3_Var56, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.query.Get("item")).Resolve(ctx)
+			templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.excel"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 126, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 124, Col: 112}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var56)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "\"> <input id=\"itemReport.contract\" type=\"hidden\" name=\"contract\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "</button></span></div><p id=\"itemReport.totalLine\" class=\"total-line\"><span id=\"itemReport.totalLabel\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var57 string
-			templ_7745c5c3_Var57, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.query.Get("contract")).Resolve(ctx)
+			templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.itemTotal"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 127, Col: 100}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 128, Col: 69}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var57)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "\"> <input id=\"itemReport.search\" class=\"search\" type=\"search\" name=\"text\" placeholder=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "</span> <b id=\"itemReport.total\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var58 string
-			templ_7745c5c3_Var58, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", shown.report.ItemName)).Resolve(ctx)
+			templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(money(shown.report.Total))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 128, Col: 140}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 129, Col: 55}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var58)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "\" aria-label=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "</b></p><form id=\"itemReport.filters\" class=\"filters\" hx-get=\"/tab/itemReport\" hx-target=\"[id='web.content']\" hx-trigger=\"input changed delay:400ms from:[name='text'], submit\"><input id=\"itemReport.item\" type=\"hidden\" name=\"item\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var59 string
-			templ_7745c5c3_Var59, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", shown.report.ItemName)).Resolve(ctx)
+			templ_7745c5c3_Var59, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.query.Get("item")).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 128, Col: 208}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 132, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var59)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "\"> <input id=\"itemReport.contract\" type=\"hidden\" name=\"contract\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var60 string
-			templ_7745c5c3_Var60, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.text).Resolve(ctx)
+			templ_7745c5c3_Var60, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.query.Get("contract")).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 128, Col: 229}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 133, Col: 100}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var60)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "\"></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "\"> <input id=\"itemReport.search\" class=\"search\" type=\"search\" name=\"text\" placeholder=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var61 string
+			templ_7745c5c3_Var61, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", shown.report.ItemName)).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 134, Col: 140}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var61)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "\" aria-label=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var62 string
+			templ_7745c5c3_Var62, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.words.Of("common.searchIn", shown.report.ItemName)).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 134, Col: 208}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var62)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var63 string
+			templ_7745c5c3_Var63, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shown.text).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 134, Col: 229}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "\"></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, table := range shown.report.Subgroups {
 				if rows, shows := shown.rowsOf(subgroupName(p, table), table.Rows); shows {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<section id=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var61 string
-					templ_7745c5c3_Var61, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroup." + table.ID.String()).Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 132, Col: 60}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var61)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "\" class=\"report-table\"><h3 id=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var62 string
-					templ_7745c5c3_Var62, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroup." + table.ID.String() + ".title").Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 133, Col: 67}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var62)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "\" class=\"section-title\"><span id=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var63 string
-					templ_7745c5c3_Var63, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroup." + table.ID.String() + ".name").Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 134, Col: 69}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "<section id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var64 string
-					templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(subgroupName(p, table))
+					templ_7745c5c3_Var64, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroup." + table.ID.String()).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 134, Col: 96}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 138, Col: 60}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var64)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "</span> <b id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "\" class=\"report-table\"><h3 id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var65 string
-					templ_7745c5c3_Var65, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroupTotal." + table.ID.String()).Resolve(ctx)
+					templ_7745c5c3_Var65, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroup." + table.ID.String() + ".title").Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 135, Col: 61}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 139, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var65)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "\" class=\"section-title\"><span id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var66 string
-					templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(money(table.Total))
+					templ_7745c5c3_Var66, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroup." + table.ID.String() + ".name").Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 135, Col: 84}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 140, Col: 69}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var66)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</b></h3>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var67 string
+					templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(subgroupName(p, table))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 140, Col: 96}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "</span> <b id=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var68 string
+					templ_7745c5c3_Var68, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.subgroupTotal." + table.ID.String()).Resolve(ctx)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 141, Col: 61}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var68)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var69 string
+					templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(money(table.Total))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 141, Col: 84}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "</b></h3>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1042,7 +1097,7 @@ func itemReportPage(p page, shown itemReportShown) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "</section>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "</section>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1050,103 +1105,103 @@ func itemReportPage(p page, shown itemReportShown) templ.Component {
 			}
 			for _, contract := range shown.report.Contracts {
 				if rows, shows := shown.rowsOf(contract.ContractorName, contract.Payments); shows {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<section id=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var67 string
-					templ_7745c5c3_Var67, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contractCard." + contract.ID.String()).Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 143, Col: 67}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var67)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "\" class=\"report-table\"><h3 id=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var68 string
-					templ_7745c5c3_Var68, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contractor." + contract.ID.String()).Resolve(ctx)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 144, Col: 61}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var68)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "\" class=\"section-title\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var69 string
-					templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(contract.ContractorName)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 144, Col: 111}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "</h3><p id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<section id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var70 string
-					templ_7745c5c3_Var70, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contract." + contract.ID.String()).Resolve(ctx)
+					templ_7745c5c3_Var70, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contractCard." + contract.ID.String()).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 145, Col: 58}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 149, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var70)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "\" class=\"hint\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "\" class=\"report-table\"><h3 id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var71 string
-					templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(contractReportLine(p, contract))
+					templ_7745c5c3_Var71, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contractor." + contract.ID.String()).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 145, Col: 107}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 150, Col: 61}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var71)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\" class=\"section-title\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var72 string
+					templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(contract.ContractorName)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 150, Col: 111}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "</h3><p id=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var73 string
+					templ_7745c5c3_Var73, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contract." + contract.ID.String()).Resolve(ctx)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 151, Col: 58}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var73)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" class=\"hint\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var74 string
+					templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(contractReportLine(p, contract))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 151, Col: 107}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if contract.IsOverrun {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<p id=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "<p id=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var72 string
-						templ_7745c5c3_Var72, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.overrun." + contract.ID.String()).Resolve(ctx)
+						var templ_7745c5c3_Var75 string
+						templ_7745c5c3_Var75, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.overrun." + contract.ID.String()).Resolve(ctx)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 147, Col: 58}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 153, Col: 58}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var72)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\" class=\"refusal\">")
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var75)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var73 string
-						templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.overrun"))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 147, Col: 108}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\" class=\"refusal\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "</p>")
+						var templ_7745c5c3_Var76 string
+						templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.overrun"))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 153, Col: 108}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1155,33 +1210,33 @@ func itemReportPage(p page, shown itemReportShown) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "<p id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "<p id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var74 string
-					templ_7745c5c3_Var74, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contractTotal." + contract.ID.String()).Resolve(ctx)
+					var templ_7745c5c3_Var77 string
+					templ_7745c5c3_Var77, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.contractTotal." + contract.ID.String()).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 150, Col: 63}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 156, Col: 63}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var74)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "\" class=\"total-line\">")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var77)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var75 string
-					templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.grandTotal") + ": " + money(contract.PaymentsTotal))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 150, Col: 158}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"total-line\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "</p></section>")
+					var templ_7745c5c3_Var78 string
+					templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.grandTotal") + ": " + money(contract.PaymentsTotal))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 156, Col: 158}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "</p></section>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1210,123 +1265,415 @@ func reportRows(id string, rows []entries.ReportRow, columns []entries.ReportCol
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<table id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "<table id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var77 string
-		templ_7745c5c3_Var77, templ_7745c5c3_Err = templruntime.NewAttributeExpression(id).Resolve(ctx)
+		var templ_7745c5c3_Var80 string
+		templ_7745c5c3_Var80, templ_7745c5c3_Err = templruntime.NewAttributeExpression(id).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 159, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 165, Col: 15}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var77)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var80)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\" class=\"grid report-rows\"><tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "\" class=\"grid report-rows\"><tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, row := range rows {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "<tr id=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var78 string
-			templ_7745c5c3_Var78, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String()).Resolve(ctx)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 162, Col: 53}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var78)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\"><td id=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var79 string
-			templ_7745c5c3_Var79, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String() + ".title").Resolve(ctx)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 163, Col: 65}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var79)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var80 string
-			templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(reportRowTitle(row, columns))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 164, Col: 36}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, " <small id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "<tr id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var81 string
-			templ_7745c5c3_Var81, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String() + ".details").Resolve(ctx)
+			templ_7745c5c3_Var81, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String()).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 165, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 168, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var81)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "\" class=\"hint\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "\"><td id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var82 string
-			templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(reportRowDetails(row, columns))
+			templ_7745c5c3_Var82, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String() + ".title").Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 165, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 169, Col: 65}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var82)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "</small></td><td id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var83 string
-			templ_7745c5c3_Var83, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String() + ".amount").Resolve(ctx)
+			templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(reportRowTitle(row, columns))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 167, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 170, Col: 36}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var83)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "\" class=\"amount\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, " <small id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var84 string
-			templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(statement.Money(row.Amount))
+			templ_7745c5c3_Var84, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String() + ".details").Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 167, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 171, Col: 71}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var84)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "</td></tr>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "\" class=\"hint\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var85 string
+			templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(reportRowDetails(row, columns))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 171, Col: 119}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "</small></td><td id=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var86 string
+			templ_7745c5c3_Var86, templ_7745c5c3_Err = templruntime.NewAttributeExpression("itemReport.row." + row.EntryID.String() + ".amount").Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 173, Col: 66}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var86)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\" class=\"amount\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var87 string
+			templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(statement.Money(row.Amount))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 173, Col: 113}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "</td></tr>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "</tbody></table>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "</tbody></table>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// periodicReportPage is a periodic report as the app's screen shows it (UC-053): its number and the day it was issued, its PDF and Excel - gray
+// until they open on the web -, then each section with its lines, a total strong; or that it is for whoever sees every table.
+func periodicReportPage(p page, shown periodicReportShown) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		ctx = templ.ClearChildren(ctx)
+		switch {
+		case !shown.whole:
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "<p id=\"periodicReport.notForYou\" class=\"empty\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var89 string
+			templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.periodicNotForYou"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 185, Col: 91}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case !shown.found:
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "<p id=\"periodicReport.notFound\" class=\"empty\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var90 string
+			templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.refused"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 187, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		default:
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "<div class=\"view-head\"><h2 id=\"periodicReport.title\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var91 string
+			templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.reportNumber") + " " + strconv.FormatInt(shown.report.Number, 10) + " · " + shown.report.IssuedAt.In(shown.location).Format(time.DateOnly))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 190, Col: 195}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "</h2><span id=\"periodicReport.actions\" class=\"head-actions\"><button id=\"periodicReport.file.pdf\" class=\"quiet-button\" type=\"button\" disabled>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var92 string
+			templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.pdf"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 192, Col: 113}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "</button> <button id=\"periodicReport.file.excel\" class=\"quiet-button\" type=\"button\" disabled>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var93 string
+			templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of("reports.excel"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 193, Col: 117}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "</button></span></div><div id=\"periodicReport.sections\" class=\"report-sections\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, section := range periodicSections(p, shown.report) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "<section id=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var94 string
+				templ_7745c5c3_Var94, templ_7745c5c3_Err = templruntime.NewAttributeExpression("periodicReport.section." + section.name).Resolve(ctx)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 198, Col: 59}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var94)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "\" class=\"tile\"><h3 id=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var95 string
+				templ_7745c5c3_Var95, templ_7745c5c3_Err = templruntime.NewAttributeExpression("periodicReport.section." + section.name + ".title").Resolve(ctx)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 199, Col: 66}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var95)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "\" class=\"section-title\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var96 string
+				templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(section.title)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 199, Col: 106}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "</h3><dl class=\"facts\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				for _, line := range section.lines {
+					{
+						templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+						templ_7745c5c3_Buffer := templ.GetBuffer()
+						var templ_7745c5c3_ElementScripts []templ.ComponentScript
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "<dt id=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var97 string
+						templ_7745c5c3_Var97, templ_7745c5c3_Err = templruntime.NewAttributeExpression(line.id + ".label").Resolve(ctx)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 202, Col: 35}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var97)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "\" class=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var98 = []any{"line", templ.KV("strong", line.strong)}
+						templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var98...)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var99 string
+						templ_7745c5c3_Var99, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.CSSClasses(templ_7745c5c3_Var98).String()).Resolve(ctx)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 1, Col: 0}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var99)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, ">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var100 string
+					templ_7745c5c3_Var100, templ_7745c5c3_Err = templ.JoinStringErrs(line.label)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 202, Col: 100}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var100))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "</dt>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					{
+						templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+						templ_7745c5c3_Buffer := templ.GetBuffer()
+						var templ_7745c5c3_ElementScripts []templ.ComponentScript
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "<dd id=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var101 string
+						templ_7745c5c3_Var101, templ_7745c5c3_Err = templruntime.NewAttributeExpression(line.id).Resolve(ctx)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 203, Col: 24}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var101)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "\" class=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var102 = []any{"money", templ.KV("strong", line.strong)}
+						templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var102...)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var103 string
+						templ_7745c5c3_Var103, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.CSSClasses(templ_7745c5c3_Var102).String()).Resolve(ctx)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 1, Col: 0}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var103)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, ">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var104 string
+					templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(money(line.amount))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `reports.templ`, Line: 203, Col: 98}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "</dd>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, "</dl></section>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		return nil
 	})

@@ -62,7 +62,7 @@ templ partnersList(p page, shown partnersShown) {
 									}
 								</small>
 							</td>
-							<td id={ "partners.share." + line.ID.String() }>{ shareOf(line) }</td>
+							<td id={ "partners.share." + line.ID.String() }>{ shareOf(line.SharePercent) }</td>
 							<td id={ "partners.balance." + line.ID.String() } class="amount">{ statement.Money(line.Balance.Number()) }</td>
 						</tr>
 					}
@@ -80,7 +80,7 @@ templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movem
 		<h3 id="partner.title">{ line.Name }</h3>
 		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
 	</div>
-	<p id="partner.figures" class="details-say"><b id="partner.balance" class="money">{ statement.Money(line.Balance.Number()) }</b> · <span id="partner.share">{ shareOf(line) }</span></p>
+	<p id="partner.figures" class="details-say"><b id="partner.balance" class="money">{ statement.Money(line.Balance.Number()) }</b> · <span id="partner.share">{ shareOf(line.SharePercent) }</span></p>
 	if said.refusal != "" {
 		<p id="partner.refusal" class="refusal details-say" role="alert">{ p.words.Of(said.refusal) }</p>
 	}

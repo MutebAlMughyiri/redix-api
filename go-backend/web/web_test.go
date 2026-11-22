@@ -2598,8 +2598,8 @@ func TestWeb_R171_UC050_AReportRowSaysItsValuesByColumnAndANamedTableByName(t *t
 	w.Ask("POST", w.path+"/items/"+w.item+"/subgroups", `{"name":"الدور الأول"}`, w.token)
 	var size, discount, floor string
 	for query, into := range map[string]*string{
-		"SELECT key FROM item_columns WHERE item_id = '" + w.item + "' AND name = 'المقاس'":     &size,
-		"SELECT key FROM item_columns WHERE item_id = '" + w.item + "' AND name = 'الخصم'":      &discount,
+		"SELECT key FROM item_columns WHERE item_id = '" + w.item + "' AND name = 'المقاس'":  &size,
+		"SELECT key FROM item_columns WHERE item_id = '" + w.item + "' AND name = 'الخصم'":   &discount,
 		"SELECT id FROM subgroups WHERE item_id = '" + w.item + "' AND name = 'الدور الأول'": &floor,
 	} {
 		if err := w.Database.Read.QueryRow(query).Scan(into); err != nil {
@@ -2620,4 +2620,51 @@ func TestWeb_R171_UC050_AReportRowSaysItsValuesByColumnAndANamedTableByName(t *t
 	if code := stranger.Send("POST", "/reports/issue", nil).Code; code != http.StatusNotFound {
 		t.Errorf("issuing with no project chosen: %d", code)
 	}
+}
+
+func TestWeb_R171_UC053_APeriodicReportShowsEachSectionAsIssued(t *testing.T) {
+	w := newWorking(t)
+	w.funded(1000)
+	w.approved(300)
+	w.sent(200)
+	partner := w.partner("شريك أ", "")
+	w.capitalIn(partner, 500, "")
+	if code, answer := w.Ask("POST", w.path+"/periodic-reports", ``, w.token); code >= 300 {
+		t.Fatalf("issuing: %d %v", code, answer)
+	}
+	w.approved(50)
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/reports", nil).Body.String(), `hx-get="/tab/periodicReport?number=1"`)
+	report := w.browser.Send("GET", "/tab/periodicReport?number=1", nil).Body.String()
+	for _, part := range []string{
+		`<h2 id="periodicReport.title">تقرير رقم 1 · `,
+		`<dt id="periodicReport.line.accounts.0.label" class="line">حساب المؤسسة</dt>`,
+		`<dd id="periodicReport.line.expenses.previous" class="money">0.00</dd>`,
+		`<dd id="periodicReport.line.expenses.current" class="money">300.00</dd>`,
+		`<dd id="periodicReport.difference" class="money strong">300.00</dd>`,
+		`<dt id="periodicReport.line.surplus.pendingExpenses.label" class="line">مصروفات بانتظار الاعتماد (1)</dt>`,
+		`<dt id="periodicReport.line.partners.0.label" class="line">شريك أ · 100.0000000000%</dt>`,
+		`<dd id="periodicReport.line.partners.total" class="money strong">500.00</dd>`,
+		`<button id="periodicReport.file.pdf" class="quiet-button" type="button" disabled>`,
+	} {
+		has(t, report, part)
+	}
+	has(t, w.browser.Send("GET", "/tab/periodicReport?number=9", nil).Body.String(), `<p id="periodicReport.notFound" class="empty">`)
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "GET", "/tab/periodicReport?number=1", nil)
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("the report with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
+	member, _ := w.Person("User B")
+	w.Ask("POST", w.path+"/users/existing", `{"username":"`+member.String()+`"}`, w.token)
+	w.Ask("POST", w.path+"/users/"+member.String()+"/permissions/SeeReports", ``, w.token)
+	w.Ask("POST", w.path+"/users/"+member.String()+"/tables", `{"seen":false,"tableIds":["`+w.table+`"]}`, w.token)
+	browser := w.Browser()
+	browser.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	browser.Send("POST", "/project/"+w.id, nil)
+	has(t, browser.Send("GET", "/tab/periodicReport?number=1", nil).Body.String(), `<p id="periodicReport.notForYou" class="empty">`)
 }

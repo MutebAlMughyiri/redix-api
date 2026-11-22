@@ -120,8 +120,8 @@ func category(name string, kind structure.ItemType, items ...entries.ItemReport)
 	return line
 }
 
-func reportOf(items ...entries.ItemReport) snapshot {
-	report := snapshot{ProjectName: "مشروع A", Number: 1, IssuedAt: moment.Of(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)), Items: items}
+func reportOf(items ...entries.ItemReport) Snapshot {
+	report := Snapshot{ProjectName: "مشروع A", Number: 1, IssuedAt: moment.Of(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)), Items: items}
 	for _, one := range items {
 		report.Expenses = report.Expenses.Plus(one.Total)
 	}
@@ -152,7 +152,7 @@ func itemWorkbook(t *testing.T, report entries.ItemReport) opened {
 	return open(t, content, err)
 }
 
-func periodicWorkbook(t *testing.T, report snapshot) opened {
+func periodicWorkbook(t *testing.T, report Snapshot) opened {
 	content, err := periodicWorkbookOf(report, nil, waitingWords{expenses: "قيود بانتظار الاعتماد", revenue: "ايرادات بانتظار الاعتماد"}, zones.Riyadh)
 	return open(t, content, err)
 }

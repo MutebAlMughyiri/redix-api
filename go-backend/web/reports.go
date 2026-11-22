@@ -241,3 +241,89 @@ func contractReportLine(p page, contract entries.ContractReport) string {
 	}
 	return parts(p.words.Of("reports.contractValue")+": "+value, p.words.Of("reports.paid")+": "+money(contract.Paid), remaining)
 }
+
+// reportLine is a line of a periodic report's section: its label and amount, strong for a total, as the app's report draws it.
+type reportLine struct {
+	id, label string
+	amount    fixed.Total
+	strong    bool
+}
+
+// reportSection is a section of a periodic report: its title and its lines.
+type reportSection struct {
+	name, title string
+	lines       []reportLine
+}
+
+// periodicSections are a periodic report's sections in the app's order (PeriodicReportScreen): the accounts and what they hold, the expenses
+// against the previous report's, the revenue by category, the expenses by category, the surplus with what waits, and the partners' capital.
+func periodicSections(p page, report reports.Snapshot) []reportSection {
+	line := func(section, name, label string, amount fixed.Total) reportLine {
+		return reportLine{id: "periodicReport.line." + section + "." + name, label: label, amount: amount}
+	}
+	strong := func(id, label string, amount fixed.Total) reportLine {
+		return reportLine{id: id, label: label, amount: amount, strong: true}
+	}
+	accounts := reportSection{name: "accounts", title: p.words.Of("accounts.title")}
+	for at, account := range report.Accounts {
+		accounts.lines = append(accounts.lines, line("accounts", strconv.Itoa(at), account.Name, account.Balance))
+	}
+	accounts.lines = append(accounts.lines, strong("periodicReport.line.accounts.total", p.words.Of("reconciliations.actualTotal"), report.AccountsTotal))
+	revenue := reportSection{name: "revenue", title: p.words.Of("summary.revenue")}
+	for at, category := range report.RevenueCategories {
+		revenue.lines = append(revenue.lines, line("revenue", strconv.Itoa(at), category.Name, category.Total))
+	}
+	revenue.lines = append(revenue.lines, strong("periodicReport.line.revenue.total", p.words.Of("summary.revenue"), report.Revenue),
+		line("revenue", "withoutSales", p.words.Of("summary.surplusWithoutSales"), report.RevenueWithoutSales))
+	categories := reportSection{name: "categories", title: p.words.Of("summary.byCategory")}
+	for at, category := range report.Categories {
+		categories.lines = append(categories.lines, line("categories", strconv.Itoa(at), category.Name, category.Total))
+	}
+	categories.lines = append(categories.lines, strong("periodicReport.line.categories.total", p.words.Of("summary.expenses"), report.Expenses))
+	surplus := reportSection{name: "surplus", title: p.words.Of("reports.surplus"), lines: []reportLine{
+		strong("periodicReport.surplus", p.words.Of("reports.surplus"), report.Surplus),
+		line("surplus", "withoutSales", p.words.Of("summary.surplusWithoutSales"), report.SurplusWithoutSales),
+		line("surplus", "reconciliation", p.words.Of("reconciliations.difference"), report.ReconciliationDifference),
+	}}
+	if report.PendingCount > 0 {
+		surplus.lines = append(surplus.lines, line("surplus", "pendingExpenses",
+			p.words.Of("reports.pendingExpenses")+" ("+strconv.FormatInt(report.PendingCount, 10)+")", report.PendingAmount))
+	}
+	if report.PendingRevenueCount > 0 {
+		surplus.lines = append(surplus.lines, line("surplus", "pendingRevenue",
+			p.words.Of("reports.pendingRevenue")+" ("+strconv.FormatInt(report.PendingRevenueCount, 10)+")", report.PendingRevenueAmount))
+	}
+	partners := reportSection{name: "partners", title: p.words.Of("reports.partners")}
+	for at, partner := range report.Partners {
+		partners.lines = append(partners.lines, line("partners", strconv.Itoa(at), partner.Name+" · "+shareOf(partner.SharePercent), partner.Balance))
+	}
+	partners.lines = append(partners.lines, strong("periodicReport.line.partners.total", p.words.Of("capital.total"), report.CapitalTotal))
+	return []reportSection{accounts, {name: "expenses", title: p.words.Of("summary.expenses"), lines: []reportLine{
+		line("expenses", "previous", p.words.Of("reports.previous"), report.PreviousExpenses),
+		line("expenses", "current", p.words.Of("reports.current"), report.Expenses),
+		strong("periodicReport.difference", p.words.Of("reports.difference"), report.ExpensesDifference),
+	}}, revenue, categories, surplus, partners}
+}
+
+// periodicReportShown is a periodic report as it was issued, as the caller may see it, and the day it was issued in the project's time zone.
+type periodicReportShown struct {
+	report   reports.Snapshot
+	found    bool
+	whole    bool
+	location *time.Location
+}
+
+// periodicReportTab is the periodic report ?number= in its tab, as the app's screen shows it (UC-053), through the rule the app's route answers
+// (reports.PeriodicReportOf), for whoever sees every table.
+func (s site) periodicReportTab(r *http.Request, p page) (templ.Component, error) {
+	shown := periodicReportShown{whole: p.caller.Access.SeesEveryTable(p.project.ID)}
+	if !shown.whole {
+		return periodicReportPage(p, shown), nil
+	}
+	read := s.Database.Queries()
+	number, _ := strconv.ParseInt(r.URL.Query().Get("number"), 10, 64)
+	report, found, err := reports.PeriodicReportOf(r.Context(), read, p.project.ID, number, p.caller.Access)
+	zone, zoneErr := zones.Of(r.Context(), read, p.project.ID)
+	shown.report, shown.found, shown.location = report, found, zones.Location(zone)
+	return periodicReportPage(p, shown), errors.Join(err, zoneErr)
+}

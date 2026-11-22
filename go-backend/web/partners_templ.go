@@ -322,9 +322,9 @@ func partnersList(p page, shown partnersShown) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var20 string
-				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(shareOf(line))
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(shareOf(line.SharePercent))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `partners.templ`, Line: 65, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `partners.templ`, Line: 65, Col: 83}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -434,9 +434,9 @@ func partnerPanel(p page, shown partnersShown, line partners.CapitalLine, moveme
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(shareOf(line))
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(shareOf(line.SharePercent))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `partners.templ`, Line: 83, Col: 173}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `partners.templ`, Line: 83, Col: 186}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {

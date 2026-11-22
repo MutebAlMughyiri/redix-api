@@ -23,7 +23,7 @@ const keptByDotNet = `{"projectName":"p","number":2,"issuedAt":"2026-11-16T13:32
 	`"revenueCategories":[],"pendingRevenueCount":0,"pendingRevenueAmount":0,"expensesDifference":40.0000,"revenue":0,"revenueWithoutSales":0}`
 
 func TestBR26_AReportDotNetKeptIsAnsweredAsItWasIssued(t *testing.T) {
-	var report snapshot
+	var report Snapshot
 	if err := json.Unmarshal([]byte(keptByDotNet), &report); err != nil {
 		t.Fatal(err)
 	}

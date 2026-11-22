@@ -54,10 +54,16 @@ templ reportsPage(p page, shown reportsShown) {
 			<p id="reports.noneIssued" class="empty">{ p.words.Of("reports.noneIssued") }</p>
 		default:
 			<div class="grid-wrap">
-				<table id="reports.table" class="grid">
+				<table id="reports.table" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
 					<tbody>
 						for _, report := range shown.issued {
-							<tr id={ "reports.periodic." + strconv.FormatInt(report.Number, 10) }>
+							<tr
+								id={ "reports.periodic." + strconv.FormatInt(report.Number, 10) }
+								tabindex="0"
+								aria-selected="false"
+								hx-get={ "/tab/periodicReport?number=" + strconv.FormatInt(report.Number, 10) }
+								hx-target="[id='web.content']"
+							>
 								<td id={ "reports.periodic." + strconv.FormatInt(report.Number, 10) + ".title" }>{ p.words.Of("reports.reportNumber") + " " + strconv.FormatInt(report.Number, 10) }</td>
 								<td id={ "reports.periodic." + strconv.FormatInt(report.Number, 10) + ".issuedAt" }>{ report.IssuedAt.In(shown.location).Format(time.DateOnly) }</td>
 							</tr>
@@ -169,4 +175,36 @@ templ reportRows(id string, rows []entries.ReportRow, columns []entries.ReportCo
 			}
 		</tbody>
 	</table>
+}
+
+// periodicReportPage is a periodic report as the app's screen shows it (UC-053): its number and the day it was issued, its PDF and Excel - gray
+// until they open on the web -, then each section with its lines, a total strong; or that it is for whoever sees every table.
+templ periodicReportPage(p page, shown periodicReportShown) {
+	switch {
+		case !shown.whole:
+			<p id="periodicReport.notForYou" class="empty">{ p.words.Of("reports.periodicNotForYou") }</p>
+		case !shown.found:
+			<p id="periodicReport.notFound" class="empty">{ p.words.Of("reports.refused") }</p>
+		default:
+			<div class="view-head">
+				<h2 id="periodicReport.title">{ p.words.Of("reports.reportNumber") + " " + strconv.FormatInt(shown.report.Number, 10) + " · " + shown.report.IssuedAt.In(shown.location).Format(time.DateOnly) }</h2>
+				<span id="periodicReport.actions" class="head-actions">
+					<button id="periodicReport.file.pdf" class="quiet-button" type="button" disabled>{ p.words.Of("reports.pdf") }</button>
+					<button id="periodicReport.file.excel" class="quiet-button" type="button" disabled>{ p.words.Of("reports.excel") }</button>
+				</span>
+			</div>
+			<div id="periodicReport.sections" class="report-sections">
+				for _, section := range periodicSections(p, shown.report) {
+					<section id={ "periodicReport.section." + section.name } class="tile">
+						<h3 id={ "periodicReport.section." + section.name + ".title" } class="section-title">{ section.title }</h3>
+						<dl class="facts">
+							for _, line := range section.lines {
+								<dt id={ line.id + ".label" } class={ "line", templ.KV("strong", line.strong) }>{ line.label }</dt>
+								<dd id={ line.id } class={ "money", templ.KV("strong", line.strong) }>{ money(line.amount) }</dd>
+							}
+						</dl>
+					</section>
+				}
+			</div>
+	}
 }

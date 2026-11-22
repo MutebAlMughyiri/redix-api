@@ -2479,136 +2479,7 @@
         ],
         "type": "object"
       },
-      "reports.Summary": {
-        "properties": {
-          "categories": {
-            "items": {
-              "$ref": "#/components/schemas/reports.CategoryTotal"
-            },
-            "type": "array"
-          },
-          "completionPercent": {
-            "description": "A figure as it was written.",
-            "type": "number"
-          },
-          "expenses": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "reconciliationDifference": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "revenue": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "revenueCategories": {
-            "items": {
-              "$ref": "#/components/schemas/reports.CategoryTotal"
-            },
-            "type": "array"
-          },
-          "surplus": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "waiting": {
-            "$ref": "#/components/schemas/reports.Waiting"
-          },
-          "wasReconciled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "categories",
-          "completionPercent",
-          "expenses",
-          "reconciliationDifference",
-          "revenue",
-          "revenueCategories",
-          "surplus",
-          "waiting",
-          "wasReconciled"
-        ],
-        "type": "object"
-      },
-      "reports.Waiting": {
-        "properties": {
-          "expensesAmount": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "expensesCount": {
-            "type": "integer"
-          },
-          "revenueAmount": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "revenueCount": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "expensesAmount",
-          "expensesCount",
-          "revenueAmount",
-          "revenueCount"
-        ],
-        "type": "object"
-      },
-      "reports.reportAccount": {
-        "properties": {
-          "balance": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "name": {
-            "type": "string"
-          },
-          "type": {
-            "enum": [
-              "bank",
-              "cashCustody"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "balance",
-          "name",
-          "type"
-        ],
-        "type": "object"
-      },
-      "reports.reportPartner": {
-        "properties": {
-          "balance": {
-            "description": "A sum kept to four decimals.",
-            "type": "number"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "sharePercent": {
-            "description": "A figure as it was written.",
-            "type": "number"
-          }
-        },
-        "required": [
-          "balance",
-          "id",
-          "name",
-          "sharePercent"
-        ],
-        "type": "object"
-      },
-      "reports.snapshot": {
+      "reports.Snapshot": {
         "properties": {
           "accounts": {
             "items": {
@@ -2748,6 +2619,135 @@
           "surplus",
           "surplusWithoutSales",
           "vatRefunds"
+        ],
+        "type": "object"
+      },
+      "reports.Summary": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/reports.CategoryTotal"
+            },
+            "type": "array"
+          },
+          "completionPercent": {
+            "description": "A figure as it was written.",
+            "type": "number"
+          },
+          "expenses": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "reconciliationDifference": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "revenue": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "revenueCategories": {
+            "items": {
+              "$ref": "#/components/schemas/reports.CategoryTotal"
+            },
+            "type": "array"
+          },
+          "surplus": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "waiting": {
+            "$ref": "#/components/schemas/reports.Waiting"
+          },
+          "wasReconciled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "categories",
+          "completionPercent",
+          "expenses",
+          "reconciliationDifference",
+          "revenue",
+          "revenueCategories",
+          "surplus",
+          "waiting",
+          "wasReconciled"
+        ],
+        "type": "object"
+      },
+      "reports.Waiting": {
+        "properties": {
+          "expensesAmount": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "expensesCount": {
+            "type": "integer"
+          },
+          "revenueAmount": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "revenueCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expensesAmount",
+          "expensesCount",
+          "revenueAmount",
+          "revenueCount"
+        ],
+        "type": "object"
+      },
+      "reports.reportAccount": {
+        "properties": {
+          "balance": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "bank",
+              "cashCustody"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "balance",
+          "name",
+          "type"
+        ],
+        "type": "object"
+      },
+      "reports.reportPartner": {
+        "properties": {
+          "balance": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sharePercent": {
+            "description": "A figure as it was written.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "balance",
+          "id",
+          "name",
+          "sharePercent"
         ],
         "type": "object"
       },
@@ -9862,7 +9862,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/reports.snapshot"
+                  "$ref": "#/components/schemas/reports.Snapshot"
                 }
               }
             },

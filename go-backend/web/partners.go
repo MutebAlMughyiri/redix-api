@@ -99,8 +99,8 @@ func (s site) partnerDetails(w http.ResponseWriter, r *http.Request) {
 }
 
 // shareOf is a partner's share as the app's row writes it (formatShare): ten decimals, and the percent sign.
-func shareOf(line partners.CapitalLine) string {
-	share, _ := strconv.ParseFloat(string(line.SharePercent), 64)
+func shareOf(percent fixed.Written) string {
+	share, _ := strconv.ParseFloat(string(percent), 64)
 	return strconv.FormatFloat(share, 'f', 10, 64) + "%"
 }
 

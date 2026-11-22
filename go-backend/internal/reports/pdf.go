@@ -22,7 +22,7 @@ import (
 const pdfType = "application/pdf"
 
 // periodicDocumentOf is the periodic report as a PDF's pages: the summary, then a page per item, رأس المال among them.
-func periodicDocumentOf(report snapshot, words waitingWords, zone string) statement.Document {
+func periodicDocumentOf(report Snapshot, words waitingWords, zone string) statement.Document {
 	document := statement.Document{Pages: []statement.Page{summaryPage(report, words, zone)}}
 	for _, item := range report.Items {
 		document.Pages = append(document.Pages, statement.PdfPage(sheetOf(item, nil)))
@@ -32,7 +32,7 @@ func periodicDocumentOf(report snapshot, words waitingWords, zone string) statem
 
 // summaryPage is the report's summary as report 23 lays it out: the accounts, the expenses against the previous report's, the revenue, the expenses
 // by category, the surplus and the reconciliation, what waits, and each category's items that hold anything.
-func summaryPage(report snapshot, words waitingWords, zone string) statement.Page {
+func summaryPage(report Snapshot, words waitingWords, zone string) statement.Page {
 	issuedAt := report.IssuedAt.In(zones.Location(zone))
 	page := statement.Page{Title: fmt.Sprintf("%s · تقرير رقم %d · %s", report.ProjectName, report.Number, issuedAt.Format("02.01.2006 15:04")), TitleSize: 14}
 	add := func(blocks ...statement.Block) { page.Blocks = append(page.Blocks, blocks...) }
@@ -98,7 +98,7 @@ func contractsDocumentOf(projectName string, list []contracts.View) statement.Do
 // periodicPdf is the report as a PDF laid out as report 23 (UC-054), its capital showing only the partners the caller may see (redix-api #131 D1,
 // BR-31); 404 for a number not issued.
 func (s Routes) periodicPdf(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	report, found, err := s.issued(r, web.Int(r, "number"))
+	report, found, err := issuedOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), web.Int(r, "number"))
 	if err == nil && !found {
 		problem.Status(w, r, http.StatusNotFound)
 		return
