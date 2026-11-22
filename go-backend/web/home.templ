@@ -43,7 +43,7 @@ templ home(p page, summary reports.Summary, custody []accounts.View) {
 					</div>
 				}
 				<span id="summary.surplus.label" class="label">{ p.words.Of("summary.surplus") }</span>
-				<span id="summary.surplus" class="surplus">{ money(summary.Surplus) } <small id="summary.surplus.currency">{ p.words.Of("accounts.riyal") }</small></span>
+				<span id="summary.surplus" class="surplus">{ money(summary.Surplus) } <small id="summary.surplus.currency">@riyal(p, "summary.surplus.riyal")</small></span>
 				<span id="summary.completion" class="label">{ p.words.Of("summary.completion") }: { string(summary.CompletionPercent) }%</span>
 				<progress id="summary.completionBar" class="bar" max="100" value={ string(summary.CompletionPercent) }></progress>
 				if summary.WasReconciled {
@@ -57,7 +57,7 @@ templ home(p page, summary reports.Summary, custody []accounts.View) {
 			for _, account := range custody {
 				<section id={ "home.custody." + account.ID.String() } class="card custody">
 					<span id={ "home.custodyName." + account.ID.String() } class="label">{ p.words.Of("accounts.myCustody") } · { account.Name }</span>
-					<b id={ "home.custodyBalance." + account.ID.String() }>{ money(account.Balance) } { p.words.Of("accounts.riyal") }</b>
+					<b id={ "home.custodyBalance." + account.ID.String() }>{ money(account.Balance) } @riyal(p, "home.custodyBalance."+account.ID.String()+".riyal")</b>
 				</section>
 			}
 		</div>
@@ -200,4 +200,11 @@ templ projectChoice(p page, project projects.View, idPrefix string) {
 		}
 		<span id={ idPrefix + project.ID.String() + ".status" } class={ "state", project.Status }>{ p.words.Of(statusWord(project.Status)) }</span>
 	</button>
+}
+
+// riyal is the Saudi Riyal sign, U+20C1 (Unicode 17.0), where the app writes ر.س: the character a keyboard types, drawn by the device's own font,
+// with the app's word for a screen reader (the owner, 23 Nov 2026, findings row 318). Every amount the web shows in riyals asks it; id names this
+// one.
+templ riyal(p page, id string) {
+	<span id={ id } class="riyal" role="img" aria-label={ p.words.Of("accounts.riyal") }>{ "\u20C1" }</span>
 }

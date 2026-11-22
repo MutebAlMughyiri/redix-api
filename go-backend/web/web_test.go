@@ -644,7 +644,7 @@ func TestWeb_R165_UC049_TheSummaryIsTheApps(t *testing.T) {
 	if testapi.Field(summary, "surplus") != -100.0 {
 		t.Fatalf("the app's surplus: %v", testapi.Field(summary, "surplus"))
 	}
-	has(t, home, `<span id="summary.surplus" class="surplus">(100.00) <small id="summary.surplus.currency">ر.س</small></span>`)
+	has(t, home, `<span id="summary.surplus" class="surplus">(100.00) <small id="summary.surplus.currency"><span id="summary.surplus.riyal" class="riyal" role="img" aria-label="ر.س">`+"\u20C1"+`</span></small></span>`)
 	has(t, home, `<b id="summary.expenses">100.00</b>`)
 	has(t, home, `<strong id="summary.pendingCount">بانتظار اعتمادك: 1</strong>`)
 	entries := w.browser.Send("GET", "/tab/entries", nil).Body.String()
@@ -656,7 +656,7 @@ func TestWeb_R165_UC049_TheSummaryIsTheApps(t *testing.T) {
 func TestWeb_R165_AnEmptyProjectShowsNoWaiting(t *testing.T) {
 	home := newWorking(t).home()
 	lacks(t, home, `id="summary.pending"`)
-	has(t, home, `<span id="summary.surplus" class="surplus">0.00 <small id="summary.surplus.currency">ر.س</small></span>`)
+	has(t, home, `<span id="summary.surplus" class="surplus">0.00 <small id="summary.surplus.currency"><span id="summary.surplus.riyal" class="riyal" role="img" aria-label="ر.س">`+"\u20C1"+`</span></small></span>`)
 }
 
 func TestWeb_R165_MyCustodyShowsWhatIHold(t *testing.T) {
@@ -670,7 +670,7 @@ func TestWeb_R165_MyCustodyShowsWhatIHold(t *testing.T) {
 	}
 	home := w.home()
 	has(t, home, `id="home.custody.`+id+`"`)
-	has(t, home, `<b id="home.custodyBalance.`+id+`">0.00 ر.س</b>`)
+	has(t, home, `<b id="home.custodyBalance.`+id+`">0.00 <span id="home.custodyBalance.`+id+`.riyal" class="riyal" role="img" aria-label="ر.س">`+"\u20C1"+`</span></b>`)
 	lacks(t, home, `id="home.custody.`+w.account+`"`)
 }
 
@@ -4724,5 +4724,5 @@ func TestWeb_R308_AltWClosesTheTabInFront(t *testing.T) {
 	page := w.browser.Send("GET", "/", nil).Body.String()
 	has(t, page, `event.altKey &amp;&amp; event.code === &#39;KeyW&#39;`)
 	has(t, page, `<button id="web.tab.entries.close" class="close" type="button" hx-delete="/tab/entries" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق `+"⁨(Alt+W)⁩"+`">`)
-	lacks(t, page, `<button id="web.tab.home.close" class="close" type="button" hx-delete="/tab/home" hx-target="[id='web.content']" aria-label="إغلاق" data-tip=`)
+	has(t, page, `<button id="web.tab.home.close" class="close" type="button" hx-delete="/tab/home" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق">`)
 }

@@ -58,7 +58,9 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 [data-tip]:hover::after { content: attr(data-tip); position: absolute; z-index: 5; inset-block-start: calc(100% + 6px); inset-inline-start: 0; white-space: nowrap;
   font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--text); color: var(--content); pointer-events: none; }
 .fold[data-tip]:hover::after { inset-inline-start: auto; inset-inline-end: 0; }
-.tab .close[data-tip] { position: relative; } .tab .close[data-tip]:hover::after { inset-inline-start: auto; inset-inline-end: 0; }
+/* A tab's close tip stands below its button, outside the tabs row, which scrolls and so would clip it (findings row 319). */
+.tab .close[data-tip]:hover { anchor-name: --close-tip; }
+.tab .close[data-tip]:hover::after { position: fixed; position-anchor: --close-tip; position-area: block-end span-inline-start; inset: auto; margin-block-start: 6px; }
 /* More, at the side menu's foot, over the items used now and then: its arrow alone, in the middle, turning while it is open (findings rows 307, 311). */
 .more summary { list-style: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--quiet); padding: 4px 8px; border-radius: 5px; user-select: none; }
 .more summary::-webkit-details-marker { display: none; } .more .arrow { transform: rotate(90deg); } .more[open] .arrow { transform: rotate(-90deg); }

@@ -163,10 +163,10 @@ func (p page) shortcut(key, keys string) string {
 	return p.words.Of(key) + " \u2068(" + keys + ")\u2069"
 }
 
-// closeTip is the tip of a tab's close button: the front tab's names Alt+W, which closes it from anywhere (findings row 308); the others none.
+// closeTip is the tip of a tab's close button: Close, and on the tab in front Alt+W too, which closes it from anywhere (findings rows 308, 319).
 func (p page) closeTip(name string) templ.Attributes {
 	if name != p.view.Active {
-		return nil
+		return templ.Attributes{"data-tip": p.words.Of("web.close")}
 	}
 	return templ.Attributes{"data-tip": p.shortcut("web.close", "Alt+W")}
 }
