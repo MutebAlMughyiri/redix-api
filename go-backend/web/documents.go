@@ -70,6 +70,15 @@ func (s documentsShown) fileLine(document documents.View) string {
 // isPicture says whether a file of contentType is a picture, which the app shows to zoom into and a panel shows as it is.
 func isPicture(contentType string) bool { return strings.HasPrefix(contentType, "image/") }
 
+// isPDF says whether a file of contentType is a PDF, which a panel shows in a small frame, in the browser's own viewer (the owner, 23 Nov 2026).
+func isPDF(contentType string) bool { return contentType == "application/pdf" }
+
+// shownInPage says whether a file of contentType is answered for the page to show it where it stands: a JPEG or PNG picture, or a PDF. Any
+// other file is answered only to keep, so a kept page or script never runs inside REDIX.
+func shownInPage(contentType string) bool {
+	return contentType == "image/jpeg" || contentType == "image/png" || isPDF(contentType)
+}
+
 // documentsOf is Documents with the search text, read through the rule the app's route answers (documents.ListOf). The error is the database's.
 func (s site) documentsOf(ctx context.Context, p page, text string) (documentsShown, error) {
 	read := s.Database.Queries()
@@ -207,7 +216,8 @@ func (s site) removeDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 // attachmentFile is a file the project keeps (GET /attachment/{id}), handed over under its own name through the rule the app's route reads it
-// with (attachments.FileOf); 404 for one of another project, or whose file is not kept (BR-33).
+// with (attachments.FileOf), for the page to show when it is a picture or a PDF (shownInPage); 404 for one of another project, or whose file is
+// not kept (BR-33).
 func (s site) attachmentFile(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.working(w, r)
 	if !ok {
@@ -224,6 +234,8 @@ func (s site) attachmentFile(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	case err != nil:
 		failed(w)
+	case shownInPage(attachment.ContentType):
+		web.ShowFile(w, attachment.ContentType, attachment.FileName, content)
 	default:
 		web.SendFile(w, attachment.ContentType, attachment.FileName, content)
 	}

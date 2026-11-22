@@ -191,9 +191,30 @@ func TestWeb_R9_R18_TheViewMenuHidesTheBarsAndTheServerDrawsThemHidden(t *testin
 	has(t, body, `<input type="checkbox" id="web.view.topBar" name="top">`)
 	has(t, body, `<input type="checkbox" id="web.view.statusBar" name="status">`)
 	has(t, body, `<input type="checkbox" id="web.view.sideMenu" name="side" checked>`)
-	has(t, body, `style="--side-w: 300px;"`)
+	has(t, body, `style="--side-w: 300px; --details-w: 320px;"`)
 	browser.Send("POST", "/view", url.Values{"top": {"on"}, "width": {"9000"}})
-	has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 480px;"`)
+	has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 480px; --details-w: 320px;"`)
+}
+
+// The details panel's line drags it from 240 to 560 px, as the approved prototype's did, and the width is kept as the side menu's is; a cookie
+// kept before it was keeps its side menu and opens the panel at 320 (#161 R10, findings row 304).
+func TestWeb_R10_TheDetailsPanelsLineWidensItAndItsWidthIsKept(t *testing.T) {
+	browser, _ := signedIn(t, testapi.New(t), "User A")
+	page := browser.Send("GET", "/", nil).Body.String()
+	has(t, page, `<div id="web.detailsLine" class="sash details-line" aria-hidden="true" data-within=".main" data-edge="end" data-width="--details-w" `+
+		`data-keeps="web.view.detailsWidth" data-least="240" data-most="560"`)
+	has(t, page, `<div id="web.sideLine" class="sash side-line" aria-hidden="true" data-within=".shell" data-edge="start" data-width="--side-w" `+
+		`data-keeps="web.view.width" data-least="180" data-most="480"`)
+	has(t, page, `<input type="hidden" id="web.view.detailsWidth" name="details" value="320">`)
+	for sent, kept := range map[string]string{"400": "400", "9000": "560", "10": "240"} {
+		browser.Send("POST", "/view", url.Values{"side": {"on"}, "width": {"300"}, "details": {sent}})
+		has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 300px; --details-w: `+kept+`px;"`)
+	}
+	browser.Send("POST", "/view", url.Values{"side": {"on"}, "width": {"300"}})
+	has(t, browser.Send("GET", "/", nil).Body.String(), `style="--side-w: 300px; --details-w: 240px;"`)
+	kept := "redix_access=" + browser.Cookie("redix_access") + "; redix_refresh=" + browser.Cookie("redix_refresh") +
+		"; redix_view=top=1&status=1&side=1&summary=1&width=260"
+	has(t, browser.Send("GET", "/", nil, "Cookie", kept).Body.String(), `style="--side-w: 260px; --details-w: 320px;"`)
 }
 
 func TestWeb_R11_TheLanguageIsInSettingsNotTheTopBar(t *testing.T) {
@@ -413,7 +434,7 @@ func TestWeb_R18_TheLookAndTheTabsAreKeptApartSoNeitherSaveUndoesTheOther(t *tes
 		t.Errorf("the View menu keeps the look alone: %v", set)
 	}
 	page := browser.Send("GET", "/", nil).Body.String()
-	has(t, page, `style="--side-w: 300px;"`)
+	has(t, page, `style="--side-w: 300px; --details-w: 320px;"`)
 	has(t, page, `id="web.tab.settings" class="tab" role="tab" aria-selected="true"`)
 }
 
@@ -1597,10 +1618,13 @@ func TestWeb_R175_D3_AnEntrysFileIsHandedOverFromItsPanel(t *testing.T) {
 	w.home()
 	panel := w.browser.Send("GET", "/details/entry/"+id, nil).Body.String()
 	has(t, panel, `<dt id="entry.file.0.label">فاتورة</dt><dd id="entry.file.0.value"><a id="entry.file.0" class="file" href="/attachment/`+
-		uploaded["id"].(string)+`" download="invoice-31.pdf">invoice-31.pdf</a> </dd>`)
+		uploaded["id"].(string)+`" download="invoice-31.pdf">invoice-31.pdf</a>`)
 	lacks(t, panel, `id="entry.file.0.picture"`)
-	if file := w.browser.Send("GET", "/attachment/"+uploaded["id"].(string), nil); file.Body.String() != "%PDF-1.4 invoice" {
-		t.Errorf("the entry's file: %d %q", file.Code, file.Body.String())
+	has(t, panel, `<iframe id="entry.file.0.pdf" class="file-picture file-pdf" src="/attachment/`+uploaded["id"].(string)+`" title="invoice-31.pdf"></iframe>`)
+	file := w.browser.Send("GET", "/attachment/"+uploaded["id"].(string), nil)
+	if file.Body.String() != "%PDF-1.4 invoice" || !strings.HasPrefix(file.Header().Get("Content-Disposition"), "inline;") ||
+		file.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Errorf("the entry's file is shown in the page: %d %q %v", file.Code, file.Body.String(), file.Header())
 	}
 	lacks(t, w.browser.Send("GET", "/details/entry/"+w.sent(40), nil).Body.String(), `id="entry.file.0"`)
 }
@@ -4292,8 +4316,10 @@ func TestWeb_R175_UC064_DocumentsAreListedKeptDownloadedAndRemovedAsTheAppsScree
 	has(t, panel, `<a id="document.download" class="quiet-button" href="/attachment/`)
 	has(t, panel, `download="contract.pdf"`)
 	lacks(t, panel, `id="document.picture"`)
+	has(t, panel, `<iframe id="document.pdf" class="details-picture file-pdf" src="/attachment/`)
 	file := w.browser.Send("GET", "/attachment/"+planFile, nil)
-	if file.Code != http.StatusOK || !bytes.Equal(file.Body.Bytes(), picture) || !strings.Contains(file.Header().Get("Content-Disposition"), "plan.png") {
+	if file.Code != http.StatusOK || !bytes.Equal(file.Body.Bytes(), picture) || !strings.Contains(file.Header().Get("Content-Disposition"), "plan.png") ||
+		!strings.HasPrefix(file.Header().Get("Content-Disposition"), "inline;") {
 		t.Errorf("the document's file: %d %q %q", file.Code, file.Header().Get("Content-Disposition"), file.Body.Bytes())
 	}
 	for _, path := range []string{"/attachment/" + uuid.Must(uuid.NewV7()).String(), "/attachment/not-an-id", "/details/document/" + uuid.Must(uuid.NewV7()).String()} {
@@ -4548,8 +4574,10 @@ func TestWeb_R175_D3_AContractsDocumentsAndAMovementsReceiptAreHandedOverFromThe
 	has(t, partnerPanel, `<img id="movements.row.`+movement+`.receipt.picture" class="file-picture" src="/attachment/`+receipt["id"].(string)+`" alt="receipt.png">`)
 	contractPanel := w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String()
 	has(t, contractPanel, `<a id="contract.document.`+document["id"].(string)+`" class="file" href="/attachment/`+document["id"].(string)+`" download="terms.docx">terms.docx</a>`)
-	if file := w.browser.Send("GET", "/attachment/"+document["id"].(string), nil); file.Body.String() != "the terms" {
-		t.Errorf("the contract's document: %d %q", file.Code, file.Body.String())
+	lacks(t, contractPanel, `id="contract.document.`+document["id"].(string)+`.pdf"`)
+	file := w.browser.Send("GET", "/attachment/"+document["id"].(string), nil)
+	if file.Body.String() != "the terms" || !strings.HasPrefix(file.Header().Get("Content-Disposition"), "attachment;") {
+		t.Errorf("a document that is no picture or PDF is only kept, never shown in the page: %d %q %v", file.Code, file.Body.String(), file.Header())
 	}
 }
 

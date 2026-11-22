@@ -3,11 +3,19 @@
 
 package web
 
-// keptFile is a file the project keeps as a panel shows it: its name, handing the file over, and the picture itself when it is one, as the
-// app's viewer shows it (redix-api #175 D3). Every panel that shows a file asks it.
+// keptFile is a file the project keeps as a panel shows it: its name, handing the file over, and the file itself when a page can show it, as
+// the app's viewer shows a picture (redix-api #175 D3). Every panel that shows a file asks it.
 templ keptFile(id, attachmentID, name, contentType string) {
 	<a id={ id } class="file" href={ templ.SafeURL("/attachment/" + attachmentID) } download={ name }>{ name }</a>
-	if isPicture(contentType) {
-		<img id={ id + ".picture" } class="file-picture" src={ "/attachment/" + attachmentID } alt={ name }/>
+	@fileShown(id, attachmentID, name, contentType, "file-picture")
+}
+
+// fileShown is a kept file shown where it stands: a picture as it is, a PDF in the browser's own viewer, in a small frame (the owner, 23 Nov
+// 2026); any other file shows nothing. Its element is id with .picture or .pdf; class places it in its panel.
+templ fileShown(id, attachmentID, name, contentType, class string) {
+	if isPDF(contentType) {
+		<iframe id={ id + ".pdf" } class={ class, "file-pdf" } src={ "/attachment/" + attachmentID } title={ name }></iframe>
+	} else if isPicture(contentType) {
+		<img id={ id + ".picture" } class={ class } src={ "/attachment/" + attachmentID } alt={ name }/>
 	}
 }

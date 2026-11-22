@@ -62,11 +62,15 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .tree a[aria-current="true"] { background: var(--select); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
 [dir="rtl"] .tree a[aria-current="true"] { box-shadow: inset -3px 0 0 var(--accent); }
 .tree .parked { color: var(--faint); cursor: not-allowed; }
-.sash { grid-area: side; justify-self: end; margin-inline-end: -4px; position: relative; z-index: 3; width: 7px; cursor: col-resize; touch-action: none; }
+.sash { position: relative; z-index: 3; width: 7px; cursor: col-resize; touch-action: none; }
+.side-line { grid-area: side; justify-self: end; margin-inline-end: -4px; }
+/* The details panel's line, on its edge beside the content, while it shows something (findings row 304). */
+.details-line { display: none; grid-row: 2; grid-column: 2; justify-self: start; margin-inline-start: -4px; }
+.main:has([id="web.details"]:not(:empty)) .details-line { display: block; }
 .sash::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 2px; width: 3px; background: transparent; transition: background 120ms; }
 .sash:hover::after { background: var(--accent); transition-delay: 150ms; }
 .shell.resizing .sash::after { background: var(--accent); transition-delay: 0ms; }
-.shell:has([id="web.view.sideMenu"]:not(:checked)) .sash { display: none; }
+.shell:has([id="web.view.sideMenu"]:not(:checked)) .side-line { display: none; }
 
 /* Tabs, the View menu, and the content area. */
 .main { grid-area: main; display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; background: var(--content); }
@@ -244,7 +248,7 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .details-foot { margin: 0; padding: 0 14px 14px; font-size: 12px; }
 
 /* An entry's actions in the details panel (redix-api #166). */
-.details-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 14px; } .details-say { margin: 0 14px 12px; } .file-picture { display: block; max-inline-size: 100%; margin-block-start: 6px; border-radius: 6px; } .details-picture { display: block; max-inline-size: calc(100% - 28px); margin: 0 14px 12px; border-radius: 6px; }
+.details-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 14px; } .details-say { margin: 0 14px 12px; } .file-picture { display: block; max-inline-size: 100%; margin-block-start: 6px; border-radius: 6px; } .details-picture { display: block; max-inline-size: calc(100% - 28px); margin: 0 14px 12px; border-radius: 6px; } .file-pdf { inline-size: 100%; block-size: 360px; border: 1px solid var(--chrome-line); background: var(--content); } .details-picture.file-pdf { inline-size: calc(100% - 28px); }
 .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; border-radius: 6px; background: var(--refusal-bg); }
 .ask span { flex: 1 1 100%; color: var(--refusal); } .primary.danger { background: var(--refusal); color: var(--on-accent); }
 .filters a { color: var(--accent); text-decoration: none; font-size: 12.5px; } .filters a:hover { text-decoration: underline; }

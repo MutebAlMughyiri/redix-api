@@ -246,6 +246,15 @@ func (p page) openTabs() []menuItem {
 	return open
 }
 
+// lineDragged moves a line the person drags (dragLine): the part beside it takes the pointer's distance from the start or the end, as data-edge
+// says in the page's direction, of the box data-within names, between data-least and data-most pixels and leaving the content 320; it is set on
+// the shell as the CSS variable data-width and in the View menu's field data-keeps (#161 R10).
+const lineDragged = `if (!this.hasPointerCapture(event.pointerId)) return; ` +
+	`const box = this.closest(this.dataset.within).getBoundingClientRect(), fromLeft = (this.dataset.edge === 'start') !== (getComputedStyle(this).direction === 'rtl'); ` +
+	`const along = fromLeft ? event.clientX - box.left : box.right - event.clientX; ` +
+	`const width = Math.round(Math.max(+this.dataset.least, Math.min(+this.dataset.most, box.width - 320, along))); ` +
+	`this.closest('.shell').style.setProperty(this.dataset.width, width + 'px'); document.getElementById(this.dataset.keeps).value = width`
+
 // shellKeys is the shell's one keydown handler (see document): Alt+1 and Esc. It and the lists' handlers below are constants of our own, holding no
 // person's data, so the templates write them as trusted script.
 const shellKeys = `if (event.altKey && event.code === 'Digit1' && document.getElementById('web.view.sideMenu')) { event.preventDefault(); ` +

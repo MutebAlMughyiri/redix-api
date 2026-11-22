@@ -58,8 +58,8 @@ templ documentsBeside(p page, shown documentsShown) {
 	</div>
 }
 
-// documentPanel is a document in the details panel: its group, its file's name and day, the picture itself when it is one, as the app's viewer
-// shows it; that it was saved, or why its removal was refused; Download, as the app's button hands the file over, and Remove, asked first as the
+// documentPanel is a document in the details panel: its group, its file's name and day, the picture or the PDF itself (fileShown), as the app's
+// viewer shows a picture; that it was saved, or why its removal was refused; Download, as the app's button hands the file over, and Remove, asked first as the
 // app's swipe asks it, to whoever manages the project.
 templ documentPanel(p page, shown documentsShown, document documents.View, said said) {
 	<div class="details-head">
@@ -70,9 +70,7 @@ templ documentPanel(p page, shown documentsShown, document documents.View, said 
 		<p id="document.group" class="hint">{ p.words.Of("documents.group") + ": " + document.Group }</p>
 	}
 	<p id="document.file" class="hint">{ shown.fileLine(document) }</p>
-	if isPicture(document.ContentType) {
-		<img id="document.picture" class="details-picture" src={ "/attachment/" + document.AttachmentID.String() } alt={ document.Name }/>
-	}
+	@fileShown("document", document.AttachmentID.String(), document.Name, document.ContentType, "details-picture")
 	if said.notice != "" {
 		<p id="document.notice" class="notice details-say" role="status">{ p.words.Of(said.notice) }</p>
 	}

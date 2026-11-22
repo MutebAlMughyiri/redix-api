@@ -15,11 +15,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// view is how a person left the shell: its bars, its side menu and that menu's width, the home's summary, its open tabs, and the project they
+// view is how a person left the shell: its bars, its side menu and that menu's width, the details panel's width, the home's summary, its open tabs, and the project they
 // work in, kept in cookies and drawn by the server, so nothing flashes on the next open (#161 R18, redix-api #165).
 type view struct {
 	Top, Status, Side, Summary bool
-	Width                      int
+	Width, DetailsWidth        int
 	Tabs                       []string
 	Active                     string
 	Project                    uuid.UUID
@@ -39,18 +39,19 @@ const (
 	tabsCookie = "redix_tabs"
 	// projectCookie keeps the project a person chose to work in, as the app keeps the project it opened (redix-api #165).
 	projectCookie = "redix_project"
-	// narrowest and widest are the side menu's width limits; the content keeps the rest (#161 R10).
-	narrowest, widest = 180, 480
+	// narrowest and widest are the side menu's width limits, detailsNarrowest and detailsWidest the details panel's; the content keeps the rest
+	// (#161 R10, findings row 304).
+	narrowest, widest               = 180, 480
+	detailsNarrowest, detailsWidest = 240, 560
 )
 
 // viewOf is the view r's cookies keep; every bar, the side menu and the home's summary shown until a person hides them, and Home open first, as
 // the app opens on a project's home (redix-api #165). A tab no feature opens is dropped.
 func viewOf(r *http.Request) view {
-	look := preference(r, lookCookie, url.Values{"top": {"1"}, "status": {"1"}, "side": {"1"}, "summary": {"1"}, "width": {"248"}})
+	look := preference(r, lookCookie, url.Values{"top": {"1"}, "status": {"1"}, "side": {"1"}, "summary": {"1"}})
 	tabs := preference(r, tabsCookie, url.Values{"tab": {"home"}, "active": {"home"}})
-	width, _ := strconv.Atoi(look.Get("width"))
 	v := view{Top: look.Get("top") == "1", Status: look.Get("status") == "1", Side: look.Get("side") == "1", Summary: look.Get("summary") != "0",
-		Width: min(max(width, narrowest), widest)}
+		Width: sized(look.Get("width"), 248, narrowest, widest), DetailsWidth: sized(look.Get("details"), 320, detailsNarrowest, detailsWidest)}
 	if chosen, err := r.Cookie(projectCookie); err == nil {
 		v.Project, _ = uuid.Parse(chosen.Value)
 	}
@@ -68,6 +69,16 @@ func viewOf(r *http.Request) view {
 	return v
 }
 
+// sized is a width as the cookie or the View menu keeps it, between least and most; absent when it keeps none, as a cookie kept before the
+// details panel's width was.
+func sized(kept string, absent, least, most int) int {
+	width, err := strconv.Atoi(kept)
+	if err != nil {
+		return absent
+	}
+	return min(max(width, least), most)
+}
+
 // preference is the values r's cookie called name keeps, or absent when it keeps none.
 func preference(r *http.Request, name string, absent url.Values) url.Values {
 	if cookie, err := r.Cookie(name); err == nil {
@@ -78,10 +89,10 @@ func preference(r *http.Request, name string, absent url.Values) url.Values {
 	return absent
 }
 
-// keepLook sets v's bars, side menu and width in their cookie.
+// keepLook sets v's bars, side menu and the two widths in their cookie.
 func (v view) keepLook(w http.ResponseWriter) {
 	setPreference(w, lookCookie, url.Values{"top": {flag(v.Top)}, "status": {flag(v.Status)}, "side": {flag(v.Side)}, "summary": {flag(v.Summary)},
-		"width": {strconv.Itoa(v.Width)}}.Encode())
+		"width": {strconv.Itoa(v.Width)}, "details": {strconv.Itoa(v.DetailsWidth)}}.Encode())
 }
 
 // keepProject sets the project v works in in its cookie.
@@ -157,5 +168,7 @@ func (v view) closing(name string) view {
 	return v
 }
 
-// width is the side menu's width as the shell's style holds it; a number of our own, so it is safe in a style.
-func (v view) width() templ.SafeCSS { return templ.SafeCSS(fmt.Sprintf("--side-w: %dpx", v.Width)) }
+// widths are the side menu's and the details panel's widths as the shell's style holds them; numbers of our own, so they are safe in a style.
+func (v view) widths() templ.SafeCSS {
+	return templ.SafeCSS(fmt.Sprintf("--side-w: %dpx; --details-w: %dpx", v.Width, v.DetailsWidth))
+}

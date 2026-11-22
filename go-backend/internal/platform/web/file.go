@@ -12,8 +12,20 @@ import (
 // SendFile answers content of contentType as a file to keep, named name: the plain filename with what is not ASCII as underscores, and the
 // name itself as UTF-8 (RFC 6266), the one way the API hands a file it makes.
 func SendFile(w http.ResponseWriter, contentType, name string, content []byte) {
+	sendFile(w, "attachment", contentType, name, content)
+}
+
+// ShowFile answers content as SendFile does, for the browser to show where a page puts it - a picture, a PDF in its own viewer - rather than
+// keep; a link with a download attribute still keeps it. The browser takes contentType as said, never guessing another from the bytes.
+func ShowFile(w http.ResponseWriter, contentType, name string, content []byte) {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	sendFile(w, "inline", contentType, name, content)
+}
+
+// sendFile answers content of contentType named name, to keep or to show as disposition says.
+func sendFile(w http.ResponseWriter, disposition, contentType, name string, content []byte) {
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", "attachment; filename="+asciiName(name)+"; filename*=UTF-8''"+url.PathEscape(name))
+	w.Header().Set("Content-Disposition", disposition+"; filename="+asciiName(name)+"; filename*=UTF-8''"+url.PathEscape(name))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
 }

@@ -40,18 +40,11 @@ templ document(p page) {
 // shell is the frame every page lives in, the base design the owner approved on 21 Nov 2026: top bar, side menu, tabs and content, status bar
 // (#161 R5). Before signing in, only the top bar, the content and the status bar.
 templ shell(p page) {
-	<div id="web.shell" class={ "shell", templ.KV("in", p.in), templ.KV("arriving", p.arriving) } style={ p.view.width() }>
+	<div id="web.shell" class={ "shell", templ.KV("in", p.in), templ.KV("arriving", p.arriving) } style={ p.view.widths() }>
 		@topBar(p)
 		if p.in {
 			@side(p)
-			<div
-				id="web.sideLine"
-				class="sash"
-				aria-hidden="true"
-				hx-on:pointerdown="event.preventDefault(); this.setPointerCapture(event.pointerId); this.closest('.shell').classList.add('resizing')"
-				hx-on:pointermove="if (!this.hasPointerCapture(event.pointerId)) return; const shell = this.closest('.shell'), box = shell.getBoundingClientRect(), along = getComputedStyle(shell).direction === 'rtl' ? box.right - event.clientX : event.clientX - box.left, width = Math.round(Math.max(180, Math.min(480, box.width - 320, along))); shell.style.setProperty('--side-w', width + 'px'); document.getElementById('web.view.width').value = width"
-				hx-on:lostpointercapture="this.closest('.shell').classList.remove('resizing'); htmx.trigger(document.getElementById('web.viewMenu'), 'change')"
-			></div>
+			@dragLine("web.sideLine", "side-line", ".shell", "start", "--side-w", "web.view.width", narrowest, widest)
 		}
 		<main class="main">
 			if p.in {
@@ -64,6 +57,7 @@ templ shell(p page) {
 				@detailsPanel(false) {
 					@p.details
 				}
+				@dragLine("web.detailsLine", "details-line", ".main", "end", "--details-w", "web.view.detailsWidth", detailsNarrowest, detailsWidest)
 			}
 		</main>
 		@statusBar(p)
@@ -172,6 +166,7 @@ templ tabsRow(p page) {
 			<label id="web.view.sideMenu.label"><input type="checkbox" id="web.view.sideMenu" name="side" checked?={ p.view.Side }/>{ p.words.Of("web.sideMenu") }<kbd id="web.view.sideMenu.shortcut">Alt+1</kbd></label>
 			<input type="checkbox" id="web.view.summary" name="summary" checked?={ p.view.Summary } hidden/>
 			<input type="hidden" id="web.view.width" name="width" value={ strconv.Itoa(p.view.Width) }/>
+			<input type="hidden" id="web.view.detailsWidth" name="details" value={ strconv.Itoa(p.view.DetailsWidth) }/>
 		</form>
 	</div>
 }
@@ -186,6 +181,26 @@ templ tabs(p page, outOfBand bool) {
 			</div>
 		}
 	</div>
+}
+
+// dragLine is a line between two of the shell's parts that a person drags to widen or narrow one, as the approved base design has it: the side
+// menu's and the details panel's (#161 R10, findings row 304). The part is width wide, from edge of the within box, between least and most
+// pixels; the View menu keeps it in keeps once the line is let go.
+templ dragLine(id, class, within, edge, width, keeps string, least, most int) {
+	<div
+		id={ id }
+		class={ "sash", class }
+		aria-hidden="true"
+		data-within={ within }
+		data-edge={ edge }
+		data-width={ width }
+		data-keeps={ keeps }
+		data-least={ strconv.Itoa(least) }
+		data-most={ strconv.Itoa(most) }
+		hx-on:pointerdown="event.preventDefault(); this.setPointerCapture(event.pointerId); this.closest('.shell').classList.add('resizing')"
+		hx-on:pointermove={ templ.JSUnsafeFuncCall(lineDragged) }
+		hx-on:lostpointercapture="this.closest('.shell').classList.remove('resizing'); htmx.trigger(document.getElementById('web.viewMenu'), 'change')"
+	></div>
 }
 
 // detailsPanel is the details panel beside a list, like Google Drive's (the base design): empty, so hidden, until a row fills it. A tab's
