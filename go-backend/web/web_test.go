@@ -1334,6 +1334,31 @@ func TestWeb_R301_ChangeEntryOpensAgainOnItsEntryAsItStands(t *testing.T) {
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `id="web.tab.changeEntry"`)
 }
 
+// An item's report and a periodic report keep what they were opened for: pressed again after another tab, or after a reload, they show the same
+// item, contract or report, never "تعذر تنفيذ ذلك." (findings row 327).
+func TestWeb_R327_AReportTabOpensAgainOnWhatItWasOpenedFor(t *testing.T) {
+	w := newWorking(t)
+	w.funded(1000)
+	w.approved(300)
+	builder := w.supplier(`{"name":"مقاول أ"}`)
+	contract := w.contract(builder, `"value":1000,"isOpenValue":false`)
+	w.paid(contract, builder, 200, true)
+	w.home()
+	w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil)
+	w.browser.Send("GET", "/tab/expenses", nil)
+	has(t, w.browser.Send("GET", "/tab/itemReport", nil).Body.String(), `<h2 id="itemReport.title">التسليح</h2>`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<h2 id="itemReport.title">التسليح</h2>`)
+	w.browser.Send("GET", "/tab/itemReport?contract="+contract, nil)
+	w.browser.Send("GET", "/tab/expenses", nil)
+	byContract := w.browser.Send("GET", "/tab/itemReport", nil).Body.String()
+	has(t, byContract, `itemReport.contractCard.`+contract)
+	lacks(t, byContract, `itemReport.notFound`)
+	w.browser.Send("POST", "/reports/issue", nil)
+	w.browser.Send("GET", "/tab/periodicReport?number=1", nil)
+	w.browser.Send("GET", "/tab/reports", nil)
+	has(t, w.browser.Send("GET", "/tab/periodicReport", nil).Body.String(), `<h2 id="periodicReport.title">تقرير رقم 1 · `)
+}
+
 func TestWeb_R166_UC033_AnApprovedEntryIsNotChanged(t *testing.T) {
 	w := newWorking(t)
 	approved := w.approved(70)
@@ -2954,13 +2979,14 @@ func TestWeb_R172_UC069_MyHistoryTellsEveryLineOfMyOwnLogin(t *testing.T) {
 	}
 }
 
-// Findings row 293 (the owner, 23 Nov 2026): one details panel, following the tab in front - every selection is kept for its tab, and a tab coming
-// from /tab/ selects and shows its own again; the browser's behaviour is proved by redix-web-automation's EntriesTest.
+// Findings row 293 (the owner, 23 Nov 2026): one details panel, following the tab in front - every selection the panel shows is kept for its tab,
+// and a tab coming from /tab/ selects and shows its own again; a row opening a tab of its own is not kept (findings row 326). The browser's
+// behaviour is proved by redix-web-automation's EntriesTest and ReportsTest.
 func TestWeb_D293_TheDetailsPanelFollowsTheTabInFront(t *testing.T) {
 	browser, _ := signedIn(t, testapi.New(t), "User A")
 	page := browser.Send("GET", "/", nil).Body.String()
 	has(t, page, `hx-on::after-settle="`)
-	has(t, page, `window.selected[front.id] = row.getAttribute(&#39;hx-get&#39;)`)
+	has(t, page, `if (front &amp;&amp; address.startsWith(&#39;/details/&#39;)) window.selected[front.id] = address`)
 	has(t, page, `path.startsWith(&#39;/tab/&#39;)`)
 	lacks(t, page, "openInTab")
 }

@@ -316,12 +316,15 @@ const shellKeys = `if (event.altKey && event.code === 'Digit1' && document.getEl
 const closeDetails = `document.getElementById('web.details').replaceChildren(); ` +
 	`const shut = document.querySelector('.tab[aria-selected=true]'); if (shut && window.selected) delete window.selected[shut.id]`
 
-// selectRow defines select, which marks one row of a list as the selected one and keeps it as the selection of the tab in front, so the details
-// panel comes back to it when that tab does (findings row 293); both of a list's handlers start with it.
+// selectRow defines select, which marks one row of a list as the selected one and, when the details panel shows it, keeps it as the selection of
+// the tab in front, so the panel comes back to it when that tab does (findings row 293); both of a list's handlers start with it. A row that
+// opens a tab of its own - an item's report, a periodic report - is not kept, or bringing its list back would open that tab again (findings
+// row 326).
 const selectRow = `window.selected = window.selected || {}; ` +
 	`window.select = window.select || (row => { row.closest('tbody').querySelectorAll('[aria-selected=true]').forEach(other => ` +
 	`other.setAttribute('aria-selected', 'false')); row.setAttribute('aria-selected', 'true'); ` +
-	`const front = document.querySelector('.tab[aria-selected=true]'); if (front) window.selected[front.id] = row.getAttribute('hx-get') }); `
+	`const front = document.querySelector('.tab[aria-selected=true]'), address = row.getAttribute('hx-get'); ` +
+	`if (front && address.startsWith('/details/')) window.selected[front.id] = address }); `
 
 // followSelection is the shell's one settle handler (see document): when a tab's content comes from /tab/ - the tab brought to the front, or its
 // filters changed -, the row that tab last selected is selected again and shown, so the one details panel always shows what the tab in front

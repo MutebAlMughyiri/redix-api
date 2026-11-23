@@ -28,10 +28,12 @@ type view struct {
 	Records map[string]string
 }
 
-// recordTabs are the tabs a page opens for one record, by the query key that names it, which show that record again when their title is pressed
-// or the page opens anew, as the app's screen stays on what it opened (redix-api #174). Only the record is kept, never what a form typed beside
-// it, so Change entry opens again on its entry as it stands, never on an edit not saved (findings row 301).
-var recordTabs = map[string]string{"userPermissions": "user", "itemColumns": "item", "itemTables": "item", "changeEntry": "entry"}
+// recordTabs are the tabs a page opens for one record, by the query keys that can name it, which show that record again when their title is
+// pressed or the page opens anew, as the app's screen stays on what it opened (redix-api #174); an item's report is opened for an item or for a
+// contract, and it and a periodic report are record tabs too (findings row 327). Only the record is kept, never what a form typed beside it, so
+// Change entry opens again on its entry as it stands, never on an edit not saved (findings row 301).
+var recordTabs = map[string][]string{"userPermissions": {"user"}, "itemColumns": {"item"}, "itemTables": {"item"}, "changeEntry": {"entry"},
+	"itemReport": {"item", "contract"}, "periodicReport": {"number"}}
 
 const (
 	// lookCookie keeps the bars, the side menu and its width, which the View menu changes; tabsCookie keeps the open tabs. Each is written only by
@@ -134,29 +136,35 @@ func (v view) opening(name string) view {
 
 // recording is v keeping the record query names as the record of the tab named name, when it is a tab opened for one and query names one.
 func (v view) recording(name, query string) view {
-	key, opensOne := recordTabs[name]
 	values, _ := url.ParseQuery(query)
-	record := values.Get(key)
-	if !opensOne || record == "" {
+	record := url.Values{}
+	for _, key := range recordTabs[name] {
+		if value := values.Get(key); value != "" {
+			record.Set(key, value)
+		}
+	}
+	if len(record) == 0 {
 		return v
 	}
 	v.Records = maps.Clone(v.Records)
 	if v.Records == nil {
 		v.Records = map[string]string{}
 	}
-	v.Records[name] = url.Values{key: {record}}.Encode()
+	v.Records[name] = record.Encode()
 	return v
 }
 
 // recordOf is r as the front tab's page reads it: with the record that tab keeps, when r names none - its search asked for, or nothing at all.
 func (v view) recordOf(r *http.Request) *http.Request {
 	record, kept := v.Records[v.Active]
-	key, query := recordTabs[v.Active], r.URL.Query()
-	if !kept || query.Get(key) != "" {
+	query := r.URL.Query()
+	if !kept || slices.ContainsFunc(recordTabs[v.Active], func(key string) bool { return query.Get(key) != "" }) {
 		return r
 	}
 	values, _ := url.ParseQuery(record)
-	query.Set(key, values.Get(key))
+	for key := range values {
+		query.Set(key, values.Get(key))
+	}
 	again := r.Clone(r.Context())
 	again.URL.RawQuery = query.Encode()
 	return again
