@@ -1444,9 +1444,6 @@
           },
           "supplierName": {
             "type": "string"
-          },
-          "supplierVatNumber": {
-            "type": "string"
           }
         },
         "required": [
@@ -1466,8 +1463,7 @@
           "paymentMethodName",
           "rejectionReason",
           "status",
-          "supplierName",
-          "supplierVatNumber"
+          "supplierName"
         ],
         "type": "object"
       },
@@ -7390,82 +7386,6 @@
           }
         },
         "summary": "approve approves the entries named, each on its own (FR-19, AC-19.2): what cannot be approved comes back by id with its reason - unknownEntry, entryNotPending - and nothing is approved in silence.",
-        "tags": [
-          "entries"
-        ]
-      }
-    },
-    "/projects/{projectId}/entries/attachable": {
-      "get": {
-        "description": "attachable is the entries a QR code on a shared file matches (AC-49.2), as the lists show them: those the caller may put a file on whose supplier's VAT number is the code's, whose total is within one riyal of its total and whose date within three days of its date.\n\nAccess: needs the RecordEntries permission.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "projectId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "total",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "date",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "vatNumber",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/entries.Row"
-                  },
-                  "type": "array"
-                }
-              }
-            },
-            "description": "OK."
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/problem"
-                }
-              }
-            },
-            "description": "Refused, with problem details."
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/problem"
-                }
-              }
-            },
-            "description": "Problem details, with the failure's code and trace id (redix-api #150)."
-          }
-        },
-        "summary": "attachable is the entries a QR code on a shared file matches (AC-49.2), as the lists show them: those the caller may put a file on whose supplier's VAT number is the code's, whose total is within one riyal of its total and whose date within three days of its date.",
         "tags": [
           "entries"
         ]

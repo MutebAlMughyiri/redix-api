@@ -170,6 +170,18 @@ var configuredSinceDotNet = []string{
 	"ConfigTests.UC_070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn",
 }
 
+// removedSinceDotNet are the routes taken away since .NET with the feature they served: a step that asks one is not compared, and the rest of
+// its test is (findings row 303: the invoice QR's match).
+var removedSinceDotNet = []string{"GET /projects/{id}/entries/attachable"}
+
+// removedWithTheirFeature are the tests of a feature taken away since .NET, which nothing replays (findings row 303).
+var removedWithTheirFeature = []string{"EntryFileTests.AC_49_2_D6_TheQrCodesMatchAloneIsAnsweredForThePinOverTheList"}
+
+// isRemoved says whether s asked for a route taken away since .NET (removedSinceDotNet).
+func isRemoved(s step) bool {
+	return slices.Contains(removedSinceDotNet, s.Method+" "+pathPattern.ReplaceAllString(s.Path, "{id}"))
+}
+
 // isGone says whether s asked for a route .NET did not have - one removed, or a method a path does not take - which Go's router answers as
 // ASP.NET Core's did, 404 or 405, with no route of its own.
 func isGone(s step) bool {
@@ -205,11 +217,11 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			// rows 263, 264).
 			underReview++
 		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name),
-			slices.Contains(askedForMine, name), slices.Contains(configuredSinceDotNet, name):
+			slices.Contains(askedForMine, name), slices.Contains(configuredSinceDotNet, name), slices.Contains(removedWithTheirFeature, name):
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {
-			return (s.Step == "request" && !routes.Handles(s.Method, s.Path) && !isGone(s)) || (s.Step == "seed" && !slices.Contains(seeds, s.Kind))
+			return (s.Step == "request" && !routes.Handles(s.Method, s.Path) && !isGone(s) && !isRemoved(s)) || (s.Step == "seed" && !slices.Contains(seeds, s.Kind))
 		}):
 			waiting++
 			continue
@@ -398,6 +410,9 @@ func replay(t *testing.T, steps []step, hosts []host, swept map[int]bool) {
 			if _, changed := neededSinceDotNet[s.Method+" "+pathPattern.ReplaceAllString(s.Path, "{id}")]; changed && got.Code == http.StatusForbidden && s.Status != http.StatusForbidden {
 				continue
 			}
+			if isRemoved(s) {
+				continue
+			}
 			if differences := compare(names, s, got); len(differences) > 0 {
 				t.Errorf("step %d, %s %s%s:\n  %s", i, s.Method, s.Path, s.Query, strings.Join(differences, "\n  "))
 				return
@@ -479,11 +494,22 @@ var addedSinceDotNet = map[string]string{
 	"unseenTables":     "the tables unticked for a person, which they do not see (redix-api #106)",
 }
 
+// invoiceQrWord is why each of the invoice QR's words is retired: they went with it (findings row 303).
+const invoiceQrWord = "a word of the invoice QR, removed with it (findings row 303)"
+
 // retiredSinceDotNet are the names .NET answered that Go no longer does, each retired by a feature built after it, so an answer recorded with one
 // still matches; each names why it went.
 var retiredSinceDotNet = map[string]string{
-	"history.mine":            "«ما قمت به», which the person chip's «أنا» replaced in every history (UC-069 D6)",
-	"projects.exportSettings": "«تصدير إعدادات المشروع», the grayed button «أرشفة المشروع» replaced (UC-073 D10)",
+	"history.mine":               "«ما قمت به», which the person chip's «أنا» replaced in every history (UC-069 D6)",
+	"projects.exportSettings":    "«تصدير إعدادات المشروع», the grayed button «أرشفة المشروع» replaced (UC-073 D10)",
+	"supplierVatNumber":          "an entry row's supplier VAT number, which only the share screen's QR comparison read (findings row 303)",
+	"expenses.qrRead":            invoiceQrWord,
+	"expenses.qrUnreadable":      invoiceQrWord,
+	"expenses.qrSupplierMissing": invoiceQrWord,
+	"expenses.qrAddSupplier":     invoiceQrWord,
+	"share.matches":              invoiceQrWord,
+	"share.amountDiffers":        invoiceQrWord,
+	"share.supplierDiffers":      invoiceQrWord,
 }
 
 // withBody holds each route already sent once with a body that is not JSON, before the request it was recorded with: a route .NET answered

@@ -286,7 +286,6 @@ type Row struct {
 	Amount            fixed.Number `json:"amount"`
 	ItemName          string       `json:"itemName"`
 	SupplierName      string       `json:"supplierName"`
-	SupplierVatNumber string       `json:"supplierVatNumber"`
 	InvoiceNumber     string       `json:"invoiceNumber"`
 	AuthorName        string       `json:"authorName"`
 	IsMine            bool         `json:"isMine"`
@@ -313,7 +312,7 @@ type File struct {
 func (f facts) row(entry store.Entry, userID uuid.UUID) Row {
 	supplier := f.supplierOf(entry)
 	return Row{ID: entry.ID, Number: entry.Number, Kind: kindOf(entry.Kind), Status: statusOf(entry.Status), EntryDate: entry.EntryDate, Amount: entry.Amount,
-		ItemName: f.itemNameOf(entry), SupplierName: supplier.Name, SupplierVatNumber: supplier.VatNumber, InvoiceNumber: f.invoices[entry.ID],
+		ItemName: f.itemNameOf(entry), SupplierName: supplier.Name, InvoiceNumber: f.invoices[entry.ID],
 		AuthorName: f.authors[entry.CreatedByUserID], IsMine: entry.CreatedByUserID == userID, PartnerName: f.partners[f.capital[entry.ID]],
 		Description: entry.Description, AccountName: f.accounts[entry.AccountID], PaymentMethodName: f.paymentMethods[f.expenses[entry.ID].PaymentMethodID],
 		AccountShortBy: f.accountShortByOf(entry)}

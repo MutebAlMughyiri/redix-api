@@ -2,13 +2,13 @@
 
 # UC-018: Search suppliers
 
-**What it is for:** finding the right supplier in under a second while entering an expense, by part of its name or VAT number, or by the exact number a QR code holds.
+**What it is for:** finding the right supplier in under a second while entering an expense, by part of its name or VAT number.
 **Who uses it:** everyone with access to the project: the app offers it to whoever enters an expense or a contract.
 **Issue:** redix-api #36; the app side is redix-app #37.
 
 ## How it fits together
 
-One route answers both what was typed and what a QR code read. Part of a name or of a VAT number lists every supplier that holds it, so an exact number finds its one holder together with any supplier whose name or number holds the same digits (the owner, 19 Nov 2026, findings row 273), and an empty list is how the app learns that nobody holds it, to offer a quick add.
+One route answers what was typed. Part of a name or of a VAT number lists every supplier that holds it, so an exact number finds its one holder together with any supplier whose name or number holds the same digits (the owner, 19 Nov 2026, findings row 273), and an empty list is how the app learns that nobody holds it, to offer a quick add.
 
 The list is by name for now. "Most used first" (AC-43.1) needs to know which supplier each expense used, and nothing records that until UC-022 "Record a purchase expense". The order lives in one place, `suppliers.Routes.search`.
 
@@ -47,4 +47,3 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | What | Use case |
 | --- | --- |
 | The caller's most used suppliers first (AC-43.1) | UC-022 "Record a purchase expense", once entries name suppliers |
-| Reading the VAT number from an invoice's QR code | UC-024 "Fill the expense from the e-invoice QR" |

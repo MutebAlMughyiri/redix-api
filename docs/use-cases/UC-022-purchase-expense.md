@@ -62,7 +62,7 @@ Tests are in `ExpensesTests` and `SimpleExpenseTests`.
 | FR-21: who recorded it and its total are in the History table | `history.Write`, one record per table | `ExpensesTests.FR_21_AnExpenseIsInTheHistoryWithWhoAndItsTotal`, `ADraftIsCreatedInTheHistoryRatherThanSubmitted` |
 | AC-43.1: the caller's most used suppliers first | `suppliers.Routes.search` | `ExpensesTests.AC_43_1_TheSearchPutsWhatTheCallerUsedMostFirstAndThenByName`, `AC_43_1_MostUsedIsTheCallersOwnNotSomeoneElses` |
 
-A QR code on the file fills the date, the total and the supplier in the app (UC-024, D21). The API takes no QR code value.
+No QR code is read: the invoice QR was removed from the app, the web and the API (the owner, 23 Nov 2026, findings row 303).
 
 ## On the web: Add entry (redix-api #166)
 

@@ -5,13 +5,11 @@ package entries
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/ledger"
-	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/google/uuid"
@@ -24,25 +22,6 @@ import (
 // note - not removed, and theirs to handle.
 func attachableBy(entry store.Entry, caller access.Caller) bool {
 	return entry.Amount > 0 && entry.Status != ledger.Removed && mayHandle(entry, caller)
-}
-
-// attachable is the entries a QR code on a shared file matches (AC-49.2), as the lists show them: those the caller may put a file on whose
-// supplier's VAT number is the code's, whose total is within one riyal of its total and whose date within three days of its date.
-func (s Routes) attachable(w http.ResponseWriter, r *http.Request, caller access.Caller) {
-	query := r.URL.Query()
-	total, totalErr := fixed.Parse(query.Get("total"))
-	date, dateErr := time.Parse("2006-01-02", query.Get("date"))
-	if !query.Has("vatNumber") || totalErr != nil || dateErr != nil {
-		problem.Status(w, r, http.StatusBadRequest)
-		return
-	}
-	vatNumber := query.Get("vatNumber")
-	const riyal = fixed.Number(10000)
-	views, err := rowsOf(r.Context(), s.database.Queries(), web.ID(r, "projectId"), caller, func(entry store.Entry, known facts) bool {
-		near := entry.Amount >= total-riyal && entry.Amount <= total+riyal && !entry.EntryDate.Before(date.AddDate(0, 0, -3)) && !entry.EntryDate.After(date.AddDate(0, 0, 3))
-		return attachableBy(entry, caller) && near && vatNumber != "" && known.supplierOf(entry).VatNumber == vatNumber
-	}, everyRow, 0)
-	s.answer(w, r, views, err)
 }
 
 // attachInvoiceRequest is the body POST /projects/{projectId}/entries/{entryId}/invoice reads (UC-039).
