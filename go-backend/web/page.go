@@ -222,7 +222,7 @@ func (p page) foldedOpen() bool {
 }
 
 // menuNeeds is the permission a side-menu item needs, as the app shows its screen only to whoever holds it; an item missing here needs none.
-var menuNeeds = map[string]access.Permission{"approvals": access.ApproveEntries, "approvalHistory": access.ApproveEntries, "reports": access.SeeReports,
+var menuNeeds = map[string]access.Permission{"addEntry": access.RecordEntries, "approvals": access.ApproveEntries, "approvalHistory": access.ApproveEntries, "reports": access.SeeReports,
 	"expenses": access.SeeReports, "revenue": access.SeeReports, "itemReport": access.SeeReports, "vat": access.SeeReports,
 	"periodicReport": access.SeeReports,
 	"projectHistory": access.SeeProjectHistory, "users": access.ManageUsers, "newUser": access.ManageUsers, "userPermissions": access.ManageUsers, "requests": access.ManageUsers, "categories": access.ManageStructure, "itemColumns": access.ManageStructure, "itemTables": access.ManageStructure,

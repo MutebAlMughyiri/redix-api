@@ -588,6 +588,99 @@ func newWorking(t *testing.T) working {
 	return w
 }
 
+// UC-019: Quick add in Add entry starts from what the search held - digits the VAT number, anything else the name -, adds the supplier and picks
+// it, keeping what was typed; a VAT number another supplier holds names it and offers it instead; whoever does not keep the settings is told the
+// supplier waits for approval, and whoever cannot add suppliers is refused.
+func TestWeb_UC019_QuickAddAddsTheSupplierAndPicksItAndAHeldVatNumberOffersItsSupplier(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	byName := w.browser.Send("GET", "/tab/addEntry?quickAdd=1&supplierText=+مورد+ب+", nil).Body.String()
+	has(t, byName, `name="quickAddName" value="مورد ب"`)
+	has(t, byName, `name="quickAddVatNumber" value=""`)
+	lacks(t, byName, `id="addEntry.quickAddPendingHint"`)
+	lacks(t, byName, `id="addEntry.quickAddOpen"`)
+	has(t, w.browser.Send("GET", "/tab/addEntry?quickAdd=1&supplierText=3001", nil).Body.String(), `name="quickAddVatNumber" value="3001"`)
+	typed := url.Values{"table": {w.item + ":" + w.table}, "amount": {"150"}, "description": {"حديد"}, "quickAdd": {"1"}, "quickAddName": {"مورد ب"},
+		"quickAddVatNumber": {"300000000000003"}}
+	added := w.browser.Send("POST", "/entry/supplier", typed)
+	var supplier string
+	if err := w.Database.Read.QueryRow("SELECT id FROM suppliers WHERE name = 'مورد ب'").Scan(&supplier); err != nil {
+		t.Fatal(err)
+	}
+	if added.Header().Get("HX-Retarget") != "[id='addEntry.form']" {
+		t.Error("the supplier added draws the form again")
+	}
+	has(t, added.Body.String(), `<option id="addEntry.supplier.option.`+supplier+`" value="`+supplier+`" selected>مورد ب</option>`)
+	has(t, added.Body.String(), `value="150"`)
+	lacks(t, added.Body.String(), `id="addEntry.quickAdd"`)
+	typed.Set("quickAddName", "مورد ج")
+	held := w.browser.Send("POST", "/entry/supplier", typed).Body.String()
+	has(t, held, `id="addEntry.quickAddRefusal" class="refusal" role="alert">`)
+	has(t, held, `id="addEntry.quickAddHolder" class="hint">`)
+	has(t, held, `مورد ب</small>`)
+	has(t, held, `id="addEntry.quickAddUseExisting"`)
+	has(t, held, supplier)
+	member := w.member("عضو", "")
+	w.Exec(`INSERT INTO project_permissions (id, project_id, user_id, permission) VALUES (?, ?, ?, 'AddSupplier'), (?, ?, ?, 'RecordEntries')`, uuid.NewString(), w.id,
+		member, uuid.NewString(), w.id, member)
+	other := w.Browser()
+	other.Send("POST", "/sign-in", url.Values{"username": {member.String()}, "password": {password}})
+	other.Send("POST", "/project/"+w.id, nil)
+	has(t, other.Send("GET", "/tab/addEntry?quickAdd=1", nil).Body.String(), `id="addEntry.quickAddPendingHint"`)
+	w.Exec(`DELETE FROM project_permissions WHERE user_id = ? AND permission = 'AddSupplier'`, member)
+	if refused := other.Send("POST", "/entry/supplier", url.Values{"quickAddName": {"مورد د"}}); refused.Code != http.StatusForbidden {
+		t.Errorf("Quick add without AddSupplier: %d", refused.Code)
+	}
+	draft := w.drafted(100)
+	changing := w.browser.Send("POST", "/entry/supplier", url.Values{"entry": {draft}, "table": {w.item + ":" + w.table}, "quickAddName": {"مورد هـ"}}).Body.String()
+	has(t, changing, `<input type="hidden" name="entry" value="`+draft+`">`)
+	has(t, changing, `selected>مورد هـ</option>`)
+	outside, _ := signedIn(t, w.API, "User B")
+	if answered := outside.Send("POST", "/entry/supplier", url.Values{"quickAddName": {"مورد و"}}); answered.Code != http.StatusNotFound {
+		t.Errorf("Quick add with no project: %d", answered.Code)
+	}
+	for n := int64(1); ; n++ {
+		answered, failed := w.browser.SendFailing(n, "POST", "/entry/supplier", url.Values{"table": {w.item + ":" + w.table}, "quickAddName": {"مورد ز"}})
+		if !failed {
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("Quick add with the database failing at its call %d answered %d", n, answered.Code)
+		}
+	}
+}
+
+// redix-api #169: a partner's panel, and keeping or editing a partner, answer 500 when the database fails at any of their calls.
+func TestWeb_R169_PartnersAnswerAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	partner := w.partner("الشريك A", "")
+	w.home()
+	for _, step := range []struct {
+		method, path string
+		form         url.Values
+	}{
+		{"GET", "/details/partner/" + partner, nil}, {"POST", "/partner", url.Values{"name": {"الشريك B"}}},
+		{"POST", "/partner/" + partner + "/edit", url.Values{"name": {"الشريك C"}}},
+	} {
+		for n := int64(1); ; n++ {
+			answered, failed := w.browser.SendFailing(n, step.method, step.path, step.form)
+			if !failed {
+				break
+			}
+			if answered.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s with the database failing at its call %d answered %d", step.method, step.path, n, answered.Code)
+			}
+		}
+	}
+}
+
+// redix-api #165: choosing a project once the session has ended answers the sign-in form in the whole shell.
+func TestWeb_R165_ChoosingAProjectWithTheSessionEndedAnswersTheSignInForm(t *testing.T) {
+	w := newWorking(t)
+	w.Clock.Advance(13 * time.Hour)
+	has(t, w.browser.Send("POST", "/project/"+w.id, nil).Body.String(), `id="signIn.username"`)
+}
+
 // sent records an entry of amount into the item's table and sends it for approval; it is the entry's id.
 func (w working) sent(amount int) string {
 	w.t.Helper()
@@ -2733,6 +2826,24 @@ func TestWeb_R171_UC050_EachSidesItemReportsAndAnItemsOrAContractsReport(t *test
 			}
 		}
 	}
+}
+
+// #181: the capital item's report goes back to Revenue; an open-value contract says its value is open and has no remaining.
+func TestWeb_R181_ARevenueItemGoesBackToRevenueAndAnOpenContractHasNoRemaining(t *testing.T) {
+	w := newWorking(t)
+	w.partner("الشريك A", "")
+	builder := w.supplier(`{"name":"مقاول أ"}`)
+	w.paid(w.contract(builder, `"value":0,"isOpenValue":true`), builder, 100, true)
+	var capital string
+	if err := w.Database.Read.QueryRow("SELECT items.id FROM items JOIN categories ON categories.id = items.category_id WHERE categories.project_id = ? AND items.type = 6", w.id).Scan(&capital); err != nil {
+		t.Fatal(err)
+	}
+	w.home()
+	partners := w.browser.Send("GET", "/tab/itemReport?item="+capital, nil).Body.String()
+	has(t, partners, `<a id="itemReport.path.side" href="#" hx-get="/tab/revenue"`)
+	report := w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String()
+	has(t, report, `.value" class="num">قيمة مفتوحة</td>`)
+	has(t, report, `.remaining" class="num">—</td>`)
 }
 
 func TestWeb_R171_UC050_AReportRowSaysItsValuesByColumnAndANamedTableByName(t *testing.T) {

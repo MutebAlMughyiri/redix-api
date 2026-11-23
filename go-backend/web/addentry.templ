@@ -12,6 +12,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/structure"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/suppliers"
 )
 
 // addEntry is Add entry as the app's screen asks it (UC-022, redix-api #166): the file, for whoever may attach files (#175 D3), the table, the
@@ -91,8 +92,14 @@ templ addEntry(p page, form entryForm) {
 								<option id={ "addEntry.supplier.option." + supplier.ID.String() } value={ supplier.ID.String() } selected?={ supplier.ID.String() == form.typed.Get("supplier") }>{ supplier.Name }</option>
 							}
 						</select>
+						if p.mayAddSupplier() && !form.quickAdding() {
+							<button id="addEntry.quickAddOpen" class="quiet-button" type="button" hx-get={ form.tab() } hx-include="closest form" hx-vals='{"quickAdd":"1"}' hx-target="[id='addEntry.form']" hx-select="[id='addEntry.form']" hx-swap="outerHTML">{ p.words.Of("suppliers.quickAdd") }</button>
+						}
 					</span>
 				</div>
+				if p.mayAddSupplier() && form.quickAdding() {
+					@quickAddSupplier(p, form.tab(), form.quickAddName(), form.quickAddVatNumber(), "", suppliers.View{})
+				}
 			}
 			if len(form.columns) > 0 {
 				<p id="addEntry.columnsSection" class="section-title wide">{ p.words.Of("columns.title") }</p>
@@ -128,6 +135,7 @@ templ addEntry(p page, form entryForm) {
 				<button id="addEntry.send" class="primary small" type="submit" name="submit" value="send">{ p.words.Of("expenses.send") }</button>
 			</div>
 		</form>
+		<form id="addEntry.quickAddForm" hx-post="/entry/supplier" hx-include="[id='addEntry.form']" hx-target="[id='addEntry.quickAdd']" hx-swap="outerHTML"></form>
 	}
 }
 
@@ -136,7 +144,7 @@ templ addEntry(p page, form entryForm) {
 templ columnField(form entryForm, column structure.ColumnView) {
 	<div class="field">
 		<label id={ "addEntry.column." + column.Key + ".label" } for={ "addEntry.column." + column.Key } class={ templ.KV("required", column.IsRequired) }>{ column.Name }</label>
-		switch {
+		switch  {
 			case column.DataType == structure.List && len(column.Choices) > 0:
 				<select id={ "addEntry.column." + column.Key } name={ "column." + column.Key } aria-invalid?={ form.refused == column.Key }>
 					<option id={ "addEntry.column." + column.Key + ".option.none" } value=""></option>
@@ -200,3 +208,37 @@ templ contractFigures(p page, form entryForm) {
 	</div>
 }
 
+// quickAddSupplier is Quick add under the supplier, as the app's dialog asks it (UC-019): the name and the VAT number, starting from what the
+// search held; why it was refused, naming the supplier a VAT number belongs to and offering that one when it is active; the hint that the
+// supplier waits for approval, for whoever does not keep the settings. Its fields belong to addEntry.quickAddForm, so Enter adds the supplier,
+// not the entry; tab is the tab the form lives in, drawn again to pick the supplier or to close Quick add.
+templ quickAddSupplier(p page, tab, name, vatNumber, refusal string, holder suppliers.View) {
+	<fieldset id="addEntry.quickAdd" class="quick-add wide">
+		<legend id="addEntry.quickAdd.label">{ p.words.Of("suppliers.quickAdd") }</legend>
+		<input type="hidden" name="quickAdd" value="1"/>
+		<div class="field">
+			<label id="addEntry.quickAddName.label" for="addEntry.quickAddName">{ p.words.Of("suppliers.name") }</label>
+			<input id="addEntry.quickAddName" form="addEntry.quickAddForm" type="text" name="quickAddName" value={ name } autofocus/>
+		</div>
+		<div class="field">
+			<label id="addEntry.quickAddVatNumber.label" for="addEntry.quickAddVatNumber">{ p.words.Of("suppliers.vatNumber") }</label>
+			<input id="addEntry.quickAddVatNumber" form="addEntry.quickAddForm" type="text" inputmode="numeric" name="quickAddVatNumber" value={ vatNumber }/>
+		</div>
+		if refusal != "" {
+			<p id="addEntry.quickAddRefusal" class="refusal" role="alert">{ p.words.Of(refusal) }</p>
+		}
+		if holder.Name != "" {
+			<small id="addEntry.quickAddHolder" class="hint">{ p.words.Of("suppliers.holder") + " " + holder.Name }</small>
+		}
+		if !p.may(access.ManageSettings) {
+			<small id="addEntry.quickAddPendingHint" class="hint">{ p.words.Of("suppliers.pendingHint") }</small>
+		}
+		<div class="form-actions">
+			if holder.IsActive {
+				<button id="addEntry.quickAddUseExisting" class="quiet-button" type="button" hx-get={ tab } hx-include="[id='addEntry.form']" hx-vals={ picked(holder) } hx-target="[id='addEntry.form']" hx-select="[id='addEntry.form']" hx-swap="outerHTML">{ p.words.Of("suppliers.useExisting") }</button>
+			}
+			<button id="addEntry.quickAddCancel" class="quiet-button" type="button" hx-get={ tab } hx-include="[id='addEntry.form']" hx-vals='{"quickAdd":""}' hx-target="[id='addEntry.form']" hx-select="[id='addEntry.form']" hx-swap="outerHTML">{ p.words.Of("common.cancel") }</button>
+			<button id="addEntry.quickAddSave" class="primary small" type="submit" form="addEntry.quickAddForm">{ p.words.Of("suppliers.addAndPick") }</button>
+		</div>
+	</fieldset>
+}

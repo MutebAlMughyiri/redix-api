@@ -78,15 +78,18 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| The admin holds approving projects from the first start | `AdminSeed` | `PermissionsTests.TheAdminHoldsApprovingProjectsFromTheFirstStart` |
-| A change in the database counts at the next request | `UserAccess` | `PermissionsTests.ANewRowGivesAPermissionAtTheNextRequest` |
+| The admin holds approving projects from the first start | `auth.SeedAdmin` | `TestBR29_AnEmptyDatabaseGetsItsAdminWhoMustChangeThePasswordAndMayApproveProjects` |
+| A change in the database counts at the next request (BR-32) | `access.Book.Of` | `TestBR32_AChangeCountsAtTheNextRequestWithNothingToRemember`, `TestBR32_ANewRowGivesAPermissionAtTheNextRequest` |
 | A project someone is inactive in gives him nothing, so every route of it refuses him (redix-api #126) | `access.Book.Of` | `InactiveMembersTests.R5_EveryRouteOfAProjectHeIsInactiveInRefusesHimAsForAProjectHeIsNotIn` |
-| A permission held everywhere reaches every project | `access.Access.In` | `PermissionsTests.APermissionHeldEverywhereReachesEveryProjectAndAnUnknownOneIsNotFound` |
-| The database refuses an unknown permission, and the admin's in a project (BR-32) | The `CHECK` on `project_permissions.permission`, `db/migrations/00001_schema.sql` | `PermissionsTests.TheDatabaseRefusesAPermissionTheCodeDoesNotKnowAndTheAdminsInAProject` |
+| A permission held everywhere reaches every project, and a project that is not there is not found (BR-29) | `access.Access.In` | `TestBR29_ASystemPermissionCountsEverywhere`, `TestBR29_APermissionHeldEverywhereReachesEveryProjectAndAnUnknownOneIsNotFound` |
+| The database refuses an unknown permission, and the admin's in a project (BR-32) | The `CHECK` on `project_permissions.permission`, migration 00009 | `TestBR32_TheDatabaseRefusesAPermissionTheCodeDoesNotKnowAndTheAdminsInAProject` |
 | redix-api #106: the two capital ticks exclude each other, choosing a partner gives `SeeChosenCapital`, taking it forgets the partners, and whoever registers a project sees all | `users.Routes.give`, `Choose`, `CapitalSight` | `PartnersTests.UC_106_SeeAllAndChosenCapitalExcludeEachOtherAndARegistrantSeesAll`, `UC_106_ChoosingAPartnerGivesChosenCapitalAndTakesSeeAllAndTakingChosenCapitalForgetsThePartners`, `UC_106_APersonIsCreatedWithChosenPartnersButNotWithBothCapitalTicksNorAnotherProjectsPartner`, `UC_106_ChoosingAPartnerOfAnotherProjectOrForSomeoneOutsideIsNotFound`, `ProjectUsersTests.WhoeverRegistersAProjectHoldsEveryPermissionOfAProjectInItSeeingAllCapitalRatherThanChosenPartners` |
-| Every route that changes something names a policy | The routes | `PermissionsTests.EveryChangingRouteNamesAPolicy` |
-| Every route of a project names a permission | The routes | `PermissionsTests.EveryRouteOfAProjectNamesAPermission` |
-| Every route refuses whoever lacks its permission and opens once it is held | `PermissionHandler` | `PermissionsTests.EveryRouteRefusesWhoeverLacksItsPermissionAndOpensOnceItIsTicked` |
+| Every route of a project names a permission, as the API document says | the gates `access.Gate.Needs` and `Changes` | `TestFR03_EveryRouteOfAProjectNeedsAPermission` |
+| Every route refuses whoever lacks its permission and opens once it is held, swept from the API document, a project's routes in the project and the rest everywhere; its own package, `go test ./internal/access`, in seconds | the gates | `TestFR03_EveryRouteRefusesWhoeverLacksItsPermissionAndOpensOnceItIsHeld` |
+| A permission is read by its name, in any case, and nothing else: an unknown name or a number is none | `access.Permission.UnmarshalJSON` | `TestFR03_APermissionIsReadByItsNameAndNothingElse` |
+| Every control the web offers by a permission - each side-menu item and tab of `menuNeeds`, and each button a page grays or leaves out - is usable with it and not without, as the app's own sweep (redix-app findings row 134) | `web.page.offers`, `web.page.may` | `TestWeb_FR03_EveryControlAPermissionGatesIsUsableWithItAndNotWithout` |
+| Every permission gates a control of the web, but reading the project, charging any account and the two capital ticks | the same | `TestWeb_FR03_EveryPermissionGatesAControl` |
+| Add entry opens only for whoever may record entries, as the app's button | `web.menuNeeds` | `TestWeb_FR03_EveryControlAPermissionGatesIsUsableWithItAndNotWithout` |
 | Another project answers 403 (AC-36.1) | `PermissionHandler` | `ProjectsTests.AnotherProjectIsForbidden` |
 | What a user may do follows what is ticked in each project (AC-36.2) | `access.Access.In` | `ProjectsTests.PermissionsFollowWhatIsTickedInEachProject` |
 | Field and Reader cannot change a project (AC-03.1) | `PermissionHandler` | `ProjectsTests.FieldAndReaderCannotChangeAProject` |

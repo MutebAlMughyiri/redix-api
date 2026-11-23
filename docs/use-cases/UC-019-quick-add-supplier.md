@@ -39,6 +39,8 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Only Finance and Field add suppliers | `access.AddSupplier` | `OnlyFinanceAndFieldAddSuppliers` |
 | Field changes nothing else | `access.ManageSettings` | `OnlyFinanceChangesSuppliers` |
 | A finished project refuses it (AC-04.1) | `access.Gate.Changes` | `AFinishedProjectRefusesWhatFieldAdds` |
+| The web's Add entry offers Quick add as the app's picker does: it starts from what the search held, digits the VAT number; it adds the supplier and picks it, keeping what was typed; a VAT number another supplier holds names it and offers it; whoever does not keep the settings is told it waits for approval | `web.site.quickAddSupplier`, `suppliers.Add` | `TestWeb_UC019_QuickAddAddsTheSupplierAndPicksItAndAHeldVatNumberOffersItsSupplier` |
+| The web offers Quick add only to whoever holds `AddSupplier`, in a project not finished | `web.page.mayAddSupplier` | `TestWeb_FR03_EveryControlAPermissionGatesIsUsableWithItAndNotWithout` |
 
 ## Left to later use cases
 

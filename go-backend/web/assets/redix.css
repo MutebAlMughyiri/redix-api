@@ -294,6 +294,10 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .pair { display: flex; gap: 8px; } .pair > * { flex: 1 1 0; min-width: 0; }
 .section-title { margin: 4px 0 0; font-size: 12.5px; font-weight: 600; color: var(--quiet); }
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.quick-add { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px 16px; margin: 0; padding: 10px 12px;
+  border: 1px solid var(--chrome-line); border-radius: 6px; }
+.quick-add legend { padding-inline: 4px; color: var(--quiet); font-size: 12px; }
+.quick-add > .hint, .quick-add > .refusal, .quick-add > .form-actions { grid-column: 1 / -1; margin: 0; }
 .figures { display: flex; flex-direction: column; gap: 6px; padding-block: 4px; border: 1px solid var(--chrome-line); border-radius: 6px; } .figures .facts { padding-block: 6px; } .figures > p, .figures > progress { margin-inline: 14px; } .figures > progress { width: auto; margin-block-end: 8px; }
 
 /* Approvals (redix-api #167): Approve selected shows while something is ticked (D1); a row's lines; a shortfall or a failure in the refusal's red. */

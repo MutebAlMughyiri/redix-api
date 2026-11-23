@@ -5,6 +5,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -445,6 +447,95 @@ func (s site) save(w http.ResponseWriter, r *http.Request, p page, editing entri
 		form.said.notice = "contractorPayments.savedOverrun"
 	}
 	draw(w, r, http.StatusOK, addEntry(p, form), panelBeside(p, row))
+}
+
+// mayAddSupplier says whether p's caller may add a missing supplier from Add entry, as the app's picker offers Quick add: AddSupplier, in a
+// project not finished (UC-019).
+func (p page) mayAddSupplier() bool { return !p.finished() && p.may(access.AddSupplier) }
+
+// quickAdding says whether the form shows Quick add: opened by its button, and kept open as the form is drawn again.
+func (f entryForm) quickAdding() bool { return f.typed.Get("quickAdd") == "1" }
+
+// searched is what the supplier search holds, trimmed, and whether it is all digits, which Quick add takes as a VAT number, as the app's dialog
+// does.
+func (f entryForm) searched() (string, bool) {
+	text := strings.TrimSpace(f.typed.Get("supplierText"))
+	return text, text != "" && !strings.ContainsFunc(text, func(letter rune) bool { return !unicode.IsDigit(letter) })
+}
+
+// quickAddName is the name Quick add starts from: what the search held, unless it is a VAT number.
+func (f entryForm) quickAddName() string {
+	if text, isNumber := f.searched(); !isNumber {
+		return text
+	}
+	return ""
+}
+
+// quickAddVatNumber is the VAT number Quick add starts from: what the search held, when it is all digits.
+func (f entryForm) quickAddVatNumber() string {
+	if text, isNumber := f.searched(); isNumber {
+		return text
+	}
+	return ""
+}
+
+// picked is what Use the existing one sends to draw the form again with supplier chosen and Quick add closed.
+func picked(supplier suppliers.View) string {
+	values, _ := json.Marshal(map[string]string{"supplier": supplier.ID.String(), "supplierText": supplier.Name, "quickAdd": ""})
+	return string(values)
+}
+
+// quickAddSupplier adds the supplier Quick add names through suppliers.Add, the rule the app's picker runs - waiting for approval unless the
+// caller keeps the settings -, and picks it: Add entry, or Change, drawn again with what was typed and the supplier chosen. Refused, Quick add
+// says why in the app's words, naming the supplier a VAT number belongs to and offering it when it is active (UC-019). 403 without AddSupplier
+// or in a finished project, as the app hides the button there (AC-04.1).
+func (s site) quickAddSupplier(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.working(w, r)
+	if !ok {
+		return
+	}
+	if !p.inProject() || parsedForm(r) != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !p.mayAddSupplier() {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+	typed, tab := r.PostForm, "addEntry"
+	if typed.Has("entry") {
+		tab = "changeEntry"
+	}
+	var added store.Supplier
+	err := changes.Writer{Database: s.Database, Clock: s.Clock}.Run(r.Context(), p.project.ID, p.caller, func(c changes.Change) (err error) {
+		added, err = suppliers.Add(c, suppliers.Request{Name: typed.Get("quickAddName"), VatNumber: typed.Get("quickAddVatNumber")})
+		return err
+	})
+	var refused changes.Refusal
+	if errors.As(err, &refused) {
+		holder, _ := refused.Detail.(suppliers.View)
+		draw(w, r, http.StatusOK, quickAddSupplier(p, "/tab/"+tab, typed.Get("quickAddName"), typed.Get("quickAddVatNumber"), "suppliers."+refused.Code, holder))
+		return
+	}
+	if err != nil {
+		failed(w)
+		return
+	}
+	for _, key := range []string{"quickAdd", "quickAddName", "quickAddVatNumber"} {
+		typed.Del(key)
+	}
+	typed.Set("supplier", added.ID.String())
+	typed.Set("supplierText", added.Name)
+	front := r.Clone(r.Context())
+	front.URL.RawQuery = typed.Encode()
+	drawn, err := contents[tab](s, front, p)
+	if err != nil {
+		failed(w)
+		return
+	}
+	w.Header().Set("HX-Retarget", "[id='addEntry.form']")
+	w.Header().Set("HX-Reselect", "[id='addEntry.form']")
+	draw(w, r, http.StatusOK, drawn)
 }
 
 // parsedForm reads the form r posted, a file among it or none, as Add entry sends it.

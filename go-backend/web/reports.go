@@ -223,11 +223,9 @@ func (shown itemReportShown) kept(rows []entries.ReportRow) []entries.ReportRow 
 	return slices.DeleteFunc(slices.Clone(rows), func(row entries.ReportRow) bool { return !searchHolds(shown.text, reportRowText(row)) })
 }
 
-// lastDate is the day of the latest of rows, or a dash for none.
+// lastDate is the day of the latest of rows, which are never none: a report keeps only the tables that hold some, and the search only the tables
+// it finds something in (entries.ItemReportIn, itemReportShown.rowsOf).
 func lastDate(rows []entries.ReportRow) string {
-	if len(rows) == 0 {
-		return "—"
-	}
 	return slices.MaxFunc(rows, func(a, b entries.ReportRow) int { return a.Date.Compare(b.Date.Time) }).Date.Format(time.DateOnly)
 }
 
