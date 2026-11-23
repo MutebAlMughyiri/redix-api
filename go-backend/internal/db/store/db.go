@@ -375,6 +375,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.lastCodeStmt, err = db.PrepareContext(ctx, lastCode); err != nil {
 		return nil, fmt.Errorf("error preparing query LastCode: %w", err)
 	}
+	if q.lastSeenOfStmt, err = db.PrepareContext(ctx, lastSeenOf); err != nil {
+		return nil, fmt.Errorf("error preparing query LastSeenOf: %w", err)
+	}
 	if q.latestPeriodicReportStmt, err = db.PrepareContext(ctx, latestPeriodicReport); err != nil {
 		return nil, fmt.Errorf("error preparing query LatestPeriodicReport: %w", err)
 	}
@@ -1367,6 +1370,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing lastCodeStmt: %w", cerr)
 		}
 	}
+	if q.lastSeenOfStmt != nil {
+		if cerr := q.lastSeenOfStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing lastSeenOfStmt: %w", cerr)
+		}
+	}
 	if q.latestPeriodicReportStmt != nil {
 		if cerr := q.latestPeriodicReportStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing latestPeriodicReportStmt: %w", cerr)
@@ -2193,6 +2201,7 @@ type Queries struct {
 	itemsOfCategoryStmt                 *sql.Stmt
 	keptPartnerIDsStmt                  *sql.Stmt
 	lastCodeStmt                        *sql.Stmt
+	lastSeenOfStmt                      *sql.Stmt
 	latestPeriodicReportStmt            *sql.Stmt
 	latestPermissionRequestOfStmt       *sql.Stmt
 	latestReconciliationStmt            *sql.Stmt
@@ -2450,6 +2459,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		itemsOfCategoryStmt:                 q.itemsOfCategoryStmt,
 		keptPartnerIDsStmt:                  q.keptPartnerIDsStmt,
 		lastCodeStmt:                        q.lastCodeStmt,
+		lastSeenOfStmt:                      q.lastSeenOfStmt,
 		latestPeriodicReportStmt:            q.latestPeriodicReportStmt,
 		latestPermissionRequestOfStmt:       q.latestPermissionRequestOfStmt,
 		latestReconciliationStmt:            q.latestReconciliationStmt,

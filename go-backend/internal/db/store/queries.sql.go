@@ -3396,6 +3396,18 @@ func (q *Queries) LastCode(ctx context.Context, arg LastCodeParams) ([]EmailCode
 	return items, nil
 }
 
+const lastSeenOf = `-- name: LastSeenOf :one
+SELECT last_seen_at FROM devices WHERE user_id = ?1 ORDER BY last_seen_at DESC LIMIT 1
+`
+
+// When a person was last seen, on any device: their latest sign-in or renewal (redix-api #182).
+func (q *Queries) LastSeenOf(ctx context.Context, userID uuid.UUID) (moment.Moment, error) {
+	row := q.queryRow(ctx, q.lastSeenOfStmt, lastSeenOf, userID)
+	var last_seen_at moment.Moment
+	err := row.Scan(&last_seen_at)
+	return last_seen_at, err
+}
+
 const latestPeriodicReport = `-- name: LatestPeriodicReport :many
 SELECT number, issued_at, expenses_total FROM periodic_reports WHERE project_id = ? ORDER BY number DESC LIMIT 1
 `

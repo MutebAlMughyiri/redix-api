@@ -51,6 +51,7 @@ templ usersList(p page, shown usersShown) {
 								}
 								<small id={ "users.details." + person.ID.String() } class="hint">{ parts(person.Username, heldHere(person).RoleName, person.Mobile) }</small>
 								<small id={ "users.permissionsLine." + person.ID.String() } class="hint">{ permissionCount(p, person) }</small>
+								<small id={ "users.lastSeen." + person.ID.String() } class="hint">{ shown.lastSeen(p, person) }</small>
 							</td>
 						</tr>
 					}

@@ -25,6 +25,7 @@ import (
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 )
 
 // password is the password testapi.Person gives everyone.
@@ -679,6 +680,17 @@ func TestWeb_R165_ChoosingAProjectWithTheSessionEndedAnswersTheSignInForm(t *tes
 	w := newWorking(t)
 	w.Clock.Advance(13 * time.Hour)
 	has(t, w.browser.Send("POST", "/project/"+w.id, nil).Body.String(), `id="signIn.username"`)
+}
+
+// redix-api #182: Users says under each person when they last signed in, in the project's time, or that they have not yet, as the app's row.
+func TestWeb_R182_UsersSaysWhenEachPersonLastSignedInOrThatTheyHaveNotYet(t *testing.T) {
+	w := newWorking(t)
+	member := w.member("عضو", "")
+	w.Exec(`DELETE FROM devices WHERE user_id = ?`, member)
+	w.home()
+	page := w.browser.Send("GET", "/tab/users", nil).Body.String()
+	has(t, page, `<small id="users.lastSeen.`+member.String()+`" class="hint">لم يدخل بعد</small>`)
+	has(t, page, `<small id="users.lastSeen.`+w.manager.String()+`" class="hint">آخر دخول `+w.Clock.Now().In(zones.Location("Asia/Riyadh")).Format("2006-01-02 15:04")+`</small>`)
 }
 
 // sent records an entry of amount into the item's table and sends it for approval; it is the entry's id.

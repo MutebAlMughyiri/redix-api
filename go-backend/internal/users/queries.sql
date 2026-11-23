@@ -22,6 +22,10 @@ SELECT users.* FROM users JOIN user_projects ON user_projects.user_id = users.id
 WHERE user_projects.project_id = sqlc.arg(project_id)
 ORDER BY user_projects.is_inactive, users.display_name COLLATE names;
 
+-- name: LastSeenOf :one
+-- When a person was last seen, on any device: their latest sign-in or renewal (redix-api #182).
+SELECT last_seen_at FROM devices WHERE user_id = sqlc.arg(user_id) ORDER BY last_seen_at DESC LIMIT 1;
+
 -- name: Members :many
 -- Everyone active in a project, by name (D7).
 SELECT users.id, users.display_name FROM users

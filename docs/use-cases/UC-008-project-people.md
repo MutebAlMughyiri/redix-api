@@ -12,7 +12,7 @@ All need `ManageUsers` in the project, and answer `403` to anyone else.
 
 | Endpoint | Purpose | Answers |
 | --- | --- | --- |
-| `GET /projects/{projectId}/users` | This project's people, those active there first (redix-api #126), by name, with only what they hold in this project | `200` the users |
+| `GET /projects/{projectId}/users` | This project's people, those active there first (redix-api #126), by name, with only what they hold in this project and when each was last seen, `lastSeenAt` (redix-api #182) | `200` the users |
 | `POST /projects/{projectId}/users` | Creates a login in this project holding `ReadProject` and the `permissions` ticked, with the `email` the manager typed, required (redix-api #127) | `201` the user; `400` `invalidName`, `invalidUsername`, `invalidMobile`, `emailInvalid`, `weakPassword` or `invalidPermission`; `409` `usernameTaken` or `emailTaken` |
 | `POST /projects/{projectId}/users/existing` with `{ username }` | Adds someone who already has a login, holding `ReadProject` | `200` the user; `404` `unknownUser` |
 | `POST /projects/{projectId}/users/{userId}/permissions/{permission}` | Ticks one permission | `200` the user; `400` `invalidPermission`; `404` |
@@ -41,6 +41,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | The admin's permission, or an unknown name, is refused | `access.Permission.UnmarshalJSON` | `ProjectUsersTests.TheAdminsPermissionOrAnUnknownNameIsRefused` |
 | A project keeps at least one active person managing its users (BR-29); someone inactive there does not count (redix-api #126) | `ProjectManagers` | `ProjectUsersTests.TheLastWhoManagesUsersCannotLoseIt`, `WithASecondManagerTheFirstCanLeave`, `BR_29_AManagerInactiveInTheProjectDoesNotCountAsTheOneWhoStays` |
 | The people of a project are listed those active there first, by name | `users.Routes.list` | `ProjectUsersTests.R126_ThePeopleOfAProjectAreListedThoseActiveThereFirstByName` |
+| Each person says when they were last seen, on any device - their latest sign-in or renewal -, or `1900-01-01T00:00:00Z` before their first; the app's Users rows and the web's say «آخر دخول …» or «لم يدخل بعد» (redix-api #182) | `users.lastSeenOf` | `TestIssue182_EachPersonSaysWhenTheyWereLastSeenOrNeverBeforeTheirFirstSignIn`, `TestWeb_R182_UsersSaysWhenEachPersonLastSignedInOrThatTheyHaveNotYet` |
 | Every permission ticked or unticked is in the History table | `history.Write` | `ProjectUsersTests.EveryPermissionChangeIsInTheHistory` |
 
 ## On the web: Users (redix-api #173)

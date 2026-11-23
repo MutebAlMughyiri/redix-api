@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/credentials"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/testapi"
 	"github.com/google/uuid"
 )
@@ -218,5 +220,42 @@ func TestUC007_AResetPasswordMustBeChangedAndSignsOutEveryDevice(t *testing.T) {
 	}
 	if code, _ := a.ask("GET", "/projects/"+project.String()+"/members", ``, theirs); code != 401 {
 		t.Errorf("their device after the reset: %d", code)
+	}
+}
+
+// redix-api #182: the users list says when each person was last seen - their latest sign-in or renewal, on any device -, the API's never before
+// their first; the answer to a change says it too.
+func TestIssue182_EachPersonSaysWhenTheyWereLastSeenOrNeverBeforeTheirFirstSignIn(t *testing.T) {
+	a := newAPI(t)
+	person := a.person("b", "B", project, access.ReadProject)
+	seen := func() map[string]any {
+		_, answer := a.ask("GET", "/projects/"+project.String()+"/users", ``, a.as(a.manager))
+		lastSeen := map[string]any{}
+		for _, one := range answer.([]any) {
+			lastSeen[field(one, "id").(string)] = field(one, "lastSeenAt")
+		}
+		return lastSeen
+	}
+	if before := seen(); before[person.String()] != "1900-01-01T00:00:00Z" {
+		t.Errorf("before anyone signs in: %v", before)
+	}
+	signIn := func() string {
+		if code, answer := a.ask("POST", "/auth/sign-in", `{"username":"b","password":"Patrol-chosen-2"}`, ``); code != 200 {
+			t.Fatalf("signing in: %d %v", code, answer)
+		}
+		at, _ := json.Marshal(moment.Moment{Time: a.Clock.Now()})
+		return strings.Trim(string(at), `"`)
+	}
+	first := signIn()
+	if after := seen(); after[person.String()] != first {
+		t.Errorf("after the first sign-in at %s: %v", first, after)
+	}
+	a.Clock.Advance(3 * time.Hour)
+	latest := signIn()
+	if after := seen(); after[person.String()] != latest {
+		t.Errorf("after the second sign-in at %s: %v", latest, after)
+	}
+	if _, changed := a.ask("PUT", "/projects/"+project.String()+"/users/"+person.String()+"/role-name", `{"roleName":"مراقب"}`, a.as(a.manager)); field(changed, "lastSeenAt") != latest {
+		t.Errorf("the answer to a change: %v", changed)
 	}
 }

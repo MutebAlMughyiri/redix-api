@@ -5,6 +5,7 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"slices"
@@ -17,6 +18,7 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/history"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/clock"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/problem"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/stored"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
@@ -65,13 +67,16 @@ type ProjectView struct {
 
 // View is a person and what they hold in their projects (UserView), as the app's and the web's Users read them (redix-api #173).
 type View struct {
-	ID                 uuid.UUID     `json:"id"`
-	Username           string        `json:"username"`
-	DisplayName        string        `json:"displayName"`
-	Mobile             string        `json:"mobile"`
-	Email              string        `json:"email"`
-	MustChangePassword bool          `json:"mustChangePassword"`
-	Projects           []ProjectView `json:"projects"`
+	ID                 uuid.UUID `json:"id"`
+	Username           string    `json:"username"`
+	DisplayName        string    `json:"displayName"`
+	Mobile             string    `json:"mobile"`
+	Email              string    `json:"email"`
+	MustChangePassword bool      `json:"mustChangePassword"`
+	// LastSeenAt is when they were last seen, on a phone or the web: their latest sign-in or renewal, moment.Never before their first
+	// (redix-api #182).
+	LastSeenAt moment.Moment `json:"lastSeenAt"`
+	Projects   []ProjectView `json:"projects"`
 }
 
 // memberView is someone active in a project, as a picker lists them (MemberView).
@@ -80,7 +85,7 @@ type memberView struct {
 	DisplayName string    `json:"displayName"`
 }
 
-func viewOf(user store.User, rows []store.UserProject) View {
+func viewOf(user store.User, rows []store.UserProject, lastSeenAt moment.Moment) View {
 	var projects []ProjectView
 	for _, row := range rows {
 		var names []string
@@ -99,7 +104,17 @@ func viewOf(user store.User, rows []store.UserProject) View {
 		projects = append(projects, ProjectView{ProjectID: row.ProjectID, Permissions: permissions, RoleName: row.RoleName, PartnerIDs: partners,
 			IsInactive: row.IsInactive, UnseenTables: unseen})
 	}
-	return View{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword, Projects: projects}
+	return View{ID: user.ID, Username: user.Username, DisplayName: user.DisplayName, Mobile: user.Mobile, Email: user.Email, MustChangePassword: user.MustChangePassword,
+		LastSeenAt: lastSeenAt, Projects: projects}
+}
+
+// lastSeenOf is when userID was last seen, on any device, or moment.Never before their first sign-in (redix-api #182).
+func lastSeenOf(ctx context.Context, read *store.Queries, userID uuid.UUID) (moment.Moment, error) {
+	seen, err := read.LastSeenOf(ctx, userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return moment.Never, nil
+	}
+	return seen, err
 }
 
 // editUserRequest is the body PUT /users/{userId} (UC-007) reads.
@@ -259,7 +274,11 @@ func ListOf(ctx context.Context, read *store.Queries, projectID uuid.UUID) ([]Vi
 	var views []View
 	for _, person := range people {
 		mine := slices.DeleteFunc(slices.Clone(held), func(row store.UserProject) bool { return row.UserID != person.ID })
-		views = append(views, viewOf(person, mine))
+		seen, err := lastSeenOf(ctx, read, person.ID)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, viewOf(person, mine, seen))
 	}
 	return views, nil
 }
@@ -633,9 +652,10 @@ func (u Routes) answer(w http.ResponseWriter, r *http.Request, status int, userI
 	read := u.database.Queries()
 	user, err := read.UserWithID(r.Context(), userID)
 	rows, rowsErr := projects(read)
-	if err != nil || rowsErr != nil {
+	seen, seenErr := lastSeenOf(r.Context(), read, userID)
+	if errors.Join(err, rowsErr, seenErr) != nil {
 		problem.Status(w, r, http.StatusInternalServerError)
 		return
 	}
-	web.JSON(w, r, status, viewOf(user, rows))
+	web.JSON(w, r, status, viewOf(user, rows, seen))
 }

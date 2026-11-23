@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -19,14 +20,26 @@ import (
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/changes"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/partners"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/moment"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/users"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/zones"
 )
 
 // usersShown is Users as the app's screen shows it (UC-008): everyone in the project, the inactive last, by name, each with what they hold here,
 // and the search typed.
 type usersShown struct {
-	all  []users.View
-	text string
+	all      []users.View
+	text     string
+	location *time.Location
+}
+
+// lastSeen is when person last signed in, in the project's time as the web says a moment, or that they have not yet, as the app's row says
+// it (redix-api #182).
+func (s usersShown) lastSeen(p page, person users.View) string {
+	if person.LastSeenAt.Equal(moment.Never.Time) {
+		return p.words.Of("users.neverSignedIn")
+	}
+	return p.words.Of("users.lastSeen", person.LastSeenAt.In(s.location).Format("2006-01-02 15:04"))
 }
 
 // heldHere is what person holds in the project Users lists: the one line of theirs users.ListOf answers.
@@ -60,8 +73,10 @@ func permissionCount(p page, person users.View) string {
 
 // usersOf is Users for p's caller with the search text, through the rule the app's route answers (users.ListOf). The error is the database's.
 func (s site) usersOf(ctx context.Context, p page, text string) (usersShown, error) {
-	all, err := users.ListOf(ctx, s.Database.Queries(), p.project.ID)
-	return usersShown{all: all, text: strings.TrimSpace(text)}, err
+	read := s.Database.Queries()
+	all, err := users.ListOf(ctx, read, p.project.ID)
+	zone, zoneErr := zones.Of(ctx, read, p.project.ID)
+	return usersShown{all: all, text: strings.TrimSpace(text), location: zones.Location(zone)}, errors.Join(err, zoneErr)
 }
 
 // usersTab is Users in its tab (UC-008, redix-api #173), for whoever manages the project's users.

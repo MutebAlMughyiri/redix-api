@@ -488,6 +488,7 @@ var addedSinceDotNet = map[string]string{
 	"unseenTables":           "the tables unticked for a person, which they do not see (redix-api #106)",
 	"standingWordKey":        "the word of how a contract stands, which the app worked out before (findings row 297)",
 	"remainingAfterApproval": "what remains of a contract once its waiting payments are approved, which the app worked out before (findings row 297)",
+	"lastSeenAt":             "when a person was last seen, on the app's Users screen and the web's Users page (redix-api #182)",
 }
 
 // invoiceQrWord is why each of the invoice QR's words is retired: they went with it (findings row 303).
