@@ -244,7 +244,7 @@ func ReorderCategories(c changes.Change, ids []uuid.UUID) error {
 func reorder[T any](rows []T, ids []uuid.UUID, id func(T) uuid.UUID, placed func(T, int64) T, save func(before, after T) error) error {
 	places, ok := inOrder(idsOf(rows, id), ids)
 	if !ok {
-		return refused(invalidOrder)
+		return changes.Refuse(http.StatusBadRequest, invalidOrder)
 	}
 	for _, before := range rows {
 		if err := save(before, placed(before, places[id(before)])); err != nil {
@@ -373,7 +373,7 @@ func (c change) refuseASecondCapital(itemType ItemType) error {
 	}
 	exists, err := c.Q.CapitalItemExists(c.Ctx, c.ProjectID)
 	if err == nil && exists {
-		return refused(capitalItemExists)
+		return changes.Refuse(http.StatusConflict, capitalItemExists)
 	}
 	return err
 }
@@ -519,7 +519,7 @@ func CreateSubgroup(c changes.Change, itemID uuid.UUID, name string) (uuid.UUID,
 // (400) for an item that takes no purchases. The one way a subgroup is added, by hand or by a project file's load.
 func AddSubgroup(c changes.Change, item store.Item, name string) (uuid.UUID, error) {
 	if !ItemType(item.Type).takesPurchases() {
-		return uuid.Nil, refused(itemTakesNoPurchases)
+		return uuid.Nil, changes.Refuse(http.StatusBadRequest, itemTakesNoPurchases)
 	}
 	place, err := NextTablePlace(c.Ctx, c.Q, item.ID)
 	if err != nil {
@@ -604,16 +604,16 @@ func (c change) refuseTypeChange(item store.Item, to ItemType) error {
 	if !widens {
 		holds, err := c.Q.ItemHasEntries(c.Ctx, item.ID)
 		if err != nil || holds {
-			return errors.Join(err, refusalIf(holds, itemHasEntries))
+			return errors.Join(err, conflictIf(holds, itemHasEntries))
 		}
 		contracts, err := c.Q.ContractsOfItem(c.Ctx, item.ID)
 		if err != nil || len(contracts) > 0 {
-			return errors.Join(err, refusalIf(len(contracts) > 0, itemHasContract))
+			return errors.Join(err, conflictIf(len(contracts) > 0, itemHasContract))
 		}
 	}
 	partners, err := c.Q.PartnersInItem(c.Ctx, item.ID)
 	if err != nil || len(partners) > 0 {
-		return errors.Join(err, refusalIf(len(partners) > 0, itemHasPartners))
+		return errors.Join(err, conflictIf(len(partners) > 0, itemHasPartners))
 	}
 	if from == to {
 		return nil
@@ -621,10 +621,10 @@ func (c change) refuseTypeChange(item store.Item, to ItemType) error {
 	return c.refuseASecondCapital(to)
 }
 
-// refusalIf is code when refused, and no error otherwise.
-func refusalIf(holds bool, code string) error {
+// conflictIf is the refusal of code, a conflict with what a row holds, when holds, and no error otherwise.
+func conflictIf(holds bool, code string) error {
 	if holds {
-		return refused(code)
+		return changes.Refuse(http.StatusConflict, code)
 	}
 	return nil
 }
@@ -703,7 +703,7 @@ func ReorderTables(c changes.Change, itemID uuid.UUID, order []uuid.UUID) error 
 		idsOf(contracts, func(row store.Contract) uuid.UUID { return row.ID })...), idsOf(partners, func(row store.Partner) uuid.UUID { return row.ID })...)
 	places, ok := inOrder(ids, order)
 	if !ok {
-		return refused(invalidOrder)
+		return changes.Refuse(http.StatusBadRequest, invalidOrder)
 	}
 	for _, before := range subgroups {
 		after := before
@@ -760,7 +760,7 @@ func subgroupOf(c changes.Change, itemID, subgroupID uuid.UUID) (store.Subgroup,
 			return subgroup, err
 		}
 		if subgroup.Name == generalName {
-			return subgroup, refused(generalSubgroup)
+			return subgroup, changes.Refuse(http.StatusConflict, generalSubgroup)
 		}
 		return subgroup, nil
 	}
@@ -807,7 +807,7 @@ func DeleteSubgroup(c changes.Change, itemID, subgroupID uuid.UUID) error {
 		return err
 	}
 	if inUse, err := c.Q.SubgroupHasEntries(c.Ctx, subgroup.ID); err != nil || inUse {
-		return errors.Join(err, refusalIf(inUse, subgroupInUse))
+		return errors.Join(err, conflictIf(inUse, subgroupInUse))
 	}
 	return change{c}.Remove("Subgroups", subgroup.ID, subgroupFields(subgroup), func() error { return c.Q.RemoveSubgroup(c.Ctx, subgroup.ID) })
 }

@@ -167,3 +167,29 @@ func TestR5_EveryKindOfGoValueIsWrittenAsEncodingJsonWritesIt(t *testing.T) {
 		}
 	}
 }
+
+func TestR299_EveryRefusalOfTheStructureIsToldUnderItsStatus(t *testing.T) {
+	_, read := generated(t)
+	told := map[string]string{}
+	for _, operations := range read.Paths {
+		for _, route := range operations {
+			for status, answer := range route.Responses {
+				told[status] += answer.Description
+			}
+		}
+	}
+	conflicts := []string{"generalSubgroup", "subgroupInUse", "itemHasEntries", "itemHasContract", "itemHasPartners", "capitalItemExists", "coreColumn"}
+	badRequests := []string{"invalidOrder", "invalidDataType", "invalidOptions", "signedListExists", "revenueTakesNoColumns", "itemTakesNoPurchases"}
+	for status, codes := range map[string][]string{"409": conflicts, "400": badRequests} {
+		for _, code := range codes {
+			if !strings.Contains(told[status], code) {
+				t.Errorf("%s is not told under %s", code, status)
+			}
+		}
+	}
+	for _, code := range conflicts {
+		if strings.Contains(told["400"], code) {
+			t.Errorf("the conflict %s is told under 400", code)
+		}
+	}
+}

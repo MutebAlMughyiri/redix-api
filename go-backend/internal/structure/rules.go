@@ -162,8 +162,8 @@ type ChoiceRequest struct {
 	Sign Sign   `json:"sign,omitzero"`
 }
 
-// The refusals of a change to a project's structure (StructureChangeOutcome); those of a row's state are conflicts, the rest bad requests
-// (ProjectStructure.Refused).
+// The refusals of a change to a project's structure (StructureChangeOutcome), each raised with its status where it is refused, so the API
+// document lists it: those of a row's state are conflicts, the rest bad requests (ProjectStructure.Refused, findings row 299).
 const (
 	invalidOrder          = "invalidOrder"
 	generalSubgroup       = "generalSubgroup"
@@ -179,19 +179,6 @@ const (
 	revenueTakesNoColumns = "revenueTakesNoColumns"
 	itemTakesNoPurchases  = "itemTakesNoPurchases"
 )
-
-var conflicts = []string{generalSubgroup, subgroupInUse, itemHasEntries, itemHasContract, itemHasPartners, capitalItemExists, coreColumn}
-
-// statusOf is the status code answers with: 409 for one about what a row holds, 400 for any other.
-func statusOf(code string) int {
-	if slices.Contains(conflicts, code) {
-		return http.StatusConflict
-	}
-	return http.StatusBadRequest
-}
-
-// refused is the refusal of code, which rolls a change back.
-func refused(code string) error { return changes.Refuse(statusOf(code), code) }
 
 // change is one write to a project's structure, with the writers of its rows.
 type change struct{ changes.Change }
@@ -320,19 +307,19 @@ type ColumnRequest struct {
 }
 
 // refusalOfNew is why a column typed so cannot be added (Column.CheckNew): invalidName, invalidDataType for a file, or invalidOptions for a list
-// with no acceptable choice; "" when it can.
-func (typed ColumnRequest) refusalOfNew() string {
+// with no acceptable choice, each a bad request; nil when it can.
+func (typed ColumnRequest) refusalOfNew() error {
 	choices := choicesOf(typed.Choices)
 	_, named := naming.Named(typed.Name)
 	switch {
 	case !named:
-		return naming.Invalid
+		return changes.Refuse(http.StatusBadRequest, naming.Invalid)
 	case typed.DataType == File:
-		return invalidDataType
+		return changes.Refuse(http.StatusBadRequest, invalidDataType)
 	case typed.DataType == List && (len(choices) == 0 || !acceptable(choices)):
-		return invalidOptions
+		return changes.Refuse(http.StatusBadRequest, invalidOptions)
 	}
-	return ""
+	return nil
 }
 
 // newColumn is the column a person typed, at sortOrder, with a key of its own; only a list keeps choices (DefaultColumn.New).
@@ -354,20 +341,20 @@ type EditRequest struct {
 	NewChoices    []ChoiceRequest `json:"newChoices,omitzero"`
 }
 
-// edited is the column as typed makes it (Column.Edit), or the refusal: invalidName; coreColumn for more than a new name on a core column
-// (BR-20); invalidOptions for new choices on anything but a list a person added, or one too long. A list's own choices stay, since entries hold
-// their ids; new ones join them.
-func (c column) edited(typed EditRequest) (column, string) {
+// edited is the column as typed makes it (Column.Edit), or the refusal: invalidName; coreColumn, a conflict, for more than a new name on a core
+// column (BR-20); invalidOptions for new choices on anything but a list a person added, or one too long. A list's own choices stay, since
+// entries hold their ids; new ones join them.
+func (c column) edited(typed EditRequest) (column, error) {
 	name, named := naming.Named(typed.Name)
 	if !named {
-		return c, naming.Invalid
+		return c, changes.Refuse(http.StatusBadRequest, naming.Invalid)
 	}
 	if c.IsCore && (typed.IsRequired != c.IsRequired || typed.ShowInReports != c.ShowInReports) {
-		return c, coreColumn
+		return c, changes.Refuse(http.StatusConflict, coreColumn)
 	}
 	added := choicesOf(typed.NewChoices)
 	if len(added) > 0 && (c.DataType != List || !c.isCustom() || !acceptable(added)) {
-		return c, invalidOptions
+		return c, changes.Refuse(http.StatusBadRequest, invalidOptions)
 	}
 	c.Name, c.IsRequired, c.ShowInReports = name, typed.IsRequired, typed.ShowInReports
 	c.Choices = slices.Clone(c.Choices)
@@ -376,7 +363,7 @@ func (c column) edited(typed EditRequest) (column, string) {
 			c.Choices = append(c.Choices, one)
 		}
 	}
-	return c, ""
+	return c, nil
 }
 
 // inOrder is the place of each of rows in ids, when ids name every one of them exactly once (ProjectStructure.PutInOrder).

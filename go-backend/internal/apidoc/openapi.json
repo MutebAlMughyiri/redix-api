@@ -5793,6 +5793,16 @@
           "200": {
             "description": "OK."
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidOrder."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -6056,6 +6066,16 @@
             },
             "description": "Refused, with problem details."
           },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: capitalItemExists."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -6109,6 +6129,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidOrder."
           },
           "404": {
             "content": {
@@ -6646,7 +6676,7 @@
                 }
               }
             },
-            "description": "Refused, with problem details."
+            "description": "Refused: invalidDataType, invalidName, invalidOptions, revenueTakesNoColumns, signedListExists."
           },
           "default": {
             "content": {
@@ -6709,7 +6739,7 @@
                 }
               }
             },
-            "description": "Refused, with problem details."
+            "description": "Refused: invalidOrder."
           },
           "default": {
             "content": {
@@ -6790,6 +6820,16 @@
             },
             "description": "Refused, with problem details."
           },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: coreColumn."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -6858,7 +6898,7 @@
                 }
               }
             },
-            "description": "Refused, with problem details."
+            "description": "Refused: invalidName, invalidOptions, signedListExists."
           },
           "404": {
             "content": {
@@ -6869,6 +6909,16 @@
               }
             },
             "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: coreColumn."
           },
           "default": {
             "content": {
@@ -8477,6 +8527,16 @@
           "200": {
             "description": "OK."
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidDataType, invalidName, invalidOptions, revenueTakesNoColumns, signedListExists."
+          },
           "404": {
             "content": {
               "application/problem+json": {
@@ -8540,6 +8600,16 @@
         "responses": {
           "200": {
             "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidOrder."
           },
           "404": {
             "content": {
@@ -8614,6 +8684,16 @@
             },
             "description": "Refused, with problem details."
           },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: coreColumn."
+          },
           "default": {
             "content": {
               "application/problem+json": {
@@ -8675,6 +8755,16 @@
           "200": {
             "description": "OK."
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidName, invalidOptions, signedListExists."
+          },
           "404": {
             "content": {
               "application/problem+json": {
@@ -8684,6 +8774,16 @@
               }
             },
             "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: coreColumn."
           },
           "default": {
             "content": {
@@ -8855,7 +8955,7 @@
                 }
               }
             },
-            "description": "Refused: invalidName."
+            "description": "Refused: invalidName, itemTakesNoPurchases."
           },
           "404": {
             "content": {
@@ -8929,6 +9029,16 @@
               }
             },
             "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: generalSubgroup, subgroupInUse."
           },
           "default": {
             "content": {
@@ -9010,6 +9120,16 @@
               }
             },
             "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: generalSubgroup."
           },
           "default": {
             "content": {
@@ -9193,6 +9313,16 @@
           "200": {
             "description": "OK."
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: invalidOrder."
+          },
           "404": {
             "content": {
               "application/problem+json": {
@@ -9266,6 +9396,16 @@
               }
             },
             "description": "Refused, with problem details."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/problem"
+                }
+              }
+            },
+            "description": "Refused: capitalItemExists, itemHasContract, itemHasEntries, itemHasPartners."
           },
           "default": {
             "content": {
