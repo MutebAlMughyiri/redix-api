@@ -4733,7 +4733,7 @@ func TestWeb_R308_AltWClosesTheTabInFront(t *testing.T) {
 	w.browser.Send("GET", "/tab/entries", nil)
 	page := w.browser.Send("GET", "/", nil).Body.String()
 	has(t, page, `event.altKey &amp;&amp; event.code === &#39;KeyW&#39;`)
-	has(t, page, `<button id="web.tab.entries.close" class="close" type="button" hx-delete="/tab/entries" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق `+"⁨(Alt+W)⁩"+`">`)
+	has(t, page, `<button id="web.tab.entries.close" class="close" type="button" hx-delete="/tab/entries" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق `+"\u2068(Alt+W)\u2069"+`">`)
 	has(t, page, `<button id="web.tab.home.close" class="close" type="button" hx-delete="/tab/home" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق">`)
 }
 
@@ -4766,7 +4766,7 @@ func TestWeb_R180_EveryPagesSearchIsFoldedUntilAskedFor(t *testing.T) {
 	}
 	opened := w.browser.Send("GET", "/tab/entries?search=on&opened=1", nil).Body.String()
 	has(t, opened, `<input id="entries.search" class="search" autofocus type="search" name="text"`)
-	has(t, opened, `<button id="entries.searchToggle" class="quiet-button search-toggle" type="button" aria-expanded="true" data-tip="بحث `+"⁨(/)⁩"+`" hx-get="/tab/entries"`)
+	has(t, opened, `<button id="entries.searchToggle" class="quiet-button search-toggle" type="button" aria-expanded="true" data-tip="بحث `+"\u2068(/)\u2069"+`" hx-get="/tab/entries"`)
 	typing := w.browser.Send("GET", "/tab/entries?search=on&text=", nil).Body.String()
 	has(t, typing, `id="entries.filters"`)
 	lacks(t, typing, `autofocus type="search"`)
@@ -4794,4 +4794,42 @@ func TestWeb_R325_ClosingThePanelStopsItFollowingTheSelection(t *testing.T) {
 	page := w.browser.Send("GET", "/", nil).Body.String()
 	has(t, page, `if (event.key === &#39;Escape&#39;`)
 	has(t, page, `delete window.selected[shut.id]`)
+}
+
+// An item's report keeps its item when its search opens and closes: «بحث» goes to the report's own address, with the item and its search
+// asked for (#180).
+func TestWeb_R180_AnItemReportsSearchKeepsItsItem(t *testing.T) {
+	w := newWorking(t)
+	w.approved(100)
+	w.home()
+	report := w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String()
+	has(t, report, `hx-get="/tab/itemReport?item=`+w.item+`&amp;contract=&amp;search=on&amp;opened=1"`)
+	has(t, w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&contract=&search=on&opened=1", nil).Body.String(), `id="itemReport.filters"`)
+}
+
+// A capital movement is titled on the lists by its partner, as the app titles its cards; anything else by its item (redix-api #166).
+func TestWeb_R166_ACapitalMovementIsTitledByItsPartner(t *testing.T) {
+	w := newWorking(t)
+	partner := w.partner("شريك أ", "")
+	w.capitalIn(partner, 500, "دفعة")
+	w.home()
+	has(t, w.browser.Send("GET", "/tab/entries", nil).Body.String(), `>شريك أ</td>`)
+}
+
+// Confirming a new email with the database failing after the code is taken answers 500, the email kept (UC-010).
+func TestWeb_R175_UC010_ConfirmingAnEmailAnswersAFailingDatabaseWith500(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	for n := int64(1); ; n++ {
+		w.browser.Send("POST", "/my-email", url.Values{"email": {"f@example.com"}})
+		code := w.Emails.LastCodeTo("f@example.com")
+		answered, failed := w.browser.SendFailing(n, "POST", "/my-email/confirm", url.Values{"email": {"f@example.com"}, "code": {code}})
+		if !failed {
+			has(t, answered.Body.String(), `<small id="sharedSettings.myEmail.subtitle" class="hint" hx-swap-oob="true">f@example.com</small>`)
+			break
+		}
+		if answered.Code != http.StatusInternalServerError {
+			t.Errorf("confirming with the database failing at its call %d answers %d", n, answered.Code)
+		}
+	}
 }

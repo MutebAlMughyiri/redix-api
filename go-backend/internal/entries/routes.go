@@ -523,12 +523,6 @@ func Listed(ctx context.Context, read *store.Queries, projectID uuid.UUID, calle
 	return rowsOf(ctx, read, projectID, caller, func(store.Entry, facts) bool { return true }, searchOf(query).keeps, take)
 }
 
-// Newest is the newest take entries of projectID that caller sees, as the lists show them: the home's latest entries, on the phone and on the web
-// (redix-api #165). The error is the database's.
-func Newest(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, take int) ([]Row, error) {
-	return rowsOf(ctx, read, projectID, caller, func(store.Entry, facts) bool { return true }, everyRow, take)
-}
-
 // rowsOf is the entries of projectID keep keeps of those caller sees, as the lists show them and show keeps (EntriesEndpoints.RowsAsync), newest
 // first: read a batch at a time with that batch's facts, until take are kept, every one when take is 0 (#87).
 func rowsOf(ctx context.Context, read *store.Queries, projectID uuid.UUID, caller access.Caller, keep func(store.Entry, facts) bool, show func(Row) bool, take int) ([]Row, error) {
