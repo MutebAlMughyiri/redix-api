@@ -2167,8 +2167,9 @@ func TestWeb_R169_UC040_PartnersListsTheCapitalAndEachPartnersShare(t *testing.T
 	}
 	panel := w.browser.Send("GET", "/details/partner/"+first, nil).Body.String()
 	has(t, panel, `<h3 id="partner.title">شريك أ</h3>`)
-	has(t, panel, "دفعة أولى")
 	has(t, panel, `class="money">750.00</b>`)
+	lacks(t, panel, "دفعة أولى")
+	lacks(t, panel, `id="partner.movements`)
 	has(t, w.browser.Send("GET", "/tab/partners", nil).Body.String(), `hx-get="/details/partner/`+second+`"`)
 	if code := w.browser.Send("GET", "/details/partner/"+uuid.NewString(), nil).Code; code != http.StatusNotFound {
 		t.Errorf("a partner not in the project: %d", code)
@@ -4664,9 +4665,10 @@ func TestWeb_R175_D3_AContractsDocumentsAndAMovementsReceiptAreHandedOverFromThe
 	}
 	contract := w.contract(w.supplier(`{"name":"مقاول أ"}`), `"value":1000,"isOpenValue":false,"attachmentIds":["`+document["id"].(string)+`"]`)
 	w.home()
-	partnerPanel := w.browser.Send("GET", "/details/partner/"+partner, nil).Body.String()
-	has(t, partnerPanel, `<a id="movements.row.`+movement+`.receipt" class="file" href="/attachment/`+receipt["id"].(string)+`" download="receipt.png">receipt.png</a>`)
-	has(t, partnerPanel, `<img id="movements.row.`+movement+`.receipt.picture" class="file-picture" src="/attachment/`+receipt["id"].(string)+`" alt="receipt.png">`)
+	lacks(t, w.browser.Send("GET", "/details/partner/"+partner, nil).Body.String(), `movements.row.`+movement)
+	movementPanel := w.browser.Send("GET", "/details/entry/"+movement, nil).Body.String()
+	has(t, movementPanel, `<a id="entry.file.0" class="file" href="/attachment/`+receipt["id"].(string)+`" download="receipt.png">receipt.png</a>`)
+	has(t, movementPanel, `<img id="entry.file.0.picture" class="file-picture" src="/attachment/`+receipt["id"].(string)+`" alt="receipt.png">`)
 	contractPanel := w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String()
 	has(t, contractPanel, `<a id="contract.document.`+document["id"].(string)+`" class="file" href="/attachment/`+document["id"].(string)+`" download="terms.docx">terms.docx</a>`)
 	lacks(t, contractPanel, `id="contract.document.`+document["id"].(string)+`.pdf"`)

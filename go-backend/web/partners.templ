@@ -5,7 +5,6 @@ package web
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -72,10 +71,9 @@ templ partnersList(p page, shown partnersShown) {
 	}
 }
 
-// partnerPanel is a partner in the details panel: their balance and share on one line, as the app's row shows them, and their approved
-// movements, newest first, each with its kind, date, account and amount, and its receipt handed over, as the app's movements screen lists them
-// (#175 D3).
-templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movements []partners.Movement, said said) {
+// partnerPanel is a partner in the details panel: their balance and share on one line, as the app's row shows them, and what may be done to them.
+// Their movements are not listed here: Expenses and Revenue show them in the capital item's tables (the owner, 23 Nov 2026, findings row 330).
+templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, said said) {
 	<div class="details-head">
 		<h3 id="partner.title">{ line.Name }</h3>
 		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
@@ -86,29 +84,6 @@ templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movem
 	}
 	if partner, found := shown.partnerOf(line.ID); found && p.mayKeepPartners() {
 		@partnerActions(p, partner, said.asking == "delete")
-	}
-	<p id="partner.movements.label" class="section-title details-say">{ p.words.Of("capital.movements") }</p>
-	if len(movements) == 0 {
-		<p id="partner.noMovements" class="hint details-say">{ p.words.Of("capital.noMovements") }</p>
-	} else {
-		<ul id="partner.movements" class="movements">
-			for _, movement := range movements {
-				<li id={ "movements.row." + movement.ID.String() }>
-					<span id={ "movements.row." + movement.ID.String() + ".title" }>
-						if movement.Description != "" {
-							{ movement.Description }
-						} else {
-							{ movement.MovementName }
-						}
-					</span>
-					<small id={ "movements.row." + movement.ID.String() + ".subtitle" } class="hint">{ parts(movement.MovementName, movement.Date.Format(time.DateOnly), movement.AccountName) }</small>
-					<b id={ "movements.row." + movement.ID.String() + ".trailing" } class="money">{ statement.Money(movement.Amount.Number()) }</b>
-					if movement.AttachmentID != "" {
-						@keptFile("movements.row."+movement.ID.String()+".receipt", movement.AttachmentID, movement.FileName, movement.ContentType)
-					}
-				</li>
-			}
-		</ul>
 	}
 }
 

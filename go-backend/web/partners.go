@@ -62,8 +62,8 @@ func (s site) partnersTab(r *http.Request, p page) (templ.Component, error) {
 	return partnersList(p, shown), err
 }
 
-// partnerDetails is a partner in the details panel: their balance and share, and their approved movements, newest first, through the rule the
-// app's route answers (partners.MovementsOf). 404 for a partner the caller may not see, or none.
+// partnerDetails is a partner in the details panel: their balance and share, and what may be done to them; their movements are in Expenses and
+// Revenue (findings row 330). 404 for a partner the caller may not see, or none.
 func (s site) partnerDetails(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.working(w, r)
 	if !ok {
@@ -90,12 +90,7 @@ func (s site) partnerDetails(w http.ResponseWriter, r *http.Request) {
 		s.partnerFormOf(w, r, p, partner, partner.Name, login, "")
 		return
 	}
-	movements, err := partners.MovementsOf(r.Context(), s.Database.Queries(), p.project.ID, partnerID, p.caller)
-	if err != nil {
-		failed(w)
-		return
-	}
-	draw(w, r, http.StatusOK, partnerPanel(p, shown, line, movements, said{asking: r.URL.Query().Get("asking")}))
+	draw(w, r, http.StatusOK, partnerPanel(p, shown, line, said{asking: r.URL.Query().Get("asking")}))
 }
 
 // shareOf is a partner's share as the app's row writes it (formatShare): ten decimals, and the percent sign.
@@ -218,12 +213,7 @@ func (s site) keepPartner(w http.ResponseWriter, r *http.Request) {
 		draw(w, r, http.StatusOK, partnerGone(p), partnersBeside(p, shown))
 		return
 	}
-	movements, err := partners.MovementsOf(r.Context(), s.Database.Queries(), p.project.ID, line.ID, p.caller)
-	if err != nil {
-		failed(w)
-		return
-	}
-	draw(w, r, http.StatusOK, partnerPanel(p, shown, line, movements, said{refusal: refusal}), partnersBeside(p, shown))
+	draw(w, r, http.StatusOK, partnerPanel(p, shown, line, said{refusal: refusal}), partnersBeside(p, shown))
 }
 
 // partnerHistoryTab is the partner history in its tab (redix-app #101, redix-api #169): partners added, changed and deleted, and approved
