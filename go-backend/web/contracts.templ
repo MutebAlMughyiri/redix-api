@@ -95,7 +95,7 @@ templ contractsList(p page, shown contractsShown) {
 templ contractPanel(p page, contract contracts.View, refusal string) {
 	<div class="details-head">
 		<h3 id="contract.title">{ contract.SupplierName }</h3>
-		<button id="contract.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="contract.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl class="facts">
 		<dt id="contract.item.label">{ p.words.Of("contracts.item") }</dt>
@@ -164,7 +164,7 @@ templ contractForm(p page, editing contracts.View, typed contractTyped, contract
 				{ p.words.Of("contracts.edit") }
 			}
 		</h3>
-		<button id="contract.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="contract.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form
 		id="contract.form"

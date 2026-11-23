@@ -112,7 +112,7 @@ templ categoriesBeside(p page, shown structureShown) {
 templ categoryPanel(p page, category structure.CategoryView, refusal string) {
 	<div class="details-head">
 		<h3 id="category.title">{ category.Name }</h3>
-		<button id="category.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="category.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl id="category.facts" class="facts">
 		<dt id="category.items.label">{ p.words.Of("categories.items") }</dt>
@@ -140,7 +140,7 @@ templ categoryPanel(p page, category structure.CategoryView, refusal string) {
 templ itemPanel(p page, item structure.ItemView, category structure.CategoryView, refusal string) {
 	<div class="details-head">
 		<h3 id="item.title">{ item.Name }</h3>
-		<button id="item.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="item.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl id="item.facts" class="facts">
 		<dt id="item.type.label">{ p.words.Of("categories.itemType") }</dt>
@@ -176,7 +176,7 @@ templ itemPanel(p page, item structure.ItemView, category structure.CategoryView
 templ categoryForm(p page, category structure.CategoryView, name, refusal string) {
 	<div class="details-head">
 		<h3 id="category.title">{ p.words.Of(categoryFormTitle(category)) }</h3>
-		<button id="category.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="category.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="category.form" class="details-form" hx-post={ categoryFormPath(category) } hx-target="[id='web.details']">
 		<div class="field">
@@ -197,7 +197,7 @@ templ categoryForm(p page, category structure.CategoryView, name, refusal string
 templ itemForm(p page, category structure.CategoryView, item structure.ItemView, asking, refusal string) {
 	<div class="details-head">
 		<h3 id="item.title">{ p.words.Of(itemFormTitle(asking)) }</h3>
-		<button id="item.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="item.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="item.form" class="details-form" hx-post={ itemFormPath(category, item, asking) } hx-target="[id='web.details']">
 		if asking != "type" {

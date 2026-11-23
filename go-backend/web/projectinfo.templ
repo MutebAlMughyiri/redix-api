@@ -94,7 +94,7 @@ templ projectInfoBeside(p page) {
 templ projectInfoForm(p page, asking string, unit projects.Unit, typed, refusal string, now time.Time) {
 	<div class="details-head">
 		<h3 id="projectInfo.formTitle">{ p.words.Of(projectInfoTitle(asking, unit)) }</h3>
-		<button id="projectInfo.formClose" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="projectInfo.formClose" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="projectInfo.form" class="details-form" hx-post={ "/project-info/" + asking } hx-target="[id='web.details']">
 		if unit.Name != "" {

@@ -309,7 +309,12 @@ const shellKeys = `if (event.altKey && event.code === 'Digit1' && document.getEl
 	`if (search) { event.preventDefault(); search.click() } ` +
 	`const details = document.getElementById('web.details'); ` +
 	`if (event.key === 'Escape' && details && details.hasChildNodes() && !document.querySelector(':popover-open')) { event.preventDefault(); ` +
-	`details.replaceChildren(); const shown = document.querySelector('.grid [aria-selected=true]'); if (shown) shown.focus() }`
+	closeDetails + `; const shown = document.querySelector('.grid [aria-selected=true]'); if (shown) shown.focus() }`
+
+// closeDetails is the one way the details panel closes - its ✕, a form's Cancel, Esc: it empties the panel and forgets the row the tab in front
+// had selected, so the panel stops following it until a row is chosen again (the owner, 23 Nov 2026, findings row 325: "Follow, until closed").
+const closeDetails = `document.getElementById('web.details').replaceChildren(); ` +
+	`const shut = document.querySelector('.tab[aria-selected=true]'); if (shut && window.selected) delete window.selected[shut.id]`
 
 // selectRow defines select, which marks one row of a list as the selected one and keeps it as the selection of the tab in front, so the details
 // panel comes back to it when that tab does (findings row 293); both of a list's handlers start with it.

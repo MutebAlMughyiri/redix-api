@@ -59,7 +59,7 @@ templ methodsBeside(p page, shown methodsShown) {
 templ methodPanel(p page, shown methodsShown, method settings.PaymentMethod, said said) {
 	<div class="details-head">
 		<h3 id="paymentMethod.title">{ method.Name }</h3>
-		<button id="paymentMethod.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="paymentMethod.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<p id="paymentMethod.paysFrom" class="hint">{ shown.paysFromLine(p, method) }</p>
 	if !method.IsActive {
@@ -98,7 +98,7 @@ templ methodForm(p page, shown methodsShown, method settings.PaymentMethod, name
 		} else {
 			<h3 id="paymentMethod.title">{ p.words.Of("paymentMethods.rename") }</h3>
 		}
-		<button id="paymentMethod.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="paymentMethod.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="paymentMethod.form" class="details-form" hx-post={ methodFormPath(method) } hx-target="[id='web.details']">
 		<div class="field">

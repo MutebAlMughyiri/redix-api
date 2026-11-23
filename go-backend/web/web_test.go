@@ -4780,3 +4780,18 @@ func TestWeb_R180_EveryPagesSearchIsFoldedUntilAskedFor(t *testing.T) {
 	has(t, w.browser.Send("GET", "/tab/entries?number=1", nil).Body.String(), `id="entries.filters"`)
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `.search-toggle[aria-expanded=&#34;false&#34;]`)
 }
+
+// Closing the details panel - its ✕, a form's Cancel, Esc - goes through one closeDetails, which forgets the row the tab in front had selected,
+// so the panel stops following it until a row is chosen again (the owner, 23 Nov 2026, findings row 325).
+func TestWeb_R325_ClosingThePanelStopsItFollowingTheSelection(t *testing.T) {
+	w := newWorking(t)
+	sent := w.sent(30)
+	w.home()
+	panel := w.browser.Send("GET", "/details/entry/"+sent, nil).Body.String()
+	has(t, panel, `<button id="entry.close" class="x" type="button" aria-label="إغلاق" hx-on:click="document.getElementById(&#39;web.details&#39;).replaceChildren(); const shut`)
+	has(t, panel, `delete window.selected[shut.id]`)
+	lacks(t, panel, `hx-on:click="document.getElementById(&#39;web.details&#39;).replaceChildren()"`)
+	page := w.browser.Send("GET", "/", nil).Body.String()
+	has(t, page, `if (event.key === &#39;Escape&#39;`)
+	has(t, page, `delete window.selected[shut.id]`)
+}

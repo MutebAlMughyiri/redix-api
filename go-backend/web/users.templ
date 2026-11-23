@@ -65,7 +65,7 @@ templ usersList(p page, shown usersShown) {
 templ userPanel(p page, person users.View, said said) {
 	<div class="details-head">
 		<h3 id="user.title">{ person.DisplayName }</h3>
-		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl class="facts">
 		<dt id="user.username.label">{ p.words.Of("users.username") }</dt>
@@ -112,7 +112,7 @@ templ userPanel(p page, person users.View, said said) {
 templ userForm(p page, person users.View, typed userTyped, refusal string) {
 	<div class="details-head">
 		<h3 id="user.title">{ p.words.Of("users.edit") }</h3>
-		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="user.form" class="details-form" hx-post={ "/user/" + person.ID.String() + "/edit" } hx-target="[id='web.details']">
 		<div class="field">
@@ -145,7 +145,7 @@ templ userForm(p page, person users.View, typed userTyped, refusal string) {
 templ resetForm(p page, person users.View, refusal string) {
 	<div class="details-head">
 		<h3 id="user.title">{ p.words.Of("users.resetPassword") }</h3>
-		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="user.resetForm" class="details-form" hx-post={ "/user/" + person.ID.String() + "/reset" } hx-target="[id='web.details']">
 		<p id="users.resetName" class="hint">{ person.DisplayName }</p>
@@ -169,7 +169,7 @@ templ resetForm(p page, person users.View, refusal string) {
 templ existingForm(p page, username, refusal string) {
 	<div class="details-head">
 		<h3 id="user.title">{ p.words.Of("users.addExisting") }</h3>
-		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="user.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="user.existingForm" class="details-form" hx-post="/user" hx-target="[id='web.details']">
 		<div class="field">

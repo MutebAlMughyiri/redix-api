@@ -94,7 +94,7 @@ templ columnsBeside(p page, shown columnsShown) {
 templ columnPanel(p page, shown columnsShown, column structure.ColumnView, refusal string) {
 	<div class="details-head">
 		<h3 id="column.title">{ column.Name }</h3>
-		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl id="column.facts" class="facts">
 		<dt id="column.type.label">{ p.words.Of("columns.type") }</dt>
@@ -126,7 +126,7 @@ templ columnPanel(p page, shown columnsShown, column structure.ColumnView, refus
 templ columnForm(p page, shown columnsShown, column structure.ColumnView, choices, refusal string) {
 	<div class="details-head">
 		<h3 id="column.title">{ p.words.Of(columnFormTitle(column)) }</h3>
-		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="column.form" class="details-form column-form" hx-post={ columnFormPath(shown, column) } hx-target="[id='web.details']">
 		<div class="field">
@@ -193,7 +193,7 @@ templ applyQuestion(p page) {
 templ deleteQuestion(p page, shown columnsShown, column structure.ColumnView) {
 	<div class="details-head">
 		<h3 id="column.title">{ column.Name }</h3>
-		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="column.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="column.deleteForm" class="details-form" hx-post={ shown.path() + "/" + column.ID.String() + "/delete" } hx-target="[id='web.details']">
 		<p id="column.deleteQuestion" class="section-title">{ p.words.Of("swipe.question") }</p>

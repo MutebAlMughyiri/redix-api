@@ -126,7 +126,7 @@ templ reconciliationCard(p page, latest accounts.Reconciliation) {
 templ accountPanel(p page, shown accountsShown, account accounts.View, said said) {
 	<div class="details-head">
 		<h3 id="account.title">{ account.Name }</h3>
-		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl class="facts">
 		<dt id="account.type.label">{ p.words.Of("accounts.type") }</dt>
@@ -181,7 +181,7 @@ templ accountPanel(p page, shown accountsShown, account accounts.View, said said
 templ accountGone(p page, accountID uuid.UUID, said said) {
 	<div class="details-head">
 		<h3 id="account.title">{ p.words.Of(said.notice) }</h3>
-		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<template><tr id={ "accounts.row." + accountID.String() } hx-swap-oob="delete"></tr></template>
 }
@@ -204,7 +204,7 @@ templ accountForm(p page, editing accounts.View, typed accountTyped, members []s
 				{ p.words.Of("accounts.edit") }
 			}
 		</h3>
-		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="account.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form
 		id="account.form"
@@ -251,7 +251,7 @@ templ accountForm(p page, editing accounts.View, typed accountTyped, members []s
 templ transferForm(p page, shown accountsShown, typed transferTyped, refusal string) {
 	<div class="details-head">
 		<h3 id="transfer.title">{ p.words.Of("transfers.title") }</h3>
-		<button id="transfer.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="transfer.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="transfer.form" class="details-form" hx-post="/transfer" hx-target="[id='web.details']">
 		<div class="field">

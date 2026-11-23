@@ -68,7 +68,7 @@ templ documentsBeside(p page, shown documentsShown) {
 templ documentPanel(p page, shown documentsShown, document documents.View, said said) {
 	<div class="details-head">
 		<h3 id="document.title">{ document.Name }</h3>
-		<button id="document.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="document.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	if document.Group != "" {
 		<p id="document.group" class="hint">{ p.words.Of("documents.group") + ": " + document.Group }</p>
@@ -104,7 +104,7 @@ templ documentPanel(p page, shown documentsShown, document documents.View, said 
 templ documentForm(p page, shown documentsShown, name, group, refusal string) {
 	<div class="details-head">
 		<h3 id="documentForm.title">{ p.words.Of("documents.add") }</h3>
-		<button id="documentForm.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="documentForm.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="documentForm.form" class="details-form" hx-post="/document/new/add" hx-encoding="multipart/form-data" hx-target="[id='web.details']">
 		<div class="field">

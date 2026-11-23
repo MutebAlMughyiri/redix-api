@@ -45,7 +45,7 @@ templ registeredBeside(p page, waiting []projects.RegisteredView) {
 templ rejectProjectForm(p page, project projects.RegisteredView, reason, refusal string) {
 	<div class="details-head">
 		<h3 id="registered.rejectTitle">{ p.words.Of("registered.reject") }</h3>
-		<button id="registered.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="registered.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="registered.rejectForm" class="details-form" hx-post={ "/registered/" + project.ID.String() + "/reject" } hx-target="[id='web.details']">
 		<p id="registered.about" class="hint">{ project.Name }</p>

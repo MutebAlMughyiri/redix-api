@@ -69,7 +69,7 @@ templ askPage(p page) {
 templ askForm(p page, asked []string, reason, refusal string) {
 	<div class="details-head">
 		<h3 id="permissionRequest.dialogTitle">{ p.words.Of("permissionRequests.title") }</h3>
-		<button id="permissionRequest.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="permissionRequest.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="permissionRequest.reasonForm" class="details-form" hx-post="/permission-request" hx-include="[id='permissionRequest.form']" hx-target="[id='web.details']">
 		<div class="field">
@@ -121,7 +121,7 @@ templ requestsList(p page, shown requestsShown) {
 templ requestRejectForm(p page, request users.RequestView, location *time.Location, refusal string) {
 	<div class="details-head">
 		<h3 id="permissionRequests.rejectTitle">{ p.words.Of("permissionRequests.rejectTitle", request.DisplayName) }</h3>
-		<button id="permissionRequests.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="permissionRequests.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="permissionRequests.requestRejectForm" class="details-form" hx-post={ "/permission-request/" + request.ID.String() + "/reject" } hx-target="[id='web.details']">
 		<p id="permissionRequests.about" class="hint lines">{ askedIn(p, request, location) }</p>

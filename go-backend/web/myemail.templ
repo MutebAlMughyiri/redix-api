@@ -4,7 +4,7 @@ package web
 templ myEmailForm(p page, typed, refusal string) {
 	<div class="details-head">
 		<h3 id="myEmail.title">{ p.words.Of("settings.myEmail") }</h3>
-		<button id="myEmail.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="myEmail.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="myEmail.form" class="details-form" hx-post="/my-email" hx-target="[id='web.details']">
 		<div class="field">
@@ -24,7 +24,7 @@ templ myEmailForm(p page, typed, refusal string) {
 templ myEmailCodeForm(p page, email, refusal string) {
 	<div class="details-head">
 		<h3 id="myEmail.title">{ p.words.Of("settings.myEmail") }</h3>
-		<button id="myEmail.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="myEmail.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="myEmail.codeForm" class="details-form" hx-post="/my-email/confirm" hx-target="[id='web.details']">
 		<p id="myEmail.sentTo" class="hint">{ p.words.Of("settings.emailConfirm", email) }</p>

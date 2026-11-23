@@ -89,7 +89,7 @@ templ tablesBeside(p page, shown tablesShown) {
 templ tablePanel(p page, shown tablesShown, table entries.ItemTableView, refusal string) {
 	<div class="details-head">
 		<h3 id="table.title">{ table.Name }</h3>
-		<button id="table.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="table.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl id="table.facts" class="facts">
 		<dt id="table.kind.label">{ p.words.Of("categories.itemType") }</dt>
@@ -122,7 +122,7 @@ templ subgroupForm(p page, shown tablesShown, table entries.ItemTableView, name,
 		} else {
 			<h3 id="table.title">{ p.words.Of("categories.rename") }</h3>
 		}
-		<button id="table.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="table.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form id="table.form" class="details-form" hx-post={ subgroupFormPath(shown, table) } hx-target="[id='web.details']">
 		<div class="field">

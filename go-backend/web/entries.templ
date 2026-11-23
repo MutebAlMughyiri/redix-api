@@ -92,7 +92,7 @@ templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take 
 templ entryPanel(p page, row entries.Row, shown said) {
 	<div class="details-head">
 		<h3 id="entry.title">{ p.words.Of("entries.numberOf", strconv.FormatInt(row.Number, 10)) }</h3>
-		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<dl class="facts">
 		<dt id="entry.status.label">{ p.words.Of("entries.status") }</dt>
@@ -199,7 +199,7 @@ templ entryPanel(p page, row entries.Row, shown said) {
 templ entryGone(p page, entryID uuid.UUID, shown said) {
 	<div class="details-head">
 		<h3 id="entry.title">{ p.words.Of(shown.notice) }</h3>
-		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="entry.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<template><tr id={ p.rowID(entryID) } hx-swap-oob="delete"></tr></template>
 }

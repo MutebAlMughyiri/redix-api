@@ -78,7 +78,7 @@ templ partnersList(p page, shown partnersShown) {
 templ partnerPanel(p page, shown partnersShown, line partners.CapitalLine, movements []partners.Movement, said said) {
 	<div class="details-head">
 		<h3 id="partner.title">{ line.Name }</h3>
-		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<p id="partner.figures" class="details-say"><b id="partner.balance" class="money">{ statement.Money(line.Balance.Number()) }</b> · <span id="partner.share">{ shareOf(line.SharePercent) }</span></p>
 	if said.refusal != "" {
@@ -156,7 +156,7 @@ templ partnerForm(p page, editing partners.View, name string, login uuid.UUID, m
 				{ p.words.Of("partners.edit") }
 			}
 		</h3>
-		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 	<form
 		id="partner.form"
@@ -195,7 +195,7 @@ templ partnerForm(p page, editing partners.View, name string, login uuid.UUID, m
 templ partnerGone(p page) {
 	<div class="details-head">
 		<h3 id="partner.title">{ p.words.Of("partners.deleted") }</h3>
-		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click="document.getElementById('web.details').replaceChildren()">✕</button>
+		<button id="partner.close" class="x" type="button" aria-label={ p.words.Of("web.close") } hx-on:click={ templ.JSUnsafeFuncCall(closeDetails) }>✕</button>
 	</div>
 }
 
