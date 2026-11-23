@@ -4,8 +4,8 @@ import "strconv"
 
 // settingsMenu is Settings as My account opens it, a list beside its menu on hover or focus, where the app has a screen (the owner, 23 Nov
 // 2026, findings row 321): the language and the appearance, switched at once; My email, with the address the account holds, in the details
-// panel; Change password and, for whoever approves them, Registered projects, in their tabs; Switch project and the default project, from the
-// top bar's list; the privacy policy and the terms of use; and the version. Who is signed in, My history and Sign out are My account's own. No
+// panel; Change password and, for whoever approves them, Registered projects, in their tabs; the privacy policy and the terms of use, each an
+// item of its own; and the version - switching project and the default are the top bar's project list's (findings row 323). Who is signed in, My history and Sign out are My account's own. No
 // fingerprint row (D1); no count of the home's entries (findings row 306).
 templ settingsMenu(p page) {
 	<div id="web.settings" class="sub">
@@ -34,12 +34,8 @@ templ settingsMenu(p page) {
 			if p.mayApproveProjects() {
 				<button id="sharedSettings.registered" class="choice" type="button" hx-get="/tab/registered" hx-target="[id='web.content']" hx-on:click="document.getElementById('web.accountMenu').hidePopover()">{ p.words.Of("registered.title") }</button>
 			}
-			<button id="sharedSettings.switchProject" class="choice" type="button" popovertarget="web.projects">{ p.words.Of("sharedSettings.switchProject") }</button>
-			<button id="sharedSettings.defaultProject" class="choice" type="button" popovertarget="web.projects">{ p.words.Of("sharedSettings.defaultProject") }</button>
-			<div id="sharedSettings.legal" class="sub-row">
-				<a id="legal.privacy" href="/privacy" target="_blank" rel="noopener">{ p.words.Of("legal.privacy") }</a>
-				<a id="legal.terms" href="/terms" target="_blank" rel="noopener">{ p.words.Of("legal.terms") }</a>
-			</div>
+			<a id="legal.privacy" class="choice" href="/privacy" target="_blank" rel="noopener">{ p.words.Of("legal.privacy") }</a>
+			<a id="legal.terms" class="choice" href="/terms" target="_blank" rel="noopener">{ p.words.Of("legal.terms") }</a>
 			<p id="sharedSettings.version" class="hint sub-version">{ p.words.Of("app.version") + " " + Version }<bdi>{ build }</bdi></p>
 		</div>
 	</div>

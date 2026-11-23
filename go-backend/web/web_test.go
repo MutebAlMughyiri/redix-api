@@ -4150,13 +4150,15 @@ func TestWeb_R175_R321_SettingsIsAListInMyAccount(t *testing.T) {
 	page := w.home()
 	settings := page[strings.Index(page, `<div id="web.settingsMenu" class="submenu">`):]
 	settings = settings[:strings.Index(settings, `<hr class="menu-line">`)]
-	has(t, settings, `<button id="sharedSettings.switchProject" class="choice" type="button" popovertarget="web.projects">`)
+	lacks(t, settings, `id="sharedSettings.switchProject"`)
+	lacks(t, settings, `id="sharedSettings.defaultProject"`)
+	has(t, settings, `<a id="legal.terms" class="choice" href="/terms" target="_blank" rel="noopener">`)
 	has(t, settings, `id="myAccount.language"`)
 	has(t, settings, `<a id="sharedSettings.theme.system" href="/theme/system" aria-current="true">`)
 	lacks(t, settings, `id="sharedSettings.entriesShown"`)
 	has(t, settings, `hx-get="/tab/changePassword"`)
 	has(t, settings, `hx-get="/details/my-email"`)
-	has(t, settings, `<a id="legal.privacy" href="/privacy" target="_blank" rel="noopener">`)
+	has(t, settings, `<a id="legal.privacy" class="choice" href="/privacy" target="_blank" rel="noopener">`)
 	has(t, settings, `id="sharedSettings.version"`)
 	lacks(t, settings, `id="sharedSettings.registered"`)
 	has(t, w.browser.Send("GET", "/tab/changePassword", nil).Body.String(), `id="changePassword.form"`)
