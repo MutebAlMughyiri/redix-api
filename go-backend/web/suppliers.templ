@@ -16,6 +16,7 @@ templ suppliersList(p page, shown suppliersShown) {
 	<div class="view-head">
 		<h2 id="suppliers.title">{ p.words.Of("suppliers.title") }</h2>
 		<span id="suppliers.actions" class="head-actions">
+			@searchToggle(p, "suppliers.searchToggle", "/tab/suppliers")
 			<button
 				id="suppliers.add"
 				class="primary small"
@@ -27,9 +28,12 @@ templ suppliersList(p page, shown suppliersShown) {
 			>{ p.words.Of("suppliers.new") }</button>
 		</span>
 	</div>
-	<form id="suppliers.filters" class="filters" hx-get="/tab/suppliers" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="suppliers.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("suppliers.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("suppliers.title")) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="suppliers.filters" class="filters" hx-get="/tab/suppliers" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="suppliers.searchOn" type="hidden" name="search" value="on"/>
+			<input id="suppliers.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("suppliers.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("suppliers.title")) } value={ shown.text }/>
+		</form>
+	}
 	if len(shown.shown()) == 0 {
 		<p id="suppliers.empty" class="empty">{ p.words.Of("suppliers.empty") }</p>
 	} else {

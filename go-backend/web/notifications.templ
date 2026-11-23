@@ -7,10 +7,16 @@ import "strconv"
 templ noticesList(p page, shown noticesShown) {
 	<div class="view-head">
 		<h2 id="notifications.title">{ p.words.Of("notifications.title") }</h2>
+		<span id="notifications.actions" class="head-actions">
+			@searchToggle(p, "notifications.searchToggle", "/tab/notifications")
+		</span>
 	</div>
-	<form id="notifications.filters" class="filters" hx-get="/tab/notifications" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="notifications.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("notifications.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("notifications.title")) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="notifications.filters" class="filters" hx-get="/tab/notifications" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="notifications.searchOn" type="hidden" name="search" value="on"/>
+			<input id="notifications.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("notifications.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("notifications.title")) } value={ shown.text }/>
+		</form>
+	}
 	if len(shown.shown(p)) == 0 {
 		<p id="notifications.empty" class="empty">{ p.words.Of("notifications.empty") }</p>
 	} else {

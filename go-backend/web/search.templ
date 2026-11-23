@@ -1,0 +1,23 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+import "strconv"
+
+// searchToggle is a page's «بحث» with the web's arrow, among its head's buttons: down while the search is folded, up while it shows; `/` clicks it
+// from anywhere but a field being typed in (the owner, 23 Nov 2026, #180). path is the page's own address, with the record it shows.
+templ searchToggle(p page, id, path string) {
+	<button
+		id={ id }
+		class="quiet-button search-toggle"
+		type="button"
+		aria-expanded={ strconv.FormatBool(p.searching) }
+		data-tip={ p.shortcut("common.search", "/") }
+		hx-get={ searchAddress(path, p.searching) }
+		hx-target="[id='web.content']"
+	>
+		{ p.words.Of("common.search") }
+		<span id={ id + ".arrow" } class="arrow" aria-hidden="true">{ arrow }</span>
+	</button>
+}

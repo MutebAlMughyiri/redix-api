@@ -30,6 +30,8 @@ type page struct {
 	assets assets
 	// person is the signed-in person's name, and email the address their account holds; "" before anyone signs in.
 	person, email string
+	// searching says whether the tab in front shows its search, and searchOpened that it was just opened, its field taking the cursor (#180).
+	searching, searchOpened bool
 	// caller is who is signed in, and what they hold; the zero caller before anyone is.
 	caller access.Caller
 	// projects are the projects the caller may read or started, as the app's project list shows them (redix-api #165).
@@ -102,7 +104,9 @@ func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) 
 		return p, err
 	}
 	if tab, opened := contents[p.view.Active]; opened && p.offers(p.view.Active) {
-		p.content, err = tab(s, p.view.recordOf(r), p)
+		front := p.view.recordOf(r)
+		p.searching, p.searchOpened = searchOpen(front.URL.Query()), front.URL.Query().Get("opened") == "1"
+		p.content, err = tab(s, front, p)
 	}
 	return p, err
 }
@@ -295,12 +299,14 @@ const lineDragged = `if (!this.hasPointerCapture(event.pointerId)) return; ` +
 	`const width = Math.round(Math.max(+this.dataset.least, Math.min(+this.dataset.most, box.width - 320, along))); ` +
 	`this.closest('.shell').style.setProperty(this.dataset.width, width + 'px'); document.getElementById(this.dataset.keeps).value = width`
 
-// shellKeys is the shell's one keydown handler (see document): Alt+1, Alt+W and Esc. It and the lists' handlers below are constants of our own, holding no
+// shellKeys is the shell's one keydown handler (see document): Alt+1, Alt+W, / and Esc. It and the lists' handlers below are constants of our own, holding no
 // person's data, so the templates write them as trusted script.
 const shellKeys = `if (event.altKey && event.code === 'Digit1' && document.getElementById('web.view.sideMenu')) { event.preventDefault(); ` +
 	`document.getElementById('web.view.sideMenu').click() } ` +
 	`const front = event.altKey && event.code === 'KeyW' && document.querySelector('.tab[aria-selected=true] .close'); ` +
 	`if (front) { event.preventDefault(); front.click() } ` +
+	`const search = event.key === '/' && !event.target.closest('input, textarea, select, [contenteditable]') && document.querySelector('[id="web.content"] .search-toggle[aria-expanded="false"]'); ` +
+	`if (search) { event.preventDefault(); search.click() } ` +
 	`const details = document.getElementById('web.details'); ` +
 	`if (event.key === 'Escape' && details && details.hasChildNodes() && !document.querySelector(':popover-open')) { event.preventDefault(); ` +
 	`details.replaceChildren(); const shown = document.querySelector('.grid [aria-selected=true]'); if (shown) shown.focus() }`

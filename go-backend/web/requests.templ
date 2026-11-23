@@ -14,12 +14,16 @@ templ myPermissionsPage(p page, shown myPermissionsShown) {
 	<div class="view-head">
 		<h2 id="myPermissions.title">{ p.words.Of("permissions.mine") }</h2>
 		<span id="myPermissions.actions" class="head-actions">
+			@searchToggle(p, "myPermissions.searchToggle", "/tab/myPermissions")
 			<button id="myPermissions.ask" class="primary small" type="button" hx-get="/tab/permissionRequest" hx-target="[id='web.content']" disabled?={ p.finished() }>{ p.words.Of("permissionRequests.ask") }</button>
 		</span>
 	</div>
-	<form id="myPermissions.filters" class="filters" hx-get="/tab/myPermissions" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="myPermissions.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("permissions.mine")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("permissions.mine")) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="myPermissions.filters" class="filters" hx-get="/tab/myPermissions" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="myPermissions.searchOn" type="hidden" name="search" value="on"/>
+			<input id="myPermissions.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("permissions.mine")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("permissions.mine")) } value={ shown.text }/>
+		</form>
+	}
 	<div id="myPermissions.page" class="entry-form">
 		if shown.said.notice != "" {
 			<p id="myPermissions.notice" class="notice" role="status">{ p.words.Of(shown.said.notice) }</p>

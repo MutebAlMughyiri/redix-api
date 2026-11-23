@@ -327,6 +327,9 @@ func TestWeb_R17_TheSessionsCookiesAreHiddenFromScriptAndOtherSites(t *testing.T
 	id, _ := api.Person("User A")
 	signing := api.Browser().Send("POST", "/sign-in", url.Values{"username": {id.String()}, "password": {password}})
 	for _, cookie := range signing.Result().Cookies() {
+		if cookie.Name == "redix_tabs" {
+			continue // a choice of the person's, as the look and the language, which signing in sets too (findings row 324)
+		}
 		if !cookie.HttpOnly || !cookie.Secure || cookie.SameSite != http.SameSiteStrictMode || cookie.Path != "/" {
 			t.Errorf("%s is HttpOnly, Secure, SameSite=Strict on /: %+v", cookie.Name, cookie)
 		}
@@ -1450,7 +1453,7 @@ func TestWeb_R167_UC032_ApprovalsListsWhatWaitsFilteredAndSearchedAsTheAppsDo(t 
 	w := newWorking(t)
 	first, second, decided := w.sent(40), w.sent(70), w.approved(90)
 	w.home()
-	list := w.browser.Send("GET", "/tab/approvals", nil).Body.String()
+	list := w.browser.Send("GET", "/tab/approvals?search=on", nil).Body.String()
 	has(t, list, `id="approvals.card.`+first+`"`)
 	has(t, list, `id="approvals.card.`+second+`"`)
 	lacks(t, list, `id="approvals.card.`+decided+`"`)
@@ -1555,7 +1558,7 @@ func TestWeb_R167_TheApprovalHistoryTellsEachDecisionNarrowedAsTheAppsIs(t *test
 	}
 	w.home()
 	has(t, w.browser.Send("GET", "/tab/approvals", nil).Body.String(), `hx-get="/tab/approvalHistory"`)
-	history := w.browser.Send("GET", "/tab/approvalHistory", nil).Body.String()
+	history := w.browser.Send("GET", "/tab/approvalHistory?search=on", nil).Body.String()
 	has(t, history, `class="decision rejected">رفض: التسليح · 40.00، والسبب: الفاتورة غير واضحة</td>`)
 	has(t, history, `class="decision approved">اعتماد: التسليح · 90.00</td>`)
 	has(t, history, `class="who">اعتمده User A · 2026-11-16 13:00</td>`)
@@ -2019,7 +2022,7 @@ func TestWeb_R168_TheAccountHistoryTellsEachLineAsTheAppsDoes(t *testing.T) {
 	w.Ask("POST", w.path+"/accounts/"+spare+"/disable", ``, w.token)
 	w.home()
 	has(t, w.browser.Send("GET", "/tab/accounts", nil).Body.String(), `hx-get="/tab/accountHistory"`)
-	history := w.browser.Send("GET", "/tab/accountHistory", nil).Body.String()
+	history := w.browser.Send("GET", "/tab/accountHistory?search=on", nil).Body.String()
 	has(t, history, `class="decision accountDisabled">تعطيل حساب احتياطي</td>`)
 	has(t, history, `class="decision accountCreated">إضافة الحساب حساب احتياطي</td>`)
 	has(t, history, `class="decision entryIn">إيرادات 500.00 إلى حساب المؤسسة</td>`)
@@ -2445,7 +2448,7 @@ func TestWeb_R170_UC020_ContractsListsEachContractsValuePaidAndRemaining(t *test
 	w.paid(running, builder, 300, false)
 	w.home()
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/contracts"`)
-	list := w.browser.Send("GET", "/tab/contracts", nil).Body.String()
+	list := w.browser.Send("GET", "/tab/contracts?search=on", nil).Body.String()
 	for _, part := range []string{
 		`<td id="contracts.valueOf.` + running + `" class="amount">1,000.00</td>`,
 		`<td id="contracts.paid.` + running + `" class="amount">1,200.00</td>`,
@@ -2891,7 +2894,7 @@ func TestWeb_R172_UC069_TheProjectHistoryTellsEachLineAsTheAppsDoes(t *testing.T
 	w.approved(300)
 	w.home()
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/projectHistory"`)
-	history := w.browser.Send("GET", "/tab/projectHistory", nil).Body.String()
+	history := w.browser.Send("GET", "/tab/projectHistory?search=on", nil).Body.String()
 	for _, part := range []string{`<h2 id="projectHistory.title">سجل المشروع</h2>`, `id="projectHistory.kindChoice"`, `id="projectHistory.personChoice"`,
 		`الاسم كان التسليح`, `مؤسسة أ`, `300.00`} {
 		has(t, history, part)
@@ -2927,7 +2930,7 @@ func TestWeb_R172_UC069_MyHistoryTellsEveryLineOfMyOwnLogin(t *testing.T) {
 	w := newWorking(t)
 	w.home()
 	has(t, w.browser.Send("GET", "/", nil).Body.String(), `<button id="web.myHistory" class="choice" type="button" hx-get="/tab/myHistory"`)
-	mine := w.browser.Send("GET", "/tab/myHistory", nil).Body.String()
+	mine := w.browser.Send("GET", "/tab/myHistory?search=on", nil).Body.String()
 	has(t, mine, `<h2 id="myHistory.title">سجلي</h2>`)
 	has(t, mine, `تسجيل الدخول`)
 	has(t, mine, `id="myHistory.kindChoice"`)
@@ -4746,3 +4749,34 @@ func TestWeb_R324_SigningInOpensHome(t *testing.T) {
 	has(t, browser.Send("GET", "/", nil).Body.String(), `id="web.tab.home" class="tab" role="tab" aria-selected="true"`)
 }
 
+// Every page's search is folded when the page opens; «بحث» opens it, its field taking the cursor; typing keeps it open; closing it clears its
+// filters; a page opened with a filter shows its search; / clicks the front tab's toggle (the owner, 23 Nov 2026, #180).
+func TestWeb_R180_EveryPagesSearchIsFoldedUntilAskedFor(t *testing.T) {
+	w := newWorking(t)
+	w.sent(30)
+	w.sent(40)
+	w.home()
+	for _, tab := range []string{"entries", "approvals", "approvalHistory", "accountHistory", "partnerHistory", "projectHistory", "myHistory", "contracts",
+		"suppliers", "users", "categories", "documents", "notifications", "myPermissions", "expenses"} {
+		closed := w.browser.Send("GET", "/tab/"+tab, nil).Body.String()
+		lacks(t, closed, `class="filters"`)
+		has(t, closed, `class="quiet-button search-toggle" type="button" aria-expanded="false"`)
+		has(t, closed, `?search=on&amp;opened=1"`)
+		has(t, w.browser.Send("GET", "/tab/"+tab+"?search=on&opened=1", nil).Body.String(), `type="hidden" name="search" value="on">`)
+	}
+	opened := w.browser.Send("GET", "/tab/entries?search=on&opened=1", nil).Body.String()
+	has(t, opened, `<input id="entries.search" class="search" autofocus type="search" name="text"`)
+	has(t, opened, `<button id="entries.searchToggle" class="quiet-button search-toggle" type="button" aria-expanded="true" data-tip="بحث `+"⁨(/)⁩"+`" hx-get="/tab/entries"`)
+	typing := w.browser.Send("GET", "/tab/entries?search=on&text=", nil).Body.String()
+	has(t, typing, `id="entries.filters"`)
+	lacks(t, typing, `autofocus type="search"`)
+	if rows := strings.Count(w.browser.Send("GET", "/tab/entries?search=on&number=1", nil).Body.String(), `<tr id="entries.row.`); rows != 1 {
+		t.Errorf("an open search filters: %d rows", rows)
+	}
+	cleared := w.browser.Send("GET", "/tab/entries", nil).Body.String()
+	if rows := strings.Count(cleared, `<tr id="entries.row.`); rows != 2 {
+		t.Errorf("closing the search clears its filters: %d rows", rows)
+	}
+	has(t, w.browser.Send("GET", "/tab/entries?number=1", nil).Body.String(), `id="entries.filters"`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `.search-toggle[aria-expanded=&#34;false&#34;]`)
+}

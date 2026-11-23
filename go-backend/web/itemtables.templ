@@ -13,6 +13,7 @@ templ tablesList(p page, shown tablesShown, refusal string) {
 	<div class="view-head">
 		<h2 id="tables.title">{ parts(p.words.Of("categories.tables"), shown.item.Name) }</h2>
 		<span id="tables.actions" class="head-actions">
+			@searchToggle(p, "tables.searchToggle", "/tab/itemTables")
 			<button id="tables.add" class="primary small" type="button" hx-get={ "/details/tables/" + shown.item.ID.String() + "/new" } hx-target="[id='web.details']" disabled?={ !shown.mayAddSubgroup(p) }>{ p.words.Of("subgroups.new") }</button>
 		</span>
 	</div>
@@ -20,10 +21,13 @@ templ tablesList(p page, shown tablesShown, refusal string) {
 	if refusal != "" {
 		<p id="tables.refusal" class="refusal wide" role="alert">{ p.words.Of(refusal) }</p>
 	}
-	<form id="tables.filters" class="filters" hx-get="/tab/itemTables" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="tables.itemId" type="hidden" name="item" value={ shown.item.ID.String() }/>
-		<input id="tables.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("categories.tables")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("categories.tables")) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="tables.filters" class="filters" hx-get="/tab/itemTables" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="tables.searchOn" type="hidden" name="search" value="on"/>
+			<input id="tables.itemId" type="hidden" name="item" value={ shown.item.ID.String() }/>
+			<input id="tables.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("categories.tables")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("categories.tables")) } value={ shown.text }/>
+		</form>
+	}
 	if len(shown.shown()) == 0 {
 		<p id="tables.empty" class="empty">{ p.words.Of("categories.noTableMatch") }</p>
 	} else {

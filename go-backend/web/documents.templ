@@ -16,12 +16,16 @@ templ documentsList(p page, shown documentsShown) {
 	<div class="view-head">
 		<h2 id="documents.title">{ p.words.Of("documents.title") }</h2>
 		<span id="documents.actions" class="head-actions">
+			@searchToggle(p, "documents.searchToggle", "/tab/documents")
 			<button id="documents.add" class="primary small" type="button" disabled?={ !p.mayManageProject() } hx-get="/details/document/new" hx-target="[id='web.details']">{ p.words.Of("documents.add") }</button>
 		</span>
 	</div>
-	<form id="documents.filters" class="filters" hx-get="/tab/documents" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="documents.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("documents.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("documents.title")) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="documents.filters" class="filters" hx-get="/tab/documents" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="documents.searchOn" type="hidden" name="search" value="on"/>
+			<input id="documents.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("documents.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("documents.title")) } value={ shown.text }/>
+		</form>
+	}
 	if kept := shown.shown(); len(kept) == 0 {
 		<p id="documents.empty" class="empty">{ p.words.Of("documents.none") }</p>
 	} else {

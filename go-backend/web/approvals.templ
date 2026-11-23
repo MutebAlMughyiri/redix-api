@@ -18,24 +18,28 @@ templ approvalsList(p page, shown approvals) {
 		<div class="view-head">
 			<h2 id="approvals.title">{ p.words.Of("approvals.title") }</h2>
 			<span id="approvals.actions" class="head-actions">
+				@searchToggle(p, "approvals.searchToggle", "/tab/approvals")
 				<button id="approvals.history" class="quiet-button" type="button" hx-get="/tab/approvalHistory" hx-target="[id='web.content']">{ p.words.Of("approvals.history") }</button>
 				<button id="approvals.approveSelected" class="primary small" type="submit" form="approvals.form" disabled?={ p.finished() }>{ p.words.Of("approvals.approveSelected") }</button>
 			</span>
 		</div>
-		<form
-			id="approvals.filters"
-			class="filters"
-			hx-get="/tab/approvals"
-			hx-target="[id='web.content']"
-			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
-		>
-			<input id="approvals.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } value={ shown.text }/>
-			<fieldset id="approvals.filterChoice" class="picks">
-				for _, filter := range approvalFilters {
-					<label id={ "approvals." + filter.name } class="pick"><input id={ "approvals." + filter.name + ".input" } type="radio" name="filter" value={ filter.name } checked?={ filter == shown.filter }/>{ p.words.Of(filter.word) + " · " + shown.count(filter) }</label>
-				}
-			</fieldset>
-		</form>
+		if p.searching {
+			<form
+				id="approvals.filters"
+				class="filters"
+				hx-get="/tab/approvals"
+				hx-target="[id='web.content']"
+				hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+			>
+				<input id="approvals.searchOn" type="hidden" name="search" value="on"/>
+				<input id="approvals.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } value={ shown.text }/>
+				<fieldset id="approvals.filterChoice" class="picks">
+					for _, filter := range approvalFilters {
+						<label id={ "approvals." + filter.name } class="pick"><input id={ "approvals." + filter.name + ".input" } type="radio" name="filter" value={ filter.name } checked?={ filter == shown.filter }/>{ p.words.Of(filter.word) + " · " + shown.count(filter) }</label>
+					}
+				</fieldset>
+			</form>
+		}
 		if len(shown.shown()) == 0 {
 			<p id="approvals.empty" class="empty">{ p.words.Of("approvals.empty") }</p>
 		} else {
@@ -94,23 +98,29 @@ templ approvalsList(p page, shown approvals) {
 templ approvalHistoryPage(p page, history history) {
 	<div class="view-head">
 		<h2 id="approvalHistory.title">{ p.words.Of("approvals.history") }</h2>
+		<span id="approvalHistory.actions" class="head-actions">
+			@searchToggle(p, "approvalHistory.searchToggle", "/tab/approvalHistory")
+		</span>
 	</div>
-	<form
-		id="approvalHistory.filters"
-		class="filters"
-		hx-get="/tab/approvalHistory"
-		hx-target="[id='web.content']"
-		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
-	>
-		<input id="approvalHistory.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("approvals.history")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("approvals.history")) } value={ history.query.Get("text") }/>
-		<fieldset id="approvalHistory.kindChoice" class="picks">
-			<legend id="approvalHistory.kindChoice.label">{ p.words.Of("entries.kind") }</legend>
-			<label id="approvalHistory.all" class="pick"><input id="approvalHistory.all.input" type="radio" name="kind" value="" checked?={ history.query.Get("kind") == "" }/>{ p.words.Of("history.all") }</label>
-			for _, filter := range approvalFilters[1:] {
-				<label id={ "approvalHistory.kind." + filter.kind } class="pick"><input id={ "approvalHistory.kind." + filter.kind + ".input" } type="radio" name="kind" value={ filter.kind } checked?={ history.query.Get("kind") == filter.kind }/>{ p.words.Of(filter.word) }</label>
-			}
-		</fieldset>
-		@historyPerson(p, history)
-	</form>
+	if p.searching {
+		<form
+			id="approvalHistory.filters"
+			class="filters"
+			hx-get="/tab/approvalHistory"
+			hx-target="[id='web.content']"
+			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+		>
+			<input id="approvalHistory.searchOn" type="hidden" name="search" value="on"/>
+			<input id="approvalHistory.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("approvals.history")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("approvals.history")) } value={ history.query.Get("text") }/>
+			<fieldset id="approvalHistory.kindChoice" class="picks">
+				<legend id="approvalHistory.kindChoice.label">{ p.words.Of("entries.kind") }</legend>
+				<label id="approvalHistory.all" class="pick"><input id="approvalHistory.all.input" type="radio" name="kind" value="" checked?={ history.query.Get("kind") == "" }/>{ p.words.Of("history.all") }</label>
+				for _, filter := range approvalFilters[1:] {
+					<label id={ "approvalHistory.kind." + filter.kind } class="pick"><input id={ "approvalHistory.kind." + filter.kind + ".input" } type="radio" name="kind" value={ filter.kind } checked?={ history.query.Get("kind") == filter.kind }/>{ p.words.Of(filter.word) }</label>
+				}
+			</fieldset>
+			@historyPerson(p, history)
+		</form>
+	}
 	@historyList(p, history)
 }

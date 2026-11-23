@@ -107,6 +107,9 @@ body { background: var(--content); color: var(--text); font-family: var(--font);
 .view-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
 /* A tab's buttons stand at its head's far end, away from its title: left in Arabic, right in English (the owner, 23 Nov 2026, findings row 309). */
 .view-head .head-actions { margin-inline-start: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* A page's «بحث»: the web's arrow down while its search is folded, up while it shows (#180). */
+.search-toggle { position: relative; gap: 6px; } .search-toggle .arrow { transform: rotate(90deg); } .search-toggle[aria-expanded="true"] .arrow { transform: rotate(-90deg); }
+.search-toggle[aria-expanded="true"] { background: var(--select); color: var(--text); }
 .setting { max-width: 520px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; border-block: 1px solid var(--chrome-line); }
 .setting h3 { margin: 0; font-size: 14px; font-weight: 500; }
 

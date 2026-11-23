@@ -77,10 +77,16 @@ templ itemReportsPage(p page, shown itemReports) {
 	<div class="view-head">
 		<h2 id={ "itemReports.title" }>{ p.words.Of(shown.side.word) }</h2>
 		<b id="itemReports.total">{ money(shown.total) }</b>
+		<span id="itemReports.actions" class="head-actions">
+			@searchToggle(p, "itemReports.searchToggle", "/tab/" + shown.side.name)
+		</span>
 	</div>
-	<form id="itemReports.filters" class="filters" hx-get={ "/tab/" + shown.side.name } hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="itemReports.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } aria-label={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="itemReports.filters" class="filters" hx-get={ "/tab/" + shown.side.name } hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="itemReports.searchOn" type="hidden" name="search" value="on"/>
+			<input id="itemReports.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } aria-label={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } value={ shown.text }/>
+		</form>
+	}
 	<div id="itemReports.categories" class="categories">
 		for _, category := range shown.categories {
 			if items, shows := shown.itemsOf(category); shows {
@@ -117,6 +123,7 @@ templ itemReportPage(p page, shown itemReportShown) {
 			<h2 id="itemReport.title">{ shown.report.ItemName }</h2>
 			<span id="itemReport.category" class="hint">{ shown.report.CategoryName }</span>
 			<span id="itemReport.actions" class="head-actions">
+				@searchToggle(p, "itemReport.searchToggle", "/tab/itemReport?item=" + shown.query.Get("item") + "&contract=" + shown.query.Get("contract"))
 				@reportFiles(p, "itemReport.file", shown.fileAddress())
 			</span>
 		</div>
@@ -124,11 +131,14 @@ templ itemReportPage(p page, shown itemReportShown) {
 			<span id="itemReport.totalLabel">{ p.words.Of("reports.itemTotal") }</span>
 			<b id="itemReport.total">{ money(shown.report.Total) }</b>
 		</p>
-		<form id="itemReport.filters" class="filters" hx-get="/tab/itemReport" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-			<input id="itemReport.item" type="hidden" name="item" value={ shown.query.Get("item") }/>
-			<input id="itemReport.contract" type="hidden" name="contract" value={ shown.query.Get("contract") }/>
-			<input id="itemReport.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", shown.report.ItemName) } aria-label={ p.words.Of("common.searchIn", shown.report.ItemName) } value={ shown.text }/>
-		</form>
+		if p.searching {
+			<form id="itemReport.filters" class="filters" hx-get="/tab/itemReport" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+				<input id="itemReport.searchOn" type="hidden" name="search" value="on"/>
+				<input id="itemReport.item" type="hidden" name="item" value={ shown.query.Get("item") }/>
+				<input id="itemReport.contract" type="hidden" name="contract" value={ shown.query.Get("contract") }/>
+				<input id="itemReport.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", shown.report.ItemName) } aria-label={ p.words.Of("common.searchIn", shown.report.ItemName) } value={ shown.text }/>
+			</form>
+		}
 		for _, table := range shown.report.Subgroups {
 			if rows, shows := shown.rowsOf(subgroupName(p, table), table.Rows); shows {
 				<section id={ "itemReport.subgroup." + table.ID.String() } class="report-table">

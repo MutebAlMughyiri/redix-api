@@ -61,6 +61,7 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 | Keys | Alt+1 folds the side menu, Alt+W closes the tab in front (its close button's tip names it), Esc hides the details panel; each by the key's place, so an Arabic keyboard counts, all in the shell's one key handler (findings row 308) |
 | Money | An amount in riyals carries the Saudi Riyal sign, U+20C1, the device's font drawing it, the word ر.س its label for a screen reader (`web.riyal`, findings row 318) |
 | Arrows | One arrow, the side menu's »: its size and color everywhere, turned to point down or up for More and My account, kept left to right so the page's direction never mirrors it (findings row 314) |
+| Search | Every page with a search or filters - 17 of them - opens with them folded; its «بحث», with the web's arrow, among the head's buttons, opens them (`?search=on`), the field taking the cursor, and `/` clicks it from anywhere but a field being typed in; each redraw carries `search=on`, so typing never folds it; closing clears the filters; a page opened with a filter shows its search (`web.searchOpen`, `web.searchToggle`, the owner, 23 Nov 2026, #180). Ids: `<page>.searchToggle` with `.arrow`, `<page>.searchOn` |
 | A tab's head | Its title at the start; its buttons (`head-actions`) at the far end, left in Arabic, right in English (findings row 309) |
 | Sign-in | In the content area; on success the other parts arrive with a little motion, once |
 | Language | In Settings, and at the sign-in form's foot |

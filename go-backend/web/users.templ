@@ -18,13 +18,17 @@ templ usersList(p page, shown usersShown) {
 	<div class="view-head">
 		<h2 id="users.title">{ p.words.Of("users.title") }</h2>
 		<span id="users.actions" class="head-actions">
+			@searchToggle(p, "users.searchToggle", "/tab/users")
 			<button id="users.new" class="primary small" type="button" hx-get="/tab/newUser" hx-target="[id='web.content']">{ p.words.Of("users.new") }</button>
 			<button id="users.addExisting" class="quiet-button" type="button" hx-get="/details/user/existing" hx-target="[id='web.details']">{ p.words.Of("users.addExisting") }</button>
 		</span>
 	</div>
-	<form id="users.filters" class="filters" hx-get="/tab/users" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="users.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("users.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("users.title")) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="users.filters" class="filters" hx-get="/tab/users" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="users.searchOn" type="hidden" name="search" value="on"/>
+			<input id="users.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("users.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("users.title")) } value={ shown.text }/>
+		</form>
+	}
 	if len(shown.shown()) == 0 {
 		<p id="users.empty" class="empty">{ p.words.Of("users.noMatch") }</p>
 	} else {

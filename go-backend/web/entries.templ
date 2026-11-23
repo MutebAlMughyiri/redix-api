@@ -22,6 +22,7 @@ templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take 
 	<div class="view-head">
 		<h2 id="entries.title">{ p.words.Of("entries.title") }</h2>
 		<span id="entries.actions" class="head-actions">
+			@searchToggle(p, "entries.searchToggle", "/tab/entries")
 			<button
 				id="entries.new"
 				class="primary small"
@@ -33,37 +34,40 @@ templ entriesList(p page, query url.Values, rows []entries.Row, more bool, take 
 			>{ p.words.Of("entries.new") }</button>
 		</span>
 	</div>
-	<form
-		id="entries.filters"
-		class="filters"
-		hx-get="/tab/entries"
-		hx-target="[id='web.content']"
-		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
-	>
-		<input id="entries.search" class="search" type="search" name="text" placeholder={ p.words.Of("entries.searchHint") } aria-label={ p.words.Of("entries.searchHint") } value={ query.Get("text") }/>
-		<label id="entries.mine" class="pick"><input id="entries.mine.input" type="checkbox" name="mine" value="true" checked?={ query.Get("mine") == "true" }/>{ p.words.Of("entries.mine") }</label>
-		<fieldset id="entries.kindChoice" class="picks">
-			<legend id="entries.kindChoice.label">{ p.words.Of("entries.kind") }</legend>
-			for _, kind := range entryKinds {
-				<label id={ "entries.kind." + kind.name } class="pick"><input id={ "entries.kind." + kind.name + ".input" } type="checkbox" name="kinds" value={ kind.name } checked?={ slices.Contains(query["kinds"], kind.name) }/>{ p.words.Of(kind.word) }</label>
+	if p.searching {
+		<form
+			id="entries.filters"
+			class="filters"
+			hx-get="/tab/entries"
+			hx-target="[id='web.content']"
+			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+		>
+			<input id="entries.searchOn" type="hidden" name="search" value="on"/>
+			<input id="entries.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("entries.searchHint") } aria-label={ p.words.Of("entries.searchHint") } value={ query.Get("text") }/>
+			<label id="entries.mine" class="pick"><input id="entries.mine.input" type="checkbox" name="mine" value="true" checked?={ query.Get("mine") == "true" }/>{ p.words.Of("entries.mine") }</label>
+			<fieldset id="entries.kindChoice" class="picks">
+				<legend id="entries.kindChoice.label">{ p.words.Of("entries.kind") }</legend>
+				for _, kind := range entryKinds {
+					<label id={ "entries.kind." + kind.name } class="pick"><input id={ "entries.kind." + kind.name + ".input" } type="checkbox" name="kinds" value={ kind.name } checked?={ slices.Contains(query["kinds"], kind.name) }/>{ p.words.Of(kind.word) }</label>
+				}
+			</fieldset>
+			<fieldset id="entries.statusChoice" class="picks">
+				<legend id="entries.statusChoice.label">{ p.words.Of("entries.status") }</legend>
+				for _, status := range entryStatuses {
+					<label id={ "entries.status." + status } class="pick"><input id={ "entries.status." + status + ".input" } type="checkbox" name="statuses" value={ status } checked?={ slices.Contains(query["statuses"], status) }/>{ p.words.Of("entries." + status) }</label>
+				}
+			</fieldset>
+			<fieldset id="entries.period" class="picks">
+				<legend id="entries.period.label">{ p.words.Of("entries.period") }</legend>
+				<input id="entries.from" type="date" name="from" aria-label={ p.words.Of("entries.period") } value={ query.Get("from") }/>
+				<input id="entries.to" type="date" name="to" aria-label={ p.words.Of("entries.period") } value={ query.Get("to") }/>
+			</fieldset>
+			<input id="entries.number" class="number" type="number" name="number" min="1" placeholder={ p.words.Of("entries.number") } aria-label={ p.words.Of("entries.number") } value={ query.Get("number") }/>
+			if narrows(query) {
+				<a id="entries.clear" href="#" hx-get="/tab/entries?search=on" hx-target="[id='web.content']">{ p.words.Of("entries.clearFilters") }</a>
 			}
-		</fieldset>
-		<fieldset id="entries.statusChoice" class="picks">
-			<legend id="entries.statusChoice.label">{ p.words.Of("entries.status") }</legend>
-			for _, status := range entryStatuses {
-				<label id={ "entries.status." + status } class="pick"><input id={ "entries.status." + status + ".input" } type="checkbox" name="statuses" value={ status } checked?={ slices.Contains(query["statuses"], status) }/>{ p.words.Of("entries." + status) }</label>
-			}
-		</fieldset>
-		<fieldset id="entries.period" class="picks">
-			<legend id="entries.period.label">{ p.words.Of("entries.period") }</legend>
-			<input id="entries.from" type="date" name="from" aria-label={ p.words.Of("entries.period") } value={ query.Get("from") }/>
-			<input id="entries.to" type="date" name="to" aria-label={ p.words.Of("entries.period") } value={ query.Get("to") }/>
-		</fieldset>
-		<input id="entries.number" class="number" type="number" name="number" min="1" placeholder={ p.words.Of("entries.number") } aria-label={ p.words.Of("entries.number") } value={ query.Get("number") }/>
-		if narrows(query) {
-			<a id="entries.clear" href="#" hx-get="/tab/entries" hx-target="[id='web.content']">{ p.words.Of("entries.clearFilters") }</a>
-		}
-	</form>
+		</form>
+	}
 	if len(rows) == 0 {
 		<p id="entries.empty" class="empty">{ p.words.Of("entries.empty") }</p>
 	} else {

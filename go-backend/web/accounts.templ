@@ -351,25 +351,31 @@ templ countNotOffered(p page) {
 templ accountHistoryPage(p page, shown history, listed accountsShown) {
 	<div class="view-head">
 		<h2 id="accountHistory.title">{ p.words.Of("accounts.history") }</h2>
+		<span id="accountHistory.actions" class="head-actions">
+			@searchToggle(p, "accountHistory.searchToggle", "/tab/accountHistory")
+		</span>
 	</div>
-	<form
-		id="accountHistory.filters"
-		class="filters"
-		hx-get="/tab/accountHistory"
-		hx-target="[id='web.content']"
-		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
-	>
-		<input id="accountHistory.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("accounts.history")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("accounts.history")) } value={ shown.query.Get("text") }/>
-		<label id="accountHistory.accountChoice.label" class="pick-select">
-			{ p.words.Of("expenses.account") }
-			<select id="accountHistory.accountChoice" name="account">
-				<option id="accountHistory.accountChoice.option.none" value="">{ p.words.Of("history.all") }</option>
-				for _, account := range listed.accounts {
-					<option id={ "accountHistory.account." + account.ID.String() } value={ account.ID.String() } selected?={ account.ID.String() == shown.query.Get("account") }>{ account.Name }</option>
-				}
-			</select>
-		</label>
-		@historyPerson(p, shown)
-	</form>
+	if p.searching {
+		<form
+			id="accountHistory.filters"
+			class="filters"
+			hx-get="/tab/accountHistory"
+			hx-target="[id='web.content']"
+			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+		>
+			<input id="accountHistory.searchOn" type="hidden" name="search" value="on"/>
+			<input id="accountHistory.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("accounts.history")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("accounts.history")) } value={ shown.query.Get("text") }/>
+			<label id="accountHistory.accountChoice.label" class="pick-select">
+				{ p.words.Of("expenses.account") }
+				<select id="accountHistory.accountChoice" name="account">
+					<option id="accountHistory.accountChoice.option.none" value="">{ p.words.Of("history.all") }</option>
+					for _, account := range listed.accounts {
+						<option id={ "accountHistory.account." + account.ID.String() } value={ account.ID.String() } selected?={ account.ID.String() == shown.query.Get("account") }>{ account.Name }</option>
+					}
+				</select>
+			</label>
+			@historyPerson(p, shown)
+		</form>
+	}
 	@historyList(p, shown)
 }

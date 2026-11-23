@@ -21,6 +21,7 @@ templ contractsList(p page, shown contractsShown) {
 	<div class="view-head">
 		<h2 id="contracts.title">{ p.words.Of("contracts.title") }</h2>
 		<span id="contracts.actions" class="head-actions">
+			@searchToggle(p, "contracts.searchToggle", "/tab/contracts")
 			<button
 				id="contracts.add"
 				class="primary small"
@@ -32,20 +33,23 @@ templ contractsList(p page, shown contractsShown) {
 			>{ p.words.Of("contracts.new") }</button>
 		</span>
 	</div>
-	<form
-		id="contracts.filters"
-		class="filters"
-		hx-get="/tab/contracts"
-		hx-target="[id='web.content']"
-		hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
-	>
-		<input id="contracts.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } value={ shown.text }/>
-		<fieldset id="contracts.filterChoice" class="picks">
-			for _, filter := range contractFilters {
-				<label id={ "contracts.filter." + filter.name } class="pick"><input id={ "contracts.filter." + filter.name + ".input" } type="radio" name="filter" value={ filter.name } checked?={ filter.name == shown.filter.name }/>{ p.words.Of(filter.word) + " · " + strconv.Itoa(shown.count(filter)) }</label>
-			}
-		</fieldset>
-	</form>
+	if p.searching {
+		<form
+			id="contracts.filters"
+			class="filters"
+			hx-get="/tab/contracts"
+			hx-target="[id='web.content']"
+			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+		>
+			<input id="contracts.searchOn" type="hidden" name="search" value="on"/>
+			<input id="contracts.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } value={ shown.text }/>
+			<fieldset id="contracts.filterChoice" class="picks">
+				for _, filter := range contractFilters {
+					<label id={ "contracts.filter." + filter.name } class="pick"><input id={ "contracts.filter." + filter.name + ".input" } type="radio" name="filter" value={ filter.name } checked?={ filter.name == shown.filter.name }/>{ p.words.Of(filter.word) + " · " + strconv.Itoa(shown.count(filter)) }</label>
+				}
+			</fieldset>
+		</form>
+	}
 	if len(shown.shown()) == 0 {
 		<p id="contracts.empty" class="empty">{ p.words.Of("contracts.empty") }</p>
 	} else {

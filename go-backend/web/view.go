@@ -148,14 +148,17 @@ func (v view) recording(name, query string) view {
 	return v
 }
 
-// recordOf is r as the front tab's page reads it: with the record that tab keeps, when r names none.
+// recordOf is r as the front tab's page reads it: with the record that tab keeps, when r names none - its search asked for, or nothing at all.
 func (v view) recordOf(r *http.Request) *http.Request {
 	record, kept := v.Records[v.Active]
-	if !kept || r.URL.RawQuery != "" {
+	key, query := recordTabs[v.Active], r.URL.Query()
+	if !kept || query.Get(key) != "" {
 		return r
 	}
+	values, _ := url.ParseQuery(record)
+	query.Set(key, values.Get(key))
 	again := r.Clone(r.Context())
-	again.URL.RawQuery = record
+	again.URL.RawQuery = query.Encode()
 	return again
 }
 

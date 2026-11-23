@@ -10,6 +10,7 @@ templ categoriesList(p page, shown structureShown, refusal string) {
 	<div class="view-head">
 		<h2 id="categories.title">{ p.words.Of("categories.title") }</h2>
 		<span id="categories.actions" class="head-actions">
+			@searchToggle(p, "categories.searchToggle", "/tab/categories")
 			<button id="categories.add" class="primary small" type="button" hx-get="/details/structure/category/new" hx-target="[id='web.details']" disabled?={ !p.mayShape() }>{ p.words.Of("categories.new") }</button>
 		</span>
 	</div>
@@ -19,9 +20,12 @@ templ categoriesList(p page, shown structureShown, refusal string) {
 	if refusal != "" {
 		<p id="categories.refusal" class="refusal wide" role="alert">{ p.words.Of(refusal) }</p>
 	}
-	<form id="categories.filters" class="filters" hx-get="/tab/categories" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-		<input id="categories.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("categories.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("categories.title")) } value={ shown.text }/>
-	</form>
+	if p.searching {
+		<form id="categories.filters" class="filters" hx-get="/tab/categories" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="categories.searchOn" type="hidden" name="search" value="on"/>
+			<input id="categories.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("categories.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("categories.title")) } value={ shown.text }/>
+		</form>
+	}
 	if len(shown.shown()) == 0 {
 		<p id="categories.empty" class="empty">{ p.words.Of("categories.empty") }</p>
 	} else {

@@ -71,12 +71,18 @@ templ historyKind(p page, shown history, kinds []string) {
 templ projectHistoryPage(p page, shown history) {
 	<div class="view-head">
 		<h2 id="projectHistory.title">{ p.words.Of("history.projectTitle") }</h2>
+		<span id="projectHistory.actions" class="head-actions">
+			@searchToggle(p, "projectHistory.searchToggle", "/tab/projectHistory")
+		</span>
 	</div>
-	<form id="projectHistory.filters" class="filters" hx-get="/tab/projectHistory" hx-target="[id='web.content']" hx-trigger="change, input changed delay:400ms from:[name='text'], submit">
-		<input id="projectHistory.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("history.projectTitle")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("history.projectTitle")) } value={ shown.query.Get("text") }/>
-		@historyKind(p, shown, projectAreas)
-		@historyPerson(p, shown)
-	</form>
+	if p.searching {
+		<form id="projectHistory.filters" class="filters" hx-get="/tab/projectHistory" hx-target="[id='web.content']" hx-trigger="change, input changed delay:400ms from:[name='text'], submit">
+			<input id="projectHistory.searchOn" type="hidden" name="search" value="on"/>
+			<input id="projectHistory.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("history.projectTitle")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("history.projectTitle")) } value={ shown.query.Get("text") }/>
+			@historyKind(p, shown, projectAreas)
+			@historyPerson(p, shown)
+		</form>
+	}
 	@historyList(p, shown)
 }
 
@@ -85,10 +91,16 @@ templ myHistoryPage(p page, shown history) {
 	<div class="view-head">
 		<h2 id="myHistory.title">{ p.words.Of("history.myTitle") }</h2>
 		<span id="myHistory.person" class="hint">{ p.person }</span>
+		<span id="myHistory.actions" class="head-actions">
+			@searchToggle(p, "myHistory.searchToggle", "/tab/myHistory")
+		</span>
 	</div>
-	<form id="myHistory.filters" class="filters" hx-get="/tab/myHistory" hx-target="[id='web.content']" hx-trigger="change, input changed delay:400ms from:[name='text'], submit">
-		<input id="myHistory.search" class="search" type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("history.myTitle")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("history.myTitle")) } value={ shown.query.Get("text") }/>
-		@historyKind(p, shown, loginAreas)
-	</form>
+	if p.searching {
+		<form id="myHistory.filters" class="filters" hx-get="/tab/myHistory" hx-target="[id='web.content']" hx-trigger="change, input changed delay:400ms from:[name='text'], submit">
+			<input id="myHistory.searchOn" type="hidden" name="search" value="on"/>
+			<input id="myHistory.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("history.myTitle")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("history.myTitle")) } value={ shown.query.Get("text") }/>
+			@historyKind(p, shown, loginAreas)
+		</form>
+	}
 	@historyList(p, shown)
 }
