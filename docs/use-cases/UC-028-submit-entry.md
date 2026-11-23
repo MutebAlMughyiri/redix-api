@@ -33,6 +33,8 @@ Tests are in `SubmitEntryTests`.
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
+| The entries list gives only what the search keeps - the kinds asked for, the text an entry holds -, newest first, a page of `take` at a time (redix-app #104) | `entries.Routes.list`, `entries.searchOf` | `TestApp104_TheListGivesOnlyWhatTheSearchKeepsTheNewestFirstAPageAtATime` |
+| Where entries stand (`statuses`), whose they are (`mine`) and their period (`from`, `to`) are read from the query (redix-app #104) | `entries.searchOf` | `TestApp104_WhereEntriesStandWhoseTheyAreAndTheirPeriodAreReadFromTheQuery` |
 | A complete draft becomes pending | `entries.Routes.submit` | `UC_028_ADraftWithItsFileIsSentAndIsPending` |
 | D3: a draft with no file is sent, and takes its file later (D15); AC-09.1 and the exceptions list retired with simple expense (redix-api #96) | `MissingOfAsync` | `D3_ADraftWithNoFileIsSent` |
 | FR-41: each required column is named | `entries.missingOf` | `FR_41_EveryRequiredColumnLeftEmptyIsNamed`, `FR_41_WhatADraftHoldsIsWhatAnswersItsColumns` |

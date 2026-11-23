@@ -43,6 +43,8 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
+| An edit is `PUT` on the account's own route, and a `POST` to it answers `405` and changes nothing (redix-api #98) | the router | `TestR98_AnEditIsPutAndAPostToItIsRefused` |
+| A delete is `DELETE` on the account's own route; the old `POST …/delete` is gone (redix-api #98) | the router | `TestR98_ADeleteIsDeleteAndTheOldDeleteRouteIsGone` |
 | A bank account is added, holding nothing until an entry or a transfer moves money into it | `accounts.Routes.add` | `AccountsTests.FinanceAddsABankAccountWithItsOpeningBalance` |
 | A cash custody is held by someone in the project | `accounts.Routes.add`, `accounts.handTo` | `AccountsTests.FinanceAddsACashCustodyHeldBySomeoneInTheProject` |
 | A bank account may have a custodian | `accounts.Routes.refused` | `AccountsTests.ABankAccountMayHaveACustodian` |

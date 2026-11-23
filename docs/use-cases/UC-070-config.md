@@ -31,7 +31,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
 | The app reads the values before anyone signs in | `config.Map` | `TestUC070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn` (.NET's answer held no `requestSizeMegabytes`, so its replay is ported by hand) |
-| A value changed in the database is read at the next request | `config.Map` | `ConfigTests.UC_070_AValueChangedInTheDatabaseIsReadAtTheNextRequest` |
+| A value changed in the database is read at the next request | `config.Map` | `TestUC070_AValueChangedInTheDatabaseIsReadAtTheNextRequest` |
 | The largest request the server reads is `requestSizeMegabytes`, 30 to start with, read as it starts (the owner, 23 Nov 2026: "make this value 30 MB is configurable in db config table") | `config.RequestSize` | `TestR17_TheLargestRequestIsTheConfigValueInMegabytes` |
 | A body past it is refused before any route reads it, on the API and the web alike | `http.MaxBytesHandler` in `serve` | `TestR17_ABodyOverTheConfiguredSizeIsRefused` |
 | A value that is no whole number of megabytes above 0, or none, stops the server at its start, naming the key | `config.RequestSize` | `TestR17_ALargestRequestThatIsNoNumberOfMegabytesIsRefused`, `TestTheServerRefusesToStartOnWhatItCannotWorkWith` |

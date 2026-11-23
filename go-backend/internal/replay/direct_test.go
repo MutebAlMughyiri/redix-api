@@ -27,9 +27,8 @@ type directRow struct {
 	Values map[string]json.RawMessage `json:"values"`
 }
 
-// sqlServerOwn are the test classes about SQL Server itself - its migrations' steps, its lookup tables' keys - whose writes have no SQLite twin;
-// each is ported by hand.
-var sqlServerOwn = []string{"MigrationStepsTests", "LookupTablesTests"}
+// sqlServerOwn are the test classes about SQL Server itself - its migrations' steps - whose writes have no SQLite twin; each is ported by hand.
+var sqlServerOwn = []string{"MigrationStepsTests"}
 
 // replayable says whether every direct write of the test is one the replay can make again: rows the recorder kept, in a test not about SQL
 // Server's own workings.

@@ -30,10 +30,10 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | --- | --- | --- |
 | Money is an INTEGER of ten-thousandths, rounding only in totals (BR-13) | `fixed.Number` | `TestBR13_AnAmountIsWrittenWithItsFourDecimalsAsDotNetWritesIt`, `TestBR13_AnAmountIsReadExactlyAndRoundedPastFourDecimalsAsSqlServerStoresIt`, `TestBR13_AddingAmountsNeverLosesAHalala` |
 | Every table has a required rowversion. **Retired with SQL Server (redix-api #140 N5):** SQLite writes one transaction at a time, so no row needs a version | - | - |
-| `/health` checks the database | `server.Routes`: `/health` pings the database | `HealthTests.HealthAnswersAgainstMigratedDatabase` |
-| A bundle holds every word of its language | `translations.bundle` | `TranslationsTests.BundleHoldsEveryWordOfTheLanguage` |
-| An unchanged bundle answers `304` | `translations.bundle` | `TranslationsTests.UnchangedBundleAnswersNotModified` |
-| Another language answers `404` | `translations.bundle` | `TranslationsTests.UnknownLanguageIsNotFound` |
+| `/health` checks the database | `server.Routes`: `/health` pings the database | `TestTheServerStartsAnswersAndStopsWhenAsked` (cmd/server) |
+| A bundle holds every word of its language, each language its own (AC-86.7 among them) | `translations.bundle` | `TestUC001_EveryWordOfALanguageComesAsOneBundleWithAnETag`, `TestUC001_AC_86_7_EachLanguagesBundleHoldsItsOwnWords` |
+| An unchanged bundle answers `304` | `translations.bundle` | `TestUC001_AnUnchangedBundleIsNotSentAgain` |
+| Another language answers `404` | `translations.bundle` | `TestUC001_ALanguageWithNoWordsIsNotFound` |
 | Swagger UI and the OpenAPI document are served in Dev and QA only, never Prod or an environment no settings name (#142 R4) | `environment.Read` (`Documented`), `server.Routes` | `TestR4_OnlyDevAndQaServeTheAPIDocument`, `TestR2_SwaggerUIShowsTheOpenAPIDocumentOfEveryRoute` |
 | The document describes every route from its code: the doc comment over its `Handle` call or on its handler, the permission of its gate, what `web.Read` reads, what `web.JSON` answers with each status, the codes `problem.Refuse` and `changes.Refuse` refuse with (#142 R1, Q1, Q4) | `cmd/openapi` (`go generate ./internal/apidoc`) | `TestR1_ARouteSaysWhatItReadsAnswersRefusesAndNeeds` |
 | A route with no description, or a document the code has moved past, fails the build (#142 R3) | `cmd/openapi` | `TestR1_R3_TheKeptDocumentIsWhatTheCodeSaysAndEveryRouteIsDescribed` |

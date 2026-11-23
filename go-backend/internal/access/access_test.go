@@ -5,7 +5,9 @@ package access
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db"
@@ -98,5 +100,18 @@ func TestBR32_AChangeCountsAtTheNextRequestWithNothingToRemember(t *testing.T) {
 	exec(t, database, permission(active, "ApproveEntries"))
 	if fresh, _ := book.Of(ctx, user); !fresh.Holds(active, ApproveEntries) {
 		t.Error("the change did not count at the next read")
+	}
+}
+
+// FR-03: a permission is read by its name in any case, and a name no permission has, or a number, is none.
+func TestFR03_APermissionIsReadByItsNameAndNothingElse(t *testing.T) {
+	var read []Permission
+	if err := json.Unmarshal([]byte(`["manageUsers","ManageUsers"]`), &read); err != nil || !slices.Equal(read, []Permission{ManageUsers, ManageUsers}) {
+		t.Errorf("by name: %v %v", read, err)
+	}
+	for _, refused := range []string{`["flyPlanes"]`, `[13]`} {
+		if err := json.Unmarshal([]byte(refused), &read); err == nil {
+			t.Errorf("%s is read as %v", refused, read)
+		}
 	}
 }

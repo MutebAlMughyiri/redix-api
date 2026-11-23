@@ -67,21 +67,17 @@ func Named(name string) (Permission, bool) {
 	return "", false
 }
 
-// UnmarshalJSON reads a permission by its name, whatever its case, or by its number, as JsonStringEnumConverter did.
+// UnmarshalJSON reads a permission by its name, whatever its case, as the app sends it; anything else is no permission.
 func (p *Permission) UnmarshalJSON(data []byte) error {
 	var name string
-	if json.Unmarshal(data, &name) == nil {
-		if named, ok := Named(name); ok {
-			*p = named
-			return nil
-		}
+	if err := json.Unmarshal(data, &name); err != nil {
+		return err
+	}
+	named, ok := Named(name)
+	if !ok {
 		return fmt.Errorf("access: no permission %q", name)
 	}
-	var number int
-	if err := json.Unmarshal(data, &number); err != nil || number < 0 || number >= len(All) {
-		return fmt.Errorf("access: no permission %s", data)
-	}
-	*p = All[number]
+	*p = named
 	return nil
 }
 

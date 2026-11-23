@@ -22,11 +22,11 @@ Each test named `Class.Name` is .NET's, replayed against Go as `TestReplayDotNet
 
 | Rule | Enforced by | Proved by |
 | --- | --- | --- |
-| The manager keeps documents; everyone reads them, those in no group first, then by group | `documents.Routes.add`, `List` | `DocumentsTests.UC_064_TheManagerKeepsDocumentsAndEveryoneReadsThemUngroupedFirstThenByGroup` |
-| A document is any file, named by its extension, while an invoice stays a picture or a PDF | `attachments.Keep`, `attachments.kindOf` | `DocumentsTests.ADocumentIsAnyFileNamedByItsExtensionWhileAnInvoiceStaysAPictureOrAPdf` |
-| A document needs a name, a group of 100 letters at most, a file of 25 MB at most, and is kept once | `documents.Routes.add` | `DocumentsTests.ADocumentNeedsANameAGroupOf100LettersAtMostAFileOf25MbAtMostAndIsKeptOnce` |
-| Findings row 137: a file over 25 MB, up to the largest request the server reads (the config value `requestSizeMegabytes`, 30, UC-070), is answered `fileTooLarge` rather than cut off | `attachments.Keep`, `config.RequestSize` | `DocumentsTests.Findings137_ADocumentsRequestMayHoldAsMuchAsAFormSoAFileOver25MbIsAnsweredRatherThanCutOff` |
-| A removed document leaves the list; its file stays | `documents.Routes.remove` | `DocumentsTests.ARemovedDocumentLeavesTheListButItsFileStays` |
+| The manager keeps documents; everyone reads them, those in no group first, then by group | `documents.Routes.add`, `List` | `TestUC064_TheManagerKeepsDocumentsAndEveryoneReadsThemUngroupedFirstThenByGroup` |
+| A document is any file, named by its extension, while an invoice stays a picture or a PDF | `attachments.Keep`, `attachments.kindOf` | `TestUC064_ADocumentIsAnyFileNamedByItsExtensionWhileAnInvoiceStaysAPictureOrAPdf` |
+| A document needs a name, a group of 100 letters at most, a file of 25 MB at most, and is kept once | `documents.Routes.add` | `TestUC064_ADocumentNeedsANameAGroupOf100LettersAtMostAFileOf25MbAtMostAndIsKeptOnce` |
+| Findings row 137: a file over 25 MB, up to the largest request the server reads (the config value `requestSizeMegabytes`, 30, UC-070), is answered `fileTooLarge` rather than cut off | `attachments.Keep`, `config.RequestSize` | `TestUC064_ADocumentNeedsANameAGroupOf100LettersAtMostAFileOf25MbAtMostAndIsKeptOnce` (25 MB and one byte, answered), `TestR17_ABodyOverTheConfiguredSizeIsRefused` (cmd/server) |
+| A removed document leaves the list; its file stays | `documents.Routes.remove` | `TestUC064_ARemovedDocumentLeavesTheListButItsFileStays` |
 
 ## On the web: Documents (redix-api #175 D3)
 

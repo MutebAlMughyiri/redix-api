@@ -36,7 +36,27 @@ func TestUC001_AnUnchangedBundleIsNotSentAgain(t *testing.T) {
 }
 
 func TestUC001_ALanguageWithNoWordsIsNotFound(t *testing.T) {
-	if answer := testapi.New(t).Send("GET", "/api/v1/translations/fr", ""); answer.Code != 404 || answer.Header().Get("Content-Type") != "application/problem+json" {
+	if answer := testapi.New(t).Send("GET", "/translations/fr", ""); answer.Code != 404 || answer.Header().Get("Content-Type") != "application/problem+json" {
 		t.Errorf("%d %s", answer.Code, answer.Header().Get("Content-Type"))
+	}
+}
+
+// Each language's bundle holds its own words: the app's title, the project chooser's, and AC-86.7's line saying when the widget's rows were read,
+// with the place of the time.
+func TestUC001_AC_86_7_EachLanguagesBundleHoldsItsOwnWords(t *testing.T) {
+	api := testapi.New(t)
+	for language, want := range map[string]map[string]string{
+		"ar": {"app.title": "REDIX", "projects.choose": "اختر المشروع", "home.widgetReadAt": "آخر تحديث {0}"},
+		"en": {"app.title": "REDIX", "projects.choose": "Choose a project", "home.widgetReadAt": "Updated {0}"},
+	} {
+		var words map[string]string
+		if err := json.Unmarshal(api.Send("GET", "/translations/"+language, "").Body.Bytes(), &words); err != nil {
+			t.Fatal(language, err)
+		}
+		for key, value := range want {
+			if words[key] != value {
+				t.Errorf("%s %s = %q, want %q", language, key, words[key], value)
+			}
+		}
 	}
 }

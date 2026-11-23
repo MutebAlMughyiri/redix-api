@@ -164,12 +164,6 @@ var signedByDotNet = []string{
 	"ReportFilesTests.Owner16Nov_AWorkbooksFileCellOpensItsFileWithNoSignInForSevenDaysAndAChangedLinkOpensNothing",
 }
 
-// configuredSinceDotNet are the tests that read every config value, which since 23 Nov 2026 hold one .NET's did not, the largest request
-// (requestSizeMegabytes, redix-api #145 R17); TestUC070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn proves the values .NET answered.
-var configuredSinceDotNet = []string{
-	"ConfigTests.UC_070_TheAppReadsHowLongToWaitBeforeAnyoneSignsIn",
-}
-
 // removedSinceDotNet are the routes taken away since .NET with the feature they served: a step that asks one is not compared, and the rest of
 // its test is (findings row 303: the invoice QR's match).
 var removedSinceDotNet = []string{"GET /projects/{id}/entries/attachable"}
@@ -217,7 +211,7 @@ func TestReplayDotNetsAnswers(t *testing.T) {
 			// rows 263, 264).
 			underReview++
 		case !replayable(name, steps), slices.Contains(readTheDatabase, name), slices.Contains(ranAtOnce, name), slices.Contains(signedByDotNet, name),
-			slices.Contains(askedForMine, name), slices.Contains(configuredSinceDotNet, name), slices.Contains(removedWithTheirFeature, name):
+			slices.Contains(askedForMine, name), slices.Contains(removedWithTheirFeature, name):
 			byHand++
 			continue
 		case slices.ContainsFunc(steps, func(s step) bool {
