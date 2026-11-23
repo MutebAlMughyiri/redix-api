@@ -62,6 +62,7 @@ One program, two doors: the app's API (JSON, 8443) and the web (HTML, 443), on t
 | Money | An amount in riyals carries the Saudi Riyal sign, U+20C1, the device's font drawing it, the word ر.س its label for a screen reader (`web.riyal`, findings row 318) |
 | Arrows | One arrow, the side menu's »: its size and color everywhere, turned to point down or up for More and My account, kept left to right so the page's direction never mirrors it (findings row 314) |
 | Search | Every page with a search or filters - 17 of them - opens with them folded; its «بحث», with the web's arrow, among the head's buttons, opens them (`?search=on`), the field taking the cursor, and `/` clicks it from anywhere but a field being typed in; each redraw carries `search=on`, so typing never folds it; closing clears the filters; a page opened with a filter shows its search (`web.searchOpen`, `web.searchToggle`, the owner, 23 Nov 2026, #180). Ids: `<page>.searchToggle` with `.arrow`, `<page>.searchOn` |
+| Filters | Every filter is one button (`filterButton`, `web/filters.templ`) saying what it filters and what is chosen - one or two choices by their words, more by how many - and standing out while it narrows the list; it opens its choices as one list beside it. A list of several choices, with All and None at its foot, and the period apply when they close; a one-choice list, Mine and the entry number at once (`filtersTrigger`). «مسح التصفية» shows at the row's end while anything narrows it (redix-api #183, approved 23 Nov 2026) |
 | A tab's head | Its title at the start; its buttons (`head-actions`) at the far end, left in Arabic, right in English (findings row 309) |
 | Sign-in | In the content area; on success the other parts arrive with a little motion, once |
 | Language | In Settings, and at the sign-in form's foot |
@@ -81,7 +82,8 @@ Every element a test clicks or reads has an id, so automation finds it as the ap
 | A field's label | the field's id + `.label` | `addEntry.amount.label` |
 | A caption beside its value | the value's id + `.label` | `entry.amount.label` |
 | A group's title | the group's id + `.label` | `payment.methodChoice.label` |
-| A filter chip's tick | the chip's id + `.input` | `entries.status.approved.input` |
+| A filter's choice and its tick | the choice's id, and + `.input` | `entries.status.approved.input` |
+| A filter's button, its list, what is chosen | the filter's id; + `.list`; + `.chosen` | `entries.kindChoice.chosen` |
 | An option | its list's id + `.option.` + its value, `.option.none` for the empty one | `accounts.custodian.option.none` |
 | A table's head cell | the table's name + `.head.` + its column | `entries.head.amount` |
 | A row's cell | the list's name + its column + `.` + the row's id | `entries.amount.<entry id>` |

@@ -26,6 +26,29 @@ type approvalFilter struct{ name, word, kind string }
 var approvalFilters = []approvalFilter{{"all", "approvals.all", ""}, {"purchases", "approvals.purchases", "purchase"},
 	{"contractorPayments", "approvals.contractorPayments", "contractorPayment"}}
 
+// kindFilter is Approvals' kind filter as the approved design draws it (redix-api #183): everything, purchases and contractor payments, each
+// with how many wait, the one chosen.
+func (a approvals) kindFilter(p page) filter {
+	kinds := filter{id: "approvals.filterChoice", label: "entries.kind"}
+	for _, kind := range approvalFilters {
+		kinds.choices = append(kinds.choices, filterChoice{id: "approvals." + kind.name, name: "filter", value: kind.name, word: p.words.Of(kind.word) + " · " + a.count(kind),
+			chosen: kind == a.filter})
+	}
+	return kinds
+}
+
+// approvalKindFilter is the approval history's kind filter as the approved design draws it (redix-api #183): everything, purchases and
+// contractor payments, the one query holds chosen.
+func approvalKindFilter(p page, shown history) filter {
+	kinds := filter{id: "approvalHistory.kindChoice", label: "entries.kind", choices: []filterChoice{{id: "approvalHistory.all", name: "kind", word: p.words.Of("history.all"),
+		chosen: shown.query.Get("kind") == ""}}}
+	for _, kind := range approvalFilters[1:] {
+		kinds.choices = append(kinds.choices, filterChoice{id: "approvalHistory.kind." + kind.kind, name: "kind", value: kind.kind, word: p.words.Of(kind.word),
+			chosen: shown.query.Get("kind") == kind.kind})
+	}
+	return kinds
+}
+
 // approvals is what Approvals shows: what waits that the caller sees, the filter and the search chosen, and why each entry that could not be
 // approved was not.
 type approvals struct {

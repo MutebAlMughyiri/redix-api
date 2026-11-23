@@ -45,7 +45,7 @@ templ reportsPage(p page, shown reportsShown) {
 		<p id="reports.refusal" class="refusal" role="alert">{ p.words.Of(shown.said.refusal) }</p>
 	}
 	<h3 id="reports.periodicHeading" class="section-title">{ p.words.Of("reports.periodic") }</h3>
-	switch {
+	switch  {
 		case !shown.whole:
 			<p id="reports.periodicNotForYou" class="empty">{ p.words.Of("reports.periodicNotForYou") }</p>
 		case len(shown.issued) == 0:
@@ -78,7 +78,7 @@ templ itemReportsPage(p page, shown itemReports) {
 	<div class="view-head">
 		<h2 id="itemReports.title">{ p.words.Of(shown.side.word) }</h2>
 		<span id="itemReports.actions" class="head-actions">
-			@searchToggle(p, "itemReports.searchToggle", "/tab/" + shown.side.name)
+			@searchToggle(p, "itemReports.searchToggle", "/tab/"+shown.side.name)
 		</span>
 	</div>
 	<p id="itemReports.sum" class="sum">
@@ -332,7 +332,7 @@ templ reportGrid(p page, id string, rows []entries.ReportRow, columns []entries.
 // periodicReportPage is a periodic report as the app's screen shows it (UC-053): its number and the day it was issued, its PDF and Excel - gray
 // until they open on the web -, then each section with its lines, a total strong; or that it is for whoever sees every table.
 templ periodicReportPage(p page, shown periodicReportShown) {
-	switch {
+	switch  {
 		case !shown.whole:
 			<p id="periodicReport.notForYou" class="empty">{ p.words.Of("reports.periodicNotForYou") }</p>
 		case !shown.found:
@@ -371,4 +371,3 @@ templ reportFiles(p page, idPrefix, address string) {
 		}
 	}
 }
-

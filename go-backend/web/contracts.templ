@@ -4,8 +4,6 @@
 package web
 
 import (
-	"strconv"
-
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
@@ -39,15 +37,11 @@ templ contractsList(p page, shown contractsShown) {
 			class="filters"
 			hx-get="/tab/contracts"
 			hx-target="[id='web.content']"
-			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+			hx-trigger={ filtersTrigger }
 		>
 			<input id="contracts.searchOn" type="hidden" name="search" value="on"/>
 			<input id="contracts.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("contracts.title")) } value={ shown.text }/>
-			<fieldset id="contracts.filterChoice" class="picks">
-				for _, filter := range contractFilters {
-					<label id={ "contracts.filter." + filter.name } class="pick"><input id={ "contracts.filter." + filter.name + ".input" } type="radio" name="filter" value={ filter.name } checked?={ filter.name == shown.filter.name }/>{ p.words.Of(filter.word) + " · " + strconv.Itoa(shown.count(filter)) }</label>
-				}
-			</fieldset>
+			@filterButton(p, shown.stateFilter(p))
 		</form>
 	}
 	if len(shown.shown()) == 0 {

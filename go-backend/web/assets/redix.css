@@ -263,6 +263,27 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .picks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; border: 0; } .picks legend { float: inline-start; margin-inline-end: 4px; color: var(--quiet); font-size: 12px; }
 .pick { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border: 1px solid var(--chrome-line); border-radius: 999px; font-size: 12.5px; color: var(--quiet); cursor: pointer; }
 .pick:has(input:checked) { background: var(--select); color: var(--text); border-color: var(--accent); } .pick input { accent-color: var(--accent); margin: 0; }
+
+/* A filter (redix-api #183): one button saying what it filters and what is chosen, standing out while it narrows the list, opening its choices
+   as one list beside it; Mine a button pressed on or off; Clear at the row's end. */
+.filter-button { display: inline-flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding-inline: 12px; font: inherit; font-size: 13px;
+  color: var(--text); background: var(--content); border: 1px solid var(--outline); border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.filter-button:hover { background: var(--chrome); }
+.filter-button.on, .toggle-filter:has(input:checked) { border-color: var(--accent); background: var(--select); }
+.filter-button .chosen { color: var(--quiet); font-size: 12px; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; } .filter-button.on .chosen { color: var(--text); }
+.filter-button .chosen::before { content: ": "; }
+.filter-button .arrow { font-size: 12px; transform: rotate(90deg); }
+.toggle-filter input { position: absolute; opacity: 0; pointer-events: none; } .toggle-filter:has(input:focus-visible) { outline: 2px solid var(--accent); }
+.filter-list { position-area: block-end span-inline-end; position-try-fallbacks: flip-inline; inset: auto; margin: 4px 0 0; padding: 6px; min-width: 220px;
+  display: none; gap: 2px; background: var(--content); color: var(--text); border: 1px solid var(--chrome-line); border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .14); font-size: 13px; }
+.filter-list:popover-open { display: grid; }
+.filter-choice { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.filter-choice:hover { background: var(--select); } .filter-choice input { accent-color: var(--accent); margin: 0; }
+.date-choice { display: grid; gap: 4px; padding: 6px 8px; font-size: 12px; color: var(--quiet); }
+.filter-list .list-foot { display: flex; justify-content: space-between; border-block-start: 1px solid var(--chrome-line); margin-block-start: 4px; padding: 6px 8px 2px; }
+.clear-all { margin-inline-start: auto; }
+.link-button { font: inherit; font-size: 12.5px; color: var(--accent); background: transparent; border: 0; padding: 0; cursor: pointer; } .link-button:hover { text-decoration: underline; }
 .more { align-self: center; margin-block-start: 10px; }
 
 /* The details panel beside a list, like Google Drive's (the base design, redix-api #166): hidden while empty; a row's click fills it. */
@@ -304,7 +325,7 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .approvals:not(:has(input[name="entry"]:checked)) [id="approvals.approveSelected"] { display: none; }
 .grid td small { display: block; font-size: 12px; } .grid td small.short { color: var(--refusal); } .grid .tick { width: 28px; } .grid .tick input { accent-color: var(--accent); }
 .reason { flex-direction: column; align-items: stretch; } .reason textarea { font: inherit; font-size: 13px; min-height: 56px; padding: 6px 8px; border: 1px solid var(--outline); border-radius: 5px; background: var(--input); color: var(--text); resize: vertical; }
-.grid.lines td.decision.rejected { color: var(--refusal); } .grid.lines td.who { color: var(--quiet); font-size: 12px; white-space: nowrap; } .pick-select { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--quiet); } .pick-select select { font: inherit; height: 28px; border: 1px solid var(--chrome-line); border-radius: 999px; padding-inline: 8px; background: var(--input); color: var(--text); }
+.grid.lines td.decision.rejected { color: var(--refusal); } .grid.lines td.who { color: var(--quiet); font-size: 12px; white-space: nowrap; }
 .register-tab form { display: flex; flex-direction: column; gap: 14px; max-width: 520px; } .menu-link { display: block; padding: 8px 10px; color: var(--accent); text-decoration: none; font-size: 13px; } .menu-link:hover { background: var(--select); }
 .register-tab h1 { margin: 0; font-size: 16px; font-weight: 600; }
 .page-form { display: flex; flex-direction: column; gap: 14px; max-width: 520px; margin-block-end: 14px; } .plain-list { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }

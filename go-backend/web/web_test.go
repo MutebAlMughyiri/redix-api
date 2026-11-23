@@ -693,6 +693,36 @@ func TestWeb_R182_UsersSaysWhenEachPersonLastSignedInOrThatTheyHaveNotYet(t *tes
 	has(t, page, `<small id="users.lastSeen.`+w.manager.String()+`" class="hint">آخر دخول `+w.Clock.Now().In(zones.Location("Asia/Riyadh")).Format("2006-01-02 15:04")+`</small>`)
 }
 
+// redix-api #183: each filter of Entries is one button opening its choices as one list, saying what is chosen and standing out while it narrows
+// the list - two choices by their words, more by how many -; the period says its days; a list of several choices applies when it closes, a one-
+// choice list at once; Mine is a button pressed on or off; Clear shows only while something narrows the list.
+func TestWeb_R183_EachFilterIsOneButtonOpeningItsChoicesAndSayingWhatIsChosen(t *testing.T) {
+	w := newWorking(t)
+	w.home()
+	none := w.browser.Send("GET", "/tab/entries?search=on", nil).Body.String()
+	has(t, none, `<button id="entries.kindChoice" class="filter-button" type="button" popovertarget="entries.kindChoice.list" style="anchor-name: --entries-kindChoice;">`)
+	has(t, none, `<div id="entries.kindChoice.list" class="filter-list" popover style="position-anchor: --entries-kindChoice;">`)
+	has(t, none, `<input id="entries.kind.purchase.input" type="checkbox" name="kinds" value="purchase">`)
+	has(t, none, `id="entries.kindChoice.all"`)
+	has(t, none, `<input id="entries.mine.input" type="checkbox" name="mine" value="true" data-applies>`)
+	lacks(t, none, `id="entries.kindChoice.chosen"`)
+	lacks(t, none, `id="entries.clear"`)
+	has(t, none, `hx-trigger="change from:[data-applies], toggle[newState==&#39;closed&#39;] from:.filter-list`)
+	two := w.browser.Send("GET", "/tab/entries?search=on&kinds=purchase&kinds=contractorPayment&from=2026-11-01", nil).Body.String()
+	has(t, two, `<button id="entries.kindChoice" class="filter-button on"`)
+	has(t, two, `<span id="entries.kindChoice.chosen" class="chosen">مشتريات · دفعات مقاولين</span>`)
+	has(t, two, `<span id="entries.period.chosen" class="chosen">من 2026-11-01</span>`)
+	has(t, two, `id="entries.clear"`)
+	three := w.browser.Send("GET", "/tab/entries?search=on&statuses=draft&statuses=approved&statuses=rejected&from=2026-11-01&to=2026-11-30", nil).Body.String()
+	has(t, three, `<span id="entries.statusChoice.chosen" class="chosen">3 مختارة</span>`)
+	has(t, three, `<span id="entries.period.chosen" class="chosen">من 2026-11-01 إلى 2026-11-30</span>`)
+	has(t, w.browser.Send("GET", "/tab/entries?search=on&to=2026-11-30", nil).Body.String(), `<span id="entries.period.chosen" class="chosen">إلى 2026-11-30</span>`)
+	approvals := w.browser.Send("GET", "/tab/approvals?search=on&filter=purchases", nil).Body.String()
+	has(t, approvals, `<input id="approvals.purchases.input" type="radio" name="filter" value="purchases" checked data-applies>`)
+	has(t, approvals, `<button id="approvals.filterChoice" class="filter-button on"`)
+	lacks(t, w.browser.Send("GET", "/tab/approvals?search=on", nil).Body.String(), `id="approvals.filterChoice.chosen"`)
+}
+
 // sent records an entry of amount into the item's table and sends it for approval; it is the entry's id.
 func (w working) sent(amount int) string {
 	w.t.Helper()
@@ -3075,7 +3105,8 @@ func TestWeb_R172_UC069_TheProjectHistoryTellsEachLineAsTheAppsDoes(t *testing.T
 	suppliers := w.browser.Send("GET", "/tab/projectHistory?area=suppliers", nil).Body.String()
 	has(t, suppliers, `مؤسسة أ`)
 	lacks(t, suppliers, `الاسم كان التسليح`)
-	has(t, suppliers, `<option id="projectHistory.kind.suppliers" value="suppliers" selected>`)
+	has(t, suppliers, `<input id="projectHistory.kind.suppliers.input" type="radio" name="area" value="suppliers" checked data-applies>`)
+	has(t, suppliers, `<span id="projectHistory.kindChoice.chosen" class="chosen">`)
 	has(t, w.browser.Send("GET", "/tab/projectHistory?text=لا+شيء", nil).Body.String(), `<p id="projectHistory.empty" class="empty">لا شيء بعد.</p>`)
 	for _, path := range []string{"/tab/projectHistory", "/project-history?before=999999"} {
 		for n := int64(1); ; n++ {

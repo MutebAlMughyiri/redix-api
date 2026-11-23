@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -36,6 +37,17 @@ var contractFilters = []contractFilter{
 	{"all", "contracts.filterAll", func(contracts.View) bool { return true }},
 	{"overrun", "contracts.filterOverrun", func(contract contracts.View) bool { return contract.IsOverrun }},
 	{"openValue", "contracts.filterOpenValue", func(contract contracts.View) bool { return contract.IsOpenValue }},
+}
+
+// stateFilter is Contracts' filter as the approved design draws it (redix-api #183): every contract, those past their value and the open-value
+// ones, each with how many, the one chosen.
+func (s contractsShown) stateFilter(p page) filter {
+	states := filter{id: "contracts.filterChoice", label: "common.filter"}
+	for _, state := range contractFilters {
+		states.choices = append(states.choices, filterChoice{id: "contracts.filter." + state.name, name: "filter", value: state.name,
+			word: p.words.Of(state.word) + " · " + strconv.Itoa(s.count(state)), chosen: state.name == s.filter.name})
+	}
+	return states
 }
 
 // contractsShown is Contracts as the app's screen shows it (UC-020): every contract, disabled ones included, in the order added, the filter

@@ -172,6 +172,18 @@ func (s site) accountAction(w http.ResponseWriter, r *http.Request) {
 	draw(w, r, http.StatusOK, accountPanel(p, listed, account, shown), accountBeside(p, listed, account))
 }
 
+// accountFilter is the account history's account filter as the approved design draws it (redix-api #183): every account, then each, the one
+// shown's query holds chosen.
+func (s accountsShown) accountFilter(p page, shown history) filter {
+	all := filter{id: "accountHistory.accountChoice", label: "expenses.account", choices: []filterChoice{{id: "accountHistory.accountChoice.option.none", name: "account",
+		word: p.words.Of("history.all"), chosen: shown.query.Get("account") == ""}}}
+	for _, account := range s.accounts {
+		all.choices = append(all.choices, filterChoice{id: "accountHistory.account." + account.ID.String(), name: "account", value: account.ID.String(), word: account.Name,
+			chosen: account.ID.String() == shown.query.Get("account")})
+	}
+	return all
+}
+
 // mayKeepAccounts says whether p's caller may change the project's accounts: ManageSettings, in a project not finished.
 func (p page) mayKeepAccounts() bool { return !p.finished() && p.may(access.ManageSettings) }
 

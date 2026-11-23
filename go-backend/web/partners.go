@@ -110,6 +110,18 @@ func (s partnersShown) partnerOf(partnerID uuid.UUID) (partners.View, bool) {
 	return partners.View{}, false
 }
 
+// partnerFilter is the partner history's partner filter as the approved design draws it (redix-api #183): every partner, then each, the one
+// shown's query holds chosen.
+func (s partnersShown) partnerFilter(p page, shown history) filter {
+	all := filter{id: "partnerHistory.partnerChoice", label: "entryShare.partner", choices: []filterChoice{{id: "partnerHistory.partnerChoice.option.none", name: "partner",
+		word: p.words.Of("history.all"), chosen: shown.query.Get("partner") == ""}}}
+	for _, line := range s.lines {
+		all.choices = append(all.choices, filterChoice{id: "partnerHistory.partner." + line.ID.String(), name: "partner", value: line.ID.String(), word: line.Name,
+			chosen: line.ID.String() == shown.query.Get("partner")})
+	}
+	return all
+}
+
 // mayKeepPartners says whether p's caller may change the project's partners: ManageSettings, in a project not finished.
 func (p page) mayKeepPartners() bool { return !p.finished() && p.may(access.ManageSettings) }
 

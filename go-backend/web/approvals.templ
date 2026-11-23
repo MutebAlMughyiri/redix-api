@@ -29,15 +29,11 @@ templ approvalsList(p page, shown approvals) {
 				class="filters"
 				hx-get="/tab/approvals"
 				hx-target="[id='web.content']"
-				hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+				hx-trigger={ filtersTrigger }
 			>
 				<input id="approvals.searchOn" type="hidden" name="search" value="on"/>
 				<input id="approvals.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("approvals.title")) } value={ shown.text }/>
-				<fieldset id="approvals.filterChoice" class="picks">
-					for _, filter := range approvalFilters {
-						<label id={ "approvals." + filter.name } class="pick"><input id={ "approvals." + filter.name + ".input" } type="radio" name="filter" value={ filter.name } checked?={ filter == shown.filter }/>{ p.words.Of(filter.word) + " · " + shown.count(filter) }</label>
-					}
-				</fieldset>
+				@filterButton(p, shown.kindFilter(p))
 			</form>
 		}
 		if len(shown.shown()) == 0 {
@@ -108,17 +104,11 @@ templ approvalHistoryPage(p page, history history) {
 			class="filters"
 			hx-get="/tab/approvalHistory"
 			hx-target="[id='web.content']"
-			hx-trigger="change, input changed delay:400ms from:[name='text'], submit"
+			hx-trigger={ filtersTrigger }
 		>
 			<input id="approvalHistory.searchOn" type="hidden" name="search" value="on"/>
 			<input id="approvalHistory.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of("approvals.history")) } aria-label={ p.words.Of("common.searchIn", p.words.Of("approvals.history")) } value={ history.query.Get("text") }/>
-			<fieldset id="approvalHistory.kindChoice" class="picks">
-				<legend id="approvalHistory.kindChoice.label">{ p.words.Of("entries.kind") }</legend>
-				<label id="approvalHistory.all" class="pick"><input id="approvalHistory.all.input" type="radio" name="kind" value="" checked?={ history.query.Get("kind") == "" }/>{ p.words.Of("history.all") }</label>
-				for _, filter := range approvalFilters[1:] {
-					<label id={ "approvalHistory.kind." + filter.kind } class="pick"><input id={ "approvalHistory.kind." + filter.kind + ".input" } type="radio" name="kind" value={ filter.kind } checked?={ history.query.Get("kind") == filter.kind }/>{ p.words.Of(filter.word) }</label>
-				}
-			</fieldset>
+			@filterButton(p, approvalKindFilter(p, history))
 			@historyPerson(p, history)
 		</form>
 	}

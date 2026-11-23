@@ -77,7 +77,7 @@ templ retrieveView(p page, answer retrieved) {
 // preview, as the app's question asks: when it was taken and by whom, each part now and after, what stays, and Retrieve, sending the same file
 // again.
 templ retrieveAnswer(p page, answer retrieved) {
-	switch {
+	switch  {
 		case answer.notice != "":
 			<p id="retrieve.done" class="notice" role="status">{ answer.notice }</p>
 		case answer.refusal != "":

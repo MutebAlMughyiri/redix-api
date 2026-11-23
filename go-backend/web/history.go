@@ -67,6 +67,30 @@ func (h history) more() string {
 	return h.next + "?" + next.Encode()
 }
 
+// personFilter is a history's person filter as the approved design draws it (redix-api #183): everyone, then each member, the one query holds
+// chosen.
+func (h history) personFilter(p page) filter {
+	people := filter{id: h.name + ".personChoice", label: "history.person", choices: []filterChoice{{id: h.name + ".personChoice.option.none", name: "by",
+		word: p.words.Of("history.all"), chosen: h.query.Get("by") == ""}}}
+	for _, member := range h.members {
+		people.choices = append(people.choices, filterChoice{id: h.name + ".person." + member.ID.String(), name: "by", value: member.ID.String(), word: member.DisplayName,
+			chosen: member.ID.String() == h.query.Get("by")})
+	}
+	return people
+}
+
+// kindFilter is a history's kind filter as the approved design draws it (redix-api #183): every kind, then each of kinds, the one query holds
+// chosen.
+func (h history) kindFilter(p page, kinds []string) filter {
+	areas := filter{id: h.name + ".kindChoice", label: "history.kind", choices: []filterChoice{{id: h.name + ".all", name: "area", word: p.words.Of("history.all"),
+		chosen: h.query.Get("area") == ""}}}
+	for _, kind := range kinds {
+		areas.choices = append(areas.choices, filterChoice{id: h.name + ".kind." + kind, name: "area", value: kind, word: p.words.Of("history.area." + kind),
+			chosen: kind == h.query.Get("area")})
+	}
+	return areas
+}
+
 // when is who did a line and when, in the project's time, as the app's line says it: an approval says who approved it.
 func (h history) when(p page, by string, approved bool, at moment.Moment) string {
 	if approved {

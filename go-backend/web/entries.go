@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -44,6 +45,26 @@ func (s site) entriesTab(r *http.Request, p page) (templ.Component, error) {
 		return nil, err
 	}
 	return entriesList(p, query, rows[:min(len(rows), take)], len(rows) > take, take), nil
+}
+
+// kindFilter is Entries' kind filter as the approved design draws it (redix-api #183): the kinds, each chosen when query holds it.
+func kindFilter(p page, query url.Values) filter {
+	kinds := filter{id: "entries.kindChoice", label: "entries.kind", several: true}
+	for _, kind := range entryKinds {
+		kinds.choices = append(kinds.choices, filterChoice{id: "entries.kind." + kind.name, name: "kinds", value: kind.name, word: p.words.Of(kind.word),
+			chosen: slices.Contains(query["kinds"], kind.name)})
+	}
+	return kinds
+}
+
+// statusFilter is Entries' status filter as the approved design draws it (redix-api #183): the statuses, each chosen when query holds it.
+func statusFilter(p page, query url.Values) filter {
+	statuses := filter{id: "entries.statusChoice", label: "entries.status", several: true}
+	for _, status := range entryStatuses {
+		statuses.choices = append(statuses.choices, filterChoice{id: "entries.status." + status, name: "statuses", value: status, word: p.words.Of("entries." + status),
+			chosen: slices.Contains(query["statuses"], status)})
+	}
+	return statuses
 }
 
 // narrows says whether query narrows the list at all, so Clear has something to clear.

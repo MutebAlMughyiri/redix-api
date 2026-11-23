@@ -1,0 +1,33 @@
+// Copyright 2026 Tech Details. All rights reserved.
+// Use of this file is governed by the LICENSE file at the root of this repository.
+
+package web
+
+// filterHead is a filter's button (redix-api #183 R1, R2): its word, what is chosen beside it, standing out while it narrows the list, and the
+// arrow; it opens the list id names, kept beside it by a CSS anchor.
+templ filterHead(p page, id, label, summary string) {
+	<button id={ id } class={ "filter-button", templ.KV("on", summary != "") } type="button" popovertarget={ id + ".list" } style={ templ.SafeCSS(anchored("anchor-name", id)) }>
+		<span id={ id + ".label" }>{ p.words.Of(label) }</span>
+		if summary != "" {
+			<span id={ id + ".chosen" } class="chosen">{ summary }</span>
+		}
+		<span id={ id + ".arrow" } class="arrow" aria-hidden="true">»</span>
+	</button>
+}
+
+// filterButton is one filter as the approved design draws it (redix-api #183): its button, and its choices as one list beside it; a list of
+// several choices offers All and None at its foot.
+templ filterButton(p page, f filter) {
+	@filterHead(p, f.id, f.label, f.summary(p))
+	<div id={ f.id + ".list" } class="filter-list" popover style={ templ.SafeCSS(anchored("position-anchor", f.id)) }>
+		for _, choice := range f.choices {
+			<label id={ choice.id } class="filter-choice"><input id={ choice.id + ".input" } type={ f.inputType() } name={ choice.name } value={ choice.value } checked?={ choice.chosen } data-applies?={ !f.several }/>{ choice.word }</label>
+		}
+		if f.several {
+			<div class="list-foot">
+				<button id={ f.id + ".all" } class="link-button" type="button" hx-on:click="for (const tick of this.closest('.filter-list').querySelectorAll('input')) tick.checked = true">{ p.words.Of("history.all") }</button>
+				<button id={ f.id + ".none" } class="link-button" type="button" hx-on:click="for (const tick of this.closest('.filter-list').querySelectorAll('input')) tick.checked = false">{ p.words.Of("filters.none") }</button>
+			</div>
+		}
+	</div>
+}
