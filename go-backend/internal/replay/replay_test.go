@@ -487,11 +487,13 @@ func wordsDotNetHad(net, got any) any {
 // addedSinceDotNet are the fields Go answers that .NET never had, each added by a feature built after it, so an answer recorded without one still
 // matches; each names why it is there.
 var addedSinceDotNet = map[string]string{
-	"accountIds":       "the accounts a payment method pays from (redix-app #109)",
-	"timeZone":         "the time zone a project is in (redix-app #107)",
-	"utcOffsetMinutes": "how far a project's zone is ahead of UTC now (redix-app #107)",
-	"code":             "the code every error answer carries, a bare status's too (redix-api #150 R1, R7)",
-	"unseenTables":     "the tables unticked for a person, which they do not see (redix-api #106)",
+	"accountIds":             "the accounts a payment method pays from (redix-app #109)",
+	"timeZone":               "the time zone a project is in (redix-app #107)",
+	"utcOffsetMinutes":       "how far a project's zone is ahead of UTC now (redix-app #107)",
+	"code":                   "the code every error answer carries, a bare status's too (redix-api #150 R1, R7)",
+	"unseenTables":           "the tables unticked for a person, which they do not see (redix-api #106)",
+	"standingWordKey":        "the word of how a contract stands, which the app worked out before (findings row 297)",
+	"remainingAfterApproval": "what remains of a contract once its waiting payments are approved, which the app worked out before (findings row 297)",
 }
 
 // invoiceQrWord is why each of the invoice QR's words is retired: they went with it (findings row 303).

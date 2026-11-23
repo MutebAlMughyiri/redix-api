@@ -74,21 +74,6 @@ func (s contractsShown) contractOf(contractID uuid.UUID) (contracts.View, bool) 
 	return s.all[at], true
 }
 
-// contractStanding is the word of where contract stands, as the app's chip says it (Contract.standingWordKey).
-func contractStanding(contract contracts.View) string {
-	switch {
-	case !contract.IsActive:
-		return "contracts.disabled"
-	case contract.IsOverrun:
-		return "contracts.overrun"
-	case contract.IsOpenValue:
-		return "contracts.openValue"
-	case contract.Paid.Number() == 0:
-		return "contracts.notStarted"
-	}
-	return "contracts.running"
-}
-
 // contractValue is a contract's value as the app's card writes it: open for an open-value contract.
 func contractValue(p page, contract contracts.View) string {
 	if contract.IsOpenValue {
@@ -117,13 +102,13 @@ func contractTerms(contract contracts.View) string {
 }
 
 // contractWaiting is the app's line under a contract with payments waiting for approval: what waits and, but for an open-value contract, what
-// will remain once it is approved.
+// will remain once it is approved, as the contract's answer says it (findings row 297).
 func contractWaiting(p page, contract contracts.View) string {
 	waiting := p.words.Of("contracts.pending") + " " + statement.Money(contract.Pending.Number())
 	if contract.IsOpenValue {
 		return waiting
 	}
-	return parts(waiting, statement.Money(contract.Value-contract.Paid.Number()-contract.Pending.Number())+" "+p.words.Of("contracts.afterApproval"))
+	return parts(waiting, statement.Money(contract.RemainingAfterApproval.Number())+" "+p.words.Of("contracts.afterApproval"))
 }
 
 // contractsOf is Contracts as p's caller sees it with what query chose, through the rule the app's route answers (contracts.List). The error is

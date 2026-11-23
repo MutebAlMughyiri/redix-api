@@ -18,7 +18,7 @@ An amendment is an edit of the terms: the value, open value, unit price, quantit
 
 | Endpoint | Needs | Answers |
 | --- | --- | --- |
-| `GET /projects/{projectId}/contracts` | `ReadProject` | `200` in the order added, disabled ones included, as `{ id, supplierName, itemName, unitName, value, isOpenValue, unitPrice, quantity, notes, paid, remaining, isOverrun, isActive }` |
+| `GET /projects/{projectId}/contracts` | `ReadProject` | `200` in the order added, disabled ones included, as `{ id, supplierName, itemName, unitName, value, isOpenValue, unitPrice, quantity, notes, paid, remaining, remainingAfterApproval, isOverrun, standingWordKey, isActive }` |
 | `POST /projects/{projectId}/contracts` with `{ supplierId, itemId, unitId, value, isOpenValue, unitPrice, quantity, notes }` | `ManageSettings` | `200`; `400` `unknownSupplier`, `itemNotOffered`, `unknownUnit`, `invalidValue`, `invalidUnitPrice`, `invalidQuantity` or `invalidNotes` |
 | `PUT /projects/{projectId}/contracts/{id}` with `{ value, isOpenValue, unitPrice, quantity, notes }`, and `{ supplierId, itemId, unitId }` for any that is to change | `ManageSettings` | `200`; `400` for the terms and the parties, as above; `404`; `409` `contractHasPayments`, changing nothing |
 | `POST /projects/{projectId}/contracts/{id}/disable`, `.../enable` | `ManageSettings` | `200`; `404` |
@@ -49,6 +49,7 @@ Each test named without `Test` is .NET's, replayed against Go as `TestReplayDotN
 | The contractor is an active supplier of the project (BR-15, BR-33) | `contracts.refusalOfParties` | `TheContractorIsAnActiveSupplierOfTheProject` |
 | The item takes contractor payments (the issue's precondition) | `structure.Offers` | `TheItemTakesContractorPayments`, `ADisabledItemTakesNoNewContract` |
 | An amendment changes the terms and keeps the contractor | `contracts.Routes.amend` | `AnAmendmentChangesTheTermsAndKeepsTheContractor`, `AnAmendmentCanMakeAContractOpenValue`, `AnAmendmentAnswersAsAddingDoes` |
+| A contract answers what will remain once its waiting payments are approved, and the word of how it stands - disabled, overrun, open value, not started, running - which the app and the web show and no longer work out (findings row 297) | `contracts.List`, `standingWordKeyOf`, `StandingOf` | `TestR297_AContractSaysHowItStands`, `TestR297_WhatRemainsOnceApprovedCountsWhatWaits` |
 | A contract answers its parties, and whether any payment names it | `ContractView`, `contracts.Routes.list` | `AContractAnswersItsPartiesAndThatItHasNoPayments` |
 | A contract's contractor and item change while it has no payments, in the History table, old and new; new ones answer as adding does | `contracts.Routes.amend`, `amendContractRequest` | `AContractsPartiesChangeWhileItHasNoPaymentsAndTheHistoryShowsThemOldAndNew`, `NewPartiesAnswerAsAddingDoes` |
 | Any payment, even a draft or a rejected one, holds them, and a refusal changes nothing; the terms can still change | `contracts.Routes.amend` | `AContractWithAnyPaymentKeepsItsPartiesAndChangesNothing`, `AContractWithAPaymentStillChangesItsTerms` |

@@ -67,6 +67,22 @@ func Overrun(contract store.Contract, paid fixed.Total) bool {
 	return !contract.IsOpenValue && paid.Number() > contract.Value
 }
 
+// standingWordKeyOf is the word of how contract stands with paid inside it, which its chip shows (findings row 297): disabled, then overrun,
+// then open value, then not started while nothing was paid, else running.
+func standingWordKeyOf(contract store.Contract, paid fixed.Total) string {
+	switch {
+	case !contract.IsActive:
+		return "contracts.disabled"
+	case Overrun(contract, paid):
+		return "contracts.overrun"
+	case contract.IsOpenValue:
+		return "contracts.openValue"
+	case paid.Number() == 0:
+		return "contracts.notStarted"
+	}
+	return "contracts.running"
+}
+
 // Standing is what a contract stands at with a payment counted inside it on top of what the ledger holds of it: what was paid, what waits, what
 // remains after the payment, and whether it goes beyond the value (ContractorPaymentView, BR-07).
 type Standing struct {
@@ -117,25 +133,28 @@ type documentView struct {
 }
 
 // View is a contract as the app shows it (ContractView).
-// View is a contract as its list and the contracts report show it, with its value, paid and remaining (ContractView, BR-04).
+// View is a contract as its list and the contracts report show it, with its value, paid and remaining (ContractView, BR-04), what will remain
+// once what waits for approval is approved, and the word of how it stands (findings row 297).
 type View struct {
-	ID           uuid.UUID      `json:"id"`
-	ItemID       uuid.UUID      `json:"itemId"`
-	SupplierName string         `json:"supplierName"`
-	ItemName     string         `json:"itemName"`
-	Value        fixed.Number   `json:"value"`
-	IsOpenValue  bool           `json:"isOpenValue"`
-	UnitPrice    fixed.Number   `json:"unitPrice"`
-	Quantity     fixed.Number   `json:"quantity"`
-	Notes        string         `json:"notes"`
-	Paid         fixed.Total    `json:"paid"`
-	Pending      fixed.Total    `json:"pending"`
-	Remaining    fixed.Total    `json:"remaining"`
-	IsOverrun    bool           `json:"isOverrun"`
-	IsActive     bool           `json:"isActive"`
-	SupplierID   uuid.UUID      `json:"supplierId"`
-	HasPayments  bool           `json:"hasPayments"`
-	Documents    []documentView `json:"documents"`
+	ID                     uuid.UUID      `json:"id"`
+	ItemID                 uuid.UUID      `json:"itemId"`
+	SupplierName           string         `json:"supplierName"`
+	ItemName               string         `json:"itemName"`
+	Value                  fixed.Number   `json:"value"`
+	IsOpenValue            bool           `json:"isOpenValue"`
+	UnitPrice              fixed.Number   `json:"unitPrice"`
+	Quantity               fixed.Number   `json:"quantity"`
+	Notes                  string         `json:"notes"`
+	Paid                   fixed.Total    `json:"paid"`
+	Pending                fixed.Total    `json:"pending"`
+	Remaining              fixed.Total    `json:"remaining"`
+	RemainingAfterApproval fixed.Total    `json:"remainingAfterApproval"`
+	IsOverrun              bool           `json:"isOverrun"`
+	StandingWordKey        string         `json:"standingWordKey"`
+	IsActive               bool           `json:"isActive"`
+	SupplierID             uuid.UUID      `json:"supplierId"`
+	HasPayments            bool           `json:"hasPayments"`
+	Documents              []documentView `json:"documents"`
 }
 
 // List is every contract of the project, disabled ones included, in the order they were added, each with its value, paid and remaining (BR-04,
@@ -155,8 +174,9 @@ func List(ctx context.Context, q *store.Queries, projectID uuid.UUID) ([]View, e
 		held := money[row.ID]
 		view := View{ID: row.ID, ItemID: row.ItemID, SupplierName: row.SupplierName, ItemName: row.ItemName, Value: row.Value, IsOpenValue: row.IsOpenValue,
 			UnitPrice: row.UnitPrice, Quantity: row.Quantity, Notes: row.Notes, Paid: held.Paid, Pending: held.Pending, Remaining: Remaining(contract, held.Paid),
-			IsOverrun: Overrun(contract, held.Paid), IsActive: row.IsActive, SupplierID: row.SupplierID, HasPayments: slices.Contains(withPayments, row.ID),
-			Documents: []documentView{}}
+			RemainingAfterApproval: StandingOf(contract, held, fixed.Total{}).RemainingAfter, IsOverrun: Overrun(contract, held.Paid),
+			StandingWordKey: standingWordKeyOf(contract, held.Paid), IsActive: row.IsActive, SupplierID: row.SupplierID,
+			HasPayments: slices.Contains(withPayments, row.ID), Documents: []documentView{}}
 		for _, document := range documents {
 			if document.ContractID == row.ID {
 				view.Documents = append(view.Documents, documentView{ID: document.ID, FileName: document.FileName, ContentType: document.ContentType, SizeBytes: document.SizeBytes})

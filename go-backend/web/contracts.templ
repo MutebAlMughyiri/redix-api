@@ -80,7 +80,7 @@ templ contractsList(p page, shown contractsShown) {
 							<td id={ "contracts.valueOf." + contract.ID.String() } class="amount">{ contractValue(p, contract) }</td>
 							<td id={ "contracts.paid." + contract.ID.String() } class="amount">{ statement.Money(contract.Paid.Number()) }</td>
 							<td id={ "contracts.remaining." + contract.ID.String() } class={ "amount", templ.KV("minus", contract.IsOverrun) }>{ contractRemaining(contract) }</td>
-							<td id={ "contracts.standing." + contract.ID.String() }><span id={ "contracts.standingWord." + contract.ID.String() } class={ "chip", templ.KV("warn", contract.IsOverrun) }>{ p.words.Of(contractStanding(contract)) }</span></td>
+							<td id={ "contracts.standing." + contract.ID.String() }><span id={ "contracts.standingWord." + contract.ID.String() } class={ "chip", templ.KV("warn", contract.IsOverrun) }>{ p.words.Of(contract.StandingWordKey) }</span></td>
 						</tr>
 					}
 				</tbody>
@@ -126,7 +126,7 @@ templ contractPanel(p page, contract contracts.View, refusal string) {
 	if contract.Pending.Number() != 0 {
 		<p id="contract.pending" class="hint details-say">{ contractWaiting(p, contract) }</p>
 	}
-	<p id="contract.standing" class="hint details-foot">{ p.words.Of(contractStanding(contract)) }</p>
+	<p id="contract.standing" class="hint details-foot">{ p.words.Of(contract.StandingWordKey) }</p>
 	if refusal != "" {
 		<p id="contract.refusal" class="refusal details-say" role="alert">{ p.words.Of(refusal) }</p>
 	}

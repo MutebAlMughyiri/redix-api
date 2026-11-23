@@ -484,6 +484,13 @@
             "description": "A sum kept to four decimals.",
             "type": "number"
           },
+          "remainingAfterApproval": {
+            "description": "A sum kept to four decimals.",
+            "type": "number"
+          },
+          "standingWordKey": {
+            "type": "string"
+          },
           "supplierId": {
             "format": "uuid",
             "type": "string"
@@ -514,6 +521,8 @@
           "pending",
           "quantity",
           "remaining",
+          "remainingAfterApproval",
+          "standingWordKey",
           "supplierId",
           "supplierName",
           "unitPrice",

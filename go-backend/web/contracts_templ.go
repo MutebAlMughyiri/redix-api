@@ -679,9 +679,9 @@ func contractsList(p page, shown contractsShown) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var41 string
-				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of(contractStanding(contract)))
+				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of(contract.StandingWordKey))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contracts.templ`, Line: 83, Col: 220}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contracts.templ`, Line: 83, Col: 218}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 				if templ_7745c5c3_Err != nil {
@@ -1065,9 +1065,9 @@ func contractPanel(p page, contract contracts.View, refusal string) templ.Compon
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var63 string
-		templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of(contractStanding(contract)))
+		templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(p.words.Of(contract.StandingWordKey))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contracts.templ`, Line: 129, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contracts.templ`, Line: 129, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 		if templ_7745c5c3_Err != nil {
