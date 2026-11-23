@@ -132,7 +132,6 @@ type documentView struct {
 	SizeBytes   int64     `json:"sizeBytes"`
 }
 
-// View is a contract as the app shows it (ContractView).
 // View is a contract as its list and the contracts report show it, with its value, paid and remaining (ContractView, BR-04), what will remain
 // once what waits for approval is approved, and the word of how it stands (findings row 297).
 type View struct {
