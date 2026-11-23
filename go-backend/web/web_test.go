@@ -4733,3 +4733,16 @@ func TestWeb_R308_AltWClosesTheTabInFront(t *testing.T) {
 	has(t, page, `<button id="web.tab.entries.close" class="close" type="button" hx-delete="/tab/entries" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق `+"⁨(Alt+W)⁩"+`">`)
 	has(t, page, `<button id="web.tab.home.close" class="close" type="button" hx-delete="/tab/home" hx-target="[id='web.content']" aria-label="إغلاق" data-tip="إغلاق">`)
 }
+
+// Signing in brings Home to the front, whatever tab was in front before, the tabs left open staying behind it (findings row 324).
+func TestWeb_R324_SigningInOpensHome(t *testing.T) {
+	api := testapi.New(t)
+	browser, id := signedIn(t, api, "User A")
+	browser.Send("GET", "/tab/notifications", nil)
+	browser.Send("POST", "/sign-out", nil)
+	again := browser.Send("POST", "/sign-in", url.Values{"username": {id}, "password": {password}}).Body.String()
+	has(t, again, `id="web.tab.home" class="tab" role="tab" aria-selected="true"`)
+	has(t, again, `id="web.tab.notifications" class="tab" role="tab" aria-selected="false"`)
+	has(t, browser.Send("GET", "/", nil).Body.String(), `id="web.tab.home" class="tab" role="tab" aria-selected="true"`)
+}
+

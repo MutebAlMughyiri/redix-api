@@ -130,8 +130,11 @@ func (s site) changePassword(w http.ResponseWriter, r *http.Request) {
 	s.arrive(w, r, p, opened)
 }
 
-// arrive keeps opened's session in its cookies and answers the whole shell, its parts arriving with their motion.
+// arrive keeps opened's session in its cookies and answers the whole shell, its parts arriving with their motion, Home in front, as the app opens
+// on its home; the tabs left open before stay behind it (the owner, 23 Nov 2026, findings row 324).
 func (s site) arrive(w http.ResponseWriter, r *http.Request, p page, opened auth.Opened) {
+	p.view = p.view.opening("home")
+	p.view.keepTabs(w)
 	caller, err := s.Gate.Check(r.Context(), s.keep(w, opened))
 	if err == nil {
 		p, err = s.open(r, p, caller)
