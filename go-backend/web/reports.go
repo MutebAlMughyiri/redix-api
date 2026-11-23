@@ -135,6 +135,15 @@ type itemReports struct {
 	text       string
 }
 
+// itemCount is how many items the side's categories hold.
+func (shown itemReports) itemCount() int {
+	count := 0
+	for _, category := range shown.categories {
+		count += len(category.Items)
+	}
+	return count
+}
+
 // itemsOf is what the search keeps of category's items, and whether the category shows, as the app's search groups them.
 func (shown itemReports) itemsOf(category reports.CategoryTotal) ([]reports.ItemTotal, bool) {
 	return searchGroup(shown.text, category.Name, category.Items, func(item reports.ItemTotal) string { return item.Name })
@@ -166,6 +175,73 @@ type itemReportShown struct {
 	text   string
 }
 
+// table is the table ?table= names, when the item holds it: the one the page shows alone.
+func (shown itemReportShown) table() (entries.TableReport, bool) {
+	id, _ := uuid.Parse(shown.query.Get("table"))
+	at := slices.IndexFunc(shown.report.Subgroups, func(table entries.TableReport) bool { return table.ID == id })
+	if id == uuid.Nil || at < 0 {
+		return entries.TableReport{}, false
+	}
+	return shown.report.Subgroups[at], true
+}
+
+// contract is the contract a contract's report holds, ?contract= having asked for it: the one the page shows alone.
+func (shown itemReportShown) contract() (entries.ContractReport, bool) {
+	if shown.query.Get("contract") == "" || len(shown.report.Contracts) != 1 {
+		return entries.ContractReport{}, false
+	}
+	return shown.report.Contracts[0], true
+}
+
+// recordQuery is what the page was opened for, its item, contract and table, as the search toggle asks for the page again.
+func (shown itemReportShown) recordQuery() string {
+	return url.Values{"item": {shown.query.Get("item")}, "contract": {shown.query.Get("contract")}, "table": {shown.query.Get("table")}}.Encode()
+}
+
+// side is the side the item is on, Expenses or Revenue - the capital among the revenue -, which the way back opens.
+func (shown itemReportShown) side() reportSide {
+	if shown.report.Type.IsRevenue() {
+		return revenueSide
+	}
+	return expensesSide
+}
+
+// entryCount is how many entries the item's tables and contracts hold.
+func (shown itemReportShown) entryCount() int {
+	count := 0
+	for _, table := range shown.report.Subgroups {
+		count += len(table.Rows)
+	}
+	for _, contract := range shown.report.Contracts {
+		count += len(contract.Payments)
+	}
+	return count
+}
+
+// kept is what the search keeps of one table's rows.
+func (shown itemReportShown) kept(rows []entries.ReportRow) []entries.ReportRow {
+	return slices.DeleteFunc(slices.Clone(rows), func(row entries.ReportRow) bool { return !searchHolds(shown.text, reportRowText(row)) })
+}
+
+// lastDate is the day of the latest of rows, or a dash for none.
+func lastDate(rows []entries.ReportRow) string {
+	if len(rows) == 0 {
+		return "—"
+	}
+	return slices.MaxFunc(rows, func(a, b entries.ReportRow) int { return a.Date.Compare(b.Date.Time) }).Date.Format(time.DateOnly)
+}
+
+// reportValue is a row's value in column, the at-th of its table, an amount column's written as money, as the app's report writes it.
+func reportValue(row entries.ReportRow, at int, column entries.ReportColumn) string {
+	if at >= len(row.Values) {
+		return ""
+	}
+	if number, err := fixed.Parse(row.Values[at]); err == nil && column.DataType == structure.Amount {
+		return statement.Money(number)
+	}
+	return row.Values[at]
+}
+
 // rowsOf is what the search keeps of the rows of the table called name, and whether the table shows, as the app's search groups them.
 func (shown itemReportShown) rowsOf(name string, rows []entries.ReportRow) ([]entries.ReportRow, bool) {
 	return searchGroup(shown.text, name, rows, reportRowText)
@@ -174,33 +250,6 @@ func (shown itemReportShown) rowsOf(name string, rows []entries.ReportRow) ([]en
 // reportRowText is what the search finds in a report's row: its values, its date and its amount, as the app's _textOf.
 func reportRowText(row entries.ReportRow) string {
 	return strings.Join(append(slices.Clone(row.Values), row.Date.Format(time.DateOnly), row.Amount.Plain(), statement.Money(row.Amount)), " ")
-}
-
-// reportRowTitle is a report row's title, its description, as the app's row titles it.
-func reportRowTitle(row entries.ReportRow, columns []entries.ReportColumn) string {
-	at := slices.IndexFunc(columns, func(column entries.ReportColumn) bool { return column.Key == "description" })
-	if at < 0 || at >= len(row.Values) {
-		return ""
-	}
-	return row.Values[at]
-}
-
-// reportRowDetails is a report row's other values, each with its column's name, an amount column's written as money, as the app's row says them.
-func reportRowDetails(row entries.ReportRow, columns []entries.ReportColumn) string {
-	var details []string
-	for at, column := range columns {
-		if at >= len(row.Values) || row.Values[at] == "" || column.Key == "description" {
-			continue
-		}
-		value := row.Values[at]
-		if column.DataType == structure.Amount {
-			if number, err := fixed.Parse(value); err == nil {
-				value = statement.Money(number)
-			}
-		}
-		details = append(details, column.Name+": "+value)
-	}
-	return parts(details...)
 }
 
 // itemReportTab is an item's report in its tab, or a contract's for ?contract=, through the rules the app's routes answer (entries.ItemReportIn,
@@ -234,13 +283,27 @@ func subgroupName(p page, table entries.TableReport) string {
 // contractReportLine is what a contract's report says under its contractor: its value, or that it is open, what was paid and, but for an
 // open-value contract, what remains.
 func contractReportLine(p page, contract entries.ContractReport) string {
-	value := p.words.Of("reports.openValue")
 	remaining := ""
 	if !contract.IsOpenValue {
-		value = statement.Money(contract.Value)
-		remaining = p.words.Of("reports.remaining") + ": " + money(contract.Remaining)
+		remaining = p.words.Of("reports.remaining") + ": " + contractRemainingOf(contract)
 	}
-	return parts(p.words.Of("reports.contractValue")+": "+value, p.words.Of("reports.paid")+": "+money(contract.Paid), remaining)
+	return parts(p.words.Of("reports.contractValue")+": "+contractValueOf(p, contract), p.words.Of("reports.paid")+": "+money(contract.Paid), remaining)
+}
+
+// contractValueOf is a contract's value, or that it is open.
+func contractValueOf(p page, contract entries.ContractReport) string {
+	if contract.IsOpenValue {
+		return p.words.Of("reports.openValue")
+	}
+	return statement.Money(contract.Value)
+}
+
+// contractRemainingOf is what remains of a contract, in brackets once overrun, or a dash for an open-value contract.
+func contractRemainingOf(contract entries.ContractReport) string {
+	if contract.IsOpenValue {
+		return "—"
+	}
+	return money(contract.Remaining)
 }
 
 // reportLine is a line of a periodic report's section: its label and amount, strong for a total, as the app's report draws it.

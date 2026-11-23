@@ -190,7 +190,7 @@ templ tabs(p page, outOfBand bool) {
 	<div id="web.tabs" class="tabs" role="tablist" { swapOutOfBand(outOfBand)... }>
 		for _, item := range p.openTabs() {
 			<div id={ "web.tab." + item.name } class="tab" role="tab" aria-selected={ strconv.FormatBool(item.name == p.view.Active) }>
-				<button id={ "web.tab." + item.name + ".title" } class="tab-title" type="button" hx-get={ "/tab/" + item.name } hx-target="[id='web.content']">{ p.words.Of(item.title) }</button>
+				<button id={ "web.tab." + item.name + ".title" } class="tab-title" type="button" hx-get={ "/tab/" + item.name } hx-target="[id='web.content']">{ p.tabTitle(item) }</button>
 				<button id={ "web.tab." + item.name + ".close" } class="close" type="button" hx-delete={ "/tab/" + item.name } hx-target="[id='web.content']" aria-label={ p.words.Of("web.close") } { p.closeTip(item.name)... }>✕</button>
 			</div>
 		}

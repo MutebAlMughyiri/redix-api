@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/entries"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/fixed"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/statement"
 )
 
@@ -71,116 +72,261 @@ templ reportsPage(p page, shown reportsShown) {
 	}
 }
 
-// itemReportsPage is a side's item reports as the app's screen shows them (UC-050): a search, then each category the search keeps - its total
-// and its share of the side - opening onto its items, each with its total and opening its report.
+// itemReportsPage is a side's item reports (UC-050), as the owner approved their redesign on 23 Nov 2026: the side's total, then one grid of the
+// categories the search keeps, each folding open onto its items with their total and share of the side, each item opening its report.
 templ itemReportsPage(p page, shown itemReports) {
 	<div class="view-head">
-		<h2 id={ "itemReports.title" }>{ p.words.Of(shown.side.word) }</h2>
-		<b id="itemReports.total">{ money(shown.total) }</b>
+		<h2 id="itemReports.title">{ p.words.Of(shown.side.word) }</h2>
 		<span id="itemReports.actions" class="head-actions">
 			@searchToggle(p, "itemReports.searchToggle", "/tab/" + shown.side.name)
 		</span>
 	</div>
+	<p id="itemReports.sum" class="sum">
+		<b id="itemReports.total" class="big">{ money(shown.total) }</b>
+		<span id="itemReports.count" class="hint">{ p.words.Of("reports.itemsCount", strconv.Itoa(shown.itemCount())) }</span>
+	</p>
 	if p.searching {
 		<form id="itemReports.filters" class="filters" hx-get={ "/tab/" + shown.side.name } hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
 			<input id="itemReports.searchOn" type="hidden" name="search" value="on"/>
 			<input id="itemReports.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } aria-label={ p.words.Of("common.searchIn", p.words.Of(shown.side.word)) } value={ shown.text }/>
 		</form>
 	}
-	<div id="itemReports.categories" class="categories">
-		for _, category := range shown.categories {
-			if items, shows := shown.itemsOf(category); shows {
-				<details id={ "itemReports.category." + category.ID.String() } class="tile" open?={ shown.text != "" }>
-					<summary id={ "itemReports.category." + category.ID.String() + ".body" }>
-						<span id={ "itemReports.category." + category.ID.String() + ".name" }>{ category.Name }</span>
-						<span id={ "itemReports.category." + category.ID.String() + ".figure" } class="figure">{ money(category.Total) } · { strconv.Itoa(share(category.Total, shown.total)) }%</span>
-						<progress id={ "itemReports.category." + category.ID.String() + ".share" } class="bar" max="100" value={ strconv.Itoa(share(category.Total, shown.total)) }></progress>
-					</summary>
-					<table id={ "itemReports.items." + category.ID.String() } class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
-						<tbody>
-							for _, item := range items {
-								<tr id={ "itemReports.item." + item.ID.String() } tabindex="0" aria-selected="false" hx-get={ "/tab/itemReport?item=" + item.ID.String() } hx-target="[id='web.content']">
-									<td id={ "itemReports.item." + item.ID.String() + ".name" }>{ item.Name }</td>
-									<td id={ "itemReports.item." + item.ID.String() + ".total" } class="amount">{ money(item.Total) }</td>
-								</tr>
-							}
-						</tbody>
-					</table>
-				</details>
+	<div class="table-wrap">
+		<table id="itemReports.grid" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+			<thead>
+				<tr>
+					<th id="itemReports.head.name">{ p.words.Of("reports.categoryAndItem") }</th>
+					<th id="itemReports.head.total" class="num">{ p.words.Of("reports.total") }</th>
+					<th id="itemReports.head.share" class="share">{ p.words.Of("reports.ofSide", p.words.Of(shown.side.word)) }</th>
+					<th id="itemReports.head.go" class="go"></th>
+				</tr>
+			</thead>
+			for _, category := range shown.categories {
+				if items, shows := shown.itemsOf(category); shows {
+					<tbody id={ "itemReports.category." + category.ID.String() } class="fold" data-open?={ shown.text != "" }>
+						<tr id={ "itemReports.category." + category.ID.String() + ".body" } class="fold-head" tabindex="0" aria-expanded={ strconv.FormatBool(shown.text != "") } hx-on:click={ templ.JSUnsafeFuncCall(foldGroup) } hx-on:keydown={ templ.JSUnsafeFuncCall(foldKeys) }>
+							<td id={ "itemReports.category." + category.ID.String() + ".title" }>
+								<span id={ "itemReports.category." + category.ID.String() + ".arrow" } class="arrow" aria-hidden="true">{ arrow }</span>
+								<span id={ "itemReports.category." + category.ID.String() + ".name" }>{ category.Name }</span>
+								<span id={ "itemReports.category." + category.ID.String() + ".count" } class="hint count">{ p.words.Of("reports.itemsCount", strconv.Itoa(len(items))) }</span>
+							</td>
+							<td id={ "itemReports.category." + category.ID.String() + ".figure" } class="num">{ money(category.Total) }</td>
+							<td id={ "itemReports.category." + category.ID.String() + ".shareCell" } class="share">
+								@shareCell("itemReports.category."+category.ID.String()+".share", share(category.Total, shown.total))
+							</td>
+							<td id={ "itemReports.category." + category.ID.String() + ".go" } class="go"></td>
+						</tr>
+						for _, item := range items {
+							<tr id={ "itemReports.item." + item.ID.String() } class="fold-item" tabindex="0" aria-selected="false" hx-get={ "/tab/itemReport?item=" + item.ID.String() } hx-target="[id='web.content']">
+								<td id={ "itemReports.item." + item.ID.String() + ".name" }>{ item.Name }</td>
+								<td id={ "itemReports.item." + item.ID.String() + ".total" } class="num">{ money(item.Total) }</td>
+								<td id={ "itemReports.item." + item.ID.String() + ".shareCell" } class="share">
+									@shareCell("itemReports.item."+item.ID.String()+".share", share(item.Total, shown.total))
+								</td>
+								<td id={ "itemReports.item." + item.ID.String() + ".go" } class="go"><span id={ "itemReports.item." + item.ID.String() + ".arrow" } class="arrow" aria-hidden="true">{ arrow }</span></td>
+							</tr>
+						}
+					</tbody>
+				}
 			}
-		}
+			<tfoot>
+				<tr>
+					<td id="itemReports.foot.label">{ p.words.Of("reports.total") }</td>
+					<td id="itemReports.foot.total" class="num">{ money(shown.total) }</td>
+					<td id="itemReports.foot.share"></td>
+					<td id="itemReports.foot.go"></td>
+				</tr>
+			</tfoot>
+		</table>
 	</div>
 }
 
-// itemReportPage is an item's report as the app's screen shows it (UC-050): the item's total; its PDF and Excel, gray until they open on the web;
-// a search; then each table the search keeps - a subgroup's purchases or revenue, a partner's money in and out - with its total and its rows, and
-// each contract with its value, paid, remaining, its payments and their total.
+// shareCell is a part's share of a whole: a bar and the percent beside it.
+templ shareCell(id string, percent int) {
+	<div id={ id } class="share-cell">
+		<progress id={ id + ".bar" } class="bar" max="100" value={ strconv.Itoa(percent) }></progress>
+		<span id={ id + ".percent" }>{ strconv.Itoa(percent) }%</span>
+	</div>
+}
+
+// itemReportPage is an item's report (UC-050), as the owner approved its redesign on 23 Nov 2026: the way back, the item and its total, then its
+// tables - a subgroup's purchases or revenue, a partner's money in and out - and its contracts, each opening alone; or the one table ?table=
+// names, or the one contract a contract's report holds.
 templ itemReportPage(p page, shown itemReportShown) {
 	if !shown.found {
 		<p id="itemReport.notFound" class="empty">{ p.words.Of("reports.refused") }</p>
-	} else {
-		<div class="view-head">
-			<h2 id="itemReport.title">{ shown.report.ItemName }</h2>
-			<span id="itemReport.category" class="hint">{ shown.report.CategoryName }</span>
-			<span id="itemReport.actions" class="head-actions">
-				@searchToggle(p, "itemReport.searchToggle", "/tab/itemReport?item=" + shown.query.Get("item") + "&contract=" + shown.query.Get("contract"))
-				@reportFiles(p, "itemReport.file", shown.fileAddress())
-			</span>
-		</div>
-		<p id="itemReport.totalLine" class="total-line">
-			<span id="itemReport.totalLabel">{ p.words.Of("reports.itemTotal") }</span>
-			<b id="itemReport.total">{ money(shown.report.Total) }</b>
+	} else if table, one := shown.table(); one {
+		@reportPath(p, shown, subgroupName(p, table))
+		@reportHead(p, shown, subgroupName(p, table))
+		<p id="itemReport.sum" class="sum">
+			<b id="itemReport.total" class="big">{ money(table.Total) }</b>
+			<span id="itemReport.count" class="hint">{ p.words.Of("reports.entriesCount", strconv.Itoa(len(shown.kept(table.Rows)))) }</span>
 		</p>
-		if p.searching {
-			<form id="itemReport.filters" class="filters" hx-get="/tab/itemReport" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
-				<input id="itemReport.searchOn" type="hidden" name="search" value="on"/>
-				<input id="itemReport.item" type="hidden" name="item" value={ shown.query.Get("item") }/>
-				<input id="itemReport.contract" type="hidden" name="contract" value={ shown.query.Get("contract") }/>
-				<input id="itemReport.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", shown.report.ItemName) } aria-label={ p.words.Of("common.searchIn", shown.report.ItemName) } value={ shown.text }/>
-			</form>
+		@reportSearch(p, shown)
+		@reportGrid(p, "itemReport.rows."+table.ID.String(), shown.kept(table.Rows), table.Columns, table.AmountName, table.Total)
+	} else if contract, one := shown.contract(); one {
+		@reportPath(p, shown, contract.ContractorName)
+		@reportHead(p, shown, contract.ContractorName)
+		<p id="itemReport.sum" class="sum">
+			<b id="itemReport.total" class="big">{ money(contract.PaymentsTotal) }</b>
+			<span id={ "itemReport.contract." + contract.ID.String() } class="hint">{ contractReportLine(p, contract) }</span>
+		</p>
+		if contract.IsOverrun {
+			<p id={ "itemReport.overrun." + contract.ID.String() } class="refusal">{ p.words.Of("reports.overrun") }</p>
 		}
-		for _, table := range shown.report.Subgroups {
-			if rows, shows := shown.rowsOf(subgroupName(p, table), table.Rows); shows {
-				<section id={ "itemReport.subgroup." + table.ID.String() } class="report-table">
-					<h3 id={ "itemReport.subgroup." + table.ID.String() + ".title" } class="section-title">
-						<span id={ "itemReport.subgroup." + table.ID.String() + ".name" }>{ subgroupName(p, table) }</span>
-						<b id={ "itemReport.subgroupTotal." + table.ID.String() }>{ money(table.Total) }</b>
-					</h3>
-					@reportRows("itemReport.rows."+table.ID.String(), rows, table.Columns)
-				</section>
-			}
-		}
-		for _, contract := range shown.report.Contracts {
-			if rows, shows := shown.rowsOf(contract.ContractorName, contract.Payments); shows {
-				<section id={ "itemReport.contractCard." + contract.ID.String() } class="report-table">
-					<h3 id={ "itemReport.contractor." + contract.ID.String() } class="section-title">{ contract.ContractorName }</h3>
-					<p id={ "itemReport.contract." + contract.ID.String() } class="hint">{ contractReportLine(p, contract) }</p>
-					if contract.IsOverrun {
-						<p id={ "itemReport.overrun." + contract.ID.String() } class="refusal">{ p.words.Of("reports.overrun") }</p>
+		@reportSearch(p, shown)
+		@reportGrid(p, "itemReport.payments."+contract.ID.String(), shown.kept(contract.Payments), contract.Columns, contract.AmountName, contract.PaymentsTotal)
+	} else {
+		@reportPath(p, shown, "")
+		@reportHead(p, shown, shown.report.ItemName)
+		<p id="itemReport.sum" class="sum">
+			<b id="itemReport.total" class="big">{ money(shown.report.Total) }</b>
+			<span id="itemReport.count" class="hint">{ parts(p.words.Of("reports.entriesCount", strconv.Itoa(shown.entryCount())), p.words.Of("reports.tablesCount", strconv.Itoa(len(shown.report.Subgroups)))) }</span>
+		</p>
+		@reportSearch(p, shown)
+		<h3 id="itemReport.tablesTitle" class="section-title">{ p.words.Of("reports.tables") }</h3>
+		<div class="table-wrap">
+			<table id="itemReport.tables" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+				<thead>
+					<tr>
+						<th id="itemReport.tables.head.name">{ p.words.Of("reports.table") }</th>
+						<th id="itemReport.tables.head.count" class="num">{ p.words.Of("entries.title") }</th>
+						<th id="itemReport.tables.head.last" class="num">{ p.words.Of("reports.lastEntry") }</th>
+						<th id="itemReport.tables.head.total" class="num">{ p.words.Of("reports.total") }</th>
+						if shown.report.ShowsTablePercentages {
+							<th id="itemReport.tables.head.share" class="share">{ p.words.Of("reports.ofItem") }</th>
+						}
+						<th id="itemReport.tables.head.go" class="go"></th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, table := range shown.report.Subgroups {
+						if rows, shows := shown.rowsOf(subgroupName(p, table), table.Rows); shows {
+							<tr id={ "itemReport.table." + table.ID.String() } tabindex="0" aria-selected="false" hx-get={ "/tab/itemReport?item=" + shown.report.ItemID.String() + "&table=" + table.ID.String() } hx-target="[id='web.content']">
+								<td id={ "itemReport.table." + table.ID.String() + ".name" }>{ subgroupName(p, table) }</td>
+								<td id={ "itemReport.table." + table.ID.String() + ".count" } class="num">{ strconv.Itoa(len(rows)) }</td>
+								<td id={ "itemReport.table." + table.ID.String() + ".last" } class="num">{ lastDate(rows) }</td>
+								<td id={ "itemReport.table." + table.ID.String() + ".total" } class="num">{ money(table.Total) }</td>
+								if shown.report.ShowsTablePercentages {
+									<td id={ "itemReport.table." + table.ID.String() + ".shareCell" } class="share">
+										@shareCell("itemReport.table."+table.ID.String()+".share", share(table.Total, shown.report.Total))
+									</td>
+								}
+								<td id={ "itemReport.table." + table.ID.String() + ".go" } class="go"><span id={ "itemReport.table." + table.ID.String() + ".arrow" } class="arrow" aria-hidden="true">{ arrow }</span></td>
+							</tr>
+						}
 					}
-					@reportRows("itemReport.payments."+contract.ID.String(), rows, contract.Columns)
-					<p id={ "itemReport.contractTotal." + contract.ID.String() } class="total-line">{ p.words.Of("reports.grandTotal") + ": " + money(contract.PaymentsTotal) }</p>
-				</section>
-			}
+				</tbody>
+			</table>
+		</div>
+		if len(shown.report.Contracts) > 0 {
+			<h3 id="itemReport.contractsTitle" class="section-title">{ p.words.Of("contracts.title") }</h3>
+			<div class="table-wrap">
+				<table id="itemReport.contracts" class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+					<thead>
+						<tr>
+							<th id="itemReport.contracts.head.name">{ p.words.Of("contracts.contractor") }</th>
+							<th id="itemReport.contracts.head.payments" class="num">{ p.words.Of("reports.payments") }</th>
+							<th id="itemReport.contracts.head.value" class="num">{ p.words.Of("contracts.contractValue") }</th>
+							<th id="itemReport.contracts.head.paid" class="num">{ p.words.Of("contracts.paid") }</th>
+							<th id="itemReport.contracts.head.remaining" class="num">{ p.words.Of("contracts.remaining") }</th>
+							<th id="itemReport.contracts.head.go" class="go"></th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, contract := range shown.report.Contracts {
+							if rows, shows := shown.rowsOf(contract.ContractorName, contract.Payments); shows {
+								<tr id={ "itemReport.contractCard." + contract.ID.String() } tabindex="0" aria-selected="false" hx-get={ "/tab/itemReport?contract=" + contract.ID.String() } hx-target="[id='web.content']">
+									<td id={ "itemReport.contractor." + contract.ID.String() }>{ contract.ContractorName }</td>
+									<td id={ "itemReport.contractCard." + contract.ID.String() + ".payments" } class="num">{ strconv.Itoa(len(rows)) }</td>
+									<td id={ "itemReport.contractCard." + contract.ID.String() + ".value" } class="num">{ contractValueOf(p, contract) }</td>
+									<td id={ "itemReport.contractCard." + contract.ID.String() + ".paid" } class="num">{ money(contract.Paid) }</td>
+									<td id={ "itemReport.contractCard." + contract.ID.String() + ".remaining" } class={ "num", templ.KV("refusal", contract.IsOverrun) }>{ contractRemainingOf(contract) }</td>
+									<td id={ "itemReport.contractCard." + contract.ID.String() + ".go" } class="go"><span id={ "itemReport.contractCard." + contract.ID.String() + ".arrow" } class="arrow" aria-hidden="true">{ arrow }</span></td>
+								</tr>
+							}
+						}
+					</tbody>
+				</table>
+			</div>
 		}
 	}
 }
 
-// reportRows is a report table's rows as the app's report lists them: the description, the other values each with its column's name, the amount.
-templ reportRows(id string, rows []entries.ReportRow, columns []entries.ReportColumn) {
-	<table id={ id } class="grid report-rows">
-		<tbody>
-			for _, row := range rows {
-				<tr id={ "itemReport.row." + row.EntryID.String() }>
-					<td id={ "itemReport.row." + row.EntryID.String() + ".title" }>
-						{ reportRowTitle(row, columns) }
-						<small id={ "itemReport.row." + row.EntryID.String() + ".details" } class="hint">{ reportRowDetails(row, columns) }</small>
-					</td>
-					<td id={ "itemReport.row." + row.EntryID.String() + ".amount" } class="amount">{ statement.Money(row.Amount) }</td>
+// reportPath is the way back above an item's report: its side, its category and the item, and the table or contract open in it, here.
+templ reportPath(p page, shown itemReportShown, here string) {
+	<nav id="itemReport.path" class="crumbs" aria-label={ p.words.Of("reports.path") }>
+		<a id="itemReport.path.side" href="#" hx-get={ "/tab/" + shown.side().name } hx-target="[id='web.content']">{ p.words.Of(shown.side().word) }</a>
+		<span id="itemReport.path.sep1" class="sep" aria-hidden="true">›</span>
+		<span id="itemReport.path.category">{ shown.report.CategoryName }</span>
+		<span id="itemReport.path.sep2" class="sep" aria-hidden="true">›</span>
+		if here == "" {
+			<span id="itemReport.path.item">{ shown.report.ItemName }</span>
+		} else {
+			<a id="itemReport.path.item" href="#" hx-get={ "/tab/itemReport?item=" + shown.report.ItemID.String() } hx-target="[id='web.content']">{ shown.report.ItemName }</a>
+			<span id="itemReport.path.sep3" class="sep" aria-hidden="true">›</span>
+			<span id="itemReport.path.here">{ here }</span>
+		}
+	</nav>
+}
+
+// reportHead is an item's report's title, its search and its PDF and Excel, which hold the whole item.
+templ reportHead(p page, shown itemReportShown, title string) {
+	<div class="view-head">
+		<h2 id="itemReport.title">{ title }</h2>
+		<span id="itemReport.actions" class="head-actions">
+			@searchToggle(p, "itemReport.searchToggle", "/tab/itemReport?"+shown.recordQuery())
+			@reportFiles(p, "itemReport.file", shown.fileAddress())
+		</span>
+	</div>
+}
+
+// reportSearch is an item's report's search, while it is open: it keeps the page on what it shows.
+templ reportSearch(p page, shown itemReportShown) {
+	if p.searching {
+		<form id="itemReport.filters" class="filters" hx-get="/tab/itemReport" hx-target="[id='web.content']" hx-trigger="input changed delay:400ms from:[name='text'], submit">
+			<input id="itemReport.searchOn" type="hidden" name="search" value="on"/>
+			<input id="itemReport.item" type="hidden" name="item" value={ shown.query.Get("item") }/>
+			<input id="itemReport.contract" type="hidden" name="contract" value={ shown.query.Get("contract") }/>
+			<input id="itemReport.table" type="hidden" name="table" value={ shown.query.Get("table") }/>
+			<input id="itemReport.search" class="search" autofocus?={ p.searchOpened } type="search" name="text" placeholder={ p.words.Of("common.searchIn", shown.report.ItemName) } aria-label={ p.words.Of("common.searchIn", shown.report.ItemName) } value={ shown.text }/>
+		</form>
+	}
+}
+
+// reportGrid is one table's or contract's rows: each entry's number, the columns its item prints - its date among them, as the item says - and
+// the amount, a row opening its entry in the details panel, and the total under them.
+templ reportGrid(p page, id string, rows []entries.ReportRow, columns []entries.ReportColumn, amountName string, total fixed.Total) {
+	<div class="table-wrap">
+		<table id={ id } class="grid" hx-on:keydown={ templ.JSUnsafeFuncCall(listKeys) } hx-on:click={ templ.JSUnsafeFuncCall(listSelects) }>
+			<thead>
+				<tr>
+					<th id={ id + ".head.number" } class="num">{ p.words.Of("entries.number") }</th>
+					for _, column := range columns {
+						<th id={ id + ".head." + column.Key }>{ column.Name }</th>
+					}
+					<th id={ id + ".head.amount" } class="num">{ amountName }</th>
 				</tr>
-			}
-		</tbody>
-	</table>
+			</thead>
+			<tbody>
+				for _, row := range rows {
+					<tr id={ "itemReport.row." + row.EntryID.String() } tabindex="0" aria-selected="false" hx-get={ "/details/entry/" + row.EntryID.String() } hx-target="[id='web.details']">
+						<td id={ "itemReport.row." + row.EntryID.String() + ".number" } class="num">{ strconv.FormatInt(row.Number, 10) }</td>
+						for at, column := range columns {
+							<td id={ "itemReport.row." + row.EntryID.String() + "." + column.Key }>{ reportValue(row, at, column) }</td>
+						}
+						<td id={ "itemReport.row." + row.EntryID.String() + ".amount" } class="num">{ statement.Money(row.Amount) }</td>
+					</tr>
+				}
+			</tbody>
+			<tfoot>
+				<tr>
+					<td id={ id + ".foot.label" } colspan={ strconv.Itoa(len(columns) + 1) }>{ p.words.Of("reports.total") }</td>
+					<td id={ id + ".foot.total" } class="num">{ money(total) }</td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
 }
 
 // periodicReportPage is a periodic report as the app's screen shows it (UC-053): its number and the day it was issued, its PDF and Excel - gray

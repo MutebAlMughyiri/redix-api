@@ -326,3 +326,24 @@ progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 3px;
 .chip[hidden] { display: none; } .grid tr.unread td > span { font-weight: 700; }
 /* Settings (redix-api #175): a section a row of buttons and links that wrap; the segments as a choice of links. */
 .settings { display: grid; gap: 12px; } .setting { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } .setting h3, .setting .hint { flex-basis: 100%; margin: 0; } .segmented a { padding: 4px 12px; color: var(--text); text-decoration: none; font-size: 12.5px; } .segmented a[aria-current=true] { background: var(--accent); color: var(--on-accent); }
+
+/* A side's item reports and an item's report, as the owner approved their redesign (23 Nov 2026): the total line, a grid whose categories fold
+   open onto their items, the share of each, the way back, and a table or contract opening alone. */
+.sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; margin: 0 0 14px; }
+.sum .big { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+.grid .num { text-align: end; white-space: nowrap; }
+.grid .share { width: 170px; }
+.share-cell { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+.share-cell span { text-align: end; color: var(--quiet); font-size: 12px; }
+.grid .go { width: 24px; text-align: end; color: var(--faint); }
+.grid .go .arrow { font-size: 13px; } [dir="rtl"] .grid .go .arrow { transform: rotate(180deg); }
+.grid tfoot td { font-weight: 600; border-block-end: 0; border-block-start: 2px solid var(--chrome-line); }
+.fold-head { cursor: pointer; } .fold-head:hover td { background: var(--chrome); } .fold-head td { font-weight: 600; }
+.fold-head td:first-child { display: flex; align-items: center; gap: 6px; } .fold-head .count { font-weight: 400; font-size: 12px; }
+.fold-head .arrow { font-size: 13px; } [dir="rtl"] .fold-head .arrow { transform: rotate(180deg); } .fold[data-open] .fold-head .arrow { transform: rotate(90deg); }
+.fold-head:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.fold:not([data-open]) .fold-item { display: none; } .fold-item td:first-child { padding-inline-start: 34px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-block-start: 16px; font-size: 12px; color: var(--quiet); }
+.crumbs a { color: var(--accent); text-decoration: none; padding: 2px 4px; border-radius: 4px; } .crumbs a:hover { background: var(--select); }
+.crumbs .sep { color: var(--faint); } .crumbs + .view-head { padding-block-start: 6px; }

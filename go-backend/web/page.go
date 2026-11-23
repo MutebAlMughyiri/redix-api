@@ -4,6 +4,9 @@
 package web
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -14,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/access"
+	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/db/store"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/platform/web"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/projects"
 	"github.com/MutebAlMughyiri/redix-api/go-backend/internal/translations"
@@ -49,8 +53,11 @@ type page struct {
 	// details is what the shell's details panel shows when the whole shell is drawn: nothing, or the entry a notification opened.
 	details templ.Component
 	// said is what the change that brought the front tab there said, for the tab to show: Ask for permissions' sent, on My permissions.
-	said    said
-	content templ.Component
+	said said
+	// recordTitles name what the open record tabs show, which their titles say instead of their page's word: an item's report, its item (the
+	// owner, 23 Nov 2026).
+	recordTitles map[string]string
+	content      templ.Component
 }
 
 // words are one language's words by key (translations); a key with no word shows itself, so a missing word is seen, never hidden.
@@ -101,6 +108,9 @@ func (s site) page(r *http.Request) (page, error) {
 func (s site) open(r *http.Request, p page, caller access.Caller) (page, error) {
 	p, err := s.identify(r, p, caller)
 	if err != nil || !p.in {
+		return p, err
+	}
+	if p.recordTitles, err = s.recordTitlesOf(r.Context(), p); err != nil {
 		return p, err
 	}
 	if tab, opened := contents[p.view.Active]; opened && p.offers(p.view.Active) {
@@ -278,6 +288,46 @@ var contents = map[string]tab{
 }
 
 // openTabs are the open tabs' items, in the order they were opened.
+// tabTitle is what an open tab is called: the name of the record a record tab shows, when it names one, otherwise its page's word.
+func (p page) tabTitle(item menuItem) string {
+	if title := p.recordTitles[item.name]; title != "" {
+		return title
+	}
+	return p.words.Of(item.title)
+}
+
+// recordTitlesOf names the item an open item's report shows, by its item or its contract's, which its tab is called instead of «البند» (the
+// owner, 23 Nov 2026). A record not in the project - the tab kept from another project - is called by its page's word. The error is the
+// database's.
+func (s site) recordTitlesOf(ctx context.Context, p page) (map[string]string, error) {
+	record, _ := url.ParseQuery(p.view.Records["itemReport"])
+	read := s.Database.Queries()
+	itemID, _ := uuid.Parse(record.Get("item"))
+	if contractID, _ := uuid.Parse(record.Get("contract")); contractID != uuid.Nil {
+		contract, err := read.ContractOf(ctx, store.ContractOfParams{ID: contractID, ProjectID: p.project.ID})
+		if err != nil {
+			return nil, ignoreMissing(err)
+		}
+		itemID = contract.ItemID
+	}
+	if itemID == uuid.Nil {
+		return nil, nil
+	}
+	item, err := read.ItemOf(ctx, store.ItemOfParams{ID: itemID, ProjectID: p.project.ID})
+	if err != nil {
+		return nil, ignoreMissing(err)
+	}
+	return map[string]string{"itemReport": item.Name}, nil
+}
+
+// ignoreMissing is err, but none for a row not found.
+func ignoreMissing(err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
+}
+
 func (p page) openTabs() []menuItem {
 	var open []menuItem
 	for _, name := range p.view.Tabs {
@@ -363,6 +413,12 @@ func searchGroup[T any](text, name string, members []T, textOf func(T) string) (
 }
 
 const listSelects = selectRow + `const row = event.target.closest('tr[hx-get]'); if (row) select(row)`
+
+// foldGroup folds a category's row open onto its items, or shut, on a side's item reports (the owner's redesign, 23 Nov 2026); foldKeys does it
+// for Enter and Space.
+const foldGroup = `const group = this.closest('tbody'); group.toggleAttribute('data-open'); this.setAttribute('aria-expanded', group.hasAttribute('data-open'))`
+
+const foldKeys = `if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click() }`
 
 // logoSVG is REDIX's mark, written once: drawn in the top bar, and the browser tab's icon.
 const logoSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" fill="#0E6B68"/>` +

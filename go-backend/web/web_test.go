@@ -1335,7 +1335,8 @@ func TestWeb_R301_ChangeEntryOpensAgainOnItsEntryAsItStands(t *testing.T) {
 }
 
 // An item's report and a periodic report keep what they were opened for: pressed again after another tab, or after a reload, they show the same
-// item, contract or report, never "تعذر تنفيذ ذلك." (findings row 327).
+// item, contract, table or report, never "تعذر تنفيذ ذلك." (findings row 327); an item's report tab is called by its item (the owner's
+// redesign, 23 Nov 2026).
 func TestWeb_R327_AReportTabOpensAgainOnWhatItWasOpenedFor(t *testing.T) {
 	w := newWorking(t)
 	w.funded(1000)
@@ -1351,8 +1352,12 @@ func TestWeb_R327_AReportTabOpensAgainOnWhatItWasOpenedFor(t *testing.T) {
 	w.browser.Send("GET", "/tab/itemReport?contract="+contract, nil)
 	w.browser.Send("GET", "/tab/expenses", nil)
 	byContract := w.browser.Send("GET", "/tab/itemReport", nil).Body.String()
-	has(t, byContract, `itemReport.contractCard.`+contract)
+	has(t, byContract, `itemReport.payments.`+contract)
 	lacks(t, byContract, `itemReport.notFound`)
+	w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&table="+w.table, nil)
+	w.browser.Send("GET", "/tab/expenses", nil)
+	has(t, w.browser.Send("GET", "/tab/itemReport", nil).Body.String(), `<h2 id="itemReport.title">عام</h2>`)
+	has(t, w.browser.Send("GET", "/", nil).Body.String(), `hx-get="/tab/itemReport" hx-target="[id='web.content']">التسليح</button>`)
 	w.browser.Send("POST", "/reports/issue", nil)
 	w.browser.Send("GET", "/tab/periodicReport?number=1", nil)
 	w.browser.Send("GET", "/tab/reports", nil)
@@ -2679,28 +2684,44 @@ func TestWeb_R171_UC050_EachSidesItemReportsAndAnItemsOrAContractsReport(t *test
 	w.paid(contract, builder, 1200, true)
 	w.home()
 	expenses := w.browser.Send("GET", "/tab/expenses", nil).Body.String()
-	has(t, expenses, `<b id="itemReports.total">1,500.00</b>`)
+	has(t, expenses, `<b id="itemReports.total" class="big">1,500.00</b>`)
 	has(t, expenses, `>الحديد</span>`)
-	has(t, expenses, `1,500.00 · 100%`)
+	has(t, expenses, `.share.percent">100%</span>`)
+	has(t, expenses, `class="fold">`)
 	has(t, expenses, `hx-get="/tab/itemReport?item=`+w.item+`"`)
 	lacks(t, w.browser.Send("GET", "/tab/expenses?text=لا+شيء", nil).Body.String(), `>الحديد</span>`)
-	has(t, w.browser.Send("GET", "/tab/expenses?text=التسليح", nil).Body.String(), `class="tile" open`)
+	has(t, w.browser.Send("GET", "/tab/expenses?text=التسليح", nil).Body.String(), `class="fold" data-open`)
 	has(t, w.browser.Send("GET", "/tab/revenue", nil).Body.String(), `>البيع</td>`)
 	report := w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String()
-	for _, part := range []string{`<h2 id="itemReport.title">التسليح</h2>`, `<b id="itemReport.total">1,500.00</b>`, `>عام</span>`, `حديد 16 مم`, `>300.00</td>`,
-		`<h3 id="itemReport.contractor.` + contract + `" class="section-title">مقاول أ</h3>`,
-		`قيمة العقد: 1,000.00 · المدفوع: 1,200.00 · المتبقي: (200.00)`, `مدفوع أكثر من العقد`, `اجمالي الكل: 1,200.00`} {
+	for _, part := range []string{`<h2 id="itemReport.title">التسليح</h2>`, `<b id="itemReport.total" class="big">1,500.00</b>`, `القيود: 2`, `>عام</td>`,
+		`hx-get="/tab/itemReport?item=` + w.item + `&amp;table=` + w.table + `"`, `<a id="itemReport.path.side" href="#" hx-get="/tab/expenses"`,
+		`<td id="itemReport.contractor.` + contract + `">مقاول أ</td>`, `class="num refusal">(200.00)</td>`, `hx-get="/tab/itemReport?contract=` + contract + `"`} {
 		has(t, report, part)
 	}
+	lacks(t, report, `حديد 16 مم`)
+	table := w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&table="+w.table, nil).Body.String()
+	for _, part := range []string{`<h2 id="itemReport.title">عام</h2>`, `<span id="itemReport.path.here">عام</span>`, `حديد 16 مم`, `>300.00</td>`,
+		`hx-get="/details/entry/` + purchase + `"`, `.foot.total" class="num">300.00</td>`} {
+		has(t, table, part)
+	}
+	lacks(t, table, `مقاول أ`)
+	has(t, w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&table="+w.table+"&text=16", nil).Body.String(), `حديد 16 مم`)
+	lacks(t, w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&table="+w.table+"&text=لا+شيء", nil).Body.String(), `حديد 16 مم`)
 	found := w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&text=16", nil).Body.String()
-	has(t, found, `حديد 16 مم`)
+	has(t, found, `itemReport.table.`+w.table)
 	lacks(t, found, `itemReport.contractCard.`+contract)
 	byContract := w.browser.Send("GET", "/tab/itemReport?contract="+contract, nil).Body.String()
-	has(t, byContract, `itemReport.contractCard.`+contract)
+	for _, part := range []string{`<h2 id="itemReport.title">مقاول أ</h2>`, `قيمة العقد: 1,000.00 · المدفوع: 1,200.00 · المتبقي: (200.00)`, `مدفوع أكثر من العقد`,
+		`id="itemReport.payments.` + contract + `.foot.total" class="num">1,200.00</td>`} {
+		has(t, byContract, part)
+	}
 	lacks(t, byContract, `حديد 16 مم`)
 	has(t, w.browser.Send("GET", "/details/contract/"+contract, nil).Body.String(), `hx-get="/tab/itemReport?contract=`+contract+`"`)
 	has(t, w.browser.Send("GET", "/tab/itemReport?item="+uuid.NewString(), nil).Body.String(), `<p id="itemReport.notFound" class="empty">تعذر تنفيذ ذلك.</p>`)
-	for _, path := range []string{"/tab/expenses", "/tab/itemReport?item=" + w.item, "/tab/itemReport?contract=" + contract} {
+	gone := w.browser.Send("GET", "/tab/itemReport?contract="+uuid.NewString(), nil).Body.String()
+	has(t, gone, `<p id="itemReport.notFound" class="empty">تعذر تنفيذ ذلك.</p>`)
+	has(t, gone, `<button id="web.tab.itemReport.title" class="tab-title" type="button" hx-get="/tab/itemReport" hx-target="[id='web.content']">البند</button>`)
+	for _, path := range []string{"/tab/expenses", "/tab/itemReport?item=" + w.item, "/tab/itemReport?contract=" + contract, "/tab/itemReport?item=" + w.item + "&table=" + w.table} {
 		for n := int64(1); ; n++ {
 			answered, failed := w.browser.SendFailing(n, "GET", path, nil)
 			if !failed {
@@ -2736,9 +2757,12 @@ func TestWeb_R171_UC050_AReportRowSaysItsValuesByColumnAndANamedTableByName(t *t
 	}
 	w.Ask("POST", w.path+"/entries/approve", `{"entryIds":["`+purchase+`"]}`, w.token)
 	w.home()
-	report := w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String()
-	has(t, report, `>الدور الأول</span>`)
-	has(t, report, `التاريخ: 2026-11-10 · الحساب: حساب المؤسسة · طريقة الدفع: شبكة · المقاس: 16 مم · الخصم: 1,250.00</small>`)
+	has(t, w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String(), `>الدور الأول</td>`)
+	table := w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&table="+floor, nil).Body.String()
+	for _, part := range []string{`<h2 id="itemReport.title">الدور الأول</h2>`, `">2026-11-10</td>`, `">حساب المؤسسة</td>`, `">شبكة</td>`,
+		`<td id="itemReport.row.` + purchase + `.` + size + `">16 مم</td>`, `<td id="itemReport.row.` + purchase + `.` + discount + `">1,250.00</td>`, `>المقاس</th>`} {
+		has(t, table, part)
+	}
 	stranger, _ := signedIn(t, w.API, "User C")
 	if code := stranger.Send("POST", "/reports/issue", nil).Code; code != http.StatusNotFound {
 		t.Errorf("issuing with no project chosen: %d", code)
@@ -4829,8 +4853,8 @@ func TestWeb_R180_AnItemReportsSearchKeepsItsItem(t *testing.T) {
 	w.approved(100)
 	w.home()
 	report := w.browser.Send("GET", "/tab/itemReport?item="+w.item, nil).Body.String()
-	has(t, report, `hx-get="/tab/itemReport?item=`+w.item+`&amp;contract=&amp;search=on&amp;opened=1"`)
-	has(t, w.browser.Send("GET", "/tab/itemReport?item="+w.item+"&contract=&search=on&opened=1", nil).Body.String(), `id="itemReport.filters"`)
+	has(t, report, `hx-get="/tab/itemReport?contract=&amp;item=`+w.item+`&amp;table=&amp;search=on&amp;opened=1"`)
+	has(t, w.browser.Send("GET", "/tab/itemReport?contract=&item="+w.item+"&table=&search=on&opened=1", nil).Body.String(), `id="itemReport.filters"`)
 }
 
 // A capital movement is titled on the lists by its partner, as the app titles its cards; anything else by its item (redix-api #166).

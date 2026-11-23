@@ -33,7 +33,7 @@ type view struct {
 // contract, and it and a periodic report are record tabs too (findings row 327). Only the record is kept, never what a form typed beside it, so
 // Change entry opens again on its entry as it stands, never on an edit not saved (findings row 301).
 var recordTabs = map[string][]string{"userPermissions": {"user"}, "itemColumns": {"item"}, "itemTables": {"item"}, "changeEntry": {"entry"},
-	"itemReport": {"item", "contract"}, "periodicReport": {"number"}}
+	"itemReport": {"item", "contract", "table"}, "periodicReport": {"number"}}
 
 const (
 	// lookCookie keeps the bars, the side menu and its width, which the View menu changes; tabsCookie keeps the open tabs. Each is written only by
