@@ -3,20 +3,20 @@ module github.com/MutebAlMughyiri/redix-api/go-backend
 go 1.27.4
 
 require (
+	github.com/a-h/templ v0.3.1118
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e
 	github.com/pressly/goose/v3 v3.30.1
 	github.com/xuri/excelize/v2 v2.11.1
-	golang.org/x/crypto v0.58.0
+	golang.org/x/crypto v0.59.0
 	golang.org/x/text v0.44.0
-	golang.org/x/tools v0.52.0
-	modernc.org/sqlite v1.62.0
+	golang.org/x/tools v0.53.0
+	modernc.org/sqlite v1.63.0
 )
 
 require (
 	github.com/a-h/parse v0.0.42 // indirect
-	github.com/a-h/templ v0.3.1118 // indirect
 	github.com/andybalholm/brotli v1.3.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cli/browser v1.3.0 // indirect
@@ -37,7 +37,7 @@ require (
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.43.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	modernc.org/libc v1.80.2 // indirect
